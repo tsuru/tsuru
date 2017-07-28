@@ -10,9 +10,14 @@ import "io"
 
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
-	Name         string `json:"name"`
-	Value        string `json:"value"`
-	Public       bool   `json:"public"`
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Public bool   `json:"public"`
+}
+
+type ServiceEnvVar struct {
+	EnvVar       `bson:",inline"`
+	ServiceName  string `json:"-"`
 	InstanceName string `json:"-"`
 }
 
@@ -32,41 +37,34 @@ type App interface {
 	// GetUnits returns the app units.
 	GetUnits() ([]Unit, error)
 
-	// InstanceEnv returns the app environment variables.
-	InstanceEnv(string) map[string]EnvVar
-
-	// SetEnvs adds environment variables in the app.
-	SetEnvs(setEnvs SetEnvApp, w io.Writer) error
-
-	// UnsetEnvs removes the given environment variables from the app.
-	UnsetEnvs(unsetEnvs UnsetEnvApp, w io.Writer) error
-
 	// AddInstance adds an instance to the application.
-	AddInstance(instanceApp InstanceApp, writer io.Writer) error
+	AddInstance(args AddInstanceArgs) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(instanceApp InstanceApp, writer io.Writer) error
+	RemoveInstance(args RemoveInstanceArgs) error
 }
 
-type ServiceInstance struct {
-	Name string            `json:"instance_name"`
-	Envs map[string]string `json:"envs"`
-}
-
-type SetEnvApp struct {
+type SetEnvArgs struct {
 	Envs          []EnvVar
-	PublicOnly    bool
+	Writer        io.Writer
 	ShouldRestart bool
 }
 
-type UnsetEnvApp struct {
+type UnsetEnvArgs struct {
 	VariableNames []string
-	PublicOnly    bool
+	Writer        io.Writer
 	ShouldRestart bool
 }
 
-type InstanceApp struct {
+type AddInstanceArgs struct {
+	Envs          []ServiceEnvVar
+	Writer        io.Writer
+	ShouldRestart bool
+}
+
+type RemoveInstanceArgs struct {
 	ServiceName   string
-	Instance      ServiceInstance
+	InstanceName  string
+	Writer        io.Writer
 	ShouldRestart bool
 }

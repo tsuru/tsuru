@@ -921,13 +921,11 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.SetEnvs(
-		bind.SetEnvApp{
-			Envs:          variables,
-			PublicOnly:    true,
-			ShouldRestart: !e.NoRestart,
-		}, writer,
-	)
+	return a.SetEnvs(bind.SetEnvArgs{
+		Envs:          variables,
+		ShouldRestart: !e.NoRestart,
+		Writer:        writer,
+	})
 }
 
 // title: unset envs
@@ -977,13 +975,11 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
-	return a.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: variables,
-			PublicOnly:    true,
-			ShouldRestart: !noRestart,
-		}, writer,
-	)
+	return a.UnsetEnvs(bind.UnsetEnvArgs{
+		VariableNames: variables,
+		ShouldRestart: !noRestart,
+		Writer:        writer,
+	})
 }
 
 // title: set cname
@@ -1238,7 +1234,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
-	envs := a.InstanceEnv(instanceName)
+	envs := a.InstanceEnvs(serviceName, instanceName)
 	if len(envs) > 0 {
 		fmt.Fprintf(writer, "The following environment variables are available for use in your app:\n\n")
 		for k := range envs {

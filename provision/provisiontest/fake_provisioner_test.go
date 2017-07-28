@@ -64,13 +64,6 @@ func (s *S) TestFakeAppGetSwap(c *check.C) {
 	c.Assert(app.GetSwap(), check.Equals, int64(0))
 }
 
-func (s *S) TestFakeAppSerializeEnvVars(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.SerializeEnvVars()
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Commands, check.DeepEquals, []string{"serialize"})
-}
-
 func (s *S) TestEnvs(c *check.C) {
 	app := FakeApp{name: "time"}
 	env := bind.EnvVar{
@@ -103,12 +96,10 @@ func (s *S) TestSetEnvs(c *check.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(
-		bind.SetEnvApp{
-			Envs:          envs,
-			PublicOnly:    false,
-			ShouldRestart: true,
-		}, nil)
+	app.SetEnvs(bind.SetEnvArgs{
+		Envs:          envs,
+		ShouldRestart: true,
+	})
 	expected := map[string]bind.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
@@ -142,12 +133,10 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
-	app.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: []string{"http_proxy"},
-			PublicOnly:    false,
-			ShouldRestart: true,
-		}, nil)
+	app.UnsetEnvs(bind.UnsetEnvArgs{
+		VariableNames: []string{"http_proxy"},
+		ShouldRestart: true,
+	})
 	c.Assert(app.env, check.DeepEquals, map[string]bind.EnvVar{})
 }
 
@@ -208,100 +197,113 @@ func (s *S) TestFakeAppGetCname(c *check.C) {
 	c.Assert(app.GetCname(), check.DeepEquals, []string{"cname1", "cname2"})
 }
 
-func (s *S) TestFakeAppGetInstances(c *check.C) {
-	instance1 := bind.ServiceInstance{Name: "inst1"}
-	instance2 := bind.ServiceInstance{Name: "inst2"}
-	app := NewFakeApp("sou", "otm", 0)
-	app.instances["mysql"] = []bind.ServiceInstance{instance1, instance2}
-	instances := app.GetInstances("mysql")
-	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance1, instance2})
-	instances = app.GetInstances("mongodb")
-	c.Assert(instances, check.HasLen, 0)
-}
-
 func (s *S) TestFakeAppAddInstance(c *check.C) {
-	instance1 := bind.ServiceInstance{Name: "inst1"}
-	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
+	err := app.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{
+				ServiceName:  "mysql",
+				InstanceName: "inst1",
+				EnvVar:       bind.EnvVar{Name: "env1", Value: "val1"},
+			},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mongodb",
-			Instance:      instance2,
-			ShouldRestart: false,
-		}, nil)
+	err = app.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{
+				ServiceName:  "mongodb",
+				InstanceName: "inst2",
+				EnvVar:       bind.EnvVar{Name: "env2", Value: "val2"},
+			},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	instances := app.GetInstances("mysql")
-	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance1})
-	instances = app.GetInstances("mongodb")
-	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance2})
-	instances = app.GetInstances("redis")
-	c.Assert(instances, check.HasLen, 0)
+	envs := app.GetServiceEnvs()
+	c.Assert(envs, check.DeepEquals, []bind.ServiceEnvVar{
+		{
+			ServiceName:  "mysql",
+			InstanceName: "inst1",
+			EnvVar:       bind.EnvVar{Name: "env1", Value: "val1"},
+		},
+		{
+			ServiceName:  "mongodb",
+			InstanceName: "inst2",
+			EnvVar:       bind.EnvVar{Name: "env2", Value: "val2"},
+		},
+	})
 }
 
 func (s *S) TestFakeAppRemoveInstance(c *check.C) {
-	instance1 := bind.ServiceInstance{Name: "inst1"}
-	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
-	app.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mongodb",
-			Instance:      instance2,
-			ShouldRestart: false,
-		}, nil)
-	err := app.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
+	err := app.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{
+				ServiceName:  "mysql",
+				InstanceName: "inst1",
+				EnvVar:       bind.EnvVar{Name: "env1", Value: "val1"},
+			},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	instances := app.GetInstances("mysql")
-	c.Assert(instances, check.HasLen, 0)
-	instances = app.GetInstances("mongodb")
-	c.Assert(instances, check.HasLen, 1)
+	err = app.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{
+				ServiceName:  "mongodb",
+				InstanceName: "inst2",
+				EnvVar:       bind.EnvVar{Name: "env2", Value: "val2"},
+			},
+		},
+		ShouldRestart: true,
+	})
+	c.Assert(err, check.IsNil)
+	err = app.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "inst1",
+		ShouldRestart: true,
+	})
+	c.Assert(err, check.IsNil)
+	envs := app.GetServiceEnvs()
+	c.Assert(envs, check.DeepEquals, []bind.ServiceEnvVar{
+		{
+			ServiceName:  "mongodb",
+			InstanceName: "inst2",
+			EnvVar:       bind.EnvVar{Name: "env2", Value: "val2"},
+		},
+	})
 }
 
 func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
-	instance1 := bind.ServiceInstance{Name: "inst1"}
-	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
-	err := app.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance2,
-			ShouldRestart: true,
-		}, nil)
+	err := app.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{
+				ServiceName:  "mysql",
+				InstanceName: "inst1",
+				EnvVar:       bind.EnvVar{Name: "env1", Value: "val1"},
+			},
+		},
+		ShouldRestart: true,
+	})
+	c.Assert(err, check.IsNil)
+	err = app.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "inst2",
+		ShouldRestart: true,
+	})
 	c.Assert(err.Error(), check.Equals, "instance not found")
 }
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
-	instance := bind.ServiceInstance{Name: "inst1"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err := app.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "inst2",
+		ShouldRestart: true,
+	})
 	c.Assert(err.Error(), check.Equals, "instance not found")
 }
 

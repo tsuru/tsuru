@@ -235,7 +235,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(retrievedApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, check.Equals, s.user.Email)
 	c.Assert(retrievedApp.Tags, check.DeepEquals, []string{"test a", "test b"})
-	env := retrievedApp.InstanceEnv("")
+	env := retrievedApp.Envs()
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
 	err = auth.ReserveApp(s.user)
@@ -1053,14 +1053,16 @@ func (s *S) TestSetMultiplePrivateEnvironmentVariableToApp(c *check.C) {
 	c.Assert(env.Public, check.Equals, false)
 }
 
-func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSets(c *check.C) {
+func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {
-				Name:         "DATABASE_HOST",
-				Value:        "localhost",
-				Public:       false,
+		ServiceEnvs: []bind.ServiceEnvVar{
+			{
+				EnvVar: bind.EnvVar{
+					Name:   "DATABASE_HOST",
+					Value:  "localhost",
+					Public: false,
+				},
 				InstanceName: "some service",
 			},
 		},
@@ -1068,6 +1070,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 	}
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	envs := []bind.EnvVar{
 		{
@@ -1082,21 +1086,19 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 		},
 	}
 	var buf bytes.Buffer
-	err = a.setEnvsToApp(
-		bind.SetEnvApp{
-			Envs:          envs,
-			PublicOnly:    true,
-			ShouldRestart: true,
-		}, &buf)
+	err = a.SetEnvs(bind.SetEnvArgs{
+		Envs:          envs,
+		ShouldRestart: true,
+		Writer:        &buf,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: "some service",
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
 		},
 		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
@@ -1104,61 +1106,11 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 			Public: true,
 		},
 	}
-	c.Assert(newApp.Env, check.DeepEquals, expected)
+	newAppEnvs := newApp.Envs()
+	delete(newAppEnvs, TsuruServicesEnvVar)
+	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 	c.Assert(buf.String(), check.Equals, "---- Setting 2 new environment variables ----\nrestarting app")
-}
-
-func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *check.C) {
-	a := App{
-		Name: "myapp",
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
-	s.provisioner.PrepareOutput([]byte("exported"))
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	envs := []bind.EnvVar{
-		{
-			Name:   "DATABASE_HOST",
-			Value:  "remotehost",
-			Public: true,
-		},
-		{
-			Name:   "DATABASE_PASSWORD",
-			Value:  "123",
-			Public: true,
-		},
-	}
-	err = a.setEnvsToApp(
-		bind.SetEnvApp{
-			Envs:          envs,
-			PublicOnly:    false,
-			ShouldRestart: true,
-		}, nil)
-	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "remotehost",
-			Public: true,
-		},
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "123",
-			Public: true,
-		},
-	}
-	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
 func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
@@ -1188,12 +1140,10 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(
-		bind.SetEnvApp{
-			Envs:          envs,
-			PublicOnly:    false,
-			ShouldRestart: false,
-		}, nil)
+	err = a.SetEnvs(bind.SetEnvArgs{
+		Envs:          envs,
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1240,12 +1190,10 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(
-		bind.SetEnvApp{
-			Envs:          envs,
-			PublicOnly:    false,
-			ShouldRestart: false,
-		}, nil)
+	err = a.SetEnvs(bind.SetEnvArgs{
+		Envs:          envs,
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1265,19 +1213,25 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
-func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *check.C) {
+func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
 		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
 			"DATABASE_PASSWORD": {
 				Name:   "DATABASE_PASSWORD",
 				Value:  "123",
-				Public: true,
+				Public: false,
+			},
+		},
+		ServiceEnvs: []bind.ServiceEnvVar{
+			{
+				EnvVar: bind.EnvVar{
+					Name:   "DATABASE_HOST",
+					Value:  "localhost",
+					Public: false,
+				},
+				ServiceName:  "s1",
+				InstanceName: "si1",
 			},
 		},
 		Quota: quota.Quota{
@@ -1290,12 +1244,10 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    true,
-			ShouldRestart: true,
-		}, nil)
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
+		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1306,45 +1258,9 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 			Public: false,
 		},
 	}
-	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
-}
-
-func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *check.C) {
-	a := App{
-		Name: "myapp",
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
-			"DATABASE_PASSWORD": {
-				Name:   "DATABASE_PASSWORD",
-				Value:  "123",
-				Public: true,
-			},
-		},
-		Quota: quota.Quota{
-			Limit: 10,
-		},
-		TeamOwner: s.team.Name,
-	}
-	s.provisioner.PrepareOutput([]byte("exported"))
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, "web", nil)
-	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
-			ShouldRestart: true,
-		}, nil)
-	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	newAppEnvs := newApp.Envs()
+	delete(newAppEnvs, TsuruServicesEnvVar)
+	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
@@ -1373,12 +1289,10 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
-			ShouldRestart: false,
-		}, nil)
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
+		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1405,12 +1319,10 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(
-		bind.UnsetEnvApp{
-			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
-			ShouldRestart: true,
-		}, nil)
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
+		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1440,22 +1352,23 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *check.C) {
 }
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *check.C) {
-	envs := map[string]bind.EnvVar{
-		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
-		"HOST":          {Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
+	envs := []bind.ServiceEnvVar{
+		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "postgresaddr"}, ServiceName: "srv2", InstanceName: "postgres"},
+		{EnvVar: bind.EnvVar{Name: "HOST", Value: "10.0.2.1"}, ServiceName: "srv3", InstanceName: "redis"},
 	}
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost"},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root"},
 	}
-	a := App{Name: "hi-there", Env: envs}
-	c.Assert(a.InstanceEnv("mysql"), check.DeepEquals, expected)
+	a := App{Name: "hi-there", ServiceEnvs: envs}
+	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, expected)
 }
 
 func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *check.C) {
 	a := App{Name: "hi-there"}
-	c.Assert(a.InstanceEnv("mysql"), check.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestAddCName(c *check.C) {
@@ -1710,51 +1623,52 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{
-			"DATABASE_HOST": "localhost",
-			"DATABASE_PORT": "3306",
-			"DATABASE_USER": "root",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
+			{EnvVar: bind.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
+			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "myservice",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
+	allEnvs := a.Envs()
+	serviceEnv := allEnvs[TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	c.Assert(serviceEnv.Public, check.Equals, false)
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"srv1": []interface{}{
+			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+				"DATABASE_HOST": "localhost",
+				"DATABASE_PORT": "3306",
+				"DATABASE_USER": "root",
+			}},
+		},
+	})
+	delete(allEnvs, TsuruServicesEnvVar)
+	delete(allEnvs, "TSURU_APPDIR")
+	delete(allEnvs, "TSURU_APPNAME")
+	delete(allEnvs, "TSURU_APP_TOKEN")
+	c.Assert(allEnvs, check.DeepEquals, map[string]bind.EnvVar{
 		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: "myinstance",
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
 		},
 		"DATABASE_PORT": {
-			Name:         "DATABASE_PORT",
-			Value:        "3306",
-			Public:       false,
-			InstanceName: "myinstance",
+			Name:   "DATABASE_PORT",
+			Value:  "3306",
+			Public: false,
 		},
 		"DATABASE_USER": {
-			Name:         "DATABASE_USER",
-			Value:        "root",
-			Public:       false,
-			InstanceName: "myinstance",
+			Name:   "DATABASE_USER",
+			Value:  "root",
+			Public: false,
 		},
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
@@ -1764,49 +1678,39 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	a := &App{Name: "sith", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{
-			"ZMQ_PEER": "localhost",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "myservice",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	// inserts duplicated
-	instance = bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{
-			"ZMQ_PEER": "8.8.8.8",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "8.8.8.8"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "myservice",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	allEnvs := a.Envs()
+	serviceEnv := allEnvs[TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	c.Assert(serviceEnv.Public, check.Equals, false)
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
-	c.Assert(a.Env["ZMQ_PEER"], check.DeepEquals, bind.EnvVar{
-		Name:         "ZMQ_PEER",
-		Value:        "8.8.8.8",
-		Public:       false,
-		InstanceName: "myinstance",
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"srv1": []interface{}{
+			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+				"ZMQ_PEER": "8.8.8.8",
+			}},
+		},
+	})
+	c.Assert(allEnvs["ZMQ_PEER"], check.DeepEquals, bind.EnvVar{
+		Name:   "ZMQ_PEER",
+		Value:  "8.8.8.8",
+		Public: false,
 	})
 }
 
@@ -1816,38 +1720,33 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{
-			"DATABASE_HOST": "localhost",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "myservice",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
+	allEnvs := a.Envs()
+	serviceEnv := allEnvs[TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	c.Assert(serviceEnv.Public, check.Equals, false)
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: "myinstance",
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"myservice": []interface{}{
+			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+				"DATABASE_HOST": "localhost",
+			}},
 		},
+	})
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Value:  "localhost",
+		Public: false,
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
@@ -1858,391 +1757,348 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{
-			"DATABASE_HOST": "localhost",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "myservice",
-			Instance:      instance,
-			ShouldRestart: false,
-		}, nil)
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
+	allEnvs := a.Envs()
+	serviceEnv := allEnvs[TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	c.Assert(serviceEnv.Public, check.Equals, false)
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: "myinstance",
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"myservice": []interface{}{
+			map[string]interface{}{"instance_name": "myinstance", "envs": map[string]interface{}{
+				"DATABASE_HOST": "localhost",
+			}},
 		},
+	})
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Value:  "localhost",
+		Public: false,
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
 func (s *S) TestAddInstanceMultipleServices(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance1 := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
-	c.Assert(err, check.IsNil)
-	instance2 := bind.ServiceInstance{
-		Name: "yourinstance",
-		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mongodb",
-			Instance:      instance2,
-			ShouldRestart: true,
-		}, nil)
-	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{
-		"mysql":   {bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}, instance1},
-		"mongodb": {instance2},
-	}
-	a, err = GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(a.parsedTsuruServices(), check.DeepEquals, expected)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"DATABASE_NAME": {
-			Name:         "DATABASE_NAME",
-			Value:        "supermongo",
-			Public:       false,
-			InstanceName: "yourinstance",
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
+		},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host3"}, InstanceName: "instance3", ServiceName: "mongodb"},
+		},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	allEnvs := a.Envs()
+	serviceEnv := allEnvs[TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	c.Assert(serviceEnv.Public, check.Equals, false)
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host1",
+			}},
+			map[string]interface{}{"instance_name": "instance2", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host2",
+			}},
+		},
+		"mongodb": []interface{}{
+			map[string]interface{}{"instance_name": "instance3", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host3",
+			}},
+		},
+	})
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Value:  "host3",
+		Public: false,
 	})
 }
 
 func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
-	a := &App{
-		Name:      "fuchsia",
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "fuchsia", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance1 := bind.ServiceInstance{
-		Name: "myinstance",
-		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
+		},
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
-	instance2 := bind.ServiceInstance{
-		Name: "yourinstance",
-		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
-	}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mongodb",
-			Instance:      instance2,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
+		},
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance1,
-			ShouldRestart: true,
-		}, nil)
+	allEnvs := a.Envs()
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Value:  "host2",
+		Public: false,
+	})
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{
-		"mysql":   {},
-		"mongodb": {instance2},
-	}
-	a, err = GetByName(a.Name)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host1",
+			}},
+			map[string]interface{}{"instance_name": "instance2", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host2",
+			}},
+		},
+	})
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "instance2",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(a.parsedTsuruServices(), check.DeepEquals, expected)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"DATABASE_NAME": {
-			Name:         "DATABASE_NAME",
-			Value:        "supermongo",
-			Public:       false,
-			InstanceName: "yourinstance",
+	allEnvs = a.Envs()
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Value:  "host1",
+		Public: false,
+	})
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "instance1", "envs": map[string]interface{}{
+				"DATABASE_HOST": "host1",
+			}},
 		},
 	})
 }
 
 func (s *S) TestRemoveInstance(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-			"DATABASE_NAME": {
-				Name:         "DATABASE_NAME",
-				Public:       false,
-				Value:        "mydb",
-				InstanceName: "mydb",
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
+		},
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "mydb",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Value, check.Equals, `{"mysql":[]}`)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	allEnvs := a.Envs()
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{})
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
 func (s *S) TestRemoveInstanceShifts(c *check.C) {
-	value := `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}},
-{"instance_name": "yourdb", "envs": {"DATABASE_NAME": "yourdb"}},
-{"instance_name": "hisdb", "envs": {"DATABASE_NAME": "hisdb"}},
-{"instance_name": "herdb", "envs": {"DATABASE_NAME": "herdb"}},
-{"instance_name": "ourdb", "envs": {"DATABASE_NAME": "ourdb"}}
-]}`
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  value,
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "hisdb"}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
-	c.Assert(err, check.IsNil)
-	expected := map[string][]bind.ServiceInstance{
-		"mysql": {
-			bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}},
-			bind.ServiceInstance{Name: "yourdb", Envs: map[string]string{"DATABASE_NAME": "yourdb"}},
-			bind.ServiceInstance{Name: "herdb", Envs: map[string]string{"DATABASE_NAME": "herdb"}},
-			bind.ServiceInstance{Name: "ourdb", Envs: map[string]string{"DATABASE_NAME": "ourdb"}},
-		},
+	toAdd := []bind.ServiceEnvVar{
+		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "yourdb"}, InstanceName: "yourdb", ServiceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "hisdb"}, InstanceName: "hisdb", ServiceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "herdb"}, InstanceName: "herdb", ServiceName: "mysql"},
+		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "ourdb"}, InstanceName: "ourdb", ServiceName: "mysql"},
 	}
-	a, err = GetByName(a.Name)
+	for _, env := range toAdd {
+		err = a.AddInstance(bind.AddInstanceArgs{
+			Envs:          []bind.ServiceEnvVar{env},
+			ShouldRestart: false,
+		})
+		c.Assert(err, check.IsNil)
+	}
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "hisdb",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
+	allEnvs := a.Envs()
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "mydb",
+			}},
+			map[string]interface{}{"instance_name": "yourdb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "yourdb",
+			}},
+			map[string]interface{}{"instance_name": "herdb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "herdb",
+			}},
+			map[string]interface{}{"instance_name": "ourdb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "ourdb",
+			}},
+		},
+	})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+		Name:  "DATABASE_NAME",
+		Value: "ourdb",
+	})
 }
 
 func (s *S) TestRemoveInstanceNotFound(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "yourdb"}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "yourdb",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	services := a.parsedTsuruServices()
-	c.Assert(services, check.DeepEquals, map[string][]bind.ServiceInstance{
-		"mysql": {
-			{
-				Name: "mydb",
-				Envs: map[string]string{"DATABASE_NAME": "mydb"},
-			},
+	allEnvs := a.Envs()
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "mydb",
+			}},
 		},
+	})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+		Name:  "DATABASE_NAME",
+		Value: "mydb",
 	})
 }
 
 func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-		},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "mydb"}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mongodb",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mongodb",
+		InstanceName:  "mydb",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	services := a.parsedTsuruServices()
-	c.Assert(services, check.DeepEquals, map[string][]bind.ServiceInstance{
-		"mysql": {
-			{
-				Name: "mydb",
-				Envs: map[string]string{"DATABASE_NAME": "mydb"},
-			},
+	allEnvs := a.Envs()
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"mysql": []interface{}{
+			map[string]interface{}{"instance_name": "mydb", "envs": map[string]interface{}{
+				"DATABASE_NAME": "mydb",
+			}},
 		},
+	})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+		Name:  "DATABASE_NAME",
+		Value: "mydb",
 	})
 }
 
 func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-			"DATABASE_NAME": {
-				Name:         "DATABASE_NAME",
-				Public:       false,
-				Value:        "mydb",
-				InstanceName: "mydb",
-			},
-		},
-		Quota:     quota.Quota{Limit: 10},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "mydb",
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Value, check.Equals, `{"mysql":[]}`)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	allEnvs := a.Envs()
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
 
 func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
-	a := &App{
-		Name: "dark",
-		Env: map[string]bind.EnvVar{
-			TsuruServicesEnvVar: {
-				Name:   TsuruServicesEnvVar,
-				Public: false,
-				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
-			},
-			"DATABASE_NAME": {
-				Name:         "DATABASE_NAME",
-				Public:       false,
-				Value:        "mydb",
-				InstanceName: "mydb",
-			},
-		},
-		Quota:     quota.Quota{Limit: 10},
-		TeamOwner: s.team.Name,
-	}
+	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
-	err = a.RemoveInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: false,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		ShouldRestart: false,
+	})
+	c.Assert(err, check.IsNil)
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
+		ServiceName:   "mysql",
+		InstanceName:  "mydb",
+		ShouldRestart: false,
+	})
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(env.Value, check.Equals, `{"mysql":[]}`)
-	c.Assert(env.Public, check.Equals, false)
-	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
-	delete(a.Env, TsuruServicesEnvVar)
-	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	allEnvs := a.Envs()
+	var serviceEnvVal map[string]interface{}
+	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
@@ -2844,8 +2700,82 @@ func (s *S) TestEnvs(c *check.C) {
 			},
 		},
 	}
+	expected := map[string]bind.EnvVar{
+		"http_proxy": {
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		"TSURU_SERVICES": {
+			Name:  "TSURU_SERVICES",
+			Value: "{}",
+		},
+	}
 	env := app.Envs()
-	c.Assert(env, check.DeepEquals, app.Env)
+	c.Assert(env, check.DeepEquals, expected)
+}
+
+func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
+	app := App{
+		Name: "time",
+		Env: map[string]bind.EnvVar{
+			"http_proxy": {
+				Name:   "http_proxy",
+				Value:  "http://theirproxy.com:3128/",
+				Public: true,
+			},
+			"DB_HOST": {
+				Name:  "DB_HOST",
+				Value: "manual_host",
+			},
+		},
+		ServiceEnvs: []bind.ServiceEnvVar{
+			{
+				EnvVar: bind.EnvVar{
+					Name:  "DB_HOST",
+					Value: "host1",
+				},
+				ServiceName:  "srv1",
+				InstanceName: "inst1",
+			},
+			{
+				EnvVar: bind.EnvVar{
+					Name:  "DB_HOST",
+					Value: "host2",
+				},
+				ServiceName:  "srv1",
+				InstanceName: "inst2",
+			},
+		},
+	}
+	expected := map[string]bind.EnvVar{
+		"http_proxy": {
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		"DB_HOST": {
+			Name:  "DB_HOST",
+			Value: "host2",
+		},
+	}
+	env := app.Envs()
+	serviceEnvsRaw := env[TsuruServicesEnvVar]
+	delete(env, TsuruServicesEnvVar)
+	c.Assert(env, check.DeepEquals, expected)
+	var serviceEnvVal map[string]interface{}
+	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"srv1": []interface{}{
+			map[string]interface{}{"instance_name": "inst1", "envs": map[string]interface{}{
+				"DB_HOST": "host1",
+			}},
+			map[string]interface{}{"instance_name": "inst2", "envs": map[string]interface{}{
+				"DB_HOST": "host2",
+			}},
+		},
+	})
 }
 
 func (s *S) TestListReturnsAppsForAGivenUser(c *check.C) {

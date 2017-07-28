@@ -116,6 +116,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								"[ -d /home/application/current ] && cd /home/application/current; curl -fsSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register && exec cm1",
 							},
 							Env: []apiv1.EnvVar{
+								{Name: "TSURU_SERVICES", Value: "{}"},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_HOST", Value: ""},
 								{Name: "port", Value: "8888"},

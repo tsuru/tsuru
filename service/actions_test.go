@@ -297,13 +297,15 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	}
 	result, err := setBoundEnvsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{
-		Name: "my-mysql",
-		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
+	args := bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
 	}
-	c.Assert(result, check.DeepEquals, instance)
-	instances := a.GetInstances("mysql")
-	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance})
+	c.Assert(result, check.DeepEquals, args)
+	envs := a.GetServiceEnvs()
+	c.Assert(envs, check.DeepEquals, args.Envs)
 }
 
 func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
@@ -313,25 +315,22 @@ func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 }
 
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
-	instance := bind.ServiceInstance{
-		Name: "my-mysql",
-		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
-	}
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
-	err := a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err := a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si}},
-		FWResult: instance,
+		FWResult: nil,
 	}
 	setBoundEnvsAction.Backward(ctx)
-	instances := a.GetInstances("mysql")
+	instances := a.GetServiceEnvs()
 	c.Assert(instances, check.HasLen, 0)
 }
 
@@ -618,13 +617,13 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   si.ServiceName,
-			Instance:      instance,
-			ShouldRestart: true,
-		}, nil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	args := bindPipelineArgs{
@@ -635,5 +634,6 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = removeBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{})
+	envs := a.GetServiceEnvs()
+	c.Assert(envs, check.DeepEquals, []bind.ServiceEnvVar{})
 }

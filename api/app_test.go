@@ -3053,16 +3053,17 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) {
-	original := map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "privatehost.com",
-			Public:       false,
+func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) {
+	a := &app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bind.ServiceEnvVar{
+		{
+			EnvVar: bind.EnvVar{
+				Name:  "DATABASE_HOST",
+				Value: "privatehost.com",
+			},
+			ServiceName:  "srv1",
 			InstanceName: "some service",
 		},
-	}
-	a := app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, Env: original}
+	}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
@@ -3084,9 +3085,17 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("losers")
+	a, err = app.GetByName("losers")
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Env, check.DeepEquals, original)
+	envs := a.Envs()
+	delete(envs, app.TsuruServicesEnvVar)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:  "DATABASE_HOST",
+			Value: "privatehost.com",
+		},
+	}
+	c.Assert(envs, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -3340,7 +3349,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
+func (s *S) TestUnsetHandlerRemovesPrivateVariables(c *check.C) {
 	a := app.App{
 		Name:     "letitbe",
 		Platform: "zend",
@@ -3363,13 +3372,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("letitbe")
 	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "secret",
-			Public: false,
-		},
-	}
+	expected := map[string]bind.EnvVar{}
 	c.Assert(app.Env, check.DeepEquals, expected)
 }
 
@@ -4088,10 +4091,9 @@ func (s *S) TestBindHandler(c *check.C) {
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.Name})
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, check.IsNil)
-	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, InstanceName: instance.Name}
-	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
-	c.Assert(a.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
-	c.Assert(a.Env["DATABASE_PASSWORD"], check.DeepEquals, expectedPassword)
+	allEnvs := a.Envs()
+	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
+	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 8)
 	c.Assert(parts[0], check.Equals, `{"Message":"---- Setting 3 new environment variables ----\n"}`)
@@ -4315,10 +4317,9 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(result.Apps, check.DeepEquals, []string{a.Name})
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, check.IsNil)
-	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, InstanceName: instance.Name}
-	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
-	c.Assert(a.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
-	c.Assert(a.Env["DATABASE_PASSWORD"], check.DeepEquals, expectedPassword)
+	allEnvs := a.Envs()
+	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
+	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 7)
 	c.Assert(parts[0], check.Equals, `{"Message":"---- Setting 3 new environment variables ----\n"}`)
@@ -4379,12 +4380,14 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
-		Name:         "DATABASE_HOST",
-		Value:        "arrea",
-		Public:       false,
+	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
+		EnvVar: bind.EnvVar{
+			Name:  "DATABASE_HOST",
+			Value: "arrea",
+		},
 		InstanceName: instance.Name,
-	}
+		ServiceName:  instance.ServiceName,
+	})
 	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
@@ -4404,8 +4407,9 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	c.Assert(otherApp.Env["MY_VAR"], check.DeepEquals, expected)
-	_, ok := otherApp.Env["DATABASE_HOST"]
+	allEnvs := otherApp.Envs()
+	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
+	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
 	ch := make(chan bool)
 	go func() {
@@ -4474,12 +4478,14 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
-		Name:         "DATABASE_HOST",
-		Value:        "arrea",
-		Public:       false,
+	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
+		EnvVar: bind.EnvVar{
+			Name:  "DATABASE_HOST",
+			Value: "arrea",
+		},
 		InstanceName: instance.Name,
-	}
+		ServiceName:  instance.ServiceName,
+	})
 	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
@@ -4499,8 +4505,9 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	c.Assert(otherApp.Env["MY_VAR"], check.DeepEquals, expected)
-	_, ok := otherApp.Env["DATABASE_HOST"]
+	allEnvs := otherApp.Envs()
+	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
+	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
 	ch := make(chan bool)
 	go func() {
