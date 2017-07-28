@@ -6,6 +6,7 @@ package vmwarevsphere
 
 import (
 	"archive/tar"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -57,10 +58,13 @@ type Driver struct {
 	Username   string
 	Password   string
 	Network    string
+	Networks   []string
 	Datastore  string
 	Datacenter string
 	Pool       string
 	HostSystem string
+	CfgParams  []string
+	CloudInit  string
 
 	SSHPassword string
 }
@@ -122,7 +126,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "vmwarevsphere-password",
 			Usage:  "vSphere password",
 		},
-		mcnflag.StringFlag{
+		mcnflag.StringSliceFlag{
 			EnvVar: "VSPHERE_NETWORK",
 			Name:   "vmwarevsphere-network",
 			Usage:  "vSphere network where the docker VM will be attached",
@@ -145,7 +149,17 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			EnvVar: "VSPHERE_HOSTSYSTEM",
 			Name:   "vmwarevsphere-hostsystem",
-			Usage:  "vSphere compute resource where the docker VM will be instantiated (use <cluster>/* or <cluster>/<host> if using a cluster)",
+			Usage:  "vSphere compute resource where the docker VM will be instantiated. This can be omitted if using a cluster with DRS.",
+		},
+		mcnflag.StringSliceFlag{
+			EnvVar: "VSPHERE_CFGPARAM",
+			Name:   "vmwarevsphere-cfgparam",
+			Usage:  "vSphere vm configuration parameters (used for guestinfo)",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VSPHERE_CLOUDINIT",
+			Name:   "vmwarevsphere-cloudinit",
+			Usage:  "vSphere cloud-init file or url to set in the guestinfo",
 		},
 	}
 }
@@ -183,9 +197,6 @@ func (d *Driver) DriverName() string {
 }
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-	if drivers.EngineInstallURLFlagSet(flags) {
-		return errors.New("--engine-install-url cannot be used with the vmwarevsphere driver, use --vmwarevsphere-boot2docker-url instead")
-	}
 	d.SSHUser = "docker"
 	d.SSHPort = 22
 	d.CPU = flags.Int("vmwarevsphere-cpu-count")
@@ -196,11 +207,13 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Port = flags.Int("vmwarevsphere-vcenter-port")
 	d.Username = flags.String("vmwarevsphere-username")
 	d.Password = flags.String("vmwarevsphere-password")
-	d.Network = flags.String("vmwarevsphere-network")
+	d.Networks = flags.StringSlice("vmwarevsphere-network")
 	d.Datastore = flags.String("vmwarevsphere-datastore")
 	d.Datacenter = flags.String("vmwarevsphere-datacenter")
 	d.Pool = flags.String("vmwarevsphere-pool")
 	d.HostSystem = flags.String("vmwarevsphere-hostsystem")
+	d.CfgParams = flags.StringSlice("vmwarevsphere-cfgparam")
+	d.CloudInit = flags.String("vmwarevsphere-cloudinit")
 	d.SetSwarmConfigFromFlags(flags)
 
 	d.ISO = d.ResolveStorePath(isoFilename)
@@ -328,13 +341,27 @@ func (d *Driver) PreCreateCheck() error {
 		return err
 	}
 
-	if _, err := f.NetworkOrDefault(ctx, d.Network); err != nil {
-		return err
+	// TODO: if the user has both the VSPHERE_NETWORK defined and adds --vmwarevsphere-network
+	//       both are used at the same time - probably should detect that and remove the one from ENV
+	if len(d.Networks) == 0 {
+		// machine assumes there will be a network
+		d.Networks = append(d.Networks, "VM Network")
 	}
+	for _, netName := range d.Networks {
+		if _, err := f.NetworkOrDefault(ctx, netName); err != nil {
+			return err
+		}
+	}
+	// d.Network needs to remain a string to cope with existing machines :/
+	d.Network = d.Networks[0]
 
-	hs, err := f.HostSystemOrDefault(ctx, d.HostSystem)
-	if err != nil {
-		return err
+	var hs *object.HostSystem
+	if d.HostSystem != "" {
+		var err error
+		hs, err = f.HostSystemOrDefault(ctx, d.HostSystem)
+		if err != nil {
+			return err
+		}
 	}
 
 	// ResourcePool
@@ -343,9 +370,14 @@ func (d *Driver) PreCreateCheck() error {
 		if _, err := f.ResourcePool(ctx, d.Pool); err != nil {
 			return err
 		}
-	} else {
+	} else if hs != nil {
 		// Pick default Resource Pool for Host System
 		if _, err := hs.ResourcePool(ctx); err != nil {
+			return err
+		}
+	} else {
+		// Pick the default Resource Pool for the Datacenter.
+		if _, err := f.DefaultResourcePool(ctx); err != nil {
 			return err
 		}
 	}
@@ -394,14 +426,22 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	net, err := f.NetworkOrDefault(ctx, d.Network)
-	if err != nil {
-		return err
+	networks := make(map[string]object.NetworkReference)
+	for _, netName := range d.Networks {
+		net, err := f.NetworkOrDefault(ctx, netName)
+		if err != nil {
+			return err
+		}
+		networks[netName] = net
 	}
 
-	hs, err := f.HostSystemOrDefault(ctx, d.HostSystem)
-	if err != nil {
-		return err
+	var hs *object.HostSystem
+	if d.HostSystem != "" {
+		var err error
+		hs, err = f.HostSystemOrDefault(ctx, d.HostSystem)
+		if err != nil {
+			return err
+		}
 	}
 
 	var rp *object.ResourcePool
@@ -411,9 +451,15 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if d.HostSystem != "" {
 		// Pick default Resource Pool for Host System
 		rp, err = hs.ResourcePool(ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Pick the default Resource Pool for the Datacenter.
+		rp, err = f.DefaultResourcePool(ctx)
 		if err != nil {
 			return err
 		}
@@ -493,21 +539,73 @@ func (d *Driver) Create() error {
 
 	add = append(add, devices.InsertIso(cdrom, dss.Path(fmt.Sprintf("%s/%s", d.MachineName, isoFilename))))
 
-	backing, err := net.EthernetCardBackingInfo(ctx)
-	if err != nil {
-		return err
+	for _, netName := range d.Networks {
+		backing, err := networks[netName].EthernetCardBackingInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		netdev, err := object.EthernetCardTypes().CreateEthernetCard("vmxnet3", backing)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("adding network: %s", netName)
+		add = append(add, netdev)
 	}
 
-	netdev, err := object.EthernetCardTypes().CreateEthernetCard("vmxnet3", backing)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Reconfiguring VM...")
-	add = append(add, netdev)
+	log.Infof("Reconfiguring VM")
 	if vm.AddDevice(ctx, add...); err != nil {
 		return err
 	}
+
+	// Adding some guestinfo data
+	var opts []types.BaseOptionValue
+	for _, param := range d.CfgParams {
+		v := strings.SplitN(param, "=", 2)
+		key := v[0]
+		value := ""
+		if len(v) > 1 {
+			value = v[1]
+		}
+		fmt.Printf("Setting %s to %s\n", key, value)
+		opts = append(opts, &types.OptionValue{
+			Key:   key,
+			Value: value,
+		})
+	}
+	if d.CloudInit != "" {
+		if _, err := url.ParseRequestURI(d.CloudInit); err == nil {
+			log.Infof("setting guestinfo.cloud-init.data.url to %s\n", d.CloudInit)
+			opts = append(opts, &types.OptionValue{
+				Key:   "guestinfo.cloud-init.config.url",
+				Value: d.CloudInit,
+			})
+		} else {
+			if _, err := os.Stat(d.CloudInit); err == nil {
+				if value, err := ioutil.ReadFile(d.CloudInit); err == nil {
+					log.Infof("setting guestinfo.cloud-init.data to encoded content of %s\n", d.CloudInit)
+					encoded := base64.StdEncoding.EncodeToString(value)
+					opts = append(opts, &types.OptionValue{
+						Key:   "guestinfo.cloud-init.config.data",
+						Value: encoded,
+					})
+					opts = append(opts, &types.OptionValue{
+						Key:   "guestinfo.cloud-init.data.encoding",
+						Value: "base64",
+					})
+				}
+			}
+		}
+	}
+
+	task, err = vm.Reconfigure(ctx, types.VirtualMachineConfigSpec{
+		ExtraConfig: opts,
+	})
+	if err != nil {
+		return err
+	}
+	task.Wait(ctx)
 
 	if err := d.Start(); err != nil {
 		return err
@@ -554,10 +652,25 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	// first, untar - only boot2docker has /var/lib/boot2docker
+	// TODO: don't hard-code to docker & staff - they are also just b2d
 	var env []string
 	guestspec := types.GuestProgramSpec{
 		ProgramPath:      "/usr/bin/sudo",
-		Arguments:        "/bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar && /usr/bin/sudo tar xf /var/lib/boot2docker/userdata.tar -C /home/docker/ > /var/log/userdata.log 2>&1 && /usr/bin/sudo chown -R docker:staff /home/docker",
+		Arguments:        "/usr/bin/sudo /bin/sh -c \"tar xvf /home/docker/userdata.tar -C /home/docker > /var/log/userdata.log 2>&1 && chown -R docker:staff /home/docker\"",
+		WorkingDirectory: "",
+		EnvVariables:     env,
+	}
+
+	_, err = procman.StartProgram(ctx, auth.Auth(), &guestspec)
+	if err != nil {
+		return err
+	}
+
+	// now move to /var/lib/boot2docker if its there
+	guestspec = types.GuestProgramSpec{
+		ProgramPath:      "/usr/bin/sudo",
+		Arguments:        "/bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar",
 		WorkingDirectory: "",
 		EnvVariables:     env,
 	}

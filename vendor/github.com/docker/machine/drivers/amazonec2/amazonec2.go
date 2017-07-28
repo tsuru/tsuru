@@ -558,6 +558,7 @@ func (d *Driver) Base64UserData() (userdata string, err error) {
 	if d.UserDataFile != "" {
 		buf, ioerr := ioutil.ReadFile(d.UserDataFile)
 		if ioerr != nil {
+			log.Warnf("failed to read user data file %q: %s", d.UserDataFile, ioerr)
 			err = errorReadingUserData
 			return
 		}
@@ -950,7 +951,14 @@ func (d *Driver) terminate() error {
 	_, err := d.getClient().TerminateInstances(&ec2.TerminateInstancesInput{
 		InstanceIds: []*string{&d.InstanceId},
 	})
+
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "unknown instance") ||
+			strings.HasPrefix(err.Error(), "InvalidInstanceID.NotFound") {
+			log.Warn("Remote instance does not exist, proceeding with removing local reference")
+			return nil
+		}
+
 		return fmt.Errorf("unable to terminate instance: %s", err)
 	}
 	return nil
