@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -285,6 +286,7 @@ func (d *LogDispatcher) Shutdown() {
 
 type appLogDispatcher struct {
 	appName string
+	coll    *storage.Collection
 	*bulkProcessor
 }
 
@@ -298,16 +300,28 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 	return d
 }
 
-func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) bool {
+func (d *appLogDispatcher) getColl() (*storage.Collection, error) {
+	if d.coll != nil {
+		return d.coll, nil
+	}
 	conn, err := db.LogConn()
+	if err != nil {
+		return nil, err
+	}
+	d.coll = conn.Logs(d.appName)
+	return d.coll, nil
+}
+
+func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) bool {
+	coll, err := d.getColl()
 	if err != nil {
 		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
 		return false
 	}
-	coll := conn.Logs(d.appName)
 	err = coll.Insert(msgs...)
-	coll.Close()
 	if err != nil {
+		coll.Close()
+		d.coll = nil
 		log.Errorf("[log flusher] unable to insert logs: %s", err)
 		return false
 	}
