@@ -420,6 +420,14 @@ func PoolUpdate(name string, opts UpdatePoolOptions) error {
 	return err
 }
 
+func exprAsGlobPattern(expr string) string {
+	parts := strings.Split(expr, "*")
+	for i := range parts {
+		parts[i] = regexp.QuoteMeta(parts[i])
+	}
+	return fmt.Sprintf("^%s$", strings.Join(parts, ".*"))
+}
+
 type PoolConstraint struct {
 	PoolExpr  string
 	Field     string
@@ -444,7 +452,7 @@ func (c *PoolConstraint) check(v string) bool {
 		return false
 	}
 	for _, r := range c.Values {
-		pattern := fmt.Sprintf("^%s$", strings.Replace(r, "*", ".*", -1))
+		pattern := exprAsGlobPattern(r)
 		if match, _ := regexp.MatchString(pattern, v); match {
 			return !c.Blacklist
 		}
@@ -564,7 +572,7 @@ func getConstraintsForPool(pool string, fields ...string) (map[string]*PoolConst
 	}
 	var matches []*PoolConstraint
 	for _, c := range constraints {
-		pattern := fmt.Sprintf("^%s$", strings.Replace(c.PoolExpr, "*", ".*", -1))
+		pattern := exprAsGlobPattern(c.PoolExpr)
 		match, err := regexp.MatchString(pattern, pool)
 		if err != nil {
 			return nil, err

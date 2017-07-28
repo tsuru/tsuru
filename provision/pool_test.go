@@ -466,6 +466,10 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}})
 	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1\\x", Field: "team", Values: []string{"team_pool1x"}})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "*\\xdev", Field: "team", Values: []string{"team_xdev"}})
+	c.Assert(err, check.IsNil)
 	tt := []struct {
 		pool     string
 		expected map[string]*PoolConstraint
@@ -486,6 +490,14 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 		}},
 		{pool: "pp2", expected: map[string]*PoolConstraint{
 			"router": {PoolExpr: "*", Field: "router", Values: []string{"planb"}},
+		}},
+		{pool: "pool1\\x", expected: map[string]*PoolConstraint{
+			"router": {PoolExpr: "*", Field: "router", Values: []string{"planb"}},
+			"team":   {PoolExpr: "pool1\\x", Field: "team", Values: []string{"team_pool1x"}},
+		}},
+		{pool: "abc\\xdev", expected: map[string]*PoolConstraint{
+			"router": {PoolExpr: "*", Field: "router", Values: []string{"planb"}},
+			"team":   {PoolExpr: "*\\xdev", Field: "team", Values: []string{"team_xdev"}},
 		}},
 	}
 	for i, t := range tt {
