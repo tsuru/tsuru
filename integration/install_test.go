@@ -86,11 +86,6 @@ func installerComposeTest() ExecFlow {
 		}()
 		res := T("install-config-init", f.Name(), composeFile.Name()).Run(env)
 		c.Assert(res, ResultOk)
-		composeData, err := ioutil.ReadFile(composeFile.Name())
-		c.Assert(err, check.IsNil)
-		composeData = []byte(strings.Replace(string(composeData), "tsuru/api:v1", "tsuru/api:latest", 1))
-		err = ioutil.WriteFile(composeFile.Name(), composeData, 0644)
-		c.Assert(err, check.IsNil)
 		env.Set("installercompose", composeFile.Name())
 	}
 	flow.backward = func(c *check.C, env *Environment) {
