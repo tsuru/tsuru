@@ -145,7 +145,6 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 	app.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: []string{"http_proxy"},
-			PublicOnly:    false,
 			ShouldRestart: true,
 		}, nil)
 	c.Assert(app.env, check.DeepEquals, map[string]bind.EnvVar{})

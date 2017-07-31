@@ -1378,12 +1378,8 @@ func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
 	}
 	for _, name := range unsetEnvs.VariableNames {
-		var unset bool
-		e, err := app.getEnv(name)
-		if !unsetEnvs.PublicOnly || (err == nil && e.Public) {
-			unset = true
-		}
-		if unset {
+		_, err := app.getEnv(name)
+		if err == nil {
 			delete(app.Env, name)
 		}
 	}
@@ -1563,7 +1559,6 @@ func (app *App) RemoveInstance(instanceApp bind.InstanceApp, writer io.Writer) e
 		err = app.unsetEnvsToApp(
 			bind.UnsetEnvApp{
 				VariableNames: toUnsetEnvs,
-				PublicOnly:    false,
 				ShouldRestart: restart,
 			}, writer)
 		if err != nil {

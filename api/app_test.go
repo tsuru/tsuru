@@ -3340,7 +3340,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
+func (s *S) TestUnsetHandlerRemovePrivateVariables(c *check.C) {
 	a := app.App{
 		Name:     "letitbe",
 		Platform: "zend",
@@ -3353,7 +3353,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER&env=DATABASE_PASSWORD", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_PASSWORD", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -3364,11 +3364,8 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	app, err := app.GetByName("letitbe")
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "secret",
-			Public: false,
-		},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, check.DeepEquals, expected)
 }
