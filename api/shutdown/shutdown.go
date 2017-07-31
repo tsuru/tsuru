@@ -5,6 +5,7 @@
 package shutdown
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -33,18 +34,28 @@ func All() []Shutdownable {
 }
 
 // Do shutdowns All registered Shutdownable items
-func Do(w io.Writer) {
+func Do(ctx context.Context, w io.Writer) error {
 	lock.Lock()
 	defer lock.Unlock()
-	wg := sync.WaitGroup{}
-	for _, h := range registered {
-		wg.Add(1)
-		go func(h Shutdownable) {
-			defer wg.Done()
-			fmt.Fprintf(w, "running shutdown for %v...\n", h)
-			h.Shutdown()
-			fmt.Fprintf(w, "running shutdown for %v. DONE.\n", h)
-		}(h)
+	done := make(chan bool)
+	go func() {
+		wg := sync.WaitGroup{}
+		for _, h := range registered {
+			wg.Add(1)
+			go func(h Shutdownable) {
+				defer wg.Done()
+				fmt.Fprintf(w, "running shutdown for %v...\n", h)
+				h.Shutdown()
+				fmt.Fprintf(w, "running shutdown for %v. DONE.\n", h)
+			}(h)
+		}
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-done:
 	}
-	wg.Wait()
+	return nil
 }
