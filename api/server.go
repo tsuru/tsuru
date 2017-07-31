@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
+
+	"context"
 
 	"github.com/codegangsta/negroni"
 	"github.com/pkg/errors"
@@ -36,7 +37,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"golang.org/x/net/websocket"
-	"gopkg.in/tylerb/graceful.v1"
 )
 
 const Version = "1.4.0-dev"
@@ -394,54 +394,34 @@ func appFinder(appName string) (rebuild.RebuildApp, error) {
 }
 
 func startServer(handler http.Handler) {
-	shutdownChan := make(chan bool)
 	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
 	if shutdownTimeout == 0 {
 		shutdownTimeout = 10 * 60
 	}
-	idleTracker := newIdleTracker()
-	shutdown.Register(idleTracker)
-	shutdown.Register(&logTracker)
 	readTimeout, _ := config.GetInt("server:read-timeout")
 	writeTimeout, _ := config.GetInt("server:write-timeout")
 	listen, err := config.GetString("listen")
 	if err != nil {
 		fatal(err)
 	}
-	srv := &graceful.Server{
-		Timeout: time.Duration(shutdownTimeout) * time.Second,
-		Server: &http.Server{
-			ReadTimeout:  time.Duration(readTimeout) * time.Second,
-			WriteTimeout: time.Duration(writeTimeout) * time.Second,
-			Addr:         listen,
-			Handler:      handler,
-		},
-		ConnState: func(conn net.Conn, state http.ConnState) {
-			idleTracker.trackConn(conn, state)
-		},
-		NoSignalHandling: true,
-		ShutdownInitiated: func() {
-			fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-			handlers := shutdown.All()
-			wg := sync.WaitGroup{}
-			for _, h := range handlers {
-				wg.Add(1)
-				go func(h shutdown.Shutdownable) {
-					defer wg.Done()
-					fmt.Printf("running shutdown handler for %v...\n", h)
-					h.Shutdown()
-					fmt.Printf("running shutdown handler for %v. DONE.\n", h)
-				}(h)
-			}
-			wg.Wait()
-			close(shutdownChan)
-		},
+	srv := &http.Server{
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
+		Addr:         listen,
+		Handler:      handler,
 	}
+	shutdown.Register(&logTracker)
+	shutdownChan := make(chan bool)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		srv.Stop(srv.Timeout)
+		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
+		shutdown.Do(os.Stdout)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownTimeout)*time.Second)
+		srv.Shutdown(ctx)
+		cancel()
+		close(shutdownChan)
 	}()
 	var startupMessage string
 	err = router.Initialize()

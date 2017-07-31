@@ -5,6 +5,7 @@
 package shutdown
 
 import (
+	"io/ioutil"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -42,4 +43,13 @@ func (s *S) TestAll(c *check.C) {
 	c.Assert(values, check.HasLen, 1)
 	values[0].Shutdown()
 	c.Assert(ts.calls, check.Equals, 1)
+}
+func (s *S) TestDo(c *check.C) {
+	ts := &testShutdown{}
+	ts2 := &testShutdown{}
+	Register(ts)
+	Register(ts2)
+	Do(ioutil.Discard)
+	c.Assert(ts.calls, check.Equals, 1)
+	c.Assert(ts2.calls, check.Equals, 1)
 }
