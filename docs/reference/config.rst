@@ -43,6 +43,12 @@ listen
 form <host>:<port>. You may omit the host (example: ``:8080``). This setting
 has no default value.
 
+shutdown-timeout
+++++++++++++++++
+
+``shutdown-timeout`` defines how many seconds to wait when performing an api
+shutdown (by sending SIGTERM or SIGQUIT). Defaults to 600 seconds.
+
 use-tls
 +++++++
 
