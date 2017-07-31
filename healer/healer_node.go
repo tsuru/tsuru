@@ -6,6 +6,7 @@ package healer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -252,11 +253,12 @@ func (h *NodeHealer) HandleError(node provision.NodeHealthChecker) time.Duration
 	return h.disabledTime
 }
 
-func (h *NodeHealer) Shutdown() {
+func (h *NodeHealer) Shutdown(ctx context.Context) error {
 	h.wg.Done()
 	h.wg.Wait()
 	h.quit <- true
 	<-h.quit
+	return nil
 }
 
 func (h *NodeHealer) String() string {

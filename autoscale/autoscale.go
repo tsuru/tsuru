@@ -5,6 +5,7 @@
 package autoscale
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -155,11 +156,12 @@ func (a *Config) stop() {
 	a.done <- true
 }
 
-func (a *Config) Shutdown() {
+func (a *Config) Shutdown(ctx context.Context) error {
 	if a.Enabled {
 		a.stop()
 		a.Enabled = false
 	}
+	return nil
 }
 
 func (a *Config) String() string {

@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -274,7 +275,7 @@ func (a *LogDispatcher) String() string {
 	return "log dispatcher"
 }
 
-func (d *LogDispatcher) Shutdown() {
+func (d *LogDispatcher) Shutdown(ctx context.Context) error {
 	atomic.StoreInt32(&d.shuttingDown, 1)
 	d.msgCh <- nil
 	<-d.doneProcessing
@@ -282,6 +283,7 @@ func (d *LogDispatcher) Shutdown() {
 	for _, appD := range d.dispatchers {
 		appD.stopWait()
 	}
+	return nil
 }
 
 type appLogDispatcher struct {

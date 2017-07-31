@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"sync"
@@ -346,7 +347,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 		defer close(ch)
 		healer.RunContainerHealer()
 	}()
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	<-ch
 
 	expected := dockertest.ContainerMoving{

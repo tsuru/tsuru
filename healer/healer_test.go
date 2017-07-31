@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"context"
 	"time"
 
 	"github.com/tsuru/config"
@@ -15,7 +16,7 @@ func (s *S) TestInitializeDefault(c *check.C) {
 	healer, err := Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(healer, check.NotNil)
-	defer healer.Shutdown()
+	defer healer.Shutdown(context.Background())
 	c.Assert(healer.waitTimeNewMachine, check.Equals, 5*60*time.Second)
 	c.Assert(healer.disabledTime, check.Equals, 30*time.Second)
 	c.Assert(healer.failuresBeforeHealing, check.Equals, 5)
@@ -41,7 +42,7 @@ func (s *S) TestInitializeConf(c *check.C) {
 	healer, err := Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(healer, check.NotNil)
-	defer healer.Shutdown()
+	defer healer.Shutdown(context.Background())
 	c.Assert(healer.waitTimeNewMachine, check.Equals, 2*60*time.Second)
 	c.Assert(healer.disabledTime, check.Equals, 10*time.Second)
 	c.Assert(healer.failuresBeforeHealing, check.Equals, 3)

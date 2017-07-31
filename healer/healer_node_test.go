@@ -6,6 +6,7 @@ package healer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"runtime"
 	"sync"
@@ -44,7 +45,7 @@ func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *p
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -154,7 +155,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Second,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -187,7 +188,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -225,7 +226,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Second,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -261,7 +262,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -314,7 +315,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
@@ -382,7 +383,7 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
@@ -439,7 +440,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
 	node.(*provisiontest.FakeNode).SetHealth(2, true)
@@ -491,7 +492,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
@@ -536,7 +537,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	checks := []provision.NodeCheckResult{
 		{Name: "ok1", Successful: true},
 		{Name: "ok2", Successful: true},
@@ -571,7 +572,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	for i := 0; i < 20; i++ {
 		err = healer.UpdateNodeData(node, []provision.NodeCheckResult{
 			{Name: fmt.Sprintf("ok1-%d", i), Successful: true},
@@ -614,7 +615,7 @@ func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
@@ -636,7 +637,7 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
@@ -661,7 +662,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
@@ -689,7 +690,7 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
@@ -729,7 +730,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Minute,
 	})
-	healer.Shutdown()
+	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 
 	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})

@@ -24,9 +24,10 @@ type testShutdown struct {
 	calls int
 }
 
-func (t *testShutdown) Shutdown() {
+func (t *testShutdown) Shutdown(ctx context.Context) error {
 	t.calls++
 	time.Sleep(t.sleep)
+	return nil
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -45,7 +46,7 @@ func (s *S) TestAll(c *check.C) {
 	Register(ts)
 	values := All()
 	c.Assert(values, check.HasLen, 1)
-	values[0].Shutdown()
+	values[0].Shutdown(context.Background())
 	c.Assert(ts.calls, check.Equals, 1)
 }
 

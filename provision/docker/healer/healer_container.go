@@ -6,6 +6,7 @@ package healer
 
 import (
 	"bytes"
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -52,8 +53,9 @@ func (h *ContainerHealer) RunContainerHealer() {
 	}
 }
 
-func (h *ContainerHealer) Shutdown() {
+func (h *ContainerHealer) Shutdown(ctx context.Context) error {
 	h.done <- true
+	return nil
 }
 
 func (h *ContainerHealer) String() string {

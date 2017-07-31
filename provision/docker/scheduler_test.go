@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
@@ -238,7 +239,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	defer func() {
 		cur, err := autoscale.CurrentConfig()
 		c.Assert(err, check.IsNil)
-		cur.Shutdown()
+		cur.Shutdown(context.Background())
 	}()
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
@@ -323,7 +324,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	defer func() {
 		cur, err := autoscale.CurrentConfig()
 		c.Assert(err, check.IsNil)
-		cur.Shutdown()
+		cur.Shutdown(context.Background())
 	}()
 	rule := autoscale.Rule{MetadataFilter: "mypool", Enabled: false}
 	err := rule.Update()

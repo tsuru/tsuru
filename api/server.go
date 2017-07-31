@@ -411,6 +411,7 @@ func startServer(handler http.Handler) {
 		Handler:      handler,
 	}
 	shutdown.Register(&logTracker)
+	shutdown.Register(srv)
 	shutdownChan := make(chan bool)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -419,7 +420,6 @@ func startServer(handler http.Handler) {
 		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownTimeout)*time.Second)
 		shutdown.Do(ctx, os.Stdout)
-		srv.Shutdown(ctx)
 		cancel()
 		close(shutdownChan)
 	}()
