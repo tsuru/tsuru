@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"sync"
 
 	"github.com/tsuru/tsuru/app"
@@ -37,12 +38,13 @@ func (t *logStreamTracker) String() string {
 	return "log pub/sub connections"
 }
 
-func (t *logStreamTracker) Shutdown() {
+func (t *logStreamTracker) Shutdown(ctx context.Context) error {
 	t.Lock()
 	defer t.Unlock()
 	for l := range t.conn {
 		l.Close()
 	}
+	return nil
 }
 
 var logTracker logStreamTracker

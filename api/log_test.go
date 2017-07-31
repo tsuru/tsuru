@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"context"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -280,6 +282,6 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	w.Close()
 	<-done
 	c.StopTimer()
-	globalDispatcher.Shutdown()
+	globalDispatcher.Shutdown(context.Background())
 	onceDispatcher = sync.Once{}
 }

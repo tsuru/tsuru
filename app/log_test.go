@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -242,7 +243,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
 	dispatcher.Send(&logMsg)
-	dispatcher.Shutdown()
+	dispatcher.Shutdown(context.Background())
 	logs, err := app.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []Applog{logMsg})
@@ -282,7 +283,7 @@ func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
 		}(i)
 	}
 	wg.Wait()
-	dispatcher.Shutdown()
+	dispatcher.Shutdown(context.Background())
 	logs, err := app1.LastLogs(nConcurrent/2, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, nConcurrent/2)
@@ -313,7 +314,7 @@ func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
 			dispatcher.Send(&logMsg[i%len(logMsg)])
 		}(i)
 	}
-	dispatcher.Shutdown()
+	dispatcher.Shutdown(context.Background())
 	var dtoMetric dto.Metric
 	logsInQueue.Write(&dtoMetric)
 	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
@@ -363,5 +364,5 @@ loop:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	dispatcher.Shutdown()
+	dispatcher.Shutdown(context.Background())
 }

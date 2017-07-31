@@ -7,6 +7,8 @@ package api
 import (
 	"time"
 
+	"context"
+
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/check.v1"
 )
@@ -24,7 +26,7 @@ func (s *S) TestLogStreamTrackerShutdown(c *check.C) {
 	l, err := app.NewLogListener(&app.App{Name: "myapp"}, app.Applog{})
 	c.Assert(err, check.IsNil)
 	logTracker.add(l)
-	logTracker.Shutdown()
+	logTracker.Shutdown(context.Background())
 	select {
 	case <-l.ListenChan():
 	case <-time.After(5 * time.Second):

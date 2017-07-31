@@ -10,6 +10,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	stdcontext "context"
+
 	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -124,7 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 func (s *S) TearDownTest(c *check.C) {
 	cfg, _ := autoscale.CurrentConfig()
 	if cfg != nil {
-		cfg.Shutdown()
+		cfg.Shutdown(stdcontext.Background())
 	}
 	s.provisioner.Reset()
 	s.conn.Close()

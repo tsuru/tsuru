@@ -8,6 +8,7 @@
 package queue
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -23,13 +24,14 @@ type queueInstanceData struct {
 	instance monsterqueue.Queue
 }
 
-func (q *queueInstanceData) Shutdown() {
+func (q *queueInstanceData) Shutdown(ctx context.Context) error {
 	q.Lock()
 	defer q.Unlock()
 	if q.instance != nil {
 		q.instance.Stop()
 		q.instance = nil
 	}
+	return nil
 }
 
 func (q *queueInstanceData) String() string {
