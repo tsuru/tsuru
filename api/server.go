@@ -417,8 +417,8 @@ func startServer(handler http.Handler) {
 	go func() {
 		<-sigChan
 		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-		shutdown.Do(os.Stdout)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownTimeout)*time.Second)
+		shutdown.Do(ctx, os.Stdout)
 		srv.Shutdown(ctx)
 		cancel()
 		close(shutdownChan)

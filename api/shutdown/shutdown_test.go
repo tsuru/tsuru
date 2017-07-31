@@ -5,8 +5,10 @@
 package shutdown
 
 import (
+	"context"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"gopkg.in/check.v1"
 )
@@ -18,11 +20,13 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 type testShutdown struct {
+	sleep time.Duration
 	calls int
 }
 
 func (t *testShutdown) Shutdown() {
 	t.calls++
+	time.Sleep(t.sleep)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -44,12 +48,26 @@ func (s *S) TestAll(c *check.C) {
 	values[0].Shutdown()
 	c.Assert(ts.calls, check.Equals, 1)
 }
+
 func (s *S) TestDo(c *check.C) {
 	ts := &testShutdown{}
 	ts2 := &testShutdown{}
 	Register(ts)
 	Register(ts2)
-	Do(ioutil.Discard)
+	err := Do(context.Background(), ioutil.Discard)
+	c.Assert(err, check.IsNil)
 	c.Assert(ts.calls, check.Equals, 1)
 	c.Assert(ts2.calls, check.Equals, 1)
+}
+
+func (s *S) TestDoTimeout(c *check.C) {
+	ts := &testShutdown{
+		sleep: time.Duration(2) * time.Second,
+	}
+	Register(ts)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Microsecond*10)
+	err := Do(ctx, ioutil.Discard)
+	cancel()
+	c.Assert(err, check.DeepEquals, context.DeadlineExceeded)
+	c.Assert(ts.calls, check.Equals, 1)
 }
