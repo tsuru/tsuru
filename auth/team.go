@@ -13,6 +13,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -85,15 +86,7 @@ func CreateTeam(name string, user *User) error {
 	if err := team.validate(); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Teams().Insert(team)
-	if mgo.IsDup(err) {
-		return ErrTeamAlreadyExists
-	}
+	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name, CreatingUser: team.CreatingUser})
 	if err != nil {
 		return err
 	}
@@ -106,20 +99,11 @@ func CreateTeam(name string, user *User) error {
 
 // GetTeam find a team by name.
 func GetTeam(name string) (*Team, error) {
-	var t Team
-	conn, err := db.Conn()
-	if err != nil {
+	t, err := storage.TeamRepository.FindByName(name)
+	if t == nil {
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.Teams().FindId(name).One(&t)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			err = ErrTeamNotFound
-		}
-		return nil, err
-	}
-	return &t, nil
+	return &Team{Name: t.Name, CreatingUser: t.CreatingUser}, err
 }
 
 // GetTeamsNames find teams by a list of team names.

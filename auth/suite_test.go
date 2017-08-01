@@ -12,6 +12,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -52,6 +54,10 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	t, ok := storage.TeamRepository.(*fake.TeamRepository)
+	if ok {
+		t.Clear()
+	}
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}

@@ -20,6 +20,7 @@ import (
 	_ "github.com/tsuru/tsuru/provision/mesos"
 	_ "github.com/tsuru/tsuru/provision/swarm"
 	_ "github.com/tsuru/tsuru/repository/gandalf"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 )
 
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"

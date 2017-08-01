@@ -7,6 +7,9 @@ package auth
 import (
 	"sort"
 
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/fake"
+
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,11 +31,6 @@ func (s *S) TestTeamAllowedApps(c *check.C) {
 	a2 := testApp{Name: "otherapp", Teams: []string{team.Name}}
 	err = s.conn.Apps().Insert(&a2)
 	c.Assert(err, check.IsNil)
-	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Apps().Remove(bson.M{"name": a2.Name})
-		s.conn.Teams().RemoveId(team.Name)
-	}()
 	alwdApps, err := team.AllowedApps()
 	c.Assert(err, check.IsNil)
 	c.Assert(alwdApps, check.DeepEquals, []string{a2.Name})
@@ -42,7 +40,6 @@ func (s *S) TestCreateTeam(c *check.C) {
 	one := User{Email: "king@pos.com"}
 	err := CreateTeam("pos", &one)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	team, err := GetTeam("pos")
 	c.Assert(err, check.IsNil)
 	c.Assert(team.CreatingUser, check.Equals, one.Email)
@@ -52,16 +49,14 @@ func (s *S) TestCreateTeamDuplicate(c *check.C) {
 	u := User{Email: "king@pos.com"}
 	err := CreateTeam("pos", &u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	err = CreateTeam("pos", &u)
-	c.Assert(err, check.Equals, ErrTeamAlreadyExists)
+	c.Assert(err, check.Equals, storage.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
 	u := User{Email: "king@pos.com"}
 	err := CreateTeam("pos    ", &u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	_, err = GetTeam("pos")
 	c.Assert(err, check.IsNil)
 }
@@ -92,19 +87,18 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}
-		defer s.conn.Teams().Remove(bson.M{"_id": t.input})
 	}
 }
 
 func (s *S) TestGetTeam(c *check.C) {
 	team := Team{Name: "symfonia"}
-	s.conn.Teams().Insert(team)
-	defer s.conn.Teams().RemoveId(team.Name)
-	t, err := GetTeam("symfonia")
+	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name})
+	c.Assert(err, check.IsNil)
+	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Name, check.Equals, team.Name)
 	t, err = GetTeam("wat")
-	c.Assert(err, check.Equals, ErrTeamNotFound)
+	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
@@ -115,7 +109,7 @@ func (s *S) TestRemoveTeam(c *check.C) {
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam("atreides")
-	c.Assert(err, check.Equals, ErrTeamNotFound)
+	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 

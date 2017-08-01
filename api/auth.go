@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/volume"
 )
 
@@ -362,7 +363,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	switch err {
 	case auth.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	case auth.ErrTeamAlreadyExists:
+	case storage.ErrTeamAlreadyExists:
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	if err == nil {
