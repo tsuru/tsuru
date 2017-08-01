@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// Shutdownable is an interface representing the ability to
+// shutdown a particular resource
 type Shutdownable interface {
 	Shutdown(ctx context.Context) error
 }
@@ -25,12 +27,6 @@ func Register(s Shutdownable) {
 	lock.Lock()
 	defer lock.Unlock()
 	registered = append(registered, s)
-}
-
-func All() []Shutdownable {
-	lock.Lock()
-	defer lock.Unlock()
-	return registered
 }
 
 // Do shutdowns All registered Shutdownable items

@@ -5,6 +5,8 @@
 package queue
 
 import (
+	"context"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -41,7 +43,6 @@ func (t *testTask) Name() string {
 }
 
 func (s *S) TestQueue(c *check.C) {
-	c.Assert(shutdown.All(), check.HasLen, 0)
 	q, err := Queue()
 	c.Assert(err, check.IsNil)
 	task := &testTask{}
@@ -52,5 +53,7 @@ func (s *S) TestQueue(c *check.C) {
 	result, err := j.Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.Equals, "result")
-	c.Assert(shutdown.All(), check.HasLen, 1)
+	c.Assert(queueData.instance, check.NotNil)
+	shutdown.Do(context.Background(), ioutil.Discard)
+	c.Assert(queueData.instance, check.IsNil)
 }
