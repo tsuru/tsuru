@@ -41,15 +41,6 @@ func (s *S) TestRegister(c *check.C) {
 	c.Assert(ts.calls, check.Equals, 0)
 }
 
-func (s *S) TestAll(c *check.C) {
-	ts := &testShutdown{}
-	Register(ts)
-	values := All()
-	c.Assert(values, check.HasLen, 1)
-	values[0].Shutdown(context.Background())
-	c.Assert(ts.calls, check.Equals, 1)
-}
-
 func (s *S) TestDo(c *check.C) {
 	ts := &testShutdown{}
 	ts2 := &testShutdown{}
