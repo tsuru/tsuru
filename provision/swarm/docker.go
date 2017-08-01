@@ -489,12 +489,14 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	var mounts []mount.Mount
 	for _, b := range config.HostConfig.Binds {
 		parts := strings.SplitN(b, ":", 3)
-		mounts = append(mounts, mount.Mount{
-			Type:     mount.TypeBind,
-			Source:   parts[0],
-			Target:   parts[1],
-			ReadOnly: parts[2] == "ro",
-		})
+		mount := mount.Mount{Type: mount.TypeBind, Source: parts[0]}
+		if len(parts) > 1 {
+			mount.Target = parts[1]
+		}
+		if len(parts) > 2 {
+			mount.ReadOnly = parts[2] == "ro"
+		}
+		mounts = append(mounts, mount)
 	}
 	var healthcheck *container.HealthConfig
 	if config.Config.Healthcheck != nil {
