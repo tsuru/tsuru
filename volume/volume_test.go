@@ -8,10 +8,12 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -477,5 +479,41 @@ func (s *S) TestListByFilter(c *check.C) {
 		c.Assert(err, check.IsNil)
 		sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
 		c.Assert(vols, check.DeepEquals, tt.expected)
+	}
+}
+
+func (s *S) TestVolumeValidate(c *check.C) {
+	updateConfig(`
+volume-plans:
+  nfs:
+    fake:
+       driver: local
+       opt:
+         type: nfs
+    other:
+      plugin: nfs
+  ebs:
+    fake:
+       driver: rexray/ebs
+    other:
+      storage-class: my-ebs-storage-class
+`)
+	msg := "Invalid volume name, volume name should have at most 63 " +
+		"characters, containing only lower case letters, numbers or dashes, " +
+		"starting with a letter."
+	nameErr := &tsuruErrors.ValidationError{Message: msg}
+	tt := []struct {
+		volume      Volume
+		expectedErr error
+	}{
+		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
+		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
+		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
+		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, provision.ErrPoolNotFound},
+		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, auth.ErrTeamNotFound},
+		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
+	}
+	for _, t := range tt {
+		c.Assert(errors.Cause(t.volume.Validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }

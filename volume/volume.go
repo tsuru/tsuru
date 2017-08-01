@@ -13,7 +13,9 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -61,6 +63,12 @@ func (v *Volume) UnmarshalPlan(result interface{}) error {
 func (v *Volume) Validate() error {
 	if v.Name == "" {
 		return errors.New("volume name cannot be empty")
+	}
+	if !validation.ValidateName(v.Name) {
+		msg := "Invalid volume name, volume name should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter."
+		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
 	pool, err := provision.GetPoolByName(v.Pool)
 	if err != nil {
