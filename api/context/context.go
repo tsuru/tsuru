@@ -26,11 +26,17 @@ const (
 )
 
 func Clear(r *http.Request) {
+	if r == nil {
+		return
+	}
 	newReq := r.WithContext(context.Background())
 	*r = *newReq
 }
 
 func GetApp(r *http.Request) *app.App {
+	if r == nil {
+		return nil
+	}
 	if v, ok := r.Context().Value(appContextKey).(*app.App); ok {
 		return v
 	}
@@ -43,6 +49,9 @@ func SetApp(r *http.Request, a *app.App) {
 }
 
 func GetAuthToken(r *http.Request) auth.Token {
+	if r == nil {
+		return nil
+	}
 	if v, ok := r.Context().Value(tokenContextKey).(auth.Token); ok {
 		return v
 	}
@@ -67,6 +76,9 @@ func AddRequestError(r *http.Request, err error) {
 }
 
 func GetRequestError(r *http.Request) error {
+	if r == nil {
+		return nil
+	}
 	if v, ok := r.Context().Value(errorContextKey).(error); ok {
 		return v
 	}
@@ -79,6 +91,9 @@ func SetDelayedHandler(r *http.Request, h http.Handler) {
 }
 
 func GetDelayedHandler(r *http.Request) http.Handler {
+	if r == nil {
+		return nil
+	}
 	if v, ok := r.Context().Value(delayedHandlerKey).(http.Handler); ok {
 		return v
 	}
@@ -91,6 +106,9 @@ func SetPreventUnlock(r *http.Request) {
 }
 
 func IsPreventUnlock(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
 	if v, ok := r.Context().Value(preventUnlockKey).(bool); ok {
 		return v
 	}
@@ -103,6 +121,9 @@ func SetRequestID(r *http.Request, requestIDHeader, requestID string) {
 }
 
 func GetRequestID(r *http.Request, requestIDHeader string) string {
+	if r == nil {
+		return ""
+	}
 	requestID := r.Context().Value(reqIDHeaderCtxKey(requestIDHeader))
 	if requestID == nil {
 		return ""
