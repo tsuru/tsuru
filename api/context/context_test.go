@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -61,10 +60,12 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) TestClear(c *check.C) {
 	r, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
-	context.Set(r, "my-key", "value")
+	SetRequestID(r, "X-RID", "xpto")
+	val := GetRequestID(r, "X-RID")
+	c.Assert(val, check.DeepEquals, "xpto")
 	Clear(r)
-	val := context.Get(r, "my-key")
-	c.Assert(val, check.IsNil)
+	val = GetRequestID(r, "X-RID")
+	c.Assert(val, check.DeepEquals, "")
 }
 
 func (s *S) TestGetAuthToken(c *check.C) {
