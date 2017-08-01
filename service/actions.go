@@ -6,6 +6,7 @@ package service
 
 import (
 	"io"
+	"sort"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -192,6 +193,9 @@ var setBoundEnvsAction = &action.Action{
 				},
 			})
 		}
+		sort.Slice(envs, func(i, j int) bool {
+			return envs[i].Name < envs[j].Name
+		})
 		addArgs := bind.AddInstanceArgs{
 			Envs:          envs,
 			ShouldRestart: args.shouldRestart,
