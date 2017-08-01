@@ -12,8 +12,8 @@ import (
 
 	stdcontext "context"
 
-	"github.com/gorilla/context"
 	"github.com/tsuru/config"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -131,7 +131,6 @@ func (s *S) TearDownTest(c *check.C) {
 	s.provisioner.Reset()
 	s.conn.Close()
 	s.logConn.Close()
-	context.Purge(-1)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

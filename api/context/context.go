@@ -5,16 +5,20 @@
 package context
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gorilla/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 )
 
+type ctxKey int
+
+type reqIDHeaderCtxKey string
+
 const (
-	tokenContextKey int = iota
+	tokenContextKey ctxKey = iota
 	errorContextKey
 	delayedHandlerKey
 	preventUnlockKey
@@ -22,78 +26,84 @@ const (
 )
 
 func Clear(r *http.Request) {
-	context.Clear(r)
+	newReq := r.WithContext(context.Background())
+	*r = *newReq
 }
 
 func GetApp(r *http.Request) *app.App {
-	if v := context.Get(r, appContextKey); v != nil {
-		return v.(*app.App)
+	if v, ok := r.Context().Value(appContextKey).(*app.App); ok {
+		return v
 	}
 	return nil
 }
 
 func SetApp(r *http.Request, a *app.App) {
-	context.Set(r, appContextKey, a)
+	newReq := r.WithContext(context.WithValue(r.Context(), appContextKey, a))
+	*r = *newReq
 }
 
 func GetAuthToken(r *http.Request) auth.Token {
-	if v := context.Get(r, tokenContextKey); v != nil {
-		return v.(auth.Token)
+	if v, ok := r.Context().Value(tokenContextKey).(auth.Token); ok {
+		return v
 	}
 	return nil
 }
 
 func SetAuthToken(r *http.Request, t auth.Token) {
-	context.Set(r, tokenContextKey, t)
+	newReq := r.WithContext(context.WithValue(r.Context(), tokenContextKey, t))
+	*r = *newReq
 }
 
 func AddRequestError(r *http.Request, err error) {
 	if err == nil {
 		return
 	}
-	existingErr := context.Get(r, errorContextKey)
+	existingErr := r.Context().Value(errorContextKey)
 	if existingErr != nil {
 		err = &errors.CompositeError{Base: existingErr.(error), Message: err.Error()}
 	}
-	context.Set(r, errorContextKey, err)
+	newReq := r.WithContext(context.WithValue(r.Context(), errorContextKey, err))
+	*r = *newReq
 }
 
 func GetRequestError(r *http.Request) error {
-	if v := context.Get(r, errorContextKey); v != nil {
-		return v.(error)
+	if v, ok := r.Context().Value(errorContextKey).(error); ok {
+		return v
 	}
 	return nil
 }
 
 func SetDelayedHandler(r *http.Request, h http.Handler) {
-	context.Set(r, delayedHandlerKey, h)
+	newReq := r.WithContext(context.WithValue(r.Context(), delayedHandlerKey, h))
+	*r = *newReq
 }
 
 func GetDelayedHandler(r *http.Request) http.Handler {
-	v := context.Get(r, delayedHandlerKey)
-	if v != nil {
-		return v.(http.Handler)
+	if v, ok := r.Context().Value(delayedHandlerKey).(http.Handler); ok {
+		return v
 	}
 	return nil
 }
 
 func SetPreventUnlock(r *http.Request) {
-	context.Set(r, preventUnlockKey, true)
+	newReq := r.WithContext(context.WithValue(r.Context(), preventUnlockKey, true))
+	*r = *newReq
 }
 
 func IsPreventUnlock(r *http.Request) bool {
-	if v := context.Get(r, preventUnlockKey); v != nil {
-		return v.(bool)
+	if v, ok := r.Context().Value(preventUnlockKey).(bool); ok {
+		return v
 	}
 	return false
 }
 
 func SetRequestID(r *http.Request, requestIDHeader, requestID string) {
-	context.Set(r, requestIDHeader, requestID)
+	newReq := r.WithContext(context.WithValue(r.Context(), reqIDHeaderCtxKey(requestIDHeader), requestID))
+	*r = *newReq
 }
 
 func GetRequestID(r *http.Request, requestIDHeader string) string {
-	requestID := context.Get(r, requestIDHeader)
+	requestID := r.Context().Value(reqIDHeaderCtxKey(requestIDHeader))
 	if requestID == nil {
 		return ""
 	}
