@@ -4937,7 +4937,9 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	app, err := getAppFromContext(a.Name, nil)
+	r, err := http.NewRequest(http.MethodGet, "", nil)
+	c.Assert(err, check.IsNil)
+	app, err := getAppFromContext(a.Name, r)
 	c.Assert(err, check.IsNil)
 	c.Assert(app, check.DeepEquals, *expected)
 }
