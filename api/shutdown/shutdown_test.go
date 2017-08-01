@@ -57,7 +57,7 @@ func (s *S) TestDoTimeout(c *check.C) {
 		sleep: time.Duration(2) * time.Second,
 	}
 	Register(ts)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Microsecond*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	err := Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.DeepEquals, context.DeadlineExceeded)
