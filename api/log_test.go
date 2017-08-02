@@ -23,6 +23,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
@@ -43,7 +45,7 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -59,6 +61,9 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *LogSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()

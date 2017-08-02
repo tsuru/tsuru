@@ -23,6 +23,8 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -39,6 +41,9 @@ type ProvisionSuite struct {
 var _ = check.Suite(&ProvisionSuite{})
 
 func (s *ProvisionSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	app.AuthScheme = nativeScheme
 	repositorytest.Reset()
 	var err error
@@ -71,7 +76,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err := s.conn.Teams().Insert(s.team)
+	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
@@ -666,7 +671,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &auth.Team{Name: "blaaaa"}
-	s.conn.Teams().Insert(t)
+	storage.TeamRepository.Insert(storage.Team{Name: t.Name})
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -831,8 +836,8 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
-	t := &auth.Team{Name: "Rammlied"}
-	s.conn.Teams().Insert(t)
+	t := storage.Team{Name: "Rammlied"}
+	storage.TeamRepository.Insert(t)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},

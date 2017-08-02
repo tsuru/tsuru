@@ -33,6 +33,8 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/storage"
+	fakeStorage "github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -56,7 +58,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -94,6 +96,9 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fakeStorage.TeamRepository); ok {
+		t.Reset()
+	}
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	builder.DefaultBuilder = "fake"
@@ -730,8 +735,8 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newteam"}
-	err = s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "newteam"}
+	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -942,8 +947,8 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "team"}
-	err = s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "team"}
+	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -980,8 +985,8 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "team"}
-	err = s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "team"}
+	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)

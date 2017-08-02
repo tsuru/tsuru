@@ -23,6 +23,8 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -46,12 +48,15 @@ func (s *QuotaSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *QuotaSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	conn, _ := db.Conn()
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
 	s.team = &auth.Team{Name: "superteam"}
-	err := conn.Teams().Insert(s.team)
+	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,

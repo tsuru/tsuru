@@ -33,6 +33,8 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"github.com/tsuru/tsuru/tsurutest"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -79,6 +81,9 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
@@ -103,11 +108,9 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
 	s.team2 = &auth.Team{Name: "tsuruteam2"}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err = conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
-	err = conn.Teams().Insert(s.team2)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team2.Name})
 	c.Assert(err, check.IsNil)
 }
 
@@ -388,12 +391,9 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	t := new(auth.Team)
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
-	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
+	t, err := storage.TeamRepository.FindByName("timeredbull")
 	c.Assert(err, check.IsNil)
+	c.Assert(t, check.NotNil)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("timeredbull"),
 		Owner:  s.token.GetUserName(),
@@ -417,12 +417,10 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err := conn.Teams().Insert(bson.M{"_id": "timeredbull"})
-	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
+	team := storage.Team{Name: "timeredbull"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	b := strings.NewReader("name=timeredbull")
+	b := strings.NewReader("name=" + team.Name)
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -434,20 +432,17 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	team := auth.Team{Name: "painofsalvation"}
-	err := conn.Teams().Insert(team)
+	team := storage.Team{Name: "painofsalvation"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": team.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	t, err := storage.TeamRepository.FindByName(team.Name)
+	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(t, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("painofsalvation"),
 		Owner:  s.token.GetUserName(),
@@ -459,21 +454,17 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	team := auth.Team{Name: "thegathering"}
-	err := conn.Teams().Insert(team)
+	team := storage.Team{Name: "thegathering"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": team.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s", team.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	_, err = storage.TeamRepository.FindByName(team.Name)
+	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("thegathering"),
 		Owner:  s.token.GetUserName(),
@@ -501,12 +492,9 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 		Scheme:  permission.PermTeamDelete,
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
-	conn, _ := db.Conn()
-	defer conn.Close()
-	team := auth.Team{Name: "painofsalvation"}
-	err := conn.Teams().Insert(team)
+	team := storage.Team{Name: "painofsalvation"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": team.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -519,12 +507,9 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	team := auth.Team{Name: "evergrey"}
-	err := conn.Teams().Insert(team)
+	team := storage.Team{Name: "evergrey"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": team.Name})
 	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -543,12 +528,9 @@ Apps: i-should`
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	team := auth.Team{Name: "evergrey"}
-	err := conn.Teams().Insert(team)
+	team := storage.Team{Name: "evergrey"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": team.Name})
 	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}
 	err = si1.Create()
 	c.Assert(err, check.IsNil)

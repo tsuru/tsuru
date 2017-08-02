@@ -25,6 +25,8 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -45,9 +47,9 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Teams().Insert(auth.Team{Name: "other-team"})
+	err = storage.TeamRepository.Insert(storage.Team{Name: "other-team"})
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermApp,
@@ -77,6 +79,9 @@ func (s *EventSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	repositorytest.Reset()
 	var err error
 	routertest.FakeRouter.Reset()

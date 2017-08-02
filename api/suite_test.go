@@ -28,6 +28,8 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 )
 
@@ -80,7 +82,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 }
 
@@ -97,6 +99,9 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake-tls:type", "fake-tls")
 	routertest.FakeRouter.Reset()

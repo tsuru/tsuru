@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -672,7 +673,6 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	team := new(auth.Team)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -694,16 +694,11 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
+	team, err := storage.TeamRepository.FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = a.Grant(team)
+	err = a.Grant(&auth.Team{Name: team.Name, CreatingUser: team.CreatingUser})
 	if err == app.ErrAlreadyHaveAccess {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -722,7 +717,6 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	team := new(auth.Team)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -744,20 +738,15 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
-	if err != nil {
+	team, err := storage.TeamRepository.FindByName(teamName)
+	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if len(a.Teams) == 1 {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = a.Revoke(team)
+	err = a.Revoke(&auth.Team{Name: team.Name, CreatingUser: team.CreatingUser})
 	switch err {
 	case app.ErrNoAccess:
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
