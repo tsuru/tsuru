@@ -54,9 +54,8 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	t, ok := storage.TeamRepository.(*fake.TeamRepository)
-	if ok {
-		t.Clear()
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
 	}
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
@@ -64,7 +63,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user.Create()
 	s.hashed = s.user.Password
 	team := &Team{Name: "cobrateam"}
-	err = s.conn.Teams().Insert(team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: team.Name})
 	c.Assert(err, check.IsNil)
 	s.team = team
 	s.server, err = authtest.NewSMTPServer()

@@ -12,6 +12,8 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -45,6 +47,9 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(s.user)
@@ -52,7 +57,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	team := &auth.Team{Name: "cobrateam"}
-	err = s.conn.Teams().Insert(team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: team.Name})
 	c.Assert(err, check.IsNil)
 	s.team = team
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/validation"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -137,23 +136,22 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	err = conn.Teams().RemoveId(teamName)
-	if err == mgo.ErrNotFound {
+	err = storage.TeamRepository.Delete(storage.Team{Name: teamName})
+	if err == storage.ErrTeamNotFound {
 		return ErrTeamNotFound
 	}
 	return nil
 }
 
 func ListTeams() ([]Team, error) {
-	conn, err := db.Conn()
+	t, err := storage.TeamRepository.FindAll()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	var teams []Team
-	err = conn.Teams().Find(nil).All(&teams)
-	if err != nil {
-		return nil, err
+	teams := make([]Team, len(t))
+	for i, team := range t {
+		teams[i].Name = team.Name
+		teams[i].CreatingUser = team.CreatingUser
 	}
 	return teams, nil
 }

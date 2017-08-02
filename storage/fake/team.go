@@ -42,10 +42,14 @@ func (t *TeamRepository) FindByName(name string) (*storage.Team, error) {
 }
 
 func (t *TeamRepository) Delete(team storage.Team) error {
+	_, err := t.FindByName(team.Name)
+	if err != nil {
+		return err
+	}
 	delete(t.teams, team.Name)
 	return nil
 }
 
-func (t *TeamRepository) Clear() {
+func (t *TeamRepository) Reset() {
 	t.teams = make(map[string]storage.Team)
 }

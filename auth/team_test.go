@@ -23,7 +23,7 @@ func (s *S) TestGetTeamsNames(c *check.C) {
 
 func (s *S) TestTeamAllowedApps(c *check.C) {
 	team := Team{Name: "teamname"}
-	err := s.conn.Teams().Insert(&team)
+	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name})
 	c.Assert(err, check.IsNil)
 	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
 	err = s.conn.Apps().Insert(&a)
@@ -103,8 +103,8 @@ func (s *S) TestGetTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeam(c *check.C) {
-	team := Team{Name: "atreides"}
-	err := s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "atreides"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
@@ -114,8 +114,8 @@ func (s *S) TestRemoveTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithApps(c *check.C) {
-	team := Team{Name: "atreides"}
-	err := s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "atreides"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
 	c.Assert(err, check.IsNil)
@@ -124,8 +124,8 @@ func (s *S) TestRemoveTeamWithApps(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
-	team := Team{Name: "harkonnen"}
-	err := s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "harkonnen"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
 	c.Assert(err, check.IsNil)
@@ -134,9 +134,9 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 }
 
 func (s *S) TestListTeams(c *check.C) {
-	err := s.conn.Teams().Insert(Team{Name: "corrino"})
+	err := storage.TeamRepository.Insert(storage.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Teams().Insert(Team{Name: "fenring"})
+	err = storage.TeamRepository.Insert(storage.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := ListTeams()
 	c.Assert(err, check.IsNil)
