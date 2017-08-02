@@ -160,15 +160,6 @@ func (s *S) TestServiceInstances(c *check.C) {
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
 }
 
-func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	teams := strg.Teams()
-	teamsc := strg.Collection("teams")
-	c.Assert(teams, check.DeepEquals, teamsc)
-}
-
 func (s *S) TestQuota(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
