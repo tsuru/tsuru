@@ -51,9 +51,36 @@ func (s *S) TestFindByName(c *check.C) {
 	team, err := Repo.FindByName(t.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(team.Name, check.Equals, t.Name)
-	team, err = Repo.FindByName("wat")
+}
+
+func (s *S) TestFindByNameNotFound(c *check.C) {
+	team, err := Repo.FindByName("wat")
 	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
 	c.Assert(team, check.IsNil)
+}
+
+func (s *S) TestFindByNames(c *check.C) {
+	t1 := storage.Team{Name: "team1"}
+	err := Repo.Insert(t1)
+	c.Assert(err, check.IsNil)
+	t2 := storage.Team{Name: "team2"}
+	err = Repo.Insert(t2)
+	c.Assert(err, check.IsNil)
+	t3 := storage.Team{Name: "team3"}
+	err = Repo.Insert(t3)
+	c.Assert(err, check.IsNil)
+	teams, err := Repo.FindByNames([]string{t1.Name, t2.Name, "unknown"})
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []storage.Team{t1, t2})
+}
+
+func (s *S) TestFindByNamesNotFound(c *check.C) {
+	t1 := storage.Team{Name: "team1"}
+	err := Repo.Insert(t1)
+	c.Assert(err, check.IsNil)
+	teams, err := Repo.FindByNames([]string{"unknown", "otherteam"})
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.HasLen, 0)
 }
 
 func (s *S) TestDelete(c *check.C) {

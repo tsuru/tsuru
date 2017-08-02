@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/storage"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -132,8 +133,8 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 }
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
-	team := &auth.Team{Name: "team"}
-	err := s.conn.Teams().Insert(team)
+	team := storage.Team{Name: "team"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "g1",

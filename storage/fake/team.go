@@ -41,6 +41,19 @@ func (t *TeamRepository) FindByName(name string) (*storage.Team, error) {
 	return &team, nil
 }
 
+func (t *TeamRepository) FindByNames(names []string) ([]storage.Team, error) {
+	teams := []storage.Team{}
+	for _, name := range names {
+		for _, team := range t.teams {
+			if team.Name == name {
+				teams = append(teams, team)
+				break
+			}
+		}
+	}
+	return teams, nil
+}
+
 func (t *TeamRepository) Delete(team storage.Team) error {
 	_, err := t.FindByName(team.Name)
 	if err != nil {

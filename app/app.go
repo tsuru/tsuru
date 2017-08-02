@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/mgo.v2"
@@ -897,14 +898,15 @@ func (app *App) Revoke(team *auth.Team) error {
 
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []auth.Team {
-	var teams []auth.Team
-	conn, err := db.Conn()
+	t, err := storage.TeamRepository.FindByNames(app.Teams)
 	if err != nil {
-		log.Errorf("Failed to connect to the database: %s", err)
 		return nil
 	}
-	defer conn.Close()
-	conn.Teams().Find(bson.M{"_id": bson.M{"$in": app.Teams}}).All(&teams)
+	teams := make([]auth.Team, len(t))
+	for i, team := range t {
+		teams[i].Name = team.Name
+		teams[i].CreatingUser = team.CreatingUser
+	}
 	return teams
 }
 

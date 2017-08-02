@@ -9,6 +9,7 @@ import (
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/storage"
 	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type TeamRepository struct{}
@@ -60,6 +61,17 @@ func (t *TeamRepository) FindByName(name string) (*storage.Team, error) {
 		return nil, err
 	}
 	return &team, nil
+}
+
+func (t *TeamRepository) FindByNames(names []string) ([]storage.Team, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var teams []storage.Team
+	err = teamsCollection(conn).Find(bson.M{"_id": bson.M{"$in": names}}).All(&teams)
+	return teams, err
 }
 
 func (t *TeamRepository) Delete(team storage.Team) error {

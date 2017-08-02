@@ -21,5 +21,6 @@ type TeamRepo interface {
 	Insert(Team) error
 	FindAll() ([]Team, error)
 	FindByName(string) (*Team, error)
+	FindByNames([]string) ([]Team, error)
 	Delete(Team) error
 }
