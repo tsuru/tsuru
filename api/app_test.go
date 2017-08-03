@@ -2938,7 +2938,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "Envs.0.Value", "value": "*****"},
 			{"name": "NoRestart", "value": ""},
 			{"name": "Private", "value": "true"},
 		},
@@ -2968,9 +2968,22 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "*****"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 	d = types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "127.0.0.1"},
+			{"DATABASE_PORT", "6379"},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -2991,7 +3004,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Equals,
-		`{"Message":"---- Setting 1 new environment variables ----\n"}
+		`{"Message":"---- Setting 2 new environment variables ----\n"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3000,7 +3013,9 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "Envs.0.Value", "value": "*****"},
+			{"name": "Envs.1.Name", "value": "DATABASE_PORT"},
+			{"name": "Envs.1.Value", "value": "*****"},
 			{"name": "NoRestart", "value": ""},
 			{"name": "Private", "value": "true"},
 		},

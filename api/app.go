@@ -900,6 +900,11 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	if e.Private {
+		for i := 0; i < len(e.Envs); i++ {
+			r.Form.Set(fmt.Sprintf("Envs.%d.Value", i), "*****")
+		}
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
