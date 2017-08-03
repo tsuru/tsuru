@@ -499,18 +499,6 @@ func (r *hipacheRouter) Routes(name string) (urls []*url.URL, err error) {
 	return urls, nil
 }
 
-func (r *hipacheRouter) removeElement(name, address string) (int, error) {
-	conn, err := r.connect()
-	if err != nil {
-		return 0, &router.RouterError{Op: "remove", Err: err}
-	}
-	count, err := conn.LRem(name, 0, address).Result()
-	if err != nil {
-		return 0, &router.RouterError{Op: "remove", Err: err}
-	}
-	return int(count), nil
-}
-
 func (r *hipacheRouter) removeElements(name string, addresses []string) error {
 	conn, err := r.connect()
 	if err != nil {

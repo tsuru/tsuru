@@ -647,13 +647,6 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 	c.Assert(e.Op, check.Equals, "get")
 }
 
-func (s *S) TestRemoveElement(c *check.C) {
-	router := hipacheRouter{prefix: "hipache"}
-	count, err := router.removeElement("frontend:myapp.com", "10.10.10.10")
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
-}
-
 func (s *S) TestRoutes(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
