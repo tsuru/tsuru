@@ -5432,6 +5432,15 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	var parsed rebuild.RebuildRoutesResult
 	json.Unmarshal(recorder.Body.Bytes(), &parsed)
 	c.Assert(parsed, check.DeepEquals, rebuild.RebuildRoutesResult{})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.admin.routes",
+		EndCustomData: map[string]interface{}{
+			"added":   []string(nil),
+			"removed": []string(nil),
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetCertificate(c *check.C) {
