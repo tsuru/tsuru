@@ -1751,9 +1751,10 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	result := &rebuild.RebuildRoutesResult{}
+	defer func() { evt.DoneCustomData(err, result) }()
 	w.Header().Set("Content-Type", "application/json")
-	result, err := rebuild.RebuildRoutes(&a)
+	result, err = rebuild.RebuildRoutes(&a)
 	if err != nil {
 		return err
 	}
