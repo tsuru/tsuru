@@ -483,7 +483,7 @@ func processTags(tags []string) []string {
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind() error {
-	instances, err := app.serviceInstances()
+	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
 		return err
 	}
@@ -626,7 +626,7 @@ func Delete(app *App, w io.Writer) error {
 }
 
 func (app *App) BindUnit(unit *provision.Unit) error {
-	instances, err := app.serviceInstances()
+	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
 		return err
 	}
@@ -652,7 +652,7 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 }
 
 func (app *App) UnbindUnit(unit *provision.Unit) error {
-	instances, err := app.serviceInstances()
+	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
 		return err
 	}
@@ -663,21 +663,6 @@ func (app *App) UnbindUnit(unit *provision.Unit) error {
 		}
 	}
 	return nil
-}
-
-func (app *App) serviceInstances() ([]service.ServiceInstance, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var instances []service.ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
-	if err != nil {
-		return nil, err
-	}
-	return instances, nil
 }
 
 // AddUnits creates n new units within the provisioner, saves new units in the
