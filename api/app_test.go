@@ -5438,9 +5438,13 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
-	request, err := http.NewRequest("POST", "/apps/myappx/routes", nil)
+	v := url.Values{}
+	v.Set("dry", "true")
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/apps/myappx/routes", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -5451,6 +5455,10 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.routes",
+		StartCustomData: []map[string]interface{}{
+			{"name": "dry", "value": "true"},
+			{"name": ":app", "value": a.Name},
+		},
 		EndCustomData: map[string]interface{}{
 			"added":   []string(nil),
 			"removed": []string(nil),

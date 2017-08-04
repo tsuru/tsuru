@@ -28,7 +28,7 @@ type RebuildApp interface {
 	Unlock()
 }
 
-func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
+func RebuildRoutes(app RebuildApp, dry bool) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", app.GetName())
 	r, err := app.GetRouter()
 	if err != nil {
@@ -82,6 +82,13 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 		toAdd = append(toAdd, toAddURL)
 		result.Added = append(result.Added, toAddURL.String())
 	}
+	for _, toRemoveURL := range toRemove {
+		result.Removed = append(result.Removed, toRemoveURL.String())
+	}
+	if dry {
+		log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", app.GetName())
+		return &result, nil
+	}
 	err = r.AddRoutes(app.GetName(), toAdd)
 	if err != nil {
 		return nil, err
@@ -89,9 +96,6 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 	err = r.RemoveRoutes(app.GetName(), toRemove)
 	if err != nil {
 		return nil, err
-	}
-	for _, toRemoveURL := range toRemove {
-		result.Removed = append(result.Removed, toRemoveURL.String())
 	}
 	log.Debugf("[rebuild-routes] routes added for app %q: %s", app.GetName(), strings.Join(result.Added, ", "))
 	log.Debugf("[rebuild-routes] routes removed for app %q: %s", app.GetName(), strings.Join(result.Removed, ", "))

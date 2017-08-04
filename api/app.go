@@ -1746,6 +1746,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	dry, _ := strconv.ParseBool(r.FormValue("dry"))
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppAdminRoutes,
@@ -1759,7 +1760,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	result := &rebuild.RebuildRoutesResult{}
 	defer func() { evt.DoneCustomData(err, result) }()
 	w.Header().Set("Content-Type", "application/json")
-	result, err = rebuild.RebuildRoutes(&a)
+	result, err = rebuild.RebuildRoutes(&a, dry)
 	if err != nil {
 		return err
 	}
