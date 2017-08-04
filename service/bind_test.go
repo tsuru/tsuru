@@ -22,6 +22,8 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -51,6 +53,9 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *BindSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -58,7 +63,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = auth.Team{Name: "metallica"}
-	err = s.conn.Teams().Insert(s.team)
+	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)

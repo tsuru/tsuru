@@ -10,6 +10,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 )
 
@@ -56,17 +58,20 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err = s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "Raul"}
-	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
 	if err != nil {
 		c.Fail()
 	}
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	routertest.FakeRouter.Reset()
-	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens", "teams"})
+	s.team = &auth.Team{Name: "Raul"}
+	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
 }
 
 func (s *S) TearDownSuite(c *check.C) {

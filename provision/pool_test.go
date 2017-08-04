@@ -6,6 +6,7 @@ package provision
 
 import (
 	"reflect"
+	"sort"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -13,6 +14,8 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -38,6 +41,9 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
 	err = auth.CreateTeam("ateam", &auth.User{})
@@ -668,9 +674,14 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[string][]string{
-		"team":   {"ateam", "test", "pteam", "pubteam", "team1"},
-		"router": {"router", "router1", "router2"},
+	c.Assert(constraints, check.HasLen, 2)
+	sort.Strings(constraints["team"])
+	c.Assert(constraints["team"], check.DeepEquals, []string{
+		"ateam", "pteam", "pubteam", "team1", "test",
+	})
+	sort.Strings(constraints["router"])
+	c.Assert(constraints["router"], check.DeepEquals, []string{
+		"router", "router1", "router2",
 	})
 }
 

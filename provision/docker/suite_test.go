@@ -34,6 +34,8 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -108,10 +110,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nScheme
 	_, err = nScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin"}
-	c.Assert(err, check.IsNil)
-	err = s.storage.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
 	s.token = permissiontest.ExistingUserWithPermission(c, nativeScheme, s.user, permission.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
@@ -119,13 +117,19 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
+	s.team = &auth.Team{Name: "admin"}
+	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	c.Assert(err, check.IsNil)
 	config.Set("docker:api-timeout", 2)
 	iaas.ResetAll()
 	repositorytest.Reset()
 	queue.ResetQueue()
 	repository.Manager().CreateUser(s.user.Email)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err := s.p.Initialize()
+	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	queue.ResetQueue()
 	s.b = &fakebuilder.FakeBuilder{}
@@ -136,7 +140,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
-	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens", "teams"})
+	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens"})
 	c.Assert(err, check.IsNil)
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)

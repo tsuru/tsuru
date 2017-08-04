@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/storage/fake"
 	"gopkg.in/check.v1"
 )
 
@@ -40,6 +42,12 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("git:api-server", s.server.URL())
 	config.Set("database:name", "repository_gandalf_test")
+}
+
+func (s *GandalfSuite) SetUpTest(c *check.C) {
+	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
+		t.Reset()
+	}
 }
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {
@@ -103,8 +111,8 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser(user1.Email)
 	c.Assert(err, check.IsNil)
-	team := auth.Team{Name: "superteam"}
-	err = conn.Teams().Insert(team)
+	team := storage.Team{Name: "superteam"}
+	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{Name: "myapp", Teams: []string{team.Name}}
 	app2 := app.App{Name: "yourapp", Teams: []string{team.Name}}
