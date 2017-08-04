@@ -305,7 +305,7 @@ func migrateRoles() error {
 	defer conn.Close()
 	for _, u := range users {
 		var teams []auth.Team
-		err := conn.Teams().Find(bson.M{"users": bson.M{"$in": []string{u.Email}}}).All(&teams)
+		err := conn.Collection("teams").Find(bson.M{"users": bson.M{"$in": []string{u.Email}}}).All(&teams)
 		if err != nil {
 			return err
 		}
