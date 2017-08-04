@@ -58,7 +58,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,

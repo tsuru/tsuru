@@ -121,7 +121,7 @@ func (s *S) SetUpTest(c *check.C) {
 		t.Reset()
 	}
 	s.team = &auth.Team{Name: "admin"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	config.Set("docker:api-timeout", 2)
 	iaas.ResetAll()

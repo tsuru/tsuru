@@ -45,7 +45,7 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)

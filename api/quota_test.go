@@ -56,7 +56,7 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
 	s.team = &auth.Team{Name: "superteam"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,

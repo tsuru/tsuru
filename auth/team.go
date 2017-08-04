@@ -85,7 +85,7 @@ func CreateTeam(name string, user *User) error {
 	if err := team.validate(); err != nil {
 		return err
 	}
-	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name, CreatingUser: team.CreatingUser})
+	err := storage.TeamRepository.Insert(storage.Team(team))
 	if err != nil {
 		return err
 	}

@@ -63,7 +63,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = auth.Team{Name: "metallica"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(s.team))
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)

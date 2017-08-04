@@ -78,7 +78,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.team = &auth.Team{Name: "admin"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 }
 

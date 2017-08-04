@@ -76,7 +76,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
@@ -671,7 +671,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &auth.Team{Name: "blaaaa"}
-	storage.TeamRepository.Insert(storage.Team{Name: t.Name})
+	storage.TeamRepository.Insert(storage.Team(*t))
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},

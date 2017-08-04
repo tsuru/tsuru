@@ -69,7 +69,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	routertest.FakeRouter.Reset()
 	s.team = &auth.Team{Name: "Raul"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
 }

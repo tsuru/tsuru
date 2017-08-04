@@ -81,7 +81,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(s.team))
 	c.Assert(err, check.IsNil)
 }
 

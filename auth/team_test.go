@@ -23,7 +23,7 @@ func (s *S) TestGetTeamsNames(c *check.C) {
 
 func (s *S) TestTeamAllowedApps(c *check.C) {
 	team := Team{Name: "teamname"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(team))
 	c.Assert(err, check.IsNil)
 	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
 	err = s.conn.Apps().Insert(&a)
@@ -92,7 +92,7 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 
 func (s *S) TestGetTeam(c *check.C) {
 	team := Team{Name: "symfonia"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(team))
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)

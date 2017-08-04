@@ -63,7 +63,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user.Create()
 	s.hashed = s.user.Password
 	team := &Team{Name: "cobrateam"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*team))
 	c.Assert(err, check.IsNil)
 	s.team = team
 	s.server, err = authtest.NewSMTPServer()

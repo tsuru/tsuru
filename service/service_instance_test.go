@@ -54,7 +54,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &auth.Team{Name: "Raul"}
 	s.conn.Users().Insert(s.user)
-	storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	storage.TeamRepository.Insert(storage.Team(*s.team))
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {

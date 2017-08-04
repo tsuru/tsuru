@@ -959,7 +959,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := auth.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(storage.Team{Name: team.Name})
+	err := storage.TeamRepository.Insert(storage.Team(team))
 	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,

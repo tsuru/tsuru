@@ -108,9 +108,9 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
 	s.team2 = &auth.Team{Name: "tsuruteam2"}
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*s.team))
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team{Name: s.team2.Name})
+	err = storage.TeamRepository.Insert(storage.Team(*s.team2))
 	c.Assert(err, check.IsNil)
 }
 
