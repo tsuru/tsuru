@@ -421,7 +421,7 @@ var moveRouterUnits = action.Action{
 			oldIp:     app.IP,
 		}
 		if newRouter != oldRouter {
-			_, err := rebuild.RebuildRoutes(app)
+			_, err := rebuild.RebuildRoutes(app, false)
 			if err != nil {
 				return nil, err
 			}
