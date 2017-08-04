@@ -140,6 +140,40 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "")
 }
 
+func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
+	srvc := Service{Name: "mysql"}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	sInstance := ServiceInstance{
+		Name:        "t3sql",
+		ServiceName: "mysql",
+		Tags:        []string{},
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"app1", "app2"},
+		Units:       []string{},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+	sInstance2 := ServiceInstance{
+		Name:        "s9sql",
+		ServiceName: "mysql",
+		Tags:        []string{},
+		Apps:        []string{"app1"},
+		Units:       []string{},
+		Teams:       []string{},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
+	c.Assert(err, check.IsNil)
+	sInstances, err := GetServiceInstancesBoundToApp("app2")
+	c.Assert(err, check.IsNil)
+	expected := []ServiceInstance{sInstance}
+	c.Assert(sInstances, check.DeepEquals, expected)
+	sInstances, err = GetServiceInstancesBoundToApp("app1")
+	c.Assert(err, check.IsNil)
+	expected = []ServiceInstance{sInstance, sInstance2}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
 func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
