@@ -232,7 +232,8 @@ func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"ateam", "test", "pteam"})
+	sort.Strings(teams)
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "pteam", "test"})
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
