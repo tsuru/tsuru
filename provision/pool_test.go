@@ -218,6 +218,7 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := p.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
@@ -247,6 +248,7 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	c.Assert(err, check.NotNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
@@ -287,6 +289,7 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
