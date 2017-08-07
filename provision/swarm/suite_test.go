@@ -90,7 +90,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn http.HandlerFunc) func() {
+func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
@@ -100,7 +100,7 @@ func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn ht
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units, Apps: []string{appName}}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Apps: []string{appName}}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
 	return ret

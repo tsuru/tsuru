@@ -376,7 +376,7 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(siDB.Units, check.DeepEquals, []string{})
+	c.Assert(siDB.BoundUnits, check.DeepEquals, []Unit{})
 }
 
 func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
@@ -428,8 +428,12 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
-	sort.Strings(siDB.Units)
-	c.Assert(siDB.Units, check.DeepEquals, []string{
+	var unitIDs []string
+	for _, u := range siDB.BoundUnits {
+		unitIDs = append(unitIDs, u.ID)
+	}
+	sort.Strings(unitIDs)
+	c.Assert(unitIDs, check.DeepEquals, []string{
 		"myapp-0",
 		"myapp-1",
 		"myapp-2",
@@ -474,8 +478,12 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
-	sort.Strings(siDB.Units)
-	c.Assert(siDB.Units, check.DeepEquals, []string{
+	var unitIDs []string
+	for _, u := range siDB.BoundUnits {
+		unitIDs = append(unitIDs, u.ID)
+	}
+	sort.Strings(unitIDs)
+	c.Assert(unitIDs, check.DeepEquals, []string{
 		"myapp-0",
 		"myapp-1",
 		"myapp-2",

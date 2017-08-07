@@ -294,7 +294,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
-		Units:       []string{units[0].GetID()},
+		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
 	}
 	instance.Create()
 	units, err = a.GetUnits()
@@ -304,7 +304,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	c.Assert(called, check.Equals, true)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "my-mysql"}).One(&instance)
 	c.Assert(err, check.IsNil)
-	c.Assert(instance.Units, check.HasLen, 0)
+	c.Assert(instance.BoundUnits, check.HasLen, 0)
 }
 
 func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
@@ -336,7 +336,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
-		Units:       []string{units[0].GetID(), units[1].GetID()},
+		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}, {ID: units[1].GetID(), IP: units[1].GetIp()}},
 	}
 	instance.Create()
 	err = instance.UnbindApp(a, true, nil)
@@ -410,7 +410,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
-		Units:       []string{units[0].GetID()},
+		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)

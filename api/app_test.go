@@ -4389,7 +4389,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].ID},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
@@ -4487,7 +4487,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].ID},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
@@ -4590,14 +4590,14 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 			ServiceName: "mysql",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"painkiller"},
-			Units:       []string{units[0].ID},
+			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 		{
 			Name:        "my-mysql",
 			ServiceName: "mysql2",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"painkiller"},
-			Units:       []string{units[0].ID},
+			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 	}
 	for _, instance := range instances {

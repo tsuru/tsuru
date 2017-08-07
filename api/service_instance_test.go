@@ -751,7 +751,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 			ServiceName: "foo",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"app-instance"},
-			Units:       []string{units[0].ID},
+			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 		{
 			Name:        "foo-instance",
@@ -871,7 +871,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].ID},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
@@ -922,7 +922,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		ServiceName: "mysqlremove",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1"},
-		Units:       []string{units[0].ID},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
@@ -973,7 +973,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		ServiceName: "mysqlremove",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app", "app2"},
-		Units:       []string{units[0].ID},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
