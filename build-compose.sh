@@ -19,7 +19,7 @@ then
 fi
 
 
-BUILD_IMAGE='guilhermebr/golang:1.8-alpine'
+BUILD_IMAGE='tsuru/golang:1.8-alpine'
 
 LOCAL_PKG=${GOPATH}'/pkg/linux_amd64'
 CONTAINER_PKG='/go/pkg/linux_amd64'
