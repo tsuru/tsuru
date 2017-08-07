@@ -84,7 +84,7 @@ func (c *Container) Create(args *CreateContainerArgs) error {
 	var exposedPorts map[docker.Port]struct{}
 	var user string
 	if args.Building {
-		user = c.user()
+		user, _ = dockercommon.UserForContainer()
 	}
 	hostConf, err := c.hostConfig(args.App, args.Deploy)
 	if err != nil {
@@ -122,6 +122,14 @@ func (c *Container) Create(args *CreateContainerArgs) error {
 	}
 	c.ID = cont.ID
 	return nil
+}
+
+type StartArgs struct {
+	Client *docker.Client
+}
+
+func (c *Container) Start(args *StartArgs) error {
+	return args.Client.StartContainer(c.ID, nil)
 }
 
 func (c *Container) addEnvsToConfig(args *CreateContainerArgs, port string, cfg *docker.Config) {
@@ -242,6 +250,24 @@ func (c *Container) Stop(client *docker.Client) error {
 	}
 	c.SetStatus(provision.StatusStopped, true)
 	return nil
+}
+
+func (c *Container) Logs(client *docker.Client, w io.Writer) (int, error) {
+	container, err := client.InspectContainer(c.ID)
+	if err != nil {
+		return 0, err
+	}
+	opts := docker.AttachToContainerOptions{
+		Container:    c.ID,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		OutputStream: w,
+		ErrorStream:  w,
+		RawTerminal:  container.Config.Tty,
+		Stream:       true,
+	}
+	return SafeAttachWaitContainer(client, opts)
 }
 
 func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostConfig, error) {

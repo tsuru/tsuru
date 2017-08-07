@@ -782,7 +782,7 @@ var followLogsAndCommit = action.Action{
 				return nil, errors.Errorf("Exit status %d", result.status)
 			}
 		}
-		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
+		fmt.Fprintf(args.writer, "\n---- Deploying application image ----\n")
 		imageID, err := c.Commit(args.provisioner, args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)

@@ -24,6 +24,8 @@ import (
 func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
+		&startContainer,
+		&followLogs,
 		&commitContainer,
 		&updateAppBuilderImage,
 	}

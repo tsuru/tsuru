@@ -13,22 +13,40 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-// provisioner deploys a unit using the archive method.
-func ArchiveDeployCmds(app provision.App, archiveURL string) []string {
-	return DeployCmds(app, "archive", archiveURL)
+// ArchiveBuildCmds build a image using the archive method.
+func ArchiveBuildCmds(app provision.App, archiveURL string) []string {
+	return buildCmds(app, "build", "archive", archiveURL)
 }
 
-func DeployCmds(app provision.App, params ...string) []string {
+// ArchiveDeployCmds is a legacy command to deploys an unit using the archive method.
+func ArchiveDeployCmds(app provision.App, archiveURL string) []string {
+	return buildCmds(app, "deploy", "archive", archiveURL)
+}
+
+// DeployCmds deploys an unit builded by tsuru.
+func DeployCmds(app provision.App) []string {
+	uaCmds := unitAgentCmds(app)
+	uaCmds = append(uaCmds, "deploy-only")
+	finalCmd := strings.Join(uaCmds, " ")
+	return []string{"/bin/sh", "-lc", finalCmd}
+}
+
+func buildCmds(app provision.App, agentCmd string, params ...string) []string {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		deployCmd = "/var/lib/tsuru/deploy"
 	}
 	cmds := append([]string{deployCmd}, params...)
+	uaCmds := unitAgentCmds(app)
+	uaCmds = append(uaCmds, `"`+strings.Join(cmds, " ")+`"`, agentCmd)
+	finalCmd := strings.Join(uaCmds, " ")
+	return []string{"/bin/sh", "-lc", finalCmd}
+}
+
+func unitAgentCmds(app provision.App) []string {
 	host, _ := config.GetString("host")
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
-	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
-	finalCmd := strings.Join(unitAgentCmds, " ")
-	return []string{"/bin/sh", "-lc", finalCmd}
+	return []string{"tsuru_unit_agent", host, token, app.GetName()}
 }
 
 // runWithAgentCmds returns the list of commands that should be passed when the
