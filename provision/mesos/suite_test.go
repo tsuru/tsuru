@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -88,9 +88,6 @@ func (s *S) addFakeNodes() {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
 	s.marathon = &fakeMarathonClient{}
 	s.mesos = &fakeMesosClient{}
 	hookMarathonClient = func(cli marathon.Marathon) marathon.Marathon {

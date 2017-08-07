@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 )
 
@@ -42,12 +42,6 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("git:api-server", s.server.URL())
 	config.Set("database:name", "repository_gandalf_test")
-}
-
-func (s *GandalfSuite) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
 }
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {

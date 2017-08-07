@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -60,9 +60,6 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
 	queue.ResetQueue()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := app.GetByName(appName)

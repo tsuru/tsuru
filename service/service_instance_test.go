@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -47,9 +47,6 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *InstanceSuite) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &auth.Team{Name: "Raul"}

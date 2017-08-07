@@ -23,7 +23,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -53,9 +53,6 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *BindSuite) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)

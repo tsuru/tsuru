@@ -30,7 +30,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
-	fakeStorage "github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -123,9 +123,6 @@ func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *res
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fakeStorage.TeamRepository); ok {
-		t.Reset()
-	}
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.logHook = nil

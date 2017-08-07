@@ -35,7 +35,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -117,19 +117,13 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fake.TeamRepository); ok {
-		t.Reset()
-	}
-	s.team = &auth.Team{Name: "admin"}
-	err := storage.TeamRepository.Insert(storage.Team(*s.team))
-	c.Assert(err, check.IsNil)
 	config.Set("docker:api-timeout", 2)
 	iaas.ResetAll()
 	repositorytest.Reset()
 	queue.ResetQueue()
 	repository.Manager().CreateUser(s.user.Email)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err = s.p.Initialize()
+	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	queue.ResetQueue()
 	s.b = &fakebuilder.FakeBuilder{}
@@ -151,6 +145,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
+	s.team = &auth.Team{Name: "admin"}
+	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {

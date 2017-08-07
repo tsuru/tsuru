@@ -34,7 +34,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
-	fakeStorage "github.com/tsuru/tsuru/storage/fake"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -96,9 +96,6 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
-	if t, ok := storage.TeamRepository.(*fakeStorage.TeamRepository); ok {
-		t.Reset()
-	}
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	builder.DefaultBuilder = "fake"
