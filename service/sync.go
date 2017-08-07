@@ -10,11 +10,33 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 )
+
+var (
+	syncOperations = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_service_sync_operations_total",
+		Help: "The total number of sync operations.",
+	}, []string{"op"})
+
+	syncErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_service_sync_operations_errors_total",
+		Help: "The total number of sync errors.",
+	}, []string{"op"})
+
+	syncDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_service_sync_last_duration",
+		Help: "The duration of the last sync operation.",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(syncOperations, syncErrors, syncDuration)
+}
 
 type BindSyncer struct {
 	Interval  time.Duration
@@ -44,10 +66,12 @@ func (b *BindSyncer) Start() error {
 		for {
 			select {
 			case <-time.After(d):
+				start := time.Now()
 				log.Debug("[bind-syncer] starting run")
 				apps, err := b.AppLister()
 				if err != nil {
 					log.Errorf("[bind-syncer] error listing apps: %v. Aborting sync.", err)
+					syncDuration.Set(time.Since(start).Seconds())
 					break
 				}
 				for _, a := range apps {
@@ -58,6 +82,7 @@ func (b *BindSyncer) Start() error {
 				}
 				log.Debugf("[bind-syncer] finished running. Synced %d apps.", len(apps))
 				d = b.Interval
+				syncDuration.Set(time.Since(start).Seconds())
 			case <-b.shutdown:
 				b.done <- struct{}{}
 				return
@@ -122,7 +147,9 @@ func (b *BindSyncer) sync(a bind.App) (err error) {
 				err = instance.BindUnit(a, u)
 				if err != nil {
 					log.Errorf("[bind-syncer] failed to bind unit %q: %v", u.ID, err)
+					syncErrors.WithLabelValues("bind").Inc()
 				}
+				syncOperations.WithLabelValues("bind").Inc()
 			}
 		}
 		for u := range boundUnits {
@@ -130,7 +157,9 @@ func (b *BindSyncer) sync(a bind.App) (err error) {
 			err = instance.UnbindUnit(a, u)
 			if err != nil {
 				log.Errorf("[bind-syncer] failed to unbind unit %q: %v", u.ID, err)
+				syncErrors.WithLabelValues("unbind").Inc()
 			}
+			syncOperations.WithLabelValues("unbind").Inc()
 		}
 	}
 	log.Debugf("[bind-syncer] finished sync for app %q", a.GetName())
