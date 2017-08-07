@@ -969,3 +969,25 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 }
+
+func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
+	sInstances := []ServiceInstance{
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team2", "team3"}, TeamOwner: "team1"},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team2"},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team2", "team3"}, TeamOwner: "team3"},
+	}
+	for _, si := range sInstances {
+		err := s.conn.ServiceInstances().Insert(&si)
+		c.Assert(err, check.IsNil)
+	}
+	err := RenameServiceInstanceTeam("team2", "team9000")
+	c.Assert(err, check.IsNil)
+	var dbInstances []ServiceInstance
+	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Units: []string{}, Tags: []string{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Units: []string{}, Tags: []string{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Units: []string{}, Tags: []string{}},
+	})
+}

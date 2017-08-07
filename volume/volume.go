@@ -295,3 +295,13 @@ func Load(name string) (*Volume, error) {
 func volumePlanKey(planName, provisioner string) string {
 	return fmt.Sprintf("volume-plans:%s:%s", planName, provisioner)
 }
+
+func RenameTeam(oldName, newName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Volumes().UpdateAll(bson.M{"teamowner": oldName}, bson.M{"$set": bson.M{"teamowner": newName}})
+	return err
+}

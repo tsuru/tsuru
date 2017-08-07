@@ -672,3 +672,26 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 		"router": {"router", "router1", "router2"},
 	})
 }
+
+func (s *S) TestRenamePoolTeam(c *check.C) {
+	coll := s.storage.PoolsConstraints()
+	constraints := []PoolConstraint{
+		{PoolExpr: "e1", Field: "router", Values: []string{"t1", "t2"}},
+		{PoolExpr: "e2", Field: "team", Values: []string{"t1", "t2"}},
+		{PoolExpr: "e3", Field: "team", Values: []string{"t2", "t3"}},
+	}
+	for _, constraint := range constraints {
+		err := SetPoolConstraint(&constraint)
+		c.Assert(err, check.IsNil)
+	}
+	err := RenamePoolTeam("t2", "t9000")
+	c.Assert(err, check.IsNil)
+	var cs []PoolConstraint
+	err = coll.Find(nil).Sort("poolexpr").All(&cs)
+	c.Assert(err, check.IsNil)
+	c.Assert(cs, check.DeepEquals, []PoolConstraint{
+		{PoolExpr: "e1", Field: "router", Values: []string{"t1", "t2"}},
+		{PoolExpr: "e2", Field: "team", Values: []string{"t1", "t9000"}},
+		{PoolExpr: "e3", Field: "team", Values: []string{"t3", "t9000"}},
+	})
+}

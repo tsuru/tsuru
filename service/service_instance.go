@@ -406,3 +406,17 @@ func processTags(tags []string) []string {
 	}
 	return processedTags
 }
+
+func RenameServiceInstanceTeam(oldName, newName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	bulk := conn.ServiceInstances().Bulk()
+	bulk.UpdateAll(bson.M{"teamowner": oldName}, bson.M{"$set": bson.M{"teamowner": newName}})
+	bulk.UpdateAll(bson.M{"teams": oldName}, bson.M{"$push": bson.M{"teams": newName}})
+	bulk.UpdateAll(bson.M{"teams": oldName}, bson.M{"$pull": bson.M{"teams": oldName}})
+	_, err = bulk.Run()
+	return err
+}

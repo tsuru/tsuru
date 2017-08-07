@@ -184,6 +184,7 @@ var (
 	PermTeamDelete                       = PermissionRegistry.get("team.delete")                         // [global team]
 	PermTeamRead                         = PermissionRegistry.get("team.read")                           // [global team]
 	PermTeamReadEvents                   = PermissionRegistry.get("team.read.events")                    // [global team]
+	PermTeamUpdate                       = PermissionRegistry.get("team.update")                         // [global team]
 	PermUser                             = PermissionRegistry.get("user")                                // [global user]
 	PermUserCreate                       = PermissionRegistry.get("user.create")                         // [global]
 	PermUserDelete                       = PermissionRegistry.get("user.delete")                         // [global user]

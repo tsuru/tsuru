@@ -96,6 +96,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"team.read.events",
 	"team.delete",
+	"team.update",
 ).addWithCtx(
 	"user", []contextType{CtxUser},
 ).addWithCtx(

@@ -8,7 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
+	"runtime"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -16,7 +19,10 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/volume"
 )
 
 const (
@@ -224,6 +230,99 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		return managed.StartPasswordReset(u)
 	}
 	return managed.ResetPassword(u, token)
+}
+
+var teamRenameFns = []func(oldName, newName string) error{
+	app.RenameTeam,
+	service.RenameServiceTeam,
+	service.RenameServiceInstanceTeam,
+	volume.RenameTeam,
+	provision.RenamePoolTeam,
+}
+
+// title: team update
+// path: /teams/{name}
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Team updated
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Team not found
+func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	name := r.URL.Query().Get(":name")
+	type teamChange struct {
+		NewName string
+	}
+	changeRequest := teamChange{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	err = dec.DecodeValues(&changeRequest, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	if changeRequest.NewName == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "new team name cannot be empty"}
+	}
+	allowed := permission.Check(t, permission.PermTeamUpdate,
+		permission.Context(permission.CtxTeam, name),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	_, err = auth.GetTeam(name)
+	if err != nil {
+		if err == auth.ErrTeamNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     teamTarget(name),
+		Kind:       permission.PermTeamUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, name)),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	err = auth.CreateTeam(changeRequest.NewName, u)
+	if err != nil {
+		return err
+	}
+	var toRollback []func(oldName, newName string) error
+	defer func() {
+		if err == nil {
+			return
+		}
+		rollbackErr := auth.RemoveTeam(changeRequest.NewName)
+		if rollbackErr != nil {
+			log.Errorf("error rolling back team creation from %v to %v", name, changeRequest.NewName)
+		}
+		for _, rollbackFn := range toRollback {
+			rollbackErr := rollbackFn(changeRequest.NewName, name)
+			if rollbackErr != nil {
+				fnName := runtime.FuncForPC(reflect.ValueOf(rollbackFn).Pointer()).Name()
+				log.Errorf("error rolling back team name change in %v from %q to %q", fnName, name, changeRequest.NewName)
+			}
+		}
+	}()
+	for _, fn := range teamRenameFns {
+		err = fn(name, changeRequest.NewName)
+		if err != nil {
+			return err
+		}
+		toRollback = append(toRollback, fn)
+	}
+	return auth.RemoveTeam(name)
 }
 
 // title: team create

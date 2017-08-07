@@ -4440,3 +4440,73 @@ func (s *S) TestAppUpdateRouterNotAvailableForPool(c *check.C) {
 		Message: "router \"fake-tls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc\"",
 	})
 }
+
+func (s *S) TestRenameTeam(c *check.C) {
+	apps := []App{
+		{Name: "test1", TeamOwner: "t1", Router: "fake", Teams: []string{"t2", "t3", "t1"}},
+		{Name: "test2", TeamOwner: "t2", Router: "fake", Teams: []string{"t3", "t1"}},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	err := RenameTeam("t2", "t9000")
+	c.Assert(err, check.IsNil)
+	var dbApps []App
+	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApps, check.HasLen, 2)
+	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
+	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t9000", "t3", "t1"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+}
+
+func (s *S) TestRenameTeamLockedApp(c *check.C) {
+	apps := []App{
+		{Name: "test1", TeamOwner: "t1", Router: "fake", Teams: []string{"t2", "t3", "t1"}},
+		{Name: "test2", TeamOwner: "t2", Router: "fake", Teams: []string{"t3", "t1"}},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	locked, err := AcquireApplicationLock("test2", "me", "because yes")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	err = RenameTeam("t2", "t9000")
+	c.Assert(err, check.ErrorMatches, `unable to acquire lock for app "test2"`)
+	var dbApps []App
+	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApps, check.HasLen, 2)
+	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
+	c.Assert(dbApps[1].TeamOwner, check.Equals, "t2")
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t2", "t3", "t1"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+}
+
+func (s *S) TestRenameTeamUnchanagedLockedApp(c *check.C) {
+	apps := []App{
+		{Name: "test1", TeamOwner: "t1", Router: "fake", Teams: []string{"t2", "t3", "t1"}},
+		{Name: "test2", TeamOwner: "t2", Router: "fake", Teams: []string{"t3", "t1"}},
+		{Name: "test3", TeamOwner: "t3", Router: "fake", Teams: []string{"t3", "t1"}},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	locked, err := AcquireApplicationLock("test3", "me", "because yes")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	err = RenameTeam("t2", "t9000")
+	c.Assert(err, check.IsNil)
+	var dbApps []App
+	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApps, check.HasLen, 3)
+	c.Assert(dbApps[0].TeamOwner, check.Equals, "t1")
+	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
+	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t9000", "t3", "t1"})
+	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+}
