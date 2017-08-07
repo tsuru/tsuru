@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -25,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
@@ -35,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/tsurutest"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -1739,4 +1739,143 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 	emails := []string{users[0].Email}
 	expected := []string{token.GetUserName()}
 	c.Assert(emails, check.DeepEquals, expected)
+}
+
+func (s *AuthSuite) TestUpdateTeam(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("newname=team9000")
+	request, err := http.NewRequest("POST", "/teams/team1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	_, err = auth.GetTeam("team1")
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	_, err = auth.GetTeam("team9000")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
+	body := strings.NewReader("newname=team9000")
+	request, err := http.NewRequest("POST", "/teams/team1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, auth.ErrTeamNotFound.Error()+"\n")
+}
+
+func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("newname=")
+	request, err := http.NewRequest("POST", "/teams/team1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "new team name cannot be empty\n")
+}
+
+func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
+	oldTeamRenameFns := teamRenameFns
+	defer func() { teamRenameFns = oldTeamRenameFns }()
+	var calls1, calls2 [][]string
+	teamRenameFns = []func(oldName, newName string) error{
+		func(oldName, newName string) error {
+			calls1 = append(calls1, []string{oldName, newName})
+			return nil
+		},
+		func(oldName, newName string) error {
+			calls2 = append(calls2, []string{oldName, newName})
+			return fmt.Errorf("error in %q -> %q", oldName, newName)
+		},
+	}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("newname=team9000")
+	request, err := http.NewRequest("POST", "/teams/team1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "error in \"team1\" -> \"team9000\"\n")
+	_, err = auth.GetTeam("team1")
+	c.Assert(err, check.IsNil)
+	_, err = auth.GetTeam("team9000")
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(calls1, check.DeepEquals, [][]string{
+		{"team1", "team9000"},
+		{"team9000", "team1"},
+	})
+	c.Assert(calls2, check.DeepEquals, [][]string{
+		{"team1", "team9000"},
+	})
+}
+
+func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
+	oldTeamRenameFns := teamRenameFns
+	defer func() { teamRenameFns = oldTeamRenameFns }()
+	var calls1, calls2 [][]string
+	teamRenameFns = []func(oldName, newName string) error{
+		func(oldName, newName string) error {
+			calls1 = append(calls1, []string{oldName, newName})
+			if len(calls1) == 2 {
+				return fmt.Errorf("error in rollback")
+			}
+			return nil
+		},
+		func(oldName, newName string) error {
+			calls2 = append(calls2, []string{oldName, newName})
+			return fmt.Errorf("error in %q -> %q", oldName, newName)
+		},
+	}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("newname=team9000")
+	request, err := http.NewRequest("POST", "/teams/team1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	buf := bytes.NewBuffer(nil)
+	log.SetLogger(log.NewWriterLogger(buf, true))
+	defer log.SetLogger(nil)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "error in \"team1\" -> \"team9000\"\n")
+	_, err = auth.GetTeam("team1")
+	c.Assert(err, check.IsNil)
+	_, err = auth.GetTeam("team9000")
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(calls1, check.DeepEquals, [][]string{
+		{"team1", "team9000"},
+		{"team9000", "team1"},
+	})
+	c.Assert(calls2, check.DeepEquals, [][]string{
+		{"team1", "team9000"},
+	})
+	c.Assert(buf.String(), check.Matches, "(?s).*error rolling back team name change in.*TestUpdateTeamErrorInRollback.*from \"team1\" to \"team9000\".*")
 }

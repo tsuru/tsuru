@@ -323,3 +323,25 @@ func (s *S) TestProxy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
+
+func (s *S) TestRenameServiceTeam(c *check.C) {
+	services := []Service{
+		{Name: "s1", Teams: []string{"team1", "team2", "team3"}, OwnerTeams: []string{"team1", "teamx"}},
+		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team2"}},
+		{Name: "s3", Teams: []string{"team2", "team3"}, OwnerTeams: []string{"team3"}},
+	}
+	for _, si := range services {
+		err := s.conn.Services().Insert(&si)
+		c.Assert(err, check.IsNil)
+	}
+	err := RenameServiceTeam("team2", "team9000")
+	c.Assert(err, check.IsNil)
+	var dbServices []Service
+	err = s.conn.Services().Find(nil).Sort("_id").All(&dbServices)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbServices, check.DeepEquals, []Service{
+		{Name: "s1", Teams: []string{"team1", "team3", "team9000"}, OwnerTeams: []string{"team1", "teamx"}, Endpoint: map[string]string{}},
+		{Name: "s2", Teams: []string{"team1", "team3"}, OwnerTeams: []string{"teamx", "team9000"}, Endpoint: map[string]string{}},
+		{Name: "s3", Teams: []string{"team3", "team9000"}, OwnerTeams: []string{"team3"}, Endpoint: map[string]string{}},
+	})
+}

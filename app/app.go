@@ -1893,3 +1893,43 @@ func (app *App) withLogWriter(w io.Writer) io.Writer {
 	}
 	return w
 }
+
+func RenameTeam(oldName, newName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	filter := &Filter{}
+	filter.ExtraIn("teams", oldName)
+	filter.ExtraIn("teamowner", oldName)
+	apps, err := List(filter)
+	if err != nil {
+		return err
+	}
+	for _, a := range apps {
+		var locked bool
+		locked, err = AcquireApplicationLock(a.Name, InternalAppName, "team rename")
+		if err != nil {
+			return err
+		}
+		if !locked {
+			return errors.Errorf("unable to acquire lock for app %q", a.Name)
+		}
+		defer ReleaseApplicationLock(a.Name)
+	}
+	bulk := conn.Apps().Bulk()
+	for _, a := range apps {
+		if a.TeamOwner == oldName {
+			a.TeamOwner = newName
+		}
+		for i, team := range a.Teams {
+			if team == oldName {
+				a.Teams[i] = newName
+			}
+		}
+		bulk.Update(bson.M{"name": a.Name}, a)
+	}
+	_, err = bulk.Run()
+	return err
+}

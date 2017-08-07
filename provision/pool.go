@@ -240,6 +240,23 @@ func AddPool(opts AddPoolOptions) error {
 	return nil
 }
 
+func RenamePoolTeam(oldName, newName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	query := bson.M{
+		"field":  "team",
+		"values": oldName,
+	}
+	bulk := conn.PoolsConstraints().Bulk()
+	bulk.UpdateAll(query, bson.M{"$push": bson.M{"values": newName}})
+	bulk.UpdateAll(query, bson.M{"$pull": bson.M{"values": oldName}})
+	_, err = bulk.Run()
+	return err
+}
+
 func changeDefaultPool(force bool) error {
 	conn, err := db.Conn()
 	if err != nil {

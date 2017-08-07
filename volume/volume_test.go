@@ -517,3 +517,19 @@ volume-plans:
 		c.Assert(errors.Cause(t.volume.Validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }
+
+func (s *S) TestRenameTeam(c *check.C) {
+	v1 := Volume{Name: "v1", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	v2 := Volume{Name: "v2", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
+	err = v2.Save()
+	c.Assert(err, check.IsNil)
+	err = RenameTeam("myteam", "mynewteam")
+	c.Assert(err, check.IsNil)
+	vols, err := ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
+	c.Assert(vols[0].TeamOwner, check.Equals, "mynewteam")
+	c.Assert(vols[1].TeamOwner, check.Equals, "otherteam")
+}
