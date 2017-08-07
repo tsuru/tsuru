@@ -1120,7 +1120,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(tasks, check.HasLen, 1)
 	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)
@@ -1178,7 +1178,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
 	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)
@@ -1316,7 +1316,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(err, check.IsNil)
 	attached := s.attachRegister(c, srv, true, a)
 	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)

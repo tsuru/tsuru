@@ -150,7 +150,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Tags:        []string{},
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1", "app2"},
-		Units:       []string{},
+		BoundUnits:  []Unit{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
@@ -159,7 +159,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		ServiceName: "mysql",
 		Tags:        []string{},
 		Apps:        []string{"app1"},
-		Units:       []string{},
+		BoundUnits:  []Unit{},
 		Teams:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)

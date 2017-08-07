@@ -111,7 +111,7 @@ func (b *BindSyncer) sync(a bind.App) (err error) {
 	}
 	for _, instance := range instances {
 		boundUnits := make(map[Unit]struct{})
-		for _, u := range instance.UnitsData {
+		for _, u := range instance.BoundUnits {
 			boundUnits[u] = struct{}{}
 		}
 		for _, u := range units {
