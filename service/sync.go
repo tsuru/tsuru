@@ -11,6 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -34,41 +36,66 @@ var (
 	})
 )
 
-func init() {
-	prometheus.MustRegister(syncOperations, syncErrors, syncDuration)
+func InitializeSync(appLister func() ([]bind.App, error)) error {
+	interval, _ := config.GetDuration("service:sync:interval")
+	if interval <= 0 {
+		interval = time.Minute * 5
+	}
+	err := prometheus.Register(syncOperations)
+	if err != nil {
+		return err
+	}
+	err = prometheus.Register(syncErrors)
+	if err != nil {
+		return err
+	}
+	err = prometheus.Register(syncDuration)
+	if err != nil {
+		return err
+	}
+	syncer := &bindSyncer{
+		interval:  interval,
+		appLister: appLister,
+	}
+	err = syncer.start()
+	if err != nil {
+		return err
+	}
+	shutdown.Register(syncer)
+	return nil
 }
 
-type BindSyncer struct {
-	Interval  time.Duration
-	AppLister func() ([]bind.App, error)
+type bindSyncer struct {
+	interval  time.Duration
+	appLister func() ([]bind.App, error)
 
 	started  bool
 	shutdown chan struct{}
 	done     chan struct{}
 }
 
-// Start starts the sync process on a different goroutine
-func (b *BindSyncer) Start() error {
+// start starts the sync process on a different goroutine
+func (b *bindSyncer) start() error {
 	if b.started {
 		return errors.New("syncer already started")
 	}
-	if b.AppLister == nil {
+	if b.appLister == nil {
 		return errors.New("must set app lister function")
 	}
-	if b.Interval == 0 {
-		b.Interval = 5 * time.Minute
+	if b.interval == 0 {
+		b.interval = 5 * time.Minute
 	}
 	b.shutdown = make(chan struct{}, 1)
 	b.done = make(chan struct{})
 	b.started = true
-	fmt.Printf("[bind-syncer] starting. Running every %s.\n", b.Interval)
+	fmt.Printf("[bind-syncer] starting. Running every %s.\n", b.interval)
 	go func(d time.Duration) {
 		for {
 			select {
 			case <-time.After(d):
 				start := time.Now()
 				log.Debug("[bind-syncer] starting run")
-				apps, err := b.AppLister()
+				apps, err := b.appLister()
 				if err != nil {
 					log.Errorf("[bind-syncer] error listing apps: %v. Aborting sync.", err)
 					syncDuration.Set(time.Since(start).Seconds())
@@ -81,7 +108,7 @@ func (b *BindSyncer) Start() error {
 					}
 				}
 				log.Debugf("[bind-syncer] finished running. Synced %d apps.", len(apps))
-				d = b.Interval
+				d = b.interval
 				syncDuration.Set(time.Since(start).Seconds())
 			case <-b.shutdown:
 				b.done <- struct{}{}
@@ -92,9 +119,9 @@ func (b *BindSyncer) Start() error {
 	return nil
 }
 
-// Shutdown shutdowns BindSyncer waiting for the current sync
+// Shutdown shutdowns bindSyncer waiting for the current sync
 // to complete
-func (b *BindSyncer) Shutdown(ctx context.Context) error {
+func (b *bindSyncer) Shutdown(ctx context.Context) error {
 	if !b.started {
 		return nil
 	}
@@ -107,7 +134,7 @@ func (b *BindSyncer) Shutdown(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func (b *BindSyncer) sync(a bind.App) (err error) {
+func (b *bindSyncer) sync(a bind.App) (err error) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		InternalKind: "bindsyncer",

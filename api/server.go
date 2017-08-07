@@ -418,21 +418,12 @@ func startServer(handler http.Handler) {
 	if err != nil {
 		fatal(err)
 	}
-	syncer := &service.BindSyncer{
-		Interval:  time.Minute * 5,
-		AppLister: bindAppsLister,
-	}
-	err = syncer.Start()
-	if err != nil {
-		fatal(err)
-	}
 	srv := &http.Server{
 		ReadTimeout:  time.Duration(readTimeout) * time.Second,
 		WriteTimeout: time.Duration(writeTimeout) * time.Second,
 		Addr:         listen,
 		Handler:      handler,
 	}
-	shutdown.Register(syncer)
 	shutdown.Register(&logTracker)
 	shutdown.Register(srv)
 	shutdownChan := make(chan bool)
@@ -510,6 +501,10 @@ func startServer(handler http.Handler) {
 	err = event.LoadThrottling()
 	if err != nil {
 		fatal(errors.Wrap(err, "unable to load events throttling config"))
+	}
+	err = service.InitializeSync(bindAppsLister)
+	if err != nil {
+		fatal(err)
 	}
 	fmt.Println("Checking components status:")
 	results := hc.Check()

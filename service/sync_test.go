@@ -6,8 +6,11 @@ package service_test
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http/httptest"
 	"time"
+
+	"github.com/tsuru/tsuru/api/shutdown"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -97,17 +100,14 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
 	callCh := make(chan struct{})
-	b := service.BindSyncer{
-		AppLister: func() ([]bind.App, error) {
-			callCh <- struct{}{}
-			return []bind.App{a}, nil
-		},
-	}
-	err = b.Start()
+	err = service.InitializeSync(func() ([]bind.App, error) {
+		callCh <- struct{}{}
+		return []bind.App{a}, nil
+	})
 	c.Assert(err, check.IsNil)
 	<-callCh
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	err = b.Shutdown(ctx)
+	shutdown.Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
 	instance, err = service.GetServiceInstance("mysql", "my-mysql")
