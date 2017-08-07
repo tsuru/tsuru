@@ -22,6 +22,7 @@ import (
 	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
@@ -36,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/service"
 	"golang.org/x/net/websocket"
 )
 
@@ -393,6 +395,18 @@ func appFinder(appName string) (rebuild.RebuildApp, error) {
 	return a, err
 }
 
+func bindAppsLister() ([]bind.App, error) {
+	apps, err := app.List(nil)
+	if err != nil {
+		return nil, err
+	}
+	bindApps := make([]bind.App, len(apps))
+	for i := range apps {
+		bindApps[i] = &apps[i]
+	}
+	return bindApps, nil
+}
+
 func startServer(handler http.Handler) {
 	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
 	if shutdownTimeout == 0 {
@@ -404,12 +418,21 @@ func startServer(handler http.Handler) {
 	if err != nil {
 		fatal(err)
 	}
+	syncer := &service.BindSyncer{
+		Interval:  time.Minute * 5,
+		AppLister: bindAppsLister,
+	}
+	err = syncer.Start()
+	if err != nil {
+		fatal(err)
+	}
 	srv := &http.Server{
 		ReadTimeout:  time.Duration(readTimeout) * time.Second,
 		WriteTimeout: time.Duration(writeTimeout) * time.Second,
 		Addr:         listen,
 		Handler:      handler,
 	}
+	shutdown.Register(syncer)
 	shutdown.Register(&logTracker)
 	shutdown.Register(srv)
 	shutdownChan := make(chan bool)
