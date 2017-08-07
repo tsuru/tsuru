@@ -102,7 +102,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", err
 	}
 	defer client.RemoveImage(intermediateImageID)
-	cmds := dockercommon.ArchiveDeployCmds(app, fileURI)
+	cmds := dockercommon.ArchiveBuildCmds(app, fileURI)
 	imageID, err := b.buildPipeline(p, client, app, intermediateImageID, cmds, evt)
 	if err != nil {
 		return "", err

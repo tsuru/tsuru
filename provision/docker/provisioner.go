@@ -392,7 +392,8 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 		}
 		return buildImageID, nil
 	}
-	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
+	cmds := dockercommon.DeployCmds(app)
+	imageID, err := p.deployPipeline(app, buildImageID, cmds, evt)
 	if err != nil {
 		return "", err
 	}

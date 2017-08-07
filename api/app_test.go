@@ -5336,10 +5336,35 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("x-Agent-Version", "0.2.4")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "unit \"invalid-unit-host\" not found\n")
+}
+
+func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
+	a := app.App{
+		Name:     "myappx",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("hostname=invalid-unit-host")
+	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUpgradeRequired)
+	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
 }
 
 func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
