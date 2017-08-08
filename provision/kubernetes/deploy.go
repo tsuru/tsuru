@@ -83,7 +83,10 @@ type buildPodParams struct {
 }
 
 func createBuildPod(params buildPodParams) error {
-	baseName := deployPodNameForApp(params.app)
+	baseName, err := deployPodNameForApp(params.app)
+	if err != nil {
+		return err
+	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: params.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -520,7 +523,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 }
 
 func procfileInspectPod(client *clusterClient, a provision.App, image string) (string, error) {
-	deployPodName := deployPodNameForApp(a)
+	deployPodName, err := deployPodNameForApp(a)
+	if err != nil {
+		return "", err
+	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -558,7 +564,10 @@ type dockerImageSpec struct {
 }
 
 func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage string) (*dockerImageSpec, error) {
-	deployPodName := deployPodNameForApp(a)
+	deployPodName, err := deployPodNameForApp(a)
+	if err != nil {
+		return nil, err
+	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
