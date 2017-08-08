@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -23,7 +24,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	conn   *db.Storage
 	user   *auth.User
-	team   *auth.Team
+	team   *authTypes.Team
 	server *authtest.SMTPServer
 	token  auth.Token
 }
@@ -53,8 +54,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "cobrateam"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "cobrateam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

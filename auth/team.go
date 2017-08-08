@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -40,13 +41,7 @@ func (e *ErrTeamStillUsed) Error() string {
 	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
 }
 
-// Team represents a real world team, a team has one creating user and a name.
-type Team struct {
-	Name         string `bson:"_id" json:"name"`
-	CreatingUser string
-}
-
-func (t *Team) validate() error {
+func validateTeam(t authTypes.Team) error {
 	if !validation.ValidateName(t.Name) {
 		return ErrInvalidTeamName
 	}
@@ -59,14 +54,14 @@ func CreateTeam(name string, user *User) error {
 		return errors.New("user cannot be null")
 	}
 	name = strings.TrimSpace(name)
-	team := Team{
+	team := authTypes.Team{
 		Name:         name,
 		CreatingUser: user.Email,
 	}
-	if err := team.validate(); err != nil {
+	if err := validateTeam(team); err != nil {
 		return err
 	}
-	err := storage.TeamRepository.Insert(storage.Team(team))
+	err := storage.TeamRepository.Insert(team)
 	if err != nil {
 		return err
 	}
@@ -78,16 +73,12 @@ func CreateTeam(name string, user *User) error {
 }
 
 // GetTeam find a team by name.
-func GetTeam(name string) (*Team, error) {
-	t, err := storage.TeamRepository.FindByName(name)
-	if t == nil {
-		return nil, err
-	}
-	return &Team{Name: t.Name, CreatingUser: t.CreatingUser}, err
+func GetTeam(name string) (*authTypes.Team, error) {
+	return storage.TeamRepository.FindByName(name)
 }
 
-// GetTeamsNames find teams by a list of team names.
-func GetTeamsNames(teams []Team) []string {
+// GetTeamsNames maps teams to a list of team names.
+func GetTeamsNames(teams []authTypes.Team) []string {
 	tn := make([]string, len(teams))
 	for i, t := range teams {
 		tn[i] = t.Name
@@ -117,22 +108,13 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	err = storage.TeamRepository.Delete(storage.Team{Name: teamName})
+	err = storage.TeamRepository.Delete(authTypes.Team{Name: teamName})
 	if err == storage.ErrTeamNotFound {
 		return ErrTeamNotFound
 	}
 	return nil
 }
 
-func ListTeams() ([]Team, error) {
-	t, err := storage.TeamRepository.FindAll()
-	if err != nil {
-		return nil, err
-	}
-	teams := make([]Team, len(t))
-	for i, team := range t {
-		teams[i].Name = team.Name
-		teams[i].CreatingUser = team.CreatingUser
-	}
-	return teams, nil
+func ListTeams() ([]authTypes.Team, error) {
+	return storage.TeamRepository.FindAll()
 }

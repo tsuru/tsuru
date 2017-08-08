@@ -36,14 +36,15 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type AuthSuite struct {
-	team       *auth.Team
-	team2      *auth.Team
+	team       *authTypes.Team
+	team2      *authTypes.Team
 	user       *auth.User
 	token      auth.Token
 	server     *authtest.SMTPServer
@@ -103,11 +104,11 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	var err error
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam"}
-	s.team2 = &auth.Team{Name: "tsuruteam2"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	s.team2 = &authTypes.Team{Name: "tsuruteam2"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team(*s.team2))
+	err = storage.TeamRepository.Insert(*s.team2)
 	c.Assert(err, check.IsNil)
 }
 
@@ -414,7 +415,7 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
-	team := storage.Team{Name: "timeredbull"}
+	team := authTypes.Team{Name: "timeredbull"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("name=" + team.Name)
@@ -429,7 +430,7 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {
-	team := storage.Team{Name: "painofsalvation"}
+	team := authTypes.Team{Name: "painofsalvation"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
@@ -451,7 +452,7 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
-	team := storage.Team{Name: "thegathering"}
+	team := authTypes.Team{Name: "thegathering"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s", team.Name), nil)
@@ -489,7 +490,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 		Scheme:  permission.PermTeamDelete,
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
-	team := storage.Team{Name: "painofsalvation"}
+	team := authTypes.Team{Name: "painofsalvation"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
@@ -504,7 +505,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) {
-	team := storage.Team{Name: "evergrey"}
+	team := authTypes.Team{Name: "evergrey"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
@@ -525,7 +526,7 @@ Apps: i-should`
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
-	team := storage.Team{Name: "evergrey"}
+	team := authTypes.Team{Name: "evergrey"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}

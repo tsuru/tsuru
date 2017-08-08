@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 )
@@ -60,7 +61,7 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := provision.AddPool(provision.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team{Name: "otherteam"})
+	err = storage.TeamRepository.Insert(auth.Team{Name: "otherteam"})
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Save()

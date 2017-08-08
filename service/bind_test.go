@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -32,7 +33,7 @@ import (
 type BindSuite struct {
 	conn *db.Storage
 	user auth.User
-	team auth.Team
+	team authTypes.Team
 }
 
 var _ = check.Suite(&BindSuite{})
@@ -59,8 +60,8 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = auth.Team{Name: "metallica"}
-	err = storage.TeamRepository.Insert(storage.Team(s.team))
+	s.team = authTypes.Team{Name: "metallica"}
+	err = storage.TeamRepository.Insert(s.team)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)

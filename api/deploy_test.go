@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -44,7 +45,7 @@ type DeploySuite struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
 	token       auth.Token
-	team        *auth.Team
+	team        *authTypes.Team
 	provisioner *provisiontest.FakeProvisioner
 	builder     *fake.FakeBuilder
 	testServer  http.Handler
@@ -57,8 +58,8 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -67,6 +68,13 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
+}
+
+func (s *DeploySuite) reset() {
+	s.provisioner.Reset()
+	s.builder.Reset()
+	routertest.FakeRouter.Reset()
+	repositorytest.Reset()
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
@@ -93,16 +101,14 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 	s.logConn.Logs("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
+	s.reset()
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	builder.DefaultBuilder = "fake"
-	s.provisioner.Reset()
-	s.builder.Reset()
-	routertest.FakeRouter.Reset()
-	repositorytest.Reset()
+	s.reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
@@ -732,7 +738,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := storage.Team{Name: "newteam"}
+	team := authTypes.Team{Name: "newteam"}
 	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
@@ -944,7 +950,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := storage.Team{Name: "team"}
+	team := authTypes.Team{Name: "team"}
 	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
@@ -982,7 +988,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := storage.Team{Name: "team"}
+	team := authTypes.Team{Name: "team"}
 	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}

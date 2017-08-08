@@ -8,15 +8,16 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetTeamsNames(c *check.C) {
-	team := Team{Name: "cheese"}
-	team2 := Team{Name: "eggs"}
-	teamNames := GetTeamsNames([]Team{team, team2})
+	team := authTypes.Team{Name: "cheese"}
+	team2 := authTypes.Team{Name: "eggs"}
+	teamNames := GetTeamsNames([]authTypes.Team{team, team2})
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
 }
 
@@ -75,8 +76,8 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 }
 
 func (s *S) TestGetTeam(c *check.C) {
-	team := Team{Name: "symfonia"}
-	err := storage.TeamRepository.Insert(storage.Team(team))
+	team := authTypes.Team{Name: "symfonia"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)
@@ -87,7 +88,7 @@ func (s *S) TestGetTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeam(c *check.C) {
-	team := storage.Team{Name: "atreides"}
+	team := authTypes.Team{Name: "atreides"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
@@ -98,7 +99,7 @@ func (s *S) TestRemoveTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithApps(c *check.C) {
-	team := storage.Team{Name: "atreides"}
+	team := authTypes.Team{Name: "atreides"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
@@ -108,7 +109,7 @@ func (s *S) TestRemoveTeamWithApps(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
-	team := storage.Team{Name: "harkonnen"}
+	team := authTypes.Team{Name: "harkonnen"}
 	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
@@ -118,9 +119,9 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 }
 
 func (s *S) TestListTeams(c *check.C) {
-	err := storage.TeamRepository.Insert(storage.Team{Name: "corrino"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team{Name: "fenring"})
+	err = storage.TeamRepository.Insert(authTypes.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := ListTeams()
 	c.Assert(err, check.IsNil)

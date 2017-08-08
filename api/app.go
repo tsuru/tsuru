@@ -698,7 +698,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = a.Grant(&auth.Team{Name: team.Name, CreatingUser: team.CreatingUser})
+	err = a.Grant(team)
 	if err == app.ErrAlreadyHaveAccess {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -746,7 +746,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = a.Revoke(&auth.Team{Name: team.Name, CreatingUser: team.CreatingUser})
+	err = a.Revoke(team)
 	switch err {
 	case app.ErrNoAccess:
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

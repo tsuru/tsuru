@@ -12,13 +12,14 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
 	conn    *db.Storage
 	service *Service
-	team    *auth.Team
+	team    *authTypes.Team
 	user    *auth.User
 }
 
@@ -34,7 +35,7 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	if len(params) != 2 {
 		return false, "you must provide two parameters"
 	}
-	team, ok := params[0].(auth.Team)
+	team, ok := params[0].(authTypes.Team)
 	if !ok {
 		return false, "first parameter should be a team instance"
 	}
@@ -65,8 +66,8 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
-	s.team = &auth.Team{Name: "Raul"}
-	err := storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "Raul"}
+	err := storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
 }

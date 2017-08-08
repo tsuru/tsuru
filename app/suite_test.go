@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
-	_ "github.com/tsuru/tsuru/builder/fake"
+	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -36,7 +37,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
-	team        auth.Team
+	team        authTypes.Team
 	user        *auth.User
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
@@ -80,8 +81,8 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team(s.team))
+	s.team = authTypes.Team{Name: "tsuruteam"}
+	err = storage.TeamRepository.Insert(s.team)
 	c.Assert(err, check.IsNil)
 }
 
@@ -103,6 +104,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner = provisiontest.ProvisionerInstance
 	builder.DefaultBuilder = "fake"
+	builder.Register("fake", fake.NewFakeBuilder())
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
 	data, err := json.Marshal(AppLock{})

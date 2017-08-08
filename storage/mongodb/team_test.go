@@ -8,13 +8,14 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 var Repo = &TeamRepository{}
 
 func (s *S) TestInsert(c *check.C) {
-	t := storage.Team{Name: "teamname", CreatingUser: "me@example.com"}
+	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com"}
 	err := Repo.Insert(t)
 	c.Assert(err, check.IsNil)
 	team, err := Repo.FindByName(t.Name)
@@ -24,7 +25,7 @@ func (s *S) TestInsert(c *check.C) {
 }
 
 func (s *S) TestInsertDuplicateTeam(c *check.C) {
-	t := storage.Team{Name: "teamname", CreatingUser: "me@example.com"}
+	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com"}
 	err := Repo.Insert(t)
 	c.Assert(err, check.IsNil)
 	err = Repo.Insert(t)
@@ -32,9 +33,9 @@ func (s *S) TestInsertDuplicateTeam(c *check.C) {
 }
 
 func (s *S) TestFindAll(c *check.C) {
-	err := storage.TeamRepository.Insert(storage.Team{Name: "corrino"})
+	err := storage.TeamRepository.Insert(auth.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team{Name: "fenring"})
+	err = storage.TeamRepository.Insert(auth.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := Repo.FindAll()
 	c.Assert(err, check.IsNil)
@@ -45,7 +46,7 @@ func (s *S) TestFindAll(c *check.C) {
 }
 
 func (s *S) TestFindByName(c *check.C) {
-	t := storage.Team{Name: "myteam"}
+	t := auth.Team{Name: "myteam"}
 	err := Repo.Insert(t)
 	c.Assert(err, check.IsNil)
 	team, err := Repo.FindByName(t.Name)
@@ -60,22 +61,22 @@ func (s *S) TestFindByNameNotFound(c *check.C) {
 }
 
 func (s *S) TestFindByNames(c *check.C) {
-	t1 := storage.Team{Name: "team1"}
+	t1 := auth.Team{Name: "team1"}
 	err := Repo.Insert(t1)
 	c.Assert(err, check.IsNil)
-	t2 := storage.Team{Name: "team2"}
+	t2 := auth.Team{Name: "team2"}
 	err = Repo.Insert(t2)
 	c.Assert(err, check.IsNil)
-	t3 := storage.Team{Name: "team3"}
+	t3 := auth.Team{Name: "team3"}
 	err = Repo.Insert(t3)
 	c.Assert(err, check.IsNil)
 	teams, err := Repo.FindByNames([]string{t1.Name, t2.Name, "unknown"})
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []storage.Team{t1, t2})
+	c.Assert(teams, check.DeepEquals, []auth.Team{t1, t2})
 }
 
 func (s *S) TestFindByNamesNotFound(c *check.C) {
-	t1 := storage.Team{Name: "team1"}
+	t1 := auth.Team{Name: "team1"}
 	err := Repo.Insert(t1)
 	c.Assert(err, check.IsNil)
 	teams, err := Repo.FindByNames([]string{"unknown", "otherteam"})
@@ -84,7 +85,7 @@ func (s *S) TestFindByNamesNotFound(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
-	team := storage.Team{Name: "atreides"}
+	team := auth.Team{Name: "atreides"}
 	err := Repo.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = Repo.Delete(team)
@@ -95,6 +96,6 @@ func (s *S) TestDelete(c *check.C) {
 }
 
 func (s *S) TestDeleteTeamNotFound(c *check.C) {
-	err := Repo.Delete(storage.Team{Name: "myteam"})
+	err := Repo.Delete(auth.Team{Name: "myteam"})
 	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
 }

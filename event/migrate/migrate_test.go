@@ -21,6 +21,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -29,7 +30,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	user *auth.User
-	team *auth.Team
+	team *authTypes.Team
 }
 
 var _ = check.Suite(&S{})
@@ -51,8 +52,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "me@me.com", Password: "123456"}
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "angra"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "angra"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	provision.DefaultProvisioner = "fake"
 	provisiontest.ProvisionerInstance.Reset()

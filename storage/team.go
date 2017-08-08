@@ -4,7 +4,11 @@
 
 package storage
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/tsuru/tsuru/types/auth"
+)
 
 var (
 	TeamRepository       TeamRepo
@@ -12,15 +16,10 @@ var (
 	ErrTeamNotFound      = errors.New("team not found")
 )
 
-type Team struct {
-	Name         string `bson:"_id" json:"name"`
-	CreatingUser string
-}
-
 type TeamRepo interface {
-	Insert(Team) error
-	FindAll() ([]Team, error)
-	FindByName(string) (*Team, error)
-	FindByNames([]string) ([]Team, error)
-	Delete(Team) error
+	Insert(auth.Team) error
+	FindAll() ([]auth.Team, error)
+	FindByName(string) (*auth.Team, error)
+	FindByNames([]string) ([]auth.Team, error)
+	Delete(auth.Team) error
 }

@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 )
@@ -45,7 +46,7 @@ type HandlersSuite struct {
 	conn        *db.Storage
 	user        *auth.User
 	token       auth.Token
-	team        *auth.Team
+	team        *authTypes.Team
 	clusterSess *mgo.Session
 	p           *dockerProvisioner
 	server      *dtesting.DockerServer
@@ -77,8 +78,8 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	s.clusterSess, err = mgo.Dial(clusterDbURL)
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
-	s.team = &auth.Team{Name: "admin"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "admin"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

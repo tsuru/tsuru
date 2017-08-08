@@ -10,9 +10,9 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )

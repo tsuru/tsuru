@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -35,7 +36,7 @@ type EventSuite struct {
 	conn    *db.Storage
 	logConn *db.LogStorage
 	token   auth.Token
-	team    *auth.Team
+	team    *authTypes.Team
 	user    *auth.User
 }
 
@@ -46,10 +47,10 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(storage.Team(*s.team))
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(storage.Team{Name: "other-team"})
+	err = storage.TeamRepository.Insert(authTypes.Team{Name: "other-team"})
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermApp,

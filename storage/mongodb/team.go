@@ -8,11 +8,17 @@ import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/types/auth"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type TeamRepository struct{}
+
+type team struct {
+	Name         string `bson:"_id"`
+	CreatingUser string
+}
 
 func init() {
 	storage.TeamRepository = &TeamRepository{}
@@ -22,65 +28,80 @@ func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (t *TeamRepository) Insert(team storage.Team) error {
+func (r *TeamRepository) Insert(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = teamsCollection(conn).Insert(team)
+	err = teamsCollection(conn).Insert(team(t))
 	if mgo.IsDup(err) {
 		return storage.ErrTeamAlreadyExists
 	}
 	return err
 }
 
-func (t *TeamRepository) FindAll() ([]storage.Team, error) {
+func (r *TeamRepository) FindAll() ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var teams []storage.Team
+	var teams []team
 	err = teamsCollection(conn).Find(nil).All(&teams)
-	return teams, err
+	if err != nil {
+		return nil, err
+	}
+	authTeams := make([]auth.Team, len(teams))
+	for i, t := range teams {
+		authTeams[i] = auth.Team(t)
+	}
+	return authTeams, nil
 }
 
-func (t *TeamRepository) FindByName(name string) (*storage.Team, error) {
-	var team storage.Team
+func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
+	var t team
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = teamsCollection(conn).FindId(name).One(&team)
+	err = teamsCollection(conn).FindId(name).One(&t)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			err = storage.ErrTeamNotFound
 		}
 		return nil, err
 	}
+	team := auth.Team(t)
 	return &team, nil
 }
 
-func (t *TeamRepository) FindByNames(names []string) ([]storage.Team, error) {
+func (r *TeamRepository) FindByNames(names []string) ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var teams []storage.Team
+	var teams []team
 	err = teamsCollection(conn).Find(bson.M{"_id": bson.M{"$in": names}}).All(&teams)
-	return teams, err
+	if err != nil {
+		return nil, err
+	}
+	authTeams := make([]auth.Team, len(teams))
+	for i, t := range teams {
+		authTeams[i] = auth.Team(t)
+	}
+	return authTeams, nil
 }
 
-func (t *TeamRepository) Delete(team storage.Team) error {
+func (r *TeamRepository) Delete(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = teamsCollection(conn).RemoveId(team.Name)
+	err = teamsCollection(conn).RemoveId(t.Name)
 	if err == mgo.ErrNotFound {
 		return storage.ErrTeamNotFound
 	}
