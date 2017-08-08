@@ -199,8 +199,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 }
 
 func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	log.Debugf("Calling bind of instance %q and %q unit at %q API",
-		instance.Name, unit.GetIp(), instance.ServiceName)
+	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
 	var resp *http.Response
 	params := map[string][]string{
 		"app-host":  {app.GetIp()},
