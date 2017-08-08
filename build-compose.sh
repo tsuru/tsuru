@@ -19,7 +19,7 @@ then
 fi
 
 
-BUILD_IMAGE='tsuru/golang:1.8-alpine'
+BUILD_IMAGE='tsuru/alpine-go:latest'
 
 LOCAL_PKG=${GOPATH}'/pkg/linux_amd64'
 CONTAINER_PKG='/go/pkg/linux_amd64'
@@ -28,6 +28,6 @@ BUILD_CMD="go build -i -v --ldflags '-linkmode external -extldflags \"-static\"'
 
 set -x
 
-docker run --rm -v ${LOCAL_PKG}:${CONTAINER_PKG} -v ${PWD}:${CONTAINER_PROJECT_PATH} -w ${CONTAINER_PROJECT_PATH} -e CC=/usr/bin/gcc ${BUILD_IMAGE} sh -c "${BUILD_CMD}"
+docker run --rm -v ${LOCAL_PKG}:${CONTAINER_PKG} -v ${PWD}:${CONTAINER_PROJECT_PATH} -w ${CONTAINER_PROJECT_PATH} -e CC=/usr/bin/gcc -e GOPATH=/go ${BUILD_IMAGE} sh -c "${BUILD_CMD}"
 docker-compose -f ${1:-"docker-compose.yml"} build api
 docker-compose -f ${1:-"docker-compose.yml"} up -d
