@@ -306,6 +306,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool2"}}
 	storage, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer storage.Close()
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
 		provision.AddPool(opts)
