@@ -46,25 +46,6 @@ type Team struct {
 	CreatingUser string
 }
 
-// AllowedApps returns the apps that the team has access.
-func (t *Team) AllowedApps() ([]string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	allowedApps := []map[string]string{}
-	query := conn.Apps().Find(bson.M{"teams": t.Name})
-	if err := query.Select(bson.M{"name": 1}).All(&allowedApps); err != nil {
-		return nil, err
-	}
-	appNames := make([]string, len(allowedApps))
-	for i, app := range allowedApps {
-		appNames[i] = app["name"]
-	}
-	return appNames, nil
-}
-
 func (t *Team) validate() error {
 	if !validation.ValidateName(t.Name) {
 		return ErrInvalidTeamName

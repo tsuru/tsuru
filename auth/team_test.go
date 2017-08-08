@@ -20,21 +20,6 @@ func (s *S) TestGetTeamsNames(c *check.C) {
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
 }
 
-func (s *S) TestTeamAllowedApps(c *check.C) {
-	team := Team{Name: "teamname"}
-	err := storage.TeamRepository.Insert(storage.Team(team))
-	c.Assert(err, check.IsNil)
-	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	a2 := testApp{Name: "otherapp", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(&a2)
-	c.Assert(err, check.IsNil)
-	alwdApps, err := team.AllowedApps()
-	c.Assert(err, check.IsNil)
-	c.Assert(alwdApps, check.DeepEquals, []string{a2.Name})
-}
-
 func (s *S) TestCreateTeam(c *check.C) {
 	one := User{Email: "king@pos.com"}
 	err := CreateTeam("pos", &one)
