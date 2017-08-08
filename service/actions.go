@@ -238,7 +238,7 @@ var bindUnitsAction = &action.Action{
 				defer wg.Done()
 				unit := units[i]
 				err := si.BindUnit(args.app, unit)
-				if err == nil || err == ErrUnitAlreadyBound {
+				if err == nil {
 					unboundCh <- unit
 				} else {
 					errCh <- err

@@ -29,7 +29,6 @@ var (
 	ErrTeamMandatory             = errors.New("please specify the team that owns the service instance")
 	ErrAppAlreadyBound           = errors.New("app is already bound to this service instance")
 	ErrAppNotBound               = errors.New("app is not bound to this service instance")
-	ErrUnitAlreadyBound          = errors.New("unit is already bound to this service instance")
 	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
 )
@@ -215,7 +214,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "bound_units.id": bson.M{"$ne": unit.GetID()}}, updateOp)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return ErrUnitAlreadyBound
+			return nil
 		}
 		return err
 	}
