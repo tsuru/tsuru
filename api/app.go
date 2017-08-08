@@ -1207,6 +1207,13 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	err = a.ValidateService(serviceName)
+	if err != nil {
+		if err == provision.ErrPoolHasNoService {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateBind,

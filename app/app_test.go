@@ -3740,6 +3740,53 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestValidateAppService(c *check.C) {
+	app := App{Name: "fyrone-flats", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	serv := service.Service{
+		Name:     "healthcheck",
+		Password: "nidalee",
+		Endpoint: map[string]string{"production": "somehost.com"},
+	}
+	err = serv.Create()
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService("invalidService")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "service \"invalidService\" is not available for pool \"pool1\". Available services are: \"healthcheck\"")
+}
+
+func (s *S) TestValidateBlacklistedAppService(c *check.C) {
+	app := App{Name: "urgot", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	serv := service.Service{
+		Name:     "healthcheck",
+		Password: "nidalee",
+		Endpoint: map[string]string{"production": "somehost.com"},
+	}
+	err = serv.Create()
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.IsNil)
+	poolConstraint := provision.PoolConstraint{PoolExpr: s.Pool, Field: "service", Values: []string{serv.Name}, Blacklist: true}
+	err = provision.SetPoolConstraint(&poolConstraint)
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, provision.ErrPoolHasNoService)
+	opts := provision.AddPoolOptions{Name: "poolz"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app2 := App{Name: "nidalee", Platform: "python", TeamOwner: s.team.Name, Pool: "poolz"}
+	err = CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = app2.ValidateService(serv.Name)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)

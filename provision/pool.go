@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -29,9 +30,10 @@ var (
 	ErrPoolAlreadyExists              = errors.New("Pool already exists.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
+	ErrPoolHasNoService               = errors.New("no service found for pool")
 
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", strings.Join(validConstraintTypes, ","))
-	validConstraintTypes     = []string{"team", "router"}
+	validConstraintTypes     = []string{"team", "router", "service"}
 )
 
 type Pool struct {
@@ -74,6 +76,17 @@ func (p *Pool) GetTeams() ([]string, error) {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoTeam
+}
+
+func (p *Pool) GetServices() ([]string, error) {
+	allowedValues, err := p.allowedValues()
+	if err != nil {
+		return nil, err
+	}
+	if c := allowedValues["service"]; len(c) > 0 {
+		return c, nil
+	}
+	return nil, ErrPoolHasNoService
 }
 
 func (p *Pool) GetRouters() ([]string, error) {
@@ -128,11 +141,16 @@ func (p *Pool) allowedValues() (map[string][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	resolved := map[string][]string{
-		"router": routers,
-		"team":   teams,
+	services, err := servicesNames()
+	if err != nil {
+		return nil, err
 	}
-	constraints, err := getConstraintsForPool(p.Name, "team", "router")
+	resolved := map[string][]string{
+		"router":  routers,
+		"service": services,
+		"team":    teams,
+	}
+	constraints, err := getConstraintsForPool(p.Name, "team", "router", "service")
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +161,8 @@ func (p *Pool) allowedValues() (map[string][]string, error) {
 			names = teams
 		case "router":
 			names = routers
+		case "service":
+			names = services
 		}
 		var validNames []string
 		for _, n := range names {
@@ -153,6 +173,18 @@ func (p *Pool) allowedValues() (map[string][]string, error) {
 		resolved[k] = validNames
 	}
 	return resolved, nil
+}
+
+func servicesNames() ([]string, error) {
+	services, err := service.GetServicesByFilter(nil)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, r := range services {
+		names = append(names, r.Name)
+	}
+	return names, nil
 }
 
 func routersNames() ([]string, error) {
@@ -520,13 +552,7 @@ func SetPoolConstraint(c *PoolConstraint) error {
 		return err
 	}
 	defer conn.Close()
-	isValid := false
-	for _, v := range validConstraintTypes {
-		if c.Field == v {
-			isValid = true
-			break
-		}
-	}
+	isValid := validateConstraintType(c.Field)
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
@@ -543,6 +569,15 @@ func SetPoolConstraint(c *PoolConstraint) error {
 
 func AppendPoolConstraint(c *PoolConstraint) error {
 	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
+}
+
+func validateConstraintType(c string) bool {
+	for _, v := range validConstraintTypes {
+		if c == v {
+			return true
+		}
+	}
+	return false
 }
 
 func appendPoolConstraint(poolExpr string, field string, values ...string) error {
