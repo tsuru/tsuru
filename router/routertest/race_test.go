@@ -32,7 +32,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveRoute(name, addr)
+			fake.RemoveRoutes(name, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {
