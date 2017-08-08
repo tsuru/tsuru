@@ -37,13 +37,15 @@ func (s *S) TestDeployPodNameForApp(c *check.C) {
 	var tests = []struct {
 		name, expected string
 	}{
-		{"myapp", "myapp-deploy"},
-		{"MYAPP", "myapp-deploy"},
-		{"my-app_app", "my-app-app-deploy"},
+		{"myapp", "myapp-v1-deploy"},
+		{"MYAPP", "myapp-v1-deploy"},
+		{"my-app_app", "my-app-app-v1-deploy"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(deployPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		name, err := deployPodNameForApp(a)
+		c.Assert(err, check.IsNil)
+		c.Assert(name, check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 

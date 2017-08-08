@@ -334,7 +334,8 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		destinationImage: "destimg",
 	})
 	c.Assert(err, check.IsNil)
-	podID := deployPodNameForApp(a)
+	podID, err := deployPodNameForApp(a)
+	c.Assert(err, check.IsNil)
 	err = s.p.RegisterUnit(a, podID, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "w1",

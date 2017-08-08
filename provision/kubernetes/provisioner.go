@@ -661,11 +661,14 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if build {
 		return "", errors.New("running UploadDeploy with build=true is not yet supported")
 	}
-	deployPodName := deployPodNameForApp(a)
 	baseImage := image.GetBuildImage(a)
 	buildingImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
 		return "", errors.WithStack(err)
+	}
+	deployPodName, err := deployPodNameForApp(a)
+	if err != nil {
+		return "", err
 	}
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -38,9 +39,13 @@ func deploymentNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-%s", name, process)
 }
 
-func deployPodNameForApp(a provision.App) string {
+func deployPodNameForApp(a provision.App) (string, error) {
+	version, err := image.AppCurrentImageVersion(a.GetName())
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to retrieve app current image version")
+	}
 	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
-	return fmt.Sprintf("%s-deploy", name)
+	return fmt.Sprintf("%s-%s-deploy", name, version), nil
 }
 
 func execCommandPodNameForApp(a provision.App) string {

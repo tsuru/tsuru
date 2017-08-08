@@ -99,6 +99,22 @@ func (s *S) TestAppCurrentImageName(c *check.C) {
 	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
 }
 
+func (s *S) TestAppCurrentImageVersion(c *check.C) {
+	img1, err := image.AppCurrentImageVersion("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(img1, check.Equals, "v1")
+	_, err = image.AppNewImageName("myapp")
+	c.Assert(err, check.IsNil)
+	img1, err = image.AppCurrentImageVersion("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(img1, check.Equals, "v1")
+	_, err = image.AppNewImageName("myapp")
+	c.Assert(err, check.IsNil)
+	img2, err := image.AppCurrentImageVersion("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(img2, check.Equals, "v2")
+}
+
 func (s *S) TestListAppImages(c *check.C) {
 	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
