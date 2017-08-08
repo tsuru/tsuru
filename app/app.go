@@ -1722,7 +1722,21 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 	if err != nil {
 		return err
 	}
-	return prov.RegisterUnit(app, unitId, customData)
+	err = prov.RegisterUnit(app, unitId, customData)
+	if err != nil {
+		return err
+	}
+	units, err := prov.Units(app)
+	if err != nil {
+		return err
+	}
+	for i := range units {
+		if units[i].GetID() == unitId {
+			err = app.BindUnit(&units[i])
+			break
+		}
+	}
+	return err
 }
 
 func (app *App) GetRouterName() (string, error) {
