@@ -210,7 +210,7 @@ func extraRegisterCmds(a provision.App) string {
 		host += "/"
 	}
 	token := a.Envs()["TSURU_APP_TOKEN"].Value
-	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, a.GetName())
+	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
 }
 
 func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, error) {

@@ -113,7 +113,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -fsSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register && exec cm1",
+								"[ -d /home/application/current ] && cd /home/application/current; curl -fsSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
 							},
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_SERVICES", Value: "{}"},
