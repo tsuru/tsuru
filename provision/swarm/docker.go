@@ -297,7 +297,7 @@ func extraRegisterCmds(app provision.App) string {
 		host += "/"
 	}
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
-	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, app.GetName())
+	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, app.GetName())
 }
 
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
