@@ -3669,6 +3669,56 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, customData)
 }
 
+func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
+	var requests []*http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r)
+	}))
+	defer server.Close()
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota:     quota.Unlimited,
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	srvc := service.Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": server.URL},
+		Password: "abcde",
+	}
+	err = srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer srvc.Delete()
+	si1 := service.ServiceInstance{
+		Name:        "mydb",
+		ServiceName: "mysql",
+		Apps:        []string{app.Name},
+	}
+	err = si1.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si1.Name})
+	si2 := service.ServiceInstance{
+		Name:        "yourdb",
+		ServiceName: "mysql",
+		Apps:        []string{app.Name},
+	}
+	err = si2.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
+	s.provisioner.AddUnits(&app, 1, "web", nil)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{"x": "y"}
+	err = app.RegisterUnit(units[0].GetID(), customData)
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 2)
+	c.Assert(requests[0].Method, check.Equals, "POST")
+	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
+	c.Assert(requests[1].Method, check.Equals, "POST")
+	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
+}
+
 func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
