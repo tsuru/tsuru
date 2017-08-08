@@ -382,10 +382,6 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if len(units) == 0 {
 		return errors.Errorf("unable to convert pod to unit: %#v", pod)
 	}
-	err = a.BindUnit(&units[0])
-	if err != nil {
-		return errors.WithStack(err)
-	}
 	if customData == nil {
 		return nil
 	}

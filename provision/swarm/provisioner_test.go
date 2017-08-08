@@ -1119,13 +1119,6 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(tasks, check.HasLen, 1)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
 	err = s.p.RegisterUnit(a, tasks[0].Status.ContainerStatus.ContainerID, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -1135,8 +1128,6 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	data, err := image.GetImageCustomData("app:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data.Processes, check.DeepEquals, map[string][]string{"web": {"python myapp.py"}})
-	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=127.0.0.1")
 }
 
 func (s *S) TestRegisterUnitNotBuild(c *check.C) {
@@ -1177,13 +1168,6 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	conts, err := cli.ListContainers(docker.ListContainersOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
 	err = s.p.RegisterUnit(a, conts[0].ID, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -1193,8 +1177,6 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	data, err := image.GetImageCustomData("notset:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, image.ImageMetadata{})
-	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=127.0.0.1")
 }
 
 func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
@@ -1302,72 +1284,6 @@ func (s *S) TestDeploy(c *check.C) {
 			extraRegisterCmds(a),
 		),
 	})
-}
-
-func (s *S) TestDeployServiceBind(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	attached := s.attachRegister(c, srv, true, a)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: "http://server/myfile.tgz",
-	}
-	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1-builder")
-	pullOpts := docker.PullImageOptions{
-		Repository: "tsuru/app-myapp",
-		Tag:        "v1-builder",
-	}
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
-	c.Assert(err, check.IsNil)
-	imgID, err := s.p.Deploy(a, builderImgID, evt)
-	c.Assert(err, check.IsNil)
-	c.Assert(<-attached, check.Equals, true)
-	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
-	dbImg, err := image.AppCurrentImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", IP: "127.0.0.1", Status: "starting", Address: &url.URL{}},
-	})
-	task, err := cli.InspectTask(units[0].ID)
-	c.Assert(err, check.IsNil)
-	c.Assert(task.Spec.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh",
-		"-lc",
-		fmt.Sprintf(
-			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
-			extraRegisterCmds(a),
-		),
-	})
-	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
 }
 
 func (s *S) TestDeployImageID(c *check.C) {
