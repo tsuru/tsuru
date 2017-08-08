@@ -18,6 +18,16 @@ then
   fi
 fi
 
-docker run --rm -v "$PWD":/go/src/github.com/tsuru/tsuru -w /go/src/github.com/tsuru/tsuru golang:1.8-alpine sh -c 'CGO_ENABLED=0 go build -o build/tsurud ./cmd/tsurud'
-docker-compose build api
-docker-compose up -d
+
+BUILD_IMAGE='tsuru/alpine-go:latest'
+
+LOCAL_PKG=${GOPATH}'/pkg/linux_amd64'
+CONTAINER_PKG='/go/pkg/linux_amd64'
+CONTAINER_PROJECT_PATH='/go/src/github.com/tsuru/tsuru'
+BUILD_CMD="go build -i -v --ldflags '-linkmode external -extldflags \"-static\"' -o build/tsurud ./cmd/tsurud"
+
+set -x
+
+docker run --rm -v ${LOCAL_PKG}:${CONTAINER_PKG} -v ${PWD}:${CONTAINER_PROJECT_PATH} -w ${CONTAINER_PROJECT_PATH} -e CC=/usr/bin/gcc -e GOPATH=/go ${BUILD_IMAGE} sh -c "${BUILD_CMD}"
+docker-compose -f ${1:-"docker-compose.yml"} build api
+docker-compose -f ${1:-"docker-compose.yml"} up -d
