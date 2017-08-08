@@ -1029,6 +1029,24 @@ func (app *App) validateRouter(pool *provision.Pool) error {
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
+func (app *App) ValidateService(service string) error {
+	pool, err := provision.GetPoolByName(app.Pool)
+	if err != nil {
+		return err
+	}
+	services, err := pool.GetServices()
+	if err != nil {
+		return err
+	}
+	for _, v := range services {
+		if v == service {
+			return nil
+		}
+	}
+	msg := fmt.Sprintf("service %q is not available for pool %q. Available services are: %q", service, pool.Name, strings.Join(services, ", "))
+	return &tsuruErrors.ValidationError{Message: msg}
+}
+
 // InstanceEnvs returns a map of environment variables that belongs to the
 // given service and service instance.
 func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bind.EnvVar {

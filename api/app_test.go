@@ -4134,6 +4134,74 @@ func (s *S) TestBindHandler(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  s.Pool,
+		Field:     "service",
+		Values:    []string{"mysql"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
+	v := url.Values{}
+	v.Set("noRestart", "false")
+	request, err := http.NewRequest("PUT", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
+}
+
+func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvailable(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  s.Pool,
+		Field:     "service",
+		Values:    []string{"mysql"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	srvc2 := service.Service{Name: "varus", Endpoint: map[string]string{"production": ts.URL}, Password: "varus123"}
+	err = srvc2.Create()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
+	v := url.Values{}
+	v.Set("noRestart", "false")
+	request, err := http.NewRequest("PUT", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "service \"mysql\" is not available for pool \"test1\". Available services are: \"varus\"\n")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
+}
+
 func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{}`))

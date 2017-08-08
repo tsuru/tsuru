@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
-	_ "github.com/tsuru/tsuru/storage/mongodb"
+	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -452,6 +452,29 @@ func (s *S) TestSetPoolConstraints(c *check.C) {
 	})
 }
 
+func (s *S) TestSetPoolConstraintsWithServices(c *check.C) {
+	coll := s.storage.PoolsConstraints()
+	err := SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "prod",
+		Field:    "service",
+		Values:   []string{"lux"},
+	})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "dev",
+		Field:    "service",
+		Values:   []string{"demacia"},
+	})
+	c.Assert(err, check.IsNil)
+	var cs []*PoolConstraint
+	err = coll.Find(bson.M{"field": "service"}).All(&cs)
+	c.Assert(err, check.IsNil)
+	c.Assert(cs, check.DeepEquals, []*PoolConstraint{
+		{PoolExpr: "prod", Field: "service", Values: []string{"lux"}},
+		{PoolExpr: "dev", Field: "service", Values: []string{"demacia"}},
+	})
+}
+
 func (s *S) TestSetPoolConstraintsRemoveEmpty(c *check.C) {
 	coll := s.storage.PoolsConstraints()
 	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"planb", "hipache"}})
@@ -537,10 +560,13 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AppendPoolConstraint(&PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"galeb"}})
 	c.Assert(err, check.IsNil)
+	err = AppendPoolConstraint(&PoolConstraint{PoolExpr: "*", Field: "service", Values: []string{"autoscale"}})
+	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
-		"router": {Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, Blacklist: true},
+		"router":  {Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, Blacklist: true},
+		"service": {Field: "service", PoolExpr: "*", Values: []string{"autoscale"}},
 	})
 }
 
@@ -571,6 +597,19 @@ func (s *S) TestGetRouters(c *check.C) {
 	routers, err = pool.GetRouters()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
+}
+
+func (s *S) TestGetServices(c *check.C) {
+	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}}
+	err := serv.Create()
+	c.Assert(err, check.IsNil)
+	err = AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	services, err := pool.GetServices()
+	c.Assert(err, check.IsNil)
+	c.Assert(services, check.DeepEquals, []string{"demacia"})
 }
 
 func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
@@ -668,42 +707,16 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	constraints, err := pool.allowedValues()
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[string][]string{
-		"team":   {"team1"},
-		"router": {"router1", "router2"},
+		"team":    {"team1"},
+		"router":  {"router1", "router2"},
+		"service": nil,
 	})
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.HasLen, 2)
-	sort.Strings(constraints["team"])
-	c.Assert(constraints["team"], check.DeepEquals, []string{
-		"ateam", "pteam", "pubteam", "team1", "test",
-	})
-	sort.Strings(constraints["router"])
-	c.Assert(constraints["router"], check.DeepEquals, []string{
-		"router", "router1", "router2",
-	})
-}
-
-func (s *S) TestRenamePoolTeam(c *check.C) {
-	coll := s.storage.PoolsConstraints()
-	constraints := []PoolConstraint{
-		{PoolExpr: "e1", Field: "router", Values: []string{"t1", "t2"}},
-		{PoolExpr: "e2", Field: "team", Values: []string{"t1", "t2"}},
-		{PoolExpr: "e3", Field: "team", Values: []string{"t2", "t3"}},
-	}
-	for _, constraint := range constraints {
-		err := SetPoolConstraint(&constraint)
-		c.Assert(err, check.IsNil)
-	}
-	err := RenamePoolTeam("t2", "t9000")
-	c.Assert(err, check.IsNil)
-	var cs []PoolConstraint
-	err = coll.Find(nil).Sort("poolexpr").All(&cs)
-	c.Assert(err, check.IsNil)
-	c.Assert(cs, check.DeepEquals, []PoolConstraint{
-		{PoolExpr: "e1", Field: "router", Values: []string{"t1", "t2"}},
-		{PoolExpr: "e2", Field: "team", Values: []string{"t1", "t9000"}},
-		{PoolExpr: "e3", Field: "team", Values: []string{"t3", "t9000"}},
+	c.Assert(constraints, check.DeepEquals, map[string][]string{
+		"team":    {"ateam", "test", "pteam", "pubteam", "team1"},
+		"router":  {"router", "router1", "router2"},
+		"service": nil,
 	})
 }
