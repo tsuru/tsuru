@@ -344,7 +344,7 @@ func AppNewBuilderImageName(appName string) (string, error) {
 	defer coll.Close()
 	var imgs appImages
 	err = coll.FindId(appName).One(&imgs)
-	if err != nil && !strings.Contains(err.Error(), "not found") {
+	if err != nil && err != mgo.ErrNotFound {
 		return "", err
 	}
 	version := imgs.Count + 1
