@@ -7,6 +7,7 @@ package shutdown
 import (
 	"context"
 	"io/ioutil"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -21,11 +22,11 @@ var _ = check.Suite(&S{})
 
 type testShutdown struct {
 	sleep time.Duration
-	calls int
+	calls int32
 }
 
 func (t *testShutdown) Shutdown(ctx context.Context) error {
-	t.calls++
+	atomic.AddInt32(&t.calls, 1)
 	time.Sleep(t.sleep)
 	return nil
 }
@@ -38,7 +39,7 @@ func (s *S) TestRegister(c *check.C) {
 	ts := &testShutdown{}
 	Register(ts)
 	c.Assert(registered, check.HasLen, 1)
-	c.Assert(ts.calls, check.Equals, 0)
+	c.Assert(atomic.LoadInt32(&ts.calls), check.Equals, int32(0))
 }
 
 func (s *S) TestDo(c *check.C) {
@@ -48,8 +49,8 @@ func (s *S) TestDo(c *check.C) {
 	Register(ts2)
 	err := Do(context.Background(), ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	c.Assert(ts.calls, check.Equals, 1)
-	c.Assert(ts2.calls, check.Equals, 1)
+	c.Assert(atomic.LoadInt32(&ts.calls), check.Equals, int32(1))
+	c.Assert(atomic.LoadInt32(&ts2.calls), check.Equals, int32(1))
 }
 
 func (s *S) TestDoTimeout(c *check.C) {
@@ -61,5 +62,5 @@ func (s *S) TestDoTimeout(c *check.C) {
 	err := Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.DeepEquals, context.DeadlineExceeded)
-	c.Assert(ts.calls, check.Equals, 1)
+	c.Assert(atomic.LoadInt32(&ts.calls), check.Equals, int32(1))
 }
