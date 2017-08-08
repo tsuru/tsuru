@@ -6,12 +6,13 @@ package ec2
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -26,13 +27,13 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	srv *ec2test.Server
+	srv      *ec2test.Server
+	proxySrv *httptest.Server
 }
 
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
-	time.Local = time.UTC
 	var err error
 	s.srv, err = ec2test.NewServer()
 	c.Assert(err, check.IsNil)
@@ -58,10 +59,37 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queue_ec2_iaas")
 	queue.ResetQueue()
+	// Fix bug where ec2test server would return invalid time stamp.
+	s.proxySrv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := r.URL
+		parsedUrl, _ := url.Parse(s.srv.URL())
+		u.Host = parsedUrl.Host
+		u.Scheme = "http"
+		req, err := http.NewRequest(r.Method, u.String(), r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		req.Header = r.Header
+		rsp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data, _ := ioutil.ReadAll(rsp.Body)
+		re := regexp.MustCompile(`>(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}).*?<`)
+		data = re.ReplaceAll(data, []byte(`>${1}Z<`))
+		io.Copy(w, bytes.NewReader(data))
+	}))
+}
+
+func (s *S) srvURL() string {
+	return s.proxySrv.URL
 }
 
 func (s *S) TearDownTest(c *check.C) {
 	s.srv.Quit()
+	s.proxySrv.Close()
 }
 
 func (s *S) TestCreateEC2HandlerWithRegion(c *check.C) {
@@ -94,7 +122,7 @@ func (s *S) TestCreateEC2HandlerWithEndpoint(c *check.C) {
 
 func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 	params := map[string]string{
-		"endpoint":            s.srv.URL(),
+		"endpoint":            s.srvURL(),
 		"tags":                "name1:value1,name2:value2",
 		"imageid":             "ami-xxxxxx",
 		"instancetype":        "m1.micro",
@@ -144,7 +172,7 @@ func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 
 func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 	params := map[string]string{
-		"endpoint":      s.srv.URL(),
+		"endpoint":      s.srvURL(),
 		"tags":          "machine1,machine2",
 		"image":         "ami-xxxxxx",
 		"type":          "m1.micro",
@@ -176,7 +204,7 @@ func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 
 func (s *S) TestCreateMachine(c *check.C) {
 	params := map[string]string{
-		"endpoint": s.srv.URL(),
+		"endpoint": s.srvURL(),
 		"tags":     "name1:value1,name2:value2",
 		"image":    "ami-xxxxxx",
 		"type":     "m1.micro",
@@ -219,7 +247,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 			return
 		}
 		buf := bytes.NewBufferString(r.Form.Encode())
-		req, err := http.NewRequest(r.Method, s.srv.URL()+r.RequestURI, buf)
+		req, err := http.NewRequest(r.Method, s.srvURL()+r.RequestURI, buf)
 		c.Assert(err, check.IsNil)
 		for name, values := range r.Header {
 			for _, value := range values {
@@ -256,7 +284,7 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 	ec2iaas := myiaas.(*EC2IaaS)
 	err := ec2iaas.Initialize()
 	c.Assert(err, check.IsNil)
-	handler, err := ec2iaas.createEC2Handler(s.srv.URL())
+	handler, err := ec2iaas.createEC2Handler(s.srvURL())
 	c.Assert(err, check.IsNil)
 	options := ec2.RunInstancesInput{
 		ImageId:      aws.String("ami-xxx"),
@@ -278,7 +306,7 @@ func (s *S) TestWaitForDnsNamePrivateDNSName(c *check.C) {
 	ec2iaas := myiaas.(*EC2IaaS)
 	err := ec2iaas.Initialize()
 	c.Assert(err, check.IsNil)
-	handler, err := ec2iaas.createEC2Handler(s.srv.URL())
+	handler, err := ec2iaas.createEC2Handler(s.srvURL())
 	c.Assert(err, check.IsNil)
 	options := ec2.RunInstancesInput{
 		ImageId:      aws.String("ami-xxx"),
@@ -318,7 +346,7 @@ func (s *S) TestDeleteMachine(c *check.C) {
 	insts := s.srv.NewInstances(1, "m1.small", "ami-x", ec2amz.InstanceState{}, nil)
 	m := iaas.Machine{
 		Id:             insts[0],
-		CreationParams: map[string]string{"endpoint": s.srv.URL()},
+		CreationParams: map[string]string{"endpoint": s.srvURL()},
 	}
 	ec2iaas := newEC2IaaS("ec2")
 	err := (ec2iaas.(*EC2IaaS)).Initialize()
