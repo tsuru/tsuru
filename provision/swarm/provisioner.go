@@ -344,14 +344,6 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	return addrs, nil
 }
 
-func bindUnit(a provision.App, unit *provision.Unit) error {
-	err := a.BindUnit(unit)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
 func findTaskByContainerId(tasks []swarm.Task, unitId string) (*swarm.Task, error) {
 	for i, t := range tasks {
 		if strings.HasPrefix(t.Status.ContainerStatus.ContainerID, unitId) {
@@ -378,25 +370,12 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
+	if customData == nil {
+		return nil
+	}
 	task, err := findTaskByContainerId(tasks, unitId)
 	if err != nil {
 		return err
-	}
-	service, err := client.InspectService(task.ServiceID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	node, err := client.InspectNode(task.NodeID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	unit := taskToUnit(task, service, node, a)
-	err = bindUnit(a, &unit)
-	if err != nil {
-		return err
-	}
-	if customData == nil {
-		return nil
 	}
 	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 	if !labels.IsDeploy() {

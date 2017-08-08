@@ -321,7 +321,6 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	err = s.p.RegisterUnit(a, units[0].ID, nil)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(a.HasBind(&units[0]), check.Equals, true)
 }
 
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
