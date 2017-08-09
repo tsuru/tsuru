@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -672,7 +673,6 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	team := new(auth.Team)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -694,12 +694,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
+	team, err := storage.TeamRepository.FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -722,7 +717,6 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	team := new(auth.Team)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -744,13 +738,8 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
-	if err != nil {
+	team, err := storage.TeamRepository.FindByName(teamName)
+	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if len(a.Teams) == 1 {

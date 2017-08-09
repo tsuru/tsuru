@@ -34,6 +34,9 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -57,7 +60,7 @@ type S struct {
 	p             *dockerProvisioner
 	user          *auth.User
 	token         auth.Token
-	team          *auth.Team
+	team          *authTypes.Team
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
 	b             *fakebuilder.FakeBuilder
@@ -108,10 +111,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nScheme
 	_, err = nScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin"}
-	c.Assert(err, check.IsNil)
-	err = s.storage.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
 	s.token = permissiontest.ExistingUserWithPermission(c, nativeScheme, s.user, permission.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
@@ -136,7 +135,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
-	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens", "teams"})
+	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens"})
 	c.Assert(err, check.IsNil)
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
@@ -147,6 +146,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
+	s.team = &authTypes.Team{Name: "admin"}
+	err = storage.TeamRepository.Insert(*s.team)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {

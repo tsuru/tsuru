@@ -7,42 +7,24 @@ package auth
 import (
 	"sort"
 
+	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetTeamsNames(c *check.C) {
-	team := Team{Name: "cheese"}
-	team2 := Team{Name: "eggs"}
-	teamNames := GetTeamsNames([]Team{team, team2})
+	team := authTypes.Team{Name: "cheese"}
+	team2 := authTypes.Team{Name: "eggs"}
+	teamNames := GetTeamsNames([]authTypes.Team{team, team2})
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
-}
-
-func (s *S) TestTeamAllowedApps(c *check.C) {
-	team := Team{Name: "teamname"}
-	err := s.conn.Teams().Insert(&team)
-	c.Assert(err, check.IsNil)
-	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	a2 := testApp{Name: "otherapp", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(&a2)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Apps().Remove(bson.M{"name": a2.Name})
-		s.conn.Teams().RemoveId(team.Name)
-	}()
-	alwdApps, err := team.AllowedApps()
-	c.Assert(err, check.IsNil)
-	c.Assert(alwdApps, check.DeepEquals, []string{a2.Name})
 }
 
 func (s *S) TestCreateTeam(c *check.C) {
 	one := User{Email: "king@pos.com"}
 	err := CreateTeam("pos", &one)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	team, err := GetTeam("pos")
 	c.Assert(err, check.IsNil)
 	c.Assert(team.CreatingUser, check.Equals, one.Email)
@@ -52,16 +34,14 @@ func (s *S) TestCreateTeamDuplicate(c *check.C) {
 	u := User{Email: "king@pos.com"}
 	err := CreateTeam("pos", &u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	err = CreateTeam("pos", &u)
-	c.Assert(err, check.Equals, ErrTeamAlreadyExists)
+	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
 	u := User{Email: "king@pos.com"}
 	err := CreateTeam("pos    ", &u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	_, err = GetTeam("pos")
 	c.Assert(err, check.IsNil)
 }
@@ -72,16 +52,16 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		input string
 		err   error
 	}{
-		{"", ErrInvalidTeamName},
-		{"    ", ErrInvalidTeamName},
-		{"1abc", ErrInvalidTeamName},
-		{"@abc", ErrInvalidTeamName},
-		{"my team", ErrInvalidTeamName},
-		{"Abacaxi", ErrInvalidTeamName},
-		{"TEAM", ErrInvalidTeamName},
-		{"TeaM", ErrInvalidTeamName},
-		{"team_1", ErrInvalidTeamName},
-		{"tsuru@corp.globo.com", ErrInvalidTeamName},
+		{"", authTypes.ErrInvalidTeamName},
+		{"    ", authTypes.ErrInvalidTeamName},
+		{"1abc", authTypes.ErrInvalidTeamName},
+		{"@abc", authTypes.ErrInvalidTeamName},
+		{"my team", authTypes.ErrInvalidTeamName},
+		{"Abacaxi", authTypes.ErrInvalidTeamName},
+		{"TEAM", authTypes.ErrInvalidTeamName},
+		{"TeaM", authTypes.ErrInvalidTeamName},
+		{"team_1", authTypes.ErrInvalidTeamName},
+		{"tsuru@corp.globo.com", authTypes.ErrInvalidTeamName},
 		{"team-1", nil},
 		{"a", nil},
 		{"ab", nil},
@@ -92,36 +72,35 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}
-		defer s.conn.Teams().Remove(bson.M{"_id": t.input})
 	}
 }
 
 func (s *S) TestGetTeam(c *check.C) {
-	team := Team{Name: "symfonia"}
-	s.conn.Teams().Insert(team)
-	defer s.conn.Teams().RemoveId(team.Name)
-	t, err := GetTeam("symfonia")
+	team := authTypes.Team{Name: "symfonia"}
+	err := storage.TeamRepository.Insert(team)
+	c.Assert(err, check.IsNil)
+	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Name, check.Equals, team.Name)
 	t, err = GetTeam("wat")
-	c.Assert(err, check.Equals, ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestRemoveTeam(c *check.C) {
-	team := Team{Name: "atreides"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "atreides"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam("atreides")
-	c.Assert(err, check.Equals, ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestRemoveTeamWithApps(c *check.C) {
-	team := Team{Name: "atreides"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "atreides"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
 	c.Assert(err, check.IsNil)
@@ -130,8 +109,8 @@ func (s *S) TestRemoveTeamWithApps(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
-	team := Team{Name: "harkonnen"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "harkonnen"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
 	c.Assert(err, check.IsNil)
@@ -140,9 +119,9 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 }
 
 func (s *S) TestListTeams(c *check.C) {
-	err := s.conn.Teams().Insert(Team{Name: "corrino"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Teams().Insert(Team{Name: "fenring"})
+	err = storage.TeamRepository.Insert(authTypes.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := ListTeams()
 	c.Assert(err, check.IsNil)

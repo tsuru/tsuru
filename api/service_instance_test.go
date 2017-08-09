@@ -32,13 +32,16 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type ServiceInstanceSuite struct {
 	conn        *db.Storage
-	team        *auth.Team
+	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
@@ -65,8 +68,8 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
@@ -281,8 +284,8 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceHasAccessToTheServiceInTheInstance(c *check.C) {
-	t := auth.Team{Name: "judaspriest"}
-	err := s.conn.Teams().Insert(t)
+	t := authTypes.Team{Name: "judaspriest"}
+	err := storage.TeamRepository.Insert(t)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -1805,8 +1808,8 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	team := auth.Team{Name: "test"}
-	s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "test"}
+	storage.TeamRepository.Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si.ServiceName, si.Name,
 		team.Name, si.Name, team.Name, si.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -1861,8 +1864,8 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 	si2 := service.ServiceInstance{Name: "si-test", ServiceName: se[1].Name, Teams: []string{s.team.Name}}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
-	team := auth.Team{Name: "test"}
-	s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "test"}
+	storage.TeamRepository.Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si2.ServiceName, si2.Name,
 		team.Name, si2.Name, team.Name, si2.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)

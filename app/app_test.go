@@ -38,7 +38,9 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tsurutest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -383,7 +385,7 @@ func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "beyond"}
 	err = CreateApp(&a, &u)
-	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
+	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
@@ -935,8 +937,8 @@ func (s *S) TestRevokeAccess(c *check.C) {
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	team := auth.Team{Name: "abcd"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "abcd"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err = s.conn.Apps().Insert(app)
@@ -957,8 +959,8 @@ func (s *S) TestRevokeAccess(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
-	team := auth.Team{Name: "abcd"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "abcd"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -3731,9 +3733,8 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 }
 
 func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
-	team := auth.Team{Name: "test"}
-	err := s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	team := authTypes.Team{Name: "test"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
 	err = CreateApp(&a, s.user)
@@ -3743,7 +3744,7 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
@@ -4099,10 +4100,9 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newowner"}
-	err = s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "newowner"}
+	err = storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	updateData := App{Name: "example", TeamOwner: "newowner"}
 	err = app.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)

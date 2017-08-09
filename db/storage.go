@@ -151,11 +151,6 @@ func (s *Storage) UserActions() *storage.Collection {
 	return s.Collection("user_actions")
 }
 
-// Teams returns the teams collection from MongoDB.
-func (s *Storage) Teams() *storage.Collection {
-	return s.Collection("teams")
-}
-
 // Quota returns the quota collection from MongoDB.
 func (s *Storage) Quota() *storage.Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}

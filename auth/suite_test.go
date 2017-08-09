@@ -12,6 +12,9 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -22,7 +25,7 @@ type S struct {
 	conn    *db.Storage
 	hashed  string
 	user    *User
-	team    *Team
+	team    *authTypes.Team
 	server  *authtest.SMTPServer
 	gitHost string
 	gitPort string
@@ -57,10 +60,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
 	s.hashed = s.user.Password
-	team := &Team{Name: "cobrateam"}
-	err = s.conn.Teams().Insert(team)
+	s.team = &authTypes.Team{Name: "cobrateam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	s.team = team
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())

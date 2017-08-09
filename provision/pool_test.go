@@ -6,6 +6,7 @@ package provision
 
 import (
 	"reflect"
+	"sort"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -13,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -212,6 +214,7 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := p.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
@@ -226,7 +229,8 @@ func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"ateam", "test", "pteam"})
+	sort.Strings(teams)
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "pteam", "test"})
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
@@ -240,6 +244,7 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	c.Assert(err, check.NotNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
@@ -280,6 +285,7 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
+	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
@@ -668,9 +674,14 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[string][]string{
-		"team":   {"ateam", "test", "pteam", "pubteam", "team1"},
-		"router": {"router", "router1", "router2"},
+	c.Assert(constraints, check.HasLen, 2)
+	sort.Strings(constraints["team"])
+	c.Assert(constraints["team"], check.DeepEquals, []string{
+		"ateam", "pteam", "pubteam", "team1", "test",
+	})
+	sort.Strings(constraints["router"])
+	c.Assert(constraints["router"], check.DeepEquals, []string{
+		"router", "router1", "router2",
 	})
 }
 

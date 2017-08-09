@@ -23,6 +23,9 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -30,7 +33,7 @@ import (
 
 type ProvisionSuite struct {
 	conn       *db.Storage
-	team       *auth.Team
+	team       *authTypes.Team
 	user       *auth.User
 	token      auth.Token
 	testServer http.Handler
@@ -70,8 +73,8 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 }
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
-	s.team = &auth.Team{Name: "tsuruteam"}
-	err := s.conn.Teams().Insert(s.team)
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	err := storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
@@ -665,8 +668,8 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 }
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
-	t := &auth.Team{Name: "blaaaa"}
-	s.conn.Teams().Insert(t)
+	t := &authTypes.Team{Name: "blaaaa"}
+	storage.TeamRepository.Insert(*t)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -780,7 +783,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 }
 
 func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *check.C) {
-	t := &auth.Team{Name: "alle-da"}
+	t := &authTypes.Team{Name: "alle-da"}
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{t.Name},
@@ -831,8 +834,8 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
-	t := &auth.Team{Name: "Rammlied"}
-	s.conn.Teams().Insert(t)
+	t := authTypes.Team{Name: "Rammlied"}
+	storage.TeamRepository.Insert(t)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},

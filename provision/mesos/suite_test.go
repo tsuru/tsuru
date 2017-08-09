@@ -20,6 +20,9 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -28,7 +31,7 @@ type S struct {
 	p        *mesosProvisioner
 	conn     *db.Storage
 	user     *auth.User
-	team     *auth.Team
+	team     *authTypes.Team
 	token    auth.Token
 	marathon *fakeMarathonClient
 	mesos    *fakeMesosClient
@@ -127,9 +130,8 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin"}
-	c.Assert(err, check.IsNil)
-	err = s.conn.Teams().Insert(s.team)
+	s.team = &authTypes.Team{Name: "admin"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)

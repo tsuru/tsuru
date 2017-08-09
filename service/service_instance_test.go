@@ -23,13 +23,16 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type InstanceSuite struct {
 	conn *db.Storage
-	team *auth.Team
+	team *authTypes.Team
 	user *auth.User
 }
 
@@ -47,9 +50,9 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 func (s *InstanceSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
-	s.team = &auth.Team{Name: "Raul"}
+	s.team = &authTypes.Team{Name: "Raul"}
 	s.conn.Users().Insert(s.user)
-	s.conn.Teams().Insert(s.team)
+	storage.TeamRepository.Insert(*s.team)
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
@@ -429,8 +432,8 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	team := auth.Team{Name: "owner"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "owner"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err = s.conn.Services().Insert(&srv)
@@ -451,8 +454,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	team := auth.Team{Name: "owner"}
-	err := s.conn.Teams().Insert(team)
+	team := authTypes.Team{Name: "owner"}
+	err := storage.TeamRepository.Insert(team)
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err = s.conn.Services().Insert(&srv)
@@ -634,9 +637,9 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := &auth.Team{Name: "test2"}
+	team := authTypes.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
-	s.conn.Teams().Insert(team)
+	storage.TeamRepository.Insert(team)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
@@ -654,9 +657,9 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 
 func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := &auth.Team{Name: "test2"}
+	team := authTypes.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
-	s.conn.Teams().Insert(team)
+	storage.TeamRepository.Insert(team)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)

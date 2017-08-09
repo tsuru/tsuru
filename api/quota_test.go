@@ -23,12 +23,15 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type QuotaSuite struct {
-	team       *auth.Team
+	team       *authTypes.Team
 	user       *auth.User
 	token      auth.Token
 	testServer http.Handler
@@ -50,8 +53,8 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
-	s.team = &auth.Team{Name: "superteam"}
-	err := conn.Teams().Insert(s.team)
+	s.team = &authTypes.Team{Name: "superteam"}
+	err := storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,

@@ -28,6 +28,9 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -36,7 +39,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
-	team        *auth.Team
+	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
@@ -56,7 +59,7 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	if len(params) != 2 {
 		return false, "you must provide two parameters"
 	}
-	team, ok := params[0].(auth.Team)
+	team, ok := params[0].(authTypes.Team)
 	if !ok {
 		return false, "first parameter should be a team instance"
 	}
@@ -79,8 +82,8 @@ func (s *S) createUserAndTeam(c *check.C) {
 	var err error
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam"}
-	err = s.conn.Teams().Insert(s.team)
+	s.team = &authTypes.Team{Name: "tsuruteam"}
+	err = storage.TeamRepository.Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

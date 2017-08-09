@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
@@ -54,6 +55,11 @@ func createToken(c *check.C) auth.Token {
 	return token
 }
 
+func (s *PlatformSuite) reset() {
+	s.builder.Reset()
+	repositorytest.Reset()
+}
+
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	s.builder = fake.NewFakeBuilder()
 	builder.Register("fake", s.builder)
@@ -70,10 +76,11 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	provision.DefaultProvisioner = "fake-extensible"
 	builder.DefaultBuilder = "fake"
-	s.builder.Reset()
+	s.reset()
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {
+	s.reset()
 	s.conn.Close()
 }
 
