@@ -9,6 +9,7 @@ package dbtest
 import (
 	"strings"
 
+	"github.com/tsuru/tsuru/db/storage"
 	"gopkg.in/mgo.v2"
 )
 
@@ -23,22 +24,21 @@ func ClearAllCollectionsExcept(db *mgo.Database, toKeep []string) error {
 	if err != nil {
 		return err
 	}
+nextColl:
 	for _, collName := range colls {
-		var coll *mgo.Collection
 		if strings.Contains(collName, "system.") {
 			continue
 		}
 		for i := range toKeep {
 			if collName == toKeep[i] {
-				goto next
+				continue nextColl
 			}
 		}
-		coll = db.C(collName)
+		coll := storage.Collection{Collection: db.C(collName)}
 		_, err = coll.RemoveAll(nil)
 		if err != nil {
 			coll.DropCollection()
 		}
-	next:
 	}
 	return nil
 }
