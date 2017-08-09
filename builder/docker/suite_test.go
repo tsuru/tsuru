@@ -7,7 +7,9 @@ package docker
 import (
 	"math/rand"
 	"testing"
+	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -99,4 +101,32 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
+}
+
+func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		client, err := docker.NewClient(endpoint)
+		if err != nil {
+			return
+		}
+		for n > 0 {
+			opts := docker.ListContainersOptions{All: false}
+			containers, err := client.ListContainers(opts)
+			if err != nil {
+				return
+			}
+			if len(containers) > 0 {
+				for _, cont := range containers {
+					if cont.ID != "" {
+						client.StopContainer(cont.ID, 1)
+						n--
+					}
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+	return ch
 }

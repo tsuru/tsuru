@@ -27,6 +27,8 @@ import (
 )
 
 func (s *S) TestBuilderArchiveURL(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -80,6 +82,8 @@ func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 }
 
 func (s *S) TestBuilderArchiveFile(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -163,6 +167,8 @@ func (s *S) TestBuilderImageID(c *check.C) {
 }
 
 func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -375,6 +381,8 @@ func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 2)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -407,6 +415,8 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 }
 
 func (s *S) TestBuilderErasesOldImages(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 2)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
