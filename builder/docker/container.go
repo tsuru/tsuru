@@ -147,14 +147,6 @@ func (c *Container) addEnvsToConfig(args *CreateContainerArgs, port string, cfg 
 	}
 }
 
-func (c *Container) user() string {
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	return user
-}
-
 func (c *Container) SetStatus(status provision.Status, updateDB bool) error {
 	c.Status = status.String()
 	c.LastStatusUpdate = time.Now().In(time.UTC)
