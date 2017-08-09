@@ -4,17 +4,9 @@
 
 package storage
 
-import (
-	"errors"
+import "github.com/tsuru/tsuru/types/auth"
 
-	"github.com/tsuru/tsuru/types/auth"
-)
-
-var (
-	TeamRepository       TeamRepo
-	ErrTeamAlreadyExists = errors.New("team already exists")
-	ErrTeamNotFound      = errors.New("team not found")
-)
+var TeamRepository TeamRepo
 
 type TeamRepo interface {
 	Insert(auth.Team) error

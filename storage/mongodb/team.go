@@ -36,7 +36,7 @@ func (r *TeamRepository) Insert(t auth.Team) error {
 	defer conn.Close()
 	err = teamsCollection(conn).Insert(team(t))
 	if mgo.IsDup(err) {
-		return storage.ErrTeamAlreadyExists
+		return auth.ErrTeamAlreadyExists
 	}
 	return err
 }
@@ -69,7 +69,7 @@ func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
 	err = teamsCollection(conn).FindId(name).One(&t)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = storage.ErrTeamNotFound
+			err = auth.ErrTeamNotFound
 		}
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (r *TeamRepository) Delete(t auth.Team) error {
 	defer conn.Close()
 	err = teamsCollection(conn).RemoveId(t.Name)
 	if err == mgo.ErrNotFound {
-		return storage.ErrTeamNotFound
+		return auth.ErrTeamNotFound
 	}
 	return err
 }

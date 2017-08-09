@@ -205,9 +205,6 @@ func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	conn, _ := db.Conn()
-	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys("nobody@me.myself")
@@ -353,9 +350,6 @@ func (s *AuthSuite) TestLoginPasswordIsInvalid(c *check.C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
-	conn, _ := db.Conn()
-	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	for _, password := range passwords {
 		b := strings.NewReader("password=" + password)
 		request, err := http.NewRequest("POST", "/users/me@globo.com/tokens", b)
@@ -411,7 +405,7 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, auth.ErrInvalidTeamName.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrInvalidTeamName.Error()+"\n")
 }
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
@@ -439,7 +433,7 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 	err = removeTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	t, err := storage.TeamRepository.FindByName(team.Name)
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("painofsalvation"),
@@ -462,7 +456,7 @@ func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	_, err = storage.TeamRepository.FindByName(team.Name)
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("thegathering"),
 		Owner:  s.token.GetUserName(),
@@ -619,10 +613,6 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "234567"})
 	c.Assert(err, check.IsNil)
-	conn, _ := db.Conn()
-	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -861,10 +851,8 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -889,10 +877,8 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("DELETE", "/users?user="+u.Email, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -920,7 +906,6 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	request, err := http.NewRequest("DELETE", "/users?user="+u.Email, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -959,16 +944,12 @@ func (s *AuthSuite) TestRemoveAnotherUserNoPermission(c *check.C) {
 }
 
 func (s *AuthSuite) TestChangePassword(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
 	oldPassword := u.Password
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	body := strings.NewReader("old=123456&new=654321&confirm=654321")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
@@ -988,15 +969,11 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	body := strings.NewReader("old=123456&new=1234&confirm=1234")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
@@ -1723,9 +1700,7 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeam(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1737,7 +1712,7 @@ func (s *AuthSuite) TestUpdateTeam(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
 	_, err = auth.GetTeam("team1")
-	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	_, err = auth.GetTeam("team9000")
 	c.Assert(err, check.IsNil)
 }
@@ -1752,13 +1727,11 @@ func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, auth.ErrTeamNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrTeamNotFound.Error()+"\n")
 }
 
 func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1786,9 +1759,7 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1803,7 +1774,7 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 	_, err = auth.GetTeam("team1")
 	c.Assert(err, check.IsNil)
 	_, err = auth.GetTeam("team9000")
-	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(calls1, check.DeepEquals, [][]string{
 		{"team1", "team9000"},
 		{"team9000", "team1"},
@@ -1830,9 +1801,7 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err := conn.Teams().Insert(&auth.Team{Name: "team1"})
+	err := storage.TeamRepository.Insert(authTypes.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1850,7 +1819,7 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 	_, err = auth.GetTeam("team1")
 	c.Assert(err, check.IsNil)
 	_, err = auth.GetTeam("team9000")
-	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(calls1, check.DeepEquals, [][]string{
 		{"team1", "team9000"},
 		{"team9000", "team1"},

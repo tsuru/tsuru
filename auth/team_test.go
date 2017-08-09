@@ -35,7 +35,7 @@ func (s *S) TestCreateTeamDuplicate(c *check.C) {
 	err := CreateTeam("pos", &u)
 	c.Assert(err, check.IsNil)
 	err = CreateTeam("pos", &u)
-	c.Assert(err, check.Equals, storage.ErrTeamAlreadyExists)
+	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
@@ -52,16 +52,16 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		input string
 		err   error
 	}{
-		{"", ErrInvalidTeamName},
-		{"    ", ErrInvalidTeamName},
-		{"1abc", ErrInvalidTeamName},
-		{"@abc", ErrInvalidTeamName},
-		{"my team", ErrInvalidTeamName},
-		{"Abacaxi", ErrInvalidTeamName},
-		{"TEAM", ErrInvalidTeamName},
-		{"TeaM", ErrInvalidTeamName},
-		{"team_1", ErrInvalidTeamName},
-		{"tsuru@corp.globo.com", ErrInvalidTeamName},
+		{"", authTypes.ErrInvalidTeamName},
+		{"    ", authTypes.ErrInvalidTeamName},
+		{"1abc", authTypes.ErrInvalidTeamName},
+		{"@abc", authTypes.ErrInvalidTeamName},
+		{"my team", authTypes.ErrInvalidTeamName},
+		{"Abacaxi", authTypes.ErrInvalidTeamName},
+		{"TEAM", authTypes.ErrInvalidTeamName},
+		{"TeaM", authTypes.ErrInvalidTeamName},
+		{"team_1", authTypes.ErrInvalidTeamName},
+		{"tsuru@corp.globo.com", authTypes.ErrInvalidTeamName},
 		{"team-1", nil},
 		{"a", nil},
 		{"ab", nil},
@@ -83,7 +83,7 @@ func (s *S) TestGetTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Name, check.Equals, team.Name)
 	t, err = GetTeam("wat")
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
@@ -94,7 +94,7 @@ func (s *S) TestRemoveTeam(c *check.C) {
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam("atreides")
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 

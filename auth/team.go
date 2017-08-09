@@ -10,23 +10,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
-)
-
-var (
-	ErrInvalidTeamName = &tsuruErrors.ValidationError{
-		Message: "Invalid team name, team name should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter.",
-	}
-	ErrTeamAlreadyExists = errors.New("team already exists")
-	ErrTeamNotFound      = errors.New("team not found")
 )
 
 type ErrTeamStillUsed struct {
@@ -43,7 +32,7 @@ func (e *ErrTeamStillUsed) Error() string {
 
 func validateTeam(t authTypes.Team) error {
 	if !validation.ValidateName(t.Name) {
-		return ErrInvalidTeamName
+		return authTypes.ErrInvalidTeamName
 	}
 	return nil
 }
@@ -108,11 +97,7 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	err = storage.TeamRepository.Delete(authTypes.Team{Name: teamName})
-	if err == storage.ErrTeamNotFound {
-		return ErrTeamNotFound
-	}
-	return nil
+	return storage.TeamRepository.Delete(authTypes.Team{Name: teamName})
 }
 
 func ListTeams() ([]authTypes.Team, error) {

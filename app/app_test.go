@@ -385,7 +385,7 @@ func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "beyond"}
 	err = CreateApp(&a, &u)
-	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
+	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
@@ -3744,7 +3744,7 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {

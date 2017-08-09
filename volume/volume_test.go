@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -201,7 +200,7 @@ func (s *S) TestVolumeSaveLoad(c *check.C) {
 		},
 		{
 			v:   Volume{Name: "v1", Pool: "mypool"},
-			err: auth.ErrTeamNotFound.Error(),
+			err: authTypes.ErrTeamNotFound.Error(),
 		},
 		{
 			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
@@ -513,7 +512,7 @@ volume-plans:
 		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, provision.ErrPoolNotFound},
-		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, storage.ErrTeamNotFound},
+		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {

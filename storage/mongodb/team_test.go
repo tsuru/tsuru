@@ -29,7 +29,7 @@ func (s *S) TestInsertDuplicateTeam(c *check.C) {
 	err := Repo.Insert(t)
 	c.Assert(err, check.IsNil)
 	err = Repo.Insert(t)
-	c.Assert(err, check.Equals, storage.ErrTeamAlreadyExists)
+	c.Assert(err, check.Equals, auth.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestFindAll(c *check.C) {
@@ -56,7 +56,7 @@ func (s *S) TestFindByName(c *check.C) {
 
 func (s *S) TestFindByNameNotFound(c *check.C) {
 	team, err := Repo.FindByName("wat")
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 	c.Assert(team, check.IsNil)
 }
 
@@ -91,11 +91,11 @@ func (s *S) TestDelete(c *check.C) {
 	err = Repo.Delete(team)
 	c.Assert(err, check.IsNil)
 	t, err := Repo.FindByName("atreides")
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestDeleteTeamNotFound(c *check.C) {
 	err := Repo.Delete(auth.Team{Name: "myteam"})
-	c.Assert(err, check.Equals, storage.ErrTeamNotFound)
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 }
