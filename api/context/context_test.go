@@ -32,6 +32,7 @@ var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("database:name", "api_context_tests_s")
 	config.Set("repo-manager", "fake")
 }

@@ -25,6 +25,7 @@ type cloudstackSuite struct{}
 var _ = check.Suite(&cloudstackSuite{})
 
 func (s *cloudstackSuite) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")

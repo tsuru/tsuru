@@ -66,6 +66,7 @@ func clearRedisKeys(keysPattern string, conn redis.Client, c *check.C) {
 }
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("hipache:domain", "golang.org")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_hipache_tests")

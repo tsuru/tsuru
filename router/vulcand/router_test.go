@@ -58,6 +58,7 @@ func init() {
 }
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("routers:vulcand:domain", "vulcand.example.com")
 	config.Set("routers:vulcand:type", "vulcand")
 	config.Set("routers:vulcand:api-url", "127.0.0.1:8181")

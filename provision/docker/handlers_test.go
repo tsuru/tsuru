@@ -54,6 +54,7 @@ var _ = check.Suite(&HandlersSuite{})
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *HandlersSuite) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("database:name", "docker_provision_handlers_tests_s")
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)

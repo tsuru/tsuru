@@ -19,6 +19,7 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *digitaloceanSuite) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("iaas:digitalocean:token", "test")
 }
 

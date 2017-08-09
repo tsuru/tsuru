@@ -26,6 +26,7 @@ type Suite struct {
 }
 
 func (s *Suite) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("database:name", "tsurud_migration_tests")
 	var err error
 	s.conn, err = db.Conn()

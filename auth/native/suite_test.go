@@ -31,6 +31,7 @@ var _ = check.Suite(&S{})
 var nativeScheme = NativeScheme{}
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:url", "127.0.0.1:27017")

@@ -30,6 +30,7 @@ type HandlerSuite struct {
 var _ = check.Suite(&HandlerSuite{})
 
 func (s *HandlerSuite) SetUpSuite(c *check.C) {
+	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_handler_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)

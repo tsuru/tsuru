@@ -37,6 +37,7 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	s.server, err = gandalftest.NewServer("127.0.0.1:0")
 	s.server.Host = "localhost"
 	c.Assert(err, check.IsNil)
+	config.Set("log:disable-syslog", true)
 	config.Set("git:api-server", s.server.URL())
 	config.Set("database:name", "repository_gandalf_test")
 }

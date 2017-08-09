@@ -71,6 +71,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.repoNamespace = "tsuru"
 	s.sshUser = "root"
 	s.port = "8888"
+	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)

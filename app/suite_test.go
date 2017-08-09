@@ -88,6 +88,7 @@ var nativeScheme = auth.Scheme(native.NativeScheme{})
 func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
+	config.Set("log:disable-syslog", true)
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queue_app_pkg_tests")
 	config.Set("queue:mongo-polling-interval", 0.01)
