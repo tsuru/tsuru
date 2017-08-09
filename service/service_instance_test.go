@@ -1020,8 +1020,8 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Units: []string{}, Tags: []string{}},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Units: []string{}, Tags: []string{}},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Units: []string{}, Tags: []string{}},
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}},
 	})
 }
