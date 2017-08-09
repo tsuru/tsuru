@@ -169,7 +169,7 @@ func (s *WriterSuite) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 		go writeFn(&writer)
 		go writeFn(&writer)
 		go writer.Close()
-		err := writer.Wait(time.Second)
+		err := writer.Wait(10 * time.Second)
 		c.Assert(err, check.IsNil)
 	}
 }
