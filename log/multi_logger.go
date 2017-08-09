@@ -56,5 +56,8 @@ func (m *multiLogger) Fatalf(format string, v ...interface{}) {
 }
 
 func (m *multiLogger) GetStdLogger() *log.Logger {
+	if len(m.loggers) == 0 {
+		return nil
+	}
 	return m.loggers[0].GetStdLogger()
 }
