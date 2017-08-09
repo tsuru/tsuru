@@ -62,11 +62,6 @@
   revision = "7afe7eebe3c58d48e2be9e7d77f5d65da71f5390"
 
 [[projects]]
-  name = "github.com/andygrunwald/megos"
-  packages = ["."]
-  revision = "01814b52c25a0ea60ab4908f723cc9ee3bbfc495"
-
-[[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/ec2query","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/ec2","service/sts"]
   revision = "a5a7f553e106c0b1dcbfbdaeb8774592fcc1a68a"
@@ -153,11 +148,6 @@
   revision = "449fdfce4d962303d702fec724ef0ad181c92528"
 
 [[projects]]
-  name = "github.com/donovanhide/eventsource"
-  packages = ["."]
-  revision = "fd1de70867126402be23c306e1ce32828455d85b"
-
-[[projects]]
   name = "github.com/emicklei/go-restful"
   packages = [".","log"]
   revision = "ff4f55a206334ef123e4f79bbf348980da81ca46"
@@ -173,11 +163,6 @@
   name = "github.com/fsouza/go-dockerclient"
   packages = [".","testing"]
   revision = "68f3019f17ada90d8603730d0c15eb1b7f0ebd06"
-
-[[projects]]
-  name = "github.com/gambol99/go-marathon"
-  packages = ["."]
-  revision = "cf631873b8c2d4cd3a348a65129951bfc00d9b82"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -604,6 +589,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0ebfd5fcb56eaf11cc79b7162fa5517eeecc45bfcd597db26419db2c8cb605a9"
+  inputs-digest = "6d6f217392c4e72128016f0c70df3aa3735f858944be9c66115512a876646430"
   solver-name = "gps-cdcl"
   solver-version = 1

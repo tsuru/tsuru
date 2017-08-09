@@ -32,10 +32,6 @@
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 
 [[constraint]]
-  name = "github.com/andygrunwald/megos"
-  revision = "01814b52c25a0ea60ab4908f723cc9ee3bbfc495"
-
-[[constraint]]
   name = "github.com/aws/aws-sdk-go"
   version = "v1.10.6"
 
@@ -75,9 +71,6 @@
 [[override]]
   name = "github.com/prometheus/client_model"
   revision = "fa8ad6fec33561be4280a8f0514318c79d7f6cb6"
-[[override]]
-  name = "github.com/donovanhide/eventsource"
-  revision = "fd1de70867126402be23c306e1ce32828455d85b"
 [[override]]
   name = "github.com/Microsoft/go-winio"
   revision = "d8f60f2dd117cd64c2825143a89ecb6f158ad743"
@@ -144,9 +137,6 @@
 [[override]]
   name = "github.com/gorilla/context"
   revision = "708054d61e5a2918b9f4e9700000ee611dcf03f5"
-[[override]]
-  name = "github.com/gambol99/go-marathon"
-  revision = "cf631873b8c2d4cd3a348a65129951bfc00d9b82"
 [[override]]
   name = "github.com/mitchellh/mapstructure"
   revision = "ca63d7c062ee3c9f34db231e352b60012b4fd0c1"
