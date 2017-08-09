@@ -200,11 +200,6 @@ func (s *S) TestRemoveKeyDisabled(c *check.C) {
 	c.Assert(err, check.Equals, ErrKeyDisabled)
 }
 
-type testApp struct {
-	Name  string
-	Teams []string
-}
-
 func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
 	u := User{
 		Email:    "wolverine@xmen.com",
