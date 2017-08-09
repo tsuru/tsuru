@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/storage"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -23,13 +24,14 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
 
 type SyncSuite struct {
 	conn *db.Storage
 	user auth.User
-	team auth.Team
+	team authTypes.Team
 }
 
 var _ = check.Suite(&SyncSuite{})
@@ -52,8 +54,8 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = auth.Team{Name: "metallica"}
-	err = s.conn.Teams().Insert(s.team)
+	s.team = authTypes.Team{Name: "metallica"}
+	err = storage.TeamRepository.Insert(s.team)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)
