@@ -36,28 +36,20 @@ var (
 	})
 )
 
+func init() {
+	prometheus.MustRegister(syncOperations, syncErrors, syncDuration)
+}
+
 func InitializeSync(appLister func() ([]bind.App, error)) error {
 	interval, _ := config.GetDuration("service:sync:interval")
 	if interval <= 0 {
 		interval = time.Minute * 5
 	}
-	err := prometheus.Register(syncOperations)
-	if err != nil {
-		return err
-	}
-	err = prometheus.Register(syncErrors)
-	if err != nil {
-		return err
-	}
-	err = prometheus.Register(syncDuration)
-	if err != nil {
-		return err
-	}
 	syncer := &bindSyncer{
 		interval:  interval,
 		appLister: appLister,
 	}
-	err = syncer.start()
+	err := syncer.start()
 	if err != nil {
 		return err
 	}
@@ -135,6 +127,7 @@ func (b *bindSyncer) Shutdown(ctx context.Context) error {
 }
 
 func (b *bindSyncer) sync(a bind.App) (err error) {
+	var changed bool
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		InternalKind: "bindsyncer",
@@ -147,7 +140,17 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 		}
 		return errors.Wrap(err, "error trying to insert bind sync event, aborted")
 	}
-	defer func() { evt.Done(err) }()
+	defer func() {
+		if err != nil {
+			evt.Logf(err.Error())
+		}
+		if changed || err != nil {
+			evt.Done(err)
+			return
+		}
+		evt.Logf("nothing to do for %q", a.GetName())
+		evt.Abort()
+	}()
 	log.Debugf("[bind-syncer] starting sync for app %q", a.GetName())
 	appUnits, err := a.GetUnits()
 	if err != nil {
@@ -170,6 +173,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			if _, ok := boundUnits[u]; ok {
 				delete(boundUnits, u)
 			} else {
+				changed = true
 				log.Debugf("[bind-syncer] binding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)
 				err = instance.BindUnit(a, u)
 				if err != nil {
@@ -180,6 +184,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			}
 		}
 		for u := range boundUnits {
+			changed = true
 			log.Debugf("[bind-syncer] unbinding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)
 			err = instance.UnbindUnit(a, u)
 			if err != nil {
