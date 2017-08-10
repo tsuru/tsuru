@@ -38,7 +38,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/volume"
@@ -938,7 +937,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	team := authTypes.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err = s.conn.Apps().Insert(app)
@@ -960,7 +959,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -3734,7 +3733,7 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 
 func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	team := authTypes.Team{Name: "test"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
 	err = CreateApp(&a, s.user)
@@ -4101,7 +4100,7 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", TeamOwner: "newowner"}
 	err = app.Update(updateData, new(bytes.Buffer))

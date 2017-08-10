@@ -32,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -69,7 +68,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
@@ -285,7 +284,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceHasAccessToTheServiceInTheInstance(c *check.C) {
 	t := authTypes.Team{Name: "judaspriest"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -1809,7 +1808,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si.ServiceName, si.Name,
 		team.Name, si.Name, team.Name, si.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -1865,7 +1864,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si2.ServiceName, si2.Name,
 		team.Name, si2.Name, team.Name, si2.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)

@@ -34,7 +34,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -899,7 +898,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []authTypes.Team {
-	t, _ := storage.TeamRepository.FindByNames(app.Teams)
+	t, _ := auth.TeamService().FindByNames(app.Teams)
 	return t
 }
 

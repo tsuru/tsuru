@@ -25,12 +25,12 @@ type ErrTeamStillUsed struct {
 	ServiceInstances []string
 }
 
-func TeamService() (*authTypes.TeamService, error) {
+func TeamService() authTypes.TeamService {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return dbDriver.TeamService, nil
+	return dbDriver.TeamService
 }
 
 func (e *ErrTeamStillUsed) Error() string {
@@ -60,7 +60,7 @@ func CreateTeam(name string, user *User) error {
 	if err := validateTeam(team); err != nil {
 		return err
 	}
-	err := storage.TeamRepository.Insert(team)
+	err := TeamService().Insert(team)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func CreateTeam(name string, user *User) error {
 
 // GetTeam find a team by name.
 func GetTeam(name string) (*authTypes.Team, error) {
-	return storage.TeamRepository.FindByName(name)
+	return TeamService().FindByName(name)
 }
 
 // GetTeamsNames maps teams to a list of team names.
@@ -107,9 +107,9 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	return storage.TeamRepository.Delete(authTypes.Team{Name: teamName})
+	return TeamService().Delete(authTypes.Team{Name: teamName})
 }
 
 func ListTeams() ([]authTypes.Team, error) {
-	return storage.TeamRepository.FindAll()
+	return TeamService().FindAll()
 }

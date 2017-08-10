@@ -5,9 +5,10 @@
 package storage
 
 import (
+	"sync"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 )
 
@@ -15,7 +16,12 @@ type DbDriver struct {
 	TeamService auth.TeamService
 }
 
-var DbDrivers = make(map[string]DbDriver)
+var (
+	DefaultDbDriverName = "mongodb"
+	DbDrivers           = make(map[string]DbDriver)
+	driverLock          sync.RWMutex
+	currentDbDriver     *DbDriver
+)
 
 func RegisterDbDriver(name string, driver DbDriver) {
 	DbDrivers[name] = driver
@@ -35,27 +41,23 @@ func GetDbDriver(name string) (*DbDriver, error) {
 
 func GetCurrentDbDriver() (*DbDriver, error) {
 	driverLock.RLock()
-	if teamService != nil {
+	if currentDbDriver != nil {
 		driverLock.RUnlock()
-		return teamService, nil
+		return currentDbDriver, nil
 	}
 	driverLock.RUnlock()
 	driverLock.Lock()
 	defer driverLock.Unlock()
-	if teamService != nil {
-		return teamService, nil
+	if currentDbDriver != nil {
+		return currentDbDriver, nil
 	}
 	dbDriverName, err := config.GetString("database:driver")
+	if err != nil || dbDriverName == "" {
+		dbDriverName = DefaultDbDriverName
+	}
+	currentDbDriver, err = GetDbDriver(dbDriverName)
 	if err != nil {
 		return nil, err
 	}
-	if dbDriverName == "" {
-		dbDriverName = "mongodb"
-	}
-	dbDriver, err := storage.GetDbDriver(dbDriverName)
-	if err != nil {
-		return nil, err
-	}
-	teamService = &dbDriver.TeamService
-	return teamService, nil
+	return currentDbDriver, nil
 }

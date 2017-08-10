@@ -390,11 +390,11 @@ func setupDatabase() {
 	}
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
-		dbDriverName = "mongodb"
+		dbDriverName = storage.DefaultDbDriverName
 		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
 	}
 	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
-	dbDriver, err := storage.GetDbDriver(dbDriverName)
+	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		fatal(err)
 	}

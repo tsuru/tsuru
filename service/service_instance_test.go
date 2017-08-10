@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -52,7 +51,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "Raul"}
 	s.conn.Users().Insert(s.user)
-	storage.TeamRepository.Insert(*s.team)
+	auth.TeamService().Insert(*s.team)
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
@@ -433,7 +432,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	}))
 	defer ts.Close()
 	team := authTypes.Team{Name: "owner"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err = s.conn.Services().Insert(&srv)
@@ -455,7 +454,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	}))
 	defer ts.Close()
 	team := authTypes.Team{Name: "owner"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err = s.conn.Services().Insert(&srv)
@@ -639,7 +638,7 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
 	team := authTypes.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
@@ -659,7 +658,7 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
 	team := authTypes.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)

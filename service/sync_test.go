@@ -14,7 +14,6 @@ import (
 
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/storage"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -58,7 +57,7 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
-	err = storage.TeamRepository.Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)
