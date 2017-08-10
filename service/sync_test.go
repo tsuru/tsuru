@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/storage"
 
 	"github.com/tsuru/config"
@@ -123,4 +124,29 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
 		{ID: units[0].GetID(), IP: units[0].GetIp()},
 	})
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+}
+
+func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
+	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, &s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "", nil)
+	c.Assert(err, check.IsNil)
+	callCh := make(chan struct{})
+	err = service.InitializeSync(func() ([]bind.App, error) {
+		callCh <- struct{}{}
+		return []bind.App{a}, nil
+	})
+	c.Assert(err, check.IsNil)
+	<-callCh
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	shutdown.Do(ctx, ioutil.Discard)
+	cancel()
+	c.Assert(err, check.IsNil)
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
 }
