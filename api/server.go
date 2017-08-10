@@ -85,17 +85,7 @@ func getAuthScheme() (string, error) {
 // purposes).
 func RunServer(dry bool) http.Handler {
 	log.Init()
-	connString, err := config.GetString("database:url")
-	if err != nil {
-		connString = db.DefaultDatabaseURL
-	}
-	dbName, err := config.GetString("database:name")
-	if err != nil {
-		dbName = db.DefaultDatabaseName
-	}
-	if !dry {
-		fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
-	}
+	setupDatabase()
 
 	m := apiRouter.NewRouter()
 
@@ -386,6 +376,23 @@ func RunServer(dry bool) http.Handler {
 		startServer(n)
 	}
 	return n
+}
+
+func setupDatabase() {
+	connString, err := config.GetString("database:url")
+	if err != nil {
+		connString = db.DefaultDatabaseURL
+	}
+	dbName, err := config.GetString("database:name")
+	if err != nil {
+		dbName = db.DefaultDatabaseName
+	}
+	dbDriverName, err := config.GetString("database:driver")
+	if err != nil {
+		dbDriverName = "mongodb"
+		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
+	}
+	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {

@@ -52,6 +52,33 @@ func (s *CheckerSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *CheckerSuite) TestCheckDatabaseConfigDefault(c *check.C) {
+	err := checkDatabase()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckDatabaseConfigMongodb(c *check.C) {
+	config.Set("database:driver", "mongodb")
+	err := checkDatabase()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckDatabaseConfigError(c *check.C) {
+	config.Unset("database:url")
+	err := checkDatabase()
+	c.Assert(err, check.NotNil)
+	config.Set("database:url", "/url")
+	config.Unset("database:name")
+	err = checkDatabase()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *CheckerSuite) TestCheckDatabaseConfigDriverError(c *check.C) {
+	config.Set("database:driver", "postgres")
+	err := checkDatabase()
+	c.Assert(err, check.NotNil)
+}
+
 func (s *CheckerSuite) TestCheckDockerJustCheckIfProvisionerIsDocker(c *check.C) {
 	config.Set("provisioner", "test")
 	err := checkProvisioner()
