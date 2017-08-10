@@ -18,11 +18,19 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var TeamService authTypes.TeamService
+var teamService *authTypes.TeamService
 
 type ErrTeamStillUsed struct {
 	Apps             []string
 	ServiceInstances []string
+}
+
+func TeamService() (*authTypes.TeamService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		return nil, err
+	}
+	return dbDriver.TeamService, nil
 }
 
 func (e *ErrTeamStillUsed) Error() string {

@@ -398,7 +398,6 @@ func setupDatabase() {
 	if err != nil {
 		fatal(err)
 	}
-	auth.TeamService = dbDriver.TeamService
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {
