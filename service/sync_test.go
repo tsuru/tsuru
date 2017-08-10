@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/tsuru/tsuru/event/eventtest"
+
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/storage"
@@ -127,6 +129,21 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{
+			Type:  event.TargetTypeApp,
+			Value: "my-app",
+		},
+		Kind: "bindsyncer",
+		EndCustomData: map[string]interface{}{
+			"binds": map[string][]interface{}{
+				"my-mysql": []interface{}{"my-app-0"},
+			},
+			"unbinds": map[string][]interface{}{
+				"my-mysql": []interface{}{"wrong"},
+			},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
