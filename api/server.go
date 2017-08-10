@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"golang.org/x/net/websocket"
 )
 
@@ -393,6 +394,10 @@ func setupDatabase() {
 		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
 	}
 	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	dbDriver, err := storage.GetDbDriver(dbDriverName)
+	if err != nil {
+		fatal(err)
+	}
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {

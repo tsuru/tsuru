@@ -7,28 +7,23 @@ package mongodb
 import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-type TeamRepository struct{}
+type TeamService struct{}
 
 type team struct {
 	Name         string `bson:"_id"`
 	CreatingUser string
 }
 
-func init() {
-	storage.TeamRepository = &TeamRepository{}
-}
-
 func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (r *TeamRepository) Insert(t auth.Team) error {
+func (r *TeamService) Insert(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -41,7 +36,7 @@ func (r *TeamRepository) Insert(t auth.Team) error {
 	return err
 }
 
-func (r *TeamRepository) FindAll() ([]auth.Team, error) {
+func (r *TeamService) FindAll() ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -59,7 +54,7 @@ func (r *TeamRepository) FindAll() ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
+func (r *TeamService) FindByName(name string) (*auth.Team, error) {
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
@@ -77,7 +72,7 @@ func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
 	return &team, nil
 }
 
-func (r *TeamRepository) FindByNames(names []string) ([]auth.Team, error) {
+func (r *TeamService) FindByNames(names []string) ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -95,7 +90,7 @@ func (r *TeamRepository) FindByNames(names []string) ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (r *TeamRepository) Delete(t auth.Team) error {
+func (r *TeamService) Delete(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

@@ -16,6 +16,14 @@ type Team struct {
 	CreatingUser string
 }
 
+type TeamService interface {
+	Insert(Team) error
+	FindAll() ([]Team, error)
+	FindByName(string) (*Team, error)
+	FindByNames([]string) ([]Team, error)
+	Delete(Team) error
+}
+
 var (
 	ErrInvalidTeamName = &tsuruErrors.ValidationError{
 		Message: "Invalid team name, team name should have at most 63 " +
