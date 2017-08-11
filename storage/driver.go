@@ -23,14 +23,12 @@ var (
 	currentDbDriver     *DbDriver
 )
 
+// RegisterDbDriver registers a new DB driver
 func RegisterDbDriver(name string, driver DbDriver) {
 	DbDrivers[name] = driver
 }
 
-func UnregisterDbDriver(name string) {
-	delete(DbDrivers, name)
-}
-
+// GetDbDriver returns the DB driver that was registered with a specific name
 func GetDbDriver(name string) (*DbDriver, error) {
 	driver, ok := DbDrivers[name]
 	if !ok {
@@ -39,6 +37,8 @@ func GetDbDriver(name string) (*DbDriver, error) {
 	return &driver, nil
 }
 
+// GetCurrentDbDriver returns the DB driver specified in the configuration file.
+// If this configuration was omitted, it returns the default db driver
 func GetCurrentDbDriver() (*DbDriver, error) {
 	driverLock.RLock()
 	if currentDbDriver != nil {
@@ -62,6 +62,7 @@ func GetCurrentDbDriver() (*DbDriver, error) {
 	return currentDbDriver, nil
 }
 
+// GetDefaultDbDriver returns the default db driver
 func GetDefaultDbDriver() (*DbDriver, error) {
 	return GetDbDriver(DefaultDbDriverName)
 }
