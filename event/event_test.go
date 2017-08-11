@@ -265,7 +265,7 @@ func (s *S) TestNewEventBlocked(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.(*ErrEventBlocked).block, check.DeepEquals, &blocks[0])
+	c.Assert(err.(ErrEventBlocked).block, check.DeepEquals, &blocks[0])
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)

@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -25,6 +27,30 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+)
+
+var (
+	eventDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "tsuru_events_duration_seconds",
+		Help:    "The duration of events in seconds",
+		Buckets: []float64{1, 5, 10, 60, 600, 1800},
+	}, []string{"kind"})
+
+	eventCurrent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_events_current",
+		Help: "The number of events currently running",
+	}, []string{"kind"})
+
+	eventsRejected = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_events_rejected_total",
+		Help: "The total number of events rejected",
+	}, []string{"kind", "reason"})
+)
+
+const (
+	rejectLocked    = "locked"
+	rejectBlocked   = "blocked"
+	rejectThrottled = "throttled"
 )
 
 var (
@@ -80,6 +106,10 @@ var (
 const (
 	filterMaxLimit = 100
 )
+
+func init() {
+	prometheus.MustRegister(eventDuration, eventCurrent, eventsRejected)
+}
 
 type ErrThrottled struct {
 	Spec       *ThrottlingSpec
@@ -694,7 +724,27 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 	return nil
 }
 
-func newEvt(opts *Opts) (*Event, error) {
+func newEvt(opts *Opts) (evt *Event, err error) {
+	var k Kind
+	defer func() {
+		eventCurrent.WithLabelValues(k.Name).Inc()
+		if err != nil {
+			reason := "other"
+			switch err.(type) {
+			case ErrEventLocked:
+				reason = rejectLocked
+			case ErrEventBlocked:
+				reason = rejectBlocked
+			case ErrThrottled:
+				reason = rejectThrottled
+			}
+			if !(reason == rejectBlocked) {
+				eventCurrent.WithLabelValues(k.Name).Dec()
+			}
+			eventsRejected.WithLabelValues(k.Name, reason).Inc()
+			return
+		}
+	}()
 	updater.start()
 	if opts == nil {
 		return nil, ErrNoOpts
@@ -708,7 +758,6 @@ func newEvt(opts *Opts) (*Event, error) {
 	if opts.Cancelable && opts.AllowedCancel.Scheme == "" && len(opts.AllowedCancel.Contexts) == 0 {
 		return nil, ErrNoAllowedCancel
 	}
-	var k Kind
 	if opts.Kind == nil {
 		if opts.InternalKind == "" {
 			return nil, ErrNoKind
@@ -759,7 +808,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	} else {
 		id.Target = opts.Target
 	}
-	evt := Event{eventData: eventData{
+	evt = &Event{eventData: eventData{
 		ID:              id,
 		UniqueID:        uniqID,
 		Target:          opts.Target,
@@ -777,7 +826,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
 		if err == nil {
-			err = checkIsBlocked(&evt)
+			err = checkIsBlocked(evt)
 			if err != nil {
 				evt.Done(err)
 				return nil, err
@@ -785,14 +834,14 @@ func newEvt(opts *Opts) (*Event, error) {
 			if !opts.DisableLock {
 				updater.addCh <- &opts.Target
 			}
-			return &evt, nil
+			return evt, nil
 		}
 		if mgo.IsDup(err) {
 			if i >= maxRetries || !checkIsExpired(coll, evt.ID) {
 				var existing Event
 				err = coll.FindId(evt.ID).One(&existing.eventData)
 				if err == mgo.ErrNotFound {
-					maxRetries += 1
+					maxRetries++
 				}
 				if err == nil {
 					err = ErrEventLocked{event: &existing}
@@ -950,6 +999,8 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
 	defer func() {
+		eventDuration.WithLabelValues(e.Kind.Name).Observe(time.Since(e.StartTime).Seconds())
+		eventCurrent.WithLabelValues(e.Kind.Name).Dec()
 		if err != nil {
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		}
