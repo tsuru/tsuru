@@ -18,8 +18,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var teamService *authTypes.TeamService
-
 type ErrTeamStillUsed struct {
 	Apps             []string
 	ServiceInstances []string
