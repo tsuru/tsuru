@@ -13,11 +13,31 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/cluster"
 )
 
-// title: create or update provisioner cluster
+func createClusterMachine(c *cluster.Cluster) error {
+	if len(c.CreateData) == 0 {
+		return nil
+	}
+	if templateName, ok := c.CreateData["template"]; ok {
+		var err error
+		c.CreateData, err = iaas.ExpandTemplate(templateName, c.CreateData)
+		if err != nil {
+			return err
+		}
+	}
+	m, err := iaas.CreateMachine(c.CreateData)
+	if err != nil {
+		return err
+	}
+	c.Addresses = append(c.Addresses, m.FormatNodeAddress())
+	return nil
+}
+
+// title: create provisioner cluster
 // path: /provisioner/clusters
 // method: POST
 // consume: application/x-www-form-urlencoded
@@ -27,8 +47,8 @@ import (
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Cluster already exists
-func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermClusterUpdate)
+func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowed := permission.Check(t, permission.PermClusterCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -48,6 +68,66 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
+		Kind:       permission.PermClusterCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermClusterReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	_, err = cluster.ByName(provCluster.Name)
+	if err == nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusConflict,
+			Message: "cluster already exists",
+		}
+	}
+	err = createClusterMachine(&provCluster)
+	if err != nil {
+		return err
+	}
+	err = provCluster.Save()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+// title: update provisioner cluster
+// path: /provisioner/clusters/{name}
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Cluster not found
+func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowed := permission.Check(t, permission.PermClusterUpdate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	var provCluster cluster.Cluster
+	err = r.ParseForm()
+	if err == nil {
+		err = dec.DecodeValues(&provCluster, r.Form)
+	}
+	provCluster.Name = r.URL.Query().Get(":name")
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -57,6 +137,16 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	_, err = cluster.ByName(provCluster.Name)
+	if err != nil {
+		if err == cluster.ErrClusterNotFound {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
 	err = provCluster.Save()
 	if err != nil {
 		return errors.WithStack(err)
