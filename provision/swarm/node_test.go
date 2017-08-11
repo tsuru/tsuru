@@ -6,10 +6,8 @@ package swarm
 
 import (
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -46,12 +44,7 @@ func (s *S) TestSwarmNodeWrapperEmpty(c *check.C) {
 }
 
 func (s *S) TestSwarmNodeUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
