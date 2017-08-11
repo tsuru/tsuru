@@ -25,8 +25,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.
 	actions := []*action.Action{
 		&createContainer,
 		&startContainer,
-		&followLogs,
-		&commitContainer,
+		&followLogsAndCommit,
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)

@@ -37,6 +37,7 @@ type S struct {
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
 	server      *dtesting.DockerServer
+	port        string
 }
 
 var _ = check.Suite(&S{})
@@ -46,12 +47,14 @@ func Test(t *testing.T) {
 }
 
 func (s *S) SetUpSuite(c *check.C) {
+	s.port = "8888"
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "builder_docker_tests_s")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
+	config.Set("docker:run-cmd:port", s.port)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
