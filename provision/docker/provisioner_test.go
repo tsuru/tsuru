@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
@@ -1712,7 +1713,19 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)
+	a.SetEnv(bind.EnvVar{Name: "ENV", Value: "OK"})
 	var stdout, stderr bytes.Buffer
+	var created bool
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		created = true
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		var result docker.Config
+		json.Unmarshal(data, &result)
+		sort.Strings(result.Env)
+		c.Assert(result.Env, check.DeepEquals, []string{"ENV=OK", "PORT=8888", "TSURU_HOST=", "TSURU_PROCESSNAME=", "port=8888"})
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -1736,6 +1749,7 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "test")
 	c.Assert(stderr.String(), check.Equals, "errtest")
+	c.Assert(created, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
