@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -82,7 +81,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
 }
 

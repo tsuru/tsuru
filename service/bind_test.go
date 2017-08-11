@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -61,7 +60,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
-	err = storage.TeamRepository.Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = provision.AddPool(opts)

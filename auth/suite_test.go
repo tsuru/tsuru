@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -61,7 +60,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user.Create()
 	s.hashed = s.user.Password
 	s.team = &authTypes.Team{Name: "cobrateam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)

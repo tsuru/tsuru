@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"golang.org/x/net/websocket"
 )
 
@@ -85,17 +86,7 @@ func getAuthScheme() (string, error) {
 // purposes).
 func RunServer(dry bool) http.Handler {
 	log.Init()
-	connString, err := config.GetString("database:url")
-	if err != nil {
-		connString = db.DefaultDatabaseURL
-	}
-	dbName, err := config.GetString("database:name")
-	if err != nil {
-		dbName = db.DefaultDatabaseName
-	}
-	if !dry {
-		fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
-	}
+	setupDatabase()
 
 	m := apiRouter.NewRouter()
 
@@ -386,6 +377,33 @@ func RunServer(dry bool) http.Handler {
 		startServer(n)
 	}
 	return n
+}
+
+func setupDatabase() {
+	connString, err := config.GetString("database:url")
+	if err != nil {
+		connString = db.DefaultDatabaseURL
+	}
+	dbName, err := config.GetString("database:name")
+	if err != nil {
+		dbName = db.DefaultDatabaseName
+	}
+	dbDriverName, err := config.GetString("database:driver")
+	if err != nil {
+		dbDriverName = storage.DefaultDbDriverName
+		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
+	}
+	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	_, err = storage.GetDbDriver(dbDriverName)
+	if err != nil {
+		fatal(err)
+	}
+	if dbDriverName != storage.DefaultDbDriverName {
+		_, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			fatal(err)
+		}
+	}
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {

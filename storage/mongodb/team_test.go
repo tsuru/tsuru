@@ -7,18 +7,17 @@ package mongodb
 import (
 	"sort"
 
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
-var Repo = &TeamRepository{}
+var Service = &TeamService{}
 
 func (s *S) TestInsert(c *check.C) {
 	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com"}
-	err := Repo.Insert(t)
+	err := Service.Insert(t)
 	c.Assert(err, check.IsNil)
-	team, err := Repo.FindByName(t.Name)
+	team, err := Service.FindByName(t.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(team.Name, check.Equals, t.Name)
 	c.Assert(team.CreatingUser, check.Equals, t.CreatingUser)
@@ -26,18 +25,18 @@ func (s *S) TestInsert(c *check.C) {
 
 func (s *S) TestInsertDuplicateTeam(c *check.C) {
 	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com"}
-	err := Repo.Insert(t)
+	err := Service.Insert(t)
 	c.Assert(err, check.IsNil)
-	err = Repo.Insert(t)
+	err = Service.Insert(t)
 	c.Assert(err, check.Equals, auth.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestFindAll(c *check.C) {
-	err := storage.TeamRepository.Insert(auth.Team{Name: "corrino"})
+	err := Service.Insert(auth.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(auth.Team{Name: "fenring"})
+	err = Service.Insert(auth.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
-	teams, err := Repo.FindAll()
+	teams, err := Service.FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.HasLen, 2)
 	names := []string{teams[0].Name, teams[1].Name}
@@ -47,55 +46,55 @@ func (s *S) TestFindAll(c *check.C) {
 
 func (s *S) TestFindByName(c *check.C) {
 	t := auth.Team{Name: "myteam"}
-	err := Repo.Insert(t)
+	err := Service.Insert(t)
 	c.Assert(err, check.IsNil)
-	team, err := Repo.FindByName(t.Name)
+	team, err := Service.FindByName(t.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(team.Name, check.Equals, t.Name)
 }
 
 func (s *S) TestFindByNameNotFound(c *check.C) {
-	team, err := Repo.FindByName("wat")
+	team, err := Service.FindByName("wat")
 	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 	c.Assert(team, check.IsNil)
 }
 
 func (s *S) TestFindByNames(c *check.C) {
 	t1 := auth.Team{Name: "team1"}
-	err := Repo.Insert(t1)
+	err := Service.Insert(t1)
 	c.Assert(err, check.IsNil)
 	t2 := auth.Team{Name: "team2"}
-	err = Repo.Insert(t2)
+	err = Service.Insert(t2)
 	c.Assert(err, check.IsNil)
 	t3 := auth.Team{Name: "team3"}
-	err = Repo.Insert(t3)
+	err = Service.Insert(t3)
 	c.Assert(err, check.IsNil)
-	teams, err := Repo.FindByNames([]string{t1.Name, t2.Name, "unknown"})
+	teams, err := Service.FindByNames([]string{t1.Name, t2.Name, "unknown"})
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []auth.Team{t1, t2})
 }
 
 func (s *S) TestFindByNamesNotFound(c *check.C) {
 	t1 := auth.Team{Name: "team1"}
-	err := Repo.Insert(t1)
+	err := Service.Insert(t1)
 	c.Assert(err, check.IsNil)
-	teams, err := Repo.FindByNames([]string{"unknown", "otherteam"})
+	teams, err := Service.FindByNames([]string{"unknown", "otherteam"})
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.HasLen, 0)
 }
 
 func (s *S) TestDelete(c *check.C) {
 	team := auth.Team{Name: "atreides"}
-	err := Repo.Insert(team)
+	err := Service.Insert(team)
 	c.Assert(err, check.IsNil)
-	err = Repo.Delete(team)
+	err = Service.Delete(team)
 	c.Assert(err, check.IsNil)
-	t, err := Repo.FindByName("atreides")
+	t, err := Service.FindByName("atreides")
 	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestDeleteTeamNotFound(c *check.C) {
-	err := Repo.Delete(auth.Team{Name: "myteam"})
+	err := Service.Delete(auth.Team{Name: "myteam"})
 	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 }
