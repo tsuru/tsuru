@@ -34,6 +34,9 @@ func createClusterMachine(c *cluster.Cluster) error {
 		return err
 	}
 	c.Addresses = append(c.Addresses, m.FormatNodeAddress())
+	c.CaCert = m.CaCert
+	c.ClientCert = m.ClientCert
+	c.ClientKey = m.ClientKey
 	return nil
 }
 
