@@ -70,6 +70,7 @@ var (
 	PermAppUpdateUnitRemove              = PermissionRegistry.get("app.update.unit.remove")              // [global app team pool]
 	PermAppUpdateUnitStatus              = PermissionRegistry.get("app.update.unit.status")              // [global app team pool]
 	PermCluster                          = PermissionRegistry.get("cluster")                             // [global]
+	PermClusterCreate                    = PermissionRegistry.get("cluster.create")                      // [global]
 	PermClusterDelete                    = PermissionRegistry.get("cluster.delete")                      // [global]
 	PermClusterRead                      = PermissionRegistry.get("cluster.read")                        // [global]
 	PermClusterReadEvents                = PermissionRegistry.get("cluster.read.events")                 // [global]

@@ -377,3 +377,19 @@ func (s *S) TestForPool(c *check.C) {
 	_, err = ForPool("other", "p3")
 	c.Assert(err, check.Equals, ErrNoCluster)
 }
+
+func (s *S) TestByName(c *check.C) {
+	c1 := Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Pools:       []string{"p1", "p2"},
+		Provisioner: "fake",
+	}
+	err := c1.Save()
+	c.Assert(err, check.IsNil)
+	dbC1, err := ByName("c1")
+	c.Assert(err, check.IsNil)
+	c.Assert(c1, check.DeepEquals, *dbC1)
+	_, err = ByName("cx")
+	c.Assert(err, check.Equals, ErrClusterNotFound)
+}

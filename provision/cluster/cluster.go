@@ -31,6 +31,7 @@ type Cluster struct {
 	ClientKey   []byte            `json:"-" bson:",omitempty"`
 	Pools       []string          `json:"pools" bson:",omitempty"`
 	CustomData  map[string]string `json:"custom_data" bson:",omitempty"`
+	CreateData  map[string]string `json:"create_data" bson:",omitempty"`
 	Default     bool              `json:"default"`
 }
 
@@ -104,6 +105,20 @@ func (c *Cluster) Save() error {
 
 func AllClusters() ([]*Cluster, error) {
 	return listClusters(nil)
+}
+
+func ByName(clusterName string) (*Cluster, error) {
+	coll, err := clusterCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var c *Cluster
+	err = coll.FindId(clusterName).One(&c)
+	if err == mgo.ErrNotFound {
+		return nil, ErrClusterNotFound
+	}
+	return c, err
 }
 
 func DeleteCluster(clusterName string) error {
