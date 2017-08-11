@@ -29,7 +29,7 @@ type ErrEventBlocked struct {
 	block *Block
 }
 
-func (e *ErrEventBlocked) Error() string {
+func (e ErrEventBlocked) Error() string {
 	return fmt.Sprintf("error running %q on %s(%s): %s",
 		e.event.Kind,
 		e.event.Target.Type,
@@ -136,7 +136,7 @@ func checkIsBlocked(evt *Event) error {
 	}
 	for _, b := range blocks {
 		if b.Blocks(evt) {
-			return &ErrEventBlocked{event: evt, block: &b}
+			return ErrEventBlocked{event: evt, block: &b}
 		}
 	}
 	return nil
