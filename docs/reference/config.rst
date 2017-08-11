@@ -686,7 +686,7 @@ tsuru has extensible support for provisioners. A provisioner is a Go type that
 satisfies the `provision.Provisioner` interface. By default, tsuru will use
 ``DockerProvisioner`` (identified by the string "docker"). Other provisioners
 are available as **experiments** and may be removed in future versions:
-``swarm``, ``mesos`` and ``kubernetes``.
+``swarm`` and ``kubernetes``.
 
 .. _config_provisioner:
 
