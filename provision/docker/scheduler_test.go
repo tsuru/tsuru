@@ -233,8 +233,15 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 }
 
 func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
-	config.Set("docker:auto-scale:enabled", true)
-	defer config.Unset("docker:auto-scale:enabled")
+	config.Set("docker:scheduler:total-memory-metadata", "memory")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
+	rule := autoscale.Rule{
+		MetadataFilter: "mypool",
+		MaxMemoryRatio: 0.1,
+		Enabled:        true,
+	}
+	err := rule.Update()
+	c.Assert(err, check.IsNil)
 	autoscale.Initialize()
 	defer func() {
 		cur, err := autoscale.CurrentConfig()
@@ -245,7 +252,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
 	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
-	err := s.storage.Apps().Insert(app1)
+	err = s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
