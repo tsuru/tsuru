@@ -162,7 +162,7 @@
   branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = [".","testing"]
-  revision = "68f3019f17ada90d8603730d0c15eb1b7f0ebd06"
+  revision = "75772940379e725b5aae213e570f9dcd751951cb"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -251,11 +251,6 @@
   name = "github.com/gorilla/pat"
   packages = ["."]
   revision = "ae2e162c4b2ae96aa66b596b2c18f17834299ed0"
-
-[[projects]]
-  name = "github.com/hashicorp/go-cleanhttp"
-  packages = ["."]
-  revision = "ad28ea4487f05916463e2423a55166280e8254b5"
 
 [[projects]]
   name = "github.com/hashicorp/go-version"
@@ -589,6 +584,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6d6f217392c4e72128016f0c70df3aa3735f858944be9c66115512a876646430"
+  inputs-digest = "0d34bfe789bcd60d02e9f3495cd503ac9b9f40f7ac3fa78cc251f9cad69204d7"
   solver-name = "gps-cdcl"
   solver-version = 1
