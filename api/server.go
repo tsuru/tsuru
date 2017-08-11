@@ -398,6 +398,12 @@ func setupDatabase() {
 	if err != nil {
 		fatal(err)
 	}
+	if dbDriverName != storage.DefaultDbDriverName {
+		_, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			fatal(err)
+		}
+	}
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {

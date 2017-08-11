@@ -26,7 +26,10 @@ type ErrTeamStillUsed struct {
 func TeamService() authTypes.TeamService {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
-		return nil
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
 	}
 	return dbDriver.TeamService
 }

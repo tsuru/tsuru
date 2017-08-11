@@ -61,3 +61,7 @@ func GetCurrentDbDriver() (*DbDriver, error) {
 	}
 	return currentDbDriver, nil
 }
+
+func GetDefaultDbDriver() (*DbDriver, error) {
+	return GetDbDriver(DefaultDbDriverName)
+}
