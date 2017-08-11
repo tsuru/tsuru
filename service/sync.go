@@ -127,7 +127,6 @@ func (b *bindSyncer) Shutdown(ctx context.Context) error {
 }
 
 func (b *bindSyncer) sync(a bind.App) (err error) {
-	var changed bool
 	binds := make(map[string][]string)
 	unbinds := make(map[string][]string)
 	evt, err := event.NewInternal(&event.Opts{
@@ -146,7 +145,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 		if err != nil {
 			evt.Logf(err.Error())
 		}
-		if changed || err != nil {
+		if len(binds)+len(unbinds) > 0 || err != nil {
 			evt.DoneCustomData(err, map[string]interface{}{
 				"binds":   binds,
 				"unbinds": unbinds,
@@ -178,7 +177,6 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			if _, ok := boundUnits[u]; ok {
 				delete(boundUnits, u)
 			} else {
-				changed = true
 				log.Debugf("[bind-syncer] binding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)
 				err = instance.BindUnit(a, u)
 				binds[instance.Name] = append(binds[instance.Name], u.GetID())
@@ -190,7 +188,6 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			}
 		}
 		for u := range boundUnits {
-			changed = true
 			log.Debugf("[bind-syncer] unbinding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)
 			err = instance.UnbindUnit(a, u)
 			unbinds[instance.Name] = append(unbinds[instance.Name], u.GetID())
