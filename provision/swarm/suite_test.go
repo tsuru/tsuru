@@ -6,8 +6,12 @@ package swarm
 
 import (
 	"math/rand"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/fsouza/go-dockerclient"
+	dockerTesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -15,6 +19,8 @@ import (
 	fakebuilder "github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -25,12 +31,14 @@ import (
 )
 
 type S struct {
-	p     *swarmProvisioner
-	b     *fakebuilder.FakeBuilder
-	conn  *db.Storage
-	user  *auth.User
-	team  *authTypes.Team
-	token auth.Token
+	p          *swarmProvisioner
+	b          *fakebuilder.FakeBuilder
+	conn       *db.Storage
+	user       *auth.User
+	team       *authTypes.Team
+	token      auth.Token
+	clusterSrv *dockerTesting.DockerServer
+	clusterCli *clusterClient
 }
 
 var _ = check.Suite(&S{})
@@ -85,5 +93,74 @@ func (s *S) SetUpTest(c *check.C) {
 	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	if s.clusterSrv != nil {
+		s.clusterSrv.Stop()
+		s.clusterSrv = nil
+	}
+}
+
+func (s *S) addTLSCluster(c *check.C) {
+	var err error
+	caPath := tmpFileWith(c, testCA)
+	certPath := tmpFileWith(c, testServerCert)
+	keyPath := tmpFileWith(c, testServerKey)
+	defer os.Remove(certPath)
+	defer os.Remove(keyPath)
+	defer os.Remove(caPath)
+	s.clusterSrv, err = dockerTesting.NewTLSServer("127.0.0.1:0", nil, nil, dockerTesting.TLSConfig{
+		RootCAPath:  caPath,
+		CertPath:    certPath,
+		CertKeyPath: keyPath,
+	})
+	c.Assert(err, check.IsNil)
+	url := strings.Replace(s.clusterSrv.URL(), "http://", "https://", 1)
+	clust := &cluster.Cluster{
+		Addresses:   []string{url},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+		CaCert:      testCA,
+		ClientCert:  testCert,
+		ClientKey:   testKey,
+	}
+	s.initCluster(c, clust)
+}
+
+func (s *S) addCluster(c *check.C) {
+	var err error
+	s.clusterSrv, err = dockerTesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	clust := &cluster.Cluster{
+		Addresses:   []string{s.clusterSrv.URL()},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+	}
+	s.initCluster(c, clust)
+}
+
+func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
+	err := clust.Save()
+	c.Assert(err, check.IsNil)
+	s.clusterCli, err = newClusterClient(clust)
+	c.Assert(err, check.IsNil)
+	nodeID, err := s.clusterCli.InitSwarm(docker.InitSwarmOptions{})
+	c.Assert(err, check.IsNil)
+	nodeData, err := s.clusterCli.InspectNode(nodeID)
+	c.Assert(err, check.IsNil)
+	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
+		Addr: s.clusterSrv.URL(),
+		CustomLabels: map[string]string{
+			"pool": "bonehunters",
+		},
+	}).ToLabels()
+	err = s.clusterCli.UpdateNode(nodeID, docker.UpdateNodeOptions{
+		Version:  nodeData.Version.Index,
+		NodeSpec: nodeData.Spec,
+	})
 	c.Assert(err, check.IsNil)
 }

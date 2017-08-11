@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -37,11 +38,7 @@ const (
 	tsuruLabelPrefix   = "tsuru."
 )
 
-func newClient(address string) (*docker.Client, error) {
-	tlsConfig, err := getNodeCredentials(address)
-	if err != nil {
-		return nil, err
-	}
+func newClient(address string, tlsConfig *tls.Config) (*docker.Client, error) {
 	client, err := docker.NewClient(address)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -69,21 +66,7 @@ func newClient(address string) (*docker.Client, error) {
 	return client, nil
 }
 
-func initSwarm(client *docker.Client, addr string) error {
-	host := tsuruNet.URLToHost(addr)
-	_, err := client.InitSwarm(docker.InitSwarmOptions{
-		InitRequest: swarm.InitRequest{
-			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
-			AdvertiseAddr: host,
-		},
-	})
-	if err != nil && errors.Cause(err) != docker.ErrNodeAlreadyInSwarm {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr string) error {
+func joinSwarm(existingClient *clusterClient, newClient *docker.Client, addr string) error {
 	swarmInfo, err := existingClient.InspectSwarm(nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -112,52 +95,7 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr str
 	if err != nil && err != docker.ErrNodeAlreadyInSwarm {
 		return errors.WithStack(err)
 	}
-	return redistributeManagers(existingClient)
-}
-
-func redistributeManagers(cli *docker.Client) error {
-	// TODO(cezarsa): distribute managers across nodes with different metadata
-	// (use splitMetadata from node autoscale after it's been moved from
-	// provision/docker)
-	nodes, err := listValidNodes(cli)
-	if err != nil {
-		return err
-	}
-	total := len(nodes)
-	if total > maxSwarmManagers {
-		total = maxSwarmManagers
-	}
-	for i := 0; i < total; i++ {
-		n := &nodes[i]
-		if n.Spec.Role == swarm.NodeRoleManager {
-			continue
-		}
-		n.Spec.Role = swarm.NodeRoleManager
-		err = cli.UpdateNode(n.ID, docker.UpdateNodeOptions{
-			NodeSpec: n.Spec,
-			Version:  n.Version.Index,
-		})
-		if err != nil {
-			return err
-		}
-	}
 	return nil
-}
-
-func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
-	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	for i := 0; i < len(nodes); i++ {
-		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
-		if addr := l.NodeAddr(); addr == "" {
-			nodes[i] = nodes[len(nodes)-1]
-			nodes = nodes[:len(nodes)-1]
-			i--
-		}
-	}
-	return nodes, nil
 }
 
 type waitResult struct {
@@ -200,7 +138,7 @@ func taskStatusMsg(status swarm.TaskStatus) string {
 	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %d", status.State, status.Err, status.Message, status.ContainerStatus.ExitCode)
 }
 
-func waitForTasks(client *docker.Client, serviceID string, wantedState swarm.TaskState) ([]swarm.Task, error) {
+func waitForTasks(client *clusterClient, serviceID string, wantedState swarm.TaskState) ([]swarm.Task, error) {
 	timeout := time.After(waitForTaskTimeout)
 	for {
 		tasks, err := client.ListTasks(docker.ListTasksOptions{
@@ -231,7 +169,7 @@ func waitForTasks(client *docker.Client, serviceID string, wantedState swarm.Tas
 	}
 }
 
-func commitPushBuildImage(client *docker.Client, img, contID string, app provision.App) (string, error) {
+func commitPushBuildImage(client *clusterClient, img, contID string, app provision.App) (string, error) {
 	parts := strings.Split(img, ":")
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
@@ -250,7 +188,7 @@ func commitPushBuildImage(client *docker.Client, img, contID string, app provisi
 	return img, nil
 }
 
-func pushImage(client *docker.Client, repo, tag string) error {
+func pushImage(client *clusterClient, repo, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
 		pushOpts := docker.PushImageOptions{Name: repo,
@@ -401,7 +339,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	return &spec, nil
 }
 
-func removeServiceAndLog(client *docker.Client, id string) {
+func removeServiceAndLog(client *clusterClient, id string) {
 	err := client.RemoveService(docker.RemoveServiceOptions{
 		ID: id,
 	})
@@ -410,16 +348,38 @@ func removeServiceAndLog(client *docker.Client, id string) {
 	}
 }
 
-func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, error) {
+func nodeAddr(client *clusterClient, node *swarm.Node) string {
+	l := provision.LabelSet{Labels: node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
+	addr := l.NodeAddr()
+	if addr != "" {
+		return addr
+	}
+	if node.Status.Addr == "" {
+		return ""
+	}
+	port, _ := config.GetInt("swarm:node-port")
+	if port == 0 {
+		port = 2375
+		if client != nil && clusterHasTLS(client.Cluster) {
+			port = 2376
+		}
+	}
+	return fmt.Sprintf("%s:%d", node.Status.Addr, port)
+}
+
+func clientForNode(baseClient *clusterClient, nodeID string) (*docker.Client, error) {
 	node, err := baseClient.InspectNode(nodeID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	l := provision.LabelSet{Labels: node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
-	return newClient(l.NodeAddr())
+	tlsConfig, err := tlsConfigForCluster(baseClient.Cluster)
+	if err != nil {
+		return nil, err
+	}
+	return newClient(nodeAddr(baseClient, node), tlsConfig)
 }
 
-func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
+func runningTasksForApp(client *clusterClient, a provision.App, taskID string) ([]swarm.Task, error) {
 	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
 		App:    a,
 		Prefix: tsuruLabelPrefix,
@@ -438,7 +398,7 @@ func runningTasksForApp(client *docker.Client, a provision.App, taskID string) (
 	return tasks, errors.WithStack(err)
 }
 
-func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writer, cmd string, args ...string) error {
+func execInTaskContainer(c *clusterClient, t *swarm.Task, stdout, stderr io.Writer, cmd string, args ...string) error {
 	nodeClient, err := clientForNode(c, t.NodeID)
 	if err != nil {
 		return err
@@ -539,7 +499,7 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	return service, nil
 }
 
-func upsertService(spec *swarm.ServiceSpec, client *docker.Client, placementOnly bool) (bool, error) {
+func upsertService(spec *swarm.ServiceSpec, client *clusterClient, placementOnly bool) (bool, error) {
 	currService, err := client.InspectService(spec.Name)
 	if err != nil {
 		if _, ok := err.(*docker.NoSuchService); !ok {
@@ -586,7 +546,14 @@ func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
 		return
 	}
 	for _, n := range nodes {
-		client, err := newClient(n.Address())
+		nodeWrapper := n.(*swarmNodeWrapper)
+		tls, err := tlsConfigForCluster(nodeWrapper.client.Cluster)
+		if err != nil {
+			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+				imgName, errors.WithStack(err))
+			continue
+		}
+		client, err := newClient(n.Address(), tls)
 		if err != nil {
 			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
 				imgName, errors.WithStack(err))

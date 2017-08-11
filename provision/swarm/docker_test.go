@@ -5,19 +5,18 @@
 package swarm
 
 import (
-	"encoding/json"
+	"crypto/tls"
+	"crypto/x509"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
@@ -139,7 +138,7 @@ func (s *S) TestNewClient(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	cli, err := newClient(srv.URL())
+	cli, err := newClient(srv.URL(), nil)
 	c.Assert(err, check.IsNil)
 	err = cli.Ping()
 	c.Assert(err, check.IsNil)
@@ -165,62 +164,20 @@ func (s *S) TestNewClientTLSConfig(c *check.C) {
 	defer srv.Stop()
 	url := srv.URL()
 	url = strings.Replace(url, "http://", "https://", 1)
-	err = addNodeCredentials(provision.AddNodeOptions{
-		Address:    url,
-		CaCert:     []byte(testCA),
-		ClientCert: []byte(testCert),
-		ClientKey:  []byte(testKey),
-	})
+	tlsCert, err := tls.X509KeyPair([]byte(testCert), []byte(testKey))
 	c.Assert(err, check.IsNil)
-	cli, err := newClient(url)
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM([]byte(testCA))
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		RootCAs:      caPool,
+	}
+	cli, err := newClient(url, tlsConfig)
 	c.Assert(err, check.IsNil)
 	c.Assert(cli.TLSConfig.Certificates, check.HasLen, 1)
 	c.Assert(cli.TLSConfig.RootCAs, check.NotNil)
 	err = cli.Ping()
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestListValidNodes(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	mockNodes := []swarm.Node{
-		{},
-		{},
-		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{"tsuru-internal-node-addr": "myaddr"}}}},
-		{},
-	}
-	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(mockNodes)
-	}))
-	cli, err := newClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	nodes, err := listValidNodes(cli)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	nodes[0].CreatedAt = time.Time{}
-	nodes[0].UpdatedAt = time.Time{}
-	c.Assert(nodes, check.DeepEquals, []swarm.Node{mockNodes[2]})
-}
-
-func (s *S) TestListValidNodesNoneValid(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	mockNodes := []swarm.Node{
-		{},
-		{},
-		{},
-		{},
-	}
-	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(mockNodes)
-	}))
-	cli, err := newClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	nodes, err := listValidNodes(cli)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.DeepEquals, []swarm.Node{})
 }
 
 func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
