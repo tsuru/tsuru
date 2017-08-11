@@ -308,6 +308,10 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	if stderr == nil {
 		stderr = ioutil.Discard
 	}
+	var envs []string
+	for _, e := range provision.EnvsForApp(app, "", false) {
+		envs = append(envs, fmt.Sprintf("%s=%s", e.Name, e.Value))
+	}
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -315,6 +319,7 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 			Image:        image,
 			Entrypoint:   []string{"/bin/bash", "-c"},
 			Cmd:          []string{command},
+			Env:          envs,
 		},
 	}
 	cluster := p.Cluster()
