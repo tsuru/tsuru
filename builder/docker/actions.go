@@ -122,33 +122,8 @@ var startContainer = action.Action{
 	},
 }
 
-var commitContainer = action.Action{
-	Name: "commit-container",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args := ctx.Params[0].(runContainerActionsArgs)
-		if err := checkCanceled(args.event); err != nil {
-			return nil, err
-		}
-		c, ok := ctx.Previous.(Container)
-		if !ok {
-			return nil, errors.New("previous result must be a container")
-		}
-		fmt.Fprintf(args.writer, "\n---- Building image ----\n")
-		imageID, err := c.Commit(args.client, args.writer)
-		if err != nil {
-			log.Errorf("error on commit container %s - %s", c.ID, err)
-			return nil, err
-		}
-		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
-		c.Remove(args.client)
-		return imageID, nil
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-}
-
-var followLogs = action.Action{
-	Name: "follow-logs",
+var followLogsAndCommit = action.Action{
+	Name: "follow-logs-and-commit",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
 		if err := checkCanceled(args.event); err != nil {
@@ -202,7 +177,18 @@ var followLogs = action.Action{
 				return nil, errors.Errorf("Exit status %d", result.status)
 			}
 		}
-		return c, nil
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		fmt.Fprintf(args.writer, "\n---- Building image ----\n")
+		imageID, err := c.Commit(args.client, args.writer)
+		if err != nil {
+			log.Errorf("error on commit container %s - %s", c.ID, err)
+			return nil, err
+		}
+		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
+		c.Remove(args.client)
+		return imageID, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},
