@@ -38,6 +38,7 @@ type Config struct {
 	TotalMemoryMetadata string
 	done                chan bool
 	writer              io.Writer
+	running             bool
 }
 
 func CurrentConfig() (*Config, error) {
@@ -114,6 +115,7 @@ func (a *Config) scalerForRule(rule *Rule) (autoScaler, error) {
 }
 
 func (a *Config) run() error {
+	a.running = true
 	for {
 		err := a.runScaler()
 		if err != nil {
@@ -146,12 +148,12 @@ func (a *Config) runOnce() error {
 	return err
 }
 
-func (a *Config) stop() {
-	a.done <- true
-}
-
 func (a *Config) Shutdown(ctx context.Context) error {
-	a.stop()
+	if !a.running {
+		return nil
+	}
+	a.done <- true
+	a.running = false
 	return nil
 }
 
