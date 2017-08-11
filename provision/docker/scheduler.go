@@ -104,11 +104,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 		}
 	}
 	if len(nodeList) == 0 {
-		cfg, _ := autoscale.CurrentConfig()
-		autoScaleEnabled := false
-		if cfg != nil {
-			autoScaleEnabled = cfg.Enabled
-		}
+		var autoScaleEnabled bool
 		rule, _ := autoscale.AutoScaleRuleForMetadata(a.Pool)
 		if rule != nil {
 			autoScaleEnabled = rule.Enabled
