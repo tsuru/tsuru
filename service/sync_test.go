@@ -137,10 +137,10 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 		Kind: "bindsyncer",
 		EndCustomData: map[string]interface{}{
 			"binds": map[string][]interface{}{
-				"my-mysql": []interface{}{"my-app-0"},
+				"my-mysql": {"my-app-0"},
 			},
 			"unbinds": map[string][]interface{}{
-				"my-mysql": []interface{}{"wrong"},
+				"my-mysql": {"wrong"},
 			},
 		},
 	}, eventtest.HasEvent)
