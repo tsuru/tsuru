@@ -5406,7 +5406,7 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("x-Agent-Version", "0.2.4")
+	request.Header.Set("X-Agent-Version", "0.2.4")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
@@ -5433,7 +5433,7 @@ func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusUpgradeRequired)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
 }
 
