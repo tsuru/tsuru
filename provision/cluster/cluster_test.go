@@ -13,7 +13,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	_ "github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
@@ -104,6 +105,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	provisiontest.ProvisionerInstance.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 }
@@ -189,6 +191,33 @@ func (s *S) TestClusterSaveRemovePools(c *check.C) {
 	err = coll.FindId("c2").One(&dbCluster2)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbCluster2.Pools, check.DeepEquals, []string{"p2", "p3"})
+}
+
+type initClusterProv struct {
+	*provisiontest.FakeProvisioner
+	callCluster *Cluster
+}
+
+func (p *initClusterProv) InitializeCluster(c *Cluster) error {
+	p.callCluster = c
+	return nil
+}
+
+func (s *S) TestClusterSaveCallsProvInit(c *check.C) {
+	inst := initClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	c1 := Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Pools:       []string{"p1", "p2"},
+		Provisioner: "fake-cluster",
+	}
+	err := c1.Save()
+	c.Assert(err, check.IsNil)
+	c.Assert(c1, check.DeepEquals, *inst.callCluster)
 }
 
 func (s *S) TestClusterSaveValidation(c *check.C) {
