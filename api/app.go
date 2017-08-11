@@ -1682,9 +1682,9 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err = a.RegisterUnit(hostname, customData)
 	if err != nil {
 		if err, ok := err.(*provision.UnitNotFoundError); ok {
-			if r.Header.Get("x-Agent-Version") == "" {
+			if r.Header.Get("X-Agent-Version") == "" {
 				msgError := fmt.Sprintf("Please contact admin. %s platform is using outdated deploy-agent version, minimum required version is 0.2.4", a.GetPlatform())
-				return &errors.HTTP{Code: http.StatusUpgradeRequired, Message: msgError}
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: msgError}
 			}
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
