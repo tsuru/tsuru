@@ -244,14 +244,6 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	c.Assert(allImages[0], check.Equals, "tsuru/app-mightyapp:v1")
 }
 
-type newContainerOpts struct {
-	AppName         string
-	Status          string
-	Image           string
-	ProcessName     string
-	ImageCustomData map[string]interface{}
-}
-
 func (s *S) newContainer(client *docker.Client) (*Container, error) {
 	container := Container{
 		ID:          "id",
