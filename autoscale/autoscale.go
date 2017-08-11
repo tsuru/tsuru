@@ -188,7 +188,8 @@ func (a *Config) runScaler() (retErr error) {
 		var nodes []provision.Node
 		nodes, err = nodeProv.ListNodes(nil)
 		if err != nil {
-			return errors.Wrap(err, "error getting nodes")
+			a.logDebug("skipped provisioner, error getting nodes: %v", err)
+			continue
 		}
 		for _, n := range nodes {
 			provPoolMap[n.Pool()] = nodeProv
