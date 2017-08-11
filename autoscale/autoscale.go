@@ -36,7 +36,6 @@ type Config struct {
 	WaitTimeNewMachine  time.Duration
 	RunInterval         time.Duration
 	TotalMemoryMetadata string
-	Enabled             bool
 	done                chan bool
 	writer              io.Writer
 }
@@ -50,9 +49,6 @@ func CurrentConfig() (*Config, error) {
 
 func Initialize() error {
 	globalConfig = newConfig()
-	if !globalConfig.Enabled {
-		return nil
-	}
 	shutdown.Register(globalConfig)
 	go globalConfig.run()
 	return nil
@@ -65,7 +61,6 @@ func RunOnce(w io.Writer) error {
 }
 
 func newConfig() *Config {
-	enabled, _ := config.GetBool("docker:auto-scale:enabled")
 	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
 	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
@@ -73,7 +68,6 @@ func newConfig() *Config {
 		TotalMemoryMetadata: totalMemoryMetadata,
 		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		RunInterval:         time.Duration(runInterval) * time.Second,
-		Enabled:             enabled,
 		done:                make(chan bool),
 	}
 	if c.RunInterval == 0 {
@@ -157,10 +151,7 @@ func (a *Config) stop() {
 }
 
 func (a *Config) Shutdown(ctx context.Context) error {
-	if a.Enabled {
-		a.stop()
-		a.Enabled = false
-	}
+	a.stop()
 	return nil
 }
 
