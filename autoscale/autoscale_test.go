@@ -88,6 +88,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
 	config.Set("docker:auto-scale:max-container-count", 2)
+	config.Set("docker:auto-scale:enabled", true)
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 }
