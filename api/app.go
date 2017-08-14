@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -314,7 +315,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 				permission.Check(t, permission.PermPlatformCreate)
 			if !canUsePlat {
-				return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.InvalidPlatformError.Error()}
 			}
 		}
 	}
@@ -349,7 +350,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 				}
 			}
 		}
-		if err == app.InvalidPlatformError {
+		if err == appTypes.InvalidPlatformError {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err

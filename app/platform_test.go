@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -48,7 +49,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatforms(c *check.C) {
-	want := []Platform{
+	want := []appTypes.Platform{
 		{Name: "dea"},
 		{Name: "pecuniae"},
 		{Name: "money"},
@@ -64,14 +65,14 @@ func (s *PlatformSuite) TestPlatforms(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformsWithFilterOnlyEnabledPlatforms(c *check.C) {
-	input := []Platform{
+	input := []appTypes.Platform{
 		{Name: "dea"},
 		{Name: "pecuniae", Disabled: true},
 		{Name: "money"},
 		{Name: "raise", Disabled: true},
 		{Name: "glass", Disabled: false},
 	}
-	expected := []Platform{
+	expected := []appTypes.Platform{
 		{Name: "dea"},
 		{Name: "money"},
 		{Name: "glass", Disabled: false},
@@ -97,14 +98,14 @@ func (s *PlatformSuite) TestPlatformsEmptyWithQueryTrue(c *check.C) {
 }
 
 func (s *PlatformSuite) TestGetPlatform(c *check.C) {
-	p := Platform{Name: "dea"}
+	p := appTypes.Platform{Name: "dea"}
 	s.conn.Platforms().Insert(p)
 	got, err := GetPlatform(p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(*got, check.DeepEquals, p)
 	got, err = GetPlatform("WAT")
 	c.Assert(got, check.IsNil)
-	c.Assert(err, check.Equals, InvalidPlatformError)
+	c.Assert(err, check.Equals, appTypes.InvalidPlatformError)
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
@@ -124,13 +125,13 @@ func (s *PlatformSuite) TestPlatformAddValidatesPlatformName(c *check.C) {
 		expectedErr error
 	}{
 		{"platform", nil},
-		{"Platform", ErrInvalidPlatformName},
-		{"", ErrPlatformNameMissing},
-		{"plat_form", ErrInvalidPlatformName},
-		{"123platform", ErrInvalidPlatformName},
+		{"Platform", appTypes.ErrInvalidPlatformName},
+		{"", appTypes.ErrPlatformNameMissing},
+		{"plat_form", appTypes.ErrInvalidPlatformName},
+		{"123platform", appTypes.ErrInvalidPlatformName},
 		{"plat-form", nil},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", ErrInvalidPlatformName},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", ErrInvalidPlatformName},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", appTypes.ErrInvalidPlatformName},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", appTypes.ErrInvalidPlatformName},
 		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", nil},
 	}
 	for _, t := range tt {
@@ -146,7 +147,7 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	err = PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.Equals, DuplicatePlatformError)
+	c.Assert(err, check.Equals, appTypes.DuplicatePlatformError)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
@@ -164,7 +165,7 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
 	err := PlatformAdd(builder.PlatformOptions{Name: ""})
-	c.Assert(err, check.Equals, ErrPlatformNameMissing)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
@@ -173,7 +174,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
 	err := PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.Equals, ErrPlatformNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
 	err = PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
@@ -298,7 +299,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 	err := PlatformUpdate(builder.PlatformOptions{Name: ""})
-	c.Assert(err, check.Equals, ErrPlatformNameMissing)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
@@ -324,7 +325,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	err := PlatformRemove("platform-dont-exists")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrPlatformNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
 	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
@@ -336,7 +337,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 	err = PlatformRemove("")
-	c.Assert(err, check.Equals, ErrPlatformNameMissing)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {

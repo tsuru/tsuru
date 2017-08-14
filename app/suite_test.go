@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -146,9 +147,9 @@ func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
-	platform := Platform{Name: "python"}
+	platform := appTypes.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
-	s.conn.Platforms().Insert(Platform{Name: "heimerdinger"})
+	s.conn.Platforms().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.defaultPlan = Plan{
 		Name:     "default-plan",
 		Memory:   1024,

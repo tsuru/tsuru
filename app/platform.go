@@ -12,42 +12,25 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	ErrPlatformNameMissing    = errors.New("Platform name is required.")
-	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
-	DuplicatePlatformError    = errors.New("Duplicate platform")
-	InvalidPlatformError      = errors.New("Invalid platform")
-	ErrDeletePlatformWithApps = errors.New("Platform has apps. You should remove them before remove the platform.")
-	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
-		Message: "Invalid platform name, should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter.",
-	}
-)
-
-type Platform struct {
-	Name     string `bson:"_id"`
-	Disabled bool   `bson:",omitempty"`
-}
-
-func (p *Platform) validate() error {
+func validatePlatform(p appTypes.Platform) error {
 	if p.Name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	if !validation.ValidateName(p.Name) {
-		return ErrInvalidPlatformName
+		return appTypes.ErrInvalidPlatformName
 	}
 	return nil
 }
 
 // Platforms returns the list of available platforms.
-func Platforms(enabledOnly bool) ([]Platform, error) {
-	var platforms []Platform
+func Platforms(enabledOnly bool) ([]appTypes.Platform, error) {
+	var platforms []appTypes.Platform
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -63,8 +46,8 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(opts builder.PlatformOptions) error {
-	p := Platform{Name: opts.Name}
-	if err := p.validate(); err != nil {
+	p := appTypes.Platform{Name: opts.Name}
+	if err := validatePlatform(p); err != nil {
 		return err
 	}
 	conn, err := db.Conn()
@@ -75,7 +58,7 @@ func PlatformAdd(opts builder.PlatformOptions) error {
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
-			return DuplicatePlatformError
+			return appTypes.DuplicatePlatformError
 		}
 		return err
 	}
@@ -94,9 +77,9 @@ func PlatformAdd(opts builder.PlatformOptions) error {
 }
 
 func PlatformUpdate(opts builder.PlatformOptions) error {
-	var platform Platform
+	var platform appTypes.Platform
 	if opts.Name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -106,7 +89,7 @@ func PlatformUpdate(opts builder.PlatformOptions) error {
 	err = conn.Platforms().Find(bson.M{"_id": opts.Name}).One(&platform)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return ErrPlatformNotFound
+			return appTypes.ErrPlatformNotFound
 		}
 		return err
 	}
@@ -139,7 +122,7 @@ func PlatformUpdate(opts builder.PlatformOptions) error {
 
 func PlatformRemove(name string) error {
 	if name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -148,7 +131,7 @@ func PlatformRemove(name string) error {
 	defer conn.Close()
 	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
 	if apps > 0 {
-		return ErrDeletePlatformWithApps
+		return appTypes.ErrDeletePlatformWithApps
 	}
 	err = builder.PlatformRemove(name)
 	if err != nil {
@@ -156,13 +139,13 @@ func PlatformRemove(name string) error {
 	}
 	err = conn.Platforms().Remove(bson.M{"_id": name})
 	if err == mgo.ErrNotFound {
-		return ErrPlatformNotFound
+		return appTypes.ErrPlatformNotFound
 	}
 	return err
 }
 
-func GetPlatform(name string) (*Platform, error) {
-	var p Platform
+func GetPlatform(name string) (*appTypes.Platform, error) {
+	var p appTypes.Platform
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -170,7 +153,7 @@ func GetPlatform(name string) (*Platform, error) {
 	defer conn.Close()
 	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
 	if err != nil {
-		return nil, InvalidPlatformError
+		return nil, appTypes.InvalidPlatformError
 	}
 	return &p, nil
 }

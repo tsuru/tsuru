@@ -41,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -104,7 +105,7 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
+	platform := appTypes.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"b", "c"}}
 	err = app.CreateApp(&app2, s.user)
@@ -176,7 +177,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
+	platform := appTypes.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err = app.CreateApp(&app2, s.user)
@@ -251,7 +252,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
+	platform := appTypes.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	app2 := app.App{
 		Name:      "app2",
@@ -1295,7 +1296,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		Scheme:  permission.PermPlatformUpdate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	p := app.Platform{Name: "platDis", Disabled: true}
+	p := appTypes.Platform{Name: "platDis", Disabled: true}
 	s.conn.Platforms().Insert(p)
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=platDis"
@@ -1337,7 +1338,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
-	p := app.Platform{Name: "platDis", Disabled: true}
+	p := appTypes.Platform{Name: "platDis", Disabled: true}
 	s.conn.Platforms().Insert(p)
 	data := "name=someapp&platform=platDis"
 	b := strings.NewReader(data)

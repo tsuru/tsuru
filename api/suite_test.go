@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -117,9 +118,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
-	p := app.Platform{Name: "zend"}
+	p := appTypes.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
-	s.conn.Platforms().Insert(app.Platform{Name: "heimerdinger"})
+	s.conn.Platforms().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)

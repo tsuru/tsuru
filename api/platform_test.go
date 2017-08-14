@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
@@ -136,7 +137,7 @@ func (s *PlatformSuite) TestPlatformAddInvalidName(c *check.C) {
 	recorder := httptest.NewRecorder()
 	token := createToken(c)
 	result := platformAdd(recorder, request, token)
-	c.Assert(result, check.DeepEquals, app.ErrInvalidPlatformName)
+	c.Assert(result, check.DeepEquals, appTypes.ErrInvalidPlatformName)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
@@ -309,7 +310,7 @@ func (*PlatformSuite) TestPlatformRemove(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformList(c *check.C) {
-	platforms := []app.Platform{
+	platforms := []appTypes.Platform{
 		{Name: "python"},
 		{Name: "java"},
 		{Name: "ruby20"},
@@ -327,14 +328,14 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var got []app.Platform
+	var got []appTypes.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, platforms)
 }
 
 func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
-	platforms := []app.Platform{
+	platforms := []appTypes.Platform{
 		{Name: "python", Disabled: true},
 		{Name: "java"},
 		{Name: "ruby20", Disabled: true},
@@ -355,20 +356,20 @@ func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var got []app.Platform
+	var got []appTypes.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, platforms)
 }
 
 func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
-	platforms := []app.Platform{
+	platforms := []appTypes.Platform{
 		{Name: "python", Disabled: true},
 		{Name: "java", Disabled: false},
 		{Name: "ruby20", Disabled: true},
 		{Name: "static"},
 	}
-	expectedPlatforms := []app.Platform{
+	expectedPlatforms := []appTypes.Platform{
 		{Name: "java", Disabled: false},
 		{Name: "static"},
 	}
@@ -387,7 +388,7 @@ func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var got []app.Platform
+	var got []appTypes.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expectedPlatforms)
