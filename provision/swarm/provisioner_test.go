@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	dockerTesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -1668,4 +1669,23 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(len(vols), check.Equals, 0)
 	err = s.p.DeleteVolume("myvol", "pool")
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestInitializeCluster(c *check.C) {
+	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer clusterSrv.Stop()
+	clust := &cluster.Cluster{
+		Addresses:   []string{clusterSrv.URL()},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+	}
+	err = s.p.InitializeCluster(clust)
+	c.Assert(err, check.IsNil)
+	cli, err := newClusterClient(clust)
+	c.Assert(err, check.IsNil)
+	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
 }
