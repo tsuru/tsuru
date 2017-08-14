@@ -7,11 +7,10 @@ package integration
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"time"
-
-	"os"
 
 	"gopkg.in/check.v1"
 )
@@ -228,7 +227,7 @@ func poolAdd() ExecFlow {
 			parts := regex.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeaddrs", parts[1])
-			regex = regexp.MustCompile(parts[1] + `.*?ready`)
+			regex = regexp.MustCompile("(?i)" + parts[1] + `.*?ready`)
 			ok := retry(5*time.Minute, func() bool {
 				res = T("node-list").Run(env)
 				return regex.MatchString(res.Stdout.String())
@@ -245,12 +244,12 @@ func poolAdd() ExecFlow {
 			res = cluster.Start()
 			c.Assert(res, ResultOk)
 			clusterName := "icluster-" + cluster.Name()
-			params := []string{"cluster-update", clusterName, cluster.Provisioner(), "--pool", poolName}
+			params := []string{"cluster-add", clusterName, cluster.Provisioner(), "--pool", poolName}
 			params = append(params, cluster.UpdateParams()...)
 			res = T(params...).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
-			regex := regexp.MustCompile("Ready")
+			regex := regexp.MustCompile("(?i)ready")
 			addressRegex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
 			nodeIPs := make([]string, 0)
 			ok := retry(time.Minute, func() bool {
@@ -280,7 +279,7 @@ func poolAdd() ExecFlow {
 			ok = retry(time.Minute, func() bool {
 				res = T("node-list").Run(env)
 				for _, ip := range nodeIPs {
-					regex = regexp.MustCompile(ip + `.*?Ready`)
+					regex = regexp.MustCompile("(?i)" + ip + `.*?ready`)
 					if !regex.MatchString(res.Stdout.String()) {
 						return false
 					}
