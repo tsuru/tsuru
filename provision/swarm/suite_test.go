@@ -148,9 +148,9 @@ func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
 	c.Assert(err, check.IsNil)
 	s.clusterCli, err = newClusterClient(clust)
 	c.Assert(err, check.IsNil)
-	nodeID, err := s.clusterCli.InitSwarm(docker.InitSwarmOptions{})
+	dockerInfo, err := s.clusterCli.Info()
 	c.Assert(err, check.IsNil)
-	nodeData, err := s.clusterCli.InspectNode(nodeID)
+	nodeData, err := s.clusterCli.InspectNode(dockerInfo.Swarm.NodeID)
 	c.Assert(err, check.IsNil)
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
 		Addr: s.clusterSrv.URL(),
@@ -158,7 +158,7 @@ func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
 			"pool": "bonehunters",
 		},
 	}).ToLabels()
-	err = s.clusterCli.UpdateNode(nodeID, docker.UpdateNodeOptions{
+	err = s.clusterCli.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
 	})

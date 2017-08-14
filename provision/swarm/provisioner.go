@@ -47,6 +47,7 @@ var (
 	_ provision.SleepableProvisioner     = &swarmProvisioner{}
 	_ provision.BuilderDeploy            = &swarmProvisioner{}
 	_ provision.VolumeProvisioner        = &swarmProvisioner{}
+	_ cluster.InitClusterProvisioner     = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
@@ -971,4 +972,22 @@ func (p *swarmProvisioner) Sleep(a provision.App, process string) error {
 	return servicecommon.ChangeAppState(&serviceManager{
 		client: client,
 	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
+}
+
+func (p *swarmProvisioner) InitializeCluster(c *cluster.Cluster) error {
+	client, err := newClusterClient(c)
+	if err != nil {
+		return err
+	}
+	host := tsuruNet.URLToHost(client.Cluster.Addresses[0])
+	_, err = client.InitSwarm(docker.InitSwarmOptions{
+		InitRequest: swarm.InitRequest{
+			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
+			AdvertiseAddr: host,
+		},
+	})
+	if err != nil && errors.Cause(err) != docker.ErrNodeAlreadyInSwarm {
+		return errors.WithStack(err)
+	}
+	return nil
 }
