@@ -1329,7 +1329,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	c.Assert(d.DisableRollback, check.Equals, false)
 	v := url.Values{}
 	v.Set("disable", "true")
-	v.Set("reason", "")
+	v.Set("reason", "because of reasons")
 	v.Set("image", "v1")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
@@ -1362,7 +1362,7 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	err = data.Save()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("disable", "true")
+	v.Set("disable", "false")
 	v.Set("reason", "")
 	v.Set("image", "v10")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
@@ -1387,7 +1387,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	err := app.CreateApp(&fakeApp, user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("disable", "true")
+	v.Set("disable", "false")
 	v.Set("reason", "")
 	v.Set("image", "v1")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
@@ -1435,7 +1435,7 @@ func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
 	err := app.CreateApp(&fakeApp, user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("disable", "false")
+	v.Set("disable", "true")
 	v.Set("reason", "")
 	v.Set("image", "v1")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)

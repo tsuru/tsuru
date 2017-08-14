@@ -341,13 +341,13 @@ func DeleteAllAppImageNames(appName string) error {
 	return coll.RemoveId(appName)
 }
 
-func UpdateAppImageRollback(img, reason string, rollback bool) error {
+func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
 	dataColl, err := imageCustomDataColl()
 	if err != nil {
 		return err
 	}
 	defer dataColl.Close()
-	return dataColl.Update(bson.M{"_id": img}, bson.M{"$set": bson.M{"disablerollback": rollback, "reason": reason}})
+	return dataColl.Update(bson.M{"_id": img}, bson.M{"$set": bson.M{"disablerollback": disableRollback, "reason": reason}})
 }
 
 func PullAppImageNames(appName string, images []string) error {

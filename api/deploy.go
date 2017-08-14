@@ -433,7 +433,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 	disable := r.FormValue("disable")
-	rollback, err := strconv.ParseBool(disable)
+	disableRollback, err := strconv.ParseBool(disable)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -441,7 +441,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 	reason := r.FormValue("reason")
-	if (reason == "") && (rollback == false) {
+	if (reason == "") && (disableRollback) {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Reason cannot be empty while disabling a image rollback",
@@ -460,7 +460,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.RollbackUpdate(instance.Name, img, reason, rollback)
+	err = app.RollbackUpdate(instance.Name, img, reason, disableRollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,

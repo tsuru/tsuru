@@ -231,12 +231,12 @@ func Deploy(opts DeployOptions) (string, error) {
 	return imageID, nil
 }
 
-func RollbackUpdate(appName, imageID, reason string, rollback bool) error {
+func RollbackUpdate(appName, imageID, reason string, disableRollback bool) error {
 	imgName, err := image.GetAppImageBySuffix(appName, imageID)
 	if err != nil {
 		return err
 	}
-	return image.UpdateAppImageRollback(imgName, reason, rollback)
+	return image.UpdateAppImageRollback(imgName, reason, disableRollback)
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
