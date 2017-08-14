@@ -66,6 +66,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
+	client.HTTPClient = net.Dial5FullUnlimitedClient
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
 		Pull:              true,
