@@ -115,15 +115,6 @@ func (s *S) TestApps(c *check.C) {
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
-func (s *S) TestPlatforms(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	plats := strg.Platforms()
-	platsc := strg.Collection("platforms")
-	c.Assert(plats, check.DeepEquals, platsc)
-}
-
 func (s *S) TestServices(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)

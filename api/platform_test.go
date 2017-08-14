@@ -318,7 +318,6 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 	}
 	for _, p := range platforms {
 		app.PlatformService().Insert(p)
-		defer s.conn.Platforms().Remove(p)
 	}
 	request, err := http.NewRequest("GET", "/platforms", nil)
 	c.Assert(err, check.IsNil)
@@ -343,7 +342,6 @@ func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
 	}
 	for _, p := range platforms {
 		app.PlatformService().Insert(p)
-		defer s.conn.Platforms().Remove(p)
 	}
 	request, err := http.NewRequest("GET", "/platforms", nil)
 	c.Assert(err, check.IsNil)
@@ -375,7 +373,6 @@ func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
 	}
 	for _, p := range platforms {
 		app.PlatformService().Insert(p)
-		defer s.conn.Platforms().Remove(p)
 	}
 	request, err := http.NewRequest("GET", "/platforms", nil)
 	c.Assert(err, check.IsNil)
