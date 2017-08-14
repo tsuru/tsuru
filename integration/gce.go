@@ -12,10 +12,9 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
-
-	"golang.org/x/net/context"
 )
 
 const gceClusterStatusRunning = "RUNNING"
