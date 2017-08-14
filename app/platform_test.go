@@ -104,7 +104,7 @@ func (s *PlatformSuite) TestGetPlatform(c *check.C) {
 	c.Assert(*got, check.DeepEquals, p)
 	got, err = GetPlatform("WAT")
 	c.Assert(got, check.IsNil)
-	c.Assert(err, check.Equals, appTypes.InvalidPlatformError)
+	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
@@ -146,7 +146,7 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	err = PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.Equals, appTypes.DuplicatePlatformError)
+	c.Assert(err, check.Equals, appTypes.ErrDuplicatePlatform)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {

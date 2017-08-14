@@ -23,7 +23,7 @@ func (s *S) TestInsertDuplicatePlatform(c *check.C) {
 	err := s.PlatformService.Insert(t)
 	c.Assert(err, check.IsNil)
 	err = s.PlatformService.Insert(t)
-	c.Assert(err, check.Equals, app.DuplicatePlatformError)
+	c.Assert(err, check.Equals, app.ErrDuplicatePlatform)
 }
 
 func (s *S) TestFindPlatformByName(c *check.C) {

@@ -315,7 +315,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 				permission.Check(t, permission.PermPlatformCreate)
 			if !canUsePlat {
-				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.InvalidPlatformError.Error()}
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
 			}
 		}
 	}
@@ -350,7 +350,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 				}
 			}
 		}
-		if err == appTypes.InvalidPlatformError {
+		if err == appTypes.ErrInvalidPlatform {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err

@@ -31,7 +31,7 @@ func (s *PlatformService) Insert(p app.Platform) error {
 	defer conn.Close()
 	err = platformsCollection(conn).Insert(platform(p))
 	if mgo.IsDup(err) {
-		return app.DuplicatePlatformError
+		return app.ErrDuplicatePlatform
 	}
 	return err
 }

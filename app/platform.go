@@ -136,7 +136,7 @@ func GetPlatform(name string) (*appTypes.Platform, error) {
 	defer conn.Close()
 	p, err := PlatformService().FindByName(name)
 	if err != nil {
-		return nil, appTypes.InvalidPlatformError
+		return nil, appTypes.ErrInvalidPlatform
 	}
 	return p, nil
 }

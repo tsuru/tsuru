@@ -27,8 +27,8 @@ type PlatformService interface {
 var (
 	ErrPlatformNameMissing    = errors.New("Platform name is required.")
 	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
-	DuplicatePlatformError    = errors.New("Duplicate platform")
-	InvalidPlatformError      = errors.New("Invalid platform")
+	ErrDuplicatePlatform      = errors.New("Duplicate platform")
+	ErrInvalidPlatform        = errors.New("Invalid platform")
 	ErrDeletePlatformWithApps = errors.New("Platform has apps. You should remove them before remove the platform.")
 	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
 		Message: "Invalid platform name, should have at most 63 " +
