@@ -33,6 +33,14 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	c.Assert(node.Status(), check.Equals, "ready")
 	swarmNode.Status.Message = "msg1"
 	c.Assert(node.Status(), check.Equals, "ready (msg1)")
+	c.Assert(node.ExtraData(), check.IsNil)
+	s.addCluster(c)
+	var err error
+	node.client, err = clusterForPool("")
+	c.Assert(err, check.IsNil)
+	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
+		"tsuru.io/cluster": "c1",
+	})
 }
 
 func (s *S) TestSwarmNodeWrapperEmpty(c *check.C) {

@@ -48,6 +48,15 @@ func (n *swarmNodeWrapper) Metadata() map[string]string {
 	return labels.PublicNodeLabels()
 }
 
+func (n *swarmNodeWrapper) ExtraData() map[string]string {
+	if n.client == nil {
+		return nil
+	}
+	return map[string]string{
+		provision.LabelClusterMetadata: n.client.Cluster.Name,
+	}
+}
+
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	l.SetIsService()
