@@ -16,7 +16,8 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn *db.Storage
+	conn        *db.Storage
+	TeamService *TeamService
 }
 
 var _ = check.Suite(&S{})
@@ -25,6 +26,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_storage_test")
 	s.conn, _ = db.Conn()
+	s.TeamService = &TeamService{}
 }
 
 func (s *S) TearDownSuite(c *check.C) {
