@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int) (*http.Client, *net.Dialer) {
+func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int, followRedirects bool) (*http.Client, *net.Dialer) {
 	dialer := &net.Dialer{
 		Timeout:   dialTimeout,
 		KeepAlive: 30 * time.Second,
@@ -23,6 +23,11 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 		},
 		Timeout: fullTimeout,
 	}
+	if !followRedirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
 	return client, dialer
 }
 
@@ -31,8 +36,9 @@ const (
 )
 
 var (
-	Dial5Full300Client, Dial5Dialer  = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5)
-	Dial5FullUnlimitedClient, _      = makeTimeoutHTTPClient(5*time.Second, 0, 5)
-	Dial5Full300ClientNoKeepAlive, _ = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1)
-	Dial5Full60ClientNoKeepAlive, _  = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1)
+	Dial5Full300Client, Dial5Dialer           = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5, true)
+	Dial5FullUnlimitedClient, _               = makeTimeoutHTTPClient(5*time.Second, 0, 5, true)
+	Dial5Full300ClientNoKeepAlive, _          = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1, true)
+	Dial5Full60ClientNoKeepAlive, _           = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, true)
+	Dial5Full60ClientNoKeepAliveNoRedirect, _ = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, false)
 )
