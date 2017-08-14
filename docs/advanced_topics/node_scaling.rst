@@ -5,7 +5,8 @@
 Node Auto Scaling
 =================
 
-Node auto scaling can be enabled by setting `docker:auto-scale:enabled` to true.
+Node auto scaling can be enabled by setting `docker:auto-scale:enabled` to true or
+by using ``tsuru node autoscale rule set`` to configure a autoscale rule.
 It will try to add, remove and rebalance docker nodes used by tsuru.
 
 Node scaling algorithms run in clusters of docker nodes, each cluster is based
@@ -105,5 +106,5 @@ You can list auto scale events with `tsuru docker-autoscale-list`
 Running auto scale once
 -----------------------
 
-Even if you have `docker:auto-scale:enabled` set to false, you can make tsuru
+Even if you have not enabled autoscale, you can make tsuru 
 trigger the execution of the auto scale algorithm by running `tsuru docker-autoscale-run`.
