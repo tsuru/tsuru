@@ -244,8 +244,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	autoscale.Initialize()
 	defer func() {
-		cur, err := autoscale.CurrentConfig()
-		c.Assert(err, check.IsNil)
+		cur, errCfg := autoscale.CurrentConfig()
+		c.Assert(errCfg, check.IsNil)
 		cur.Shutdown(context.Background())
 	}()
 	logBuf := bytes.NewBuffer(nil)
