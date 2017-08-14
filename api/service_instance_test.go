@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
@@ -733,8 +734,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app-instance",
@@ -854,8 +855,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -905,8 +906,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app1",
@@ -947,8 +948,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app",

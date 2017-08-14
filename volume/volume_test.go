@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -89,12 +90,12 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	provisiontest.ProvisionerInstance.Reset()
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "mypool",
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "otherpool",
 		Provisioner: "fake",
 	})
@@ -138,7 +139,7 @@ volume-plans:
 		Plugin       string
 		StorageClass string `json:"storage-class"`
 	}
-	err := provision.AddPool(provision.AddPoolOptions{
+	err := pool.AddPool(pool.AddPoolOptions{
 		Name:        "mypool2",
 		Provisioner: "other",
 	})
@@ -196,7 +197,7 @@ func (s *S) TestVolumeSaveLoad(c *check.C) {
 		},
 		{
 			v:   Volume{Name: "v1"},
-			err: provision.ErrPoolNotFound.Error(),
+			err: pool.ErrPoolNotFound.Error(),
 		},
 		{
 			v:   Volume{Name: "v1", Pool: "mypool"},
@@ -413,7 +414,7 @@ volume-plans:
 		return &volumeProv, nil
 	})
 	defer provision.Unregister("volumeprov")
-	err := provision.AddPool(provision.AddPoolOptions{
+	err := pool.AddPool(pool.AddPoolOptions{
 		Name:        "volumepool",
 		Provisioner: "volumeprov",
 	})
@@ -511,7 +512,7 @@ volume-plans:
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
 		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, provision.ErrPoolNotFound},
+		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}

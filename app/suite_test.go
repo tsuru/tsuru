@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -158,8 +159,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
-	opts := provision.AddPoolOptions{Name: s.Pool, Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -286,12 +287,12 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByPool(c *check.C) {
-	opts := []provision.AddPoolOptions{
+	opts := []pool.AddPoolOptions{
 		{Name: "pool1", Default: false, Public: true},
 		{Name: "pool2", Default: false, Public: true},
 	}
 	for _, opt := range opts {
-		err := provision.AddPool(opt)
+		err := pool.AddPool(opt)
 		c.Assert(err, check.IsNil)
 	}
 	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name, Tags: []string{"mytag"}}
@@ -427,9 +428,9 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -1061,7 +1062,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithPool(c *check.C) {
-	err := provision.AddPool(provision.AddPoolOptions{Name: "mypool1", Public: true})
+	err := pool.AddPool(pool.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
 	appName := "someapp"
 	data, err := url.QueryUnescape("name=someapp&platform=zend&pool=mypool1")
@@ -1552,10 +1553,10 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -1571,8 +1572,8 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend"}
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdatePool,
@@ -4144,7 +4145,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
 		Field:     "service",
 		Values:    []string{"mysql"},
@@ -4176,7 +4177,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvaila
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
 		Field:     "service",
 		Values:    []string{"mysql"},

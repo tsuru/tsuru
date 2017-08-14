@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -59,7 +59,7 @@ func (s *S) TestVolumeList(c *check.C) {
 func (s *S) TestVolumeListPermissions(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	err := provision.AddPool(provision.AddPoolOptions{Name: "otherpool", Public: true})
+	err := pool.AddPool(pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
 	err = auth.TeamService().Insert(authTypes.Team{Name: "otherteam"})
 	c.Assert(err, check.IsNil)

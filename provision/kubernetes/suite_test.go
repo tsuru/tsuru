@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -145,7 +146,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "test-default",
 		Default:     true,
 		Provisioner: "kubernetes",

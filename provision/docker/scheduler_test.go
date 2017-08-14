@@ -19,9 +19,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/pool"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -35,11 +35,11 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
@@ -90,11 +90,11 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
@@ -142,11 +142,11 @@ func (s *S) TestSchedulerNoNodes(c *check.C) {
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
-	o := provision.AddPoolOptions{Name: "mypool"}
-	err = provision.AddPool(o)
+	o := pool.AddPoolOptions{Name: "mypool"}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	o = provision.AddPoolOptions{Name: "mypool2"}
-	err = provision.AddPool(o)
+	o = pool.AddPoolOptions{Name: "mypool2"}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
 	schedOpts := &container.SchedulerOpts{AppName: app.Name, ProcessName: "web"}
@@ -171,8 +171,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		TotalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
-	o := provision.AddPoolOptions{Name: "mypool"}
-	err = provision.AddPool(o)
+	o := pool.AddPoolOptions{Name: "mypool"}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -255,8 +255,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 		TotalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
-	o := provision.AddPoolOptions{Name: "mypool"}
-	err = provision.AddPool(o)
+	o := pool.AddPoolOptions{Name: "mypool"}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -344,8 +344,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 		TotalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
-	o := provision.AddPoolOptions{Name: "mypool"}
-	err = provision.AddPool(o)
+	o := pool.AddPoolOptions{Name: "mypool"}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -754,11 +754,11 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a2)
 	c.Assert(err, check.IsNil)
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})

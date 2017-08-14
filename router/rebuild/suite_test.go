@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -81,7 +82,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "admin"}
 	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "p1",
 		Default:     true,
 		Provisioner: "fake",

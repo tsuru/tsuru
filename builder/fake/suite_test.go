@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -57,7 +58,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "thepool",
 		Default:     true,
 		Provisioner: "fake",

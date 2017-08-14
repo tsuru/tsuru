@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 )
@@ -37,10 +38,10 @@ func (s *S) TestValidateNodeAddress(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandler(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -79,10 +80,10 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandlerExisting(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -115,10 +116,10 @@ func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 
 func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	params := provision.AddNodeOptions{
 		Register: false,
 		Metadata: map[string]string{
@@ -161,8 +162,8 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -197,8 +198,8 @@ func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -561,8 +562,8 @@ func (s *S) TestUpdateNodeHandler(c *check.C) {
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
@@ -627,10 +628,10 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost2:1999",
 		Metadata: map[string]string{
@@ -665,10 +666,10 @@ func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
 		Disable: true,
@@ -695,10 +696,10 @@ func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
 		Enable:  true,
@@ -725,10 +726,10 @@ func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("pool1")
+	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
 		Enable:  true,
@@ -965,8 +966,8 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 }
 
 func (s *S) TestNodeRebalanceFilters(c *check.C) {
-	poolOpts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(poolOpts)
+	poolOpts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(poolOpts)
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddNode(provision.AddNodeOptions{
 		Address: "n1",

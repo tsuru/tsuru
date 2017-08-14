@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -95,7 +96,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
-	provision.RemovePool("pool1")
+	pool.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
 	s.logConn.Logs("myapp").Database.DropDatabase()
 	s.conn.Close()
@@ -112,8 +113,8 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.conn.Platforms().Insert(app.Platform{Name: "python"})
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	user, err := s.token.User()
 	c.Assert(err, check.IsNil)

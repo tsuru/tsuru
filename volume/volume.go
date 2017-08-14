@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -70,7 +71,7 @@ func (v *Volume) Validate() error {
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
-	pool, err := provision.GetPoolByName(v.Pool)
+	p, err := pool.GetPoolByName(v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -78,7 +79,7 @@ func (v *Volume) Validate() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	prov, err := pool.GetProvisioner()
+	prov, err := p.GetProvisioner()
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -172,11 +173,11 @@ func (v *Volume) Delete() error {
 	if len(binds) > 0 {
 		return errors.New("cannot delete volume with existing binds")
 	}
-	pool, err := provision.GetPoolByName(v.Pool)
+	p, err := pool.GetPoolByName(v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	prov, err := pool.GetProvisioner()
+	prov, err := p.GetProvisioner()
 	if err != nil {
 		return errors.WithStack(err)
 	}

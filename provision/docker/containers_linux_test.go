@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -38,10 +38,10 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	p.scheduler = &segregatedScheduler{provisioner: p}
 	p.cluster, err = cluster.New(p.scheduler, p.storage, "", nodes...)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool1", []string{"team1"})
+	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
 	variation := []int{10, 20, 30, 40, 50, 100}
 	maxContainers := 40

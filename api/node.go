@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"gopkg.in/mgo.v2"
 )
 
@@ -125,11 +126,11 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	pool, err := provision.GetPoolByName(poolName)
+	p, err := pool.GetPoolByName(poolName)
 	if err != nil {
 		return err
 	}
-	prov, err := pool.GetProvisioner()
+	prov, err := p.GetProvisioner()
 	if err != nil {
 		return err
 	}
@@ -619,13 +620,13 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	params.Writer = writer
 	var provs []provision.Provisioner
 	if poolName != "" {
-		var pool *provision.Pool
+		var p *pool.Pool
 		var prov provision.Provisioner
-		pool, err = provision.GetPoolByName(poolName)
+		p, err = pool.GetPoolByName(poolName)
 		if err != nil {
 			return err
 		}
-		prov, err = pool.GetProvisioner()
+		prov, err = p.GetProvisioner()
 		if err != nil {
 			return err
 		}
