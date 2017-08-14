@@ -438,7 +438,7 @@ func serviceCreate() ExecFlow {
 			"servicename":                         "integration-service",
 		}
 		for k, v := range replaces {
-			cmd := NewCommand("sed", "-i", "'.bak'", "'s~"+k+"~"+v+"~'", "manifest.yaml")
+			cmd := NewCommand("sed", "-i", "-e", "'s~"+k+"~"+v+"~'", "manifest.yaml")
 			res = cmd.Run(env)
 			c.Assert(res, ResultOk)
 		}
