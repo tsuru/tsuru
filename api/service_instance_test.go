@@ -733,7 +733,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		c.Assert(err, check.IsNil)
 	}
 	p := appTypes.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err := pool.AddPool(opts)
@@ -854,7 +854,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
 	p := appTypes.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -905,7 +905,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	p := appTypes.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -947,7 +947,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	p := appTypes.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)

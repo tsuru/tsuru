@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type PlatformSuite struct {
@@ -57,7 +56,7 @@ func (s *PlatformSuite) TestPlatforms(c *check.C) {
 		{Name: "glass"},
 	}
 	for _, p := range want {
-		s.conn.Platforms().Insert(p)
+		PlatformService().Insert(p)
 	}
 	got, err := Platforms(false)
 	c.Assert(err, check.IsNil)
@@ -78,7 +77,7 @@ func (s *PlatformSuite) TestPlatformsWithFilterOnlyEnabledPlatforms(c *check.C) 
 		{Name: "glass", Disabled: false},
 	}
 	for _, p := range input {
-		s.conn.Platforms().Insert(p)
+		PlatformService().Insert(p)
 	}
 	got, err := Platforms(true)
 	c.Assert(err, check.IsNil)
@@ -99,7 +98,7 @@ func (s *PlatformSuite) TestPlatformsEmptyWithQueryTrue(c *check.C) {
 
 func (s *PlatformSuite) TestGetPlatform(c *check.C) {
 	p := appTypes.Platform{Name: "dea"}
-	s.conn.Platforms().Insert(p)
+	PlatformService().Insert(p)
 	got, err := GetPlatform(p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(*got, check.DeepEquals, p)
@@ -158,9 +157,9 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 	s.builder.PrepareFailure("PlatformAdd", errors.New("something wrong happened"))
 	err := PlatformAdd(opts)
 	c.Assert(err, check.NotNil)
-	count, err := s.conn.Platforms().FindId(name).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
+	p, err := PlatformService().FindByName(name)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
+	c.Assert(p, check.IsNil)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
@@ -333,9 +332,9 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = PlatformRemove(name)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Platforms().Find(bson.M{"_id": name}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
+	p, err := PlatformService().FindByName(name)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
+	c.Assert(p, check.IsNil)
 	err = PlatformRemove("")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
@@ -367,7 +366,7 @@ func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = PlatformRemove(name)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Platforms().Find(bson.M{"_id": name}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
+	p, err := PlatformService().FindByName(name)
+	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
+	c.Assert(p, check.IsNil)
 }

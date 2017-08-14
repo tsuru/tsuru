@@ -148,8 +148,8 @@ func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	platform := appTypes.Platform{Name: "python"}
-	s.conn.Platforms().Insert(platform)
-	s.conn.Platforms().Insert(appTypes.Platform{Name: "heimerdinger"})
+	PlatformService().Insert(platform)
+	PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.defaultPlan = Plan{
 		Name:     "default-plan",
 		Memory:   1024,

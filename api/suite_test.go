@@ -119,8 +119,8 @@ func (s *S) SetUpTest(c *check.C) {
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	p := appTypes.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
-	s.conn.Platforms().Insert(appTypes.Platform{Name: "heimerdinger"})
+	app.PlatformService().Insert(p)
+	app.PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)

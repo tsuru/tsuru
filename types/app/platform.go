@@ -15,6 +15,15 @@ type Platform struct {
 	Disabled bool   `bson:",omitempty"`
 }
 
+type PlatformService interface {
+	Insert(Platform) error
+	FindByName(string) (*Platform, error)
+	FindAll() ([]Platform, error)
+	FindEnabled() ([]Platform, error)
+	Update(Platform) error
+	Delete(Platform) error
+}
+
 var (
 	ErrPlatformNameMissing    = errors.New("Platform name is required.")
 	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")

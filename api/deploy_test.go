@@ -113,7 +113,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
-	s.conn.Platforms().Insert(appTypes.Platform{Name: "python"})
+	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
