@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
@@ -148,7 +149,7 @@ func (app *App) getBuilder() (builder.Builder, error) {
 		if app.Pool == "" {
 			return builder.GetDefault()
 		}
-		pool, err := provision.GetPoolByName(app.Pool)
+		pool, err := pool.GetPoolByName(app.Pool)
 		if err != nil {
 			return nil, err
 		}
@@ -168,11 +169,11 @@ func (app *App) getProvisioner() (provision.Provisioner, error) {
 		if app.Pool == "" {
 			return provision.GetDefault()
 		}
-		pool, err := provision.GetPoolByName(app.Pool)
+		p, err := pool.GetPoolByName(app.Pool)
 		if err != nil {
 			return nil, err
 		}
-		app.provisioner, err = pool.GetProvisioner()
+		app.provisioner, err = p.GetProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +338,7 @@ func CreateApp(app *App, user *auth.User) error {
 		return err
 	}
 	if app.Router == "" {
-		pool, errPool := provision.GetPoolByName(app.GetPool())
+		pool, errPool := pool.GetPoolByName(app.GetPool())
 		if errPool != nil {
 			return errPool
 		}
@@ -908,24 +909,24 @@ func (app *App) SetPool() error {
 		return err
 	}
 	if poolName == "" {
-		var pool *provision.Pool
-		pool, err = provision.GetDefaultPool()
+		var p *pool.Pool
+		p, err = pool.GetDefaultPool()
 		if err != nil {
 			return err
 		}
-		poolName = pool.Name
+		poolName = p.Name
 	}
 	app.Pool = poolName
-	pool, err := provision.GetPoolByName(poolName)
+	p, err := pool.GetPoolByName(poolName)
 	if err != nil {
 		return err
 	}
-	return app.validateTeamOwner(pool)
+	return app.validateTeamOwner(p)
 }
 
 func (app *App) getPoolForApp(poolName string) (string, error) {
 	if poolName == "" {
-		pools, err := provision.ListPoolsForTeam(app.TeamOwner)
+		pools, err := pool.ListPoolsForTeam(app.TeamOwner)
 		if err != nil {
 			return "", err
 		}
@@ -941,7 +942,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		}
 		return pools[0].Name, nil
 	}
-	pool, err := provision.GetPoolByName(poolName)
+	pool, err := pool.GetPoolByName(poolName)
 	if err != nil {
 		return "", err
 	}
@@ -980,7 +981,7 @@ func (app *App) validate() error {
 }
 
 func (app *App) validatePool() error {
-	pool, err := provision.GetPoolByName(app.Pool)
+	pool, err := pool.GetPoolByName(app.Pool)
 	if err != nil {
 		return err
 	}
@@ -991,14 +992,14 @@ func (app *App) validatePool() error {
 	return app.validateRouter(pool)
 }
 
-func (app *App) validateTeamOwner(pool *provision.Pool) error {
+func (app *App) validateTeamOwner(p *pool.Pool) error {
 	_, err := auth.GetTeam(app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
-	poolTeams, err := pool.GetTeams()
-	if err != nil && err != provision.ErrPoolHasNoTeam {
-		msg := fmt.Sprintf("failed to get pool %q teams", pool.Name)
+	poolTeams, err := p.GetTeams()
+	if err != nil && err != pool.ErrPoolHasNoTeam {
+		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
 	var poolTeam bool
@@ -1009,13 +1010,13 @@ func (app *App) validateTeamOwner(pool *provision.Pool) error {
 		}
 	}
 	if !poolTeam {
-		msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, pool.Name)
+		msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
 	return nil
 }
 
-func (app *App) validateRouter(pool *provision.Pool) error {
+func (app *App) validateRouter(pool *pool.Pool) error {
 	routers, err := pool.GetRouters()
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
@@ -1030,7 +1031,7 @@ func (app *App) validateRouter(pool *provision.Pool) error {
 }
 
 func (app *App) ValidateService(service string) error {
-	pool, err := provision.GetPoolByName(app.Pool)
+	pool, err := pool.GetPoolByName(app.Pool)
 	if err != nil {
 		return err
 	}

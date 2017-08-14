@@ -10,7 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -43,7 +43,7 @@ contexts:
 	if !global {
 		routersAllowed := make(map[string]struct{})
 		filteredRouters = []router.PlanRouter{}
-		pools, err := provision.ListPossiblePools(teams)
+		pools, err := pool.ListPossiblePools(teams)
 		if err != nil {
 			return err
 		}

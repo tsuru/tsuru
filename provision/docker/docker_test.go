@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -402,8 +403,8 @@ func (s *S) TestGetDockerClientNoSuchNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, p.storage, "")
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test-docker-client"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test-docker-client"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -432,8 +433,8 @@ func (s *S) TestGetDockerClientWithApp(c *check.C) {
 	}
 	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test-docker-client"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test-docker-client"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -461,10 +462,10 @@ func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
 	defer coll.Close()
 	err = coll.Insert(cont1, cont2)
 	c.Assert(err, check.IsNil)
-	pool := provision.Pool{Name: "pool1"}
-	err = provision.AddPool(provision.AddPoolOptions{Name: pool.Name})
+	p := pool.Pool{Name: "pool1"}
+	err = pool.AddPool(pool.AddPoolOptions{Name: p.Name})
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
@@ -485,7 +486,7 @@ func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
 	for _, node := range nodes {
 		err = s.p.cluster.Register(cluster.Node{
 			Address:  node.Address,
-			Metadata: map[string]string{"pool": pool.Name},
+			Metadata: map[string]string{"pool": p.Name},
 		})
 		c.Assert(err, check.IsNil)
 	}
@@ -509,8 +510,8 @@ func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, p.storage, "")
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test-docker-client"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test-docker-client"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	client, err := p.GetDockerClient(nil)
 	c.Assert(client, check.IsNil)

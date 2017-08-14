@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -56,8 +57,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	provision.DefaultProvisioner = "fake"
 	provisiontest.ProvisionerInstance.Reset()
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 

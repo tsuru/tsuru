@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -611,7 +612,7 @@ func (s *S) TestRoutableUnits(c *check.C) {
 	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "px"}}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
 	err = app.CreateApp(a, s.user)
@@ -641,7 +642,7 @@ func (s *S) TestRoutableUnitsNoNodesInPool(c *check.C) {
 	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "py"}}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
 	err = app.CreateApp(a, s.user)

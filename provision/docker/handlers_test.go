@@ -31,9 +31,9 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -310,8 +310,8 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	c.Assert(err, check.IsNil)
 	defer storage.Close()
 	for _, appPool := range appPools {
-		opts := provision.AddPoolOptions{Name: appPool[1]}
-		provision.AddPool(opts)
+		opts := pool.AddPoolOptions{Name: appPool[1]}
+		pool.AddPool(opts)
 		err = newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)

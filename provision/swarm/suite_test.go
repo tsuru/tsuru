@@ -15,7 +15,7 @@ import (
 	fakebuilder "github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -63,7 +63,7 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("swarm:swarm-port", 0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "bonehunters", Default: true, Provisioner: "swarm"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "bonehunters", Default: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
 	p := app.Plan{
 		Name:     "default",

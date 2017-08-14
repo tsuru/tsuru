@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -120,8 +121,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn.Platforms().Insert(p)
 	s.conn.Platforms().Insert(app.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 }

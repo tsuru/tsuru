@@ -22,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
@@ -59,8 +59,8 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	s.team = authTypes.Team{Name: "metallica"}
 	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 

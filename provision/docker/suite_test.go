@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -139,8 +140,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
-	opts := provision.AddPoolOptions{Name: "test-default", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test-default", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
