@@ -11,8 +11,8 @@ import (
 )
 
 type Platform struct {
-	Name     string `bson:"_id"`
-	Disabled bool   `bson:",omitempty"`
+	Name     string
+	Disabled bool
 }
 
 type PlatformService interface {
