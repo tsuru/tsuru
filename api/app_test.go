@@ -2714,6 +2714,7 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
 		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
+		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
 	result := []bind.EnvVar{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)

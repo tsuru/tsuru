@@ -844,7 +844,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 			}
 		}
 	} else {
-		for _, v := range a.Env {
+		for _, v := range a.Envs() {
 			result = append(result, v)
 		}
 	}
