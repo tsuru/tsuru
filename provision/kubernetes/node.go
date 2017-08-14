@@ -11,8 +11,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 )
 
-const clusterMetadataName = "tsuru.io/cluster"
-
 type kubernetesNodeWrapper struct {
 	node    *apiv1.Node
 	prov    *kubernetesProvisioner
@@ -68,7 +66,7 @@ func (n *kubernetesNodeWrapper) Metadata() map[string]string {
 func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
 	filteredMap := filterMap(n.allMetadata(), true)
 	if n.cluster != nil {
-		filteredMap[clusterMetadataName] = n.cluster.Name
+		filteredMap[provision.LabelClusterMetadata] = n.cluster.Name
 	}
 	return filteredMap
 }
