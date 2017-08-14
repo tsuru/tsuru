@@ -23,7 +23,7 @@ func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (r *TeamService) Insert(t auth.Team) error {
+func (s *TeamService) Insert(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -36,25 +36,11 @@ func (r *TeamService) Insert(t auth.Team) error {
 	return err
 }
 
-func (r *TeamService) FindAll() ([]auth.Team, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var teams []team
-	err = teamsCollection(conn).Find(nil).All(&teams)
-	if err != nil {
-		return nil, err
-	}
-	authTeams := make([]auth.Team, len(teams))
-	for i, t := range teams {
-		authTeams[i] = auth.Team(t)
-	}
-	return authTeams, nil
+func (s *TeamService) FindAll() ([]auth.Team, error) {
+	return s.findByQuery(nil)
 }
 
-func (r *TeamService) FindByName(name string) (*auth.Team, error) {
+func (s *TeamService) FindByName(name string) (*auth.Team, error) {
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
@@ -72,14 +58,19 @@ func (r *TeamService) FindByName(name string) (*auth.Team, error) {
 	return &team, nil
 }
 
-func (r *TeamService) FindByNames(names []string) ([]auth.Team, error) {
+func (s *TeamService) FindByNames(names []string) ([]auth.Team, error) {
+	query := bson.M{"_id": bson.M{"$in": names}}
+	return s.findByQuery(query)
+}
+
+func (s *TeamService) findByQuery(query bson.M) ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var teams []team
-	err = teamsCollection(conn).Find(bson.M{"_id": bson.M{"$in": names}}).All(&teams)
+	err = teamsCollection(conn).Find(query).All(&teams)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +81,7 @@ func (r *TeamService) FindByNames(names []string) ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (r *TeamService) Delete(t auth.Team) error {
+func (s *TeamService) Delete(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
