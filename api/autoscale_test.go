@@ -146,15 +146,13 @@ func (s *S) TestAutoScaleListRulesEmpty(c *check.C) {
 }
 
 func (s *S) TestAutoScaleListRulesWithLegacyConfig(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
 	config.Set("docker:auto-scale:metadata-filter", "mypool")
 	config.Set("docker:auto-scale:max-container-count", 4)
 	config.Set("docker:auto-scale:scale-down-ratio", 1.5)
 	config.Set("docker:auto-scale:prevent-rebalance", true)
 	config.Set("docker:scheduler:max-used-memory", 0.9)
-	defer config.Unset("docker:auto-scale:metadata-filter")
-	defer config.Unset("docker:auto-scale:max-container-count")
-	defer config.Unset("docker:auto-scale:scale-down-ratio")
-	defer config.Unset("docker:auto-scale:prevent-rebalance")
+	defer config.Unset("docker:auto-scale")
 	defer config.Unset("docker:scheduler:max-used-memory")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/node/autoscale/rules", nil)
@@ -198,6 +196,8 @@ func (s *S) TestAutoScaleListRulesWithDBConfig(c *check.C) {
 }
 
 func (s *S) TestAutoScaleSetRule(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale-enabled")
 	config.Set("docker:scheduler:total-memory-metadata", "maxmemory")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
 	rule := autoscale.Rule{
@@ -286,6 +286,8 @@ func (s *S) TestAutoScaleSetRuleExisting(c *check.C) {
 }
 
 func (s *S) TestAutoScaleDeleteRule(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale-enabled")
 	rule := autoscale.Rule{MetadataFilter: "", Enabled: true, ScaleDownRatio: 1.1, MaxContainerCount: 5}
 	err := rule.Update()
 	c.Assert(err, check.IsNil)
