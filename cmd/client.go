@@ -12,10 +12,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 
 	"github.com/pkg/errors"
 	tsuruerr "github.com/tsuru/tsuru/errors"
 	tsuruio "github.com/tsuru/tsuru/io"
+)
+
+const (
+	VerbosityHeader = "X-Tsuru-Verbosity"
 )
 
 var errUnauthorized = &tsuruerr.HTTP{Code: http.StatusUnauthorized, Message: "unauthorized"}
@@ -57,6 +62,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	if token, err := ReadToken(); err == nil && token != "" {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
+	request.Header.Add(VerbosityHeader, strconv.Itoa(c.Verbosity))
 	request.Close = true
 	if c.Verbosity >= 1 {
 		fmt.Fprintf(c.context.Stdout, "*************************** <Request uri=%q> **********************************\n", request.URL.RequestURI())
