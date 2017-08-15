@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -516,7 +517,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	cluster := p.Cluster()
 	for _, imageID := range images {
 		err = cluster.RemoveImage(imageID)
-		if err != nil {
+		if err != nil && err != docker.ErrNoSuchImage {
 			log.Errorf("Failed to remove image %s: %s", imageID, err)
 		}
 		err = cluster.RemoveFromRegistry(imageID)

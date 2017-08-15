@@ -29,12 +29,13 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -59,7 +60,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -96,7 +97,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
-	provision.RemovePool("pool1")
+	pool.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
 	s.logConn.Logs("myapp").Database.DropDatabase()
 	s.conn.Close()
@@ -112,9 +113,9 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
-	s.conn.Platforms().Insert(app.Platform{Name: "python"})
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
-	err = provision.AddPool(opts)
+	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	user, err := s.token.User()
 	c.Assert(err, check.IsNil)
@@ -739,7 +740,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newteam"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -951,7 +952,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -989,7 +990,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)

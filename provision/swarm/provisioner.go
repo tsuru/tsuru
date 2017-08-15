@@ -7,10 +7,8 @@ package swarm
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"strings"
-
 	"time"
 
 	"github.com/docker/docker/api/types/swarm"
@@ -24,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -48,6 +47,7 @@ var (
 	_ provision.SleepableProvisioner     = &swarmProvisioner{}
 	_ provision.BuilderDeploy            = &swarmProvisioner{}
 	_ provision.VolumeProvisioner        = &swarmProvisioner{}
+	_ cluster.InitClusterProvisioner     = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
@@ -82,7 +82,7 @@ func (p *swarmProvisioner) GetName() string {
 }
 
 func (p *swarmProvisioner) Provision(a provision.App) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (p *swarmProvisioner) Provision(a provision.App) error {
 }
 
 func (p *swarmProvisioner) Destroy(a provision.App) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 }
 
 func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName str
 }
 
 func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName 
 }
 
 func (p *swarmProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (p *swarmProvisioner) Restart(a provision.App, process string, w io.Writer)
 }
 
 func (p *swarmProvisioner) Start(a provision.App, process string) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func (p *swarmProvisioner) Start(a provision.App, process string) error {
 }
 
 func (p *swarmProvisioner) Stop(a provision.App, process string) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -198,8 +198,7 @@ var stateMap = map[swarm.TaskState]provision.Status{
 }
 
 func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
-	nodeLabels := provision.LabelSet{Labels: node.Spec.Labels, Prefix: tsuruLabelPrefix}
-	host := tsuruNet.URLToHost(nodeLabels.NodeAddr())
+	host := tsuruNet.URLToHost(node.Status.Addr)
 	labels := provision.LabelSet{Labels: service.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return provision.Unit{
 		ID:          task.ID,
@@ -212,7 +211,7 @@ func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a pr
 	}
 }
 
-func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, error) {
+func tasksToUnits(client *clusterClient, tasks []swarm.Task) ([]provision.Unit, error) {
 	nodeMap := map[string]*swarm.Node{}
 	serviceMap := map[string]*swarm.Service{}
 	appsMap := map[string]provision.App{}
@@ -256,15 +255,15 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 	return units, nil
 }
 
-func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
-	client, err := chooseDBSwarmNode()
+func (p *swarmProvisioner) Units(a provision.App) ([]provision.Unit, error) {
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		if errors.Cause(err) == errNoSwarmNode {
+		if errors.Cause(err) == cluster.ErrNoCluster {
 			return []provision.Unit{}, nil
 		}
 		return nil, err
 	}
-	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: app, Prefix: tsuruLabelPrefix})
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: a, Prefix: tsuruLabelPrefix})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -280,7 +279,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 }
 
 func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +319,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		log.Debugf("[swarm-routable-addresses] no exposed ports for app %q", a.GetName())
 		return nil, nil
 	}
-	nodes, err := listValidNodes(client)
+	nodes, err := client.ListNodes(docker.ListNodesOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -334,8 +333,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	}
 	addrs := make([]url.URL, len(nodes))
 	for i, n := range nodes {
-		l := provision.LabelSet{Labels: n.Spec.Labels, Prefix: tsuruLabelPrefix}
-		host := tsuruNet.URLToHost(l.NodeAddr())
+		host := tsuruNet.URLToHost(n.Status.Addr)
 		addrs[i] = url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", host, pubPort),
@@ -354,7 +352,7 @@ func findTaskByContainerId(tasks []swarm.Task, unitId string) (*swarm.Task, erro
 }
 
 func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -389,33 +387,35 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 }
 
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	client, err := chooseDBSwarmNode()
+	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == errNoSwarmNode {
+		if errors.Cause(err) == cluster.ErrNoCluster {
 			return nil, nil
 		}
 		return nil, err
 	}
-	nodes, err := listValidNodes(client)
-	if err != nil {
-		return nil, err
-	}
-	var filterMap map[string]struct{}
-	if len(addressFilter) > 0 {
-		filterMap = map[string]struct{}{}
-		for _, addr := range addressFilter {
-			filterMap[addr] = struct{}{}
+	var nodeList []provision.Node
+	for _, client := range clusters {
+		nodes, err := client.ListNodes(docker.ListNodesOptions{})
+		if err != nil {
+			return nil, err
 		}
-	}
-	nodeList := make([]provision.Node, 0, len(nodes))
-	for i := range nodes {
-		wrapped := &swarmNodeWrapper{Node: &nodes[i], provisioner: p}
-		toAdd := true
-		if filterMap != nil {
-			_, toAdd = filterMap[wrapped.Address()]
+		var filterMap map[string]struct{}
+		if len(addressFilter) > 0 {
+			filterMap = map[string]struct{}{}
+			for _, addr := range addressFilter {
+				filterMap[addr] = struct{}{}
+			}
 		}
-		if toAdd {
-			nodeList = append(nodeList, wrapped)
+		for i := range nodes {
+			wrapped := &swarmNodeWrapper{Node: &nodes[i], provisioner: p, client: client}
+			toAdd := true
+			if filterMap != nil {
+				_, toAdd = filterMap[wrapped.Address()]
+			}
+			if toAdd {
+				nodeList = append(nodeList, wrapped)
+			}
 		}
 	}
 	return nodeList, nil
@@ -433,51 +433,53 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 }
 
 func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
-	client, err := chooseDBSwarmNode()
+	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == errNoSwarmNode {
-			return nil, provision.ErrNodeNotFound
+		if errors.Cause(err) == cluster.ErrNoCluster {
+			return nil, nil
 		}
 		return nil, err
 	}
-	tasks, err := client.ListTasks(docker.ListTasksOptions{})
-	if err != nil {
-		return nil, err
-	}
-	var task *swarm.Task
-	for _, unitData := range nodeData.Units {
-		task, err = findTaskByContainerId(tasks, unitData.ID)
-		if err == nil {
-			break
-		}
-		if _, isNotFound := errors.Cause(err).(*provision.UnitNotFoundError); !isNotFound {
-			return nil, err
-		}
-	}
-	if task != nil {
-		node, err := client.InspectNode(task.NodeID)
+	for _, client := range clusters {
+		tasks, err := client.ListTasks(docker.ListTasksOptions{})
 		if err != nil {
-			if _, notFound := err.(*docker.NoSuchNode); notFound {
-				return nil, provision.ErrNodeNotFound
-			}
 			return nil, err
 		}
-		return &swarmNodeWrapper{Node: node, provisioner: p}, nil
+		var task *swarm.Task
+		for _, unitData := range nodeData.Units {
+			task, err = findTaskByContainerId(tasks, unitData.ID)
+			if err == nil {
+				break
+			}
+			if _, isNotFound := errors.Cause(err).(*provision.UnitNotFoundError); !isNotFound {
+				return nil, err
+			}
+		}
+		if task != nil {
+			node, err := client.InspectNode(task.NodeID)
+			if err != nil {
+				if _, notFound := err.(*docker.NoSuchNode); notFound {
+					return nil, provision.ErrNodeNotFound
+				}
+				return nil, err
+			}
+			return &swarmNodeWrapper{Node: node, provisioner: p, client: client}, nil
+		}
 	}
 	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	init := false
-	existingClient, err := chooseDBSwarmNode()
-	if err != nil && errors.Cause(err) != errNoSwarmNode {
-		return err
-	}
-	err = addNodeCredentials(opts)
+	pool := opts.Metadata[provision.PoolMetadataName]
+	existingClient, err := clusterForPool(pool)
 	if err != nil {
 		return err
 	}
-	newClient, err := newClient(opts.Address)
+	tls, err := tlsConfigForCluster(existingClient.Cluster)
+	if err != nil {
+		return err
+	}
+	newClient, err := newClient(opts.Address, tls)
 	if err != nil {
 		return err
 	}
@@ -485,13 +487,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return err
 	}
-	if existingClient == nil {
-		err = initSwarm(newClient, opts.Address)
-		existingClient = newClient
-		init = true
-	} else {
-		err = joinSwarm(existingClient, newClient, opts.Address)
-	}
+	err = joinSwarm(existingClient, newClient, opts.Address)
 	if err != nil {
 		return err
 	}
@@ -511,18 +507,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
 	})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	err = updateDBSwarmNodes(existingClient)
-	if err != nil {
-		return err
-	}
-	if init {
-		m := nodeContainerManager{client: existingClient}
-		return servicecommon.EnsureNodeContainersCreated(&m, ioutil.Discard)
-	}
-	return nil
+	return errors.WithStack(err)
 }
 
 func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
@@ -530,7 +515,7 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 	if err != nil {
 		return err
 	}
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(node.Pool())
 	if err != nil {
 		return err
 	}
@@ -545,25 +530,18 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 			return errors.WithStack(err)
 		}
 	}
-	nodes, err := listValidNodes(client)
+	nodes, err := client.ListNodes(docker.ListNodesOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	if len(nodes) == 1 {
-		err = client.LeaveSwarm(docker.LeaveSwarmOptions{Force: true})
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		return removeDBSwarmNodes()
+		return errors.New("cannot remove last node from swarm, remove the cluster from tsuru to remove it")
 	}
 	err = client.RemoveNode(docker.RemoveNodeOptions{
 		ID:    swarmNode.ID,
 		Force: true,
 	})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return updateDBSwarmNodes(client)
+	return errors.WithStack(err)
 }
 
 func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
@@ -584,7 +562,7 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 			swarmNode.Spec.Annotations.Labels[k] = v
 		}
 	}
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(node.Pool())
 	if err != nil {
 		return err
 	}
@@ -598,46 +576,56 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
-	client, err := chooseDBSwarmNode()
+func (p *swarmProvisioner) GetDockerClient(a provision.App) (*docker.Client, error) {
+	if a == nil {
+		clusters, err := allClusters()
+		if err != nil {
+			if errors.Cause(err) == cluster.ErrNoCluster {
+				return nil, nil
+			}
+			return nil, err
+		}
+		return clusters[0].Client, nil
+	}
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return client.Client, nil
 }
 
 func (p *swarmProvisioner) CleanImage(appName, imgName string) {
 	p.cleanImageInNodes(imgName)
 }
 
-func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {
 	if !strings.HasSuffix(buildImageID, "-builder") {
-		err := deployProcesses(app, buildImageID, nil)
+		err := deployProcesses(a, buildImageID, nil)
 		if err != nil {
 			return "", err
 		}
 		return buildImageID, nil
 	}
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
 	}
-	deployImage, err := image.AppNewImageName(app.GetName())
+	deployImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
 		return "", err
 	}
-	srvID, task, err := runOnceBuildCmds(client, app, nil, buildImageID, deployImage, evt)
+	srvID, task, err := runOnceBuildCmds(client, a, nil, buildImageID, deployImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, app)
+	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, a)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	err = deployProcesses(app, deployImage, nil)
+	err = deployProcesses(a, deployImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -645,7 +633,7 @@ func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *e
 }
 
 func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(opts.App.GetPool())
 	if err != nil {
 		return err
 	}
@@ -703,12 +691,12 @@ func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
 	return <-errs
 }
 
-func (p *swarmProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	client, err := chooseDBSwarmNode()
+func (p *swarmProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
-	tasks, err := runningTasksForApp(client, app, "")
+	tasks, err := runningTasksForApp(client, a, "")
 	if err != nil {
 		return err
 	}
@@ -724,12 +712,12 @@ func (p *swarmProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provisio
 	return nil
 }
 
-func (p *swarmProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	client, err := chooseDBSwarmNode()
+func (p *swarmProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
-	tasks, err := runningTasksForApp(client, app, "")
+	tasks, err := runningTasksForApp(client, a, "")
 	if err != nil {
 		return err
 	}
@@ -747,7 +735,7 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 	if err != nil {
 		return err
 	}
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -765,89 +753,88 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 	return err
 }
 
-type nodeContainerManager struct {
-	client *docker.Client
-}
+type nodeContainerManager struct{}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	serviceSpec, err := serviceSpecForNodeContainer(config, pool, filter)
 	if err != nil {
 		return err
 	}
-	_, err = upsertService(serviceSpec, m.client, placementOnly)
+	err = forEachCluster(func(client *clusterClient) error {
+		_, upsertErr := upsertService(serviceSpec, client, placementOnly)
+		return upsertErr
+	})
+	if err == cluster.ErrNoCluster {
+		return nil
+	}
 	return err
 }
 
 func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		if errors.Cause(err) == errNoSwarmNode {
-			return nil
-		}
-		return err
-	}
-	m := nodeContainerManager{client: client}
+	m := nodeContainerManager{}
 	return servicecommon.UpgradeNodeContainer(&m, name, pool, writer)
 }
 
 func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		if errors.Cause(err) == errNoSwarmNode {
-			return nil
-		}
-		return err
+	err := forEachCluster(func(client *clusterClient) error {
+		return client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
+	})
+	if err == cluster.ErrNoCluster {
+		return nil
 	}
-	err = client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
-	return errors.WithStack(err)
+	return err
 }
 
 func (p *swarmProvisioner) StartupMessage() (string, error) {
 	out := "Swarm provisioner reports the following nodes:\n"
-	client, err := chooseDBSwarmNode()
+	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) != errNoSwarmNode {
-			return "", err
+		if errors.Cause(err) == cluster.ErrNoCluster {
+			return out + "    No Swarm node available.\n", nil
 		}
-		return out + "    No Swarm node available.\n", nil
-	}
-	nodeList, err := client.ListNodes(docker.ListNodesOptions{})
-	if err != nil {
 		return "", err
 	}
-	for _, node := range nodeList {
-		l := provision.LabelSet{Labels: node.Spec.Labels, Prefix: tsuruLabelPrefix}
-		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", l.NodeAddr(), node.Status.State, node.Spec.Role)
+	for _, client := range clusters {
+		nodeList, err := client.ListNodes(docker.ListNodesOptions{})
+		if err != nil {
+			return "", err
+		}
+		for _, node := range nodeList {
+			addr := nodeAddr(client, &node)
+			out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", addr, node.Status.State, node.Spec.Role)
+		}
 	}
 	return out, nil
 }
 
 func (p *swarmProvisioner) DeleteVolume(volumeName, pool string) error {
-	client, err := chooseDBSwarmNode()
+	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) != errNoSwarmNode {
+		if errors.Cause(err) == cluster.ErrNoCluster {
 			return nil
 		}
 		return err
 	}
-	nodes, err := listValidNodes(client)
-	if err != nil {
-		return err
-	}
-	for _, n := range nodes {
-		nodeClient, err := clientForNode(client, n.ID)
+	for _, client := range clusters {
+		nodes, err := client.ListNodes(docker.ListNodesOptions{})
 		if err != nil {
 			return err
 		}
-		if err := nodeClient.RemoveVolume(volumeName); err != docker.ErrNoSuchVolume {
-			return err
+		for _, n := range nodes {
+			nodeClient, err := clientForNode(client, n.ID)
+			if err != nil {
+				return err
+			}
+			if err := nodeClient.RemoveVolume(volumeName); err != docker.ErrNoSuchVolume && err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -858,7 +845,7 @@ func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.Pr
 }
 
 type serviceManager struct {
-	client *docker.Client
+	client *clusterClient
 }
 
 func (m *serviceManager) RemoveService(a provision.App, process string) error {
@@ -925,7 +912,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	return nil
 }
 
-func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, imgID, buildingImage string, w io.Writer) (string, *swarm.Task, error) {
+func runOnceBuildCmds(client *clusterClient, a provision.App, cmds []string, imgID, buildingImage string, w io.Writer) (string, *swarm.Task, error) {
 	opts := tsuruServiceOpts{
 		app:        a,
 		image:      imgID,
@@ -935,7 +922,7 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 	return runOnceCmds(client, opts, cmds, w, w)
 }
 
-func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, stdout, stderr io.Writer) (string, *swarm.Task, error) {
+func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, stdout, stderr io.Writer) (string, *swarm.Task, error) {
 	spec, err := serviceSpecForApp(opts)
 	if err != nil {
 		return "", nil, err
@@ -953,7 +940,7 @@ func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, st
 	if err != nil {
 		return createdID, nil, err
 	}
-	client, err = clientForNode(client, tasks[0].NodeID)
+	nodeClient, err := clientForNode(client, tasks[0].NodeID)
 	if err != nil {
 		return createdID, nil, err
 	}
@@ -967,7 +954,7 @@ func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, st
 		Stderr:       true,
 		Stream:       true,
 	}
-	exitCode, err := safeAttachWaitContainer(client, attachOpts)
+	exitCode, err := safeAttachWaitContainer(nodeClient, attachOpts)
 	if err != nil {
 		return createdID, nil, err
 	}
@@ -978,11 +965,29 @@ func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, st
 }
 
 func (p *swarmProvisioner) Sleep(a provision.App, process string) error {
-	client, err := chooseDBSwarmNode()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
 	return servicecommon.ChangeAppState(&serviceManager{
 		client: client,
 	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
+}
+
+func (p *swarmProvisioner) InitializeCluster(c *cluster.Cluster) error {
+	client, err := newClusterClient(c)
+	if err != nil {
+		return err
+	}
+	host := tsuruNet.URLToHost(client.Cluster.Addresses[0])
+	_, err = client.InitSwarm(docker.InitSwarmOptions{
+		InitRequest: swarm.InitRequest{
+			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
+			AdvertiseAddr: host,
+		},
+	})
+	if err != nil && errors.Cause(err) != docker.ErrNodeAlreadyInSwarm {
+		return errors.WithStack(err)
+	}
+	return nil
 }

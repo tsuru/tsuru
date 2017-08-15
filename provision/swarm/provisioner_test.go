@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	dockerTesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -29,7 +30,9 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -48,20 +51,14 @@ func (s *S) TestInitialize(c *check.C) {
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(swarmConfig.swarmPort, check.Equals, 2377)
-	// TODO(cezarsa): check TLSConfig loading
 }
 
 func (s *S) TestProvision(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = s.p.Provision(a)
+	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
-	cli, err := newClient(srv.URL())
+	cli, err := newClient(s.clusterSrv.URL(), nil)
 	c.Assert(err, check.IsNil)
 	nets, err := cli.ListNetworks()
 	c.Assert(err, check.IsNil)
@@ -71,6 +68,7 @@ func (s *S) TestProvision(c *check.C) {
 }
 
 func (s *S) TestAddNode(c *check.C) {
+	s.addCluster(c)
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
@@ -87,22 +85,16 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(node.Metadata(), check.DeepEquals, metadata)
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
-	coll, err := nodeAddrCollection()
-	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	var nodeAddrs NodeAddrs
-	err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{srv.URL()})
 }
 
 func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
+	s.addCluster(c)
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	cli, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
-	err = initSwarm(cli, srv.URL())
+	err = joinSwarm(s.clusterCli, cli, srv.URL())
 	c.Assert(err, check.IsNil)
 	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
@@ -117,19 +109,15 @@ func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
 	c.Assert(node.Metadata(), check.DeepEquals, metadata)
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
-	coll, err := nodeAddrCollection()
-	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	var nodeAddrs NodeAddrs
-	err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{srv.URL()})
 }
 
 func (s *S) TestAddNodeMultiple(c *check.C) {
+	s.addCluster(c)
+	var addrs []string
 	for i := 0; i < 5; i++ {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
+		addrs = append(addrs, srv.URL())
 		defer srv.Stop()
 		metadata := map[string]string{"count": fmt.Sprintf("%d", i), "pool": "p1"}
 		opts := provision.AddNodeOptions{
@@ -139,7 +127,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 		err = s.p.AddNode(opts)
 		c.Assert(err, check.IsNil, check.Commentf("server %d", i))
 	}
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(addrs)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 5)
 	for i, n := range nodes {
@@ -150,34 +138,8 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	}
 }
 
-func (s *S) TestAddNodeMultipleRoleCheck(c *check.C) {
-	for i := 0; i < 15; i++ {
-		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-		c.Assert(err, check.IsNil)
-		defer srv.Stop()
-		metadata := map[string]string{"pool": "p1"}
-		opts := provision.AddNodeOptions{
-			Address:  srv.URL(),
-			Metadata: metadata,
-		}
-		err = s.p.AddNode(opts)
-		c.Assert(err, check.IsNil, check.Commentf("server %d", i))
-	}
-	cli, err := chooseDBSwarmNode()
-	c.Assert(err, check.IsNil)
-	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 15)
-	managers := 0
-	for _, n := range nodes {
-		if n.Spec.Role == swarm.NodeRoleManager {
-			managers++
-		}
-	}
-	c.Assert(managers, check.Equals, 7)
-}
-
 func (s *S) TestAddNodeTLS(c *check.C) {
+	s.addTLSCluster(c)
 	caPath := tmpFileWith(c, testCA)
 	certPath := tmpFileWith(c, testServerCert)
 	keyPath := tmpFileWith(c, testServerKey)
@@ -191,15 +153,11 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	url := srv.URL()
-	url = strings.Replace(url, "http://", "https://", 1)
+	url := strings.Replace(srv.URL(), "http://", "https://", 1)
 	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
-		Address:    url,
-		Metadata:   metadata,
-		CaCert:     testCA,
-		ClientCert: testCert,
-		ClientKey:  testKey,
+		Address:  url,
+		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -211,65 +169,16 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	c.Assert(node.Status(), check.Equals, "ready")
 }
 
-func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
-	var srv1Calls []string
-	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		srv1Calls = append(srv1Calls, r.Method+" "+r.URL.Path)
-	})
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv2.Stop()
-	c1 := nodecontainer.NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Image: "bsimg",
-		},
-	}
-	err = nodecontainer.AddNewContainer("", &c1)
-	c.Assert(err, check.IsNil)
-	err = nodecontainer.AddNewContainer("p1", &c1)
-	c.Assert(err, check.IsNil)
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	c.Assert(srv1Calls, check.HasLen, 10)
-	c.Assert(srv1Calls[6:], check.DeepEquals, []string{
-		"GET /services/node-container-bs-all",
-		"POST /services/create",
-		"GET /services/node-container-bs-p1",
-		"POST /services/create",
-	})
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	services, err := client.ListServices(docker.ListServicesOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(services), check.Equals, 2)
-	opts = provision.AddNodeOptions{Address: srv2.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	c.Assert(srv1Calls[len(srv1Calls)-1], check.Equals, "GET /nodes")
-	services, err = client.ListServices(docker.ListServicesOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(services), check.Equals, 2)
-}
-
 func (s *S) TestListNodes(c *check.C) {
+	s.addCluster(c)
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv2.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
 	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	opts.Address = srv2.URL()
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -284,41 +193,6 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
 }
 
-func (s *S) TestListNodesOnlyValid(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
-	opts := provision.AddNodeOptions{
-		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	cli2, err := docker.NewClient(srv2.URL())
-	c.Assert(err, check.IsNil)
-	err = joinSwarm(cli, cli2, srv2.URL())
-	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, srv.URL())
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, metadata)
-	c.Assert(nodes[0].Pool(), check.DeepEquals, "p1")
-	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
-	err = s.p.RemoveNode(provision.RemoveNodeOptions{
-		Address: srv.URL(),
-	})
-	c.Assert(err, check.IsNil)
-	nodes, err = s.p.ListNodes(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 0)
-}
-
 func (s *S) TestListNodesEmpty(c *check.C) {
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -326,14 +200,9 @@ func (s *S) TestListNodesEmpty(c *check.C) {
 }
 
 func (s *S) TestRestart(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -357,14 +226,9 @@ func (s *S) TestRestart(c *check.C) {
 }
 
 func (s *S) TestRestartExisting(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -382,7 +246,7 @@ func (s *S) TestRestartExisting(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	cli, err := docker.NewClient(srv.URL())
+	cli, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
@@ -391,14 +255,9 @@ func (s *S) TestRestartExisting(c *check.C) {
 }
 
 func (s *S) TestStopStart(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -427,14 +286,9 @@ func (s *S) TestStopStart(c *check.C) {
 }
 
 func (s *S) TestStopStartSingleProcess(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -470,14 +324,9 @@ func (s *S) TestStopStartSingleProcess(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -500,14 +349,9 @@ func (s *S) TestUnits(c *check.C) {
 }
 
 func (s *S) TestUnitsWithShutdownTasks(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -520,12 +364,12 @@ func (s *S) TestUnitsWithShutdownTasks(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	cli, err := newClient(srv.URL())
+	cli, err := newClient(s.clusterSrv.URL(), nil)
 	c.Assert(err, check.IsNil)
 	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
 	c.Assert(err, check.IsNil)
 	tasks[0].DesiredState = swarm.TaskStateShutdown
-	err = srv.MutateTask(tasks[0].ID, tasks[0])
+	err = s.clusterSrv.MutateTask(tasks[0].ID, tasks[0])
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
@@ -533,14 +377,9 @@ func (s *S) TestUnitsWithShutdownTasks(c *check.C) {
 }
 
 func (s *S) TestUnitsWithNoNodeIDServiceIDTasks(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -553,35 +392,30 @@ func (s *S) TestUnitsWithNoNodeIDServiceIDTasks(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	cli, err := newClient(srv.URL())
+	cli, err := newClient(s.clusterSrv.URL(), nil)
 	c.Assert(err, check.IsNil)
 	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
 	c.Assert(err, check.IsNil)
 	oldNodeID := tasks[0].NodeID
 	tasks[0].NodeID = ""
-	err = srv.MutateTask(tasks[0].ID, tasks[0])
+	err = s.clusterSrv.MutateTask(tasks[0].ID, tasks[0])
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 	tasks[0].NodeID = oldNodeID
 	tasks[0].ServiceID = ""
-	err = srv.MutateTask(tasks[0].ID, tasks[0])
+	err = s.clusterSrv.MutateTask(tasks[0].ID, tasks[0])
 	c.Assert(err, check.IsNil)
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 }
 
-func (s *S) TestUnitsWithoutSwarmNode(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+func (s *S) TestUnitsWithoutSwarmCluster(c *check.C) {
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -597,21 +431,21 @@ func (s *S) TestUnitsWithoutSwarmNode(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	err = s.p.RemoveNode(provision.RemoveNodeOptions{Address: srv.URL(), Rebalance: false})
+	err = cluster.DeleteCluster("c1")
 	c.Assert(err, check.IsNil)
 	units, err = s.p.Units(a)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 0)
 }
 
 func (s *S) TestRoutableUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	s.addCluster(c)
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  s.clusterSrv.URL(),
+		Metadata: map[string]string{"pool": "px"},
+	})
 	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "px"}}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
 	err = app.CreateApp(a, s.user)
@@ -635,13 +469,13 @@ func (s *S) TestRoutableUnits(c *check.C) {
 }
 
 func (s *S) TestRoutableUnitsNoNodesInPool(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	s.addCluster(c)
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  s.clusterSrv.URL(),
+		Metadata: map[string]string{"pool": "py"},
+	})
 	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "py"}}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
 	err = app.CreateApp(a, s.user)
@@ -663,14 +497,9 @@ func (s *S) TestRoutableUnitsNoNodesInPool(c *check.C) {
 }
 
 func (s *S) TestAddUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -694,14 +523,9 @@ func (s *S) TestAddUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsMultipleProcesses(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -726,14 +550,9 @@ func (s *S) TestAddUnitsMultipleProcesses(c *check.C) {
 }
 
 func (s *S) TestAddUnitsNoDeploys(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -749,14 +568,9 @@ func (s *S) TestAddUnitsNoDeploys(c *check.C) {
 }
 
 func (s *S) TestAddUnitsNoProcessWithMultiple(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -773,28 +587,18 @@ func (s *S) TestAddUnitsNoProcessWithMultiple(c *check.C) {
 }
 
 func (s *S) TestAddUnitsNoImage(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.ErrorMatches, `no process information found deploying image "registry.tsuru.io/tsuru/app-myapp"`)
 }
 
 func (s *S) TestAddUnitsZeroUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -810,14 +614,9 @@ func (s *S) TestAddUnitsZeroUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -836,7 +635,7 @@ func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	cli, err := docker.NewClient(srv.URL())
+	cli, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	service, err := cli.InspectService(serviceNameForApp(a, "web"))
 	c.Assert(err, check.IsNil)
@@ -852,14 +651,9 @@ func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -890,21 +684,14 @@ func (s *S) TestRemoveUnits(c *check.C) {
 }
 
 func (s *S) TestGetNode(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	s.addCluster(c)
+	node, err := s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
-	opts := provision.AddNodeOptions{
-		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	node, err := s.p.GetNode(srv.URL())
-	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, srv.URL())
-	c.Assert(node.Metadata(), check.DeepEquals, metadata)
-	c.Assert(node.Pool(), check.DeepEquals, "p1")
+	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"pool": "bonehunters",
+	})
+	c.Assert(node.Pool(), check.DeepEquals, "bonehunters")
 	c.Assert(node.Status(), check.DeepEquals, "ready")
 }
 
@@ -914,12 +701,10 @@ func (s *S) TestGetNodeNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveNode(c *check.C) {
+	s.addCluster(c)
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv2.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -927,12 +712,9 @@ func (s *S) TestRemoveNode(c *check.C) {
 	}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddNodeOptions{
-		Address:  srv2.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
+	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
 	err = s.p.RemoveNode(provision.RemoveNodeOptions{
 		Address: srv.URL(),
 	})
@@ -941,56 +723,29 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }
 
-func (s *S) TestRemoveLastNodeLeaveSwarm(c *check.C) {
-	left := false
-	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		if r.URL.Path == "/swarm/leave" {
-			left = true
-		}
+func (s *S) TestRemoveLastNodeError(c *check.C) {
+	s.addCluster(c)
+	err := s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address: s.clusterSrv.URL(),
 	})
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
-	opts := provision.AddNodeOptions{
-		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	err = s.p.RemoveNode(provision.RemoveNodeOptions{
-		Address: srv.URL(),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.GetNode(srv.URL())
-	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
-	c.Assert(left, check.Equals, true)
+	c.Assert(err, check.ErrorMatches, `cannot remove last node from swarm, remove the cluster from tsuru to remove it`)
 }
 
 func (s *S) TestRemoveNodeRebalance(c *check.C) {
+	s.addCluster(c)
 	var reqs []*http.Request
-	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	hook := func(r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/nodes/") {
 			reqs = append(reqs, r)
 		}
-	})
+	}
+	s.clusterSrv.SetHook(hook)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, hook)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/nodes/") {
-			reqs = append(reqs, r)
-		}
-	})
-	c.Assert(err, check.IsNil)
-	defer srv2.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	opts = provision.AddNodeOptions{
-		Address:  srv2.URL(),
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
@@ -1016,59 +771,40 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 }
 
 func (s *S) TestUpdateNode(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
-	opts := provision.AddNodeOptions{
-		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address:  srv.URL(),
+	s.addCluster(c)
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  s.clusterSrv.URL(),
 		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
 	})
 	c.Assert(err, check.IsNil)
-	node, err := s.p.GetNode(srv.URL())
+	node, err := s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
 		"m1":   "v2",
 		"m2":   "v3",
-		"pool": "p1",
+		"pool": "bonehunters",
 	})
 }
 
 func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
-	opts := provision.AddNodeOptions{
-		Address:  srv.URL(),
-		Metadata: metadata,
-	}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: srv.URL(),
+	s.addCluster(c)
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: s.clusterSrv.URL(),
 		Disable: true,
 	})
 	c.Assert(err, check.IsNil)
-	node, err := s.p.GetNode(srv.URL())
+	node, err := s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1":   "v1",
-		"pool": "p1",
+		"pool": "bonehunters",
 	})
 	c.Assert(node.Status(), check.Equals, "ready (pause)")
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: srv.URL(),
+		Address: s.clusterSrv.URL(),
 		Enable:  true,
 	})
 	c.Assert(err, check.IsNil)
-	node, err = s.p.GetNode(srv.URL())
+	node, err = s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Status(), check.Equals, "ready")
 }
@@ -1081,16 +817,11 @@ func (s *S) TestUpdateNodeNotFound(c *check.C) {
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	cli, err := chooseDBSwarmNode()
+	cli, err := clusterForPool(a.GetPool())
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -1131,16 +862,11 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitNotBuild(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	cli, err := chooseDBSwarmNode()
+	cli, err := clusterForPool(a.GetPool())
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -1180,16 +906,11 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	cli, err := chooseDBSwarmNode()
+	cli, err := clusterForPool(a.GetPool())
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -1226,16 +947,11 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 }
 
 func (s *S) TestDeploy(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	attached := s.attachRegister(c, srv, true, a)
+	attached := s.attachRegister(c, s.clusterSrv, true, a)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -1255,7 +971,7 @@ func (s *S) TestDeploy(c *check.C) {
 		Repository: "tsuru/app-myapp",
 		Tag:        "v1-builder",
 	}
-	cli, err := docker.NewClient(srv.URL())
+	cli, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
@@ -1287,13 +1003,8 @@ func (s *S) TestDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployImageID(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
+	s.addCluster(c)
+	cli, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
@@ -1355,14 +1066,9 @@ func (s *S) TestDeployImageID(c *check.C) {
 }
 
 func (s *S) TestDestroy(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1383,14 +1089,9 @@ func (s *S) TestDestroy(c *check.C) {
 }
 
 func (s *S) TestDestroyServiceNotFound(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
@@ -1400,13 +1101,9 @@ func (s *S) TestDestroyServiceNotFound(c *check.C) {
 }
 
 func (s *S) TestShellToAnAppByAppName(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1424,20 +1121,20 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Term: "xterm"}
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
-	client, _ := docker.NewClient(srv.URL())
+	client, _ := docker.NewClient(s.clusterSrv.URL())
 	task, err := client.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	var urls struct {
 		items []url.URL
 		sync.Mutex
 	}
-	srv.PrepareExec("*", func() {
+	s.clusterSrv.PrepareExec("*", func() {
 		time.Sleep(500e6)
 	})
-	srv.SetHook(func(r *http.Request) {
+	s.clusterSrv.SetHook(func(r *http.Request) {
 		urls.Lock()
 		urls.items = append(urls.items, *r.URL)
 		urls.Unlock()
@@ -1459,13 +1156,9 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 }
 
 func (s *S) TestShellToAnAppByTaskID(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1483,20 +1176,20 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
 	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Unit: units[1].ID, Term: "xterm"}
-	client, _ := docker.NewClient(srv.URL())
+	client, _ := docker.NewClient(s.clusterSrv.URL())
 	task, err := client.InspectTask(units[1].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	var urls struct {
 		items []url.URL
 		sync.Mutex
 	}
-	srv.PrepareExec("*", func() {
+	s.clusterSrv.PrepareExec("*", func() {
 		time.Sleep(500e6)
 	})
-	srv.SetHook(func(r *http.Request) {
+	s.clusterSrv.SetHook(func(r *http.Request) {
 		urls.Lock()
 		urls.items = append(urls.items, *r.URL)
 		urls.Unlock()
@@ -1519,13 +1212,9 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 }
 
 func (s *S) TestExecuteCommand(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1540,20 +1229,20 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
-	client, _ := docker.NewClient(srv.URL())
+	client, _ := docker.NewClient(s.clusterSrv.URL())
 	task, err := client.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	task, err = client.InspectTask(units[2].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	var executed int
-	srv.SetHook(func(r *http.Request) {
-		srv.PrepareExec("*", func() {
+	s.clusterSrv.SetHook(func(r *http.Request) {
+		s.clusterSrv.PrepareExec("*", func() {
 			executed++
 		})
 	})
@@ -1564,13 +1253,9 @@ func (s *S) TestExecuteCommand(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandNoRunningTask(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1589,13 +1274,9 @@ func (s *S) TestExecuteCommandNoRunningTask(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandOnce(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1610,20 +1291,21 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
-	client, _ := docker.NewClient(srv.URL())
+	client, err := clusterForPool(a.GetPool())
+	c.Assert(err, check.IsNil)
 	task, err := client.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	task, err = client.InspectTask(units[2].ID)
 	c.Assert(err, check.IsNil)
 	task.DesiredState = swarm.TaskStateRunning
-	err = srv.MutateTask(task.ID, *task)
+	err = s.clusterSrv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
 	var executed int
-	srv.SetHook(func(r *http.Request) {
-		srv.PrepareExec("*", func() {
+	s.clusterSrv.SetHook(func(r *http.Request) {
+		s.clusterSrv.PrepareExec("*", func() {
 			executed++
 		})
 	})
@@ -1634,13 +1316,9 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandOnceNoRunningTask(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1659,14 +1337,15 @@ func (s *S) TestExecuteCommandOnceNoRunningTask(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandIsolated(c *check.C) {
-	containerChan := make(chan *docker.Container, 1)
-	srv, err := testing.NewServer("127.0.0.1:0", containerChan, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	// containerChan := make(chan *docker.Container, 1)
+	// srv, err := testing.NewServer("127.0.0.1:0", containerChan, nil)
+	// c.Assert(err, check.IsNil)
+	// defer srv.Stop()
+	// err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	// c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1677,20 +1356,20 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
-	attached := s.attachRegister(c, srv, false, a)
+	attached := s.attachRegister(c, s.clusterSrv, false, a)
 	var stdout, stderr bytes.Buffer
 	var service *swarm.Service
-	client, _ := docker.NewClient(srv.URL())
-	srv.CustomHandler("/services/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		srv.DefaultHandler().ServeHTTP(w, r)
+	client, _ := docker.NewClient(s.clusterSrv.URL())
+	s.clusterSrv.CustomHandler("/services/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.clusterSrv.DefaultHandler().ServeHTTP(w, r)
 		service, err = client.InspectService("myapp-isolated-run")
 		c.Assert(err, check.IsNil)
 	}))
 	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
-	cont := <-containerChan
-	c.Assert(cont.Image, check.Equals, "myapp:v1")
+	// cont := <-containerChan
+	// c.Assert(cont.Image, check.Equals, "myapp:v1")
 	_, err = client.InspectService("myapp-isolated-run")
 	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
 	l := provision.LabelSet{Labels: service.Spec.Labels, Prefix: tsuruLabelPrefix}
@@ -1698,13 +1377,9 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp-2", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
@@ -1712,12 +1387,8 @@ func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
 }
 
 func (s *S) TestUpgradeNodeContainerCreatesBaseService(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	s.addCluster(c)
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1735,12 +1406,8 @@ func (s *S) TestUpgradeNodeContainerCreatesBaseService(c *check.C) {
 }
 
 func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	s.addCluster(c)
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1767,12 +1434,8 @@ func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
 }
 
 func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	s.addCluster(c)
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1795,12 +1458,8 @@ func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
 }
 
 func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	s.addCluster(c)
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1823,12 +1482,8 @@ func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeContainerRemovesService(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	s.addCluster(c)
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1851,14 +1506,9 @@ func (s *S) TestRemoveNodeContainerRemovesService(c *check.C) {
 }
 
 func (s *S) TestNodeForNodeData(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1871,7 +1521,7 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	cli, err := newClient(srv.URL())
+	cli, err := newClient(s.clusterSrv.URL(), nil)
 	c.Assert(err, check.IsNil)
 	conts, err := cli.ListContainers(docker.ListContainersOptions{})
 	c.Assert(err, check.IsNil)
@@ -1883,7 +1533,7 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	}
 	node, err := s.p.NodeForNodeData(data)
 	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, srv.URL())
+	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
 	data = provision.NodeStatusData{
 		Units: []provision.UnitStatusData{
 			{ID: "invalidid"},
@@ -1915,14 +1565,9 @@ func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool,
 }
 
 func (s *S) TestSleepStart(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
+	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err = app.CreateApp(a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1951,10 +1596,13 @@ func (s *S) TestSleepStart(c *check.C) {
 }
 
 func (s *S) TestCleanImage(c *check.C) {
+	s.addCluster(c)
+	var urls []string
 	for i := 0; i < 5; i++ {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
 		defer srv.Stop()
+		urls = append(urls, srv.URL())
 		metadata := map[string]string{"count": fmt.Sprintf("%d", i), "pool": "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
@@ -1980,11 +1628,11 @@ func (s *S) TestCleanImage(c *check.C) {
 	}
 	imageName := "myimg:v1"
 	s.p.CleanImage("teste", imageName)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(urls)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 5)
 	for _, n := range nodes {
-		cli, err := newClient(n.Address())
+		cli, err := newClient(n.Address(), nil)
 		c.Assert(err, check.IsNil)
 		imgs, err := cli.ListImages(docker.ListImagesOptions{All: true})
 		c.Assert(err, check.IsNil)
@@ -1993,17 +1641,13 @@ func (s *S) TestCleanImage(c *check.C) {
 }
 
 func (s *S) TestDeleteVolume(c *check.C) {
+	s.addCluster(c)
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv2.Stop()
 	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{Address: srv2.URL()})
-	c.Assert(err, check.IsNil)
-	client, err := docker.NewClient(srv.URL())
+	client, err := docker.NewClient(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	client2, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
@@ -2024,4 +1668,23 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(len(vols), check.Equals, 0)
 	err = s.p.DeleteVolume("myvol", "pool")
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestInitializeCluster(c *check.C) {
+	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer clusterSrv.Stop()
+	clust := &cluster.Cluster{
+		Addresses:   []string{clusterSrv.URL()},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+	}
+	err = s.p.InitializeCluster(clust)
+	c.Assert(err, check.IsNil)
+	cli, err := newClusterClient(clust)
+	c.Assert(err, check.IsNil)
+	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
 }

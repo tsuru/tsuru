@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	"golang.org/x/net/websocket"
 )
 
@@ -85,17 +86,7 @@ func getAuthScheme() (string, error) {
 // purposes).
 func RunServer(dry bool) http.Handler {
 	log.Init()
-	connString, err := config.GetString("database:url")
-	if err != nil {
-		connString = db.DefaultDatabaseURL
-	}
-	dbName, err := config.GetString("database:name")
-	if err != nil {
-		dbName = db.DefaultDatabaseName
-	}
-	if !dry {
-		fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
-	}
+	setupDatabase()
 
 	m := apiRouter.NewRouter()
 
@@ -317,7 +308,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "GET", "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
-	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(updateCluster))
+	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(createCluster))
+	m.Add("1.4", "POST", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(updateCluster))
 	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
 	m.Add("1.3", "DELETE", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(deleteCluster))
 
@@ -387,6 +379,33 @@ func RunServer(dry bool) http.Handler {
 		startServer(n)
 	}
 	return n
+}
+
+func setupDatabase() {
+	connString, err := config.GetString("database:url")
+	if err != nil {
+		connString = db.DefaultDatabaseURL
+	}
+	dbName, err := config.GetString("database:name")
+	if err != nil {
+		dbName = db.DefaultDatabaseName
+	}
+	dbDriverName, err := config.GetString("database:driver")
+	if err != nil {
+		dbDriverName = storage.DefaultDbDriverName
+		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
+	}
+	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	_, err = storage.GetDbDriver(dbDriverName)
+	if err != nil {
+		fatal(err)
+	}
+	if dbDriverName != storage.DefaultDbDriverName {
+		_, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			fatal(err)
+		}
+	}
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {

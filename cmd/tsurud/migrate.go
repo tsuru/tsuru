@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/mgo.v2"
@@ -75,7 +76,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
-	err = migration.Register("migrate-pool-teams-to-pool-constraints", provision.MigratePoolTeamsToPoolConstraints)
+	err = migration.Register("migrate-pool-teams-to-pool-constraints", pool.MigratePoolTeamsToPoolConstraints)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -187,7 +188,7 @@ func migratePool() error {
 	if err != nil {
 		return err
 	}
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = db.Collection("docker_scheduler").Find(nil).All(&pools)
 	if err != nil {
 		return err

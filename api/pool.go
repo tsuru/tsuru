@@ -15,7 +15,7 @@ import (
 	terrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 )
 
 // title: pool list
@@ -44,20 +44,20 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			poolNames = append(poolNames, c.Value)
 		}
 	}
-	var pools []provision.Pool
+	var pools []pool.Pool
 	var err error
 	if isGlobal {
-		pools, err = provision.ListAllPools()
+		pools, err = pool.ListAllPools()
 		if err != nil {
 			return err
 		}
 	} else {
-		pools, err = provision.ListPossiblePools(teams)
+		pools, err = pool.ListPossiblePools(teams)
 		if err != nil {
 			return err
 		}
 		if len(poolNames) > 0 {
-			namedPools, err := provision.ListPools(poolNames...)
+			namedPools, err := pool.ListPools(poolNames...)
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	poolsMap := make(map[string]struct{})
-	var poolList []provision.Pool
+	var poolList []pool.Pool
 	for _, p := range pools {
 		if _, ok := poolsMap[p.Name]; ok {
 			continue
@@ -98,7 +98,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var addOpts provision.AddPoolOptions
+	var addOpts pool.AddPoolOptions
 	err = r.ParseForm()
 	if err == nil {
 		err = dec.DecodeValues(&addOpts, r.Form)
@@ -112,7 +112,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if addOpts.Name == "" {
 		return &terrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: provision.ErrPoolNameIsRequired.Error(),
+			Message: pool.ErrPoolNameIsRequired.Error(),
 		}
 	}
 	evt, err := event.New(&event.Opts{
@@ -126,14 +126,14 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = provision.AddPool(addOpts)
-	if err == provision.ErrDefaultPoolAlreadyExists || err == provision.ErrPoolAlreadyExists {
+	err = pool.AddPool(addOpts)
+	if err == pool.ErrDefaultPoolAlreadyExists || err == pool.ErrPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),
 		}
 	}
-	if err == provision.ErrPoolNameIsRequired {
+	if err == pool.ErrPoolNameIsRequired {
 		return &terrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -179,8 +179,8 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = provision.RemovePool(poolName)
-	if err == provision.ErrPoolNotFound {
+	err = pool.RemovePool(poolName)
+	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
@@ -217,8 +217,8 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	defer func() { evt.Done(err) }()
 	if teams, ok := r.Form["team"]; ok {
-		err := provision.AddTeamsToPool(poolName, teams)
-		if err == provision.ErrPoolNotFound {
+		err := pool.AddTeamsToPool(poolName, teams)
+		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -253,8 +253,8 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	defer func() { evt.Done(err) }()
 	if teams, ok := r.URL.Query()["team"]; ok {
-		err := provision.RemoveTeamsFromPool(poolName, teams)
-		if err == provision.ErrPoolNotFound {
+		err := pool.RemoveTeamsFromPool(poolName, teams)
+		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -295,7 +295,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var updateOpts provision.UpdatePoolOptions
+	var updateOpts pool.UpdatePoolOptions
 	err = dec.DecodeValues(&updateOpts, r.Form)
 	if err != nil {
 		return &terrors.HTTP{
@@ -303,11 +303,11 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: err.Error(),
 		}
 	}
-	err = provision.PoolUpdate(poolName, updateOpts)
-	if err == provision.ErrPoolNotFound {
+	err = pool.PoolUpdate(poolName, updateOpts)
+	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	if err == provision.ErrDefaultPoolAlreadyExists {
+	if err == pool.ErrDefaultPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),
@@ -328,7 +328,7 @@ func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if !permission.Check(t, permission.PermPoolReadConstraints) {
 		return permission.ErrUnauthorized
 	}
-	constraints, err := provision.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(nil)
 	if err != nil {
 		return err
 	}
@@ -354,7 +354,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var poolConstraint provision.PoolConstraint
+	var poolConstraint pool.PoolConstraint
 	err = r.ParseForm()
 	if err == nil {
 		err = dec.DecodeValues(&poolConstraint, r.Form)
@@ -387,7 +387,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		append, _ = strconv.ParseBool(appendStr)
 	}
 	if append {
-		return provision.AppendPoolConstraint(&poolConstraint)
+		return pool.AppendPoolConstraint(&poolConstraint)
 	}
-	return provision.SetPoolConstraint(&poolConstraint)
+	return pool.SetPoolConstraint(&poolConstraint)
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -40,7 +41,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -104,8 +105,8 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
-	s.conn.Platforms().Insert(platform)
+	platform := appTypes.Platform{Name: "python"}
+	app.PlatformService().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"b", "c"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -138,7 +139,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	team2 := authTypes.Team{Name: "angra"}
-	err = storage.TeamRepository.Insert(team2)
+	err = auth.TeamService().Insert(team2)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name, Tags: []string{"tag 2"}}
 	err = app.CreateApp(&app2, s.user)
@@ -176,8 +177,8 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
-	s.conn.Platforms().Insert(platform)
+	platform := appTypes.Platform{Name: "python"}
+	app.PlatformService().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -251,8 +252,8 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := app.Platform{Name: "python"}
-	s.conn.Platforms().Insert(platform)
+	platform := appTypes.Platform{Name: "python"}
+	app.PlatformService().Insert(platform)
 	app2 := app.App{
 		Name:      "app2",
 		Platform:  "python",
@@ -287,12 +288,12 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByPool(c *check.C) {
-	opts := []provision.AddPoolOptions{
+	opts := []pool.AddPoolOptions{
 		{Name: "pool1", Default: false, Public: true},
 		{Name: "pool2", Default: false, Public: true},
 	}
 	for _, opt := range opts {
-		err := provision.AddPool(opt)
+		err := pool.AddPool(opt)
 		c.Assert(err, check.IsNil)
 	}
 	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name, Tags: []string{"mytag"}}
@@ -428,9 +429,9 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -514,7 +515,7 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
@@ -829,10 +830,10 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	t1 := authTypes.Team{Name: "team1"}
-	err := storage.TeamRepository.Insert(t1)
+	err := auth.TeamService().Insert(t1)
 	c.Assert(err, check.IsNil)
 	t2 := authTypes.Team{Name: "team2"}
-	err = storage.TeamRepository.Insert(t2)
+	err = auth.TeamService().Insert(t2)
 	c.Assert(err, check.IsNil)
 	permissions := []permission.Permission{
 		{
@@ -1062,7 +1063,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithPool(c *check.C) {
-	err := provision.AddPool(provision.AddPoolOptions{Name: "mypool1", Public: true})
+	err := pool.AddPool(pool.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
 	appName := "someapp"
 	data, err := url.QueryUnescape("name=someapp&platform=zend&pool=mypool1")
@@ -1173,7 +1174,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "tsurutwo"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Check(err, check.IsNil)
 	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
@@ -1295,8 +1296,8 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		Scheme:  permission.PermPlatformUpdate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	p := app.Platform{Name: "platDis", Disabled: true}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "platDis", Disabled: true}
+	app.PlatformService().Insert(p)
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=platDis"
 	b := strings.NewReader(data)
@@ -1337,8 +1338,8 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
-	p := app.Platform{Name: "platDis", Disabled: true}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "platDis", Disabled: true}
+	app.PlatformService().Insert(p)
 	data := "name=someapp&platform=platDis"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1553,10 +1554,10 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -1572,8 +1573,8 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend"}
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdatePool,
@@ -1693,7 +1694,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -1715,7 +1716,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1742,7 +1743,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -2213,7 +2214,7 @@ func (list updateList) Swap(i, j int) {
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "itshardteam"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: t.Name}
 	err = app.CreateApp(&a, s.user)
@@ -2311,7 +2312,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 	t := authTypes.Team{Name: "anything"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "tsuru",
@@ -2335,7 +2336,7 @@ func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	t := authTypes.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{"abcd", s.team.Name}}
 	err = s.conn.Apps().Insert(a)
@@ -2409,10 +2410,10 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "blaaa"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	t2 := authTypes.Team{Name: "team2"}
-	err = storage.TeamRepository.Insert(t2)
+	err = auth.TeamService().Insert(t2)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name, t2.Name}}
 	err = s.conn.Apps().Insert(a)
@@ -2454,7 +2455,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
 	t := authTypes.Team{Name: "any-team"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	newToken := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -2492,7 +2493,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(u.Email)
 	t := authTypes.Team{Name: "anything"}
-	err = storage.TeamRepository.Insert(t)
+	err = auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -2715,6 +2716,7 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
 		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
+		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
 	result := []bind.EnvVar{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
@@ -4133,6 +4135,74 @@ func (s *S) TestBindHandler(c *check.C) {
 			{"name": "noRestart", "value": "false"},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  s.Pool,
+		Field:     "service",
+		Values:    []string{"mysql"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
+	v := url.Values{}
+	v.Set("noRestart", "false")
+	request, err := http.NewRequest("PUT", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
+}
+
+func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvailable(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  s.Pool,
+		Field:     "service",
+		Values:    []string{"mysql"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	srvc2 := service.Service{Name: "varus", Endpoint: map[string]string{"production": ts.URL}, Password: "varus123"}
+	err = srvc2.Create()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
+	v := url.Values{}
+	v.Set("noRestart", "false")
+	request, err := http.NewRequest("PUT", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "service \"mysql\" is not available for pool \"test1\". Available services are: \"varus\"\n")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
 }
 
 func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {

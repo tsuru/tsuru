@@ -12,76 +12,54 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	ErrPlatformNameMissing    = errors.New("Platform name is required.")
-	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
-	DuplicatePlatformError    = errors.New("Duplicate platform")
-	InvalidPlatformError      = errors.New("Invalid platform")
-	ErrDeletePlatformWithApps = errors.New("Platform has apps. You should remove them before remove the platform.")
-	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
-		Message: "Invalid platform name, should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter.",
+func PlatformService() appTypes.PlatformService {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
 	}
-)
-
-type Platform struct {
-	Name     string `bson:"_id"`
-	Disabled bool   `bson:",omitempty"`
+	return dbDriver.PlatformService
 }
 
-func (p *Platform) validate() error {
+func validatePlatform(p appTypes.Platform) error {
 	if p.Name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	if !validation.ValidateName(p.Name) {
-		return ErrInvalidPlatformName
+		return appTypes.ErrInvalidPlatformName
 	}
 	return nil
 }
 
 // Platforms returns the list of available platforms.
-func Platforms(enabledOnly bool) ([]Platform, error) {
-	var platforms []Platform
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var query bson.M
+func Platforms(enabledOnly bool) ([]appTypes.Platform, error) {
 	if enabledOnly {
-		query = bson.M{"$or": []bson.M{{"disabled": false}, {"disabled": bson.M{"$exists": false}}}}
+		return PlatformService().FindEnabled()
 	}
-	err = conn.Platforms().Find(query).All(&platforms)
-	return platforms, err
+	return PlatformService().FindAll()
 }
 
-// PlatformAdd add a new platform to tsuru
+// PlatformAdd adds a new platform to tsuru
 func PlatformAdd(opts builder.PlatformOptions) error {
-	p := Platform{Name: opts.Name}
-	if err := p.validate(); err != nil {
+	p := appTypes.Platform{Name: opts.Name}
+	if err := validatePlatform(p); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	err := PlatformService().Insert(p)
 	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Platforms().Insert(p)
-	if err != nil {
-		if mgo.IsDup(err) {
-			return DuplicatePlatformError
-		}
 		return err
 	}
 	err = builder.PlatformAdd(opts)
 	if err != nil {
-		dbErr := conn.Platforms().RemoveId(p.Name)
+		dbErr := PlatformService().Delete(p)
 		if dbErr != nil {
 			return tsuruErrors.NewMultiError(
 				errors.Wrapf(dbErr, "unable to rollback platform add"),
@@ -94,20 +72,16 @@ func PlatformAdd(opts builder.PlatformOptions) error {
 }
 
 func PlatformUpdate(opts builder.PlatformOptions) error {
-	var platform Platform
 	if opts.Name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Platforms().Find(bson.M{"_id": opts.Name}).One(&platform)
+	_, err = PlatformService().FindByName(opts.Name)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return ErrPlatformNotFound
-		}
 		return err
 	}
 	if opts.Args["dockerfile"] != "" || opts.Input != nil {
@@ -129,17 +103,14 @@ func PlatformUpdate(opts builder.PlatformOptions) error {
 		if err != nil {
 			return err
 		}
-		err = conn.Platforms().Update(bson.M{"_id": opts.Name}, bson.M{"$set": bson.M{"disabled": disableBool}})
-		if err != nil {
-			return err
-		}
+		return PlatformService().Update(appTypes.Platform{Name: opts.Name, Disabled: disableBool})
 	}
 	return nil
 }
 
 func PlatformRemove(name string) error {
 	if name == "" {
-		return ErrPlatformNameMissing
+		return appTypes.ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -148,29 +119,24 @@ func PlatformRemove(name string) error {
 	defer conn.Close()
 	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
 	if apps > 0 {
-		return ErrDeletePlatformWithApps
+		return appTypes.ErrDeletePlatformWithApps
 	}
 	err = builder.PlatformRemove(name)
 	if err != nil {
 		log.Errorf("Failed to remove platform: %s", err)
 	}
-	err = conn.Platforms().Remove(bson.M{"_id": name})
-	if err == mgo.ErrNotFound {
-		return ErrPlatformNotFound
-	}
-	return err
+	return PlatformService().Delete(appTypes.Platform{Name: name})
 }
 
-func GetPlatform(name string) (*Platform, error) {
-	var p Platform
+func GetPlatform(name string) (*appTypes.Platform, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
+	p, err := PlatformService().FindByName(name)
 	if err != nil {
-		return nil, InvalidPlatformError
+		return nil, appTypes.ErrInvalidPlatform
 	}
-	return &p, nil
+	return p, nil
 }

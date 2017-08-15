@@ -17,8 +17,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -32,7 +31,7 @@ func (s *S) TestAddPoolNameIsRequired(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, provision.ErrPoolNameIsRequired.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, pool.ErrPoolNameIsRequired.Error()+"\n")
 }
 
 func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
@@ -44,7 +43,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
-	c.Assert(rec.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
+	c.Assert(rec.Body.String(), check.Equals, pool.ErrDefaultPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -69,7 +68,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 	rec = httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
-	c.Assert(rec.Body.String(), check.Equals, provision.ErrPoolAlreadyExists.Error()+"\n")
+	c.Assert(rec.Body.String(), check.Equals, pool.ErrPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -91,7 +90,7 @@ func (s *S) TestAddPool(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
-	_, err = provision.GetPoolByName("pool1")
+	_, err = pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	b = bytes.NewBufferString("name=pool2&public=true")
 	req, err = http.NewRequest("POST", "/pools", b)
@@ -101,9 +100,9 @@ func (s *S) TestAddPool(c *check.C) {
 	rec = httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
-	pool, err := provision.GetPoolByName("pool2")
+	p, err := pool.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
-	teams, err := pool.GetTeams()
+	teams, err := p.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
@@ -135,10 +134,10 @@ func (s *S) TestRemovePoolNotFound(c *check.C) {
 }
 
 func (s *S) TestRemovePoolHandler(c *check.C) {
-	opts := provision.AddPoolOptions{
+	opts := pool.AddPoolOptions{
 		Name: "pool1",
 	}
-	err := provision.AddPool(opts)
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/pools/pool1", nil)
 	c.Assert(err, check.IsNil)
@@ -146,8 +145,8 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	_, err = provision.GetPoolByName("pool1")
-	c.Assert(err, check.Equals, provision.ErrPoolNotFound)
+	_, err = pool.GetPoolByName("pool1")
+	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -159,14 +158,14 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 }
 
 func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: "pool1"}
 	a := app.App{
 		Name:      "test",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
 		Pool:      opts.Name,
 	}
-	err := provision.AddPool(opts)
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -181,7 +180,7 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 }
 
 func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: "pool1"}
 	newUser := auth.User{
 		Email: "newuser@example.com",
 	}
@@ -194,7 +193,7 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      opts.Name,
 	}
-	err = provision.AddPool(opts)
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, &newUser)
 	c.Assert(err, check.IsNil)
@@ -209,9 +208,9 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 }
 
 func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("")
 	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
@@ -224,9 +223,9 @@ func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestAddTeamsToPool(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("team=tsuruteam")
 	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
@@ -236,9 +235,9 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.GetPoolByName("pool1")
+	p2, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p2.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
@@ -257,9 +256,9 @@ func (s *S) TestAddTeamsToPoolWithPoolContextPermission(c *check.C) {
 		Scheme:  permission.PermPoolUpdateTeamAdd,
 		Context: permission.Context(permission.CtxPool, "pool1"),
 	})
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("team=tsuruteam")
 	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
@@ -269,9 +268,9 @@ func (s *S) TestAddTeamsToPoolWithPoolContextPermission(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.GetPoolByName("pool1")
+	p2, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p2.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 }
@@ -297,11 +296,11 @@ func (s *S) TestRemoveTeamsToPoolNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"test"})
+	err = pool.AddTeamsToPool(p.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/pools/pool1/team", nil)
 	c.Assert(err, check.IsNil)
@@ -314,13 +313,13 @@ func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	err := auth.CreateTeam("ateam", s.user)
 	c.Assert(err, check.IsNil)
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err = provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(p.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"ateam"})
+	err = pool.AddTeamsToPool(p.Name, []string{"ateam"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=ateam", nil)
 	c.Assert(err, check.IsNil)
@@ -328,10 +327,10 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var p provision.Pool
-	err = s.conn.Pools().FindId(pool.Name).One(&p)
+	var p2 pool.Pool
+	err = s.conn.Pools().FindId(p.Name).One(&p2)
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p2.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
@@ -352,13 +351,13 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	})
 	err := auth.CreateTeam("ateam", s.user)
 	c.Assert(err, check.IsNil)
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err = provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(p.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"ateam"})
+	err = pool.AddTeamsToPool(p.Name, []string{"ateam"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=ateam", nil)
 	c.Assert(err, check.IsNil)
@@ -366,25 +365,25 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var p provision.Pool
-	err = s.conn.Pools().FindId(pool.Name).One(&p)
+	var p2 pool.Pool
+	err = s.conn.Pools().FindId(p.Name).One(&p2)
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p2.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 }
 
 func (s *S) TestPoolListPublicPool(c *check.C) {
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "pool2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "pool2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defaultPool, err := provision.GetDefaultPool()
+	defaultPool, err := pool.GetDefaultPool()
 	c.Assert(err, check.IsNil)
-	expected := []provision.Pool{
+	expected := []pool.Pool{
 		*defaultPool,
 		{Name: "pool1"},
 	}
@@ -394,7 +393,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.DeepEquals, expected)
@@ -402,24 +401,24 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 
 func (s *S) TestPoolListHandler(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, "angra"),
 	})
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err = provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"angra"})
+	err = pool.AddTeamsToPool(p.Name, []string{"angra"})
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "nopool"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "nopool"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defaultPool, err := provision.GetDefaultPool()
+	defaultPool, err := pool.GetDefaultPool()
 	c.Assert(err, check.IsNil)
-	expected := []provision.Pool{
+	expected := []pool.Pool{
 		*defaultPool,
 		{Name: "pool1"},
 	}
@@ -428,7 +427,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.DeepEquals, expected)
@@ -452,7 +451,7 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 
 func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	perms := []permission.Permission{
 		{
@@ -465,18 +464,18 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 		},
 	}
 	token := userWithPermission(c, perms...)
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name, Default: pool.Default}
-	err = provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Default: p.Default}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{team.Name})
+	err = pool.AddTeamsToPool(p.Name, []string{team.Name})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -492,16 +491,16 @@ func (s *S) TestPoolListHandlerWithGlobalContext(c *check.C) {
 		},
 	}
 	token := userWithPermission(c, perms...)
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name, Default: pool.Default}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Default: p.Default}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -517,13 +516,13 @@ func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 		},
 	}
 	token := userWithPermission(c, perms...)
-	pool := provision.Pool{Name: "pool1"}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	pool = provision.Pool{Name: "pool2"}
-	opts = provision.AddPoolOptions{Name: pool.Name}
-	err = provision.AddPool(opts)
+	p = pool.Pool{Name: "pool2"}
+	opts = pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
@@ -531,7 +530,7 @@ func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var pools []provision.Pool
+	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -540,12 +539,12 @@ func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "pool1", Field: "team", Values: []string{"*"}, Blacklist: true})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: "team", Values: []string{"*"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	p, err := provision.GetPoolByName("pool1")
+	p, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	_, err = p.GetTeams()
 	c.Assert(err, check.NotNil)
@@ -573,9 +572,9 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
-	provision.RemovePool("test1")
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err := provision.AddPool(opts)
+	pool.RemovePool("test1")
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString("default=true")
 	req, err := http.NewRequest("PUT", "/pools/pool1", b)
@@ -586,18 +585,18 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	p, err := provision.GetPoolByName("pool1")
+	p, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
-	provision.RemovePool("test1")
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
-	err := provision.AddPool(opts)
+	pool.RemovePool("test1")
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "pool2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "pool2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString("default=true&force=true")
 	req, err := http.NewRequest("PUT", "/pools/pool2", b)
@@ -607,18 +606,18 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.GetPoolByName("pool2")
+	p, err := pool.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
-	provision.RemovePool("test1")
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
-	err := provision.AddPool(opts)
+	pool.RemovePool("test1")
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "pool2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "pool2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString("default=true")
 	request, err := http.NewRequest("PUT", "/pools/pool2", b)
@@ -628,13 +627,13 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, pool.ErrDefaultPoolAlreadyExists.Error()+"\n")
 }
 
 func (s *S) TestPoolUpdateProvisioner(c *check.C) {
-	provision.RemovePool("test1")
-	opts := provision.AddPoolOptions{Name: "pool1", Public: true, Default: true}
-	err := provision.AddPool(opts)
+	pool.RemovePool("test1")
+	opts := pool.AddPoolOptions{Name: "pool1", Public: true, Default: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString("provisioner=myprov&default=false")
 	req, err := http.NewRequest("PUT", "/pools/pool1", b)
@@ -645,7 +644,7 @@ func (s *S) TestPoolUpdateProvisioner(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	p, err := provision.GetPoolByName("pool1")
+	p, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Provisioner, check.Equals, "myprov")
 	c.Assert(p.Default, check.Equals, false)
@@ -673,11 +672,11 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolConstraint(c *check.C) {
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}})
 	c.Assert(err, check.IsNil)
-	expected := []provision.PoolConstraint{
+	expected := []pool.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
 		{PoolExpr: "*", Field: "router", Values: []string{"*"}},
 		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}},
@@ -688,14 +687,14 @@ func (s *S) TestPoolConstraint(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, request)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var constraints []provision.PoolConstraint
+	var constraints []pool.PoolConstraint
 	err = json.NewDecoder(rec.Body).Decode(&constraints)
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, Blacklist: true})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.3/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -706,7 +705,7 @@ func (s *S) TestPoolConstraintListEmpty(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintSet(c *check.C) {
-	params := provision.PoolConstraint{
+	params := pool.PoolConstraint{
 		PoolExpr:  "*",
 		Blacklist: true,
 		Field:     "router",
@@ -721,11 +720,11 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	expected := []*provision.PoolConstraint{
+	expected := []*pool.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
 		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true},
 	}
-	constraints, err := provision.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
@@ -743,9 +742,9 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintSetAppend(c *check.C) {
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	params := provision.PoolConstraint{
+	params := pool.PoolConstraint{
 		PoolExpr: "*",
 		Field:    "router",
 		Values:   []string{"routerB"},
@@ -759,11 +758,11 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	expected := []*provision.PoolConstraint{
+	expected := []*pool.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
 		{PoolExpr: "*", Field: "router", Values: []string{"routerA", "routerB"}, Blacklist: true},
 	}
-	constraints, err := provision.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{

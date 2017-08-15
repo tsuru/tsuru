@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -135,7 +134,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
 	team := authTypes.Team{Name: "team"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "g1",

@@ -21,6 +21,7 @@ import (
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -55,8 +56,8 @@ func (s *S) SetUpTest(c *check.C) {
 	provision.Unregister("fake-extensible")
 	provisiontest.ProvisionerInstance.Reset()
 	s.p = provisiontest.ProvisionerInstance
-	opts := provision.AddPoolOptions{Name: "pool1", Provisioner: "fake"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1", Provisioner: "fake"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.appInstance.Pool = "pool1"
@@ -87,6 +88,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
 	config.Set("docker:auto-scale:max-container-count", 2)
+	config.Set("docker:auto-scale:enabled", true)
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 }
@@ -98,6 +100,7 @@ func (s *S) TearDownTest(c *check.C) {
 	config.Unset("docker:auto-scale:metadata-filter")
 	config.Unset("docker:auto-scale:scale-down-ratio")
 	config.Unset("docker:scheduler:max-used-memory")
+	config.Unset("docker:auto-scale:enabled")
 	config.Unset("docker:scheduler:total-memory-metadata")
 }
 
@@ -917,7 +920,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	appInstance2 := provisiontest.NewFakeApp("myapp2", "python", 0)
 	appInstance2.Pool = "pool2"
 	s.p.Provision(appInstance2)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "pool2"})
+	err = pool.AddPool(pool.AddPoolOptions{Name: "pool2"})
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: appInstance2.GetName(),

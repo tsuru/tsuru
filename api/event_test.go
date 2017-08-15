@@ -25,8 +25,8 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -48,9 +48,9 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	err = storage.TeamRepository.Insert(authTypes.Team{Name: "other-team"})
+	err = auth.TeamService().Insert(authTypes.Team{Name: "other-team"})
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermApp,
@@ -86,7 +86,7 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
-	s.conn.Platforms().Insert(app.Platform{Name: "python"})
+	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 }
 
 func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, error) {

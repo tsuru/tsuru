@@ -686,7 +686,7 @@ tsuru has extensible support for provisioners. A provisioner is a Go type that
 satisfies the `provision.Provisioner` interface. By default, tsuru will use
 ``DockerProvisioner`` (identified by the string "docker"). Other provisioners
 are available as **experiments** and may be removed in future versions:
-``swarm``, ``mesos`` and ``kubernetes``.
+``swarm`` and ``kubernetes``.
 
 .. _config_provisioner:
 
@@ -996,7 +996,9 @@ docker:auto-scale:enabled
 +++++++++++++++++++++++++
 
 Enable node auto scaling. See :doc:`node auto scaling
-</advanced_topics/node_scaling>` for more details. Defaults to false.
+</advanced_topics/node_scaling>` for more details. Defaults to false. Used as fallback
+for pools without rules set by ``tsuru node autoscale rule set``.
+
 
 docker:auto-scale:wait-new-time
 +++++++++++++++++++++++++++++++
@@ -1013,7 +1015,7 @@ docker:auto-scale:metadata-filter
 +++++++++++++++++++++++++++++++++
 
 The name of a pool where auto scale will be enabled. Leave unset to allow
-dynamically configuring with ``tsuru docker-autoscale-rule-set``.
+dynamically configuring with ``tsuru node-autoscale-rule-set``.
 
 docker:auto-scale:max-container-count
 +++++++++++++++++++++++++++++++++++++

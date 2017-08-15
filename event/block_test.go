@@ -109,8 +109,8 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 			if errBlock == nil {
 				c.Fatalf("(%d) Expected %#+v. Got nil", i, t.blockedBy)
 			}
-			errBlock.(*ErrEventBlocked).block.StartTime = t.blockedBy.StartTime
-			expectedErr = &ErrEventBlocked{event: t.event, block: t.blockedBy}
+			errBlock.(ErrEventBlocked).block.StartTime = t.blockedBy.StartTime
+			expectedErr = ErrEventBlocked{event: t.event, block: t.blockedBy}
 		}
 		if !reflect.DeepEqual(errBlock, expectedErr) {
 			c.Errorf("(%d) Expected %#+v. Got %#+v", i, expectedErr, errBlock)

@@ -7,28 +7,23 @@ package mongodb
 import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-type TeamRepository struct{}
+type TeamService struct{}
 
 type team struct {
 	Name         string `bson:"_id"`
 	CreatingUser string
 }
 
-func init() {
-	storage.TeamRepository = &TeamRepository{}
-}
-
 func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (r *TeamRepository) Insert(t auth.Team) error {
+func (s *TeamService) Insert(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -41,25 +36,11 @@ func (r *TeamRepository) Insert(t auth.Team) error {
 	return err
 }
 
-func (r *TeamRepository) FindAll() ([]auth.Team, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var teams []team
-	err = teamsCollection(conn).Find(nil).All(&teams)
-	if err != nil {
-		return nil, err
-	}
-	authTeams := make([]auth.Team, len(teams))
-	for i, t := range teams {
-		authTeams[i] = auth.Team(t)
-	}
-	return authTeams, nil
+func (s *TeamService) FindAll() ([]auth.Team, error) {
+	return s.findByQuery(nil)
 }
 
-func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
+func (s *TeamService) FindByName(name string) (*auth.Team, error) {
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
@@ -77,14 +58,19 @@ func (r *TeamRepository) FindByName(name string) (*auth.Team, error) {
 	return &team, nil
 }
 
-func (r *TeamRepository) FindByNames(names []string) ([]auth.Team, error) {
+func (s *TeamService) FindByNames(names []string) ([]auth.Team, error) {
+	query := bson.M{"_id": bson.M{"$in": names}}
+	return s.findByQuery(query)
+}
+
+func (s *TeamService) findByQuery(query bson.M) ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var teams []team
-	err = teamsCollection(conn).Find(bson.M{"_id": bson.M{"$in": names}}).All(&teams)
+	err = teamsCollection(conn).Find(query).All(&teams)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +81,7 @@ func (r *TeamRepository) FindByNames(names []string) ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (r *TeamRepository) Delete(t auth.Team) error {
+func (s *TeamService) Delete(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

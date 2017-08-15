@@ -23,13 +23,14 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -83,7 +84,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 
@@ -117,12 +118,12 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
-	s.conn.Platforms().Insert(app.Platform{Name: "heimerdinger"})
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
+	app.PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 }

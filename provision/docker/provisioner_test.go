@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
@@ -38,6 +39,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -1181,16 +1183,16 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
+	defer pool.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
@@ -1250,16 +1252,16 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
+	defer pool.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
@@ -1318,11 +1320,11 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(p.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	contColl := s.p.Collection()
 	defer contColl.Close()
@@ -1371,16 +1373,16 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
+	defer pool.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
@@ -1419,11 +1421,11 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1"}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
+	p := pool.Pool{Name: "pool1"}
+	o := pool.AddPoolOptions{Name: p.Name}
+	err = pool.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, []string{
+	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
 	})
 	c.Assert(err, check.IsNil)
@@ -1712,7 +1714,19 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)
+	a.SetEnv(bind.EnvVar{Name: "ENV", Value: "OK"})
 	var stdout, stderr bytes.Buffer
+	var created bool
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		created = true
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		var result docker.Config
+		json.Unmarshal(data, &result)
+		sort.Strings(result.Env)
+		c.Assert(result.Env, check.DeepEquals, []string{"ENV=OK", "PORT=8888", "TSURU_HOST=", "TSURU_PROCESSNAME=", "port=8888"})
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -1736,6 +1750,7 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "test")
 	c.Assert(stderr.String(), check.Equals, "errtest")
+	c.Assert(created, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {

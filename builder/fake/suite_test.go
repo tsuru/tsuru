@@ -14,10 +14,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
@@ -58,7 +58,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{
+	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "thepool",
 		Default:     true,
 		Provisioner: "fake",
@@ -78,7 +78,7 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "admin"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)

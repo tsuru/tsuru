@@ -49,6 +49,8 @@ var (
 	labelProvisioner = "provisioner"
 
 	labelBuilder = "builder"
+
+	LabelClusterMetadata = "tsuru.io/cluster"
 )
 
 type LabelSet struct {

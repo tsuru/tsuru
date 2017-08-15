@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -55,7 +54,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "cobrateam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

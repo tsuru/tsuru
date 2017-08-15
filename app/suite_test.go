@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -26,8 +27,8 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -82,7 +83,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
 }
 
@@ -146,9 +147,9 @@ func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
-	platform := Platform{Name: "python"}
-	s.conn.Platforms().Insert(platform)
-	s.conn.Platforms().Insert(Platform{Name: "heimerdinger"})
+	platform := appTypes.Platform{Name: "python"}
+	PlatformService().Insert(platform)
+	PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.defaultPlan = Plan{
 		Name:     "default-plan",
 		Memory:   1024,
@@ -159,8 +160,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
-	opts := provision.AddPoolOptions{Name: s.Pool, Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 }

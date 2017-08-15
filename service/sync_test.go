@@ -10,8 +10,10 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/tsuru/tsuru/event/eventtest"
+
 	"github.com/tsuru/tsuru/api/shutdown"
-	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/event"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -20,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
@@ -55,10 +57,10 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
-	err = storage.TeamRepository.Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 
@@ -123,4 +125,44 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
 		{ID: units[0].GetID(), IP: units[0].GetIp()},
 	})
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{
+			Type:  event.TargetTypeApp,
+			Value: "my-app",
+		},
+		Kind: "bindsyncer",
+		EndCustomData: map[string]interface{}{
+			"binds": map[string][]interface{}{
+				"my-mysql": {"my-app-0"},
+			},
+			"unbinds": map[string][]interface{}{
+				"my-mysql": {"wrong"},
+			},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
+	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, &s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "", nil)
+	c.Assert(err, check.IsNil)
+	callCh := make(chan struct{})
+	err = service.InitializeSync(func() ([]bind.App, error) {
+		callCh <- struct{}{}
+		return []bind.App{a}, nil
+	})
+	c.Assert(err, check.IsNil)
+	<-callCh
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	shutdown.Do(ctx, ioutil.Discard)
+	cancel()
+	c.Assert(err, check.IsNil)
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
 }

@@ -26,12 +26,13 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -314,7 +315,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 				permission.Check(t, permission.PermPlatformCreate)
 			if !canUsePlat {
-				return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
 			}
 		}
 	}
@@ -349,7 +350,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 				}
 			}
 		}
-		if err == app.InvalidPlatformError {
+		if err == appTypes.ErrInvalidPlatform {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err
@@ -694,7 +695,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := storage.TeamRepository.FindByName(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -738,7 +739,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := storage.TeamRepository.FindByName(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -845,7 +846,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 			}
 		}
 	} else {
-		for _, v := range a.Env {
+		for _, v := range a.Envs() {
 			result = append(result, v)
 		}
 	}
@@ -1207,6 +1208,13 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
+	}
+	err = a.ValidateService(serviceName)
+	if err != nil {
+		if err == pool.ErrPoolHasNoService {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),

@@ -29,11 +29,12 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -69,7 +70,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = storage.TeamRepository.Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
@@ -285,7 +286,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceHasAccessToTheServiceInTheInstance(c *check.C) {
 	t := authTypes.Team{Name: "judaspriest"}
-	err := storage.TeamRepository.Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -731,11 +732,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		err := service.Create()
 		c.Assert(err, check.IsNil)
 	}
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app-instance",
@@ -852,11 +853,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -903,11 +904,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app1",
@@ -945,11 +946,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
-	opts := provision.AddPoolOptions{Name: "test1", Default: true}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test1", Default: true}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app",
@@ -1809,7 +1810,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si.ServiceName, si.Name,
 		team.Name, si.Name, team.Name, si.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -1865,7 +1866,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
-	storage.TeamRepository.Insert(team)
+	auth.TeamService().Insert(team)
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si2.ServiceName, si2.Name,
 		team.Name, si2.Name, team.Name, si2.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)

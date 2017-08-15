@@ -31,7 +31,12 @@ type Cluster struct {
 	ClientKey   []byte            `json:"-" bson:",omitempty"`
 	Pools       []string          `json:"pools" bson:",omitempty"`
 	CustomData  map[string]string `json:"custom_data" bson:",omitempty"`
+	CreateData  map[string]string `json:"create_data" bson:",omitempty"`
 	Default     bool              `json:"default"`
+}
+
+type InitClusterProvisioner interface {
+	InitializeCluster(c *Cluster) error
 }
 
 func clusterCollection() (*storage.Collection, error) {
@@ -56,7 +61,7 @@ func (c *Cluster) validate() error {
 	if c.Provisioner == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "provisioner name is mandatory"})
 	}
-	_, err := provision.Get(c.Provisioner)
+	prov, err := provision.Get(c.Provisioner)
 	if err != nil {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: err.Error()})
 	}
@@ -70,6 +75,12 @@ func (c *Cluster) validate() error {
 	} else {
 		if !c.Default {
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "either default or a list of pools must be set"})
+		}
+	}
+	if clusterProv, ok := prov.(InitClusterProvisioner); ok {
+		err = clusterProv.InitializeCluster(c)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -104,6 +115,20 @@ func (c *Cluster) Save() error {
 
 func AllClusters() ([]*Cluster, error) {
 	return listClusters(nil)
+}
+
+func ByName(clusterName string) (*Cluster, error) {
+	coll, err := clusterCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var c *Cluster
+	err = coll.FindId(clusterName).One(&c)
+	if err == mgo.ErrNotFound {
+		return nil, ErrClusterNotFound
+	}
+	return c, err
 }
 
 func DeleteCluster(clusterName string) error {

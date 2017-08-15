@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -38,7 +39,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/volume"
@@ -268,7 +268,7 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
-	provision.SetPoolConstraint(&provision.PoolConstraint{
+	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    "router",
 		Values:   []string{"fake-tls", "fake"},
@@ -938,7 +938,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	team := authTypes.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err = s.conn.Apps().Insert(app)
@@ -960,7 +960,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "abcd"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -2107,7 +2107,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 func (s *S) TestIsValid(c *check.C) {
 	err := auth.CreateTeam("noaccessteam", s.user)
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     "team",
 		Values:    []string{"noaccessteam"},
@@ -2424,8 +2424,8 @@ func (s *S) TestGetUnits(c *check.C) {
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
 	repository.Manager().CreateRepository("name", nil)
-	opts := provision.AddPoolOptions{Name: "test", Default: false}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test", Default: false}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:        "name",
@@ -3086,8 +3086,8 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 }
 
 func (s *S) TestListFilteringByPool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test2", Default: false}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test2", Default: false}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp",
@@ -3115,11 +3115,11 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 }
 
 func (s *S) TestListFilteringByPools(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test2", Default: false}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test2", Default: false}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "test3", Default: false}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "test3", Default: false}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp",
@@ -3225,8 +3225,8 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test2", Default: false}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test2", Default: false}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp1",
@@ -3734,10 +3734,57 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 
 func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	team := authTypes.Team{Name: "test"}
-	err := storage.TeamRepository.Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
 	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestValidateAppService(c *check.C) {
+	app := App{Name: "fyrone-flats", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	serv := service.Service{
+		Name:     "healthcheck",
+		Password: "nidalee",
+		Endpoint: map[string]string{"production": "somehost.com"},
+	}
+	err = serv.Create()
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService("invalidService")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "service \"invalidService\" is not available for pool \"pool1\". Available services are: \"healthcheck\"")
+}
+
+func (s *S) TestValidateBlacklistedAppService(c *check.C) {
+	app := App{Name: "urgot", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	serv := service.Service{
+		Name:     "healthcheck",
+		Password: "nidalee",
+		Endpoint: map[string]string{"production": "somehost.com"},
+	}
+	err = serv.Create()
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.IsNil)
+	poolConstraint := pool.PoolConstraint{PoolExpr: s.Pool, Field: "service", Values: []string{serv.Name}, Blacklist: true}
+	err = pool.SetPoolConstraint(&poolConstraint)
+	c.Assert(err, check.IsNil)
+	err = app.ValidateService(serv.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, pool.ErrPoolHasNoService)
+	opts := pool.AddPoolOptions{Name: "poolz"}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app2 := App{Name: "nidalee", Platform: "python", TeamOwner: s.team.Name, Pool: "poolz"}
+	err = CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = app2.ValidateService(serv.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -3748,7 +3795,7 @@ func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 }
 
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
-	provision.SetPoolConstraint(&provision.PoolConstraint{
+	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     "router",
 		Values:    []string{"fake-tls"},
@@ -3762,10 +3809,10 @@ func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -3777,8 +3824,8 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolDefault(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test", Public: true}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test", Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -3790,15 +3837,15 @@ func (s *S) TestAppSetPoolDefault(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByPool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "pool2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "pool2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool2", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool("pool2", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -3811,15 +3858,15 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolManyPools(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"test"})
+	err = pool.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "pool2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "pool2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool2", []string{"test"})
+	err = pool.AddTeamsToPool("pool2", []string{"test"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -3831,10 +3878,10 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
-	err := provision.RemovePool("pool1")
+	err := pool.RemovePool("pool1")
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	defer provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	defer pool.AddPool(opts)
 	app := App{
 		Name: "test",
 	}
@@ -3844,10 +3891,10 @@ func (s *S) TestAppSetPoolNoDefault(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"nopool"})
+	err = pool.AddTeamsToPool("test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -3860,8 +3907,8 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test", Public: true}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test", Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "testapp",
@@ -3873,13 +3920,13 @@ func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test", Public: true}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test", Public: true}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "nonpublic"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "nonpublic"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "testapp",
@@ -4101,7 +4148,7 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	err = storage.TeamRepository.Insert(team)
+	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", TeamOwner: "newowner"}
 	err = app.Update(updateData, new(bytes.Buffer))
@@ -4125,15 +4172,15 @@ func (s *S) TestUpdateTeamOwnerNotExists(c *check.C) {
 }
 
 func (s *S) TestUpdatePool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "test2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "test2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
@@ -4147,17 +4194,17 @@ func (s *S) TestUpdatePool(c *check.C) {
 }
 
 func (s *S) TestUpdatePoolNotExists(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Pool: "test2"}
 	err = app.Update(updateData, new(bytes.Buffer))
-	c.Assert(err, check.Equals, provision.ErrPoolNotFound)
+	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test")
@@ -4357,15 +4404,15 @@ func (s *S) TestUpdateWithoutTagsKeepsOriginalTags(c *check.C) {
 }
 
 func (s *S) TestUpdateDescriptionPoolPlanAndRouter(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "test2"}
-	err = provision.AddPool(opts)
+	opts = pool.AddPoolOptions{Name: "test2"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	plan := Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	err = s.conn.Plans().Insert(plan)
@@ -4475,7 +4522,7 @@ func (s *S) TestUpdateRouterNotFound(c *check.C) {
 }
 
 func (s *S) TestAppUpdateRouterNotAvailableForPool(c *check.C) {
-	provision.SetPoolConstraint(&provision.PoolConstraint{
+	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     "router",
 		Values:    []string{"fake-tls"},

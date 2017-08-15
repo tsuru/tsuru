@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -326,10 +327,10 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool1"}},
 	)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool1", []string{"team1"})
+	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
@@ -380,10 +381,10 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool1"}},
 	)
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool1", []string{"team1"})
+	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)

@@ -114,6 +114,7 @@ func DeleteRule(metadataFilter string) error {
 }
 
 func legacyAutoScaleRule() *Rule {
+	enabled, _ := config.GetBool("docker:auto-scale:enabled")
 	metadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
 	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
@@ -123,7 +124,7 @@ func legacyAutoScaleRule() *Rule {
 		MetadataFilter:    metadataFilter,
 		ScaleDownRatio:    float32(scaleDownRatio),
 		PreventRebalance:  preventRebalance,
-		Enabled:           true,
+		Enabled:           enabled,
 	}
 }
 

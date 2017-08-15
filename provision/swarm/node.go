@@ -16,6 +16,7 @@ import (
 type swarmNodeWrapper struct {
 	*swarm.Node
 	provisioner *swarmProvisioner
+	client      *clusterClient
 }
 
 var (
@@ -28,8 +29,7 @@ func (n *swarmNodeWrapper) Pool() string {
 }
 
 func (n *swarmNodeWrapper) Address() string {
-	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
-	return l.NodeAddr()
+	return nodeAddr(n.client, n.Node)
 }
 
 func (n *swarmNodeWrapper) Status() string {
@@ -48,14 +48,19 @@ func (n *swarmNodeWrapper) Metadata() map[string]string {
 	return labels.PublicNodeLabels()
 }
 
-func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		return nil, err
+func (n *swarmNodeWrapper) ExtraData() map[string]string {
+	if n.client == nil {
+		return nil
 	}
+	return map[string]string{
+		provision.LabelClusterMetadata: n.client.Cluster.Name,
+	}
+}
+
+func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	l.SetIsService()
-	tasks, err := client.ListTasks(docker.ListTasksOptions{
+	tasks, err := n.client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"node":  {n.ID},
 			"label": toLabelSelectors(l.ToIsServiceSelector()),
@@ -64,7 +69,7 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return tasksToUnits(client, tasks)
+	return tasksToUnits(n.client, tasks)
 }
 
 func (n *swarmNodeWrapper) Provisioner() provision.NodeProvisioner {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	check "gopkg.in/check.v1"
 )
@@ -61,7 +61,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
 	})
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "test1", Field: "router", Values: []string{"router1", "router2"}})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: "router", Values: []string{"router1", "router2"}})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/routers", nil)

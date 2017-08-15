@@ -66,6 +66,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
+	client.HTTPClient.Timeout = 0
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
 		Pull:              true,

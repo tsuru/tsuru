@@ -8,7 +8,6 @@ package integration
 type ClusterManager interface {
 	Name() string
 	Provisioner() string
-	IP() string
 	Start() *Result
 	Delete() *Result
 	UpdateParams() []string

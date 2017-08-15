@@ -16,6 +16,13 @@ func (s *S) getInstallerConfig() string {
 	if hosts == 0 {
 		hosts = 1
 	}
+	for _, m := range clusterManagers {
+		if req, ok := m.(interface {
+			RequiredNodes() int
+		}); ok {
+			hosts += req.RequiredNodes()
+		}
+	}
 	return fmt.Sprintf(`driver:
   name: virtualbox
   options:
@@ -68,7 +75,7 @@ func (s *S) getPlatforms() []string {
 }
 
 func (s *S) getProvisioners() []string {
-	availableProvisioners := []string{"docker", "swarm"}
+	availableProvisioners := []string{"docker"}
 	if _, ok := os.LookupEnv(integrationEnvID + "provisioners"); !ok {
 		return availableProvisioners
 	}
@@ -90,26 +97,18 @@ func (s *S) getClusterManagers() []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"gce":      &GceClusterManager{env: s.env},
 		"minikube": &MinikubeClusterManager{env: s.env},
+		"swarm":    &swarmClusterManager{env: s.env},
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := s.env.All("clusters")
-	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
 		cluster = strings.Trim(cluster, " ")
 		manager := availableClusterManagers[cluster]
-		if manager != nil {
-			available := true
-			for _, selected := range selectedClusters {
-				if cluster == selected {
-					available = false
-					break
-				}
-			}
-			if available {
-				managers = append(managers, manager)
-				selectedClusters = append(selectedClusters, cluster)
-			}
+		if manager == nil {
+			continue
 		}
+		managers = append(managers, manager)
+		delete(availableClusterManagers, cluster)
 	}
 	return managers
 }

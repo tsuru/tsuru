@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -238,7 +238,7 @@ var teamRenameFns = []func(oldName, newName string) error{
 	service.RenameServiceTeam,
 	service.RenameServiceInstanceTeam,
 	volume.RenameTeam,
-	provision.RenamePoolTeam,
+	pool.RenamePoolTeam,
 }
 
 // title: team update

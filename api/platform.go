@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 // title: add platform
@@ -113,7 +114,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Input:  file,
 		Output: writer,
 	})
-	if err == app.ErrPlatformNotFound {
+	if err == appTypes.ErrPlatformNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if err != nil {
@@ -149,7 +150,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	defer func() { evt.Done(err) }()
 	err = app.PlatformRemove(name)
-	if err == app.ErrPlatformNotFound {
+	if err == appTypes.ErrPlatformNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
