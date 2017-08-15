@@ -68,7 +68,7 @@ func MigrateImages() error {
 func (p *dockerProvisioner) CleanImage(appName, imgName string) {
 	shouldRemove := true
 	err := p.Cluster().RemoveImage(imgName)
-	if err != nil {
+	if err != nil && err != docker.ErrNoSuchImage {
 		shouldRemove = false
 		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
 			imgName, err.Error())

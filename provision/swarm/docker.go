@@ -593,7 +593,7 @@ func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
 			continue
 		}
 		err = client.RemoveImage(imgName)
-		if err != nil {
+		if err != nil && err != docker.ErrNoSuchImage {
 			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
 				imgName, errors.WithStack(err))
 		}
