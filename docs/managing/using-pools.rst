@@ -118,6 +118,19 @@ You can remove one or more teams from a pool using the command `tsuru pool-const
 
     $ tsuru pool-constraint-set pool1 team team1 team2 team3 --blacklist
 
+Removing services from a pool
+-----------------------------
+
+You can remove one or more services from a pool using the command `tsuru pool-constraint-set`:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru pool-constraint-set <pool> service <service1> <service2> <serviceN> --blacklist
+
+    $ tsuru pool-constraint-set dev_pool service mongo_prod mysql_prod --blacklist
+
 Moving apps between pools and teams
 -----------------------------------
 
