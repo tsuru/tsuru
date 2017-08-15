@@ -21,19 +21,19 @@ type DbDriver struct {
 
 var (
 	DefaultDbDriverName = "mongodb"
-	DbDrivers           = make(map[string]DbDriver)
+	dbDrivers           = make(map[string]DbDriver)
 	driverLock          sync.RWMutex
 	currentDbDriver     *DbDriver
 )
 
 // RegisterDbDriver registers a new DB driver
 func RegisterDbDriver(name string, driver DbDriver) {
-	DbDrivers[name] = driver
+	dbDrivers[name] = driver
 }
 
 // GetDbDriver returns the DB driver that was registered with a specific name
 func GetDbDriver(name string) (*DbDriver, error) {
-	driver, ok := DbDrivers[name]
+	driver, ok := dbDrivers[name]
 	if !ok {
 		return nil, errors.Errorf("Unknown database driver: %q.", name)
 	}
