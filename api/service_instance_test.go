@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -731,8 +732,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		err := service.Create()
 		c.Assert(err, check.IsNil)
 	}
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err := pool.AddPool(opts)
@@ -852,8 +853,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -903,8 +904,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -945,8 +946,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := app.Platform{Name: "zend"}
-	s.conn.Platforms().Insert(p)
+	p := appTypes.Platform{Name: "zend"}
+	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)

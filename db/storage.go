@@ -96,11 +96,6 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
-// Platforms returns the platforms collection from MongoDB.
-func (s *Storage) Platforms() *storage.Collection {
-	return s.Collection("platforms")
-}
-
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *storage.Collection {
 	return s.Collection("services")

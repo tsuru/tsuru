@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -85,7 +86,7 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
-	s.conn.Platforms().Insert(app.Platform{Name: "python"})
+	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 }
 
 func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, error) {

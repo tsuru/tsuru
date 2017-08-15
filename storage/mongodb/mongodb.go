@@ -8,7 +8,8 @@ import "github.com/tsuru/tsuru/storage"
 
 func init() {
 	mongodbDriver := storage.DbDriver{
-		TeamService: &TeamService{},
+		TeamService:     &TeamService{},
+		PlatformService: &PlatformService{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }
