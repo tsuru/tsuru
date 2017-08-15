@@ -51,7 +51,6 @@ func (s *S) TestInitialize(c *check.C) {
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(swarmConfig.swarmPort, check.Equals, 2377)
-	// TODO(cezarsa): check TLSConfig loading
 }
 
 func (s *S) TestProvision(c *check.C) {
