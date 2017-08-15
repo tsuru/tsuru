@@ -100,6 +100,7 @@ func (s *S) TearDownTest(c *check.C) {
 	config.Unset("docker:auto-scale:metadata-filter")
 	config.Unset("docker:auto-scale:scale-down-ratio")
 	config.Unset("docker:scheduler:max-used-memory")
+	config.Unset("docker:auto-scale:enabled")
 	config.Unset("docker:scheduler:total-memory-metadata")
 }
 
