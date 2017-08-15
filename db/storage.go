@@ -106,11 +106,6 @@ func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
 }
 
-// Plans returns the plans collection.
-func (s *Storage) Plans() *storage.Collection {
-	return s.Collection("plans")
-}
-
 // Pools returns the pool collection.
 func (s *Storage) Pools() *storage.Collection {
 	return s.Collection("pool")

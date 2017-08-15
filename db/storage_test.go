@@ -124,15 +124,6 @@ func (s *S) TestServices(c *check.C) {
 	c.Assert(services, check.DeepEquals, servicesc)
 }
 
-func (s *S) TestPlans(c *check.C) {
-	storage, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer storage.Close()
-	plans := storage.Plans()
-	plansc := storage.Collection("plans")
-	c.Assert(plans, check.DeepEquals, plansc)
-}
-
 func (s *S) TestPools(c *check.C) {
 	storage, err := Conn()
 	c.Assert(err, check.IsNil)

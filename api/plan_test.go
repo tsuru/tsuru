@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	_ "github.com/tsuru/tsuru/router/routertest"
@@ -26,8 +27,7 @@ func (s *S) TestPlanAdd(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100},
@@ -54,8 +54,7 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100},
@@ -71,8 +70,7 @@ func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100},
@@ -88,8 +86,7 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "xyz", Memory: 9223372036854775807, Swap: 536870912, CpuShare: 100},
@@ -117,8 +114,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100},
@@ -160,9 +156,9 @@ func (s *S) TestPlanList(c *check.C) {
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(expected[0])
+	err := app.PlanService().Insert(expected[0])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(expected[1])
+	err = app.PlanService().Insert(expected[1])
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/plans", nil)
 	c.Assert(err, check.IsNil)
@@ -182,17 +178,16 @@ func (s *S) TestPlanRemove(c *check.C) {
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(expected[0])
+	err := app.PlanService().Insert(expected[0])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(expected[1])
+	err = app.PlanService().Insert(expected[1])
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/plans/plan1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var plans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []appTypes.Plan{
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
@@ -211,7 +206,7 @@ func (s *S) TestPlanRemoveNoPermission(c *check.C) {
 	token := userWithPermission(c)
 	recorder := httptest.NewRecorder()
 	plan := appTypes.Plan{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3}
-	err := s.conn.Plans().Insert(plan)
+	err := app.PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/plans/"+plan.Name, nil)
 	c.Assert(err, check.IsNil)

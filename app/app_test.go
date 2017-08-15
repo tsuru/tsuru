@@ -292,8 +292,8 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
-	s.conn.Plans().RemoveAll(nil)
-	defer PlanService().Insert(s.defaultPlan)
+	err := PlanService().Delete(s.defaultPlan)
+	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "appname",
 		Platform:  "python",
@@ -304,7 +304,7 @@ func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-	err := CreateApp(&a, s.user)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -461,7 +461,6 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
-	defer srvc.Delete()
 	si1 := service.ServiceInstance{
 		Name:        "mydb",
 		ServiceName: "mysql",
@@ -3807,8 +3806,6 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
 	err := pool.RemovePool("pool1")
 	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "pool1"}
-	defer pool.AddPool(opts)
 	app := App{
 		Name: "test",
 	}

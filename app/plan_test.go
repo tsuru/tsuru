@@ -67,8 +67,8 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 }
 
 func (s *S) TestPlanAddAsDefault(c *check.C) {
-	s.conn.Plans().RemoveAll(nil)
-	defer PlanService().Insert(s.defaultPlan)
+	err := PlanService().Delete(s.defaultPlan)
+	c.Assert(err, check.IsNil)
 	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -76,7 +76,7 @@ func (s *S) TestPlanAddAsDefault(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	err := SavePlan(p)
+	err = SavePlan(p)
 	c.Assert(err, check.IsNil)
 	p.Name = "plan2"
 	err = SavePlan(p)
@@ -144,8 +144,8 @@ func (s *S) TestDefaultPlan(c *check.C) {
 }
 
 func (s *S) TestDefaultPlanWithoutDefault(c *check.C) {
-	s.conn.Plans().RemoveAll(nil)
-	defer PlanService().Insert(s.defaultPlan)
+	err := PlanService().Delete(s.defaultPlan)
+	c.Assert(err, check.IsNil)
 	config.Set("docker:memory", 12)
 	config.Set("docker:swap", 32)
 	defer config.Unset("docker:memory")
