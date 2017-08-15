@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
@@ -256,4 +257,34 @@ func tmpFileWith(c *check.C, contents []byte) string {
 	_, err = f.Write(contents)
 	c.Assert(err, check.IsNil)
 	return f.Name()
+}
+
+func (s *S) TestNodeAddr(c *check.C) {
+	s.addCluster(c)
+	node, err := s.p.GetNode(s.clusterSrv.URL())
+	c.Assert(err, check.IsNil)
+	swarmNode := node.(*swarmNodeWrapper).Node
+	addr := nodeAddr(s.clusterCli, swarmNode)
+	c.Assert(addr, check.Equals, s.clusterSrv.URL())
+	swarmNode.Spec.Annotations.Labels = map[string]string{}
+	addr = nodeAddr(s.clusterCli, swarmNode)
+	c.Assert(addr, check.Equals, "http://127.0.0.1:2375")
+	config.Set("swarm:node-port", 9999)
+	defer config.Unset("swarm:node-port")
+	addr = nodeAddr(s.clusterCli, swarmNode)
+	c.Assert(addr, check.Equals, "http://127.0.0.1:9999")
+}
+
+func (s *S) TestNodeAddrTLS(c *check.C) {
+	s.addTLSCluster(c)
+	node, err := s.p.GetNode(s.clusterSrv.URL())
+	c.Assert(err, check.IsNil)
+	swarmNode := node.(*swarmNodeWrapper).Node
+	swarmNode.Spec.Annotations.Labels = map[string]string{}
+	addr := nodeAddr(s.clusterCli, swarmNode)
+	c.Assert(addr, check.Equals, "https://127.0.0.1:2376")
+	config.Set("swarm:node-port", 9999)
+	defer config.Unset("swarm:node-port")
+	addr = nodeAddr(s.clusterCli, swarmNode)
+	c.Assert(addr, check.Equals, "https://127.0.0.1:9999")
 }

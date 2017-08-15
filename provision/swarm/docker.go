@@ -357,14 +357,19 @@ func nodeAddr(client *clusterClient, node *swarm.Node) string {
 	if node.Status.Addr == "" {
 		return ""
 	}
+	hasTLS := clusterHasTLS(client.Cluster)
+	scheme := "http"
+	if hasTLS {
+		scheme = "https"
+	}
 	port, _ := config.GetInt("swarm:node-port")
 	if port == 0 {
 		port = 2375
-		if client != nil && clusterHasTLS(client.Cluster) {
+		if client != nil && hasTLS {
 			port = 2376
 		}
 	}
-	return fmt.Sprintf("%s:%d", node.Status.Addr, port)
+	return fmt.Sprintf("%s://%s:%d", scheme, node.Status.Addr, port)
 }
 
 func clientForNode(baseClient *clusterClient, nodeID string) (*docker.Client, error) {
