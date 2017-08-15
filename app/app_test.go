@@ -293,7 +293,7 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 
 func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
-	defer s.conn.Plans().Insert(s.defaultPlan)
+	defer PlanService().Insert(s.defaultPlan)
 	a := App{
 		Name:      "appname",
 		Platform:  "python",
@@ -4139,7 +4139,7 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 
 func (s *S) TestUpdatePlan(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
+	err := PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", Router: "fake", Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
@@ -4158,7 +4158,7 @@ func (s *S) TestUpdatePlan(c *check.C) {
 
 func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
+	err := PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", Router: "fake", Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
@@ -4199,10 +4199,10 @@ func (s *S) TestUpdatePlanNotFound(c *check.C) {
 
 func (s *S) TestUpdateRouterBackendRemovalFailure(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
+	err := PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	plan = appTypes.Plan{Name: "wrong", CpuShare: 50, Memory: 536870912}
-	err = s.conn.Plans().Insert(plan)
+	err = PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", Router: "fake", Plan: appTypes.Plan{Name: "wrong"}, TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
@@ -4240,10 +4240,10 @@ func (s *S) TestUpdateRouterBackendRemovalFailure(c *check.C) {
 
 func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
+	err := PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	plan = appTypes.Plan{Name: "old", CpuShare: 50, Memory: 536870912}
-	err = s.conn.Plans().Insert(plan)
+	err = PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", Router: "fake", Plan: appTypes.Plan{Name: "old"}, TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
@@ -4342,7 +4342,7 @@ func (s *S) TestUpdateDescriptionPoolPlanAndRouter(c *check.C) {
 	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	err = s.conn.Plans().Insert(plan)
+	err = PlanService().Insert(plan)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "fake", Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, Description: "blablabla", Pool: "test"}
 	err = CreateApp(&a, s.user)

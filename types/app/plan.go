@@ -10,11 +10,19 @@ import (
 )
 
 type Plan struct {
-	Name     string `bson:"_id" json:"name"`
+	Name     string `json:"name"`
 	Memory   int64  `json:"memory"`
 	Swap     int64  `json:"swap"`
 	CpuShare int    `json:"cpushare"`
 	Default  bool   `json:"default,omitempty"`
+}
+
+type PlanService interface {
+	Insert(Plan) error
+	FindAll() ([]Plan, error)
+	FindDefault() (*Plan, error)
+	FindByName(string) (*Plan, error)
+	Delete(Plan) error
 }
 
 type PlanValidationError struct {

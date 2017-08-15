@@ -157,7 +157,7 @@ func (s *S) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	err = s.conn.Plans().Insert(s.defaultPlan)
+	err = PlanService().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}

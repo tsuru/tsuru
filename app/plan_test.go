@@ -21,10 +21,9 @@ func (s *S) TestPlanAdd(c *check.C) {
 	}
 	err := SavePlan(p)
 	c.Assert(err, check.IsNil)
-	var plan appTypes.Plan
-	err = s.conn.Plans().FindId(p.Name).One(&plan)
+	plan, err := PlanService().FindByName(p.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(plan, check.DeepEquals, p)
+	c.Assert(*plan, check.DeepEquals, p)
 }
 
 func (s *S) TestPlanAddInvalid(c *check.C) {
@@ -69,7 +68,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 
 func (s *S) TestPlanAddAsDefault(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
-	defer s.conn.Plans().Insert(s.defaultPlan)
+	defer PlanService().Insert(s.defaultPlan)
 	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -82,11 +81,10 @@ func (s *S) TestPlanAddAsDefault(c *check.C) {
 	p.Name = "plan2"
 	err = SavePlan(p)
 	c.Assert(err, check.IsNil)
-	var plan1, plan2 appTypes.Plan
-	err = s.conn.Plans().FindId("plan1").One(&plan1)
+	plan1, err := PlanService().FindByName("plan1")
 	c.Assert(err, check.IsNil)
 	c.Assert(plan1.Default, check.Equals, false)
-	err = s.conn.Plans().FindId("plan2").One(&plan2)
+	plan2, err := PlanService().FindByName("plan2")
 	c.Assert(err, check.IsNil)
 	c.Assert(plan2.Default, check.Equals, true)
 
@@ -104,9 +102,9 @@ func (s *S) TestPlansList(c *check.C) {
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(expected[1])
+	err := PlanService().Insert(expected[1])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(expected[2])
+	err = PlanService().Insert(expected[2])
 	c.Assert(err, check.IsNil)
 	plans, err := PlansList()
 	c.Assert(err, check.IsNil)
@@ -119,14 +117,13 @@ func (s *S) TestPlanRemove(c *check.C) {
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(plans[0])
+	err := PlanService().Insert(plans[0])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(plans[1])
+	err = PlanService().Insert(plans[1])
 	c.Assert(err, check.IsNil)
 	err = PlanRemove(plans[0].Name)
 	c.Assert(err, check.IsNil)
-	var dbPlans []appTypes.Plan
-	err = s.conn.Plans().Find(nil).All(&dbPlans)
+	dbPlans, err := PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	sort.Sort(planList(dbPlans))
 	c.Assert(dbPlans, check.DeepEquals, []appTypes.Plan{
@@ -148,7 +145,7 @@ func (s *S) TestDefaultPlan(c *check.C) {
 
 func (s *S) TestDefaultPlanWithoutDefault(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
-	defer s.conn.Plans().Insert(s.defaultPlan)
+	defer PlanService().Insert(s.defaultPlan)
 	config.Set("docker:memory", 12)
 	config.Set("docker:swap", 32)
 	defer config.Unset("docker:memory")

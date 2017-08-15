@@ -5,14 +5,21 @@
 package app
 
 import (
-	"strings"
-
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
+
+func PlanService() appTypes.PlanService {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
+	}
+	return dbDriver.PlanService
+}
 
 func SavePlan(plan appTypes.Plan) error {
 	if plan.Name == "" {
@@ -24,64 +31,23 @@ func SavePlan(plan appTypes.Plan) error {
 	if plan.Memory > 0 && plan.Memory < 4194304 {
 		return appTypes.ErrLimitOfMemory
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	if plan.Default {
-		_, err = conn.Plans().UpdateAll(bson.M{"default": true}, bson.M{"$unset": bson.M{"default": false}})
-		if err != nil {
-			return err
-		}
-	}
-	err = conn.Plans().Insert(plan)
-	if err != nil && strings.Contains(err.Error(), "duplicate key") {
-		return appTypes.ErrPlanAlreadyExists
-	}
-	return err
+	return PlanService().Insert(plan)
 }
 
 func PlansList() ([]appTypes.Plan, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var plans []appTypes.Plan
-	err = conn.Plans().Find(nil).All(&plans)
-	return plans, err
+	return PlanService().FindAll()
 }
 
 func findPlanByName(name string) (*appTypes.Plan, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var plan appTypes.Plan
-	err = conn.Plans().Find(bson.M{"_id": name}).One(&plan)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil, appTypes.ErrPlanNotFound
-		}
-		return nil, err
-	}
-	return &plan, nil
+	return PlanService().FindByName(name)
 }
 
 func DefaultPlan() (*appTypes.Plan, error) {
-	conn, err := db.Conn()
+	plan, err := PlanService().FindDefault()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	var plans []appTypes.Plan
-	err = conn.Plans().Find(bson.M{"default": true}).All(&plans)
-	if err != nil {
-		return nil, err
-	}
-	if len(plans) == 0 {
+	if plan == nil {
 		// For backard compatibility only, this fallback will be removed. You
 		// should have at least one plan configured.
 		configMemory, _ := config.GetInt("docker:memory")
@@ -93,21 +59,9 @@ func DefaultPlan() (*appTypes.Plan, error) {
 			CpuShare: 100,
 		}, nil
 	}
-	if len(plans) > 1 {
-		return nil, appTypes.ErrPlanDefaultAmbiguous
-	}
-	return &plans[0], nil
+	return plan, nil
 }
 
 func PlanRemove(planName string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Plans().RemoveId(planName)
-	if err == mgo.ErrNotFound {
-		return appTypes.ErrPlanNotFound
-	}
-	return err
+	return PlanService().Delete(appTypes.Plan{Name: planName})
 }

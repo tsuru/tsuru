@@ -16,6 +16,7 @@ import (
 type DbDriver struct {
 	TeamService     auth.TeamService
 	PlatformService app.PlatformService
+	PlanService     app.PlanService
 }
 
 var (
