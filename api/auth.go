@@ -461,6 +461,85 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
+// title: team info
+// path: /teams/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Info team
+//   404: Not found
+//   401: Unauthorized
+func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	teamName := r.URL.Query().Get(":name")
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return err
+	}
+
+	_, err = t.Permissions()
+	if err != nil {
+		return err
+	}
+
+	apps, err := app.List(&app.Filter{})
+	if err != nil {
+		return err
+	}
+	includedApps := make([]app.App, 0)
+	for _, app := range apps {
+		for _, appTeam := range app.Teams {
+			if appTeam == team.Name {
+				includedApps = append(includedApps, app)
+				break
+			}
+		}
+	}
+
+	pools, err := provision.ListAllPools()
+	if err != nil {
+		return err
+	}
+	includedPools := make([]provision.Pool, 0)
+	for _, pool := range pools {
+		poolTeams, _ := pool.GetTeams()
+		for _, poolTeam := range poolTeams {
+			if poolTeam == team.Name {
+				includedPools = append(includedPools, pool)
+				break
+			}
+		}
+	}
+
+	users, err := auth.ListUsers()
+	if err != nil {
+		return err
+	}
+	includedUsers := make([]*apiUser, 0)
+	for _, user := range users {
+		for _, role := range user.Roles {
+			if role.ContextValue == team.Name {
+				roleMap := make(map[string]*permission.Role)
+				includeAll := permission.Check(t, permission.PermUserUpdate)
+				perms, _ := t.Permissions()
+				userData, _ := createAPIUser(perms, &user, roleMap, includeAll)
+				includedUsers = append(includedUsers, userData)
+				break
+			}
+		}
+	}
+
+	var result map[string]interface{}
+	result = map[string]interface{}{
+		"name":  team.Name,
+		"users": includedUsers,
+		"pools": includedPools,
+		"apps":  apps,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(result)
+}
+
 // title: add key
 // path: /users/keys
 // method: POST
