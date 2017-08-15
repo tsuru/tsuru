@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -62,8 +63,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(s.appInstance)
-	plan := app.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
-	err = plan.Save()
+	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
+	err = app.SavePlan(plan)
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: s.appInstance.GetName(),
@@ -628,8 +629,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	err := app.PlanRemove("default")
 	c.Assert(err, check.IsNil)
-	plan := app.Plan{Memory: 25165824, Name: "default", CpuShare: 10}
-	err = plan.Save()
+	plan := appTypes.Plan{Memory: 25165824, Name: "default", CpuShare: 10}
+	err = app.SavePlan(plan)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
@@ -925,7 +926,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	appStruct := &app.App{
 		Name: appInstance2.GetName(),
 		Pool: "pool2",
-		Plan: app.Plan{Memory: 4194304},
+		Plan: appTypes.Plan{Memory: 4194304},
 	}
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)

@@ -928,13 +928,13 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	a := app.App{Name: "someapp"}
-	expectedPlan := app.Plan{
+	expectedPlan := appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
 		Swap:     5,
 		CpuShare: 10,
 	}
-	err := expectedPlan.Save()
+	err := app.SavePlan(expectedPlan)
 	c.Assert(err, check.IsNil)
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
@@ -1605,12 +1605,12 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	config.Set("docker:router", "fake")
 	defer config.Unset("docker:router")
-	plans := []app.Plan{
+	plans := []appTypes.Plan{
 		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
 		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
 	}
 	for _, plan := range plans {
-		err := plan.Save()
+		err := app.SavePlan(plan)
 		c.Assert(err, check.IsNil)
 	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
@@ -1631,8 +1631,8 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
-	plan := app.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
-	err := plan.Save()
+	plan := appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
+	err := app.SavePlan(plan)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
 	err = app.CreateApp(&a, s.user)
@@ -1645,7 +1645,7 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Check(recorder.Body.String(), check.Equals, app.ErrPlanNotFound.Error()+"\n")
+	c.Check(recorder.Body.String(), check.Equals, appTypes.ErrPlanNotFound.Error()+"\n")
 }
 
 func (s *S) TestUpdateAppWithoutFlag(c *check.C) {

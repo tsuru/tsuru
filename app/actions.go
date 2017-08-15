@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -391,7 +392,7 @@ var provisionAddUnits = action.Action{
 type updateAppPipelineResult struct {
 	changedRouter bool
 	changedOpts   bool
-	oldPlan       *Plan
+	oldPlan       *appTypes.Plan
 	oldIp         string
 	oldRouter     string
 	oldRouterOpts map[string]string
@@ -405,7 +406,7 @@ var moveRouterUnits = action.Action{
 		if !ok {
 			return nil, errors.New("first parameter must be an *App")
 		}
-		oldPlan, ok := ctx.Params[1].(*Plan)
+		oldPlan, ok := ctx.Params[1].(*appTypes.Plan)
 		if !ok {
 			return nil, errors.New("second parameter must be a *Plan")
 		}

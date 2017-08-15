@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type memoryScaler struct {
@@ -94,7 +95,7 @@ func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult
 		}
 	}
 	if maxPlanMemory == 0 {
-		var defaultPlan *app.Plan
+		var defaultPlan *appTypes.Plan
 		defaultPlan, err = app.DefaultPlan()
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get default plan")

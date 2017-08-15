@@ -41,7 +41,7 @@ type S struct {
 	team        authTypes.Team
 	user        *auth.User
 	provisioner *provisiontest.FakeProvisioner
-	defaultPlan Plan
+	defaultPlan appTypes.Plan
 	Pool        string
 	zeroLock    map[string]interface{}
 }
@@ -150,7 +150,7 @@ func (s *S) SetUpTest(c *check.C) {
 	platform := appTypes.Platform{Name: "python"}
 	PlatformService().Insert(platform)
 	PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
-	s.defaultPlan = Plan{
+	s.defaultPlan = appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
 		Swap:     1024,

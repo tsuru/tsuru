@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/pool"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -160,10 +161,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
 	err := s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
@@ -251,10 +252,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
@@ -340,10 +341,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
