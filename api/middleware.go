@@ -105,10 +105,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	next(w, r)
 	err := context.GetRequestError(r)
 	if err != nil {
-		verbosity, errConv := strconv.Atoi(r.Header.Get(cmd.VerbosityHeader))
-		if errConv != nil {
-			verbosity = 0
-		}
+		verbosity, _ := strconv.Atoi(r.Header.Get(cmd.VerbosityHeader))
 		code := http.StatusInternalServerError
 		switch t := errors.Cause(err).(type) {
 		case *tsuruErrors.ValidationError:
