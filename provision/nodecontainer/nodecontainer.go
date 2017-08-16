@@ -26,6 +26,7 @@ var (
 type NodeContainerConfig struct {
 	Name        string
 	PinnedImage string
+	Disabled    *bool
 	Config      docker.Config
 	HostConfig  docker.HostConfig
 }
@@ -77,6 +78,7 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 	}
 	conf := configFor(c.Name)
 	conf.SliceAdd = false
+	conf.PtrNilIsEmpty = false
 	hasEntry, err := conf.HasEntry(pool)
 	if err != nil {
 		return err
@@ -88,7 +90,14 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 	if err != nil {
 		return err
 	}
-	return conf.SaveMerge(pool, c)
+	err = conf.SaveMerge(pool, c)
+	if err != nil {
+		return err
+	}
+	if c.Disabled != nil {
+		return conf.SetField(pool, "Disabled", *c.Disabled)
+	}
+	return nil
 }
 
 func removeDuplicateEnvs(c *NodeContainerConfig, oldConf *scopedconfig.ScopedConfig, pool string) error {
@@ -235,6 +244,9 @@ func (c *NodeContainerConfig) EnvMap() map[string]string {
 }
 
 func (c *NodeContainerConfig) Valid() bool {
+	if c.Disabled != nil && *c.Disabled {
+		return false
+	}
 	return c.Image() != ""
 }
 
@@ -250,6 +262,7 @@ func configFor(name string) *scopedconfig.ScopedConfig {
 	conf.Jsonfy = true
 	conf.SliceAdd = true
 	conf.AllowMapEmpty = true
+	conf.PtrNilIsEmpty = true
 	return conf
 }
 

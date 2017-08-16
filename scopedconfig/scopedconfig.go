@@ -31,6 +31,7 @@ type ScopedConfig struct {
 	Jsonfy        bool
 	SliceAdd      bool
 	AllowMapEmpty bool
+	PtrNilIsEmpty bool
 }
 
 type scopedConfigEntry struct {
@@ -463,6 +464,9 @@ func (n *ScopedConfig) isEmpty(valValue reflect.Value) bool {
 	cmpValue := valValue
 	zero := reflect.Zero(valValue.Type()).Interface()
 	if valValue.Kind() == reflect.Ptr {
+		if n.PtrNilIsEmpty {
+			return valValue.IsNil()
+		}
 		cmpValue = valValue.Elem()
 		zero = reflect.Zero(valValue.Elem().Type()).Interface()
 	}

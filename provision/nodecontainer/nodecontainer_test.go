@@ -68,6 +68,48 @@ func (s *S) TestAddNewContainer(c *check.C) {
 	c.Assert(result3, check.DeepEquals, expected2)
 }
 
+func (s *S) TestAddUpdateContainerDisabled(c *check.C) {
+	boolPtr := func(a bool) *bool { return &a }
+	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Disabled: boolPtr(true), Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "x", Disabled: boolPtr(false)})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p2", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Disabled: boolPtr(true), Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	tests := []struct {
+		name, pool    string
+		expectedValid bool
+	}{
+		{"x", "", false},
+		{"x", "p1", true},
+		{"x", "p2", false},
+		{"x", "px", false},
+		{"y", "", true},
+		{"y", "px", true},
+		{"y", "p1", false},
+	}
+	for _, tt := range tests {
+		conf := configFor(tt.name)
+		var result NodeContainerConfig
+		err = conf.Load(tt.pool, &result)
+		c.Assert(err, check.IsNil)
+		c.Assert(result.Valid(), check.Equals, tt.expectedValid)
+	}
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "y", Disabled: boolPtr(false), Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	conf := configFor("y")
+	result := NodeContainerConfig{}
+	err = conf.Load("p1", &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Valid(), check.Equals, true)
+}
+
 func (s *S) TestAddNewContainerInvalid(c *check.C) {
 	err := AddNewContainer("", &NodeContainerConfig{})
 	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
