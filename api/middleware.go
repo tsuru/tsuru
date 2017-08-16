@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -20,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
@@ -103,12 +105,18 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	next(w, r)
 	err := context.GetRequestError(r)
 	if err != nil {
+		verbosity, _ := strconv.Atoi(r.Header.Get(cmd.VerbosityHeader))
 		code := http.StatusInternalServerError
 		switch t := errors.Cause(err).(type) {
 		case *tsuruErrors.ValidationError:
 			code = http.StatusBadRequest
 		case *tsuruErrors.HTTP:
 			code = t.Code
+		}
+		if verbosity == 0 {
+			err = fmt.Errorf("%s", err)
+		} else {
+			err = fmt.Errorf("%+v", err)
 		}
 		flushing, ok := w.(*io.FlushingWriter)
 		if ok && flushing.Wrote() {

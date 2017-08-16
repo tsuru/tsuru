@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"gopkg.in/check.v1"
@@ -176,6 +178,19 @@ func (s *S) TestErrorHandlingMiddlewareWithCauseValidationError(c *check.C) {
 	c.Assert(log.called, check.Equals, true)
 	c.Assert(recorder.Code, check.Equals, 400)
 	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid request\n")
+}
+
+func (s *S) TestErrorHandlingMiddlewareWithVerbosity(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	request.Header.Add(cmd.VerbosityHeader, "1")
+	c.Assert(err, check.IsNil)
+	h, log := doHandler()
+	context.AddRequestError(request, errors.WithStack(&tsuruErrors.ValidationError{Message: "invalid request"}))
+	errorHandlingMiddleware(recorder, request, h)
+	c.Assert(log.called, check.Equals, true)
+	c.Assert(recorder.Code, check.Equals, 400)
+	c.Assert(strings.Contains(recorder.Body.String(), "github.com/tsuru/tsuru"), check.Equals, true)
 }
 
 func (s *S) TestAuthTokenMiddlewareWithoutToken(c *check.C) {

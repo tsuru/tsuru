@@ -289,3 +289,18 @@ func (s *S) TestStreamJSONResponse(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "hello!")
 }
+
+func (s *S) TestShouldIncludeVerbosityHeader(c *check.C) {
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(&http.Client{Transport: &trans}, &context, globalManager)
+	client.Verbosity = 2
+	_, err = client.Do(request)
+	c.Assert(err, check.IsNil)
+	c.Assert(request.Header.Get(VerbosityHeader), check.Equals, "2")
+}
