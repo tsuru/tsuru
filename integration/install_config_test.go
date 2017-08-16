@@ -97,7 +97,10 @@ func (s *S) getClusterManagers() []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"gce":      &GceClusterManager{env: s.env},
 		"minikube": &MinikubeClusterManager{env: s.env},
-		"swarm":    &swarmClusterManager{env: s.env},
+		"swarm":    &SwarmClusterManager{env: s.env},
+	}
+	if _, ok := os.LookupEnv(integrationEnvID + "clusters"); !ok {
+		return []ClusterManager{availableClusterManagers["swarm"]}
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := s.env.All("clusters")

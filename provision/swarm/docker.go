@@ -34,7 +34,6 @@ const (
 	dockerDialTimeout  = 5 * time.Second
 	dockerFullTimeout  = 15 * time.Minute
 	dockerTCPKeepALive = 30 * time.Second
-	maxSwarmManagers   = 7
 	tsuruLabelPrefix   = "tsuru."
 )
 

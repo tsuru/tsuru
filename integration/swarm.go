@@ -10,31 +10,31 @@ import (
 	"github.com/mattn/go-shellwords"
 )
 
-type swarmClusterManager struct {
+type SwarmClusterManager struct {
 	env *Environment
 }
 
-func (m *swarmClusterManager) Name() string {
+func (m *SwarmClusterManager) Name() string {
 	return "swarm"
 }
 
-func (m *swarmClusterManager) Provisioner() string {
+func (m *SwarmClusterManager) Provisioner() string {
 	return "swarm"
 }
 
-func (m *swarmClusterManager) Start() *Result {
+func (m *SwarmClusterManager) Start() *Result {
 	return &Result{}
 }
 
-func (m *swarmClusterManager) Delete() *Result {
+func (m *SwarmClusterManager) Delete() *Result {
 	return &Result{}
 }
 
-func (m *swarmClusterManager) RequiredNodes() int {
+func (m *SwarmClusterManager) RequiredNodes() int {
 	return 1
 }
 
-func (m *swarmClusterManager) UpdateParams() []string {
+func (m *SwarmClusterManager) UpdateParams() []string {
 	nodeopts := m.env.All("nodeopts")
 	m.env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
 	parts, _ := shellwords.Parse(nodeopts[0])

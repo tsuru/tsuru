@@ -188,11 +188,13 @@ func generateMachineName(prefix string) (string, error) {
 	r := strings.NewReplacer("_", "-", " ", "-")
 	prefix = r.Replace(prefix)
 	prefix = strings.TrimPrefix(prefix, "-")
-	id, err := generateRandomID()
+	name, err := generateRandomID()
 	if err != nil {
 		return "", err
 	}
-	name := fmt.Sprintf("%s-%s", prefix, id)
+	if prefix != "" {
+		name = fmt.Sprintf("%s-%s", prefix, name)
+	}
 	if len(name) > 63 {
 		name = name[:63]
 	}
