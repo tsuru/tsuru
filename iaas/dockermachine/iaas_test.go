@@ -179,6 +179,7 @@ func (s *S) TestGenerateMachineName(c *check.C) {
 		{"a_b c", "a-b-c", 38},
 		{"-a b_c", "a-b-c", 38},
 		{strings.Repeat("a", 80), strings.Repeat("a", 63), 63},
+		{"", "[^-]{32}", 32},
 	}
 	for _, t := range tt {
 		name, err := generateMachineName(t.prefix)
@@ -188,7 +189,7 @@ func (s *S) TestGenerateMachineName(c *check.C) {
 		if idx > 0 {
 			gotPrefix = name[:idx]
 		}
-		c.Assert(gotPrefix, check.Equals, t.expectedPrefix)
+		c.Assert(gotPrefix, check.Matches, t.expectedPrefix)
 		c.Assert(len(name), check.Equals, t.expectedLength)
 	}
 }
