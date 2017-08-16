@@ -401,6 +401,26 @@ func (s *S) TestListPool(c *check.C) {
 	c.Assert(pools[1].Name, check.Equals, "pool3")
 }
 
+func (s *S) TestListPoolsForTeam(c *check.C) {
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	err = AddPool(AddPoolOptions{Name: "pool2"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    "team",
+		Values:   []string{"team1"},
+	})
+	err = SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "pool2",
+		Field:    "team",
+		Values:   []string{"team2"},
+	})
+	c.Assert(err, check.IsNil)
+	pools, err := ListPoolsForTeam("team1")
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.HasLen, 1)
+}
+
 func (s *S) TestListPossiblePoolsAll(c *check.C) {
 	err := AddPool(AddPoolOptions{Name: "pool1", Default: true})
 	c.Assert(err, check.IsNil)
