@@ -475,41 +475,20 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-
-	_, err = t.Permissions()
+	canRead := permission.Check(t, permission.PermTeamRead)
+	if !canRead {
+		return permission.ErrUnauthorized
+	}
+	apps, err := app.List(&app.Filter{
+		Extra:     map[string][]string{"teams": []string{team.Name}},
+		TeamOwner: team.Name})
 	if err != nil {
 		return err
 	}
-
-	apps, err := app.List(&app.Filter{})
+	pools, err := pool.ListPoolsForTeam(team.Name)
 	if err != nil {
 		return err
 	}
-	includedApps := make([]app.App, 0)
-	for _, app := range apps {
-		for _, appTeam := range app.Teams {
-			if appTeam == team.Name {
-				includedApps = append(includedApps, app)
-				break
-			}
-		}
-	}
-
-	pools, err := provision.ListAllPools()
-	if err != nil {
-		return err
-	}
-	includedPools := make([]provision.Pool, 0)
-	for _, pool := range pools {
-		poolTeams, _ := pool.GetTeams()
-		for _, poolTeam := range poolTeams {
-			if poolTeam == team.Name {
-				includedPools = append(includedPools, pool)
-				break
-			}
-		}
-	}
-
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
@@ -527,15 +506,13 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-
 	var result map[string]interface{}
 	result = map[string]interface{}{
 		"name":  team.Name,
 		"users": includedUsers,
-		"pools": includedPools,
+		"pools": pools,
 		"apps":  apps,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(result)
 }
