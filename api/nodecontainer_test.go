@@ -210,6 +210,7 @@ func (s *S) TestNodeContainerCreate(c *check.C) {
 		if len(pool) > 0 {
 			values.Set("pool", pool[0])
 		}
+		values.Del("Disabled")
 		reader := strings.NewReader(values.Encode())
 		request, err := http.NewRequest("POST", "/1.2/nodecontainers", reader)
 		c.Assert(err, check.IsNil)
@@ -351,6 +352,7 @@ func (s *S) TestNodeContainerUpdate(c *check.C) {
 		if len(pool) > 0 {
 			values.Set("pool", pool[0])
 		}
+		values.Del("Disabled")
 		reader := strings.NewReader(values.Encode())
 		request, err := http.NewRequest("POST", "/1.2/nodecontainers/"+cont.Name, reader)
 		c.Assert(err, check.IsNil)
@@ -461,6 +463,52 @@ func (s *S) TestNodeContainerUpdateLimited(c *check.C) {
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestNodeContainerUpdateDisableEnable(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1"})
+	c.Assert(err, check.IsNil)
+	doReq := func(expected map[string]nodecontainer.NodeContainerConfig) {
+		reader := strings.NewReader(values.Encode())
+		var request *http.Request
+		request, err = http.NewRequest("POST", "/1.2/nodecontainers/c1", reader)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		server := RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		request, err = http.NewRequest("GET", "/1.2/nodecontainers/c1", nil)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configEntries map[string]nodecontainer.NodeContainerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+		c.Assert(configEntries, check.DeepEquals, expected)
+	}
+	values.Set("Disabled", "true")
+	disabled := true
+	doReq(map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1", Disabled: &disabled, Config: docker.Config{Image: "img1"}},
+	})
+	values.Del("Disabled")
+	doReq(map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1", Disabled: &disabled, Config: docker.Config{Image: "img1"}},
+	})
+	values.Set("Disabled", "false")
+	disabled = false
+	doReq(map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1", Disabled: &disabled, Config: docker.Config{Image: "img1"}},
+	})
+	values.Del("Disabled")
+	doReq(map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1", Disabled: &disabled, Config: docker.Config{Image: "img1"}},
+	})
 }
 
 func (s *S) TestNodeContainerDelete(c *check.C) {

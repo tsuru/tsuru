@@ -132,10 +132,11 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 		return &a
 	}
 	tests := []struct {
-		base          interface{}
-		pool          interface{}
-		expected      interface{}
-		expectedEmpty interface{}
+		base                  interface{}
+		pool                  interface{}
+		expected              interface{}
+		expectedEmpty         interface{}
+		expectedPtrNilIsEmpty interface{}
 	}{
 		{
 			TestStd{
@@ -188,6 +189,20 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				Y:  TestStdAux{},
 				Z:  TestStdAux{B: "aaa"},
 			},
+			TestStd{
+				A:  "x",
+				B:  "abc",
+				C:  333,
+				D:  999,
+				E:  []string{"A"},
+				F:  []string{"F"},
+				F2: []string{"C"},
+				G:  1.1,
+				H:  t1,
+				I:  t2,
+				Y:  TestStdAux{A: "zzz"},
+				Z:  TestStdAux{B: "aaa"},
+			},
 		},
 		{
 			TestStdOmit{
@@ -238,6 +253,20 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				H:  time.Time{},
 				I:  t2,
 				Y:  TestStdAux{},
+				Z:  TestStdAux{B: "aaa"},
+			},
+			TestStdOmit{
+				A:  "x",
+				B:  "abc",
+				C:  333,
+				D:  999,
+				E:  []string{"A"},
+				F:  []string{"F"},
+				F2: []string{"C"},
+				G:  1.1,
+				H:  t1,
+				I:  t2,
+				Y:  TestStdAux{A: "zzz"},
 				Z:  TestStdAux{B: "aaa"},
 			},
 		},
@@ -299,6 +328,21 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				Z:  &TestStdAux{B: "aaa"},
 				Z2: &TestStdAux{A: "x1"},
 			},
+			TestPtr{
+				A:  strPtr("x"),
+				B:  strPtr(""),
+				C:  intPtr(222),
+				D:  intPtr(0),
+				E:  []string{"A"},
+				F:  []string{"F"},
+				F2: []string{"C"},
+				G:  floatPtr(1.1),
+				H:  &t1,
+				I:  &t2,
+				Y:  &TestStdAux{A: "zzz"},
+				Z:  &TestStdAux{B: "aaa"},
+				Z2: &TestStdAux{A: "x1"},
+			},
 		},
 		{
 			TestPtrOmit{
@@ -314,6 +358,7 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				I:  &t1,
 				Y:  &TestStdAux{A: "zzz"},
 				Z:  &TestStdAux{},
+				Z2: nil,
 			},
 			TestPtrOmit{
 				A:  strPtr("x"),
@@ -325,6 +370,7 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				F2: nil,
 				I:  &t2,
 				Z:  &TestStdAux{B: "aaa"},
+				Z2: &TestStdAux{},
 			},
 			TestPtrOmit{
 				A:  strPtr("x"),
@@ -339,6 +385,7 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				I:  &t2,
 				Y:  &TestStdAux{A: "zzz"},
 				Z:  &TestStdAux{B: "aaa"},
+				Z2: nil,
 			},
 			TestPtrOmit{
 				A:  strPtr("x"),
@@ -353,6 +400,22 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 				I:  &t2,
 				Y:  &TestStdAux{A: "zzz"},
 				Z:  &TestStdAux{B: "aaa"},
+				Z2: &TestStdAux{},
+			},
+			TestPtrOmit{
+				A:  strPtr("x"),
+				B:  strPtr(""),
+				C:  intPtr(222),
+				D:  intPtr(0),
+				E:  []string{"A"},
+				F:  []string{"F"},
+				F2: []string{"C"},
+				G:  floatPtr(1.1),
+				H:  &t1,
+				I:  &t2,
+				Y:  &TestStdAux{A: "zzz"},
+				Z:  &TestStdAux{B: "aaa"},
+				Z2: &TestStdAux{},
 			},
 		},
 		{
@@ -360,6 +423,7 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 			TestDeepMerge{Envs: map[string]string{"A": "X", "Y": "Z"}, A: TestStdAux{B: "b"}},
 			TestDeepMerge{Envs: map[string]string{"A": "X", "C": "D", "Y": "Z"}, A: TestStdAux{A: "a", B: "b"}},
 			TestDeepMerge{Envs: map[string]string{"A": "X", "C": "D", "Y": "Z"}, A: TestStdAux{A: "", B: "b"}},
+			TestDeepMerge{Envs: map[string]string{"A": "X", "C": "D", "Y": "Z"}, A: TestStdAux{A: "a", B: "b"}},
 		},
 	}
 	for i, t := range tests {
@@ -392,6 +456,12 @@ func (s *S) TestScopedConfigMulti(c *check.C) {
 		expected.SetMapIndex(reflect.ValueOf(""), reflect.ValueOf(t.base))
 		expected.SetMapIndex(reflect.ValueOf("p1"), reflect.ValueOf(t.expectedEmpty))
 		c.Assert(all.Elem().Interface(), check.DeepEquals, expected.Interface())
+		sc.AllowEmpty = false
+		sc.PtrNilIsEmpty = true
+		result4 := reflect.New(reflect.TypeOf(t.base))
+		err = sc.Load("p1", result4.Interface())
+		c.Assert(err, check.IsNil)
+		c.Assert(result4.Elem().Interface(), check.DeepEquals, t.expectedPtrNilIsEmpty, check.Commentf("test %d", i))
 	}
 }
 
