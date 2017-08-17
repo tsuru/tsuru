@@ -64,18 +64,19 @@ var (
 	throttlingInfo  = map[string]ThrottlingSpec{}
 	errInvalidQuery = errors.New("invalid query")
 
-	ErrNotCancelable     = errors.New("event is not cancelable")
-	ErrEventNotFound     = errors.New("event not found")
-	ErrNoTarget          = ErrValidation("event target is mandatory")
-	ErrNoKind            = ErrValidation("event kind is mandatory")
-	ErrNoOwner           = ErrValidation("event owner is mandatory")
-	ErrNoOpts            = ErrValidation("event opts is mandatory")
-	ErrNoInternalKind    = ErrValidation("event internal kind is mandatory")
-	ErrNoAllowed         = errors.New("event allowed is mandatory")
-	ErrNoAllowedCancel   = errors.New("event allowed cancel is mandatory for cancelable events")
-	ErrInvalidOwner      = ErrValidation("event owner must not be set on internal events")
-	ErrInvalidKind       = ErrValidation("event kind must not be set on internal events")
-	ErrInvalidTargetType = errors.New("invalid event target type")
+	ErrNotCancelable          = errors.New("event is not cancelable")
+	ErrCancelAlreadyRequested = errors.New("event cancel already requested")
+	ErrEventNotFound          = errors.New("event not found")
+	ErrNoTarget               = ErrValidation("event target is mandatory")
+	ErrNoKind                 = ErrValidation("event kind is mandatory")
+	ErrNoOwner                = ErrValidation("event owner is mandatory")
+	ErrNoOpts                 = ErrValidation("event opts is mandatory")
+	ErrNoInternalKind         = ErrValidation("event internal kind is mandatory")
+	ErrNoAllowed              = errors.New("event allowed is mandatory")
+	ErrNoAllowedCancel        = errors.New("event allowed cancel is mandatory for cancelable events")
+	ErrInvalidOwner           = ErrValidation("event owner must not be set on internal events")
+	ErrInvalidKind            = ErrValidation("event kind must not be set on internal events")
+	ErrInvalidTargetType      = errors.New("invalid event target type")
 
 	OwnerTypeUser     = ownerType("user")
 	OwnerTypeApp      = ownerType("app")
@@ -945,7 +946,10 @@ func (e *Event) TryCancel(reason, owner string) error {
 	}
 	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": false}).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
-		return ErrEventNotFound
+		if _, errID := GetByID(e.UniqueID); errID == ErrEventNotFound {
+			return ErrEventNotFound
+		}
+		err = ErrCancelAlreadyRequested
 	}
 	return err
 }
