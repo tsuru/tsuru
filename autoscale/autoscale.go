@@ -39,6 +39,7 @@ type Config struct {
 	done                chan bool
 	writer              io.Writer
 	running             bool
+	Enabled             bool
 }
 
 func CurrentConfig() (*Config, error) {
@@ -69,6 +70,7 @@ func newConfig() *Config {
 		TotalMemoryMetadata: totalMemoryMetadata,
 		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		RunInterval:         time.Duration(runInterval) * time.Second,
+		Enabled:             true,
 		done:                make(chan bool),
 	}
 	if c.RunInterval == 0 {
