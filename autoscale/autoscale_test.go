@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"

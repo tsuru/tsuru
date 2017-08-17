@@ -41,7 +41,7 @@ func GetDbDriver(name string) (*DbDriver, error) {
 }
 
 // GetCurrentDbDriver returns the DB driver specified in the configuration file.
-// If this configuration was omitted, it returns the default db driver
+// If this configuration was omitted, it returns the default DB driver
 func GetCurrentDbDriver() (*DbDriver, error) {
 	driverLock.RLock()
 	if currentDbDriver != nil {
@@ -65,7 +65,7 @@ func GetCurrentDbDriver() (*DbDriver, error) {
 	return currentDbDriver, nil
 }
 
-// GetDefaultDbDriver returns the default db driver
+// GetDefaultDbDriver returns the default DB driver
 func GetDefaultDbDriver() (*DbDriver, error) {
 	return GetDbDriver(DefaultDbDriverName)
 }
