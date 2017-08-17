@@ -46,7 +46,7 @@ func (s *S) TestPlanAddInvalid(c *check.C) {
 			CpuShare: 100,
 		},
 	}
-	expectedError := []error{appTypes.PlanValidationError{"name"}, appTypes.ErrLimitOfCpuShare, appTypes.ErrLimitOfMemory}
+	expectedError := []error{appTypes.PlanValidationError{Field: "name"}, appTypes.ErrLimitOfCpuShare, appTypes.ErrLimitOfMemory}
 	for i, p := range invalidPlans {
 		err := SavePlan(p)
 		c.Assert(err, check.FitsTypeOf, expectedError[i])
