@@ -404,6 +404,7 @@ func (s *S) TestListPool(c *check.C) {
 
 func (s *S) TestListPoolsForTeam(c *check.C) {
 	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
 	err = AddPool(AddPoolOptions{Name: "pool2"})
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{
@@ -411,6 +412,7 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 		Field:    "team",
 		Values:   []string{"team1"},
 	})
+	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{
 		PoolExpr: "pool2",
 		Field:    "team",
