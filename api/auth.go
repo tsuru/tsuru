@@ -480,7 +480,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	apps, err := app.List(&app.Filter{
-		Extra:     map[string][]string{"teams": []string{team.Name}},
+		Extra:     map[string][]string{"teams": {team.Name}},
 		TeamOwner: team.Name})
 	if err != nil {
 		return err
@@ -495,19 +495,24 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	includedUsers := make([]*apiUser, 0)
 	for _, user := range users {
-		for _, role := range user.Roles {
-			if role.ContextValue == team.Name {
-				roleMap := make(map[string]*permission.Role)
-				includeAll := permission.Check(t, permission.PermUserUpdate)
-				perms, _ := t.Permissions()
-				userData, _ := createAPIUser(perms, &user, roleMap, includeAll)
-				includedUsers = append(includedUsers, userData)
+		for _, roleInstance := range user.Roles {
+			role, err := permission.FindRole(roleInstance.Name)
+			if err != nil {
 				break
+			}
+			if role.ContextType == permission.CtxGlobal || (role.ContextType == permission.CtxTeam && roleInstance.ContextValue == team.Name) {
+				canInclude := permission.Check(t, permission.PermTeam)
+				if canInclude {
+					roleMap := make(map[string]*permission.Role)
+					perms, _ := t.Permissions()
+					userData, _ := createAPIUser(perms, &user, roleMap, canInclude)
+					includedUsers = append(includedUsers, userData)
+					break
+				}
 			}
 		}
 	}
-	var result map[string]interface{}
-	result = map[string]interface{}{
+	result := map[string]interface{}{
 		"name":  team.Name,
 		"users": includedUsers,
 		"pools": pools,
