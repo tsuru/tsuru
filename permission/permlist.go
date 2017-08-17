@@ -139,6 +139,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service-instance.update.revoke",
 	"service-instance.update.description",
 	"service-instance.update.tags",
+	"service-instance.update.teamowner",
 ).add(
 	"role.create",
 	"role.delete",

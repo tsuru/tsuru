@@ -557,15 +557,16 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance.Description = "desc"
 	instance.Tags = []string{"tag2"}
+	instance.TeamOwner = "new-team-owner"
 	err = instance.Update(instance)
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.PlanName, check.Equals, "small")
-	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Description, check.Equals, "desc")
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
+	c.Assert(si.TeamOwner, check.Equals, "new-team-owner")
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {

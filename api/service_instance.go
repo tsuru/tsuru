@@ -136,6 +136,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
+	teamOwner := r.FormValue("teamowner")
 	tags := r.Form["tag"]
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
@@ -145,13 +146,16 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 	}
+	if teamOwner != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamOwner)
+	}
 	if tags != nil {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
 	}
 	if len(wantedPerms) == 0 {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Neither the description or tags were set. You must define at least one.",
+			Message: "Neither the description, team owner or tags were set. You must define at least one.",
 		}
 	}
 	for _, perm := range wantedPerms {
@@ -164,7 +168,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
-		Kind:       permission.PermServiceInstanceUpdateDescription,
+		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
@@ -176,6 +180,9 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer func() { evt.Done(err) }()
 	if description != "" {
 		si.Description = description
+	}
+	if teamOwner != "" {
+		si.TeamOwner = teamOwner
 	}
 	if tags != nil {
 		si.Tags = tags
