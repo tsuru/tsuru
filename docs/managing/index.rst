@@ -15,6 +15,8 @@ Managing
     add-platform
     create-platform
     using-pools
+    provisioners
+    clusters
     segregate-scheduler
     upgrading-docker
     repositories
