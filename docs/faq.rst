@@ -44,7 +44,7 @@ How does routing work?
 
 tsuru has a router interface, which makes it extremely easy to change the way
 routing works with any provisioner. There are two ready-to-go routers: one
-using `hipache <https://github.com/hipache/hipache>`_ and another with `galeb
+using `planb <https://github.com/tsuru/planb>`_ and another with `galeb
 <http://galeb.io/>`_.
 
 .. note::
