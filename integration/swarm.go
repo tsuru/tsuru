@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mattn/go-shellwords"
@@ -48,7 +49,7 @@ func (m *SwarmClusterManager) UpdateParams() []string {
 			if metadata[0] == "address" {
 				clusterParts = append(clusterParts, "--addr", metadata[1])
 			} else {
-				clusterParts = append(clusterParts, "--create-data", part)
+				clusterParts = append(clusterParts, "--create-data", fmt.Sprintf("'%s'", part))
 			}
 		} else {
 			clusterParts = append(clusterParts, part)
