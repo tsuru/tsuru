@@ -456,6 +456,22 @@ func (s *S) TestEventCancel(c *check.C) {
 	})
 }
 
+func (s *S) TestEventCancelMulttipleTimes(c *check.C) {
+	evt, err := New(&Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("because I want", "admin@admin.com")
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("because I still want", "admin@admin.com")
+	c.Assert(err, check.DeepEquals, ErrCancelAlreadyRequested)
+}
+
 func (s *S) TestEventCancelNotCancelable(c *check.C) {
 	evt, err := New(&Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
