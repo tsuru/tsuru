@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 // title: plan create
@@ -30,7 +31,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
 	memory := getSize(r.FormValue("memory"))
 	swap := getSize(r.FormValue("swap"))
-	plan := app.Plan{
+	plan := appTypes.Plan{
 		Name:     r.FormValue("name"),
 		Memory:   memory,
 		Swap:     swap,
@@ -52,14 +53,14 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = plan.Save()
-	if err == app.ErrPlanAlreadyExists {
+	err = app.SavePlan(plan)
+	if err == appTypes.ErrPlanAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),
 		}
 	}
-	if err == app.ErrLimitOfMemory || err == app.ErrLimitOfCpuShare {
+	if err == appTypes.ErrLimitOfMemory || err == appTypes.ErrLimitOfCpuShare {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -117,7 +118,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	defer func() { evt.Done(err) }()
 	err = app.PlanRemove(planName)
-	if err == app.ErrPlanNotFound {
+	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
 			Message: err.Error(),

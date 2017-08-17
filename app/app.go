@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -123,7 +124,7 @@ type App struct {
 	Teams          []string
 	TeamOwner      string
 	Owner          string
-	Plan           Plan
+	Plan           appTypes.Plan
 	UpdatePlatform bool
 	Lock           AppLock
 	Pool           string
@@ -322,7 +323,7 @@ func GetByName(name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
-	var plan *Plan
+	var plan *appTypes.Plan
 	var err error
 	if app.Plan.Name == "" {
 		plan, err = DefaultPlan()

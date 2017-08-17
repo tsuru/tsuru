@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -434,7 +435,7 @@ func (s *S) TestServiceManagerDeployServiceWithLimits(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Plan = app.Plan{Memory: 1024}
+	a.Plan = appTypes.Plan{Memory: 1024}
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",

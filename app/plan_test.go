@@ -8,27 +8,26 @@ import (
 	"sort"
 
 	"github.com/tsuru/config"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestPlanAdd(c *check.C) {
-	p := Plan{
+	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
 		Swap:     1024,
 		CpuShare: 100,
 	}
-	err := p.Save()
+	err := SavePlan(p)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId(p.Name)
-	var plan Plan
-	err = s.conn.Plans().FindId(p.Name).One(&plan)
+	plan, err := PlanService().FindByName(p.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(plan, check.DeepEquals, p)
+	c.Assert(*plan, check.DeepEquals, p)
 }
 
 func (s *S) TestPlanAddInvalid(c *check.C) {
-	invalidPlans := []Plan{
+	invalidPlans := []appTypes.Plan{
 		{
 			Memory:   9223372036854775807,
 			Swap:     1024,
@@ -47,72 +46,66 @@ func (s *S) TestPlanAddInvalid(c *check.C) {
 			CpuShare: 100,
 		},
 	}
-	expectedError := []error{PlanValidationError{"name"}, ErrLimitOfCpuShare, ErrLimitOfMemory}
+	expectedError := []error{appTypes.PlanValidationError{Field: "name"}, appTypes.ErrLimitOfCpuShare, appTypes.ErrLimitOfMemory}
 	for i, p := range invalidPlans {
-		err := p.Save()
+		err := SavePlan(p)
 		c.Assert(err, check.FitsTypeOf, expectedError[i])
 	}
 }
 
 func (s *S) TestPlanAddDupp(c *check.C) {
-	p := Plan{
+	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
 		Swap:     1024,
 		CpuShare: 100,
 	}
-	defer s.conn.Plans().RemoveId(p.Name)
-	err := p.Save()
+	err := SavePlan(p)
 	c.Assert(err, check.IsNil)
-	err = p.Save()
-	c.Assert(err, check.Equals, ErrPlanAlreadyExists)
+	err = SavePlan(p)
+	c.Assert(err, check.Equals, appTypes.ErrPlanAlreadyExists)
 }
 
 func (s *S) TestPlanAddAsDefault(c *check.C) {
-	s.conn.Plans().RemoveAll(nil)
-	defer s.conn.Plans().Insert(s.defaultPlan)
-	p := Plan{
+	err := PlanService().Delete(s.defaultPlan)
+	c.Assert(err, check.IsNil)
+	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
 		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
 	}
-	err := p.Save()
+	err = SavePlan(p)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId("plan1")
 	p.Name = "plan2"
-	err = p.Save()
+	err = SavePlan(p)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId("plan2")
-	var plan1, plan2 Plan
-	err = s.conn.Plans().FindId("plan1").One(&plan1)
+	plan1, err := PlanService().FindByName("plan1")
 	c.Assert(err, check.IsNil)
 	c.Assert(plan1.Default, check.Equals, false)
-	err = s.conn.Plans().FindId("plan2").One(&plan2)
+	plan2, err := PlanService().FindByName("plan2")
 	c.Assert(err, check.IsNil)
 	c.Assert(plan2.Default, check.Equals, true)
 
 }
 
-type planList []Plan
+type planList []appTypes.Plan
 
 func (l planList) Len() int           { return len(l) }
 func (l planList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l planList) Less(i, j int) bool { return l[i].Name < l[j].Name }
 
 func (s *S) TestPlansList(c *check.C) {
-	expected := []Plan{
+	expected := []appTypes.Plan{
 		s.defaultPlan,
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(expected[1])
+	err := PlanService().Insert(expected[1])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(expected[2])
+	err = PlanService().Insert(expected[2])
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId(expected[1].Name)
-	defer s.conn.Plans().RemoveId(expected[2].Name)
 	plans, err := PlansList()
 	c.Assert(err, check.IsNil)
 	sort.Sort(planList(plans))
@@ -120,23 +113,20 @@ func (s *S) TestPlansList(c *check.C) {
 }
 
 func (s *S) TestPlanRemove(c *check.C) {
-	plans := []Plan{
+	plans := []appTypes.Plan{
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
-	err := s.conn.Plans().Insert(plans[0])
+	err := PlanService().Insert(plans[0])
 	c.Assert(err, check.IsNil)
-	err = s.conn.Plans().Insert(plans[1])
+	err = PlanService().Insert(plans[1])
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId(plans[0].Name)
-	defer s.conn.Plans().RemoveId(plans[1].Name)
 	err = PlanRemove(plans[0].Name)
 	c.Assert(err, check.IsNil)
-	var dbPlans []Plan
-	err = s.conn.Plans().Find(nil).All(&dbPlans)
+	dbPlans, err := PlanService().FindAll()
 	c.Assert(err, check.IsNil)
 	sort.Sort(planList(dbPlans))
-	c.Assert(dbPlans, check.DeepEquals, []Plan{
+	c.Assert(dbPlans, check.DeepEquals, []appTypes.Plan{
 		s.defaultPlan,
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	})
@@ -144,7 +134,7 @@ func (s *S) TestPlanRemove(c *check.C) {
 
 func (s *S) TestPlanRemoveInvalid(c *check.C) {
 	err := PlanRemove("xxxx")
-	c.Assert(err, check.Equals, ErrPlanNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrPlanNotFound)
 }
 
 func (s *S) TestDefaultPlan(c *check.C) {
@@ -154,15 +144,15 @@ func (s *S) TestDefaultPlan(c *check.C) {
 }
 
 func (s *S) TestDefaultPlanWithoutDefault(c *check.C) {
-	s.conn.Plans().RemoveAll(nil)
-	defer s.conn.Plans().Insert(s.defaultPlan)
+	err := PlanService().Delete(s.defaultPlan)
+	c.Assert(err, check.IsNil)
 	config.Set("docker:memory", 12)
 	config.Set("docker:swap", 32)
 	defer config.Unset("docker:memory")
 	defer config.Unset("docker:swap")
 	p, err := DefaultPlan()
 	c.Assert(err, check.IsNil)
-	expected := Plan{
+	expected := appTypes.Plan{
 		Name:     "autogenerated",
 		Memory:   12 * 1024 * 1024,
 		Swap:     20 * 1024 * 1024,
@@ -172,15 +162,14 @@ func (s *S) TestDefaultPlanWithoutDefault(c *check.C) {
 }
 
 func (s *S) TestFindPlanByName(c *check.C) {
-	p := Plan{
+	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
 		Swap:     1024,
 		CpuShare: 100,
 	}
-	err := p.Save()
+	err := SavePlan(p)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId(p.Name)
 	dbPlan, err := findPlanByName(p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(*dbPlan, check.DeepEquals, p)

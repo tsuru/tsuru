@@ -105,7 +105,7 @@ type miniApp struct {
 	Name      string            `json:"name"`
 	Pool      string            `json:"pool"`
 	TeamOwner string            `json:"teamowner"`
-	Plan      app.Plan          `json:"plan"`
+	Plan      appTypes.Plan     `json:"plan"`
 	Units     []provision.Unit  `json:"units"`
 	CName     []string          `json:"cname"`
 	IP        string            `json:"ip"`
@@ -272,7 +272,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	a := app.App{
 		TeamOwner:   ia.TeamOwner,
 		Platform:    ia.Platform,
-		Plan:        app.Plan{Name: ia.Plan},
+		Plan:        appTypes.Plan{Name: ia.Plan},
 		Name:        ia.Name,
 		Description: ia.Description,
 		Pool:        ia.Pool,
@@ -396,7 +396,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	imageReset, _ := strconv.ParseBool(r.FormValue("imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
-		Plan:           app.Plan{Name: ia.Plan},
+		Plan:           appTypes.Plan{Name: ia.Plan},
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
@@ -467,7 +467,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Update(updateData, writer)
-	if err == app.ErrPlanNotFound {
+	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if _, ok := err.(*router.ErrRouterNotFound); ok {

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -45,7 +46,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	err = (&app.Plan{Name: "default", CpuShare: 100, Default: true}).Save()
+	err = app.SavePlan(appTypes.Plan{Name: "default", CpuShare: 100, Default: true})
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
