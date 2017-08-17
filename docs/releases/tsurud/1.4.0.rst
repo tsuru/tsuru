@@ -37,6 +37,15 @@ Other improvements
 * Enable forcing a fresh deploy for an app
   `#813 <https://github.com/tsuru/tsuru/issues/813>`_
 
+* Enable service restriction to pools
+  `#1654 <https://github.com/tsuru/tsuru/issues/1587>`_
+
+* Enable rollback restriction to certain images
+  `#1414 <https://github.com/tsuru/tsuru/issues/1414>`_
+
+* Enable update a role name and description
+  `#1379 <https://github.com/tsuru/tsuru/issues/1379>`_
+
 
 .. _bug-1.4.0:
 
