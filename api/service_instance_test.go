@@ -511,7 +511,8 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Teams:       []string{s.team.Name},
 		Description: "desc",
 	}
-	si.Create()
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
 	}
@@ -523,7 +524,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var instance service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
+	err = s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainsql",
 		"service_name": "mysql",
 	}).One(&instance)
@@ -536,7 +537,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
-		Kind:   "service-instance.update.description",
+		Kind:   "service-instance.update",
 		StartCustomData: []map[string]interface{}{
 			{"name": "description", "value": "changed"},
 		},
@@ -555,7 +556,8 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Tags:        []string{"tag a"},
 	}
-	si.Create()
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"tag": []string{"tag b", "tag c"},
 	}
@@ -567,7 +569,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var instance service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
+	err = s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainsql",
 		"service_name": "mysql",
 	}).One(&instance)
@@ -577,6 +579,14 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
 	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b", "tag c"})
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("mysql", "brainsql"),
+		Owner:  token.GetUserName(),
+		Kind:   "service-instance.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "tag", "value": []string{"tag b", "tag c"}},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(c *check.C) {
@@ -591,7 +601,8 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		Teams:       []string{s.team.Name},
 		Tags:        []string{"tag a"},
 	}
-	si.Create()
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"tag": []string{""},
 	}
@@ -603,7 +614,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var instance service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
+	err = s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainsql",
 		"service_name": "mysql",
 	}).One(&instance)
@@ -611,7 +622,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	c.Assert(instance.Tags, check.HasLen, 0)
 }
 
-func (s *ServiceInstanceSuite) TestUpdateServiceInstanceNotExist(c *check.C) {
+func (s *ServiceInstanceSuite) TestUpdateServiceInstanceDoesNotExist(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -636,7 +647,8 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	si.Create()
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
 	}
@@ -654,7 +666,8 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyDescription(c *chec
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	si.Create()
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
 	}

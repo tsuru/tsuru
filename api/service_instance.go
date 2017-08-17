@@ -164,7 +164,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
-		Kind:       permission.PermServiceInstanceUpdateDescription,
+		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
