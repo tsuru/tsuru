@@ -570,6 +570,7 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	c.Assert(si.Description, check.Equals, "desc")
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
 	c.Assert(si.TeamOwner, check.Equals, newTeam.Name)
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name, newTeam.Name})
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {

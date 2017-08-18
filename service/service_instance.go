@@ -164,11 +164,16 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 	}
 	return conn.ServiceInstances().Update(
 		bson.M{"name": si.Name, "service_name": si.ServiceName},
-		bson.M{"$set": bson.M{
-			"description": updateData.Description,
-			"tags":        updateData.Tags,
-			"teamowner":   updateData.TeamOwner,
-		}},
+		bson.M{
+			"$set": bson.M{
+				"description": updateData.Description,
+				"tags":        updateData.Tags,
+				"teamowner":   updateData.TeamOwner,
+			},
+			"$addToSet": bson.M{
+				"teams": updateData.TeamOwner,
+			},
+		},
 	)
 }
 
