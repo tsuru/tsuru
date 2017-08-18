@@ -59,7 +59,8 @@
 [[projects]]
   name = "github.com/andrestc/docker-machine-driver-cloudstack"
   packages = ["."]
-  revision = "7afe7eebe3c58d48e2be9e7d77f5d65da71f5390"
+  revision = "c4c7ba05422cabfe88a60fb72645bee5e13a6ac8"
+  version = "v0.7.0"
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
@@ -584,6 +585,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0d34bfe789bcd60d02e9f3495cd503ac9b9f40f7ac3fa78cc251f9cad69204d7"
+  inputs-digest = "f85f8f6b03c6f04d30e166e7e17bffd53501e4abbbf3e52d8bd7b24624d35fb1"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -1088,6 +1088,9 @@ func (d *Driver) createTags() error {
 	tags := make(map[string]string)
 	for _, t := range d.Tags {
 		parts := strings.SplitN(t, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid resource tags format, each tag must be on the format KEY:VALUE")
+		}
 		tags[parts[0]] = parts[1]
 	}
 	params := cs.Resourcetags.NewCreateTagsParams([]string{d.Id}, "UserVm", tags)

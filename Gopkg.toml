@@ -151,7 +151,7 @@
   revision = "0d5de9d6d8629cb8bee6d4674da4127cd8b615a3"
 [[override]]
   name = "github.com/andrestc/docker-machine-driver-cloudstack"
-  revision = "7afe7eebe3c58d48e2be9e7d77f5d65da71f5390"
+  version = "v0.7.0"
 [[override]]
   name = "github.com/vmware/govcloudair"
   version = "v0.0.2"
