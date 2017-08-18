@@ -207,8 +207,8 @@ func generateRandomID() (string, error) {
 		return "", errors.Wrap(err, "failed to generate random id")
 	}
 	str := string(byte(id[0]%('z'-'a') + 'a'))
-	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
-	return str + strings.ToLower(encoder.EncodeToString(id[1:])), nil
+	encoded := base32.StdEncoding.EncodeToString(id[1:])
+	return str + strings.ToLower(strings.TrimRight(encoded, "=")), nil
 }
 
 func (i *dockerMachineIaaS) Describe() string {
