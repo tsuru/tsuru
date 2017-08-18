@@ -63,6 +63,12 @@
   version = "v0.7.0"
 
 [[projects]]
+  name = "github.com/asaskevich/govalidator"
+  packages = ["."]
+  revision = "4918b99a7cb949bb295f3c7bbaf24b577d806e35"
+  version = "v6"
+
+[[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/ec2query","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/ec2","service/sts"]
   revision = "a5a7f553e106c0b1dcbfbdaeb8774592fcc1a68a"
@@ -122,6 +128,12 @@
   revision = "dfa802149cae7e4b8eb8bdd7cbbf619dab60bea4"
 
 [[projects]]
+  name = "github.com/docker/distribution"
+  packages = ["digest","reference"]
+  revision = "48294d928ced5dd9b378f7fd7c6f5da3ff3f2c89"
+  version = "v2.6.2"
+
+[[projects]]
   name = "github.com/docker/docker"
   packages = ["api/types","api/types/blkiodev","api/types/container","api/types/filters","api/types/mount","api/types/network","api/types/registry","api/types/strslice","api/types/swarm","api/types/versions","opts","pkg/archive","pkg/fileutils","pkg/homedir","pkg/idtools","pkg/ioutils","pkg/jsonlog","pkg/jsonmessage","pkg/longpath","pkg/pools","pkg/promise","pkg/stdcopy","pkg/system","pkg/term","pkg/term/windows"]
   revision = "eef6495eddab52828327aade186443681ed71a4e"
@@ -179,6 +191,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/go-openapi/analysis"
+  packages = ["."]
+  revision = "8ed83f2ea9f00f945516462951a288eaa68bf0d6"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-openapi/errors"
+  packages = ["."]
+  revision = "03cfca65330da08a5a440053faf994a3c682b5bf"
+
+[[projects]]
+  branch = "master"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
   revision = "779f45308c19820f1a69e9a4cd965f496e0da10f"
@@ -191,9 +215,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/go-openapi/loads"
+  packages = ["."]
+  revision = "a80dea3052f00e5f032e860dd7355cd0cc67e24d"
+
+[[projects]]
+  branch = "master"
   name = "github.com/go-openapi/spec"
   packages = ["."]
   revision = "9cf697d99bf904e29363382a2e8c23dde5c8d377"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-openapi/strfmt"
+  packages = ["."]
+  revision = "93a31ef21ac23f317792fff78f9539219dd74619"
 
 [[projects]]
   branch = "master"
@@ -213,7 +249,7 @@
 
 [[projects]]
   name = "github.com/golang/protobuf"
-  packages = ["proto","ptypes","ptypes/any","ptypes/duration","ptypes/timestamp"]
+  packages = ["proto","ptypes/any"]
   revision = "4bd1920723d7b7c925de087aa32e2187708897f7"
 
 [[projects]]
@@ -232,11 +268,6 @@
   packages = ["agent","internal","signal"]
   revision = "fa6968806ca68b7db113256f300d82b5206a2c3c"
   version = "v0.3.1"
-
-[[projects]]
-  name = "github.com/googleapis/gnostic"
-  packages = ["OpenAPIv2","compiler","extensions"]
-  revision = "68f4ded48ba9414dab2ae69b3f0d69971da73aa5"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -569,22 +600,23 @@
 
 [[projects]]
   name = "k8s.io/api"
-  packages = ["admissionregistration/v1alpha1","apps/v1beta1","authentication/v1","authentication/v1beta1","authorization/v1","authorization/v1beta1","autoscaling/v1","autoscaling/v2alpha1","batch/v1","batch/v2alpha1","certificates/v1beta1","core/v1","extensions/v1beta1","networking/v1","policy/v1beta1","rbac/v1alpha1","rbac/v1beta1","settings/v1alpha1","storage/v1","storage/v1beta1"]
+  packages = ["apps/v1beta1","core/v1","extensions/v1beta1","policy/v1beta1"]
   revision = "4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57"
 
 [[projects]]
   name = "k8s.io/apimachinery"
-  packages = ["pkg/api/equality","pkg/api/errors","pkg/api/meta","pkg/api/resource","pkg/apis/meta/v1","pkg/apis/meta/v1/unstructured","pkg/apis/meta/v1alpha1","pkg/conversion","pkg/conversion/queryparams","pkg/conversion/unstructured","pkg/fields","pkg/labels","pkg/openapi","pkg/runtime","pkg/runtime/schema","pkg/runtime/serializer","pkg/runtime/serializer/json","pkg/runtime/serializer/protobuf","pkg/runtime/serializer/recognizer","pkg/runtime/serializer/streaming","pkg/runtime/serializer/versioning","pkg/selection","pkg/types","pkg/util/clock","pkg/util/diff","pkg/util/errors","pkg/util/framer","pkg/util/httpstream","pkg/util/httpstream/spdy","pkg/util/intstr","pkg/util/json","pkg/util/net","pkg/util/remotecommand","pkg/util/runtime","pkg/util/sets","pkg/util/validation","pkg/util/validation/field","pkg/util/wait","pkg/util/yaml","pkg/version","pkg/watch","third_party/forked/golang/netutil","third_party/forked/golang/reflect"]
+  packages = ["pkg/api/equality","pkg/api/errors","pkg/api/meta","pkg/api/resource","pkg/apimachinery","pkg/apimachinery/announced","pkg/apimachinery/registered","pkg/apis/meta/v1","pkg/apis/meta/v1/unstructured","pkg/apis/meta/v1alpha1","pkg/conversion","pkg/conversion/queryparams","pkg/conversion/unstructured","pkg/fields","pkg/labels","pkg/openapi","pkg/runtime","pkg/runtime/schema","pkg/runtime/serializer","pkg/runtime/serializer/json","pkg/runtime/serializer/protobuf","pkg/runtime/serializer/recognizer","pkg/runtime/serializer/streaming","pkg/runtime/serializer/versioning","pkg/selection","pkg/types","pkg/util/clock","pkg/util/diff","pkg/util/errors","pkg/util/framer","pkg/util/httpstream","pkg/util/httpstream/spdy","pkg/util/intstr","pkg/util/json","pkg/util/net","pkg/util/rand","pkg/util/remotecommand","pkg/util/runtime","pkg/util/sets","pkg/util/validation","pkg/util/validation/field","pkg/util/wait","pkg/util/yaml","pkg/version","pkg/watch","third_party/forked/golang/netutil","third_party/forked/golang/reflect"]
   revision = "4d3c9f54ada2537bd5041d08f886f18419c39fee"
 
 [[projects]]
   name = "k8s.io/client-go"
-  packages = ["discovery","discovery/fake","kubernetes","kubernetes/fake","kubernetes/scheme","kubernetes/typed/admissionregistration/v1alpha1","kubernetes/typed/admissionregistration/v1alpha1/fake","kubernetes/typed/apps/v1beta1","kubernetes/typed/apps/v1beta1/fake","kubernetes/typed/authentication/v1","kubernetes/typed/authentication/v1/fake","kubernetes/typed/authentication/v1beta1","kubernetes/typed/authentication/v1beta1/fake","kubernetes/typed/authorization/v1","kubernetes/typed/authorization/v1/fake","kubernetes/typed/authorization/v1beta1","kubernetes/typed/authorization/v1beta1/fake","kubernetes/typed/autoscaling/v1","kubernetes/typed/autoscaling/v1/fake","kubernetes/typed/autoscaling/v2alpha1","kubernetes/typed/autoscaling/v2alpha1/fake","kubernetes/typed/batch/v1","kubernetes/typed/batch/v1/fake","kubernetes/typed/batch/v2alpha1","kubernetes/typed/batch/v2alpha1/fake","kubernetes/typed/certificates/v1beta1","kubernetes/typed/certificates/v1beta1/fake","kubernetes/typed/core/v1","kubernetes/typed/core/v1/fake","kubernetes/typed/extensions/v1beta1","kubernetes/typed/extensions/v1beta1/fake","kubernetes/typed/networking/v1","kubernetes/typed/networking/v1/fake","kubernetes/typed/policy/v1beta1","kubernetes/typed/policy/v1beta1/fake","kubernetes/typed/rbac/v1alpha1","kubernetes/typed/rbac/v1alpha1/fake","kubernetes/typed/rbac/v1beta1","kubernetes/typed/rbac/v1beta1/fake","kubernetes/typed/settings/v1alpha1","kubernetes/typed/settings/v1alpha1/fake","kubernetes/typed/storage/v1","kubernetes/typed/storage/v1/fake","kubernetes/typed/storage/v1beta1","kubernetes/typed/storage/v1beta1/fake","pkg/api/v1/ref","pkg/version","rest","rest/watch","testing","tools/clientcmd/api","tools/metrics","tools/remotecommand","transport","util/cert","util/exec","util/flowcontrol","util/integer"]
-  revision = "59eef07b24b219d287624b7f52ea339ac3e145fc"
+  packages = ["discovery","discovery/fake","kubernetes","kubernetes/fake","kubernetes/scheme","kubernetes/typed/admissionregistration/v1alpha1","kubernetes/typed/admissionregistration/v1alpha1/fake","kubernetes/typed/apps/v1beta1","kubernetes/typed/apps/v1beta1/fake","kubernetes/typed/authentication/v1","kubernetes/typed/authentication/v1/fake","kubernetes/typed/authentication/v1beta1","kubernetes/typed/authentication/v1beta1/fake","kubernetes/typed/authorization/v1","kubernetes/typed/authorization/v1/fake","kubernetes/typed/authorization/v1beta1","kubernetes/typed/authorization/v1beta1/fake","kubernetes/typed/autoscaling/v1","kubernetes/typed/autoscaling/v1/fake","kubernetes/typed/autoscaling/v2alpha1","kubernetes/typed/autoscaling/v2alpha1/fake","kubernetes/typed/batch/v1","kubernetes/typed/batch/v1/fake","kubernetes/typed/batch/v2alpha1","kubernetes/typed/batch/v2alpha1/fake","kubernetes/typed/certificates/v1beta1","kubernetes/typed/certificates/v1beta1/fake","kubernetes/typed/core/v1","kubernetes/typed/core/v1/fake","kubernetes/typed/extensions/v1beta1","kubernetes/typed/extensions/v1beta1/fake","kubernetes/typed/networking/v1","kubernetes/typed/networking/v1/fake","kubernetes/typed/policy/v1beta1","kubernetes/typed/policy/v1beta1/fake","kubernetes/typed/rbac/v1alpha1","kubernetes/typed/rbac/v1alpha1/fake","kubernetes/typed/rbac/v1beta1","kubernetes/typed/rbac/v1beta1/fake","kubernetes/typed/settings/v1alpha1","kubernetes/typed/settings/v1alpha1/fake","kubernetes/typed/storage/v1","kubernetes/typed/storage/v1/fake","kubernetes/typed/storage/v1beta1","kubernetes/typed/storage/v1beta1/fake","pkg/api","pkg/api/v1","pkg/api/v1/ref","pkg/apis/admissionregistration","pkg/apis/admissionregistration/v1alpha1","pkg/apis/apps","pkg/apis/apps/v1beta1","pkg/apis/authentication","pkg/apis/authentication/v1","pkg/apis/authentication/v1beta1","pkg/apis/authorization","pkg/apis/authorization/v1","pkg/apis/authorization/v1beta1","pkg/apis/autoscaling","pkg/apis/autoscaling/v1","pkg/apis/autoscaling/v2alpha1","pkg/apis/batch","pkg/apis/batch/v1","pkg/apis/batch/v2alpha1","pkg/apis/certificates","pkg/apis/certificates/v1beta1","pkg/apis/extensions","pkg/apis/extensions/v1beta1","pkg/apis/networking","pkg/apis/networking/v1","pkg/apis/policy","pkg/apis/policy/v1beta1","pkg/apis/rbac","pkg/apis/rbac/v1alpha1","pkg/apis/rbac/v1beta1","pkg/apis/settings","pkg/apis/settings/v1alpha1","pkg/apis/storage","pkg/apis/storage/v1","pkg/apis/storage/v1beta1","pkg/util","pkg/util/parsers","pkg/version","rest","rest/watch","testing","tools/clientcmd/api","tools/metrics","tools/remotecommand","transport","util/cert","util/exec","util/flowcontrol","util/integer"]
+  revision = "d92e8497f71b7b4e0494e5bd204b48d34bd6f254"
+  version = "v4.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f85f8f6b03c6f04d30e166e7e17bffd53501e4abbbf3e52d8bd7b24624d35fb1"
+  inputs-digest = "68c0f4262f871b98aa450ffbb633907b25fdadc3b4a15e0a93983886135d90dd"
   solver-name = "gps-cdcl"
   solver-version = 1

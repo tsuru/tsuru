@@ -1,7 +1,6 @@
 [[constraint]]
   name = "k8s.io/client-go"
-  revision = "59eef07b24b219d287624b7f52ea339ac3e145fc"
-  # TODO(cezarsa): use version 4.0.0 once it's out
+  version = "v4.0.0"
 
 [[override]]
   name = "k8s.io/apimachinery"
