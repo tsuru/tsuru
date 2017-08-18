@@ -7,7 +7,7 @@ package dockermachine
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base32"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -206,7 +206,9 @@ func generateRandomID() (string, error) {
 	if _, err := io.ReadFull(rand.Reader, id); err != nil {
 		return "", errors.Wrap(err, "failed to generate random id")
 	}
-	return hex.EncodeToString(id), nil
+	str := string(byte(id[0]%('z'-'a') + 'a'))
+	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
+	return str + strings.ToLower(encoder.EncodeToString(id[1:])), nil
 }
 
 func (i *dockerMachineIaaS) Describe() string {
