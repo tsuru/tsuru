@@ -52,6 +52,7 @@ func CurrentConfig() (*Config, error) {
 func Initialize() error {
 	globalConfig = newConfig()
 	shutdown.Register(globalConfig)
+	globalConfig.running = true
 	go globalConfig.run()
 	return nil
 }
@@ -117,7 +118,6 @@ func (a *Config) scalerForRule(rule *Rule) (autoScaler, error) {
 }
 
 func (a *Config) run() error {
-	a.running = true
 	for {
 		err := a.runScaler()
 		if err != nil {
