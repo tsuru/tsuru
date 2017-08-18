@@ -600,7 +600,7 @@
 
 [[projects]]
   name = "k8s.io/api"
-  packages = ["apps/v1beta1","core/v1","extensions/v1beta1","policy/v1beta1"]
+  packages = ["apps/v1beta1","core/v1","extensions/v1beta1"]
   revision = "4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57"
 
 [[projects]]
@@ -617,6 +617,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "283f65fcf2e41bfab49f578aac0960b45772a223cb8be9b3d5c1c5321ab94e2e"
+  inputs-digest = "c051a4c3749a470aeb70bf85f46a6aac025ece478279120fba6b279b5076a7eb"
   solver-name = "gps-cdcl"
   solver-version = 1
