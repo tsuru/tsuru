@@ -23,11 +23,11 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
-	apiv1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
