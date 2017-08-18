@@ -1,63 +1,42 @@
 [[constraint]]
   name = "k8s.io/client-go"
   version = "v4.0.0"
-
 [[override]]
   name = "k8s.io/apimachinery"
-  revision = "4d3c9f54ada2537bd5041d08f886f18419c39fee"
-
-[[override]]
-  name = "k8s.io/api"
-  revision = "4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57"
-
+  revision = "1fd2e63a9a370677308a42f24fd40c86438afddf"
 [[constraint]]
   name = "github.com/docker/docker"
   version = "v17.03.2-ce"
-
 [[constraint]]
   name = "github.com/vulcand/vulcand"
   branch = "master"
-
 [[constraint]]
   name = "github.com/fsouza/go-dockerclient"
   branch = "master"
-
 [[constraint]]
   name = "github.com/gorilla/mux"
   revision = "757bef944d0f21880861c2dd9c871ca543023cba"
-
 [[constraint]]
   name = "github.com/nu7hatch/gouuid"
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
-
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
   version = "v1.10.6"
-
 [[constraint]]
   name = "github.com/docker/machine"
   version = "v0.12.2"
-
 [[constraint]]
   name = "github.com/digitalocean/godo"
   revision = "dfa802149cae7e4b8eb8bdd7cbbf619dab60bea4"
-
 [[constraint]]
   name = "github.com/prometheus/client_golang"
   revision = "7993aa4cbec0531b926db082b0d589ad2e4d5e33"
-
 [[constraint]]
   name = "github.com/tsuru/gandalf"
   revision = "fb303857acdb4ceab3ded5a584384e4195138d97"
-
 [[constraint]]
   name = "golang.org/x/oauth2"
   revision = "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"
-
-# [[constraint]]
-#   name = "gopkg.in/amz.v3"
-#   revision = "e902e769a04d5c84fb6b61d2cd362bc8f973b787"
-
 [[override]]
   name = "github.com/sajari/fuzzy"
   revision = "bbbcac964e38148a7b43491a83d83b6b584600dc"
