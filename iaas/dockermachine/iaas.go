@@ -206,7 +206,7 @@ func generateRandomID() (string, error) {
 	if _, err := io.ReadFull(rand.Reader, id); err != nil {
 		return "", errors.Wrap(err, "failed to generate random id")
 	}
-	str := string(byte(id[0]%('z'-'a') + 'a'))
+	str := string(id[0]%('z'-'a') + 'a')
 	encoded := base32.StdEncoding.EncodeToString(id[1:])
 	return str + strings.ToLower(strings.TrimRight(encoded, "=")), nil
 }
