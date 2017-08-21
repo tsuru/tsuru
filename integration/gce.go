@@ -19,16 +19,13 @@ import (
 
 const gceClusterStatusRunning = "RUNNING"
 
-var zone = os.Getenv("GCE_ZONE")
-var projectID = os.Getenv("GCE_PROJECT_ID")
-var serviceAccount = os.Getenv("GCE_SERVICE_ACCOUNT")
-
 // GceClusterManager represents a Google Compute Engine cluster (Container Engine)
 type GceClusterManager struct {
 	env         *Environment
 	client      *gceClient
 	clusterName string
 	cluster     *container.Cluster
+	zone        string
 }
 
 func newClusterName() string {
@@ -71,6 +68,9 @@ func (g *GceClusterManager) IP() string {
 }
 
 func (g *GceClusterManager) Start() *Result {
+	g.zone = os.Getenv("GCE_ZONE")
+	projectID := os.Getenv("GCE_PROJECT_ID")
+	serviceAccount := os.Getenv("GCE_SERVICE_ACCOUNT")
 	serviceAccountFile, err := createTempFile([]byte(serviceAccount), "gce-sa-")
 	if err != nil {
 		return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] error creating service account file: %s", err)}
@@ -86,10 +86,10 @@ func (g *GceClusterManager) Start() *Result {
 	if g.clusterName == "" {
 		g.clusterName = newClusterName()
 		if g.env.VerboseLevel() > 0 {
-			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, zone)
+			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, g.zone)
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Minute*15)
-		g.client.createCluster(ctx, g.clusterName, zone, 1)
+		g.client.createCluster(ctx, g.clusterName, g.zone, 1)
 		cancel()
 	} else {
 		g.fetchClusterData()
@@ -105,10 +105,10 @@ func (g *GceClusterManager) Delete() *Result {
 		return &Result{ExitCode: 0}
 	}
 	if g.env.VerboseLevel() > 0 {
-		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, zone)
+		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, g.zone)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	g.client.deleteCluster(ctx, g.cluster.Name, zone)
+	g.client.deleteCluster(ctx, g.cluster.Name, g.zone)
 	cancel()
 	return &Result{ExitCode: 0}
 }
@@ -121,7 +121,7 @@ func (g *GceClusterManager) fetchClusterData() {
 	sleepTime := 20 * time.Second
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-		cluster, err := g.client.describeCluster(ctx, g.clusterName, zone)
+		cluster, err := g.client.describeCluster(ctx, g.clusterName, g.zone)
 		cancel()
 		if err != nil {
 			if g.env.VerboseLevel() > 0 {
