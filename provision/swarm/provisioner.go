@@ -555,6 +555,9 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	} else if opts.Enable {
 		swarmNode.Spec.Availability = swarm.NodeAvailabilityActive
 	}
+	if swarmNode.Spec.Annotations.Labels == nil {
+		swarmNode.Spec.Annotations.Labels = map[string]string{}
+	}
 	for k, v := range opts.Metadata {
 		if v == "" {
 			delete(swarmNode.Spec.Annotations.Labels, k)
