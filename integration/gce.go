@@ -105,7 +105,7 @@ func (g *GceClusterManager) Start() *Result {
 }
 
 func (g *GceClusterManager) Delete() *Result {
-	if g.clusterName == "" {
+	if g.env.Get("clustername") != "" {
 		return &Result{ExitCode: 0}
 	}
 	if g.env.VerboseLevel() > 0 {
