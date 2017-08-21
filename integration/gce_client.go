@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"sort"
 
+	"golang.org/x/net/context"
+
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
 	"google.golang.org/api/transport"
-
-	"golang.org/x/net/context"
 )
 
 const (
@@ -22,7 +22,6 @@ const (
 
 type gceClient struct {
 	projectID string
-	context   context.Context
 	svc       *container.Service
 }
 
@@ -44,14 +43,13 @@ func newClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 	svc.BasePath = endpoint
 	c := &gceClient{
 		projectID: projectID,
-		context:   ctx,
 		svc:       svc,
 	}
 	return c, nil
 }
 
-func (c *gceClient) createCluster(name, zone string, nodeCount int64) error {
-	serverConfig, err := c.svc.Projects.Zones.GetServerconfig(c.projectID, zone).Context(c.context).Do()
+func (c *gceClient) createCluster(ctx context.Context, name, zone string, nodeCount int64) error {
+	serverConfig, err := c.svc.Projects.Zones.GetServerconfig(c.projectID, zone).Context(ctx).Do()
 	if err != nil {
 		return err
 	}
@@ -67,15 +65,15 @@ func (c *gceClient) createCluster(name, zone string, nodeCount int64) error {
 			InitialClusterVersion: version,
 		},
 	}
-	_, err = c.svc.Projects.Zones.Clusters.Create(c.projectID, zone, config).Context(c.context).Do()
+	_, err = c.svc.Projects.Zones.Clusters.Create(c.projectID, zone, config).Context(ctx).Do()
 	return err
 }
 
-func (c *gceClient) describeCluster(name, zone string) (*container.Cluster, error) {
-	return c.svc.Projects.Zones.Clusters.Get(c.projectID, zone, name).Do()
+func (c *gceClient) describeCluster(ctx context.Context, name, zone string) (*container.Cluster, error) {
+	return c.svc.Projects.Zones.Clusters.Get(c.projectID, zone, name).Context(ctx).Do()
 }
 
-func (c *gceClient) deleteCluster(name, zone string) error {
-	_, err := c.svc.Projects.Zones.Clusters.Delete(c.projectID, zone, name).Do()
+func (c *gceClient) deleteCluster(ctx context.Context, name, zone string) error {
+	_, err := c.svc.Projects.Zones.Clusters.Delete(c.projectID, zone, name).Context(ctx).Do()
 	return err
 }

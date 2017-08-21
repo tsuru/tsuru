@@ -71,12 +71,13 @@ func (g *GceClusterManager) IP() string {
 }
 
 func (g *GceClusterManager) Start() *Result {
-	ctx := context.Background()
 	serviceAccountFile, err := createTempFile([]byte(serviceAccount), "gce-sa-")
 	if err != nil {
 		return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] error creating service account file: %s", err)}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*1)
 	client, err := newClient(ctx, projectID, option.WithServiceAccountFile(serviceAccountFile))
+	cancel()
 	if err != nil {
 		return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] error creating client: %s", err)}
 	}
@@ -87,7 +88,9 @@ func (g *GceClusterManager) Start() *Result {
 		if g.env.VerboseLevel() > 0 {
 			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, zone)
 		}
-		g.client.createCluster(g.clusterName, zone, 1)
+		ctx, cancel = context.WithTimeout(context.Background(), time.Minute*15)
+		g.client.createCluster(ctx, g.clusterName, zone, 1)
+		cancel()
 	} else {
 		g.fetchClusterData()
 		if g.cluster == nil || g.cluster.Status != gceClusterStatusRunning {
@@ -104,7 +107,9 @@ func (g *GceClusterManager) Delete() *Result {
 	if g.env.VerboseLevel() > 0 {
 		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, zone)
 	}
-	g.client.deleteCluster(g.cluster.Name, zone)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	g.client.deleteCluster(ctx, g.cluster.Name, zone)
+	cancel()
 	return &Result{ExitCode: 0}
 }
 
@@ -115,7 +120,9 @@ func (g *GceClusterManager) fetchClusterData() {
 	retries := 20
 	sleepTime := 20 * time.Second
 	for i := 0; i < retries; i++ {
-		cluster, err := g.client.describeCluster(g.clusterName, zone)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+		cluster, err := g.client.describeCluster(ctx, g.clusterName, zone)
+		cancel()
 		if err != nil {
 			if g.env.VerboseLevel() > 0 {
 				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", g.clusterName, err)
