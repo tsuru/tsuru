@@ -44,6 +44,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	repositorytest.Reset()
 	var err error
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_service_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
@@ -90,9 +91,10 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	srv.Create()
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}, Tags: []string{"tag 1"}}
-	err := si.Create()
+	err = si.Create()
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -337,13 +339,17 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
+	t := authTypes.Team{Name: "some-other-team"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysqlapi",
-		OwnerTeams: []string{"some-other-team"},
+		OwnerTeams: []string{t.Name},
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	se.Create()
+	err = se.Create()
+	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("id", "mysqlapi")
 	v.Set("password", "zzzz")
@@ -390,13 +396,18 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 }
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
+	t := authTypes.Team{Name: "some-team"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": "http://localhost:1234"},
-		Password: "abcde",
+		Name:       "mysql",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{t.Name},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
 	}
-	se.Create()
+	err = se.Create()
+	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -648,8 +659,11 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 		w.Write([]byte("a message"))
 	}))
 	defer ts.Close()
-	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
-	err := se.Create()
+	t := authTypes.Team{Name: "newteam"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{t.Name}}
+	err = se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
@@ -704,8 +718,11 @@ func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 }
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeamNoAccess(c *check.C) {
-	se := service.Service{Name: "my-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde"}
-	err := se.Create()
+	t := authTypes.Team{Name: "my-team"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
+	se := service.Service{Name: "my-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
+	err = se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
@@ -782,7 +799,9 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 }
 
 func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *check.C) {
-	t := &authTypes.Team{Name: "alle-da"}
+	t := authTypes.Team{Name: "alle-da"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{t.Name},
@@ -790,7 +809,7 @@ func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserD
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := se.Create()
+	err = se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
@@ -834,7 +853,8 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
 	t := authTypes.Team{Name: "Rammlied"}
-	auth.TeamService().Insert(t)
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -842,7 +862,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := se.Create()
+	err = se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
@@ -890,8 +910,12 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 }
 
 func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {
-	se := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde"}
-	se.Create()
+	t := authTypes.Team{Name: "new-team"}
+	err := auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
+	se := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
+	err = se.Create()
+	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("doc", "doc")
 	recorder, request := s.makeRequest("PUT", "/services/mysql/doc", v.Encode(), c)

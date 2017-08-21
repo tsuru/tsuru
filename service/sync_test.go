@@ -73,10 +73,10 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	h := service.TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	srvc = service.Service{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc = service.Service{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}

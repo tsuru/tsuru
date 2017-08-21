@@ -232,7 +232,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(service.Name)
@@ -263,7 +263,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(service.Name)
