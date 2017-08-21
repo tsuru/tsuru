@@ -6,6 +6,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -355,7 +357,19 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 	return query
 }
 
-func validateServiceInstanceName(service string, instance string) error {
+func validateServiceInstance(si ServiceInstance, s *Service) error {
+	err := validateServiceInstanceName(s.Name, si.Name)
+	if err != nil {
+		return err
+	}
+	err = validateServiceInstanceTeamOwner(si)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateServiceInstanceName(service, instance string) error {
 	if !validation.ValidateName(instance) {
 		return ErrInvalidInstanceName
 	}
@@ -375,15 +389,23 @@ func validateServiceInstanceName(service string, instance string) error {
 	return nil
 }
 
+func validateServiceInstanceTeamOwner(si ServiceInstance) error {
+	if si.TeamOwner == "" {
+		return ErrTeamMandatory
+	}
+	_, err := auth.TeamService().FindByName(si.TeamOwner)
+	if err == authTypes.ErrTeamNotFound {
+		return fmt.Errorf("Team owner doesn't exist")
+	}
+	return err
+}
+
 func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User, requestID string) error {
-	err := validateServiceInstanceName(service.Name, instance.Name)
+	err := validateServiceInstance(instance, service)
 	if err != nil {
 		return err
 	}
 	instance.ServiceName = service.Name
-	if instance.TeamOwner == "" {
-		return ErrTeamMandatory
-	}
 	instance.Teams = []string{instance.TeamOwner}
 	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}

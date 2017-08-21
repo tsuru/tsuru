@@ -393,6 +393,21 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 }
 
+func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: "unknown", Tags: []string{"tag1", "tag2"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
+}
+
 func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
