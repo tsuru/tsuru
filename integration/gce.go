@@ -71,6 +71,10 @@ func (g *GceClusterManager) Start() *Result {
 	g.zone = os.Getenv("GCE_ZONE")
 	projectID := os.Getenv("GCE_PROJECT_ID")
 	serviceAccount := os.Getenv("GCE_SERVICE_ACCOUNT")
+	machineType := os.Getenv("GCE_MACHINE_TYPE")
+	if machineType == "" {
+		machineType = "n1-standard-4"
+	}
 	serviceAccountFile, err := createTempFile([]byte(serviceAccount), "gce-sa-")
 	if err != nil {
 		return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] error creating service account file: %s", err)}
@@ -89,7 +93,7 @@ func (g *GceClusterManager) Start() *Result {
 			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, g.zone)
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), time.Minute*15)
-		g.client.createCluster(ctx, g.clusterName, g.zone, 1)
+		g.client.createCluster(ctx, g.clusterName, g.zone, machineType, 1)
 		cancel()
 	} else {
 		g.fetchClusterData()

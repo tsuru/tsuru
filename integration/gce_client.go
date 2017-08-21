@@ -48,7 +48,7 @@ func newClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 	return c, nil
 }
 
-func (c *gceClient) createCluster(ctx context.Context, name, zone string, nodeCount int64) error {
+func (c *gceClient) createCluster(ctx context.Context, name, zone, machineType string, nodeCount int64) error {
 	serverConfig, err := c.svc.Projects.Zones.GetServerconfig(c.projectID, zone).Context(ctx).Do()
 	if err != nil {
 		return err
@@ -63,6 +63,7 @@ func (c *gceClient) createCluster(ctx context.Context, name, zone string, nodeCo
 			Name:                  name,
 			InitialNodeCount:      nodeCount,
 			InitialClusterVersion: version,
+			NodeConfig:            &container.NodeConfig{MachineType: machineType},
 		},
 	}
 	_, err = c.svc.Projects.Zones.Clusters.Create(c.projectID, zone, config).Context(ctx).Do()
