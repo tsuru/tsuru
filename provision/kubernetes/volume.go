@@ -12,10 +12,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/volume"
 	"github.com/ugorji/go/codec"
-	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
 
 type volumeOptions struct {

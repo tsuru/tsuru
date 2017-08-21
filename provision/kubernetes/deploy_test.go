@@ -18,12 +18,12 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
 

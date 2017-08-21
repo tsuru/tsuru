@@ -17,11 +17,11 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"

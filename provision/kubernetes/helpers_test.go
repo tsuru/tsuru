@@ -12,10 +12,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
 
