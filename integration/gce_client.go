@@ -6,6 +6,7 @@ package integration
 
 import (
 	"fmt"
+	"sort"
 
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
@@ -50,10 +51,23 @@ func newClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 }
 
 func (c *gceClient) createCluster(name, zone string, nodeCount int64) error {
-	config := &container.CreateClusterRequest{
-		Cluster: &container.Cluster{Name: name, InitialNodeCount: nodeCount},
+	serverConfig, err := c.svc.Projects.Zones.GetServerconfig(c.projectID, zone).Context(c.context).Do()
+	if err != nil {
+		return err
 	}
-	_, err := c.svc.Projects.Zones.Clusters.Create(c.projectID, zone, config).Context(c.context).Do()
+	var version string
+	if len(serverConfig.ValidMasterVersions) > 0 {
+		sort.Sort(sort.Reverse(sort.StringSlice(serverConfig.ValidMasterVersions)))
+		version = serverConfig.ValidMasterVersions[0]
+	}
+	config := &container.CreateClusterRequest{
+		Cluster: &container.Cluster{
+			Name:                  name,
+			InitialNodeCount:      nodeCount,
+			InitialClusterVersion: version,
+		},
+	}
+	_, err = c.svc.Projects.Zones.Clusters.Create(c.projectID, zone, config).Context(c.context).Do()
 	return err
 }
 
