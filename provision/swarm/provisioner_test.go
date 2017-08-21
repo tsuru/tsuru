@@ -786,6 +786,31 @@ func (s *S) TestUpdateNode(c *check.C) {
 	})
 }
 
+func (s *S) TestUpdateNodeNoPreviousMetadata(c *check.C) {
+	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer clusterSrv.Stop()
+	clust := &cluster.Cluster{
+		Addresses:   []string{clusterSrv.URL()},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+	}
+	err = clust.Save()
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  "http://127.0.0.1:2375",
+		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode("http://127.0.0.1:2375")
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"m1": "v2",
+		"m2": "v3",
+	})
+}
+
 func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	s.addCluster(c)
 	err := s.p.UpdateNode(provision.UpdateNodeOptions{
