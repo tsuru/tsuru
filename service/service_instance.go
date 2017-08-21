@@ -162,7 +162,19 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 	} else {
 		updateData.Tags = tags
 	}
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, updateData)
+	return conn.ServiceInstances().Update(
+		bson.M{"name": si.Name, "service_name": si.ServiceName},
+		bson.M{
+			"$set": bson.M{
+				"description": updateData.Description,
+				"tags":        updateData.Tags,
+				"teamowner":   updateData.TeamOwner,
+			},
+			"$addToSet": bson.M{
+				"teams": updateData.TeamOwner,
+			},
+		},
+	)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {

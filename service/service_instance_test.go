@@ -555,18 +555,22 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	instance.Description = "desc"
-	instance.Tags = []string{"tag2"}
-	instance.TeamOwner = "new-team-owner"
-	err = instance.Update(instance)
-	c.Assert(err, check.IsNil)
 	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	newTeam := authTypes.Team{Name: "new-team-owner"}
+	si.Description = "desc"
+	si.Tags = []string{"tag2"}
+	si.TeamOwner = newTeam.Name
+	err = instance.Update(si)
+	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.Description, check.Equals, "desc")
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
-	c.Assert(si.TeamOwner, check.Equals, "new-team-owner")
+	c.Assert(si.TeamOwner, check.Equals, newTeam.Name)
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name, newTeam.Name})
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
