@@ -83,15 +83,36 @@ func (s *S) TestDaemonSetName(c *check.C) {
 func (s *S) TestWaitFor(c *check.C) {
 	err := waitFor(100*time.Millisecond, func() (bool, error) {
 		return true, nil
+	}, nil)
+	c.Assert(err, check.IsNil)
+	called := false
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return true, nil
+	}, func() error {
+		called = true
+		return nil
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, false)
 	err = waitFor(100*time.Millisecond, func() (bool, error) {
 		return false, nil
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, `timeout after .*`)
 	err = waitFor(100*time.Millisecond, func() (bool, error) {
-		return true, errors.New("myerr")
+		return false, nil
+	}, func() error {
+		return errors.New("my error")
 	})
+	c.Assert(err, check.ErrorMatches, `timeout after .*?: my error$`)
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return false, nil
+	}, func() error {
+		return nil
+	})
+	c.Assert(err, check.ErrorMatches, `timeout after .*?: <nil>$`)
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return true, errors.New("myerr")
+	}, nil)
 	c.Assert(err, check.ErrorMatches, `myerr`)
 }
 
