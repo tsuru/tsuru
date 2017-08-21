@@ -70,7 +70,7 @@ func volumeClaimName(name string) string {
 	return fmt.Sprintf("%s-tsuru-claim", name)
 }
 
-func waitFor(timeout time.Duration, fn func() (bool, error)) error {
+func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() error) error {
 	timeoutCh := time.After(timeout)
 	for {
 		done, err := fn()
@@ -82,7 +82,12 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 		}
 		select {
 		case <-timeoutCh:
-			return errors.Errorf("timeout after %v", timeout)
+			if onTimeout == nil {
+				err = errors.Errorf("timeout after %v", timeout)
+			} else {
+				err = errors.Errorf("timeout after %v: %v", timeout, onTimeout())
+			}
+			return err
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
@@ -160,7 +165,33 @@ func waitForPodContainersRunning(client *clusterClient, podName string, timeout 
 			return true, nil
 		}
 		return false, nil
+	}, func() error {
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return newInvalidPodPhaseError(client, pod)
 	})
+}
+
+func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
+	phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
+	if pod.Status.Message != "" {
+		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
+	}
+	eventsInterface := client.Core().Events(client.Namespace())
+	ns := client.Namespace()
+	selector := eventsInterface.GetFieldSelector(&pod.Name, &ns, nil, nil)
+	options := metav1.ListOptions{FieldSelector: selector.String()}
+	events, err := eventsInterface.List(options)
+	if err != nil {
+		return errors.Wrapf(err, "error listing pod %q events invalid phase %s", pod.Name, phaseWithMsg)
+	}
+	if len(events.Items) == 0 {
+		return errors.Errorf("invalid pod phase %s", phaseWithMsg)
+	}
+	lastEvt := events.Items[len(events.Items)-1]
+	return errors.Errorf("invalid pod phase %s: %s", phaseWithMsg, lastEvt.Message)
 }
 
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
@@ -180,26 +211,15 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 		case apiv1.PodUnknown:
 			fallthrough
 		case apiv1.PodFailed:
-			phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
-			if pod.Status.Message != "" {
-				phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
-			}
-			eventsInterface := client.Core().Events(client.Namespace())
-			ns := client.Namespace()
-			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-			options := metav1.ListOptions{FieldSelector: selector.String()}
-			var events *apiv1.EventList
-			events, err = eventsInterface.List(options)
-			if err != nil {
-				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %s", podName, phaseWithMsg)
-			}
-			if len(events.Items) == 0 {
-				return true, errors.Errorf("invalid pod phase %s", phaseWithMsg)
-			}
-			lastEvt := events.Items[len(events.Items)-1]
-			return true, errors.Errorf("invalid pod phase %s: %s", phaseWithMsg, lastEvt.Message)
+			return true, newInvalidPodPhaseError(client, pod)
 		}
 		return true, nil
+	}, func() error {
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return newInvalidPodPhaseError(client, pod)
 	})
 }
 
@@ -530,6 +550,13 @@ func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*
 			}
 		}
 		return false, nil
+	}, func() error {
+		var err error
+		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return errors.Errorf("invalid node conditions for %q: %#v", addr, node.Status.Conditions)
 	})
 	return node, waitErr
 }
