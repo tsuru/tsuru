@@ -265,6 +265,91 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 	c.Assert(fullId, check.Equals, "")
 }
 
+func (s *S) TestUpdatePoolPropertiesNoChanges(c *check.C) {
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = fmt.Sprintf(`{
+		"_embedded": {
+			"pool": [
+				{
+					"_links": {
+						"self": {
+							"href": "%s/pool/22"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiURL)
+	s.handler.ConditionalContent["/api/pool/22"] = `{
+		"id" : 22,
+		"_lastmodified_by" : "system",
+		"properties" : {
+			"hcPath" : "/",
+			"loadBalancePolicy" : "RoundRobin",
+			"hcStatusCode" : "200",
+			"hcBody" : ""
+		}
+	}`
+	props := BackendPoolProperties{
+		HcPath:       "/",
+		HcBody:       "",
+		HcStatusCode: "200",
+	}
+	err := s.client.UpdatePoolProperties("mypool", props)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{
+		"/api/pool/search/findByName?name=mypool",
+		"/api/pool/22",
+	})
+}
+
+func (s *S) TestUpdatePoolProperties(c *check.C) {
+	s.handler.Hook = func(w http.ResponseWriter, r *http.Request) bool {
+		if strings.HasSuffix(r.URL.String(), "/api/pool/search/findByName?name=mypool") {
+			data := fmt.Sprintf(`{
+				"_embedded": {
+					"pool": [
+						{
+							"_links": {
+								"self": {
+									"href": "%s/pool/22"
+								}
+							}
+						}
+					]
+				}
+			}`, s.client.ApiURL)
+			w.Write([]byte(data))
+			return true
+		}
+		if strings.HasSuffix(r.URL.Path, "/api/pool/22") {
+			if r.Method == http.MethodGet {
+				json.NewEncoder(w).Encode(&commonPostResponse{Status: STATUS_OK})
+				w.WriteHeader(http.StatusOK)
+			}
+			if r.Method == http.MethodPatch {
+				w.WriteHeader(http.StatusNoContent)
+			}
+			return true
+		}
+		return false
+	}
+	props := BackendPoolProperties{
+		HcPath:       "/",
+		HcBody:       "WORKING",
+		HcStatusCode: "200",
+	}
+	err := s.client.UpdatePoolProperties("mypool", props)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH", "GET"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{
+		"/api/pool/search/findByName?name=mypool",
+		"/api/pool/22",
+		"/api/pool/22",
+		"/api/pool/22",
+	})
+}
+
 func (s *S) TestGalebAddBackend(c *check.C) {
 	s.handler.ConditionalContent["/api/target/10"] = []string{
 		"200", `{"_status": "OK"}`,
