@@ -394,10 +394,8 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) {
-	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
@@ -462,10 +460,8 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
-	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
 	team := authTypes.Team{Name: "owner"}
@@ -558,10 +554,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
-	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
@@ -574,6 +568,8 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	newTeam := authTypes.Team{Name: "new-team-owner"}
+	err = auth.TeamService().Insert(newTeam)
+	c.Assert(err, check.IsNil)
 	si.Description = "desc"
 	si.Tags = []string{"tag2"}
 	si.TeamOwner = newTeam.Name
@@ -588,11 +584,28 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name, newTeam.Name})
 }
 
-func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
-	var requests int32
+func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.IsNil)
+	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	si.TeamOwner = "unknown"
+	err = instance.Update(si)
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
+}
+
+func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}

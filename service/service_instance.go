@@ -153,6 +153,10 @@ func (si *ServiceInstance) FindApp(appName string) int {
 
 // Update changes informations of the service instance.
 func (si *ServiceInstance) Update(updateData ServiceInstance) error {
+	err := validateServiceInstanceTeamOwner(updateData)
+	if err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
