@@ -270,10 +270,40 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	return resource, nil
 }
 
+func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolProperties, error) {
+	var properties BackendPoolProperties
+	path := strings.TrimPrefix(poolID, c.ApiURL)
+	rsp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return properties, err
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusNoContent {
+		var rspObj struct {
+			Properties BackendPoolProperties
+		}
+		responseData, err := ioutil.ReadAll(rsp.Body)
+		if err != nil {
+			return properties, err
+		}
+		err = json.Unmarshal(responseData, &rspObj)
+		if err != nil {
+			return properties, err
+		}
+		properties = rspObj.Properties
+	}
+	return properties, nil
+}
+
 func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolProperties) error {
 	poolID, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return err
+	}
+	currPropeties, err := c.getPoolProperties(poolID)
+	if err == nil && currPropeties == properties {
+		log.Debugf("skipping properties update for pool %q", poolName)
+		return nil
 	}
 	path := strings.TrimPrefix(poolID, c.ApiURL)
 	var poolParam Pool
