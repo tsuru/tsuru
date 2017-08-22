@@ -82,7 +82,8 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
@@ -100,7 +101,8 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
@@ -119,7 +121,8 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
@@ -146,7 +149,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
@@ -182,14 +185,14 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance1.Create()
+	err = s.conn.ServiceInstances().Insert(instance1)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "my-db",
 		ServiceName: "postgres",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance2.Create()
+	err = s.conn.ServiceInstances().Insert(instance2)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
@@ -235,7 +238,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
@@ -255,7 +258,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
@@ -299,7 +302,8 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		Apps:        []string{a.GetName()},
 		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
 	}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	units, err = a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = instance.UnbindUnit(a, units[0])
@@ -341,7 +345,8 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 		Apps:        []string{a.GetName()},
 		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}, {ID: units[1].GetID(), IP: units[1].GetIp()}},
 	}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	err = instance.UnbindApp(a, true, nil)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
@@ -366,7 +371,8 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
 	}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
@@ -415,7 +421,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 		Apps:        []string{a.GetName()},
 		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	err = instance.UnbindApp(a, true, nil)
 	c.Assert(err, check.IsNil)
@@ -434,7 +440,8 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)

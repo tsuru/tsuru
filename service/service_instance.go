@@ -119,15 +119,6 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	return info, nil
 }
 
-func (si *ServiceInstance) Create() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Insert(si)
-}
-
 func (si *ServiceInstance) Service() *Service {
 	conn, err := db.Conn()
 	if err != nil {

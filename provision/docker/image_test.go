@@ -47,7 +47,7 @@ func (s *S) TestMigrateImages(c *check.C) {
 	c5, err := s.newContainer(&newContainerOpts{Image: "tsuru/app-app2", AppName: "app-app2"}, &p)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(c5)
-	err = s.storage.Apps().Insert(app1, app2, app3)
+	err = s.conn.Apps().Insert(app1, app2, app3)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
 	err = MigrateImages()
@@ -76,7 +76,7 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
-	err = s.storage.Apps().Insert(app1)
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
 	err = MigrateImages()
@@ -104,7 +104,7 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
 	app2 := app.App{Name: "app2"}
-	err = s.storage.Apps().Insert(app1, app2)
+	err = s.conn.Apps().Insert(app1, app2)
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(&p, "localhost:3030/tsuru/app1", nil)
 	c.Assert(err, check.IsNil)

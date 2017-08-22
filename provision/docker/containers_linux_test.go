@@ -80,7 +80,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		appStruct := s.newAppFromFake(appInstance)
 		appStruct.TeamOwner = "team1"
 		appStruct.Pool = "pool1"
-		err = s.storage.Apps().Insert(appStruct)
+		err = s.conn.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
 	}
 	buf := safe.NewBuffer(nil)

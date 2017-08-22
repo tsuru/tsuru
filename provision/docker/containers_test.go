@@ -57,7 +57,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	err = p.MoveContainers("localhost", "127.0.0.1", buf)
@@ -103,7 +103,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	err = p.MoveContainers("localhost", "unknown", buf)
@@ -152,7 +152,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	var serviceBodies []string
@@ -198,7 +198,7 @@ func (s *S) TestMoveContainerStopped(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
@@ -232,7 +232,7 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 	err = addedConts[0].SetStatus(p, provision.StatusError, true)
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
@@ -266,7 +266,7 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 	err = addedConts[0].SetStatus(p, provision.StatusError, true)
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
@@ -300,7 +300,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.Pool = "test-default"
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, false)
@@ -350,7 +350,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.TeamOwner = "team1"
 	appStruct.Pool = "pool1"
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
@@ -404,7 +404,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.TeamOwner = "team1"
 	appStruct.Pool = "pool1"
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
@@ -426,7 +426,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 func (s *S) TestAppLocker(c *check.C) {
 	appName := "myapp"
 	appDB := &app.App{Name: appName}
-	err := s.storage.Apps().Insert(appDB)
+	err := s.conn.Apps().Insert(appDB)
 	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.Lock(appName)
@@ -455,7 +455,7 @@ func (s *S) TestAppLocker(c *check.C) {
 func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 	appName := "myapp"
 	appDB := &app.App{Name: appName}
-	err := s.storage.Apps().Insert(appDB)
+	err := s.conn.Apps().Insert(appDB)
 	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.Lock(appName)
@@ -504,11 +504,11 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.Pool = "test-default"
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	appStruct2 := s.newAppFromFake(appInstance2)
 	appStruct2.Pool = "test-default"
-	err = s.storage.Apps().Insert(appStruct2)
+	err = s.conn.Apps().Insert(appStruct2)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	c1, err := p.listContainersByHost("localhost")
@@ -552,7 +552,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.Pool = "test-default"
-	err = s.storage.Apps().Insert(appStruct)
+	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	router, err := getRouterForApp(appInstance)
 	c.Assert(err, check.IsNil)

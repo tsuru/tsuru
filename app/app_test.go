@@ -467,14 +467,14 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "yourdb",
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
 	err = app.BindUnit(&unit)
@@ -524,14 +524,14 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "yourdb",
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
 	err = app.BindUnit(&unit)
@@ -764,7 +764,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{app.Name},
 	}
-	instance.Create()
+	s.conn.ServiceInstances().Insert(instance)
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(2, "web", nil)
@@ -3628,14 +3628,14 @@ func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "yourdb",
 		ServiceName: "mysql",
 		Apps:        []string{app.Name},
 	}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	units, err := app.Units()

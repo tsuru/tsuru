@@ -34,7 +34,7 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
-	err := s.storage.Apps().Insert(a1, a2, a3)
+	err := s.conn.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
@@ -89,7 +89,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
-	err := s.storage.Apps().Insert(a1, a2, a3)
+	err := s.conn.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
@@ -138,7 +138,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 
 func (s *S) TestSchedulerNoNodes(c *check.C) {
 	app := app.App{Name: "bill", Pool: "mypool"}
-	err := s.storage.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
@@ -162,10 +162,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
 	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
-	err := s.storage.Apps().Insert(app1)
+	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -253,10 +253,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
 	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app1)
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -342,10 +342,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
 	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app1)
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -758,9 +758,9 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	a2 := app.App{Name: "notimpius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a2.Name, ProcessName: "web"}}
 	cont4 := container.Container{Container: types.Container{ID: "4", Name: "dedication2", AppName: a2.Name, ProcessName: "worker"}}
-	err := s.storage.Apps().Insert(a1)
+	err := s.conn.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a2)
+	err = s.conn.Apps().Insert(a2)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}

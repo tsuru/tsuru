@@ -241,7 +241,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
@@ -272,7 +272,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	a := provisiontest.NewFakeApp("myapp", "static", 1)

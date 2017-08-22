@@ -520,7 +520,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Description: "desc",
 		TeamOwner:   s.team.Name,
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
@@ -565,7 +565,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "changed"}
 	err = auth.TeamService().Insert(t)
@@ -614,7 +614,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Tags:        []string{"tag a"},
 		TeamOwner:   s.team.Name,
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"tag": []string{"tag b", "tag c"},
@@ -660,7 +660,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag a"},
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"tag": []string{""},
@@ -706,7 +706,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
@@ -725,7 +725,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) 
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "",
@@ -767,7 +767,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -838,7 +838,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		},
 	}
 	for _, instance := range si {
-		err = instance.Create()
+		err = s.conn.ServiceInstances().Insert(instance)
 		c.Assert(err, check.IsNil)
 	}
 	recorder, request := makeRequestToRemoveServiceInstance("foo2", "foo-instance", c)
@@ -873,7 +873,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldR
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo-service"}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo-service", "foo-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -886,7 +886,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsShould
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Apps: []string{"foo-bar"}, Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -950,7 +950,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		Apps:        []string{"painkiller"},
 		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithUnbind("mysql", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1001,7 +1001,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Apps:        []string{"app1"},
 		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1052,7 +1052,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Apps:        []string{"app", "app2"},
 		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
@@ -1076,7 +1076,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("purity", "purity-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -1118,7 +1118,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Apps:        []string{"globo"},
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "mongodb-other",
@@ -1126,7 +1126,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err = instance2.Create()
+	err = s.conn.ServiceInstances().Insert(instance2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
@@ -1171,7 +1171,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Apps:        []string{"globo"},
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "mongodb-other",
@@ -1179,7 +1179,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 	}
-	err = instance2.Create()
+	err = s.conn.ServiceInstances().Insert(instance2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances?app=other", nil)
 	c.Assert(err, check.IsNil)
@@ -1211,7 +1211,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesReturnsOnlyServicesThatTh
 		ServiceName: "redis",
 		Apps:        []string{"globo"},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
@@ -1238,14 +1238,14 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 			ServiceName: srv.Name,
 			Teams:       []string{s.team.Name},
 		}
-		err = instance.Create()
+		err = s.conn.ServiceInstances().Insert(instance)
 		c.Assert(err, check.IsNil)
 		instance = service.ServiceInstance{
 			Name:        srv.Name + "2",
 			ServiceName: srv.Name,
 			Teams:       []string{s.team.Name},
 		}
-		err = instance.Create()
+		err = s.conn.ServiceInstances().Insert(instance)
 		c.Assert(err, check.IsNil)
 	}
 	srv := service.Service{
@@ -1305,7 +1305,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatus(c *check.C) {
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb", "my_nosql", c)
 	context.SetRequestID(request, requestIDHeader, "test")
@@ -1342,10 +1342,10 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusWithSameInstanceName(c *
 	err = srv2.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{Name: "my_nosql", ServiceName: srv2.Name, Teams: []string{s.team.Name}}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb2", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
@@ -1369,7 +1369,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusShouldReturnForbiddenWhe
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceStatus("mongodb", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
@@ -1420,7 +1420,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		Description: "desc",
 		Tags:        []string{"tag 1"},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
@@ -1468,7 +1468,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag 1", "tag 2"},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -1505,7 +1505,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoShouldReturnForbiddenWhenU
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -1527,7 +1527,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 		Apps:        []string{},
 		Teams:       []string{s.team.Name},
 	}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
@@ -1535,7 +1535,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 		Apps:        []string{"wordpress"},
 		Teams:       []string{s.team.Name},
 	}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
 	c.Assert(err, check.IsNil)
@@ -1564,7 +1564,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 		Apps:        []string{},
 		Teams:       []string{s.team.Name},
 	}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
@@ -1572,7 +1572,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 		Apps:        []string{"wordpress"},
 		Teams:       []string{},
 	}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
@@ -1655,7 +1655,7 @@ func (s *ServiceInstanceSuite) TestGetServiceInstanceOrError(c *check.C) {
 	err := s.conn.Services().RemoveId(s.service.Name)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo", ServiceName: "foo-service", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	rSi, err := getServiceInstanceOrError("foo-service", "foo")
 	c.Assert(err, check.IsNil)
@@ -1713,7 +1713,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1754,7 +1754,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader("my=awesome&body=1")
@@ -1806,7 +1806,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	body := strings.NewReader("something-something")
@@ -1846,7 +1846,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1868,7 +1868,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyError(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1890,7 +1890,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
 	auth.TeamService().Insert(team)
@@ -1943,10 +1943,10 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 		c.Assert(err, check.IsNil)
 	}
 	si := service.ServiceInstance{Name: "si-test", ServiceName: se[0].Name, Teams: []string{s.team.Name}}
-	err := si.Create()
+	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{Name: "si-test", ServiceName: se[1].Name, Teams: []string{s.team.Name}}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "test"}
 	auth.TeamService().Insert(team)

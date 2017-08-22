@@ -731,7 +731,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
@@ -793,7 +793,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
@@ -858,7 +858,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -914,7 +914,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
@@ -960,7 +960,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
 	var expectedNames []string
@@ -1009,7 +1009,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
 	for i := 0; i < 20; i++ {
