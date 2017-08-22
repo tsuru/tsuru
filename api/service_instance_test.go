@@ -518,7 +518,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 		Description: "desc",
-		TeamOwner:   "owner",
+		TeamOwner:   s.team.Name,
 	}
 	err := si.Create()
 	c.Assert(err, check.IsNil)
@@ -540,7 +540,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "brainsql")
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, append(si.Teams, "owner"))
+	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
 	c.Assert(instance.Description, check.Equals, "changed")
 	c.Assert(eventtest.EventDesc{
@@ -563,12 +563,15 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		ServiceName: "mysql",
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
-		TeamOwner:   "team-owner",
+		TeamOwner:   s.team.Name,
 	}
 	err := si.Create()
 	c.Assert(err, check.IsNil)
+	t := authTypes.Team{Name: "changed"}
+	err = auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"teamowner": "changed",
+		"teamowner": t.Name,
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTeamOwner,
@@ -585,7 +588,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "brainsql")
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, append(si.Teams, "changed"))
+	c.Assert(instance.Teams, check.DeepEquals, append(si.Teams, t.Name))
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
 	c.Assert(instance.TeamOwner, check.Equals, "changed")
 	c.Assert(eventtest.EventDesc{
@@ -593,7 +596,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		Owner:  token.GetUserName(),
 		Kind:   "service-instance.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": "teamowner", "value": "changed"},
+			{"name": "teamowner", "value": t.Name},
 		},
 	}, eventtest.HasEvent)
 }
@@ -609,7 +612,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 		Tags:        []string{"tag a"},
-		TeamOwner:   "owner",
+		TeamOwner:   s.team.Name,
 	}
 	err := si.Create()
 	c.Assert(err, check.IsNil)
@@ -631,7 +634,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "brainsql")
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, append(si.Teams, "owner"))
+	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
 	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b", "tag c"})
 	c.Assert(eventtest.EventDesc{
@@ -654,6 +657,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		ServiceName: "mysql",
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
 		Tags:        []string{"tag a"},
 	}
 	err := si.Create()
