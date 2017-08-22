@@ -366,11 +366,7 @@ func validateServiceInstance(si ServiceInstance, s *Service) error {
 	if err != nil {
 		return err
 	}
-	err = validateServiceInstanceTeamOwner(si)
-	if err != nil {
-		return err
-	}
-	return nil
+	return validateServiceInstanceTeamOwner(si)
 }
 
 func validateServiceInstanceName(service, instance string) error {

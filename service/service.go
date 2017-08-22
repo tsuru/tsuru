@@ -154,11 +154,7 @@ func (s *Service) validate(skipName bool) (err error) {
 	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
 		return fmt.Errorf("Service production endpoint is required")
 	}
-	err = s.validateOwnerTeams()
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.validateOwnerTeams()
 }
 
 func (s *Service) validateOwnerTeams() error {
