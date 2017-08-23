@@ -34,7 +34,10 @@ import (
 )
 
 const (
-	dockerSockPath = "/var/run/docker.sock"
+	dockerSockPath            = "/var/run/docker.sock"
+	buildIntercontainerPath   = "/tmp/intercontainer"
+	buildIntercontainerStatus = buildIntercontainerPath + "/status"
+	buildIntercontainerDone   = buildIntercontainerPath + "/done"
 )
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
@@ -75,7 +78,6 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName,
 type buildPodParams struct {
 	client           *clusterClient
 	app              provision.App
-	buildCmd         []string
 	sourceImage      string
 	destinationImage string
 	attachInput      io.Reader
@@ -115,6 +117,17 @@ func createBuildPod(params buildPodParams) error {
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	kubeConf := getKubeConfig()
+	cmds := dockercommon.ArchiveDeployCmds(params.app, "file:///home/application/archive.tar.gz")
+	if len(cmds) != 3 {
+		return errors.Errorf("unexpected cmds list: %#v", cmds)
+	}
+	cmds[2] = fmt.Sprintf(`
+		cat >/home/application/archive.tar.gz && %[1]s
+		exit_code=$?
+		echo "${exit_code}" >%[2]s
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f %[3]s ]; do sleep 1; done
+	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -133,42 +146,53 @@ func createBuildPod(params buildPodParams) error {
 						},
 					},
 				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
 			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
 					Name:      baseName,
 					Image:     params.sourceImage,
-					Command:   params.buildCmd,
+					Command:   cmds,
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       envs,
 					SecurityContext: &apiv1.SecurityContext{
 						RunAsUser: uid,
 					},
+					VolumeMounts: append([]apiv1.VolumeMount{
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
+					}, mounts...),
 				},
 				{
 					Name:  commitContainer,
 					Image: kubeConf.DeploySidecarImage,
 					VolumeMounts: append([]apiv1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
 					}, mounts...),
+					TTY: true,
 					Command: []string{
 						"sh", "-ec",
 						fmt.Sprintf(`
-							img="%s"
-							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z "${id}" ]; do
-								sleep 1;
-							done;
-							exit_code=$(docker wait "${id}")
+							while [ ! -f %[3]s ]; do sleep 1; done
+							exit_code=$(cat %[3]s)
 							[ "${exit_code}" != "0" ] && exit "${exit_code}"
+							id=$(docker ps -aq -f "label=io.kubernetes.container.name=%[2]s" -f "label=io.kubernetes.pod.name=$(hostname)")
+							img="%[1]s"
 							echo
 							echo '---- Building application image ----'
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}" >/dev/null
-						`, params.destinationImage, baseName),
+							docker push "${img}"
+							touch %[4]s
+						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone),
 					},
 				},
 			},

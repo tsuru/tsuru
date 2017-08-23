@@ -333,15 +333,6 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		destinationImage: "destimg",
 	})
 	c.Assert(err, check.IsNil)
-	podID, err := deployPodNameForApp(a)
-	c.Assert(err, check.IsNil)
-	err = s.p.RegisterUnit(a, podID, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "w1",
-			"worker": "w2",
-		},
-	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	meta, err := image.GetImageMetaData("destimg")
 	c.Assert(err, check.IsNil)
 	c.Assert(meta, check.DeepEquals, image.ImageMetadata{
@@ -349,8 +340,10 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		CustomData:      map[string]interface{}{},
 		LegacyProcesses: map[string]string{},
 		Processes: map[string][]string{
-			"web":    {"w1"},
-			"worker": {"w2"},
+			// Processes from RegisterUnit call in suite_test.go as deploy pod
+			// reaction.
+			"web":    {"python myapp.py"},
+			"worker": {"python myworker.py"},
 		},
 	})
 }
