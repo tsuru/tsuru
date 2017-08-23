@@ -617,7 +617,8 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	if err != nil {
 		return "", err
 	}
-	srvID, task, err := runOnceBuildCmds(client, a, nil, buildImageID, deployImage, evt)
+	cmds := dockercommon.DeployCmds(a)
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, buildImageID, deployImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
