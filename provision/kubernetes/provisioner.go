@@ -20,7 +20,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -671,15 +670,9 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		return "", err
 	}
 	defer cleanupPod(client, deployPodName)
-	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
-	if len(cmds) != 3 {
-		return "", errors.Errorf("unexpected cmds list: %#v", cmds)
-	}
-	cmds[2] = fmt.Sprintf("cat >/home/application/archive.tar.gz && %s", cmds[2])
 	params := buildPodParams{
 		app:              a,
 		client:           client,
-		buildCmd:         cmds,
 		sourceImage:      baseImage,
 		destinationImage: buildingImage,
 		attachInput:      archiveFile,
