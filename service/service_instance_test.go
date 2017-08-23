@@ -573,7 +573,7 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	si.Description = "desc"
 	si.Tags = []string{"tag2"}
 	si.TeamOwner = newTeam.Name
-	err = instance.Update(si)
+	err = instance.Update(srv, si, "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
@@ -615,7 +615,7 @@ func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	instance.Tags = []string{"tag2", " ", " tag2 "}
-	err = instance.Update(instance)
+	err = instance.Update(srv, instance, "")
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)

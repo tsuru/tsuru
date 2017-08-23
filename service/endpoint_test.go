@@ -183,6 +183,41 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `^Failed to create the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
+func (s *S) TestUpdateShouldSendADELETERequestToTheResourceURL(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name)
+	c.Assert(h.method, check.Equals, "PUT")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+}
+
+func (s *S) TestUpdateShouldReturnErrorIfTheRequestFails(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `Failed to update the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
+}
+
+func (s *S) TestUpdateNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, "")
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)

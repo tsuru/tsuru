@@ -106,6 +106,39 @@ var insertServiceInstance = action.Action{
 	MinParams: 2,
 }
 
+// updateServiceInstance is an action that updates an instance in the database.
+//
+// The first argument in the context must be a Service Instance.
+var updateServiceInstance = action.Action{
+	Name: "update-service-instance",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		return nil, conn.ServiceInstances().Update(
+			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
+			bson.M{
+				"$set": bson.M{
+					"description": instance.Description,
+					"tags":        instance.Tags,
+					"teamowner":   instance.TeamOwner,
+				},
+				"$addToSet": bson.M{
+					"teams": instance.TeamOwner,
+				},
+			},
+		)
+	},
+	Backward:  func(ctx action.BWContext) {},
+	MinParams: 2,
+}
+
 type bindPipelineArgs struct {
 	app             bind.App
 	writer          io.Writer

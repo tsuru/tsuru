@@ -138,6 +138,10 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	description := r.FormValue("description")
 	teamOwner := r.FormValue("teamowner")
 	tags := r.Form["tag"]
+	srv, err := getService(serviceName)
+	if err != nil {
+		return err
+	}
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
@@ -187,7 +191,9 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if tags != nil {
 		si.Tags = tags
 	}
-	return si.Update(*si)
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	return si.Update(srv, *si, requestID)
 }
 
 // title: remove service instance

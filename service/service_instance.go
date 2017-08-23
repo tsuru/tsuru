@@ -143,7 +143,7 @@ func (si *ServiceInstance) FindApp(appName string) int {
 }
 
 // Update changes informations of the service instance.
-func (si *ServiceInstance) Update(updateData ServiceInstance) error {
+func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, requestID string) error {
 	err := validateServiceInstanceTeamOwner(updateData)
 	if err != nil {
 		return err
@@ -153,25 +153,17 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 		return err
 	}
 	defer conn.Close()
+	si.Description = updateData.Description
+	si.TeamOwner = updateData.TeamOwner
 	tags := processTags(updateData.Tags)
 	if tags == nil {
-		updateData.Tags = si.Tags
+		si.Tags = si.Tags
 	} else {
-		updateData.Tags = tags
+		si.Tags = tags
 	}
-	return conn.ServiceInstances().Update(
-		bson.M{"name": si.Name, "service_name": si.ServiceName},
-		bson.M{
-			"$set": bson.M{
-				"description": updateData.Description,
-				"tags":        updateData.Tags,
-				"teamowner":   updateData.TeamOwner,
-			},
-			"$addToSet": bson.M{
-				"teams": updateData.TeamOwner,
-			},
-		},
-	)
+	actions := []*action.Action{&updateServiceInstance}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(service, *si, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
