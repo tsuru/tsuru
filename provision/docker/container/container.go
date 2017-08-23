@@ -453,6 +453,9 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 		}
 	} else {
 		hostConfig.OomScoreAdj = 1000
+		hostConfig.LogConfig = docker.LogConfig{
+			Type: dockercommon.JsonFileLogDriver,
+		}
 	}
 
 	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")

@@ -272,6 +272,9 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 	}
 	hostConfig.OomScoreAdj = 1000
 	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
+	hostConfig.LogConfig = docker.LogConfig{
+		Type: dockercommon.JsonFileLogDriver,
+	}
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
 			var appHostDir string

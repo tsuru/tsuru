@@ -21,6 +21,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	JsonFileLogDriver = "json-file"
+)
+
 type Client interface {
 	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
 	InspectImage(string) (*docker.Image, error)
