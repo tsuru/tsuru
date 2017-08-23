@@ -389,7 +389,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 	instance.ServiceName = service.Name
 	instance.Teams = []string{instance.TeamOwner}
 	instance.Tags = processTags(instance.Tags)
-	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
+	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email, requestID)
 }

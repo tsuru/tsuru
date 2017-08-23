@@ -18,14 +18,14 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// createServiceInstance is an action that calls the service endpoint
+// notifyCreateServiceInstance is an action that calls the service endpoint
 // to create a service instance.
 //
 // The first argument in the context must be a Service.
 // The second argument in the context must be a ServiceInstance.
 // The third argument in the context must be a request ID.
-var createServiceInstance = action.Action{
-	Name: "create-service-instance",
+var notifyCreateServiceInstance = action.Action{
+	Name: "notify-create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		service, ok := ctx.Params[0].(Service)
 		if !ok {
@@ -75,11 +75,11 @@ var createServiceInstance = action.Action{
 	MinParams: 3,
 }
 
-// insertServiceInstance is an action that inserts an instance in the database.
+// createServiceInstance is an action that inserts an instance in the database.
 //
 // The second argument in the context must be a Service Instance.
-var insertServiceInstance = action.Action{
-	Name: "insert-service-instance",
+var createServiceInstance = action.Action{
+	Name: "create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		instance, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
