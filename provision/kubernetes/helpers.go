@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"regexp"
 	"strings"
 	"time"
@@ -179,19 +180,31 @@ func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
 	if pod.Status.Message != "" {
 		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
 	}
+	retErr := errors.Errorf("invalid pod phase %s", phaseWithMsg)
 	eventsInterface := client.Core().Events(client.Namespace())
 	ns := client.Namespace()
 	selector := eventsInterface.GetFieldSelector(&pod.Name, &ns, nil, nil)
 	options := metav1.ListOptions{FieldSelector: selector.String()}
 	events, err := eventsInterface.List(options)
-	if err != nil {
-		return errors.Wrapf(err, "error listing pod %q events invalid phase %s", pod.Name, phaseWithMsg)
+	if err == nil && len(events.Items) > 0 {
+		lastEvt := events.Items[len(events.Items)-1]
+		retErr = errors.Errorf("%v - last event: %s", retErr, lastEvt.Message)
 	}
-	if len(events.Items) == 0 {
-		return errors.Errorf("invalid pod phase %s", phaseWithMsg)
+	if len(pod.Spec.Containers) > 0 {
+		lastLog := int64(100)
+		req := client.Core().Pods(client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
+			Container: pod.Spec.Containers[0].Name,
+			TailLines: &lastLog,
+		})
+		reader, logErr := req.Stream()
+		if logErr == nil {
+			logContent, _ := ioutil.ReadAll(reader)
+			if len(logContent) > 0 {
+				retErr = errors.Errorf("%v - log: %s", retErr, string(logContent))
+			}
+		}
 	}
-	lastEvt := events.Items[len(events.Items)-1]
-	return errors.Errorf("invalid pod phase %s: %s", phaseWithMsg, lastEvt.Message)
+	return retErr
 }
 
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
