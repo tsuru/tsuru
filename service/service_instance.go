@@ -161,7 +161,7 @@ func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, r
 	} else {
 		si.Tags = tags
 	}
-	actions := []*action.Action{&updateServiceInstance}
+	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(service, *si, requestID)
 }

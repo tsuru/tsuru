@@ -106,6 +106,40 @@ var insertServiceInstance = action.Action{
 	MinParams: 2,
 }
 
+// notifyUpdateServiceInstance is an action that calls the service endpoint
+// to update a service instance.
+//
+// The first argument in the context must be a Service.
+// The second argument in the context must be a ServiceInstance.
+var notifyUpdateServiceInstance = action.Action{
+	Name: "notify-update-service-instance",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		service, ok := ctx.Params[0].(Service)
+		if !ok {
+			return nil, errors.New("First parameter must be a Service.")
+		}
+		endpoint, err := service.getClient("production")
+		if err != nil {
+			return nil, err
+		}
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
+		}
+		requestID, ok := ctx.Params[2].(string)
+		if !ok {
+			return nil, errors.New("RequestID should be a string")
+		}
+		err = endpoint.Update(&instance, requestID)
+		if err != nil {
+			return nil, err
+		}
+		return instance, nil
+	},
+	Backward:  func(ctx action.BWContext) {},
+	MinParams: 2,
+}
+
 // updateServiceInstance is an action that updates an instance in the database.
 //
 // The first argument in the context must be a Service Instance.

@@ -145,6 +145,7 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 func (c *Client) Update(instance *ServiceInstance, requestID string) error {
 	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
+		"team":      {instance.TeamOwner},
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params)
@@ -152,7 +153,7 @@ func (c *Client) Update(instance *ServiceInstance, requestID string) error {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
 			if resp.StatusCode == http.StatusNotFound {
-				return ErrInstanceNotFoundInAPI
+				return nil
 			}
 			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to update the instance %s", instance.Name)
 			return log.WrapError(err)
