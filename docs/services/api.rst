@@ -9,6 +9,7 @@ API workflow
 tsuru sends requests to the service API to the following actions:
 
 * create a new instance of the service (``tsuru service-instance-add``)
+* update a service instance (``tsuru service-instance-update``)
 * bind an app with the service instance (``tsuru service-instance-bind``)
 * unbind an app from the service instance (``tsuru service-instance-unbind``)
 * destroy the service instance (``tsuru service-instance-remove``)
@@ -123,6 +124,45 @@ response body:
     * 201: when the instance is successfully created. There's no need to
       include any body, as tsuru doesn't expect to get any content back in case
       of success.
+    * 500: in case of any failure in the operation. tsuru expects that the
+      service API includes an explanation of the failure in the response body.
+
+Updating a service instance
+===========================
+
+This endpoint implementation is optional. The process begins when a tsuru
+customer updates properties of a service instance via command line tool:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru service-instance-update mysql mysql_instance --description "new-description" --tag "tag1" --tag "tag2" --team-owner "new-team-owner"
+
+tsuru calls the service API to inform the instance update via PUT on ``/resources``
+(please notice that tsuru does not include a trailing slash) with the new, updated
+fields (description, tags and team owner). Example of request:
+
+::
+
+    PUT /resources/mysql_instance HTTP/1.1
+    Host: myserviceapi.com
+    Content-Length: 56
+    User-Agent: Go 1.1 package http
+    Accept: application/json
+    Authorization: Basic dXNlcjpwYXNzd29yZA==
+    Content-Type: application/x-www-form-urlencoded
+
+    description=new-description&tag=tag1&tag=tag2&team=new-team-owner
+
+The API should return the following HTTP response codes with the respective
+response body:
+
+    * 200: when the instance is successfully updated. There's no need to
+      include any body, as tsuru doesn't expect to get any content back in case
+      of success.
+    * 404: as this endpoint is optional, a 404 response code from the API is
+      ignored by tsuru.
     * 500: in case of any failure in the operation. tsuru expects that the
       service API includes an explanation of the failure in the response body.
 
@@ -330,7 +370,7 @@ response body:
 Additional info about an instance
 =================================
 
-When the user run ``tsuru service-info <service>`` or 
+When the user run ``tsuru service-info <service>`` or
 ``tsuru service-instance-info``, tsuru will get informations
 from all instances. This is an optional endpoint in the service API. Some
 services does not provide any extra information for instances. Example of
