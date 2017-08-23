@@ -599,7 +599,7 @@ func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) 
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	si.TeamOwner = "unknown"
-	err = instance.Update(si)
+	err = instance.Update(srv, si, "")
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
