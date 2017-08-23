@@ -78,7 +78,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 		called = true
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -96,7 +96,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 }
 
 func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "wrong"}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "wrong"}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -115,7 +115,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -138,7 +138,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 		atomic.AddInt32(&calls, 1)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -171,10 +171,10 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc1 := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc1 := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc1.Create()
 	c.Assert(err, check.IsNil)
-	srvc2 := service.Service{Name: "postgres", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc2 := service.Service{Name: "postgres", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
 	instance1 := service.ServiceInstance{
@@ -226,7 +226,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
-	srvc := service.Service{Name: "mysql", Password: "s3cr3t", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Password: "s3cr3t", Endpoint: map[string]string{"production": ts.URL}, OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -251,7 +251,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -282,7 +282,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
@@ -317,7 +317,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
@@ -357,7 +357,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -391,7 +391,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
@@ -430,7 +430,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}

@@ -10,9 +10,10 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/types/auth"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -102,7 +103,7 @@ func (s *Service) GetUsername() string {
 	return s.Name
 }
 
-func (s *Service) findTeam(team *auth.Team) int {
+func (s *Service) findTeam(team *authTypes.Team) int {
 	for i, t := range s.Teams {
 		if team.Name == t {
 			return i
@@ -111,11 +112,11 @@ func (s *Service) findTeam(team *auth.Team) int {
 	return -1
 }
 
-func (s *Service) HasTeam(team *auth.Team) bool {
+func (s *Service) HasTeam(team *authTypes.Team) bool {
 	return s.findTeam(team) > -1
 }
 
-func (s *Service) GrantAccess(team *auth.Team) error {
+func (s *Service) GrantAccess(team *authTypes.Team) error {
 	if s.HasTeam(team) {
 		return errors.New("This team already has access to this service")
 	}
@@ -123,7 +124,7 @@ func (s *Service) GrantAccess(team *auth.Team) error {
 	return nil
 }
 
-func (s *Service) RevokeAccess(team *auth.Team) error {
+func (s *Service) RevokeAccess(team *authTypes.Team) error {
 	index := s.findTeam(team)
 	if index < 0 {
 		return errors.New("This team does not have access to this service")
@@ -152,6 +153,20 @@ func (s *Service) validate(skipName bool) (err error) {
 	}
 	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
 		return fmt.Errorf("Service production endpoint is required")
+	}
+	return s.validateOwnerTeams()
+}
+
+func (s *Service) validateOwnerTeams() error {
+	if len(s.OwnerTeams) == 0 {
+		return fmt.Errorf("At least one service team owner is required")
+	}
+	teams, err := auth.TeamService().FindByNames(s.OwnerTeams)
+	if err != nil {
+		return nil
+	}
+	if len(teams) != len(s.OwnerTeams) {
+		return fmt.Errorf("Team owner doesn't exist")
 	}
 	return nil
 }

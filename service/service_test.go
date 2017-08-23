@@ -10,6 +10,9 @@ import (
 	"net/http/httptest"
 	"sort"
 
+	"github.com/tsuru/tsuru/auth"
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -53,6 +56,41 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
+}
+
+func (s *S) TestCreateServiceMissingFields(c *check.C) {
+	endpt := map[string]string{
+		"production": "somehost.com",
+	}
+	service := &Service{
+		Username:   "test",
+		Endpoint:   endpt,
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+	}
+	err := service.Create()
+	c.Assert(err, check.ErrorMatches, "Service id is required")
+	service.Name = "INVALID NAME"
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
+	service.Name = "servicename"
+	service.Password = ""
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "Service password is required")
+	service.Password = "abcde"
+	service.Endpoint = nil
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "Service production endpoint is required")
+	service.Endpoint = endpt
+	service.OwnerTeams = []string{}
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "At least one service team owner is required")
+	service.OwnerTeams = []string{"unknown-team", s.team.Name}
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
+	service.OwnerTeams = []string{s.team.Name, ""}
+	err = service.Create()
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
 func (s *S) TestDeleteService(c *check.C) {
@@ -176,9 +214,10 @@ func (s *S) TestGetServicesNames(c *check.C) {
 
 func (s *S) TestUpdateService(c *check.C) {
 	service := Service{
-		Name:     "something",
-		Password: "abcde",
-		Endpoint: map[string]string{"production": "url"},
+		Name:       "something",
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+		OwnerTeams: []string{s.team.Name},
 	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
@@ -206,11 +245,15 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
+	otherTeam := authTypes.Team{Name: "other-team"}
+	err = auth.TeamService().Insert(otherTeam)
+	c.Assert(err, check.IsNil)
 	srvc2 := Service{
-		Name:     "mysql",
-		Endpoint: map[string]string{"production": "url"},
-		Teams:    []string{s.team.Name},
-		Password: "abcde",
+		Name:       "mysql",
+		OwnerTeams: []string{otherTeam.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{s.team.Name},
+		Password:   "abcde",
 	}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
@@ -231,10 +274,11 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Password: "abcde",
-		Endpoint: map[string]string{"production": "url"},
+		Name:       "mysql",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
 	}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)

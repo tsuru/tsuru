@@ -204,10 +204,8 @@ func (s *S) addServiceInstance(c *check.C, appName string, unitsIDs []string, fn
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
-		s.storage.Services().Remove(bson.M{"_id": "mysql"})
-		s.storage.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	}
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	var units []service.Unit

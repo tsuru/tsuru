@@ -455,9 +455,10 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	srvc := service.Service{
-		Name:     "mysql",
-		Endpoint: map[string]string{"production": server.URL},
-		Password: "abcde",
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": server.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -511,9 +512,10 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	srvc := service.Service{
-		Name:     "mysql",
-		Endpoint: map[string]string{"production": server.URL},
-		Password: "abcde",
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": server.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -747,7 +749,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		atomic.AddInt32(&calls, 1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	app := App{
@@ -3614,9 +3616,10 @@ func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	srvc := service.Service{
-		Name:     "mysql",
-		Endpoint: map[string]string{"production": server.URL},
-		Password: "abcde",
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": server.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -3672,9 +3675,10 @@ func (s *S) TestValidateAppService(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	serv := service.Service{
-		Name:     "healthcheck",
-		Password: "nidalee",
-		Endpoint: map[string]string{"production": "somehost.com"},
+		Name:       "healthcheck",
+		Password:   "nidalee",
+		Endpoint:   map[string]string{"production": "somehost.com"},
+		OwnerTeams: []string{s.team.Name},
 	}
 	err = serv.Create()
 	c.Assert(err, check.IsNil)
@@ -3690,9 +3694,10 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	serv := service.Service{
-		Name:     "healthcheck",
-		Password: "nidalee",
-		Endpoint: map[string]string{"production": "somehost.com"},
+		Name:       "healthcheck",
+		Password:   "nidalee",
+		Endpoint:   map[string]string{"production": "somehost.com"},
+		OwnerTeams: []string{s.team.Name},
 	}
 	err = serv.Create()
 	c.Assert(err, check.IsNil)

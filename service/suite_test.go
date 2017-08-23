@@ -68,10 +68,13 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "Raul"}
 	err := auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
 }
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Services().Database.DropDatabase()
 	s.conn.Close()
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
