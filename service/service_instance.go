@@ -153,17 +153,15 @@ func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, r
 		return err
 	}
 	defer conn.Close()
-	si.Description = updateData.Description
-	si.TeamOwner = updateData.TeamOwner
 	tags := processTags(updateData.Tags)
 	if tags == nil {
-		si.Tags = si.Tags
+		updateData.Tags = si.Tags
 	} else {
-		si.Tags = tags
+		updateData.Tags = tags
 	}
 	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(service, *si, requestID)
+	return pipeline.Execute(service, *si, updateData, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {

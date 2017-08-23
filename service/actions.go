@@ -23,6 +23,7 @@ import (
 //
 // The first argument in the context must be a Service.
 // The second argument in the context must be a ServiceInstance.
+// The third argument in the context must be a request ID.
 var createServiceInstance = action.Action{
 	Name: "create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -44,7 +45,7 @@ var createServiceInstance = action.Action{
 		}
 		requestID, ok := ctx.Params[3].(string)
 		if !ok {
-			return nil, errors.New("RequestID should be a string")
+			return nil, errors.New("RequestID should be a string.")
 		}
 		err = endpoint.Create(&instance, user, requestID)
 		if err != nil {
@@ -71,12 +72,12 @@ var createServiceInstance = action.Action{
 		}
 		endpoint.Destroy(&instance, requestID)
 	},
-	MinParams: 2,
+	MinParams: 3,
 }
 
 // insertServiceInstance is an action that inserts an instance in the database.
 //
-// The first argument in the context must be a Service Instance.
+// The second argument in the context must be a Service Instance.
 var insertServiceInstance = action.Action{
 	Name: "insert-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -106,11 +107,71 @@ var insertServiceInstance = action.Action{
 	MinParams: 2,
 }
 
+// updateServiceInstance is an action that updates an instance in the database.
+//
+// The second argument in the context must be a Service Instance with the current attributes.
+// The third argument in the context must be a Service Instance with the updated attributes.
+var updateServiceInstance = action.Action{
+	Name: "update-service-instance",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
+		}
+		updateData, ok := ctx.Params[2].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Third parameter must be a ServiceInstance.")
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		return nil, conn.ServiceInstances().Update(
+			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
+			bson.M{
+				"$set": bson.M{
+					"description": updateData.Description,
+					"tags":        updateData.Tags,
+					"teamowner":   updateData.TeamOwner,
+				},
+				"$addToSet": bson.M{
+					"teams": updateData.TeamOwner,
+				},
+			},
+		)
+	},
+	Backward: func(ctx action.BWContext) {
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.ServiceInstances().Update(
+			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
+			bson.M{
+				"$set": bson.M{
+					"description": instance.Description,
+					"tags":        instance.Tags,
+					"teamowner":   instance.TeamOwner,
+					"teams":       instance.Teams,
+				},
+			},
+		)
+	},
+	MinParams: 3,
+}
+
 // notifyUpdateServiceInstance is an action that calls the service endpoint
 // to update a service instance.
 //
 // The first argument in the context must be a Service.
 // The second argument in the context must be a ServiceInstance.
+// The forth argument in the context must be a request ID.
 var notifyUpdateServiceInstance = action.Action{
 	Name: "notify-update-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -126,9 +187,9 @@ var notifyUpdateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("Second parameter must be a ServiceInstance.")
 		}
-		requestID, ok := ctx.Params[2].(string)
+		requestID, ok := ctx.Params[3].(string)
 		if !ok {
-			return nil, errors.New("RequestID should be a string")
+			return nil, errors.New("RequestID should be a string.")
 		}
 		err = endpoint.Update(&instance, requestID)
 		if err != nil {
@@ -137,40 +198,7 @@ var notifyUpdateServiceInstance = action.Action{
 		return instance, nil
 	},
 	Backward:  func(ctx action.BWContext) {},
-	MinParams: 2,
-}
-
-// updateServiceInstance is an action that updates an instance in the database.
-//
-// The first argument in the context must be a Service Instance.
-var updateServiceInstance = action.Action{
-	Name: "update-service-instance",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		instance, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			return nil, errors.New("Second parameter must be a ServiceInstance.")
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		return nil, conn.ServiceInstances().Update(
-			bson.M{"name": instance.Name, "service_name": instance.ServiceName},
-			bson.M{
-				"$set": bson.M{
-					"description": instance.Description,
-					"tags":        instance.Tags,
-					"teamowner":   instance.TeamOwner,
-				},
-				"$addToSet": bson.M{
-					"teams": instance.TeamOwner,
-				},
-			},
-		)
-	},
-	Backward:  func(ctx action.BWContext) {},
-	MinParams: 2,
+	MinParams: 4,
 }
 
 type bindPipelineArgs struct {
@@ -185,7 +213,7 @@ var bindAppDBAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		conn, err := db.Conn()
 		if err != nil {
@@ -217,7 +245,7 @@ var bindAppEndpointAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		endpoint, err := args.serviceInstance.Service().getClient("production")
 		if err != nil {
@@ -245,7 +273,7 @@ var setBoundEnvsAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		envMap := ctx.Previous.(map[string]string)
 		envs := make([]bind.ServiceEnvVar, 0, len(envMap))
@@ -289,7 +317,7 @@ var bindUnitsAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return ctx.Previous, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return ctx.Previous, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
@@ -335,7 +363,7 @@ var unbindUnits = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
@@ -393,7 +421,7 @@ var unbindAppDB = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
 	},
@@ -412,7 +440,7 @@ var unbindAppEndpoint = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
 			err := endpoint.UnbindApp(args.serviceInstance, args.app)
@@ -439,7 +467,7 @@ var removeBoundEnvs = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		si := args.serviceInstance
 		return nil, args.app.RemoveInstance(bind.RemoveInstanceArgs{
