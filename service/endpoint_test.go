@@ -189,11 +189,14 @@ func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 	config.Set("request-id-header", requestIDHeader)
 	defer config.Unset("request-id-header")
 	var requests int32
-	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", TeamOwner: "team-owner"}
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", TeamOwner: "team-owner", Description: "my service", Tags: []string{"tag1", "tag2"}}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&requests, 1)
 		c.Check(r.Method, check.Equals, http.MethodPut)
 		c.Check(r.URL.Path, check.Equals, "/resources/"+instance.Name)
+		r.ParseForm()
+		c.Check(r.FormValue("description"), check.Equals, instance.Description)
+		c.Check(r.Form["tags"], check.DeepEquals, instance.Tags)
 		c.Check(r.FormValue("team"), check.Equals, instance.TeamOwner)
 		c.Check(r.Header.Get(requestIDHeader), check.Equals, requestIDValue)
 		c.Assert(r.Header.Get("Authorization"), check.Equals, "Basic dXNlcjphYmNkZQ==")
