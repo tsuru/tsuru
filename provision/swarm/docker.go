@@ -292,10 +292,14 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		Provisioner:   provisionerName,
 		Prefix:        tsuruLabelPrefix,
 	})
+	var logDriver *swarm.Driver
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
 		opts.replicas = 1
 		srvName = fmt.Sprintf("%s-build", srvName)
+		logDriver = &swarm.Driver{
+			Name: dockercommon.JsonFileLogDriver,
+		}
 	}
 	if opts.isIsolatedRun {
 		opts.replicas = 1
@@ -322,6 +326,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			Placement: &swarm.Placement{
 				Constraints: opts.constraints,
 			},
+			LogDriver: logDriver,
 		},
 		Networks:     networks,
 		EndpointSpec: endpointSpec,
