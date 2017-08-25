@@ -87,7 +87,7 @@ func (s *S) TestFixContainer(c *check.C) {
 	err := coll.Insert(cont)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": cont.AppName})
-	err = s.storage.Apps().Insert(&app.App{Name: cont.AppName})
+	err = s.conn.Apps().Insert(&app.App{Name: cont.AppName})
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp(cont.AppName, cont.Type, 0)
 	defer p.Destroy(appInstance)

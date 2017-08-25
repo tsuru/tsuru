@@ -119,15 +119,6 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	return info, nil
 }
 
-func (si *ServiceInstance) Create() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Insert(si)
-}
-
 func (si *ServiceInstance) Service() *Service {
 	conn, err := db.Conn()
 	if err != nil {
@@ -152,7 +143,7 @@ func (si *ServiceInstance) FindApp(appName string) int {
 }
 
 // Update changes informations of the service instance.
-func (si *ServiceInstance) Update(updateData ServiceInstance) error {
+func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, requestID string) error {
 	err := validateServiceInstanceTeamOwner(updateData)
 	if err != nil {
 		return err
@@ -168,19 +159,9 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 	} else {
 		updateData.Tags = tags
 	}
-	return conn.ServiceInstances().Update(
-		bson.M{"name": si.Name, "service_name": si.ServiceName},
-		bson.M{
-			"$set": bson.M{
-				"description": updateData.Description,
-				"tags":        updateData.Tags,
-				"teamowner":   updateData.TeamOwner,
-			},
-			"$addToSet": bson.M{
-				"teams": updateData.TeamOwner,
-			},
-		},
-	)
+	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(service, *si, updateData, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
@@ -408,7 +389,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 	instance.ServiceName = service.Name
 	instance.Teams = []string{instance.TeamOwner}
 	instance.Tags = processTags(instance.Tags)
-	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
+	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email, requestID)
 }

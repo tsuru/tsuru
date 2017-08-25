@@ -94,7 +94,7 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}, Tags: []string{"tag 1"}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -424,7 +424,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
@@ -451,7 +451,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -498,7 +498,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("my=awesome&body=1")
@@ -557,7 +557,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("something-something")
@@ -666,7 +666,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	err = se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest("GET", url, nil)

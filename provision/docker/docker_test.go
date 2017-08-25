@@ -191,7 +191,7 @@ func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
-	err := s.storage.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}}
 	coll := s.p.Collection()
@@ -454,7 +454,7 @@ func (s *S) TestGetDockerClientWithApp(c *check.C) {
 
 func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	err := s.storage.Apps().Insert(a1)
+	err := s.conn.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "cont1", AppName: a1.Name, ProcessName: "web"}}
 	cont2 := container.Container{Container: types.Container{ID: "2", Name: "cont2", AppName: a1.Name, ProcessName: "web"}}

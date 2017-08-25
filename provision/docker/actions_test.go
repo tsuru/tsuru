@@ -1053,7 +1053,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 	}))
 	defer server.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err := s.storage.Apps().Insert(dbApp)
+	err := s.conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
@@ -1110,7 +1110,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 	}))
 	defer server.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err := s.storage.Apps().Insert(dbApp)
+	err := s.conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
@@ -1167,7 +1167,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	}))
 	defer server.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err := s.storage.Apps().Insert(dbApp)
+	err := s.conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
@@ -1216,7 +1216,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		w.Write([]byte(`{"ID":"id","ExitCode":9}`))
 	}))
 	dbApp := &app.App{Name: "myapp"}
-	err := s.storage.Apps().Insert(dbApp)
+	err := s.conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{

@@ -93,7 +93,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 		Apps:        []string{a.GetName()},
 		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}, {ID: "wrong", IP: "wrong"}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance = &service.ServiceInstance{
 		Name:        "my-mysql",
@@ -102,7 +102,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 		Apps:        []string{a.GetName()},
 		BoundUnits:  []service.Unit{},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	callCh := make(chan struct{})
 	err = service.InitializeSync(func() ([]bind.App, error) {

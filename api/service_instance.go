@@ -98,8 +98,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	err = service.CreateServiceInstance(instance, &srv, user, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &tsuruErrors.HTTP{
@@ -138,6 +137,10 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	description := r.FormValue("description")
 	teamOwner := r.FormValue("teamowner")
 	tags := r.Form["tag"]
+	srv, err := getService(serviceName)
+	if err != nil {
+		return err
+	}
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
@@ -187,7 +190,8 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if tags != nil {
 		si.Tags = tags
 	}
-	return si.Update(*si)
+	requestID := requestIDHeader(r)
+	return si.Update(srv, *si, requestID)
 }
 
 // title: remove service instance
@@ -250,8 +254,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			}
 		}
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	err = service.DeleteInstance(serviceInstance, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
@@ -380,8 +383,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	var b string
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	if b, err = serviceInstance.Status(requestID); err != nil {
 		return errors.Wrap(err, "Could not retrieve status of service instance, error")
 	}
@@ -421,8 +423,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	info, err := serviceInstance.Info(requestID)
 	if err != nil {
 		return err
@@ -528,8 +529,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	plans, err := service.GetPlansByServiceName(serviceName, requestID)
 	if err != nil {
 		return err
@@ -693,4 +693,9 @@ func sortedServiceNames(services map[string]*service.ServiceModel) []string {
 	}
 	sort.Strings(serviceNames)
 	return serviceNames
+}
+
+func requestIDHeader(r *http.Request) string {
+	requestIDHeader, _ := config.GetString("request-id-header")
+	return context.GetRequestID(r, requestIDHeader)
 }
