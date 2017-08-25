@@ -93,7 +93,7 @@ what happened in the response body.
 Creating a new instance
 =======================
 
-This process begins when a tsuru customer creates an instance of the service
+This process begins when a tsuru user creates an instance of the service
 via command line tool:
 
 .. highlight:: bash
@@ -131,7 +131,7 @@ Updating a service instance
 ===========================
 
 This endpoint implementation is optional. The process begins when a tsuru
-customer updates properties of a service instance via command line tool:
+user updates properties of a service instance via command line tool:
 
 .. highlight:: bash
 
@@ -169,7 +169,7 @@ response body:
 Binding an app to a service instance
 ====================================
 
-This process begins when a tsuru customer binds an app to an instance of the
+This process begins when a tsuru user binds an app to an instance of the
 service via command line tool:
 
 .. highlight:: bash
@@ -246,7 +246,7 @@ Status codes for errors in the process:
 Unbind an app from a service instance
 =====================================
 
-This process begins when a tsuru customer unbinds an app from an instance of
+This process begins when a tsuru user unbinds an app from an instance of
 the service via command line:
 
 .. highlight:: bash
@@ -301,7 +301,7 @@ response body:
 Removing an instance
 ====================
 
-This process begins when a tsuru customer removes an instance of the service
+This process begins when a tsuru user removes an instance of the service
 via command line:
 
 .. highlight:: bash
@@ -336,7 +336,7 @@ response body:
 Checking the status of an instance
 ==================================
 
-This process begins when a tsuru customer wants to check the status of an
+This process begins when a tsuru user wants to check the status of an
 instance via command line:
 
 .. highlight:: bash
