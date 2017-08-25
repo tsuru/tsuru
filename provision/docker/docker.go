@@ -155,7 +155,6 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 			Tag:               tag,
 			OutputStream:      &buf,
 			InactivityTimeout: net.StreamInactivityTimeout,
-			RawJSONStream:     true,
 		}
 		err = p.Cluster().PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 		if err != nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -118,8 +119,9 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
 	pullOpts := docker.PullImageOptions{
 		Repository:        imageID,
-		OutputStream:      w,
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
 		InactivityTimeout: net.StreamInactivityTimeout,
+		RawJSONStream:     true,
 	}
 	err := client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
 	if err != nil {
