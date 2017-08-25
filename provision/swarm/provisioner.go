@@ -368,12 +368,12 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
-	if customData == nil {
-		return nil
-	}
 	task, err := findTaskByContainerId(tasks, unitId)
 	if err != nil {
 		return err
+	}
+	if customData == nil {
+		return nil
 	}
 	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 	if !labels.IsDeploy() {

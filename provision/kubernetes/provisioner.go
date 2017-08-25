@@ -372,6 +372,9 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	}
 	pod, err := client.Core().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
 	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return &provision.UnitNotFoundError{ID: unitID}
+		}
 		return errors.WithStack(err)
 	}
 	units, err := p.podsToUnits(client, []apiv1.Pod{*pod}, a, nil)
