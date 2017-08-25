@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -112,7 +113,7 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 		Name:              repo,
 		Tag:               tag,
 		Registry:          registry,
-		OutputStream:      args.Out,
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: args.Out},
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
@@ -182,7 +183,6 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 			Tag:               tag,
 			OutputStream:      &buf,
 			InactivityTimeout: net.StreamInactivityTimeout,
-			RawJSONStream:     true,
 		}
 		err = client.PushImage(pushOpts, authconfig)
 		if err != nil {

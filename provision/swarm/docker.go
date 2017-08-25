@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"github.com/tsuru/tsuru/safe"
 )
 
 const (
@@ -180,28 +179,11 @@ func commitPushBuildImage(client *clusterClient, img, contID string, app provisi
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	err = pushImage(client, repository, tag)
+	err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
 	if err != nil {
 		return "", err
 	}
 	return img, nil
-}
-
-func pushImage(client *clusterClient, repo, tag string) error {
-	if _, err := config.GetString("docker:registry"); err == nil {
-		var buf safe.Buffer
-		pushOpts := docker.PushImageOptions{Name: repo,
-			Tag:               tag,
-			OutputStream:      &buf,
-			InactivityTimeout: tsuruNet.StreamInactivityTimeout,
-			RawJSONStream:     true,
-		}
-		err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
 }
 
 func serviceNameForApp(a provision.App, process string) string {

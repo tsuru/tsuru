@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -74,7 +75,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		RmTmpContainer:    true,
 		Remote:            dockerfileURL,
 		InputStream:       inputStream,
-		OutputStream:      w,
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
@@ -100,7 +101,6 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		Tag:               tag,
 		OutputStream:      &buf,
 		InactivityTimeout: net.StreamInactivityTimeout,
-		RawJSONStream:     true,
 	}
 	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 	if err != nil {
