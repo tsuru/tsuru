@@ -9,12 +9,21 @@ tsurud 1.4.0 release notes
 Welcome to tsurud 1.4.0!
 
 These release notes cover the :ref:`new features <new-1.4.0>`, :ref:`bug fixes
-<bug-1.4.0>`.
+<bug-1.4.0>`. For a complete list of changes, `check our 1.4.0 github milestone 
+<https://github.com/tsuru/tsuru/issues?utf8=%E2%9C%93&q=is%3Aissue%20milestone%3A1.4%20>`_.
 
 .. _new-1.4.0:
 
 New features
 ============
+
+Multiprovisioner persistent volume support (`#1599 <https://github.com/tsuru/tsuru/issues/1599>`_) (Experimental)
+-----------------------------------------------------------------------------------------------------------------
+
+This feature allows applications running on tsuru to use external volumes for storage and mount them. This feature
+is available for apps running on Kubernetes and Swarm provisioners. 
+Refer to :doc:`volumes documentation </managing/volumes>` for more information.
+
 
 Generic API based Router (`#1572 <https://github.com/tsuru/tsuru/issues/1572>`_)
 --------------------------------------------------------------------------------
@@ -27,6 +36,10 @@ operation, e.g, adding and removing new routes.
 
 Other improvements
 ------------------
+
+* Improved validation for several resources upon creation
+  eg `#1680 <https://github.com/tsuru/tsuru/issues/1680>`_ and 
+  `#1613 <https://github.com/tsuru/tsuru/issues/1613>`_
 
 * Enable updating an app's platform on app update
   `#1591 <https://github.com/tsuru/tsuru/issues/1591>`_
@@ -46,6 +59,8 @@ Other improvements
 * Enable update a role name and description
   `#1379 <https://github.com/tsuru/tsuru/issues/1379>`_
 
+* Enable changing service instance team owner
+  `#1581 <https://github.com/tsuru/tsuru/issues/1581>`_
 
 .. _bug-1.4.0:
 
@@ -54,3 +69,13 @@ Bug fixes
 
 * Adding units on an app with stopped units should fail
   `#1347 <https://github.com/tsuru/tsuru/issues/1347>`_
+* app-run --isolated should have the same environment of regular app-run 
+  `#1615 <https://github.com/tsuru/tsuru/issues/1615>`_
+* Unable to unset private variable
+  `#1589 <https://github.com/tsuru/tsuru/issues/1589>`_
+* Unbind units should retry after failure on remote service
+  `#1440 <https://github.com/tsuru/tsuru/issues/1440>`_
+* Prevent adding units to stoped apps
+  `#1347 <https://github.com/tsuru/tsuru/issues/1347>`_
+* Autoscale should be active besides docker:auto-scale:enabled
+  `#1456 <https://github.com/tsuru/tsuru/issues/1456>`_

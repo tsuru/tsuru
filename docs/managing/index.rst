@@ -23,3 +23,4 @@ Managing
     users-and-permissions
     logs
     debugging-and-troubleshooting
+    volumes
