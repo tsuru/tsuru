@@ -170,7 +170,7 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 
 func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
 	cluster := p.Cluster()
-	nodeAddr := ""
+	var nodeAddr string
 	if app == nil {
 		nodes, err := cluster.Nodes()
 		if err != nil {
