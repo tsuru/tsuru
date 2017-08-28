@@ -24,8 +24,11 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/safe"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func buildClusterStorage() (cluster.Storage, error) {
@@ -198,5 +201,78 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.Builde
 	if err != nil {
 		return nil, err
 	}
-	return &dockercommon.ClientWithTimeout{Client: client}, nil
+	return &dbAwareClient{
+		p:                 p,
+		ClientWithTimeout: &dockercommon.ClientWithTimeout{Client: client},
+	}, nil
+}
+
+type dbAwareClient struct {
+	p *dockerProvisioner
+	*dockercommon.ClientWithTimeout
+}
+
+func (c *dbAwareClient) CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error) {
+	ls := &provision.LabelSet{Labels: opts.Config.Labels}
+	if ls.AppName() == "" || opts.Name == "" {
+		// No need to register in db as BS won't associate this container with
+		// tsuru.
+		return c.ClientWithTimeout.CreateContainer(opts)
+	}
+	dbCont := types.Container{
+		AppName:       ls.AppName(),
+		Type:          ls.AppPlatform(),
+		ProcessName:   ls.AppProcess(),
+		BuildingImage: ls.BuildImage(),
+		Name:          opts.Name,
+		Status:        provision.StatusBuilding.String(),
+		Image:         opts.Config.Image,
+		HostAddr:      net.URLToHost(c.ClientWithTimeout.Endpoint()),
+	}
+	coll := c.p.Collection()
+	defer coll.Close()
+	var cont *docker.Container
+	createErr := func() {
+		dbErr := coll.Remove(bson.M{"name": dbCont.Name})
+		if dbErr != nil {
+			log.Errorf("error trying to remove container in db after failure %#v: %v", cont, dbErr)
+		}
+	}
+	updateErr := func() {
+		createErr()
+		removeErr := c.ClientWithTimeout.RemoveContainer(docker.RemoveContainerOptions{
+			ID:            cont.ID,
+			RemoveVolumes: true,
+			Force:         true,
+		})
+		if removeErr != nil {
+			log.Errorf("error trying to remove container in docker after update failure %#v: %v", cont, removeErr)
+		}
+	}
+	err := coll.Insert(dbCont)
+	if err != nil {
+		return nil, err
+	}
+	cont, err = c.ClientWithTimeout.CreateContainer(opts)
+	if err != nil {
+		createErr()
+		return nil, err
+	}
+	err = coll.Update(bson.M{"name": dbCont.Name}, bson.M{"$set": bson.M{"id": cont.ID}})
+	if err != nil {
+		updateErr()
+		return nil, errors.Wrap(err, "unable to update container ID in db")
+	}
+	return cont, nil
+}
+
+func (c *dbAwareClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
+	err := c.ClientWithTimeout.RemoveContainer(opts)
+	coll := c.p.Collection()
+	defer coll.Close()
+	dbErr := coll.Remove(bson.M{"id": opts.ID})
+	if dbErr != nil && dbErr != mgo.ErrNotFound {
+		log.Errorf("error trying to remove container in db %q: %v", opts.ID, dbErr)
+	}
+	return err
 }
