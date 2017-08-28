@@ -219,8 +219,6 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		c.Assert(err, check.IsNil)
 		resultApps = append(resultApps, *dbApp)
 		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
-		_, hasSpecialEnv := dbApp.Env[app.TsuruServicesEnvVar]
-		c.Assert(hasSpecialEnv, check.Equals, false)
 		allEnvs := dbApp.Envs()
 		if tt.expectedServicesEnv == "" {
 			tt.expectedServicesEnv = tt.app.Env[app.TsuruServicesEnvVar].Value
