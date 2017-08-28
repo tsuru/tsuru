@@ -579,7 +579,7 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) GetDockerClient(a provision.App) (*docker.Client, error) {
+func (p *swarmProvisioner) GetDockerClient(a provision.App) (provision.BuilderDockerClient, error) {
 	if a == nil {
 		clusters, err := allClusters()
 		if err != nil {
@@ -594,7 +594,7 @@ func (p *swarmProvisioner) GetDockerClient(a provision.App) (*docker.Client, err
 	if err != nil {
 		return nil, err
 	}
-	return client.Client, nil
+	return &dockercommon.ClientWithTimeout{Client: client.Client}, nil
 }
 
 func (p *swarmProvisioner) CleanImage(appName, imgName string) {

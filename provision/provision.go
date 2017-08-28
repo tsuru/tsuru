@@ -14,7 +14,7 @@ import (
 	"net/url"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
@@ -277,10 +277,34 @@ type RebuildableDeployer interface {
 	Rebuild(App, *event.Event) (string, error)
 }
 
+type BuilderDockerClient interface {
+	CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error)
+	RemoveContainer(opts docker.RemoveContainerOptions) error
+	StartContainer(id string, hostConfig *docker.HostConfig) error
+	StopContainer(id string, timeout uint) error
+	InspectContainer(id string) (*docker.Container, error)
+	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
+	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
+	UploadToContainer(string, docker.UploadToContainerOptions) error
+	AttachToContainerNonBlocking(opts docker.AttachToContainerOptions) (docker.CloseWaiter, error)
+	AttachToContainer(opts docker.AttachToContainerOptions) error
+	WaitContainer(id string) (int, error)
+
+	BuildImage(opts docker.BuildImageOptions) error
+	PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error
+	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
+	InspectImage(string) (*docker.Image, error)
+	TagImage(string, docker.TagImageOptions) error
+	RemoveImage(name string) error
+	ImageHistory(name string) ([]docker.ImageHistory, error)
+
+	SetTimeout(timeout time.Duration)
+}
+
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(App, string, *event.Event) (string, error)
-	GetDockerClient(App) (*docker.Client, error)
+	GetDockerClient(App) (BuilderDockerClient, error)
 	CleanImage(appName string, image string)
 }
 

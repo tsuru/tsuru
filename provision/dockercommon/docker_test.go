@@ -16,8 +16,23 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
 )
+
+type S struct{}
+
+var _ = check.Suite(&S{})
+
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:registry", "my.registry")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+}
 
 func (s *S) TestPrepareImageForDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)

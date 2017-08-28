@@ -111,7 +111,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 	return imageID, nil
 }
 
-func imageBuild(client *docker.Client, app provision.App, imageID string, evt *event.Event) (string, error) {
+func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (string, error) {
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
@@ -148,7 +148,7 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 	return newImage, nil
 }
 
-func runCommandInContainer(client *docker.Client, image string, command string, app provision.App, stdout, stderr io.Writer) error {
+func runCommandInContainer(client provision.BuilderDockerClient, image string, command string, app provision.App, stdout, stderr io.Writer) error {
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -185,7 +185,7 @@ func runCommandInContainer(client *docker.Client, image string, command string, 
 	return nil
 }
 
-func downloadFromContainer(client *docker.Client, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
+func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
 	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
 	if err != nil {
 		return nil, nil, errors.Errorf("App %s image not found", app.GetName())

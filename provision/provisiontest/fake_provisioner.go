@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 )
@@ -780,13 +781,13 @@ func (p *FakeProvisioner) Deploy(app provision.App, img string, evt *event.Event
 	return fakeAppImage, nil
 }
 
-func (p *FakeProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+func (p *FakeProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
 	for _, node := range p.nodes {
 		client, err := docker.NewClient(node.Addr)
 		if err != nil {
 			return nil, err
 		}
-		return client, nil
+		return &dockercommon.ClientWithTimeout{Client: client}, nil
 	}
 	return nil, errors.New("No node found")
 

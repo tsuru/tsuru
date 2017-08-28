@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
@@ -21,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provision.BuilderDockerClient, app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&startContainer,
