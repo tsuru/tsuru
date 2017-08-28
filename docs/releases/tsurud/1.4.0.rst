@@ -67,15 +67,13 @@ Other improvements
 Bug fixes
 =========
 
-* Adding units on an app with stopped units should fail
-  `#1347 <https://github.com/tsuru/tsuru/issues/1347>`_
 * app-run --isolated should have the same environment of regular app-run 
   `#1615 <https://github.com/tsuru/tsuru/issues/1615>`_
 * Unable to unset private variable
   `#1589 <https://github.com/tsuru/tsuru/issues/1589>`_
 * Unbind units should retry after failure on remote service
   `#1440 <https://github.com/tsuru/tsuru/issues/1440>`_
-* Prevent adding units to stoped apps
+* Prevent adding units to stopped apps
   `#1347 <https://github.com/tsuru/tsuru/issues/1347>`_
 * Autoscale should be active besides docker:auto-scale:enabled
   `#1456 <https://github.com/tsuru/tsuru/issues/1456>`_
