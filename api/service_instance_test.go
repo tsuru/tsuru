@@ -885,7 +885,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldR
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsShouldFailAndReturnError(c *check.C) {
+func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithAssociatedAppsShouldFailAndReturnError(c *check.C) {
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, check.IsNil)
@@ -895,17 +895,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsShould
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 3)
-	var msg io.SimpleJsonMessage
-	err = json.Unmarshal([]byte(parts[0]), &msg)
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Message: "foo-bar"})
-	err = json.Unmarshal([]byte(parts[1]), &msg)
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Error: "This service instance is bound to at least one app. Unbind them before removing it"})
-	c.Assert(parts[2], check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Applications bound to the service \"foo-instance\": \"foo-bar\"\n: This service instance is bound to at least one app. Unbind them before removing it\n")
 }
 
 func makeRequestToRemoveServiceInstanceWithUnbind(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -1009,7 +1000,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.Equals, service.ErrServiceInstanceBound)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Applications bound to the service \"my-mysql\": \"app1\"\n: This service instance is bound to at least one app. Unbind them before removing it")
 }
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
@@ -1060,14 +1052,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstanceWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.Equals, service.ErrServiceInstanceBound)
-	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 2)
-	var msg io.SimpleJsonMessage
-	err = json.Unmarshal([]byte(parts[0]), &msg)
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Message: "app,app2"})
-	c.Assert(parts[1], check.Equals, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Applications bound to the service \"my-mysql\": \"app,app2\"\n: This service instance is bound to at least one app. Unbind them before removing it")
 }
 
 func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check.C) {

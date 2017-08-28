@@ -200,6 +200,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // produce: application/x-json-stream
 // responses:
 //   200: Service removed
+//   400: Bad request
 //   401: Unauthorized
 //   404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
@@ -258,7 +259,10 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	err = service.DeleteInstance(serviceInstance, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
-			writer.Write([]byte(strings.Join(serviceInstance.Apps, ",")))
+			return &tsuruErrors.HTTP{
+				Message: errors.Wrapf(err, `Applications bound to the service "%s": "%s"`+"\n", instanceName, strings.Join(serviceInstance.Apps, ",")).Error(),
+				Code:    http.StatusBadRequest,
+			}
 		}
 		return err
 	}
