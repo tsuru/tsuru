@@ -149,7 +149,7 @@ Let's create the view for this action:
         return "", 201
 
 Updating service instances
-----------------------
+--------------------------
 
 When a service instance is updated, tsuru sends a PUT to /resources with the updated
 parameters for the instance. If the service instance is successfully updated, your
