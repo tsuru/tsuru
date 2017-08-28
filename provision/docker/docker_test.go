@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -449,7 +450,7 @@ func (s *S) TestGetDockerClientWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	client, err := p.GetDockerClient(&a)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Endpoint(), check.Equals, nodes[0].Address)
+	c.Assert(client.(*dockercommon.ClientWithTimeout).Endpoint(), check.Equals, nodes[0].Address)
 }
 
 func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
@@ -495,13 +496,13 @@ func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Endpoint(), check.Equals, nodes[1].Address)
+	c.Assert(client.(*dockercommon.ClientWithTimeout).Endpoint(), check.Equals, nodes[1].Address)
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
 	_, err = scheduler.Schedule(s.p.cluster, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
 	c.Assert(err, check.IsNil)
 	client, err = s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Endpoint(), check.Equals, nodes[2].Address)
+	c.Assert(client.(*dockercommon.ClientWithTimeout).Endpoint(), check.Equals, nodes[2].Address)
 }
 
 func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {

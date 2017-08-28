@@ -67,7 +67,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
-	client.HTTPClient.Timeout = 0
+	client.SetTimeout(0)
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
 		Pull:              true,
@@ -110,12 +110,12 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	return nil
 }
 
-func getDockerClient() (*docker.Client, error) {
+func getDockerClient() (provision.BuilderDockerClient, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, err
 	}
-	var client *docker.Client
+	var client provision.BuilderDockerClient
 	multiErr := tsuruErrors.NewMultiError()
 	for _, p := range provisioners {
 		if provisioner, ok := p.(provision.BuilderDeploy); ok {

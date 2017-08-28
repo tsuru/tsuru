@@ -165,7 +165,7 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 	return nil
 }
 
-func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
 	cluster := p.Cluster()
 	nodeAddr := ""
 	if app == nil {
@@ -198,5 +198,5 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, 
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return &dockercommon.ClientWithTimeout{Client: client}, nil
 }

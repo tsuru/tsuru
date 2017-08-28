@@ -26,6 +26,14 @@ const (
 	JsonFileLogDriver = "json-file"
 )
 
+type ClientWithTimeout struct {
+	*docker.Client
+}
+
+func (c *ClientWithTimeout) SetTimeout(timeout time.Duration) {
+	c.Client.HTTPClient.Timeout = timeout
+}
+
 type Client interface {
 	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
 	InspectImage(string) (*docker.Image, error)
