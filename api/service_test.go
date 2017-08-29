@@ -263,10 +263,14 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
+	t := authTypes.Team{Name: "myteam"}
+	err = auth.TeamService().Insert(t)
+	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("username", "mysqltest")
 	v.Set("password", "yyyy")
 	v.Set("endpoint", "mysqlapi.com")
+	v.Set("team", t.Name)
 	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
@@ -276,6 +280,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	c.Assert(service.Endpoint["production"], check.Equals, "mysqlapi.com")
 	c.Assert(service.Password, check.Equals, "yyyy")
 	c.Assert(service.Username, check.Equals, "mysqltest")
+	c.Assert(service.OwnerTeams, check.DeepEquals, []string{t.Name})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceTarget("mysqlapi"),
 		Owner:  s.token.GetUserName(),

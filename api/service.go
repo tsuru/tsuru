@@ -135,10 +135,11 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	d := service.Service{
-		Username: r.FormValue("username"),
-		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
-		Password: r.FormValue("password"),
-		Name:     r.URL.Query().Get(":name"),
+		Username:   r.FormValue("username"),
+		Endpoint:   map[string]string{"production": r.FormValue("endpoint")},
+		Password:   r.FormValue("password"),
+		Name:       r.URL.Query().Get(":name"),
+		OwnerTeams: []string{r.FormValue("team")},
 	}
 	s, err := getService(d.Name)
 	if err != nil {
@@ -165,6 +166,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
+	s.OwnerTeams = d.OwnerTeams
 	return s.Update()
 }
 
