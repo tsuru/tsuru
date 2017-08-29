@@ -177,7 +177,7 @@ func (s *ProvisionSuite) TestServiceCreateNameExists(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Service already exists.\n")
 }
 
-func (s *ProvisionSuite) ServiceTestCreateWithoutTeam(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateWithoutTeam(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("username", "test")
@@ -196,7 +196,7 @@ func (s *ProvisionSuite) ServiceTestCreateWithoutTeam(c *check.C) {
 	c.Assert(rService.Username, check.Equals, "test")
 }
 
-func (s *ProvisionSuite) TestCreateHandlerWithoutTeamUserWithMultiplePermissions(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("username", "test")
@@ -220,7 +220,7 @@ func (s *ProvisionSuite) TestCreateHandlerWithoutTeamUserWithMultiplePermissions
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a team responsible for this service in the manifest file.\n")
 }
 
-func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHaveAProductionEndpoint(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestIfTheServiceDoesNotHaveAProductionEndpoint(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("password", "xxxx")
@@ -231,7 +231,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHa
 	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
 }
 
-func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestWithoutPassword(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutPassword(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("team", "tsuruteam")
@@ -242,7 +242,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestWithoutPassword(c *ch
 	c.Assert(recorder.Body.String(), check.Equals, "Service id is required\n")
 }
 
-func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestWithoutId(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutId(c *check.C) {
 	v := url.Values{}
 	v.Set("password", "000000")
 	v.Set("team", "tsuruteam")
@@ -292,7 +292,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *check.C) {
+func (s *ProvisionSuite) TestServiceUpdateReturnsBadRequestWithoutPassword(c *check.C) {
 	service := service.Service{
 		Name:       "some-service",
 		Endpoint:   map[string]string{"production": "sqlapi.com"},
@@ -311,7 +311,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *ch
 	c.Assert(recorder.Body.String(), check.Equals, "Service password is required\n")
 }
 
-func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutProductionEndpoint(c *check.C) {
+func (s *ProvisionSuite) TestServiceUpdateReturnsBadRequestWithoutProductionEndpoint(c *check.C) {
 	service := service.Service{
 		Name:       "mysqlapi",
 		Endpoint:   map[string]string{"production": "sqlapi.com"},
@@ -330,7 +330,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutProductionEndp
 	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
 }
 
-func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
+func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "mysqlapi")
 	v.Set("password", "zzzz")
@@ -343,7 +343,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
 
-func (s *ProvisionSuite) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
+func (s *ProvisionSuite) TestServiceUpdateReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := authTypes.Team{Name: "some-other-team"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
