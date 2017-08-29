@@ -112,32 +112,20 @@ func notReadyPodEvents(client *clusterClient, a provision.App, process string) (
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	var podsForEvts []string
+	var podsForEvts []*apiv1.Pod
 podsLoop:
-	for _, pod := range pods.Items {
+	for i, pod := range pods.Items {
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
-				podsForEvts = append(podsForEvts, pod.Name)
+				podsForEvts = append(podsForEvts, &pods.Items[i])
 				continue podsLoop
 			}
 		}
 	}
 	var messages []string
-	for _, podName := range podsForEvts {
-		eventsInterface := client.Core().Events(client.Namespace())
-		ns := client.Namespace()
-		selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-		options := metav1.ListOptions{FieldSelector: selector.String()}
-		var events *apiv1.EventList
-		events, err = eventsInterface.List(options)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if len(events.Items) == 0 {
-			continue
-		}
-		lastEvt := events.Items[len(events.Items)-1]
-		messages = append(messages, fmt.Sprintf("Pod %s: %s - %s", podName, lastEvt.Reason, lastEvt.Message))
+	for _, pod := range podsForEvts {
+		err = newInvalidPodPhaseError(client, pod)
+		messages = append(messages, fmt.Sprintf("Pod %s: %v", pod.Name, err))
 	}
 	return messages, nil
 }
