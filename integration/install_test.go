@@ -494,7 +494,7 @@ func serviceBind() ExecFlow {
 		env.Add("bindnames", bindName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("service-instance-remove", "{{.servicename}}", bindName, "-u", "-y").Run(env)
+		res := T("service-instance-remove", "{{.servicename}}", bindName, "-f", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
