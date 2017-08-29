@@ -30,7 +30,7 @@ type Logger interface {
 	GetStdLogger() *log.Logger
 }
 
-func Init() {
+func Init() error {
 	var loggers []Logger
 	debug, _ := config.GetBool("debug")
 	if logFileName, err := config.GetString("log:file"); err == nil {
@@ -43,12 +43,17 @@ func Init() {
 		if tag == "" {
 			tag = "tsurud"
 		}
-		loggers = append(loggers, NewSyslogLogger(tag, debug))
+		syslogLogger, err := NewSyslogLogger(tag, debug)
+		if err != nil {
+			return err
+		}
+		loggers = append(loggers, syslogLogger)
 	}
 	if useStderr, _ := config.GetBool("log:use-stderr"); useStderr {
 		loggers = append(loggers, NewWriterLogger(os.Stderr, debug))
 	}
 	SetLogger(NewMultiLogger(loggers...))
+	return nil
 }
 
 // Target is the current target for the log package.
