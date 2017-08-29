@@ -5,15 +5,15 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	stdLog "log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"context"
 
 	"github.com/codegangsta/negroni"
 	"github.com/pkg/errors"
@@ -85,7 +85,10 @@ func getAuthScheme() (string, error) {
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
 func RunServer(dry bool) http.Handler {
-	log.Init()
+	err := log.Init()
+	if err != nil {
+		stdLog.Fatalf("unable to initialize logging: %v", err)
+	}
 	setupDatabase()
 
 	m := apiRouter.NewRouter()

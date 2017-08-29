@@ -13,12 +13,14 @@ import (
 	"os"
 )
 
-func NewSyslogLogger(tag string, debug bool) Logger {
+var _ Logger = &syslogLogger{}
+
+func NewSyslogLogger(tag string, debug bool) (Logger, error) {
 	w, err := syslog.New(syslog.LOG_INFO, tag)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return &syslogLogger{w: w, debug: debug}
+	return &syslogLogger{w: w, debug: debug}, nil
 }
 
 type syslogLogger struct {
