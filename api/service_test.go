@@ -183,15 +183,15 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeam(c *check.C) {
 	v.Set("username", "test")
 	v.Set("password", "xxxx")
 	v.Set("endpoint", "someservices.com")
-	recorder, request := s.makeRequest("POST", "/service", v.Encode(), c)
+	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	query := bson.M{"_id": "some-service"}
 	var rService service.Service
 	err := s.conn.Services().Find(query).One(&rService)
 	c.Assert(err, check.IsNil)
-	c.Assert(rService.Endpoint["production"], check.Equals, "someservice.com")
+	c.Assert(rService.Endpoint["production"], check.Equals, "someservices.com")
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
 }
