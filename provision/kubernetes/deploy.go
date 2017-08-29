@@ -455,8 +455,12 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 			fmt.Fprintf(w, " ---> %d of %d new units created\n", dep.Status.UpdatedReplicas, specReplicas)
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
-			healthcheckTimeout = time.After(maxWaitTimeDuration)
-			fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+			var allInit bool
+			allInit, err = allPodsInitialized(client, a, processName)
+			if allInit && err == nil {
+				healthcheckTimeout = time.After(maxWaitTimeDuration)
+				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+			}
 		}
 		readyUnits := dep.Status.UpdatedReplicas - dep.Status.UnavailableReplicas
 		if oldReadyUnits != readyUnits && readyUnits >= 0 {

@@ -622,11 +622,11 @@ func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units$")
+	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
 	c.Assert(rollbackObj, check.DeepEquals, &v1beta1.DeploymentRollback{
 		Name: "myapp-p1",
 	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout after .* waiting for units <---\s*$`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
 	cleanupDeployment(s.client.clusterClient, a, "p1")
 	_, err = s.client.Core().Events(s.client.Namespace()).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -640,7 +640,7 @@ func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units: Pod myapp-p1-pod-2-1: Unhealthy - my evt message$")
+	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
 }
 
 func (s *S) TestServiceManagerRemoveService(c *check.C) {

@@ -94,21 +94,50 @@ func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() er
 	}
 }
 
-func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func podsForAppProcess(client *clusterClient, a provision.App, process string) (*apiv1.PodList, error) {
+	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
 		},
-	})
+	}
+	l, err := provision.ServiceLabels(labelOpts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
+	var selector map[string]string
+	if process == "" {
+		selector = l.ToAppSelector()
+	} else {
+		selector = l.ToSelector()
+	}
+	return client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
+}
+
+func allPodsInitialized(client *clusterClient, a provision.App, process string) (bool, error) {
+	pods, err := podsForAppProcess(client, a, process)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	for _, pod := range pods.Items {
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type != apiv1.PodInitialized {
+				continue
+			}
+			if cond.Status != apiv1.ConditionTrue {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
+func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
+	pods, err := podsForAppProcess(client, a, process)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -383,21 +412,8 @@ func execCommand(opts execOpts) error {
 			return errors.WithStack(err)
 		}
 	} else {
-		var l *provision.LabelSet
-		l, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
-			App: opts.app,
-			ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-				Prefix:      tsuruLabelPrefix,
-				Provisioner: provisionerName,
-			},
-		})
-		if err != nil {
-			return errors.WithStack(err)
-		}
 		var pods *apiv1.PodList
-		pods, err = client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
-		})
+		pods, err = podsForAppProcess(client, opts.app, "")
 		if err != nil {
 			return errors.WithStack(err)
 		}
