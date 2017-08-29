@@ -12,7 +12,7 @@ There are three concepts involved in the process: volume plans, volume and volum
 Volume Plans
 ============
 
-Volume plans are managed by tsuru administrators and are configured tsuru.conf file. Volume plans describe
+Volume plans are managed by tsuru administrators and are configured in tsuru.conf file. Volume plans describe
 how each volume that will be associated to this plan will be created by each provisioner.
 
 The following configuration register a volume plan called ``ebs`` that is supported by swarm and kubernetes using
