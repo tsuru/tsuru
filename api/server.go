@@ -39,7 +39,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const Version = "1.3.1-rc3"
+const Version = "1.3.1"
 
 type TsuruHandler struct {
 	version string
