@@ -96,11 +96,15 @@ func (m *MultiError) Format(s fmt.State, verb rune) {
 		fmtString += "#"
 	}
 	fmtString += string(verb)
+	if m.Len() == 1 {
+		fmt.Fprintf(s, fmtString, m.errors[0])
+		return
+	}
 	errors := make([]string, len(m.errors))
 	for i, err := range m.errors {
-		errors[i] = fmt.Sprintf(fmtString, err)
+		errors[i] = fmt.Sprintf("error %d: "+fmtString, i, err)
 	}
-	fmt.Fprintf(s, "%s", strings.Join(errors, " "))
+	fmt.Fprintf(s, "multiple errors reported (%d): %s", m.Len(), strings.Join(errors, " - "))
 }
 
 type CompositeError struct {
