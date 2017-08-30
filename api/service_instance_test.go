@@ -578,7 +578,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		"teamowner": t.Name,
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
-		Scheme:  permission.PermServiceInstanceUpdateTeamOwner,
+		Scheme:  permission.PermServiceInstanceUpdateTeamowner,
 		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)

@@ -150,7 +150,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 	}
 	if teamOwner != "" {
-		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamOwner)
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamowner)
 	}
 	if tags != nil {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
