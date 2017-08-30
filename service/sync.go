@@ -162,7 +162,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	}
 	units := make([]Unit, len(appUnits))
 	for i := range appUnits {
-		units[i] = Unit{ID: appUnits[i].GetID(), IP: appUnits[i].GetIp()}
+		units[i] = Unit{AppName: a.GetName(), ID: appUnits[i].GetID(), IP: appUnits[i].GetIp()}
 	}
 	instances, err := GetServiceInstancesBoundToApp(a.GetName())
 	if err != nil {
@@ -171,6 +171,9 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	for _, instance := range instances {
 		boundUnits := make(map[Unit]struct{})
 		for _, u := range instance.BoundUnits {
+			if u.AppName != a.GetName() {
+				continue
+			}
 			boundUnits[u] = struct{}{}
 		}
 		for _, u := range units {

@@ -300,7 +300,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
-		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
+		BoundUnits:  []service.Unit{{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
