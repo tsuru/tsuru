@@ -154,7 +154,7 @@ func (ProvisionSuite) TestNodeToJson(c *check.C) {
 	n := testNode{}
 	data, err := NodeToJSON(&n)
 	c.Assert(err, check.IsNil)
-	c.Assert(string(data), check.Equals, `{"Address":"b","Metadata":{"d":"e"},"Status":"c","Pool":"a"}`)
+	c.Assert(string(data), check.Equals, `{"Address":"b","Metadata":{"d":"e"},"Status":"c","Pool":"a","Provisioner":""}`)
 }
 
 func (ProvisionSuite) TestNodeToSpec(c *check.C) {

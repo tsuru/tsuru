@@ -436,6 +436,8 @@ type UpdateNodeOptions struct {
 }
 
 type NodeProvisioner interface {
+	Named
+
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
 
@@ -513,10 +515,11 @@ type NodeHealthChecker interface {
 
 type NodeSpec struct {
 	// BSON tag for bson serialized compatibility with cluster.Node
-	Address  string `bson:"_id"`
-	Metadata map[string]string
-	Status   string
-	Pool     string
+	Address     string `bson:"_id"`
+	Metadata    map[string]string
+	Status      string
+	Pool        string
+	Provisioner string
 }
 
 func NodeToSpec(n Node) NodeSpec {
@@ -529,11 +532,17 @@ func NodeToSpec(n Node) NodeSpec {
 	for k, v := range n.Metadata() {
 		metadata[k] = v
 	}
+	var provName string
+	prov := n.Provisioner()
+	if prov != nil {
+		provName = prov.GetName()
+	}
 	return NodeSpec{
-		Address:  n.Address(),
-		Metadata: metadata,
-		Status:   n.Status(),
-		Pool:     n.Pool(),
+		Address:     n.Address(),
+		Metadata:    metadata,
+		Status:      n.Status(),
+		Pool:        n.Pool(),
+		Provisioner: provName,
 	}
 }
 
