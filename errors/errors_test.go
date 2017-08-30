@@ -32,5 +32,10 @@ func (s *S) TestValidationError(c *check.C) {
 func (s *S) TestMultiErrorFormat(c *check.C) {
 	cause := errors.New("root error")
 	e := NewMultiError(errors.New("error 1"), pkgErrors.WithStack(cause))
-	c.Assert(fmt.Sprintf("%s", e), check.Equals, "error 1 root error")
+	c.Assert(fmt.Sprintf("%s", e), check.Equals, "multiple errors reported (2): error 0: error 1 - error 1: root error")
+}
+
+func (s *S) TestMultiErrorFormatSingle(c *check.C) {
+	e := NewMultiError(errors.New("error 1"))
+	c.Assert(fmt.Sprintf("%s", e), check.Equals, "error 1")
 }
