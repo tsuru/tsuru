@@ -54,6 +54,7 @@ type TestHandler struct {
 	method  string
 	url     string
 	request *http.Request
+	Err     error
 	sync.Mutex
 }
 
@@ -65,6 +66,10 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.url = r.URL.String()
 	h.body, _ = ioutil.ReadAll(r.Body)
 	h.request = r
+	if h.Err != nil {
+		http.Error(w, h.Err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Write([]byte(content))
 }
 

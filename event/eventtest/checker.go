@@ -92,7 +92,7 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 		query["log"] = bson.M{"$regex": evt.LogMatches}
 	}
 	if evt.ErrorMatches != "" {
-		query["error"] = bson.M{"$regex": evt.ErrorMatches}
+		query["error"] = bson.M{"$regex": evt.ErrorMatches, "$options": "s"}
 	} else {
 		query["error"] = ""
 	}
