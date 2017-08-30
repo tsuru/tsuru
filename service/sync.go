@@ -99,6 +99,9 @@ func (b *bindSyncer) start() error {
 					if err != nil {
 						log.Errorf("[bind-syncer] error syncing app %q: %v", a.GetName(), err)
 					}
+					if len(b.shutdown) > 0 {
+						break
+					}
 				}
 				log.Debugf("[bind-syncer] finished running. Synced %d apps.", len(apps))
 				d = b.interval

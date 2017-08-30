@@ -182,11 +182,24 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	callCh := make(chan struct{})
 	err = service.InitializeSync(func() ([]bind.App, error) {
-		callCh <- struct{}{}
 		return []bind.App{a, a2}, nil
 	})
 	c.Assert(err, check.IsNil)
-	<-callCh
+	go func() {
+		for {
+			evts, err := event.All()
+			c.Assert(err, check.IsNil)
+			if len(evts) == 2 {
+				callCh <- struct{}{}
+				return
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
+	select {
+	case <-callCh:
+	case <-time.After(time.Second * 5):
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	shutdown.Do(ctx, ioutil.Discard)
 	cancel()
