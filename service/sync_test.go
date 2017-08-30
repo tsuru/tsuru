@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http/httptest"
+	"sort"
 	"time"
 
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -91,7 +92,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
-		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}, {ID: "wrong", IP: "wrong"}},
+		BoundUnits:  []service.Unit{{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()}, {AppName: "my-app", ID: "wrong", IP: "wrong"}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -118,12 +119,12 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	instance, err = service.GetServiceInstance("mysql", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
-		{ID: units[0].GetID(), IP: units[0].GetIp()},
+		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
 	})
 	instance, err = service.GetServiceInstance("mysql2", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
-		{ID: units[0].GetID(), IP: units[0].GetIp()},
+		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
 	})
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
@@ -143,6 +144,63 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 			},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
+	h := service.TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, &s.user)
+	c.Assert(err, check.IsNil)
+	a2 := &app.App{Name: "my-app2", Platform: "python", TeamOwner: s.team.Name}
+	err = app.CreateApp(a2, &s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(2, "", nil)
+	c.Assert(err, check.IsNil)
+	err = a2.AddUnits(2, "", nil)
+	c.Assert(err, check.IsNil)
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	units2, err := a2.GetUnits()
+	c.Assert(err, check.IsNil)
+	instance := &service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.GetName(), a2.GetName()},
+		BoundUnits: []service.Unit{
+			{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
+			{AppName: a2.Name, ID: units2[0].GetID(), IP: units2[0].GetIp()},
+		},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+	callCh := make(chan struct{})
+	err = service.InitializeSync(func() ([]bind.App, error) {
+		callCh <- struct{}{}
+		return []bind.App{a, a2}, nil
+	})
+	c.Assert(err, check.IsNil)
+	<-callCh
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	shutdown.Do(ctx, ioutil.Discard)
+	cancel()
+	c.Assert(err, check.IsNil)
+	instance, err = service.GetServiceInstance("mysql", "my-mysql")
+	c.Assert(err, check.IsNil)
+	sort.Slice(instance.BoundUnits, func(i int, j int) bool {
+		return instance.BoundUnits[i].ID < instance.BoundUnits[j].ID
+	})
+	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
+		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
+		{AppName: a.Name, ID: units[1].GetID(), IP: units[1].GetIp()},
+		{AppName: a2.Name, ID: units2[0].GetID(), IP: units2[0].GetIp()},
+		{AppName: a2.Name, ID: units2[1].GetID(), IP: units2[1].GetIp()},
+	})
 }
 
 func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {

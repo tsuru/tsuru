@@ -49,7 +49,7 @@ type ServiceInstance struct {
 }
 
 type Unit struct {
-	ID, IP string
+	AppName, ID, IP string
 }
 
 func (bu Unit) GetID() string {
@@ -205,6 +205,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	updateOp := bson.M{
 		"$addToSet": bson.M{
 			"bound_units": bson.D([]bson.DocElem{
+				{Name: "appname", Value: app.GetName()},
 				{Name: "id", Value: unit.GetID()},
 				{Name: "ip", Value: unit.GetIp()},
 			}),
@@ -222,6 +223,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 		updateOp = bson.M{
 			"$pull": bson.M{
 				"bound_units": bson.D([]bson.DocElem{
+					{Name: "appname", Value: app.GetName()},
 					{Name: "id", Value: unit.GetID()},
 					{Name: "ip", Value: unit.GetIp()},
 				}),
@@ -271,6 +273,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	updateOp := bson.M{
 		"$pull": bson.M{
 			"bound_units": bson.D([]bson.DocElem{
+				{Name: "appname", Value: app.GetName()},
 				{Name: "id", Value: unit.GetID()},
 				{Name: "ip", Value: unit.GetIp()},
 			}),
@@ -288,6 +291,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 		updateOp = bson.M{
 			"$addToSet": bson.M{
 				"bound_units": bson.D([]bson.DocElem{
+					{Name: "appname", Value: app.GetName()},
 					{Name: "id", Value: unit.GetID()},
 					{Name: "ip", Value: unit.GetIp()},
 				}),
