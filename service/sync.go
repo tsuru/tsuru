@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app/bind"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -142,9 +143,6 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 		return errors.Wrap(err, "error trying to insert bind sync event, aborted")
 	}
 	defer func() {
-		if err != nil {
-			evt.Logf(err.Error())
-		}
 		if len(binds)+len(unbinds) > 0 || err != nil {
 			evt.DoneCustomData(err, map[string]interface{}{
 				"binds":   binds,
@@ -168,6 +166,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	if err != nil {
 		return errors.WithMessage(err, "error retrieving service instances bound to app")
 	}
+	multiErr := tsuruErrors.NewMultiError()
 	for _, instance := range instances {
 		boundUnits := make(map[Unit]struct{})
 		for _, u := range instance.BoundUnits {
@@ -184,7 +183,8 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 				err = instance.BindUnit(a, u)
 				binds[instance.Name] = append(binds[instance.Name], u.GetID())
 				if err != nil {
-					log.Errorf("[bind-syncer] failed to bind unit %q: %v", u.ID, err)
+					err = errors.Wrapf(err, "failed to bind unit %q for %s(%s)", u.ID, instance.ServiceName, instance.Name)
+					multiErr.Add(err)
 					syncErrors.WithLabelValues("bind").Inc()
 				}
 				syncOperations.WithLabelValues("bind").Inc()
@@ -195,12 +195,13 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			err = instance.UnbindUnit(a, u)
 			unbinds[instance.Name] = append(unbinds[instance.Name], u.GetID())
 			if err != nil {
-				log.Errorf("[bind-syncer] failed to unbind unit %q: %v", u.ID, err)
+				err = errors.Wrapf(err, "failed to unbind unit %q for %s(%s)", u.ID, instance.ServiceName, instance.Name)
+				multiErr.Add(err)
 				syncErrors.WithLabelValues("unbind").Inc()
 			}
 			syncOperations.WithLabelValues("unbind").Inc()
 		}
 	}
 	log.Debugf("[bind-syncer] finished sync for app %q", a.GetName())
-	return nil
+	return multiErr.ToError()
 }
