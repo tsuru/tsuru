@@ -435,10 +435,9 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
-			return nil, nil
+		if errors.Cause(err) != cluster.ErrNoCluster {
+			return nil, err
 		}
-		return nil, err
 	}
 	for _, client := range clusters {
 		tasks, err := client.ListTasks(docker.ListTasksOptions{})
