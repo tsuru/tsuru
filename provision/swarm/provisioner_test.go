@@ -1560,11 +1560,27 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
 	data = provision.NodeStatusData{
+		Addrs: []string{s.clusterSrv.URL()},
+	}
+	node, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
+	data = provision.NodeStatusData{
 		Units: []provision.UnitStatusData{
 			{ID: "invalidid"},
 		},
 	}
 	_, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestNodeForNodeDataNoCluster(c *check.C) {
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: "invalidid"},
+		},
+	}
+	_, err := s.p.NodeForNodeData(data)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
