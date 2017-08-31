@@ -647,14 +647,30 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   400: Invalid data
 //   401: Unauthorized
 func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermRoleUpdate) {
-		return permission.ErrUnauthorized
-	}
 	r.ParseForm()
 	roleName := r.FormValue("name")
 	newName := r.FormValue("newName")
 	contextType := r.FormValue("contextType")
 	description := r.FormValue("description")
+	var wantedPerms []*permission.PermissionScheme
+	if newName != "" {
+		wantedPerms = append(wantedPerms, permission.PermRoleUpdateName)
+	}
+	if contextType != "" {
+		wantedPerms = append(wantedPerms, permission.PermRoleUpdateContextType)
+	}
+	if description != "" {
+		wantedPerms = append(wantedPerms, permission.PermRoleUpdateDescription)
+	}
+	if len(wantedPerms) == 0 {
+		msg := "Neither the description, context or new name were set. You must define at least one."
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	for _, perm := range wantedPerms {
+		if !permission.Check(t, perm) {
+			return permission.ErrUnauthorized
+		}
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdate,
