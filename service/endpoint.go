@@ -148,6 +148,7 @@ func (c *Client) Update(instance *ServiceInstance, requestID string) error {
 		"description": {instance.Description},
 		"team":        {instance.TeamOwner},
 		"tags":        instance.Tags,
+		"plan":        {instance.PlanName},
 		"requestID":   {requestID},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params)
