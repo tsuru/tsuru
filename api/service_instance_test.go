@@ -722,6 +722,40 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 	c.Assert(recorder.Body.String(), check.Equals, permission.ErrUnauthorized.Error()+"\n")
 }
 
+func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	si := service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+	}
+	err := s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	params := map[string]interface{}{
+		"plan": "newplan",
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdatePlan,
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+	})
+	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("mysql", "brainsql"),
+		Owner:  token.GetUserName(),
+		Kind:   "service-instance.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "plan", "value": "newplan"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) {
 	si := service.ServiceInstance{
 		Name:        "brainsql",
@@ -738,7 +772,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) 
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Neither the description, team owner or tags were set. You must define at least one.\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Neither the description, team owner, tags or plan were set. You must define at least one.\n")
 }
 
 func makeRequestToRemoveServiceInstance(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
