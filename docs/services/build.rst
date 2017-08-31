@@ -176,6 +176,7 @@ Here's an example implementation for this endpoint:
         description = request.form.get("description")
         tags = request.form.get("tag")
         team = request.form.get("team")
+        plan = request.form.get("plan")
         # use the given parameters to update the instance "name"
         return "", 200
 
