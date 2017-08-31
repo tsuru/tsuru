@@ -66,3 +66,36 @@ If you want to use gandalf, generate one app token and insert into docker-compos
 .. _Docker: https://docs.docker.com/engine/installation/
 .. _Compose: https://docs.docker.com/compose/install/
 .. _tsuru: https://github.com/tsuru/tsuru
+
+Kubernetes Integration
+----------------------
+
+One can register a minikube instance as a cluster in tsuru to be able to orchestrate tsuru applications on minikube.
+
+Start minikube:
+
+::
+    
+    $ minikube start --insecure-registry=10.0.0.0/8
+
+Create a pool in tsuru to be managed by the cluster:
+
+::
+
+    $ tsuru pool add kubepool --provisioner kubernetes
+
+
+Register your minikube as a tsuru cluster:
+
+::
+
+    tsuru cluster add minikube kubernetes --addr https://`minikube ip`:8443 --cacert $HOME/.minikube/ca.crt --clientcert $HOME/.minikube/apiserver.crt --clientkey $HOME/.minikube/apiserver.key --pool kubepool
+
+Add your kubernetes master as a member of kubepool:
+
+::
+
+    tsuru node update `minikube ip` pool=kubepool
+
+You are ready to create and deploy apps kubernetes.
+
