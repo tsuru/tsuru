@@ -77,24 +77,19 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		},
 	}
 	var cont *docker.Container
+	w := evt
+	fmt.Fprintln(w, "---- Pulling image to node ----")
+	pullOpts := docker.PullImageOptions{
+		Repository:        imageName,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	if err != nil {
+		return "", err
+	}
 	cont, err = client.CreateContainer(options)
-	if err != nil && err == docker.ErrNoSuchImage {
-		w := evt
-		fmt.Fprintln(w, "---- Pulling image to node ----")
-		pullOpts := docker.PullImageOptions{
-			Repository:        imageName,
-			OutputStream:      w,
-			InactivityTimeout: net.StreamInactivityTimeout,
-		}
-		err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
-		if err != nil {
-			return "", err
-		}
-		cont, err = client.CreateContainer(options)
-		if err != nil {
-			return "", err
-		}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
