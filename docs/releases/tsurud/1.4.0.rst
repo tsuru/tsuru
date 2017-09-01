@@ -33,17 +33,27 @@ This type of router resembles the service concept, in which it is an agnostic
 API that must follow a specific contract. This API will be called on every router
 operation, e.g, adding and removing new routes.
 
-Required migrations
-===================
+Backward incompatible changes
+=============================
 
-* To fix issue `#1625 <https://github.com/tsuru/tsuru/pull/1625>`_, which
-  caused tsuru to possibly remove the wrong envs when unbinding services, it
-  was necessary to change the way environment variables originated from
-  services are saved. Just run ``tsurud migrate`` after updating tsuru to fix
-  them on the storage.
+Required migrations
+-------------------
+
+To fix issue `#1625 <https://github.com/tsuru/tsuru/pull/1625>`_, which caused
+tsuru to possibly remove the wrong envs when unbinding services, it was
+necessary to change the way environment variables originated from services are
+saved. Just run ``tsurud migrate`` after updating tsuru to fix them on the
+storage.
+
+Platform changes
+----------------
+
+Due to changes in the build process and changes to `tsuru/deploy-agent
+<https://github.com/tsuru/deploy-agent>`_ it's required to update platforms to
+the latest version before tsuru allows new deploys.
 
 Other improvements
-------------------
+==================
 
 * Improved validation for several resources upon creation
   eg `#1680 <https://github.com/tsuru/tsuru/issues/1680>`_ and 
