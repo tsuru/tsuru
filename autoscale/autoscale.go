@@ -287,7 +287,7 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	}
 	if sResult.ToAdd > 0 {
 		evt.Logf("running event \"add\" for %q: %#v", pool, sResult)
-		evtNodes, err = a.addMultipleNodes(evt, prov, nodes, sResult.ToAdd)
+		evtNodes, err = a.addMultipleNodes(evt, prov, pool, nodes, sResult.ToAdd)
 		if err != nil {
 			if len(evtNodes) == 0 {
 				retErr = err
@@ -327,9 +327,9 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 	buf := safe.NewBuffer(nil)
 	writer := io.MultiWriter(buf, evt)
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
-		Force:          false,
-		MetadataFilter: map[string]string{provision.PoolMetadataName: pool},
-		Writer:         writer,
+		Force:  false,
+		Pool:   pool,
+		Writer: writer,
 	})
 	sResult.ToRebalance = shouldRebalance
 	if err != nil {
@@ -338,7 +338,7 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 	return nil
 }
 
-func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
+func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, pool string, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 	nodesCh := make(chan provision.Node, count)
@@ -346,7 +346,7 @@ func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvision
 	for i := 0; i < count; i++ {
 		go func() {
 			defer wg.Done()
-			node, err := a.addNode(evt, prov, modelNodes)
+			node, err := a.addNode(evt, prov, pool, modelNodes)
 			if err != nil {
 				errCh <- err
 				return
@@ -364,7 +364,7 @@ func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvision
 	return nodes, <-errCh
 }
 
-func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node) (provision.Node, error) {
+func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, pool string, modelNodes []provision.Node) (provision.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
 		return nil, err
@@ -381,6 +381,7 @@ func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, model
 	evt.Logf("new machine created: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
 		Address:    newAddr,
+		Pool:       pool,
 		Metadata:   metadata,
 		WaitTO:     a.WaitTimeNewMachine,
 		CaCert:     machine.CaCert,

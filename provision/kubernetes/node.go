@@ -22,11 +22,7 @@ var (
 )
 
 func (n *kubernetesNodeWrapper) Pool() string {
-	if n.node.Labels == nil {
-		return ""
-	}
-	l := provision.LabelSet{Labels: n.node.Labels}
-	return l.NodePool()
+	return labelSetFromMeta(&n.node.ObjectMeta).NodePool()
 }
 
 func (n *kubernetesNodeWrapper) Address() string {
@@ -52,6 +48,9 @@ func (n *kubernetesNodeWrapper) Status() string {
 
 func filterMap(m map[string]string, includeDotted bool) map[string]string {
 	for k := range m {
+		if strings.HasPrefix(k, tsuruLabelPrefix) {
+			continue
+		}
 		if includeDotted != strings.Contains(k, ".") {
 			delete(m, k)
 		}

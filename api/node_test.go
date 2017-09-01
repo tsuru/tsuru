@@ -48,6 +48,7 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 		Metadata: map[string]string{
 			"address": serverAddr,
 			"pool":    "pool1",
+			"m1":      "v1",
 		},
 	}
 	v, err := form.EncodeToValues(&params)
@@ -64,8 +65,9 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, serverAddr)
+	c.Assert(nodes[0].Pool(), check.Equals, "pool1")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		"m1": "v1",
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeNode, Value: serverAddr},
@@ -143,9 +145,9 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://test1.somewhere.com:2375")
+	c.Assert(nodes[0].Pool(), check.Equals, "pool1")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
 		"id":      "test1",
-		"pool":    "pool1",
 		"iaas":    "test-iaas",
 		"iaas-id": "test1",
 	})
@@ -377,13 +379,14 @@ func (s *S) TestListNodeHandlerNoContent(c *check.C) {
 
 func (s *S) TestListNodeHandler(c *check.C) {
 	err := s.provisioner.AddNode(provision.AddNodeOptions{
-		Address:  "host1.com:2375",
-		Metadata: map[string]string{"pool": "pool1"},
+		Address: "host1.com:2375",
+		Pool:    "pool1",
 	})
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddNode(provision.AddNodeOptions{
 		Address:  "host2.com:2375",
-		Metadata: map[string]string{"pool": "pool2", "foo": "bar"},
+		Pool:     "pool2",
+		Metadata: map[string]string{"foo": "bar"},
 	})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node", nil)
@@ -400,8 +403,8 @@ func (s *S) TestListNodeHandler(c *check.C) {
 		return result.Nodes[i].Address+result.Nodes[i].Pool < result.Nodes[j].Address+result.Nodes[j].Pool
 	})
 	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
-		{Address: "host1.com:2375", Provisioner: "fake", Pool: "pool1", Status: "enabled", Metadata: map[string]string{"pool": "pool1"}},
-		{Address: "host2.com:2375", Provisioner: "fake", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"pool": "pool2", "foo": "bar"}},
+		{Address: "host1.com:2375", Provisioner: "fake", Pool: "pool1", Status: "enabled", Metadata: map[string]string{}},
+		{Address: "host2.com:2375", Provisioner: "fake", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"foo": "bar"}},
 	})
 }
 
@@ -931,13 +934,13 @@ func intPtr(i int) *int {
 
 func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	err := s.provisioner.AddNode(provision.AddNodeOptions{
-		Address:  "n1",
-		Metadata: map[string]string{"pool": "test1"},
+		Address: "n1",
+		Pool:    "test1",
 	})
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddNode(provision.AddNodeOptions{
-		Address:  "n2",
-		Metadata: map[string]string{"pool": "test1"},
+		Address: "n2",
+		Pool:    "test1",
 	})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
@@ -999,5 +1002,5 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Matches, `(?s).*rebalancing - dry: true, force: true.*filtering apps: \[myapp\].*filtering metadata: map\[pool:pool1\].*`)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*rebalancing - dry: true, force: true.*filtering apps: \[myapp\].*filtering pool: pool1.*`)
 }

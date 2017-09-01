@@ -469,8 +469,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	pool := opts.Metadata[provision.PoolMetadataName]
-	existingClient, err := clusterForPool(pool)
+	existingClient, err := clusterForPool(opts.Pool)
 	if err != nil {
 		return err
 	}
@@ -500,7 +499,9 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
 		Addr:         opts.Address,
+		Pool:         opts.Pool,
 		CustomLabels: opts.Metadata,
+		Prefix:       tsuruLabelPrefix,
 	}).ToLabels()
 	err = existingClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
@@ -557,7 +558,17 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	if swarmNode.Spec.Annotations.Labels == nil {
 		swarmNode.Spec.Annotations.Labels = map[string]string{}
 	}
+	if opts.Pool != "" {
+		baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
+			Pool:   opts.Pool,
+			Prefix: tsuruLabelPrefix,
+		})
+		for k, v := range baseNodeLabels.ToLabels() {
+			swarmNode.Spec.Annotations.Labels[k] = v
+		}
+	}
 	for k, v := range opts.Metadata {
+		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
 		if v == "" {
 			delete(swarmNode.Spec.Annotations.Labels, k)
 		} else {

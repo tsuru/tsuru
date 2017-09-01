@@ -448,7 +448,7 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	p.nodes[opts.Address] = FakeNode{
 		Addr:     opts.Address,
-		PoolName: metadata["pool"],
+		PoolName: opts.Pool,
 		Meta:     metadata,
 		p:        p,
 		status:   "enabled",
@@ -502,6 +502,9 @@ func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	n, ok := p.nodes[opts.Address]
 	if !ok {
 		return provision.ErrNodeNotFound
+	}
+	if opts.Pool != "" {
+		n.PoolName = opts.Pool
 	}
 	if opts.Metadata != nil {
 		n.Meta = opts.Metadata
@@ -567,6 +570,9 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	}
 	if len(opts.MetadataFilter) != 0 {
 		fmt.Fprintf(w, "filtering metadata: %v\n", opts.MetadataFilter)
+	}
+	if opts.Pool != "" {
+		fmt.Fprintf(w, "filtering pool: %v\n", opts.Pool)
 	}
 	if len(p.nodes) == 0 || opts.Dry {
 		return true, nil

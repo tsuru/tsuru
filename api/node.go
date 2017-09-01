@@ -107,11 +107,12 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 	}
-	poolName := params.Metadata["pool"]
-	if poolName == "" {
+	params.Pool = params.Metadata[provision.PoolMetadataName]
+	delete(params.Metadata, provision.PoolMetadataName)
+	if params.Pool == "" {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
-	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, poolName)) {
+	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, params.Pool)) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
@@ -120,13 +121,13 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, params.Pool)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	p, err := pool.GetPoolByName(poolName)
+	p, err := pool.GetPoolByName(params.Pool)
 	if err != nil {
 		return err
 	}
@@ -350,10 +351,12 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !allowedOldPool {
 		return permission.ErrUnauthorized
 	}
-	newPool, ok := params.Metadata["pool"]
+	var ok bool
+	params.Pool, ok = params.Metadata[provision.PoolMetadataName]
 	if ok {
+		delete(params.Metadata, provision.PoolMetadataName)
 		allowedNewPool := permission.Check(t, permission.PermNodeUpdate,
-			permission.Context(permission.CtxPool, newPool),
+			permission.Context(permission.CtxPool, params.Pool),
 		)
 		if !allowedNewPool {
 			return permission.ErrUnauthorized
@@ -366,7 +369,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed: event.Allowed(permission.PermPoolReadEvents,
 			permission.Context(permission.CtxPool, oldPool),
-			permission.Context(permission.CtxPool, newPool),
+			permission.Context(permission.CtxPool, params.Pool),
 		),
 	})
 	if err != nil {
@@ -520,7 +523,6 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(err) }()
 	var config healer.NodeHealerConfig
-	delete(r.Form, "pool")
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&config, r.Form)
@@ -594,15 +596,17 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	params.Force = true
 	var permContexts []permission.PermissionContext
-	poolName, ok := params.MetadataFilter["pool"]
+	var ok bool
+	params.Pool, ok = params.MetadataFilter[provision.PoolMetadataName]
 	if ok {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, poolName))
+		delete(params.MetadataFilter, provision.PoolMetadataName)
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, params.Pool))
 	}
 	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Target:      event.Target{Type: event.TargetTypePool, Value: params.Pool},
 		Kind:        permission.PermNodeUpdateRebalance,
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
@@ -619,10 +623,10 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	params.Writer = writer
 	var provs []provision.Provisioner
-	if poolName != "" {
+	if params.Pool != "" {
 		var p *pool.Pool
 		var prov provision.Provisioner
-		p, err = pool.GetPoolByName(poolName)
+		p, err = pool.GetPoolByName(params.Pool)
 		if err != nil {
 			return err
 		}

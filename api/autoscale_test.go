@@ -78,8 +78,8 @@ func (s *S) TestAutoScaleHistoryHandler(c *check.C) {
 
 func (s *S) TestAutoScaleRunHandler(c *check.C) {
 	s.provisioner.AddNode(provision.AddNodeOptions{
-		Address:  "localhost:1999",
-		Metadata: map[string]string{"pool": "pool1"},
+		Address: "localhost:1999",
+		Pool:    "pool1",
 	})
 	config.Set("docker:auto-scale:enabled", true)
 	defer config.Unset("docker:auto-scale:enabled")
@@ -98,7 +98,7 @@ func (s *S) TestAutoScaleRunHandler(c *check.C) {
 	c.Assert(parts, check.DeepEquals, []string{
 		`{"Message":"running scaler *autoscale.countScaler for \"pool\": \"pool1\"\n"}`,
 		`{"Message":"rebalancing - dry: false, force: false\n"}`,
-		`{"Message":"filtering metadata: map[pool:pool1]\n"}`,
+		`{"Message":"filtering pool: pool1\n"}`,
 		`{"Message":"nothing to do for \"pool\": \"pool1\"\n"}`,
 		``,
 	})

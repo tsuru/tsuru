@@ -414,6 +414,7 @@ type UnitStatusProvisioner interface {
 
 type AddNodeOptions struct {
 	Address    string
+	Pool       string
 	Metadata   map[string]string
 	Register   bool
 	CaCert     []byte
@@ -430,6 +431,7 @@ type RemoveNodeOptions struct {
 
 type UpdateNodeOptions struct {
 	Address  string
+	Pool     string
 	Metadata map[string]string
 	Enable   bool
 	Disable  bool
@@ -459,6 +461,7 @@ type NodeProvisioner interface {
 
 type RebalanceNodesOptions struct {
 	Writer         io.Writer
+	Pool           string
 	MetadataFilter map[string]string
 	AppFilter      []string
 	Dry            bool

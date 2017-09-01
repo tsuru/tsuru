@@ -155,10 +155,9 @@ func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
 	nodeData, err := s.clusterCli.InspectNode(dockerInfo.Swarm.NodeID)
 	c.Assert(err, check.IsNil)
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
-		Addr: s.clusterSrv.URL(),
-		CustomLabels: map[string]string{
-			"pool": "bonehunters",
-		},
+		Addr:   s.clusterSrv.URL(),
+		Pool:   "bonehunters",
+		Prefix: tsuruLabelPrefix,
 	}).ToLabels()
 	err = s.clusterCli.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,

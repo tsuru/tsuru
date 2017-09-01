@@ -184,7 +184,7 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.Builde
 			return nil, err
 		}
 	} else {
-		nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+		nodes, err := cluster.NodesForMetadata(map[string]string{provision.PoolMetadataName: app.GetPool()})
 		if err != nil {
 			return nil, err
 		}

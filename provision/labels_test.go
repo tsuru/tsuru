@@ -138,6 +138,7 @@ func (s *S) TestNodeLabels(c *check.C) {
 		Addr:         "localhost:80",
 		Pool:         "mypool",
 		CustomLabels: map[string]string{"data": "1"},
+		Prefix:       "myprefix",
 	}
 	c.Assert(provision.NodeLabels(opts), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
@@ -145,5 +146,6 @@ func (s *S) TestNodeLabels(c *check.C) {
 			"pool": "mypool",
 			"data": "1",
 		},
+		Prefix: "myprefix",
 	})
 }

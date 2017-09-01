@@ -34,7 +34,7 @@ var (
 
 	labelNodeInternalPrefix = "tsuru-internal-"
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
-	LabelNodePool           = "pool"
+	LabelNodePool           = PoolMetadataName
 
 	labelVolumeName = "volume-name"
 	labelVolumePool = "volume-pool"
@@ -113,7 +113,8 @@ func (s *LabelSet) NodePool() string {
 func (s *LabelSet) PublicNodeLabels() map[string]string {
 	internalLabels := make(map[string]string)
 	for k, v := range s.Labels {
-		if strings.HasPrefix(k, labelNodeInternalPrefix) {
+		if strings.HasPrefix(k, labelNodeInternalPrefix) ||
+			strings.HasPrefix(k, s.Prefix+labelNodeInternalPrefix) {
 			continue
 		}
 		internalLabels[k] = v
@@ -299,18 +300,24 @@ func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 type NodeLabelsOpts struct {
 	Addr         string
 	Pool         string
+	Prefix       string
 	CustomLabels map[string]string
 }
 
 func NodeLabels(opts NodeLabelsOpts) *LabelSet {
-	labels := map[string]string{
-		LabelNodePool: opts.Pool,
-		labelNodeAddr: opts.Addr,
-	}
+	labels := map[string]string{}
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
-	return &LabelSet{Labels: labels}
+	for _, r := range []string{LabelNodePool, labelNodeAddr} {
+		delete(labels, r)
+		delete(labels, opts.Prefix+r)
+	}
+	labels[LabelNodePool] = opts.Pool
+	if opts.Addr != "" {
+		labels[labelNodeAddr] = opts.Addr
+	}
+	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
 type VolumeLabelsOpts struct {

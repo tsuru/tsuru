@@ -186,7 +186,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
-					"pool": "test-default",
+					"tsuru.io/pool": "test-default",
 				},
 			},
 			Status: apiv1.NodeStatus{
@@ -373,7 +373,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			provision.PoolMetadataName: a.GetPool(),
+			"tsuru.io/pool": a.GetPool(),
 		})
 		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, "true")
