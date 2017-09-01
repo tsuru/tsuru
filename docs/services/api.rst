@@ -137,23 +137,23 @@ user updates properties of a service instance via command line tool:
 
 ::
 
-    $ tsuru service-instance-update mysql mysql_instance --description "new-description" --tag "tag1" --tag "tag2" --team-owner "new-team-owner"
+    $ tsuru service-instance-update mysql mysql_instance --description "new-description" --tag "tag1" --tag "tag2" --team-owner "new-team-owner" --plan "new-plan"
 
 tsuru calls the service API to inform the instance update via PUT on ``/resources``
 (please notice that tsuru does not include a trailing slash) with the new, updated
-fields (description, tags and team owner). Example of request:
+fields (description, tags, team owner and plan). Example of request:
 
 ::
 
     PUT /resources/mysql_instance HTTP/1.1
     Host: myserviceapi.com
-    Content-Length: 56
+    Content-Length: 79
     User-Agent: Go 1.1 package http
     Accept: application/json
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
 
-    description=new-description&tag=tag1&tag=tag2&team=new-team-owner
+    description=new-description&tag=tag1&tag=tag2&team=new-team-owner&plan=new-plan
 
 The API should return the following HTTP response codes with the respective
 response body:
