@@ -105,7 +105,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						RunAsUser: &expectedUID,
 					},
 					NodeSelector: map[string]string{
-						"pool": "test-default",
+						"tsuru.io/pool": "test-default",
 					},
 					RestartPolicy: "Always",
 					Containers: []apiv1.Container{

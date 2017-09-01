@@ -112,7 +112,8 @@ func createBuildPod(params buildPodParams) error {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: params.app.GetPool(),
+		Pool:   params.app.GetPool(),
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
@@ -293,7 +294,8 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: a.GetPool(),
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}

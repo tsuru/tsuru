@@ -348,8 +348,12 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector()
 	nodes, err := client.Core().Nodes().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("pool=%s", a.GetPool()),
+		LabelSelector: labels.SelectorFromSet(nodeSelector).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -450,8 +454,7 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 	return node, nil
 }
 
-func setNodeMetadata(node *apiv1.Node, meta map[string]string) {
-	asLabelSet := map[string]struct{}{provision.PoolMetadataName: {}}
+func setNodeMetadata(node *apiv1.Node, pool string, meta map[string]string) {
 	if node.Labels == nil {
 		node.Labels = map[string]string{}
 	}
@@ -459,20 +462,27 @@ func setNodeMetadata(node *apiv1.Node, meta map[string]string) {
 		node.Annotations = map[string]string{}
 	}
 	for k, v := range meta {
-		mapToSet := node.Annotations
-		if _, isLabel := asLabelSet[k]; isLabel {
-			mapToSet = node.Labels
-		}
+		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
 		if v == "" {
-			delete(mapToSet, k)
+			delete(node.Annotations, k)
 		} else {
-			mapToSet[k] = v
+			node.Annotations[k] = v
+		}
+	}
+	if pool != "" {
+		baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
+			Pool:   pool,
+			Prefix: tsuruLabelPrefix,
+		})
+		for k, v := range baseNodeLabels.ToLabels() {
+			delete(node.Annotations, k)
+			node.Labels[k] = v
 		}
 	}
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	client, err := clusterForPool(opts.Metadata[provision.PoolMetadataName])
+	client, err := clusterForPool(opts.Pool)
 	if err != nil {
 		return err
 	}
@@ -482,12 +492,13 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 			Name: hostAddr,
 		},
 	}
-	setNodeMetadata(node, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, opts.Metadata)
 	_, err = client.Core().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
 		return p.UpdateNode(provision.UpdateNodeOptions{
 			Address:  hostAddr,
 			Metadata: opts.Metadata,
+			Pool:     opts.Pool,
 		})
 	}
 	if err == nil {
@@ -587,7 +598,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	} else if opts.Enable {
 		node.Spec.Unschedulable = false
 	}
-	setNodeMetadata(node, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)

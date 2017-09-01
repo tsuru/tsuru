@@ -76,8 +76,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n1:1",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -192,8 +192,8 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -356,8 +356,8 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -417,8 +417,8 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n1:1",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -568,8 +568,8 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -652,8 +652,8 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 4)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -687,8 +687,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 5)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -696,8 +696,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n3:3",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -735,8 +735,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -772,8 +772,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -781,8 +781,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n3:3",
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -893,10 +893,10 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://nx:9",
+		Pool:    "pool2",
 		Metadata: map[string]string{
-			"iaas": "my-scale-iaas",
-			provision.PoolMetadataName: "pool2",
-			"totalMem":                 "25165824",
+			"iaas":     "my-scale-iaas",
+			"totalMem": "25165824",
 		},
 	})
 	c.Assert(err, check.IsNil)

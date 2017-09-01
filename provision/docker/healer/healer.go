@@ -137,7 +137,7 @@ func healingEventToEvent(data *types.HealingEvent) error {
 			LastCheck: lastCheck,
 		}
 		endOpts = data.CreatedNode
-		poolName := data.FailingNode.Metadata["pool"]
+		poolName := data.FailingNode.Metadata[provision.PoolMetadataName]
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName))
 	case "container-healing":
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}

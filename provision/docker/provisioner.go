@@ -856,7 +856,7 @@ func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 	poolName := app.GetPool()
-	nodes, err := p.Cluster().NodesForMetadata(map[string]string{"pool": poolName})
+	nodes, err := p.Cluster().NodesForMetadata(map[string]string{provision.PoolMetadataName: poolName})
 	if err != nil {
 		return nil, err
 	}
@@ -963,7 +963,7 @@ func (n *clusterNodeWrapper) Address() string {
 }
 
 func (n *clusterNodeWrapper) Pool() string {
-	return n.Node.Metadata["pool"]
+	return n.Node.Metadata[provision.PoolMetadataName]
 }
 
 func (n *clusterNodeWrapper) Metadata() map[string]string {
@@ -1071,6 +1071,10 @@ func (p *dockerProvisioner) GetName() string {
 }
 
 func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	if opts.Metadata == nil {
+		opts.Metadata = map[string]string{}
+	}
+	opts.Metadata[provision.PoolMetadataName] = opts.Pool
 	node := cluster.Node{
 		Address:        opts.Address,
 		Metadata:       opts.Metadata,
@@ -1101,6 +1105,12 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *dockerProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	if opts.Metadata == nil {
+		opts.Metadata = map[string]string{}
+	}
+	if opts.Pool != "" {
+		opts.Metadata[provision.PoolMetadataName] = opts.Pool
+	}
 	node := cluster.Node{Address: opts.Address, Metadata: opts.Metadata}
 	if opts.Disable {
 		node.CreationStatus = cluster.NodeCreationStatusDisabled
@@ -1157,6 +1167,12 @@ func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer
 }
 
 func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	if opts.MetadataFilter == nil {
+		opts.MetadataFilter = map[string]string{}
+	}
+	if opts.Pool != "" {
+		opts.MetadataFilter[provision.PoolMetadataName] = opts.Pool
+	}
 	isOnlyPool := len(opts.MetadataFilter) == 1 && opts.MetadataFilter[provision.PoolMetadataName] != ""
 	if opts.Force || !isOnlyPool || len(opts.AppFilter) > 0 {
 		_, err := p.rebalanceContainersByFilter(opts.Writer, opts.AppFilter, opts.MetadataFilter, opts.Dry)

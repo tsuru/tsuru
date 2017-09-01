@@ -126,9 +126,9 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 func (s *S) TestAddNode(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
+		Pool:    "p1",
 		Metadata: map[string]string{
-			"pool": "p1",
-			"m1":   "v1",
+			"m1": "v1",
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -138,14 +138,45 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
 	c.Assert(nodes[0].Pool(), check.Equals, "p1")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"pool": "p1",
-		"m1":   "v1",
+		"tsuru.io/pool": "p1",
+		"tsuru.io/m1":   "v1",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"pool": "p1",
+		"tsuru.io/pool": "p1",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"m1": "v1",
+		"tsuru.io/m1": "v1",
+	})
+}
+
+func (s *S) TestAddNodePrefixed(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		Metadata: map[string]string{
+			"tsuru.io/m1":   "v1",
+			"m2":            "v2",
+			"pool":          "p2", // ignored
+			"tsuru.io/pool": "p3", // ignored
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p1")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+		"tsuru.io/m1":   "v1",
+		"tsuru.io/m2":   "v2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"tsuru.io/m1": "v1",
+		"tsuru.io/m2": "v2",
 	})
 }
 
@@ -153,9 +184,9 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 	s.mockfakeNodes(c)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "n1",
+		Pool:    "Pxyz",
 		Metadata: map[string]string{
-			"pool": "Pxyz",
-			"m1":   "v1",
+			"m1": "v1",
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -164,26 +195,26 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 	c.Assert(n.Address(), check.Equals, "192.168.99.1")
 	c.Assert(n.Pool(), check.Equals, "Pxyz")
 	c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-		"pool": "Pxyz",
-		"m1":   "v1",
+		"tsuru.io/pool": "Pxyz",
+		"tsuru.io/m1":   "v1",
 	})
 }
 
 func (s *S) TestUpdateNode(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
+		Pool:    "p1",
 		Metadata: map[string]string{
-			"pool": "p1",
-			"m1":   "v1",
+			"m1": "v1",
 		},
 	})
 	c.Assert(err, check.IsNil)
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
 		Address: "my-node-addr",
+		Pool:    "p2",
 		Metadata: map[string]string{
-			"pool": "p2",
-			"m1":   "",
-			"m2":   "v2",
+			"m1": "",
+			"m2": "v2",
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -193,14 +224,48 @@ func (s *S) TestUpdateNode(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
 	c.Assert(nodes[0].Pool(), check.Equals, "p2")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"pool": "p2",
-		"m2":   "v2",
+		"tsuru.io/pool": "p2",
+		"tsuru.io/m2":   "v2",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"pool": "p2",
+		"tsuru.io/pool": "p2",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"m2": "v2",
+		"tsuru.io/m2": "v2",
+	})
+}
+
+func (s *S) TestUpdateNodeNoPool(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Metadata: map[string]string{
+			"m1": "",
+			"m2": "v2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p1")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+		"tsuru.io/m2":   "v2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"tsuru.io/m2": "v2",
 	})
 }
 

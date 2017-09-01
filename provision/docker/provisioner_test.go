@@ -2759,8 +2759,9 @@ func (s *S) TestAddNode(c *check.C) {
 	mainDockerProvisioner = &p
 	opts := provision.AddNodeOptions{
 		Address: server.URL(),
+		Pool:    "pool1",
 		Metadata: map[string]string{
-			"pool": "pool1",
+			"m1": "x1",
 		},
 	}
 	err = p.AddNode(opts)
@@ -2772,6 +2773,7 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(nodes[0].Address, check.Equals, server.URL())
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool":        "pool1",
+		"m1":          "x1",
 		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
@@ -2798,10 +2800,8 @@ func (s *S) TestAddNodeWithWait(c *check.C) {
 	mainDockerProvisioner = &p
 	opts := provision.AddNodeOptions{
 		Address: server.URL(),
-		Metadata: map[string]string{
-			"pool": "pool1",
-		},
-		WaitTO: time.Second,
+		Pool:    "pool1",
+		WaitTO:  time.Second,
 	}
 	err = p.AddNode(opts)
 	c.Assert(err, check.IsNil)

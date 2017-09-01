@@ -19,6 +19,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 )
 
 var errDriverNotSet = errors.Errorf("driver is mandatory")
@@ -66,7 +67,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	}
 	machineName, ok := params["name"]
 	if !ok {
-		name, err := generateMachineName(params["pool"])
+		name, err := generateMachineName(params[provision.PoolMetadataName])
 		if err != nil {
 			return nil, err
 		}

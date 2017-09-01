@@ -44,7 +44,7 @@ func RecreateNamedContainers(p DockerProvisioner, w io.Writer, name string, pool
 	if pool == "" {
 		nodes, err = p.Cluster().UnfilteredNodes()
 	} else {
-		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{"pool": pool})
+		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{provision.PoolMetadataName: pool})
 	}
 	if err != nil || len(nodes) == 0 {
 		return err
@@ -80,7 +80,7 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 	errChan := make(chan error, len(nodes)*len(names))
 	log.Debugf("[node containers] recreating %d containers", len(nodes)*len(names))
 	recreateContainer := func(node *cluster.Node, confName string) {
-		pool := node.Metadata["pool"]
+		pool := node.Metadata[provision.PoolMetadataName]
 		containerConfig, confErr := nodecontainer.LoadNodeContainer(pool, confName)
 		if confErr != nil {
 			errChan <- confErr
@@ -218,7 +218,7 @@ func RemoveNamedContainers(p DockerProvisioner, w io.Writer, name string, pool s
 	if pool == "" {
 		nodes, err = p.Cluster().UnfilteredNodes()
 	} else {
-		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{"pool": pool})
+		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{provision.PoolMetadataName: pool})
 	}
 	if err != nil {
 		return errors.WithStack(err)
@@ -226,7 +226,7 @@ func RemoveNamedContainers(p DockerProvisioner, w io.Writer, name string, pool s
 	errChan := make(chan error, len(nodes))
 	wg := sync.WaitGroup{}
 	removeContainer := func(node *cluster.Node) {
-		pool := node.Metadata["pool"]
+		pool := node.Metadata[provision.PoolMetadataName]
 		client, err := node.Client()
 		if err != nil {
 			errChan <- err

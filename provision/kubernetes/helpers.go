@@ -368,7 +368,10 @@ func getServicePort(client *clusterClient, srvName string) (int32, error) {
 }
 
 func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
-	merged := meta.Labels
+	merged := make(map[string]string, len(meta.Labels)+len(meta.Annotations))
+	for k, v := range meta.Labels {
+		merged[k] = v
+	}
 	for k, v := range meta.Annotations {
 		merged[k] = v
 	}
@@ -483,7 +486,8 @@ type runSinglePodArgs struct {
 
 func runPod(args runSinglePodArgs) error {
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: args.pool,
+		Pool:   args.pool,
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

@@ -28,6 +28,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
@@ -169,11 +170,11 @@ func moveContainersPermissionContexts(from, to string) ([]permission.PermissionC
 		return nil, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	var permContexts []permission.PermissionContext
-	originPool, ok := originHost.Metadata["pool"]
+	originPool, ok := originHost.Metadata[provision.PoolMetadataName]
 	if ok {
 		permContexts = append(permContexts, permission.Context(permission.CtxPool, originPool))
 	}
-	if pool, ok := destinationHost.Metadata["pool"]; ok && pool != originPool {
+	if pool, ok := destinationHost.Metadata[provision.PoolMetadataName]; ok && pool != originPool {
 		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
 	}
 	return permContexts, nil
@@ -239,8 +240,6 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	pool := r.FormValue("pool")
 	restart, _ := strconv.ParseBool(r.FormValue("restart"))
-	delete(r.Form, "pool")
-	delete(r.Form, "restart")
 	var conf container.DockerLogConfig
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
