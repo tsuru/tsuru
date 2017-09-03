@@ -19,24 +19,45 @@ Adding repositories
 
 Let's start adding the repositories for tsuru which contain the PlanB package.
 
+deb:
+
 .. highlight:: bash
 
 ::
 
-    sudo apt-get install software-properties-common -y
-    sudo apt-add-repository ppa:tsuru/ppa -y
-    sudo apt-get update
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.deb.sh | sudo bash
+
+rpm:
+
+.. highlight:: bash
+
+::
+
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.rpm.sh | sudo bash
+
+For more details, check `packagecloud.io documentation
+<https://packagecloud.io/tsuru/stable/install#bash>`_.
+
 
 Installing
 ==========
 
-In order to install PlanB, just use apt-get:
+deb:
 
 .. highlight:: bash
 
 ::
 
-    sudo apt-get install planb -y
+    $ sudo apt-get install planb
+
+rpm:
+
+.. highlight:: bash
+
+::
+
+    $ sudo yum install planb
+
 
 Configuring
 ===========
