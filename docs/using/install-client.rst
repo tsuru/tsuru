@@ -19,7 +19,7 @@ binaries, packages or building them from source.
 
 - `Downloading binaries (Mac OS X, Linux and Windows)`_
 - `Using homebrew (Mac OS X only)`_
-- `Using the PPA (Ubuntu only)`_
+- `Using the packagecloud.io (Linux)`_
 - `Build from source (Linux, Mac OS X and Windows)`_
 
 Downloading binaries (Mac OS X, Linux and Windows)
