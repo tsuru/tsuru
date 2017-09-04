@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"sort"
 	"testing"
@@ -72,11 +73,10 @@ func (s *S) TestColumnsSize(c *check.C) {
 
 func (s *S) TestSeparator(c *check.C) {
 	table := NewTable()
-	table.AddRow(Row{"One", "1"})
-	table.AddRow(Row{"Two", "2"})
-	table.AddRow(Row{"Three", "3"})
 	expected := "+-------+---+\n"
-	c.Assert(table.separator(), check.Equals, expected)
+	buf := bytes.NewBuffer(nil)
+	table.separator(buf, []int{5, 1})
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
 func (s *S) TestHeadings(c *check.C) {
@@ -478,6 +478,6 @@ yet another big line`})
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		table.String()
+		_ = table.String()
 	}
 }
