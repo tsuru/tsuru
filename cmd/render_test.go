@@ -7,6 +7,7 @@ package cmd
 import (
 	"os"
 	"sort"
+	"testing"
 
 	"gopkg.in/check.v1"
 )
@@ -463,4 +464,20 @@ jk`})
 	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
 3: ↵
 4`})
+}
+
+func BenchmarkString(b *testing.B) {
+	b.StopTimer()
+	table := NewTable()
+	table.Headers = Row{"row 1", "row 2", "row 3", "row 4"}
+	for i := 0; i < 100; i++ {
+		table.AddRow(Row{"my big string", "other string", "small", `largest string in the whole table
+continuing string
+another line
+yet another big line`})
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		table.String()
+	}
 }
