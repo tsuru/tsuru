@@ -402,7 +402,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
+func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
 	messages, err := notReadyPodEvents(client, a, processName)
 	var msgErrorPart string
 	if err == nil {
@@ -413,7 +413,7 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 			msgErrorPart = ": " + strings.Join(messages, ", ")
 		}
 	}
-	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
+	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
 func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provision.App, processName string, w io.Writer) error {
@@ -458,7 +458,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allPodsInitialized(client, a, processName)
+			allInit, err = allNewPodsRunning(client, a, processName, dep.Status.ObservedGeneration)
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
@@ -482,9 +482,9 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 		select {
 		case <-time.After(100 * time.Millisecond):
 		case <-healthcheckTimeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
 		case <-timeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		}
 		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {

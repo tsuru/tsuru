@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,12 +25,15 @@ import (
 	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
-	tsuruLabelPrefix = "tsuru.io/"
+	tsuruLabelPrefix   = "tsuru.io/"
+	replicaDepRevision = "deployment.kubernetes.io/revision"
+	kubeKindReplicaSet = "ReplicaSet"
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
@@ -113,33 +117,73 @@ func podsForAppProcess(client *clusterClient, a provision.App, process string) (
 	} else {
 		selector = l.ToSelector()
 	}
-	return client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return podList, nil
 }
 
-func allPodsInitialized(client *clusterClient, a provision.App, process string) (bool, error) {
-	pods, err := podsForAppProcess(client, a, process)
+func allNewPodsRunning(client *clusterClient, a provision.App, process string, generation int64) (bool, error) {
+	labelOpts := provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	}
+	ls, err := provision.ServiceLabels(labelOpts)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	for _, pod := range pods.Items {
-		for _, cond := range pod.Status.Conditions {
-			if cond.Type != apiv1.PodInitialized {
-				continue
-			}
-			if cond.Status != apiv1.ConditionTrue {
-				return false, nil
-			}
+	replicaSets, err := client.Extensions().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
+	})
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	generationStr := strconv.Itoa(int(generation))
+	var replica *v1beta1.ReplicaSet
+	for i, rs := range replicaSets.Items {
+		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == generationStr {
+			replica = &replicaSets.Items[i]
+			break
 		}
 	}
-	return true, nil
+	if replica == nil {
+		return false, nil
+	}
+	pods, err := podsForAppProcess(client, a, process)
+	if err != nil {
+		return false, err
+	}
+	newCount := 0
+	for _, pod := range pods.Items {
+		newPod := false
+		for _, ref := range pod.OwnerReferences {
+			if ref.Kind == kubeKindReplicaSet && ref.Name == replica.Name {
+				newPod = true
+				break
+			}
+		}
+		if !newPod {
+			continue
+		}
+		newCount++
+		if pod.Status.Phase != apiv1.PodRunning {
+			return false, nil
+		}
+	}
+	return newCount > 0, nil
 }
 
 func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
 	pods, err := podsForAppProcess(client, a, process)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	var podsForEvts []*apiv1.Pod
 podsLoop:
@@ -418,7 +462,7 @@ func execCommand(opts execOpts) error {
 		var pods *apiv1.PodList
 		pods, err = podsForAppProcess(client, opts.app, "")
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		if len(pods.Items) == 0 {
 			return provision.ErrEmptyApp
