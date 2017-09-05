@@ -512,12 +512,12 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 		err   error
 	}{
 		{"my-service", nil},
-		{"my_service", ErrInvalidInstanceName},
-		{"MyService", ErrInvalidInstanceName},
+		{"my_service", nil},
+		{"MyService", nil},
 		{"a1", nil},
 		{"--app", ErrInvalidInstanceName},
 		{"123servico", ErrInvalidInstanceName},
-		{"a", nil},
+		{"a", ErrInvalidInstanceName},
 		{"a@123", ErrInvalidInstanceName},
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -530,7 +530,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
 		err := CreateServiceInstance(instance, &srv, s.user, "")
-		c.Check(err, check.Equals, t.err)
+		c.Check(err, check.Equals, t.err, check.Commentf(t.input))
 	}
 }
 

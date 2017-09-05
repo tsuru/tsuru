@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -33,6 +33,7 @@ var (
 	ErrAppNotBound               = errors.New("app is not bound to this service instance")
 	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -355,7 +356,7 @@ func validateServiceInstance(si ServiceInstance, s *Service) error {
 }
 
 func validateServiceInstanceName(service, instance string) error {
-	if !validation.ValidateName(instance) {
+	if !instanceNameRegexp.MatchString(instance) {
 		return ErrInvalidInstanceName
 	}
 	conn, err := db.Conn()
