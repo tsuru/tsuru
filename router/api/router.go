@@ -138,7 +138,11 @@ func (r *apiRouter) AddBackend(name string) (err error) {
 }
 
 func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
-	return r.doBackendOpts(name, http.MethodPost, opts)
+	err := r.doBackendOpts(name, http.MethodPost, opts)
+	if err != nil {
+		return err
+	}
+	return router.Store(name, r.routerName, routerType)
 }
 
 func (r *apiRouter) UpdateBackendOpts(name string, opts map[string]string) error {
@@ -247,7 +251,10 @@ func (r *apiRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err 
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *apiRouter) StartupMessage() (string, error) {

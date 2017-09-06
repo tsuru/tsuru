@@ -18,6 +18,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 	check "gopkg.in/check.v1"
@@ -43,6 +45,9 @@ func (s *S) SetUpTest(c *check.C) {
 		routerName: "apirouter",
 	}
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
+	config.Set("database:name", "router_api_tests")
+	s.apiRouter.backends = make(map[string]*backend)
+	s.testRouter.AddBackend("mybackend")
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": {addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
@@ -50,6 +55,10 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	config.Unset("routers:apirouter")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Collection("router_api_tests").Database)
 	s.apiRouter.stop()
 }
 
@@ -102,7 +111,9 @@ func (s *S) TestRemoveBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveBackendSwapped(c *check.C) {
-	err := s.testRouter.Swap("mybackend", "backend2", false)
+	err := s.testRouter.AddBackend("backend2")
+	c.Assert(err, check.IsNil)
+	err = s.testRouter.Swap("mybackend", "backend2", false)
 	c.Assert(err, check.IsNil)
 	err = s.testRouter.RemoveBackend("mybackend")
 	c.Assert(err, check.DeepEquals, router.ErrBackendSwapped)
@@ -168,7 +179,9 @@ func (s *S) TestGetRoutesBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestSwap(c *check.C) {
-	err := s.testRouter.Swap("mybackend", "backend2", false)
+	err := s.testRouter.AddBackend("backend2")
+	c.Assert(err, check.IsNil)
+	err = s.testRouter.Swap("mybackend", "backend2", false)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, false)
 	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
