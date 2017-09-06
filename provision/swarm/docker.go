@@ -219,14 +219,6 @@ func extraRegisterCmds(app provision.App) string {
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, app.GetName())
 }
 
-func selectorToNodeConstraints(selector map[string]string) []string {
-	constraints := make([]string, 0, len(selector))
-	for k, v := range selector {
-		constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", k, v))
-	}
-	return constraints
-}
-
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var envs []string
 	appEnvs := provision.EnvsForApp(opts.app, opts.process, opts.isDeploy)
