@@ -141,7 +141,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
-							Key:      "pool",
+							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpNotIn,
 							Values:   []string{"p1", "p2"},
 						},
@@ -166,7 +166,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
-							Key:      "pool",
+							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpIn,
 							Values:   []string{"p1"},
 						},
@@ -277,7 +277,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
-							Key:      "pool",
+							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpNotIn,
 							Values:   []string{"p1"},
 						},

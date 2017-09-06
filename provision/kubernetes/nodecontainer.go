@@ -48,7 +48,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		oldDs = nil
 	}
 	nodeReq := apiv1.NodeSelectorRequirement{
-		Key: provision.LabelNodePool,
+		Key: tsuruLabelPrefix + provision.LabelNodePool,
 	}
 	if len(filter.Exclude) > 0 {
 		nodeReq.Operator = apiv1.NodeSelectorOpNotIn
