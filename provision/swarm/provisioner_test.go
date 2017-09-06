@@ -1515,10 +1515,10 @@ func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := client.InspectService("node-container-bs-all")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool != p1"})
 	service, err = client.InspectService("node-container-bs-p1")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool == p1"})
 }
 
 func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
@@ -1539,10 +1539,10 @@ func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := client.InspectService("node-container-bs-all")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool != p1"})
 	service, err = client.InspectService("node-container-bs-p1")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool == p1"})
 }
 
 func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {

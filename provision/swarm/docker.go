@@ -219,6 +219,14 @@ func extraRegisterCmds(app provision.App) string {
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, app.GetName())
 }
 
+func selectorToNodeConstraints(selector map[string]string) []string {
+	constraints := make([]string, 0, len(selector))
+	for k, v := range selector {
+		constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", k, v))
+	}
+	return constraints
+}
+
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var envs []string
 	appEnvs := provision.EnvsForApp(opts.app, opts.process, opts.isDeploy)
@@ -289,7 +297,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	uReplicas := uint64(opts.replicas)
 	user, _ := dockercommon.UserForContainer()
-	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, opts.app.GetPool()))
+	opts.constraints = append(opts.constraints, toNodePoolConstraint(opts.app.GetPool(), true))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -430,11 +438,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	var constraints []string
 	if len(filter.Exclude) > 0 {
 		for _, v := range filter.Exclude {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", provision.LabelNodePool, v))
+			constraints = append(constraints, toNodePoolConstraint(v, false))
 		}
 	} else {
 		for _, v := range filter.Include {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, v))
+			constraints = append(constraints, toNodePoolConstraint(v, true))
 		}
 	}
 	var mounts []mount.Mount
@@ -556,4 +564,12 @@ func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
 				imgName, errors.WithStack(err))
 		}
 	}
+}
+
+func toNodePoolConstraint(pool string, equal bool) string {
+	operator := "=="
+	if !equal {
+		operator = "!="
+	}
+	return fmt.Sprintf("node.labels.%s%s %s %s", tsuruLabelPrefix, provision.LabelNodePool, operator, pool)
 }
