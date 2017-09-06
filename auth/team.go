@@ -6,6 +6,7 @@ package auth
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,9 +15,10 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
 
 type ErrTeamStillUsed struct {
 	Apps             []string
@@ -42,7 +44,7 @@ func (e *ErrTeamStillUsed) Error() string {
 }
 
 func validateTeam(t authTypes.Team) error {
-	if !validation.ValidateName(t.Name) {
+	if !teamNameRegexp.MatchString(t.Name) {
 		return authTypes.ErrInvalidTeamName
 	}
 	return nil
