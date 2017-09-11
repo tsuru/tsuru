@@ -341,6 +341,8 @@ func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
 	}
 	_, code, err := r.do(http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), nil)
 	switch code {
+	case http.StatusBadRequest:
+		return router.ErrCNameNotAllowed
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
 	case http.StatusConflict:
@@ -367,7 +369,11 @@ func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
 }
 
 func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
-	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/cname", name), nil)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/cname", backendName), nil)
 	if code == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
@@ -381,11 +387,7 @@ func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
 	}
 	var urls []*url.URL
 	for _, addr := range resp.Cnames {
-		parsed, err := url.Parse(addr)
-		if err != nil {
-			return nil, err
-		}
-		urls = append(urls, parsed)
+		urls = append(urls, &url.URL{Host: addr})
 	}
 	return urls, nil
 }

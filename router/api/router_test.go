@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"net/url"
@@ -42,6 +43,8 @@ func init() {
 	var r *fakeRouterAPI
 	suite.SetUpTestFunc = func(c *check.C) {
 		r = newFakeRouter(c)
+		r.router.HandleFunc("/support/{feature}", func(http.ResponseWriter, *http.Request) {
+		})
 		config.Set("routers:apirouter:api-url", r.endpoint)
 		config.Set("database:name", "router_api_tests")
 		r.backends = make(map[string]*backend)
@@ -450,7 +453,7 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 	}
 	var req map[string]string
 	json.NewDecoder(r.Body).Decode(&req)
-	f.backends[name] = &backend{opts: req}
+	f.backends[name] = &backend{opts: req, addr: name + ".apirouter.com"}
 }
 
 func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
@@ -590,6 +593,10 @@ func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
 	backend, ok := f.backends[name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if strings.HasSuffix(cname, fmt.Sprintf(".%s.apirouter.com", name)) {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	var hasCname bool
