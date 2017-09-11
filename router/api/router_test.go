@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	check "gopkg.in/check.v1"
 )
 
@@ -35,6 +36,29 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func init() {
+	suite := &routertest.RouterSuite{}
+	var r *fakeRouterAPI
+	suite.SetUpTestFunc = func(c *check.C) {
+		r = newFakeRouter(c)
+		config.Set("routers:apirouter:api-url", r.endpoint)
+		config.Set("database:name", "router_api_tests")
+		r.backends = make(map[string]*backend)
+		apiRouter, err := createRouter("api", "routers:apirouter")
+		c.Assert(err, check.IsNil)
+		suite.Router = apiRouter
+	}
+	suite.TearDownTestFunc = func(c *check.C) {
+		r.stop()
+		config.Unset("routers:apirouter")
+		conn, err := db.Conn()
+		c.Assert(err, check.IsNil)
+		defer conn.Close()
+		dbtest.ClearAllCollections(conn.Collection("router_api_tests").Database)
+	}
+	check.Suite(suite)
+}
 
 func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter = newFakeRouter(c)
