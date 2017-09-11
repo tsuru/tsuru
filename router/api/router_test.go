@@ -205,14 +205,13 @@ func (s *S) TestGetRoutesBackendNotFound(c *check.C) {
 func (s *S) TestSwap(c *check.C) {
 	err := s.testRouter.AddBackend("backend2")
 	c.Assert(err, check.IsNil)
-	err = s.testRouter.Swap("mybackend", "backend2", false)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, false)
-	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
 	err = s.testRouter.Swap("mybackend", "backend2", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, true)
 	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
+	err = s.testRouter.Swap("mybackend", "backend2", true)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "")
 }
 
 func (s *S) TestSwapNotFound(c *check.C) {
@@ -510,7 +509,21 @@ func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	backend.addresses = append(backend.addresses, req.Addresses...)
+	rMap := make(map[string]struct{})
+	addressToKey := func(a string) string {
+		u, _ := url.Parse(a)
+		return u.Host + ":" + u.Port()
+	}
+	for _, a := range backend.addresses {
+		rMap[addressToKey(a)] = struct{}{}
+	}
+	for i, a := range req.Addresses {
+		if _, ok := rMap[addressToKey(a)]; ok {
+			continue
+		}
+		rMap[addressToKey(a)] = struct{}{}
+		backend.addresses = append(backend.addresses, req.Addresses[i])
+	}
 }
 
 func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -527,15 +540,19 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	addrMap := make(map[string]struct{})
+	addressToKey := func(a string) string {
+		u, _ := url.Parse(a)
+		return u.Host + ":" + u.Port()
+	}
+	addrMap := make(map[string]string)
 	for _, b := range backend.addresses {
-		addrMap[b] = struct{}{}
+		addrMap[addressToKey(b)] = b
 	}
 	for _, b := range req.Addresses {
-		delete(addrMap, b)
+		delete(addrMap, addressToKey(b))
 	}
 	backend.addresses = nil
-	for b := range addrMap {
+	for _, b := range addrMap {
 		backend.addresses = append(backend.addresses, b)
 	}
 }
@@ -543,15 +560,27 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	target := r.FormValue("target")
+	targetName := r.FormValue("target")
 	cnameOnly := r.FormValue("cnameOnly")
 	backend, ok := f.backends[name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.swapWith = target
+	target, ok := f.backends[targetName]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if backend.swapWith == targetName {
+		backend.swapWith = ""
+		target.swapWith = ""
+	} else {
+		backend.swapWith = targetName
+		target.swapWith = name
+	}
 	backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
+	target.cnameOnly = backend.cnameOnly
 }
 
 func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
