@@ -63,7 +63,7 @@ func readRespFromFile() string {
 	f, _ := os.Open("testdata/resp.xml")
 	io.Copy(buf, f)
 	f.Close()
-	return string(buf.Bytes())
+	return buf.String()
 }
 
 func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
