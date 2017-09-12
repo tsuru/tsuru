@@ -377,7 +377,7 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 			return
 		}
 	})
-	config.Set("routers:apirouter:headers", map[string]string{"X-CUSTOM": "HI"})
+	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI"})
 	defer config.Unset("router:apirouter:headers")
 	r, err := createRouter("apirouter", "routers:apirouter")
 	c.Assert(err, check.IsNil)

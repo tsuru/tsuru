@@ -78,13 +78,20 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	}
 	debug, _ := config.GetBool(configPrefix + ":debug")
 	headers, _ := config.Get(configPrefix + ":headers")
-	var headerMap map[string]string
+	headerMap := make(map[string]string)
 	if headers != nil {
-		h, ok := headers.(map[string]string)
+		h, ok := headers.(map[interface{}]interface{})
 		if !ok {
 			return nil, errors.Errorf("invalid header configuration: %v", headers)
 		}
-		headerMap = h
+		for k, v := range h {
+			k, okK := k.(string)
+			v, okV := v.(string)
+			if !okK || !okV {
+				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
+			}
+			headerMap[k] = v
+		}
 	}
 	baseRouter := &apiRouter{
 		routerName: routerName,
