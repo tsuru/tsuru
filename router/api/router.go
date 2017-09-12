@@ -181,14 +181,14 @@ func (r *apiRouter) RemoveBackend(name string) (err error) {
 }
 
 func (r *apiRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(name, http.MethodPost, addresses)
+	return r.doRoutes(name, addresses, "")
 }
 
 func (r *apiRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(name, http.MethodDelete, addresses)
+	return r.doRoutes(name, addresses, "/remove")
 }
 
-func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
+func (r *apiRouter) doRoutes(name string, addresses []*url.URL, suffix string) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -203,8 +203,8 @@ func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
 		return err
 	}
 	body := bytes.NewReader(data)
-	path := fmt.Sprintf("backend/%s/routes", backendName)
-	_, statusCode, err := r.do(method, path, body)
+	path := fmt.Sprintf("backend/%s/routes%s", backendName, suffix)
+	_, statusCode, err := r.do(http.MethodPost, path, body)
 	if statusCode == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
