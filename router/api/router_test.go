@@ -395,7 +395,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}", api.removeBackend).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/routes", api.getRoutes).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/routes", api.addRoutes).Methods(http.MethodPost)
-	r.HandleFunc("/backend/{name}/routes", api.removeRoutes).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/routes/remove", api.removeRoutes).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/swap", api.swap).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
