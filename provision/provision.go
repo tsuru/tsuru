@@ -222,6 +222,8 @@ type App interface {
 
 	GetPool() string
 
+	GetTeamOwner() string
+
 	SetQuotaInUse(int) error
 }
 

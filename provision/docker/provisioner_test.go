@@ -257,6 +257,8 @@ func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 }
 
 func (s *S) TestDeploy(c *check.C) {
+	config.Unset("docker:repository-namespace")
+	defer config.Set("docker:repository-namespace", "tsuru")
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -290,9 +292,9 @@ func (s *S) TestDeploy(c *check.C) {
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
+	c.Assert(builderImgID, check.Equals, s.team.Name+"/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
-		Repository: "tsuru/app-" + a.Name,
+		Repository: s.team.Name + "/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())

@@ -52,7 +52,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 }
 
 func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
@@ -104,7 +104,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 }
 
 func (s *S) TestBuilderImageID(c *check.C) {
@@ -403,7 +403,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	_, err = image.AppNewImageName(a.Name)
 	c.Assert(err, check.IsNil)
 	bopts = builder.BuildOpts{
@@ -411,7 +411,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	imgID, err = s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v2-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }
 
 func (s *S) TestBuilderErasesOldImages(c *check.C) {
@@ -449,7 +449,7 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-myapp:v1-builder", "tsuru/python:latest"}
+	expected := []string{s.team.Name + "/app-myapp:v1-builder", "tsuru/python:latest"}
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
@@ -464,6 +464,6 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
 	got = []string{imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-myapp:v2-builder", "tsuru/python:latest"}
+	expected = []string{s.team.Name + "/app-myapp:v2-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 }

@@ -369,7 +369,7 @@ func PullAppImageNames(appName string, images []string) error {
 }
 
 func PlatformImageName(platformName string) string {
-	return fmt.Sprintf("%s/%s:latest", basicImageName(), platformName)
+	return fmt.Sprintf("%s/%s:latest", basicImageName("tsuru"), platformName)
 }
 
 func GetProcessesFromProcfile(strProcfile string) map[string][]string {
@@ -383,7 +383,7 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	return processes
 }
 
-func AppNewBuilderImageName(appName string) (string, error) {
+func AppNewBuilderImageName(appName, teamOwner string) (string, error) {
 	coll, err := appImagesColl()
 	if err != nil {
 		return "", err
@@ -395,7 +395,7 @@ func AppNewBuilderImageName(appName string) (string, error) {
 		return "", err
 	}
 	version := imgs.Count + 1
-	return fmt.Sprintf("%s:v%d-builder", appBasicImageName(appName), version), nil
+	return fmt.Sprintf("%s:v%d-builder", appBasicBuilderImageName(appName, teamOwner), version), nil
 }
 
 func ListAppBuilderImages(appName string) ([]string, error) {
@@ -449,10 +449,17 @@ func AppCurrentBuilderImageName(appName string) (string, error) {
 }
 
 func appBasicImageName(appName string) string {
-	return fmt.Sprintf("%s/app-%s", basicImageName(), appName)
+	return fmt.Sprintf("%s/app-%s", basicImageName("tsuru"), appName)
 }
 
-func basicImageName() string {
+func appBasicBuilderImageName(appName, teamName string) string {
+	if teamName == "" {
+		teamName = "tsuru"
+	}
+	return fmt.Sprintf("%s/app-%s", basicImageName(teamName), appName)
+}
+
+func basicImageName(repoName string) string {
 	parts := make([]string, 0, 2)
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
@@ -460,7 +467,7 @@ func basicImageName() string {
 	}
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	if repoNamespace == "" {
-		repoNamespace = "tsuru"
+		repoNamespace = repoName
 	}
 	parts = append(parts, repoNamespace)
 	return strings.Join(parts, "/")

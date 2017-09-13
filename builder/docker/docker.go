@@ -28,7 +28,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provisio
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner())
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
