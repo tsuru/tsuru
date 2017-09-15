@@ -247,17 +247,7 @@ func AppCurrentImageName(appName string) (string, error) {
 }
 
 func AppCurrentImageVersion(appName string) (string, error) {
-	coll, err := appImagesColl()
-	if err != nil {
-		return "", err
-	}
-	defer coll.Close()
-	var imgs appImages
-	err = coll.FindId(appName).One(&imgs)
-	if err != nil && err != mgo.ErrNotFound {
-		return "", err
-	}
-	version := imgs.Count
+	version, err := getAppImageVersion(appName)
 	if err == mgo.ErrNotFound || version == 0 {
 		version = 1
 	}
@@ -383,19 +373,12 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	return processes
 }
 
-func AppNewBuilderImageName(appName, teamOwner string) (string, error) {
-	coll, err := appImagesColl()
-	if err != nil {
-		return "", err
+func AppNewBuilderImageName(appName, teamOwner, tag string) (string, error) {
+	if tag == "" {
+		version, _ := getAppImageVersion(appName)
+		tag = fmt.Sprintf("v%d-builder", version+1)
 	}
-	defer coll.Close()
-	var imgs appImages
-	err = coll.FindId(appName).One(&imgs)
-	if err != nil && err != mgo.ErrNotFound {
-		return "", err
-	}
-	version := imgs.Count + 1
-	return fmt.Sprintf("%s:v%d-builder", appBasicBuilderImageName(appName, teamOwner), version), nil
+	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(appName, teamOwner), tag), nil
 }
 
 func ListAppBuilderImages(appName string) ([]string, error) {
@@ -446,6 +429,23 @@ func AppCurrentBuilderImageName(appName string) (string, error) {
 		return "", ErrNoImagesAvailable
 	}
 	return imgs.Images[len(imgs.Images)-1], nil
+}
+
+func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
+	inputImage := imageIdSuffix
+	validImgs, err := ListValidAppImages(appName)
+	if err != nil {
+		return "", err
+	}
+	if len(validImgs) == 0 {
+		return "", &ImageNotFoundErr{App: appName, Image: inputImage}
+	}
+	for _, img := range validImgs {
+		if strings.HasSuffix(img, inputImage) {
+			return img, nil
+		}
+	}
+	return "", &InvalidVersionErr{Image: inputImage}
 }
 
 func appBasicImageName(appName string) string {
@@ -513,19 +513,16 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
-func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
-	inputImage := imageIdSuffix
-	validImgs, err := ListValidAppImages(appName)
+func getAppImageVersion(appName string) (int, error) {
+	coll, err := appImagesColl()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	if len(validImgs) == 0 {
-		return "", &ImageNotFoundErr{App: appName, Image: inputImage}
+	defer coll.Close()
+	var imgs appImages
+	err = coll.FindId(appName).One(&imgs)
+	if err != nil && err != mgo.ErrNotFound {
+		return 0, err
 	}
-	for _, img := range validImgs {
-		if strings.HasSuffix(img, inputImage) {
-			return img, nil
-		}
-	}
-	return "", &InvalidVersionErr{Image: inputImage}
+	return imgs.Count, nil
 }

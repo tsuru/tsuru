@@ -54,7 +54,7 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 	} else {
 		return "", errors.New("no valid files found")
 	}
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), opts.Tag)
 	if err != nil {
 		return "", fmt.Errorf("error getting new image name for app %s", app.GetName())
 	}

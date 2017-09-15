@@ -33,6 +33,7 @@ type runContainerActionsArgs struct {
 	client           provision.BuilderDockerClient
 	exposedPort      string
 	event            *event.Event
+	tags             []string
 }
 
 func checkCanceled(evt *event.Event) error {
