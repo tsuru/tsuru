@@ -368,14 +368,16 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
+	msg := map[string]interface{}{
+		"status":         "success",
+		"repository_url": repo.ReadWriteURL,
+	}
 	addrs, err := a.GetAddresses()
 	if err != nil {
 		return err
 	}
-	msg := map[string]interface{}{
-		"status":         "success",
-		"repository_url": repo.ReadWriteURL,
-		"ip":             addrs[0],
+	if len(addrs) > 0 {
+		msg["ip"] = addrs[0]
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {

@@ -1274,9 +1274,6 @@ func (app *App) GetAddresses() ([]string, error) {
 		}
 		addresses = append(addresses, addr)
 	}
-	if len(addresses) == 0 {
-		return nil, errors.New("no valid addresses for app")
-	}
 	return addresses, nil
 }
 
