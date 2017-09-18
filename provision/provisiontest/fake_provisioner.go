@@ -313,13 +313,6 @@ func (a *FakeApp) GetUpdatePlatform() bool {
 	return a.UpdatePlatform
 }
 
-func (a *FakeApp) SetUpdatePlatform(check bool) error {
-	a.commMut.Lock()
-	a.UpdatePlatform = check
-	a.commMut.Unlock()
-	return nil
-}
-
 func (app *FakeApp) GetRouters() []appTypes.AppRouter {
 	return []appTypes.AppRouter{{Name: "fake"}}
 }

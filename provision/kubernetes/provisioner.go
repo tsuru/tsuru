@@ -1,4 +1,3 @@
-// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -653,7 +652,6 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt
 	if err != nil {
 		return "", err
 	}
-	a.SetUpdatePlatform(true)
 	manager := &serviceManager{
 		client: client,
 		writer: evt,
