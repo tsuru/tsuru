@@ -217,9 +217,6 @@ func Deploy(opts DeployOptions) (string, error) {
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(&opts, opts.Event)
-	if opts.Kind == DeployRollback || opts.Kind == DeployImage {
-		opts.App.SetUpdatePlatform(true)
-	}
 	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
 	if err != nil {
 		return "", err
@@ -228,7 +225,11 @@ func Deploy(opts DeployOptions) (string, error) {
 	if err != nil {
 		log.Errorf("WARNING: couldn't increment deploy count, deploy opts: %#v", opts)
 	}
-	if opts.App.UpdatePlatform {
+	if opts.Kind == DeployImage || opts.Kind == DeployRollback {
+		if !opts.App.UpdatePlatform {
+			opts.App.SetUpdatePlatform(true)
+		}
+	} else if opts.App.UpdatePlatform {
 		opts.App.SetUpdatePlatform(false)
 	}
 	return imageID, nil
