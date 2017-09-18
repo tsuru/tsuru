@@ -119,7 +119,6 @@ type App struct {
 	ServiceEnvs    []bind.ServiceEnvVar
 	Platform       string `bson:"framework"`
 	Name           string
-	IP             string
 	CName          []string
 	Teams          []string
 	TeamOwner      string
@@ -134,6 +133,7 @@ type App struct {
 	Deploys        uint
 	Tags           []string
 	Error          string
+	Routers        []appTypes.AppRouter
 
 	quota.Quota
 	builder     builder.Builder
@@ -198,10 +198,6 @@ func (app *App) Units() ([]provision.Unit, error) {
 	return units, err
 }
 
-func (app *App) GetRouterOpts() map[string]string {
-	return app.RouterOpts
-}
-
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
 	repo, _ := repository.Manager().GetRepository(app.Name)
@@ -211,28 +207,40 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["teams"] = app.Teams
 	units, err := app.Units()
 	result["units"] = units
+	var errMsgs []string
 	if err != nil {
-		result["error"] = fmt.Sprintf("unable to list app units: %+v", err)
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
 	}
 	result["repository"] = repo.ReadWriteURL
-	result["ip"] = app.IP
+	plan := map[string]interface{}{
+		"name":     app.Plan.Name,
+		"memory":   app.Plan.Memory,
+		"swap":     app.Plan.Swap,
+		"cpushare": app.Plan.CpuShare,
+	}
+	routers, err := app.GetRoutersWithAddr()
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
+	}
+	if len(routers) > 0 {
+		result["ip"] = routers[0].Address
+		plan["router"] = routers[0].Name
+		result["router"] = routers[0].Name
+		result["routeropts"] = routers[0].Opts
+	}
 	result["cname"] = app.CName
 	result["owner"] = app.Owner
 	result["pool"] = app.Pool
 	result["description"] = app.Description
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
-	result["plan"] = map[string]interface{}{
-		"name":     app.Plan.Name,
-		"memory":   app.Plan.Memory,
-		"swap":     app.Plan.Swap,
-		"cpushare": app.Plan.CpuShare,
-		"router":   app.Router,
-	}
-	result["router"] = app.Router
-	result["routeropts"] = app.RouterOpts
+	result["plan"] = plan
 	result["lock"] = app.Lock
 	result["tags"] = app.Tags
+	result["routers"] = routers
+	if len(errMsgs) > 0 {
+		result["error"] = strings.Join(errMsgs, "\n")
+	}
 	return json.Marshal(&result)
 }
 
@@ -338,15 +346,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	if app.Router == "" {
-		pool, errPool := pool.GetPoolByName(app.GetPool())
-		if errPool != nil {
-			return errPool
-		}
-		app.Router, err = pool.GetDefaultRouter()
-	} else {
-		_, err = router.Get(app.Router)
-	}
+	err = app.configureCreateRouters()
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,6 @@ func CreateApp(app *App, user *auth.User) error {
 		&createRepository,
 		&addRouterBackend,
 		&provisionApp,
-		&setAppIp,
 	}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)
@@ -374,13 +373,39 @@ func CreateApp(app *App, user *auth.User) error {
 	return nil
 }
 
+func (app *App) configureCreateRouters() error {
+	if len(app.Routers) > 0 {
+		return nil
+	}
+	var err error
+	if app.Router == "" {
+		var appPool *pool.Pool
+		appPool, err = pool.GetPoolByName(app.GetPool())
+		if err != nil {
+			return err
+		}
+		app.Router, err = appPool.GetDefaultRouter()
+	} else {
+		_, err = router.Get(app.Router)
+	}
+	if err != nil {
+		return err
+	}
+	app.Routers = []appTypes.AppRouter{{
+		Name: app.Router,
+		Opts: app.RouterOpts,
+	}}
+	app.Router = ""
+	app.RouterOpts = nil
+	return nil
+}
+
 // Update changes informations of the application.
 func (app *App) Update(updateData App, w io.Writer) (err error) {
 	description := updateData.Description
 	planName := updateData.Plan.Name
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
-	routerName := updateData.Router
 	platform := updateData.Platform
 	tags := processTags(updateData.Tags)
 	if description != "" {
@@ -394,18 +419,6 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		}
 	}
 	oldPlan := app.Plan
-	oldRouter := app.Router
-	if routerName != "" {
-		_, err = router.Get(routerName)
-		if err != nil {
-			return err
-		}
-		app.Router = routerName
-	}
-	oldRouterOpts := app.RouterOpts
-	if len(updateData.RouterOpts) > 0 {
-		app.RouterOpts = updateData.RouterOpts
-	}
 	if planName != "" {
 		plan, errFind := findPlanByName(planName)
 		if errFind != nil {
@@ -445,15 +458,12 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if app.Router != oldRouter || app.Plan != oldPlan || len(updateData.RouterOpts) > 0 {
+	if app.Plan != oldPlan {
 		actions := []*action.Action{
-			&moveRouterUnits,
-			&updateRouterOpts,
 			&saveApp,
 			&restartApp,
-			&removeOldBackend,
 		}
-		err = action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, oldRouterOpts, w)
+		err = action.NewPipeline(actions...).Execute(app, &oldPlan, w)
 		if err != nil {
 			return err
 		}
@@ -570,20 +580,24 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
-	r, err := app.GetRouter()
-	if err == nil {
-		err = r.RemoveBackend(app.Name)
-	}
+	err = app.unbind()
 	if err != nil {
-		logErr("Failed to remove router backend", err)
+		logErr("Unable to unbind app", err)
+	}
+	routers := app.GetRouters()
+	for _, appRouter := range routers {
+		var r router.Router
+		r, err = router.Get(appRouter.Name)
+		if err == nil {
+			err = r.RemoveBackend(app.Name)
+		}
+		if err != nil {
+			logErr("Failed to remove router backend", err)
+		}
 	}
 	err = router.Remove(app.Name)
 	if err != nil {
 		logErr("Failed to remove router backend from database", err)
-	}
-	err = app.unbind()
-	if err != nil {
-		logErr("Unable to unbind app", err)
 	}
 	err = app.unbindVolumes()
 	if err != nil {
@@ -1022,13 +1036,18 @@ func (app *App) validateRouter(pool *pool.Pool) error {
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
+	possibleMap := make(map[string]struct{}, len(routers))
 	for _, r := range routers {
-		if r == app.Router {
-			return nil
+		possibleMap[r] = struct{}{}
+	}
+	for _, appRouter := range app.GetRouters() {
+		_, ok := possibleMap[appRouter.Name]
+		if !ok {
+			msg := fmt.Sprintf("router %q is not available for pool %q. Available routers are: %q", appRouter.Name, app.Pool, strings.Join(routers, ", "))
+			return &tsuruErrors.ValidationError{Message: msg}
 		}
 	}
-	msg := fmt.Sprintf("router %q is not available for pool %q. Available routers are: %q", app.Router, app.Pool, strings.Join(routers, ", "))
-	return &tsuruErrors.ValidationError{Message: msg}
+	return nil
 }
 
 func (app *App) ValidateService(service string) error {
@@ -1154,28 +1173,36 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	r, err := app.GetRouter()
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		return err
-	}
-	oldRoutes, err := r.Routes(app.GetName())
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		return err
-	}
-	r.RemoveRoutes(app.GetName(), oldRoutes)
-	err = r.AddRoutes(app.GetName(), []*url.URL{proxyURL})
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		return err
+	routers := app.GetRouters()
+	for _, appRouter := range routers {
+		var r router.Router
+		r, err = router.Get(appRouter.Name)
+		if err != nil {
+			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+			return err
+		}
+		var oldRoutes []*url.URL
+		oldRoutes, err = r.Routes(app.GetName())
+		if err != nil {
+			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+			return err
+		}
+		err = r.RemoveRoutes(app.GetName(), oldRoutes)
+		if err != nil {
+			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+			return err
+		}
+		err = r.AddRoutes(app.GetName(), []*url.URL{proxyURL})
+		if err != nil {
+			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+			return err
+		}
 	}
 	err = sleepProv.Sleep(app, process)
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		r.AddRoutes(app.GetName(), oldRoutes)
-		r.RemoveRoutes(app.GetName(), []*url.URL{proxyURL})
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
+		rebuild.RoutesRebuildOrEnqueue(app.Name)
 		return err
 	}
 	return nil
@@ -1229,9 +1256,23 @@ func (app *App) GetCpuShare() int {
 	return app.Plan.CpuShare
 }
 
-// GetIp returns the ip of the app.
-func (app *App) GetIp() string {
-	return app.IP
+func (app *App) GetAddresses() ([]string, error) {
+	var addresses []string
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
+			return nil, err
+		}
+		addr, err := r.Addr(app.Name)
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, addr)
+	}
+	if len(addresses) == 0 {
+		return nil, errors.New("no valid addresses for app")
+	}
+	return addresses, nil
 }
 
 func (app *App) GetQuota() quota.Quota {
@@ -1656,11 +1697,16 @@ func List(filter *Filter) ([]App, error) {
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
 func Swap(app1, app2 *App, cnameOnly bool) error {
-	r1, err := app1.GetRouter()
+	a1Routers := app1.GetRouters()
+	a2Routers := app2.GetRouters()
+	if len(a1Routers) != 1 || len(a2Routers) != 1 {
+		return errors.New("swapping apps with multiple routers is not supported")
+	}
+	r1, err := router.Get(a1Routers[0].Name)
 	if err != nil {
 		return err
 	}
-	r2, err := app2.GetRouter()
+	r2, err := router.Get(a2Routers[0].Name)
 	if err != nil {
 		return err
 	}
@@ -1677,13 +1723,9 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 	defer conn.Close()
 	app1.CName, app2.CName = app2.CName, app1.CName
 	updateCName := func(app *App, r router.Router) error {
-		app.IP, err = r.Addr(app.Name)
-		if err != nil {
-			return err
-		}
 		return conn.Apps().Update(
 			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName, "ip": app.IP}},
+			bson.M{"$set": bson.M{"cname": app.CName}},
 		)
 	}
 	err = updateCName(app1, r1)
@@ -1753,12 +1795,31 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 	return err
 }
 
-func (app *App) GetRouterName() (string, error) {
-	return app.Router, nil
+func (app *App) GetRouters() []appTypes.AppRouter {
+	routers := app.Routers
+	if app.Router != "" {
+		routers = append([]appTypes.AppRouter{{
+			Name: app.Router,
+			Opts: app.RouterOpts,
+		}}, routers...)
+	}
+	return routers
 }
 
-func (app *App) GetRouter() (router.Router, error) {
-	return router.Get(app.Router)
+func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
+	routers := app.GetRouters()
+	for i := range routers {
+		r, err := router.Get(routers[i].Name)
+		if err != nil {
+			return routers, err
+		}
+		addr, err := r.Addr(app.Name)
+		if err != nil {
+			return routers, err
+		}
+		routers[i].Address = addr
+	}
+	return routers, nil
 }
 
 func (app *App) MetricEnvs() (map[string]string, error) {
@@ -1789,22 +1850,9 @@ func (app *App) Shell(opts provision.ShellOptions) error {
 }
 
 func (app *App) SetCertificate(name, certificate, key string) error {
-	hasCname := false
-	for _, c := range app.CName {
-		if c == name {
-			hasCname = true
-		}
-	}
-	if !hasCname && name != app.IP {
-		return errors.New("invalid name")
-	}
-	r, err := app.GetRouter()
+	err := app.validateNameForCert(name)
 	if err != nil {
 		return err
-	}
-	tlsRouter, ok := r.(router.TLSRouter)
-	if !ok {
-		return errors.New("router does not support tls")
 	}
 	cert, err := tls.X509KeyPair([]byte(certificate), []byte(key))
 	if err != nil {
@@ -1818,49 +1866,103 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 	if err != nil {
 		return err
 	}
-	return tlsRouter.AddCertificate(name, certificate, key)
+	addedAny := false
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
+			return err
+		}
+		tlsRouter, ok := r.(router.TLSRouter)
+		if !ok {
+			continue
+		}
+		addedAny = true
+		err = tlsRouter.AddCertificate(name, certificate, key)
+		if err != nil {
+			return err
+		}
+	}
+	if !addedAny {
+		return errors.New("no router with tls support")
+	}
+	return nil
 }
 
 func (app *App) RemoveCertificate(name string) error {
-	hasCname := false
-	for _, c := range app.CName {
-		if c == name {
-			hasCname = true
-		}
-	}
-	if !hasCname && name != app.IP {
-		return errors.New("invalid name")
-	}
-	r, err := app.GetRouter()
+	err := app.validateNameForCert(name)
 	if err != nil {
 		return err
 	}
-	tlsRouter, ok := r.(router.TLSRouter)
-	if !ok {
-		return errors.New("router does not support tls")
+	removedAny := false
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
+			return err
+		}
+		tlsRouter, ok := r.(router.TLSRouter)
+		if !ok {
+			continue
+		}
+		removedAny = true
+		err = tlsRouter.RemoveCertificate(name)
+		if err != nil {
+			return err
+		}
 	}
-	return tlsRouter.RemoveCertificate(name)
+	if !removedAny {
+		return errors.New("no router with tls support")
+	}
+	return nil
 }
 
-func (app *App) GetCertificates() (map[string]string, error) {
-	r, err := app.GetRouter()
+func (app *App) validateNameForCert(name string) error {
+	addrs, err := app.GetAddresses()
+	if err != nil {
+		return err
+	}
+	hasName := false
+	for _, n := range append(addrs, app.CName...) {
+		if n == name {
+			hasName = true
+			break
+		}
+	}
+	if !hasName {
+		return errors.New("invalid name")
+	}
+	return nil
+}
+
+func (app *App) GetCertificates() (map[string]map[string]string, error) {
+	addrs, err := app.GetAddresses()
 	if err != nil {
 		return nil, err
 	}
-	tlsRouter, ok := r.(router.TLSRouter)
-	if !ok {
-		return nil, errors.New("router does not support tls")
-	}
-	names := append(app.CName, app.IP)
-	certificates := make(map[string]string)
-	for _, n := range names {
-		cert, err := tlsRouter.GetCertificate(n)
-		if err != nil && err != router.ErrCertificateNotFound {
+	names := append(addrs, app.CName...)
+	allCertificates := make(map[string]map[string]string)
+	for _, appRouter := range app.GetRouters() {
+		certificates := make(map[string]string)
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
 			return nil, err
 		}
-		certificates[n] = cert
+		tlsRouter, ok := r.(router.TLSRouter)
+		if !ok {
+			continue
+		}
+		for _, n := range names {
+			cert, err := tlsRouter.GetCertificate(n)
+			if err != nil && err != router.ErrCertificateNotFound {
+				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
+			}
+			certificates[n] = cert
+		}
+		allCertificates[appRouter.Name] = certificates
 	}
-	return certificates, nil
+	if len(allCertificates) == 0 {
+		return nil, errors.New("no router with tls support")
+	}
+	return allCertificates, nil
 }
 
 type ProcfileError struct {
@@ -1869,31 +1971,6 @@ type ProcfileError struct {
 
 func (e *ProcfileError) Error() string {
 	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
-}
-
-func (app *App) UpdateAddr() error {
-	r, err := app.GetRouter()
-	if err != nil {
-		return err
-	}
-	newAddr, err := r.Addr(app.Name)
-	if err != nil {
-		return err
-	}
-	if newAddr == app.IP {
-		return nil
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": newAddr}})
-	if err != nil {
-		return err
-	}
-	app.IP = newAddr
-	return nil
 }
 
 func (app *App) RoutableAddresses() ([]url.URL, error) {

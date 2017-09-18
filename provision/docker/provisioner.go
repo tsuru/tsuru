@@ -40,7 +40,6 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/api"
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -65,14 +64,6 @@ func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainDockerProvisioner, nil
 	})
-}
-
-func getRouterForApp(app provision.App) (router.Router, error) {
-	routerName, err := app.GetRouterName()
-	if err != nil {
-		return nil, err
-	}
-	return router.Get(routerName)
 }
 
 type dockerProvisioner struct {

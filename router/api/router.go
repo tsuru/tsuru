@@ -133,6 +133,10 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return baseRouter, nil
 }
 
+func (r *apiRouter) GetName() string {
+	return r.routerName
+}
+
 func (r *apiRouter) AddBackend(name string) (err error) {
 	return r.AddBackendOpts(name, nil)
 }

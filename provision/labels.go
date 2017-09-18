@@ -250,13 +250,14 @@ type ProcessLabelsOpts struct {
 }
 
 func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
-	routerName, err := opts.App.GetRouterName()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	routerType, _, err := router.Type(routerName)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var routerNames, routerTypes []string
+	for _, appRouter := range opts.App.GetRouters() {
+		routerType, _, err := router.Type(appRouter.Name)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		routerNames = append(routerNames, appRouter.Name)
+		routerTypes = append(routerTypes, routerType)
 	}
 	return &LabelSet{
 		Labels: map[string]string{
@@ -266,8 +267,8 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 			labelAppProcess:  opts.Process,
 			labelAppPlatform: opts.App.GetPlatform(),
 			labelAppPool:     opts.App.GetPool(),
-			labelRouterName:  routerName,
-			labelRouterType:  routerType,
+			labelRouterName:  strings.Join(routerNames, ","),
+			labelRouterType:  strings.Join(routerTypes, ","),
 			labelProvisioner: opts.Provisioner,
 			labelBuilder:     opts.Builder,
 		},

@@ -297,7 +297,7 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}}
+	expected := map[string][]string{"app-host": {"her-app.fakerouter.com"}, "app-hosts": {"her-app.fakerouter.com"}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -401,7 +401,7 @@ func (s *S) TestBindUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err = a.GetUnits()
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
+	expected := map[string][]string{"app-host": {"her-app.fakerouter.com"}, "app-hosts": {"her-app.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -465,7 +465,7 @@ func (s *S) TestUnbindApp(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}}
+	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -513,7 +513,7 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err = a.GetUnits()
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
+	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
