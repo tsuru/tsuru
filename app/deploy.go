@@ -217,6 +217,9 @@ func Deploy(opts DeployOptions) (string, error) {
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(&opts, opts.Event)
+	if opts.Kind == DeployRollback || opts.Kind == DeployImage {
+		opts.App.SetUpdatePlatform(true)
+	}
 	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
 	if err != nil {
 		return "", err

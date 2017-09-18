@@ -161,9 +161,6 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {

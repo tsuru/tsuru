@@ -276,6 +276,9 @@ func (s *S) TestDeployApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Equals, "Builder deploy called")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
@@ -712,6 +715,9 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
@@ -744,6 +750,9 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v2")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {

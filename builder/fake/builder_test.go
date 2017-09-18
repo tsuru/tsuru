@@ -76,9 +76,6 @@ func (s *S) TestBuildImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(s.b.IsImageDeploy, check.Equals, true)
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {

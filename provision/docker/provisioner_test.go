@@ -919,9 +919,6 @@ func (s *S) TestDeployImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
 	dockerContainer, err := dcli.InspectContainer(units[0].GetID())
