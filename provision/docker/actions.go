@@ -434,6 +434,35 @@ var bindAndHealthcheck = action.Action{
 	OnError: rollbackNotice,
 }
 
+type inRouterFn func(router.Router) error
+
+func runInRouters(app provision.App, fn inRouterFn, rollback inRouterFn) (err error) {
+	var toRollback []router.Router
+	defer func() {
+		if err == nil || rollback == nil {
+			return
+		}
+		for _, r := range toRollback {
+			rollbackErr := rollback(r)
+			if rollbackErr != nil {
+				log.Errorf("Unable to rollback router change in %q: %s", r.GetName(), rollbackErr)
+			}
+		}
+	}()
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
+			return err
+		}
+		err = fn(r)
+		if err != nil {
+			return err
+		}
+		toRollback = append(toRollback, r)
+	}
+	return nil
+}
+
 var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -446,10 +475,6 @@ var addNewRoutes = action.Action{
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
 		}
 		newContainers := ctx.Previous.([]container.Container)
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			return nil, err
-		}
 		writer := args.writer
 		if writer == nil {
 			writer = ioutil.Discard
@@ -470,9 +495,12 @@ var addNewRoutes = action.Action{
 		if len(routesToAdd) == 0 {
 			return newContainers, nil
 		}
-		err = r.AddRoutes(args.app.GetName(), routesToAdd)
+		err = runInRouters(args.app, func(r router.Router) error {
+			return r.AddRoutes(args.app.GetName(), routesToAdd)
+		}, func(r router.Router) error {
+			return r.RemoveRoutes(args.app.GetName(), routesToAdd)
+		})
 		if err != nil {
-			r.RemoveRoutes(args.app.GetName(), routesToAdd)
 			return nil, err
 		}
 		for _, c := range newContainers {
@@ -485,10 +513,6 @@ var addNewRoutes = action.Action{
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		newContainers := ctx.FWResult.([]container.Container)
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err)
-		}
 		w := args.writer
 		if w == nil {
 			w = ioutil.Discard
@@ -503,7 +527,9 @@ var addNewRoutes = action.Action{
 		if len(routesToRemove) == 0 {
 			return
 		}
-		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
+		err := runInRouters(args.app, func(r router.Router) error {
+			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
+		}, nil)
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error removing route for [%v]: %s", routesToRemove, err)
 			return
@@ -526,14 +552,6 @@ var setRouterHealthcheck = action.Action{
 			return nil, err
 		}
 		newContainers := ctx.Previous.([]container.Container)
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			return nil, err
-		}
-		hcRouter, ok := r.(router.CustomHealthcheckRouter)
-		if !ok {
-			return newContainers, nil
-		}
 		yamlData, err := image.GetImageTsuruYamlData(args.imageID)
 		if err != nil {
 			return nil, err
@@ -542,36 +560,54 @@ var setRouterHealthcheck = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		hcData := yamlData.Healthcheck.ToRouterHC()
-		msg := fmt.Sprintf("Path: %s", hcData.Path)
-		if hcData.Status != 0 {
-			msg = fmt.Sprintf("%s, Status: %d", msg, hcData.Status)
+		newHCData := yamlData.Healthcheck.ToRouterHC()
+		msg := fmt.Sprintf("Path: %s", newHCData.Path)
+		if newHCData.Status != 0 {
+			msg = fmt.Sprintf("%s, Status: %d", msg, newHCData.Status)
 		}
-		if hcData.Body != "" {
-			msg = fmt.Sprintf("%s, Body: %s", msg, hcData.Body)
+		if newHCData.Body != "" {
+			msg = fmt.Sprintf("%s, Body: %s", msg, newHCData.Body)
 		}
 		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
-		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)
+		err = runInRouters(args.app, func(r router.Router) error {
+			hcRouter, ok := r.(router.CustomHealthcheckRouter)
+			if !ok {
+				return nil
+			}
+			return hcRouter.SetHealthcheck(args.app.GetName(), newHCData)
+		}, func(r router.Router) error {
+			hcRouter, ok := r.(router.CustomHealthcheckRouter)
+			if !ok {
+				return nil
+			}
+			var currentImageName string
+			currentImageName, err = image.AppCurrentImageName(args.app.GetName())
+			if err != nil {
+				return err
+			}
+			yamlData, err = image.GetImageTsuruYamlData(currentImageName)
+			if err != nil {
+				return err
+			}
+			return hcRouter.SetHealthcheck(args.app.GetName(), yamlData.Healthcheck.ToRouterHC())
+		})
 		return newContainers, err
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			log.Errorf("[set-router-healthcheck:Backward] Error getting router: %s", err)
-			return
-		}
-		hcRouter, ok := r.(router.CustomHealthcheckRouter)
-		if !ok {
-			return
-		}
 		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
 		yamlData, err := image.GetImageTsuruYamlData(currentImageName)
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err)
 		}
 		hcData := yamlData.Healthcheck.ToRouterHC()
-		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)
+		err = runInRouters(args.app, func(r router.Router) error {
+			hcRouter, ok := r.(router.CustomHealthcheckRouter)
+			if !ok {
+				return nil
+			}
+			return hcRouter.SetHealthcheck(args.app.GetName(), hcData)
+		}, nil)
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err)
 		}
@@ -593,10 +629,6 @@ var removeOldRoutes = action.Action{
 				}
 				err = nil
 			}()
-		}
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			return
 		}
 		writer := args.writer
 		if writer == nil {
@@ -626,12 +658,16 @@ var removeOldRoutes = action.Action{
 		if len(routesToRemove) == 0 {
 			return
 		}
-		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
-		if err != nil {
-			if !args.appDestroy {
-				r.AddRoutes(args.app.GetName(), routesToRemove)
+		err = runInRouters(args.app, func(r router.Router) error {
+			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
+		}, func(r router.Router) error {
+			if args.appDestroy {
+				return nil
 			}
-			return
+			return r.AddRoutes(args.app.GetName(), routesToRemove)
+		})
+		if err != nil {
+			return nil, err
 		}
 		for _, c := range args.toRemove {
 			if c.Routable {
@@ -642,10 +678,6 @@ var removeOldRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		r, err := getRouterForApp(args.app)
-		if err != nil {
-			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err)
-		}
 		w := args.writer
 		if w == nil {
 			w = ioutil.Discard
@@ -660,7 +692,9 @@ var removeOldRoutes = action.Action{
 		if len(routesToAdd) == 0 {
 			return
 		}
-		err = r.AddRoutes(args.app.GetName(), routesToAdd)
+		err := runInRouters(args.app, func(r router.Router) error {
+			return r.AddRoutes(args.app.GetName(), routesToAdd)
+		}, nil)
 		if err != nil {
 			log.Errorf("[remove-old-routes:Backward] Error adding back route for [%v]: %s", routesToAdd, err)
 			return

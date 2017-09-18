@@ -99,6 +99,10 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return &r, nil
 }
 
+func (r *galebRouter) GetName() string {
+	return r.routerName
+}
+
 func (r *galebRouter) poolName(base string) string {
 	return fmt.Sprintf("tsuru-backendpool-%s-%s", r.routerName, base)
 }

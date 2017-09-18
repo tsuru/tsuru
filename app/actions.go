@@ -7,7 +7,6 @@ package app
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -16,12 +15,12 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
-	"github.com/tsuru/tsuru/router/rebuild"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -207,9 +206,25 @@ var createRepository = action.Action{
 	MinParams: 1,
 }
 
+func removeAllRoutersBackend(app *App) error {
+	multi := tsuruErrors.NewMultiError()
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
+		if err != nil {
+			multi.Add(err)
+			continue
+		}
+		err = r.RemoveBackend(app.GetName())
+		if err != nil && err != router.ErrBackendNotFound {
+			multi.Add(err)
+		}
+	}
+	return multi.ToError()
+}
+
 var addRouterBackend = action.Action{
 	Name: "add-router-backend",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		var app *App
 		switch ctx.Params[0].(type) {
 		case *App:
@@ -217,27 +232,32 @@ var addRouterBackend = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		r, err := app.GetRouter()
-		if err != nil {
-			return nil, err
+		defer func() {
+			if err != nil {
+				removeAllRoutersBackend(app)
+			}
+		}()
+		for _, appRouter := range app.GetRouters() {
+			r, err := router.Get(appRouter.Name)
+			if err != nil {
+				return nil, err
+			}
+			if optsRouter, ok := r.(router.OptsRouter); ok {
+				err = optsRouter.AddBackendOpts(app.GetName(), appRouter.Opts)
+			} else {
+				err = r.AddBackend(app.GetName())
+			}
+			if err != nil {
+				return nil, err
+			}
 		}
-		if optsRouter, ok := r.(router.OptsRouter); ok {
-			err = optsRouter.AddBackendOpts(app.GetName(), app.GetRouterOpts())
-		} else {
-			err = r.AddBackend(app.GetName())
-		}
-		return app, err
+		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		r, err := app.GetRouter()
+		err := removeAllRoutersBackend(app)
 		if err != nil {
-			log.Errorf("[add-router-backend rollback] unable to get app router: %s", err)
-			return
-		}
-		err = r.RemoveBackend(app.GetName())
-		if err != nil {
-			log.Errorf("[add-router-backend rollback] unable to remove router backend: %s", err)
+			log.Errorf("[add-router-backend rollback] unable to remove all routers backends: %s", err)
 		}
 	},
 	MinParams: 1,
@@ -268,51 +288,6 @@ var provisionApp = action.Action{
 		prov, err := app.getProvisioner()
 		if err == nil {
 			prov.Destroy(app)
-		}
-	},
-	MinParams: 1,
-}
-
-var setAppIp = action.Action{
-	Name: "set-app-ip",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
-		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
-		default:
-			return nil, errors.New("First parameter must be *App.")
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		r, err := app.GetRouter()
-		if err != nil {
-			return nil, err
-		}
-		app.IP, err = r.Addr(app.Name)
-		if err != nil {
-			return nil, err
-		}
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.IP}})
-		if err != nil {
-			return nil, err
-		}
-		return app, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		app := ctx.FWResult.(*App)
-		app.IP = ""
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("Error trying to get connection to rollback setAppIp action: %s", err)
-		}
-		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$unset": bson.M{"ip": ""}})
-		if err != nil {
-			log.Errorf("Error trying to update app to rollback setAppIp action: %s", err)
 		}
 	},
 	MinParams: 1,
@@ -389,164 +364,30 @@ var provisionAddUnits = action.Action{
 	MinParams: 1,
 }
 
-type updateAppPipelineResult struct {
-	changedRouter bool
-	changedOpts   bool
-	oldPlan       *appTypes.Plan
-	oldIp         string
-	oldRouter     string
-	oldRouterOpts map[string]string
-	app           *App
-}
-
-var moveRouterUnits = action.Action{
-	Name: "update-app-move-router-units",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
-		if !ok {
-			return nil, errors.New("first parameter must be an *App")
-		}
-		oldPlan, ok := ctx.Params[1].(*appTypes.Plan)
-		if !ok {
-			return nil, errors.New("second parameter must be a *Plan")
-		}
-		oldRouter, ok := ctx.Params[2].(string)
-		if !ok {
-			return nil, errors.New("third parameter must be a string")
-		}
-		newRouter := app.Router
-		result := updateAppPipelineResult{
-			oldPlan:   oldPlan,
-			oldRouter: oldRouter,
-			app:       app,
-			oldIp:     app.IP,
-		}
-		if newRouter != oldRouter {
-			_, err := rebuild.RebuildRoutes(app, false)
-			if err != nil {
-				return nil, err
-			}
-			result.changedRouter = true
-		}
-		return &result, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*updateAppPipelineResult)
-		defer func() {
-			result.app.Plan = *result.oldPlan
-			result.app.Router = result.oldRouter
-		}()
-		if result.changedRouter {
-			app := result.app
-			app.IP = result.oldIp
-			conn, err := db.Conn()
-			if err != nil {
-				log.Errorf("BACKWARD move router units - failed to connect to the database: %s", err)
-				return
-			}
-			defer conn.Close()
-			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.IP}})
-			r, err := result.app.GetRouter()
-			if err != nil {
-				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)
-				return
-			}
-			err = r.RemoveBackend(result.app.Name)
-			if err != nil {
-				log.Errorf("BACKWARD move router units - failed to remove backend: %s", err)
-			}
-		}
-	},
-}
-
-var updateRouterOpts = action.Action{
-	Name: "update-app-update-router-opts",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*updateAppPipelineResult)
-		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
-		}
-		oldRouterOpts, ok := ctx.Params[3].(map[string]string)
-		if !ok {
-			return nil, errors.New("forth parameter must be a map[string]string")
-		}
-		if result.changedRouter {
-			return result, nil
-		}
-		app := result.app
-		if !reflect.DeepEqual(app.RouterOpts, oldRouterOpts) {
-			r, err := app.GetRouter()
-			if err != nil {
-				return nil, err
-			}
-			if optsRouter, ok := r.(router.OptsRouter); ok {
-				err := optsRouter.UpdateBackendOpts(app.Name, app.RouterOpts)
-				if err != nil {
-					return nil, err
-				}
-				result.changedOpts = true
-			} else {
-				log.Errorf("FORWARD move router units - router %q does not support opts", app.Router)
-				return nil, errors.Errorf("router %q does not support opts", app.Router)
-			}
-		}
-		return result, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*updateAppPipelineResult)
-		defer func() {
-			result.app.RouterOpts = result.oldRouterOpts
-		}()
-		if result.changedRouter {
-			return
-		}
-		app := result.app
-		if result.changedOpts {
-			r, err := app.GetRouter()
-			if err != nil {
-				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)
-				return
-			}
-			if optsRouter, ok := r.(router.OptsRouter); ok {
-				err := optsRouter.UpdateBackendOpts(app.Name, result.oldRouterOpts)
-				if err != nil {
-					log.Errorf("BACKWARD move router units - update backend opts: %s", err)
-					return
-				}
-			}
-		}
-	},
-}
-
 var saveApp = action.Action{
 	Name: "update-app-save-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*updateAppPipelineResult)
+		app, ok := ctx.Params[0].(*App)
 		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+			return nil, errors.New("expected app ptr as first arg")
 		}
 		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": result.app.Plan, "routername": result.app.Router, "routeropts": result.app.RouterOpts}}
-		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+		return nil, conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"plan": app.Plan}})
 	},
 	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*updateAppPipelineResult)
+		app := ctx.Params[0].(*App)
+		oldPlan := ctx.Params[1].(*appTypes.Plan)
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
 			return
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": *result.oldPlan, "routername": result.oldRouter, "routeropts": result.oldRouterOpts}}
-		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"plan": *oldPlan}})
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to update app: %s", err)
 		}
@@ -556,42 +397,12 @@ var saveApp = action.Action{
 var restartApp = action.Action{
 	Name: "update-app-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		w, ok := ctx.Params[4].(io.Writer)
+		app, ok := ctx.Params[0].(*App)
 		if !ok {
-			return nil, errors.New("forth parameter must be an io.Writer")
+			return nil, errors.New("expected app ptr as first arg")
 		}
-		result, ok := ctx.Previous.(*updateAppPipelineResult)
-		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
-		}
-		err := result.app.Restart("", w)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
-	},
-}
-
-// removeOldBackend never fails because restartApp is not undoable.
-var removeOldBackend = action.Action{
-	Name: "update-app-remove-old-backend",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*updateAppPipelineResult)
-		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
-		}
-		if result.changedRouter {
-			r, err := router.Get(result.oldRouter)
-			if err != nil {
-				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
-				return nil, nil
-			}
-			err = r.RemoveBackend(result.app.Name)
-			if err != nil {
-				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
-			}
-		}
-		return result, nil
+		w, _ := ctx.Params[2].(io.Writer)
+		return nil, app.Restart("", w)
 	},
 }
 
@@ -621,50 +432,73 @@ var validateNewCNames = action.Action{
 	},
 }
 
-var setNewCNamesToProvisioner = action.Action{
-	Name: "set-new-cnames-to-provisioner",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
-		cnames := ctx.Params[1].([]string)
-		r, err := app.GetRouter()
+func setUnsetCnames(app *App, cnames []string, toSet bool) error {
+	multi := tsuruErrors.NewMultiError()
+	for _, appRouter := range app.GetRouters() {
+		r, err := router.Get(appRouter.Name)
 		if err != nil {
-			return nil, err
+			multi.Add(err)
+			continue
 		}
 		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			return nil, errors.New("router does not support cname change")
+			continue
 		}
-		var cnamesDone []string
-		for _, cname := range cnames {
-			err := cnameRouter.SetCName(cname, app.Name)
-			if err != nil {
-				for _, c := range cnamesDone {
-					cnameRouter.UnsetCName(c, app.Name)
+		for _, c := range cnames {
+			if toSet {
+				err = cnameRouter.SetCName(c, app.Name)
+				if err == router.ErrCNameExists {
+					err = nil
 				}
+			} else {
+				err = cnameRouter.UnsetCName(c, app.Name)
+				if err == router.ErrCNameNotFound {
+					err = nil
+				}
+			}
+			if err != nil {
+				multi.Add(err)
+			}
+		}
+	}
+	return multi.ToError()
+}
+
+var setNewCNamesToProvisioner = action.Action{
+	Name: "set-new-cnames-to-provisioner",
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		defer func() {
+			if err != nil {
+				setUnsetCnames(app, cnames, false)
+			}
+		}()
+		for _, appRouter := range app.GetRouters() {
+			var r router.Router
+			r, err = router.Get(appRouter.Name)
+			if err != nil {
 				return nil, err
 			}
-			cnamesDone = append(cnamesDone, cname)
+			cnameRouter, ok := r.(router.CNameRouter)
+			if !ok {
+				continue
+			}
+			for _, cname := range cnames {
+				err = cnameRouter.SetCName(cname, app.Name)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		r, err := app.GetRouter()
+		err := setUnsetCnames(app, cnames, false)
 		if err != nil {
-			log.Errorf("BACKWARD set cnames - unable to retrieve router: %s", err)
-			return
-		}
-		cnameRouter, ok := r.(router.CNameRouter)
-		if !ok {
-			log.Errorf("BACKWARD set cnames - router doesn't support cname change.")
-			return
-		}
-		for _, cname := range cnames {
-			err := cnameRouter.UnsetCName(cname, app.Name)
-			if err != nil {
-				log.Errorf("BACKWARD set cnames - unable to unset cname: %s", err)
-			}
+			log.Errorf("BACKWARD set cnames - unable to remove cnames from routers: %s", err)
 		}
 	},
 }
@@ -753,48 +587,39 @@ var checkCNameExists = action.Action{
 
 var unsetCNameFromProvisioner = action.Action{
 	Name: "unset-cname-from-provisioner",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		r, err := app.GetRouter()
-		if err != nil {
-			return nil, err
-		}
-		cnameRouter, ok := r.(router.CNameRouter)
-		if !ok {
-			return nil, errors.New("router does not support cname change")
-		}
-		var cnamesDone []string
-		for _, cname := range cnames {
-			err := cnameRouter.UnsetCName(cname, app.Name)
+		defer func() {
 			if err != nil {
-				for _, c := range cnamesDone {
-					cnameRouter.SetCName(c, app.Name)
-				}
+				setUnsetCnames(app, cnames, true)
+			}
+		}()
+		for _, appRouter := range app.GetRouters() {
+			var r router.Router
+			r, err = router.Get(appRouter.Name)
+			if err != nil {
 				return nil, err
 			}
-			cnamesDone = append(cnamesDone, cname)
+			cnameRouter, ok := r.(router.CNameRouter)
+			if !ok {
+				continue
+			}
+			for _, cname := range cnames {
+				err = cnameRouter.UnsetCName(cname, app.Name)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		r, err := app.GetRouter()
+		err := setUnsetCnames(app, cnames, true)
 		if err != nil {
-			log.Errorf("BACKWARD unset cname - unable to retrieve router: %s", err)
-			return
-		}
-		cnameRouter, ok := r.(router.CNameRouter)
-		if !ok {
-			log.Errorf("BACKWARD unset cname - router doesn't support cname change.")
-			return
-		}
-		for _, cname := range cnames {
-			err := cnameRouter.SetCName(cname, app.Name)
-			if err != nil {
-				log.Errorf("BACKWARD unset cname - unable to set cname: %s", err)
-			}
+			log.Errorf("BACKWARD unset cname - unable to set cnames in routers: %s", err)
 		}
 	},
 }

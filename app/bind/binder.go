@@ -28,8 +28,8 @@ type Unit interface {
 }
 
 type App interface {
-	// GetIp returns the app ip.
-	GetIp() string
+	// GetAddresses returns the app addresses.
+	GetAddresses() ([]string, error)
 
 	// GetName returns the app name.
 	GetName() string

@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 
@@ -38,7 +39,10 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	Delete(app, nil)
+	buf := bytes.NewBuffer(nil)
+	err = Delete(app, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)

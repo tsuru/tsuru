@@ -106,6 +106,8 @@ func Default() (string, error) {
 // Router is the basic interface of this package. It provides methods for
 // managing backends and routes. Each backend can have multiple routes.
 type Router interface {
+	GetName() string
+
 	AddBackend(name string) error
 	RemoveBackend(name string) error
 	AddRoutes(name string, address []*url.URL) error
