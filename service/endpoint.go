@@ -192,8 +192,10 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		return nil, err
 	}
 	params := map[string][]string{
-		"app-host":  {appAddrs[0]},
 		"app-hosts": appAddrs,
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
 	if err != nil {
@@ -232,9 +234,11 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		return err
 	}
 	params := map[string][]string{
-		"app-host":  {appAddrs[0]},
 		"app-hosts": appAddrs,
 		"unit-host": {unit.GetIp()},
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	if err != nil {
@@ -262,8 +266,10 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
 	params := map[string][]string{
-		"app-host":  {appAddrs[0]},
 		"app-hosts": appAddrs,
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil {
@@ -287,9 +293,11 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind"
 	params := map[string][]string{
-		"app-host":  {appAddrs[0]},
 		"app-hosts": appAddrs,
 		"unit-host": {unit.GetIp()},
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil {
