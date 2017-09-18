@@ -1792,6 +1792,80 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 	return err
 }
 
+func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
+	defer rebuild.RoutesRebuildOrEnqueue(app.Name)
+	r, err := router.Get(appRouter.Name)
+	if err != nil {
+		return err
+	}
+	if optsRouter, ok := r.(router.OptsRouter); ok {
+		err = optsRouter.AddBackendOpts(app.Name, appRouter.Opts)
+	} else {
+		err = r.AddBackend(app.Name)
+	}
+	if err != nil {
+		return err
+	}
+	routers := append(app.GetRouters(), appRouter)
+	err = app.updateRoutersDB(routers)
+	if err != nil {
+		rollbackErr := r.RemoveBackend(appRouter.Name)
+		if rollbackErr != nil {
+			log.Errorf("unable to remove router backend rolling back add router: %v", rollbackErr)
+		}
+		return err
+	}
+	return nil
+}
+
+func (app *App) RemoveRouter(name string) error {
+	removed := false
+	routers := app.GetRouters()
+	for i, r := range routers {
+		if r.Name == name {
+			removed = true
+			// Preserve order
+			routers = append(routers[:i], routers[i+1:]...)
+			break
+		}
+	}
+	if !removed {
+		return &router.ErrRouterNotFound{Name: name}
+	}
+	r, err := router.Get(name)
+	if err != nil {
+		return err
+	}
+	err = app.updateRoutersDB(routers)
+	if err != nil {
+		println("here1?")
+		return err
+	}
+	err = r.RemoveBackend(app.Name)
+	if err != nil {
+		log.Errorf("unable to remove router backend: %v", err)
+	}
+	return nil
+}
+
+func (app *App) updateRoutersDB(routers []appTypes.AppRouter) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	app.Routers = routers
+	app.Router = ""
+	app.RouterOpts = nil
+	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{
+		"$set": bson.M{
+			"routers":    app.Routers,
+			"router":     app.Router,
+			"routeropts": app.RouterOpts,
+		},
+	})
+}
+
 func (app *App) GetRouters() []appTypes.AppRouter {
 	routers := app.Routers
 	if app.Router != "" {
