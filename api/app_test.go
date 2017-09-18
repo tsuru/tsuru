@@ -1617,7 +1617,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	errorMessage := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one.\n"
+	errorMessage := "Neither the description, plan, pool, team owner or platform were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
@@ -5679,8 +5679,8 @@ func (s *S) TestListCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
 		"fake-tls": {
-			"app.io":               testCert,
-			"myapp.fakerouter.com": "",
+			"app.io":                  testCert,
+			"myapp.faketlsrouter.com": "",
 		},
 	})
 }

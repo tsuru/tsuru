@@ -399,6 +399,14 @@ func (r *tlsRouter) GetCertificate(cname string) (string, error) {
 	return data, nil
 }
 
+func (r *tlsRouter) Addr(name string) (string, error) {
+	addr, err := r.fakeRouter.Addr(name)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(addr, ".fakerouter.com", ".faketlsrouter.com", -1), nil
+}
+
 type optsRouter struct {
 	fakeRouter
 	Opts map[string]map[string]string

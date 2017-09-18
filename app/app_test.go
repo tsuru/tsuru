@@ -4030,8 +4030,8 @@ func (s *S) TestGetCertificates(c *check.C) {
 	err = a.SetCertificate(cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
 	expectedCerts := map[string]string{
-		"app.io":                     string(cert),
-		"my-test-app.fakerouter.com": "",
+		"app.io":                        string(cert),
+		"my-test-app.faketlsrouter.com": "",
 	}
 	certs, err := a.GetCertificates()
 	c.Assert(err, check.IsNil)
@@ -4409,4 +4409,43 @@ func (s *S) TestRenameTeamUnchanagedLockedApp(c *check.C) {
 	c.Assert(dbApps[1].TeamOwner, check.Equals, "t9000")
 	c.Assert(dbApps[0].Teams, check.DeepEquals, []string{"t9000", "t3", "t1"})
 	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
+}
+
+func (s *S) TestAppAddRouter(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Address: "myapp.fakerouter.com"},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+	})
+	addrs, err := app.GetAddresses()
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.DeepEquals, []string{"myapp.fakerouter.com", "myapp.faketlsrouter.com"})
+}
+
+func (s *S) TestAppRemoveRouter(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	err = app.RemoveRouter("fake")
+	c.Assert(err, check.IsNil)
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+	})
+	addrs, err := app.GetAddresses()
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.DeepEquals, []string{"myapp.faketlsrouter.com"})
 }
