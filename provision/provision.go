@@ -216,7 +216,6 @@ type App interface {
 	GetSwap() int64
 	GetCpuShare() int
 
-	SetUpdatePlatform(bool) error
 	GetUpdatePlatform() bool
 
 	GetRouters() []appTypes.AppRouter

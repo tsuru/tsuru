@@ -113,7 +113,6 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	if err != nil {
 		return "", err
 	}
-	app.SetUpdatePlatform(true)
 	return newImage, nil
 }
 

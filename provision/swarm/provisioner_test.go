@@ -1148,9 +1148,6 @@ func (s *S) TestDeployImageID(c *check.C) {
 		),
 		"/bin/sh", "-c", "python test.py",
 	})
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestDestroy(c *check.C) {

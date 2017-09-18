@@ -277,7 +277,41 @@ func (s *S) TestBuildApp(c *check.C) {
 	c.Assert(imgID, check.Equals, "registry.somewhere/"+a.TeamOwner+"/app-some-app:v1-builder")
 }
 
-func (s *S) TestDeployApp(c *check.C) {
+func (s *S) TestDeployAppUpload(c *check.C) {
+	a := App{
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my file")
+	writer := &bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
+		App:          &a,
+		File:         ioutil.NopCloser(buf),
+		FileSize:     int64(buf.Len()),
+		OutputStream: writer,
+		Event:        evt,
+	})
+	c.Assert(err, check.IsNil)
+	logs := writer.String()
+	c.Assert(logs, check.Equals, "Builder deploy called")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
+}
+
+func (s *S) TestDeployAppImage(c *check.C) {
 	a := App{
 		Name:      "some-app",
 		Platform:  "django",
@@ -305,6 +339,9 @@ func (s *S) TestDeployApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
 	c.Assert(logs, check.Equals, "Builder deploy called")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
@@ -741,6 +778,9 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
@@ -773,6 +813,9 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v2")
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {

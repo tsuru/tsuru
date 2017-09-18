@@ -49,7 +49,6 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		b.IsArchiveURLDeploy = true
 	} else if opts.ImageID != "" {
 		b.IsImageDeploy = true
-		app.SetUpdatePlatform(true)
 		return image.AppNewImageName(app.GetName())
 	} else {
 		return "", errors.New("no valid files found")
