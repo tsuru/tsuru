@@ -62,7 +62,7 @@ func (r dockerRegistry) getDigest(image, tag string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusBadRequest {
 		return "", fmt.Errorf("manifest not found (%d)", resp.StatusCode)
 	}
 	return resp.Header.Get("Docker-Content-Digest"), nil
@@ -80,7 +80,7 @@ func (r dockerRegistry) getImageTags(image string) ([]string, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusBadRequest {
 		return nil, fmt.Errorf("image not found (%d)", resp.StatusCode)
 	}
 	var it imageTags
