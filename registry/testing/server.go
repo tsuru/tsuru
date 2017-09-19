@@ -105,7 +105,7 @@ func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 	s.reposLock.RLock()
 	defer s.reposLock.RUnlock()
 	if !s.storageDelete {
-		http.Error(w, fmt.Sprint("storage delete is disabled"), http.StatusMethodNotAllowed)
+		http.Error(w, "storage delete is disabled", http.StatusMethodNotAllowed)
 		return
 	}
 	for t, d := range repo.Tags {
