@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -565,6 +566,10 @@ func Delete(app *App, w io.Writer) error {
 	err = prov.Destroy(app)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
+	}
+	err = registry.RemoveAppImages(appName)
+	if err != nil {
+		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
 	err = image.DeleteAllAppImageNames(appName)
 	if err != nil {
