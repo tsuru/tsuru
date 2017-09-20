@@ -9,7 +9,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
@@ -62,21 +61,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
 	imageName := image.GetBuildImage(app)
-	options := docker.CreateContainerOptions{
-		Config: &docker.Config{
-			AttachStdout: true,
-			AttachStderr: true,
-			AttachStdin:  true,
-			User:         user,
-			Image:        imageName,
-		},
-	}
-	var cont *docker.Container
 	w := evt
 	fmt.Fprintln(w, "---- Pulling image to node ----")
 	pullOpts := docker.PullImageOptions{
@@ -88,18 +73,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 	if err != nil {
 		return "", err
 	}
-	cont, err = client.CreateContainer(options)
-	if err != nil {
-		return "", err
-	}
-	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-	intermediateImageID, fileURI, err := dockercommon.UploadToContainer(client, cont.ID, tarFile)
-	if err != nil {
-		return "", err
-	}
-	defer client.RemoveImage(intermediateImageID)
-	cmds := dockercommon.ArchiveBuildCmds(app, fileURI)
-	imageID, err := b.buildPipeline(p, client, app, intermediateImageID, cmds, evt)
+	imageID, err := b.buildPipeline(p, client, app, tarFile, evt)
 	if err != nil {
 		return "", err
 	}
