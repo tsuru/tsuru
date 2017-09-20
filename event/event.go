@@ -390,6 +390,7 @@ type Filter struct {
 	Target         Target
 	KindType       kindType
 	KindName       string
+	KindNames      []string
 	OwnerType      ownerType
 	OwnerName      string
 	Since          time.Time
@@ -468,8 +469,8 @@ func (f *Filter) toQuery() (bson.M, error) {
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
-	if f.KindName != "" {
-		query["kind.name"] = f.KindName
+	if len(f.KindNames) > 0 {
+		query["kind.name"] = bson.M{"$in": f.KindNames}
 	}
 	if f.OwnerType != "" {
 		query["owner.type"] = f.OwnerType
