@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -90,10 +91,14 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 }
 
-func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, error) {
+func (s *EventSuite) insertEvents(target string, kind *permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
 	t, err := event.GetTargetType(target)
 	if err != nil {
 		return nil, err
+	}
+	kinds := []*permission.PermissionScheme{permission.PermAppDeploy}
+	if kind != nil {
+		kinds = append(kinds, kind)
 	}
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
@@ -101,7 +106,7 @@ func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, er
 		opts := &event.Opts{
 			Target:     event.Target{Type: t, Value: name},
 			Owner:      s.token,
-			Kind:       permission.PermAppDeploy,
+			Kind:       kinds[i%len(kinds)],
 			Cancelable: i == 0,
 		}
 		if t == event.TargetTypeApp {
@@ -133,7 +138,7 @@ func (s *EventSuite) TestEventListEmpty(c *check.C) {
 }
 
 func (s *EventSuite) TestEventList(c *check.C) {
-	_, err := s.insertEvents("app", c)
+	_, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events", nil)
 	c.Assert(err, check.IsNil)
@@ -150,9 +155,9 @@ func (s *EventSuite) TestEventList(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
-	_, err := s.insertEvents("app", c)
+	_, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
-	s.insertEvents("node", c)
+	s.insertEvents("node", nil, c)
 	request, err := http.NewRequest("GET", "/events?target.type=app", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -175,7 +180,7 @@ func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
-	_, err := s.insertEvents("app", c)
+	_, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Events().Update(bson.M{}, bson.M{"$set": bson.M{"running": true}})
 	c.Assert(err, check.IsNil)
@@ -203,10 +208,16 @@ func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
 	c.Assert(result, check.HasLen, 1)
 }
 
-func (s *EventSuite) TestEventListFilterByKind(c *check.C) {
-	_, err := s.insertEvents("app", c)
+func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
+	kind1 := permission.PermAppCreate
+	kind2 := permission.PermAppDeploy
+	_, err := s.insertEvents("app", kind1, c)
 	c.Assert(err, check.IsNil)
-	u := fmt.Sprintf("/events?kindName=%s", permission.PermAppDeploy)
+
+	v := url.Values{}
+	v.Add("kindName", kind1.FullName())
+	v.Add("kindName", kind2.FullName())
+	u := fmt.Sprintf("/events?%s", v.Encode())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -219,6 +230,19 @@ func (s *EventSuite) TestEventListFilterByKind(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 10)
+
+	u = "/events?kindName=" + kind1.FullName()
+	request, err = http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 5)
+
 	request, err = http.NewRequest("GET", "/events?kindName=invalid", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -228,7 +252,7 @@ func (s *EventSuite) TestEventListFilterByKind(c *check.C) {
 }
 
 func (s *EventSuite) TestKindList(c *check.C) {
-	_, err := s.insertEvents("app", c)
+	_, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events/kinds", nil)
 	c.Assert(err, check.IsNil)
@@ -278,7 +302,7 @@ func (s *EventSuite) TestEventInfoNotFound(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancel(c *check.C) {
-	events, err := s.insertEvents("app", c)
+	events, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("reason=we ain't gonna take it")
 	u := fmt.Sprintf("/events/%s/cancel", events[0].UniqueID.Hex())
@@ -322,7 +346,7 @@ func (s *EventSuite) TestEventCancelNotFound(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancelNoReason(c *check.C) {
-	events, err := s.insertEvents("app", c)
+	events, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("reason=")
 	u := fmt.Sprintf("/events/%s/cancel", events[0].UniqueID.Hex())
@@ -338,7 +362,7 @@ func (s *EventSuite) TestEventCancelNoReason(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
-	events, err := s.insertEvents("app", c)
+	events, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("reason=pretty please")
 	u := fmt.Sprintf("/events/%s/cancel", events[1].UniqueID.Hex())

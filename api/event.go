@@ -35,6 +35,7 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
 	}
+	filter.KindNames = r.Form["kindName"]
 	filter.PruneUserValues()
 	filter.Permissions, err = t.Permissions()
 	if err != nil {
