@@ -33,6 +33,7 @@ type runContainerActionsArgs struct {
 	client           provision.BuilderDockerClient
 	exposedPort      string
 	event            *event.Event
+	tarFile          io.Reader
 }
 
 func checkCanceled(evt *event.Event) error {
@@ -91,6 +92,30 @@ var createContainer = action.Action{
 		if err != nil {
 			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
 		}
+	},
+}
+
+var uploadToContainer = action.Action{
+	Name: "upload-to-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		c := ctx.Previous.(Container)
+		log.Debugf("uploading tarfile to container %s", c.ID)
+		uploadOpts := docker.UploadToContainerOptions{
+			InputStream: args.tarFile,
+			Path:        archiveDirPath,
+		}
+		err := args.client.UploadToContainer(c.ID, uploadOpts)
+		if err != nil {
+			log.Errorf("error on upload tarfile to container %s - %s", c.ID, err)
+			return nil, err
+		}
+		return c, nil
+	},
+	Backward: func(ctx action.BWContext) {
 	},
 }
 
