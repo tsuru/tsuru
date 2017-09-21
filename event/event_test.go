@@ -849,7 +849,7 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 	f := Filter{
 		Target:         Target{Type: "app", Value: "myapp"},
 		KindType:       KindTypePermission,
-		KindName:       "a",
+		KindName:       []string{"a"},
 		OwnerType:      OwnerTypeUser,
 		OwnerName:      "u",
 		Since:          time.Now(),
@@ -1142,7 +1142,7 @@ func (s *S) TestLoadThrottlingInvalid(c *check.C) {
 	err = config.ReadConfigBytes([]byte(`
 event:
   throttling:
-    a: 
+    a:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()

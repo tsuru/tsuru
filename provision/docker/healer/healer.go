@@ -82,7 +82,7 @@ func toHealingEvt(evt *event.Event) (types.HealingEvent, error) {
 
 func ListHealingHistory(filter string) ([]types.HealingEvent, error) {
 	evtFilter := event.Filter{
-		KindName: "healer",
+		KindName: []string{"healer"},
 		KindType: event.KindTypeInternal,
 	}
 	if filter != "" {

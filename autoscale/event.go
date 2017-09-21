@@ -64,7 +64,7 @@ func ListAutoScaleEvents(skip, limit int) ([]Event, error) {
 	evts, err := event.List(&event.Filter{
 		Skip:     skip,
 		Limit:    limit,
-		KindName: EventKind,
+		KindName: []string{EventKind},
 	})
 	if err != nil {
 		return nil, err
