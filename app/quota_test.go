@@ -70,7 +70,8 @@ func (s *S) TestReserveUnitsUnlimitedQuota(c *check.C) {
 
 func (s *S) TestReserveUnitsIsAtomic(c *check.C) {
 	ncpu := runtime.NumCPU()
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
+	originalMaxProcs := runtime.GOMAXPROCS(ncpu)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	app := &App{
 		Name:   "together",
 		Quota:  quota.Quota{Limit: 40},
@@ -122,7 +123,8 @@ func (s *S) TestReleaseUnreservedUnits(c *check.C) {
 
 func (s *S) TestReleaseUnitsIsAtomic(c *check.C) {
 	ncpu := runtime.NumCPU()
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
+	originalMaxProcs := runtime.GOMAXPROCS(ncpu)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	app := &App{
 		Name:   "together",
 		Quota:  quota.Quota{Limit: 40, InUse: 40},

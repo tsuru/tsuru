@@ -23,7 +23,8 @@ func (s *S) TestCounterVal(c *check.C) {
 }
 
 func (s *S) TestIncrement(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(16))
+	originalMaxProcs := runtime.GOMAXPROCS(16)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	n := 50
 	var wg sync.WaitGroup
 	var ct Counter
@@ -41,7 +42,8 @@ func (s *S) TestIncrement(c *check.C) {
 }
 
 func (s *S) TestDecrement(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(16))
+	originalMaxProcs := runtime.GOMAXPROCS(16)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	n := 50
 	var wg sync.WaitGroup
 	ct := NewCounter(int64(n * n))

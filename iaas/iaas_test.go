@@ -246,7 +246,8 @@ func (s *S) TestGetDefaultIaaSEc2MultipleConfigured(c *check.C) {
 }
 
 func (s *S) TestStressConcurrentGet(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1000))
+	originalMaxProcs := runtime.GOMAXPROCS(1000)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	RegisterIaasProvider("customable-iaas", newTestCustomizableIaaS)
 	config.Set("iaas:custom:abc:provider", "customable-iaas")
 	defer config.Unset("iaas:custom:abc:provider")
