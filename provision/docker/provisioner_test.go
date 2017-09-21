@@ -951,8 +951,14 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 }
 
 func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
-	u, _ := url.Parse(s.server.URL())
-	config.Set("docker:registry", u.Host)
+	var registryRequests []*http.Request
+	registryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		registryRequests = append(registryRequests, r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer registryServer.Close()
+	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
+	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
@@ -965,7 +971,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = image.SaveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", u.Host, a.Name), customData)
+	err = image.SaveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -981,7 +987,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, u.Host+"/tsuru/app-"+a.Name+":v1-builder")
+	c.Assert(builderImgID, check.Equals, registryURL+"/tsuru/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -997,6 +1003,9 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
+	c.Assert(registryRequests, check.HasLen, 1)
+	c.Assert(registryRequests[0].Method, check.Equals, "DELETE")
+	c.Assert(registryRequests[0].URL.Path, check.Equals, "/v1/repositories/tsuru/app-mydoomedapp:v1/")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)

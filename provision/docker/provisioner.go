@@ -518,6 +518,10 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		if err != nil && err != docker.ErrNoSuchImage {
 			log.Errorf("Failed to remove image %s: %s", imageID, err)
 		}
+		err = cluster.RemoveFromRegistry(imageID)
+		if err != nil {
+			log.Errorf("Failed to remove image %s from registry: %s", imageID, err)
+		}
 	}
 	return nil
 }
