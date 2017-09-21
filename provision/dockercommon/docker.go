@@ -38,29 +38,8 @@ type Client interface {
 	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
 	InspectImage(string) (*docker.Image, error)
 	TagImage(string, docker.TagImageOptions) error
-	UploadToContainer(string, docker.UploadToContainerOptions) error
 	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
 	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
-}
-
-func UploadToContainer(client Client, contID string, archiveFile io.Reader) (string, string, error) {
-	dirPath := "/home/application/"
-	fileName := "archive.tar.gz"
-	uploadOpts := docker.UploadToContainerOptions{
-		InputStream: archiveFile,
-		Path:        dirPath,
-	}
-	err := client.UploadToContainer(contID, uploadOpts)
-	if err != nil {
-		return "", "", err
-	}
-	image, err := client.CommitContainer(docker.CommitContainerOptions{
-		Container: contID,
-	})
-	if err != nil {
-		return "", "", err
-	}
-	return image.ID, fmt.Sprintf("file://%s%s", dirPath, fileName), nil
 }
 
 func DownloadFromContainer(client Client, contID string, filePath string) (io.ReadCloser, error) {
