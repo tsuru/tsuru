@@ -80,7 +80,7 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	evts, err := event.List(&event.Filter{
 		Target:   event.Target{Type: event.TargetTypeApp},
 		Raw:      bson.M{"target.value": bson.M{"$in": apps}},
-		KindName: permission.PermAppDeploy.FullName(),
+		KindName: []string{permission.PermAppDeploy.FullName()},
 		KindType: event.KindTypePermission,
 		Limit:    limit,
 		Skip:     skip,
