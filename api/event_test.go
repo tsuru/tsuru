@@ -90,14 +90,13 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 }
 
-func (s *EventSuite) insertEvents(target string, kind *permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
+func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
 	t, err := event.GetTargetType(target)
 	if err != nil {
 		return nil, err
 	}
-	kinds := []*permission.PermissionScheme{permission.PermAppDeploy}
-	if kind != nil {
-		kinds = append(kinds, kind)
+	if kinds == nil || len(kinds) == 0 {
+		kinds = []*permission.PermissionScheme{permission.PermAppDeploy}
 	}
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
@@ -208,12 +207,11 @@ func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
-	kind1 := permission.PermAppCreate
-	kind2 := permission.PermAppDeploy
-	_, err := s.insertEvents("app", kind1, c)
+	kinds := []*permission.PermissionScheme{permission.PermAppCreate, permission.PermAppDeploy}
+	_, err := s.insertEvents("app", kinds, c)
 	c.Assert(err, check.IsNil)
 
-	u := fmt.Sprintf("/events?kindName=%s&kindname=%s", kind1.FullName(), kind2.FullName())
+	u := fmt.Sprintf("/events?kindName=%s&kindname=%s", kinds[0].FullName(), kinds[1].FullName())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -227,7 +225,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 10)
 
-	u = "/events?KindName=" + kind1.FullName()
+	u = "/events?KindName=" + kinds[0].FullName()
 	request, err = http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
