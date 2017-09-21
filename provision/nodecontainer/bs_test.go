@@ -51,7 +51,8 @@ func (s *S) TestInitializeBS(c *check.C) {
 }
 
 func (s *S) TestInitializeBSStress(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	nTimes := 100
 	initializedCh := make(chan bool, nTimes)

@@ -81,7 +81,8 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 }
 
 func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	l := s.limiter
 	l.Initialize(100)
 	wg := sync.WaitGroup{}
@@ -108,7 +109,8 @@ func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 }
 
 func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	l := s.limiter
 	l.Initialize(100)
 	wg := sync.WaitGroup{}

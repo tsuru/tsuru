@@ -537,7 +537,8 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 }
 
 func (s *S) TestDeployRegisterRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	var p dockerProvisioner
 	var registerCount int64
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {

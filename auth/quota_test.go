@@ -79,7 +79,8 @@ func (s *S) TestReserveAppQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestReserveAppIsSafe(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
+	originalMaxProcs := runtime.GOMAXPROCS(runtime.NumCPU())
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
@@ -176,7 +177,8 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 }
 
 func (s *S) TestReleaseAppIsSafe(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
+	originalMaxProcs := runtime.GOMAXPROCS(runtime.NumCPU())
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",

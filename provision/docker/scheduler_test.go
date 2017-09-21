@@ -414,7 +414,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	nodes := []cluster.Node{
 		{Address: "http://server1:1234"},
 		{Address: "http://server2:1234"},

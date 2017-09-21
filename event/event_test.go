@@ -1019,7 +1019,8 @@ func (s *S) TestNewWithPermission(c *check.C) {
 }
 
 func (s *S) TestNewLockRetryRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
+	originalMaxProcs := runtime.GOMAXPROCS(100)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	wg := sync.WaitGroup{}
 	var countOK int32
 	for i := 0; i < 150; i++ {

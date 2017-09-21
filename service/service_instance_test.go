@@ -991,7 +991,8 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 }
 
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	originalMaxProcs := runtime.GOMAXPROCS(4)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
