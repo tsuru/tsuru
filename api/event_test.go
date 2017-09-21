@@ -213,7 +213,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	_, err := s.insertEvents("app", kind1, c)
 	c.Assert(err, check.IsNil)
 
-	u := fmt.Sprintf("/events?kindName=%s&kindName=%s", kind1.FullName(), kind2.FullName())
+	u := fmt.Sprintf("/events?kindName=%s&kindname=%s", kind1.FullName(), kind2.FullName())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -227,7 +227,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 10)
 
-	u = "/events?kindName=" + kind1.FullName()
+	u = "/events?KindName=" + kind1.FullName()
 	request, err = http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -239,7 +239,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 5)
 
-	request, err = http.NewRequest("GET", "/events?kindName=invalid", nil)
+	request, err = http.NewRequest("GET", "/events?KINDNAME=invalid", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
