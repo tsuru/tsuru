@@ -40,7 +40,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provisio
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
-	archiveFileURI := fmt.Sprintf("file://%s%s", archiveDirPath, archiveFileName)
+	archiveFileURI := fmt.Sprintf("file://%s/%s", archiveDirPath, archiveFileName)
 	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
 	var writer io.Writer = evt
 	if evt == nil {
