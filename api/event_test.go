@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -214,10 +213,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	_, err := s.insertEvents("app", kind1, c)
 	c.Assert(err, check.IsNil)
 
-	v := url.Values{}
-	v.Add("kindName", kind1.FullName())
-	v.Add("kindName", kind2.FullName())
-	u := fmt.Sprintf("/events?%s", v.Encode())
+	u := fmt.Sprintf("/events?kindNames=%s&kindNames=%s", kind1.FullName(), kind2.FullName())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -231,7 +227,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 10)
 
-	u = "/events?kindName=" + kind1.FullName()
+	u = "/events?kindNames=" + kind1.FullName()
 	request, err = http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -243,7 +239,7 @@ func (s *EventSuite) TestEventListFilterByKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 5)
 
-	request, err = http.NewRequest("GET", "/events?kindName=invalid", nil)
+	request, err = http.NewRequest("GET", "/events?kindNames=invalid", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()

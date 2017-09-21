@@ -390,7 +390,7 @@ type Filter struct {
 	Target         Target
 	KindType       kindType
 	KindName       string
-	KindNames      []string
+	KindNames      []string `form:"-"`
 	OwnerType      ownerType
 	OwnerName      string
 	Since          time.Time
