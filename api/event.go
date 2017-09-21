@@ -26,16 +26,19 @@ import (
 //   200: OK
 //   204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	r.ParseForm()
-	filter := &event.Filter{}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err := dec.DecodeValues(&filter, r.Form)
+	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
 	}
-	filter.KindNames = r.Form["kindName"]
+	var filter *event.Filter
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	err = dec.DecodeValues(&filter, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
+	}
+	filter.KindNames = r.Form["kindNames"]
 	filter.PruneUserValues()
 	filter.Permissions, err = t.Permissions()
 	if err != nil {
