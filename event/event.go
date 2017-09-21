@@ -415,6 +415,15 @@ func (f *Filter) PruneUserValues() {
 	}
 }
 
+func (f *Filter) LoadKindNames(form map[string][]string) {
+	f.KindName = []string{}
+	for k, v := range form {
+		if strings.ToLower(k) == "kindname" {
+			f.KindName = append(f.KindName, v...)
+		}
+	}
+}
+
 func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
 	permMap := map[string][]permission.PermissionContext{}

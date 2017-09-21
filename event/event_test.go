@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -879,6 +880,19 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 	expectedFilter.Limit = 100
 	f.PruneUserValues()
 	c.Assert(f, check.DeepEquals, expectedFilter)
+}
+
+func (s *S) TestLoadKindNames(c *check.C) {
+	f := &Filter{}
+	form := map[string][]string{
+		"kindname": {"a", "b"},
+		"kindName": {"c", "d"},
+		"KindName": {"e", "f"},
+		"KINDNAME": {"g", "h"},
+	}
+	f.LoadKindNames(form)
+	sort.Strings(f.KindName)
+	c.Assert(f.KindName, check.DeepEquals, []string{"a", "b", "c", "d", "e", "f", "g", "h"})
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
