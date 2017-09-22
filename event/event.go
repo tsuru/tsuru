@@ -389,7 +389,7 @@ type TargetFilter struct {
 type Filter struct {
 	Target         Target
 	KindType       kindType
-	KindName       []string `form:"-"`
+	KindNames      []string `form:"-"`
 	OwnerType      ownerType
 	OwnerName      string
 	Since          time.Time
@@ -416,10 +416,10 @@ func (f *Filter) PruneUserValues() {
 }
 
 func (f *Filter) LoadKindNames(form map[string][]string) {
-	f.KindName = []string{}
+	f.KindNames = []string{}
 	for k, v := range form {
 		if strings.ToLower(k) == "kindname" {
-			f.KindName = append(f.KindName, v...)
+			f.KindNames = append(f.KindNames, v...)
 		}
 	}
 }
@@ -477,8 +477,8 @@ func (f *Filter) toQuery() (bson.M, error) {
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
-	if len(f.KindName) > 0 {
-		query["kind.name"] = bson.M{"$in": f.KindName}
+	if len(f.KindNames) > 0 {
+		query["kind.name"] = bson.M{"$in": f.KindNames}
 	}
 	if f.OwnerType != "" {
 		query["owner.type"] = f.OwnerType

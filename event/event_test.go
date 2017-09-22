@@ -850,7 +850,7 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 	f := Filter{
 		Target:         Target{Type: "app", Value: "myapp"},
 		KindType:       KindTypePermission,
-		KindName:       []string{"a"},
+		KindNames:      []string{"a"},
 		OwnerType:      OwnerTypeUser,
 		OwnerName:      "u",
 		Since:          time.Now(),
@@ -891,8 +891,8 @@ func (s *S) TestLoadKindNames(c *check.C) {
 		"KINDNAME": {"g", "h"},
 	}
 	f.LoadKindNames(form)
-	sort.Strings(f.KindName)
-	c.Assert(f.KindName, check.DeepEquals, []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+	sort.Strings(f.KindNames)
+	c.Assert(f.KindNames, check.DeepEquals, []string{"a", "b", "c", "d", "e", "f", "g", "h"})
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
