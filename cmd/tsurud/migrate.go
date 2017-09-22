@@ -84,6 +84,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
+	err = migration.Register("migrate-app-plan-id-to-plan-name", appMigrate.MigrateAppPlanIDToPlanName)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
 	err = migration.RegisterOptional("migrate-roles", migrateRoles)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
