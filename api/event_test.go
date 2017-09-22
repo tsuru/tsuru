@@ -95,7 +95,7 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 	if err != nil {
 		return nil, err
 	}
-	if kinds == nil || len(kinds) == 0 {
+	if len(kinds) == 0 {
 		kinds = []*permission.PermissionScheme{permission.PermAppDeploy}
 	}
 	evts := make([]*event.Event, 10)
