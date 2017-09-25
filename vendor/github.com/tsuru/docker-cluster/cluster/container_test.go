@@ -482,7 +482,7 @@ func TestCreateContainerWithStorage(t *testing.T) {
 
 type firstNodeScheduler struct{}
 
-func (firstNodeScheduler) Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
+func (firstNodeScheduler) Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
 	var node Node
 	nodes, err := c.Nodes()
 	if err != nil {

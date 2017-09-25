@@ -88,13 +88,13 @@ func (failingStorage) UnlockNode(address string) error {
 
 type fakeScheduler struct{}
 
-func (fakeScheduler) Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
+func (fakeScheduler) Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
 	return Node{}, nil
 }
 
 type failingScheduler struct{}
 
-func (failingScheduler) Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
+func (failingScheduler) Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
 	return Node{}, errors.New("Cannot schedule")
 }
 
@@ -102,7 +102,7 @@ type optsScheduler struct {
 	roundRobin
 }
 
-func (s *optsScheduler) Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
+func (s *optsScheduler) Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
 	optStr := schedulerOpts.(string)
 	if optStr != "myOpt" {
 		return Node{}, fmt.Errorf("Invalid option %s", optStr)
