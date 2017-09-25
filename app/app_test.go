@@ -4411,6 +4411,67 @@ func (s *S) TestRenameTeamUnchanagedLockedApp(c *check.C) {
 	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
 }
 
+func (s *S) TestUpdateRouter(c *check.C) {
+	config.Set("routers:fake-opts:type", "fake-opts")
+	defer config.Unset("routers:fake-opts:type")
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-opts",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = app.UpdateRouter(appTypes.AppRouter{Name: "fake-opts", Opts: map[string]string{
+		"c": "d",
+	}})
+	c.Assert(err, check.IsNil)
+	routers := app.GetRouters()
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake"},
+		{Name: "fake-opts", Opts: map[string]string{"c": "d"}},
+	})
+	c.Assert(routertest.OptsRouter.Opts["myapp"], check.DeepEquals, map[string]string{
+		"c": "d",
+	})
+}
+
+func (s *S) TestUpdateRouterNotSupported(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = app.UpdateRouter(appTypes.AppRouter{Name: "fake-tls", Opts: map[string]string{
+		"c": "d",
+	}})
+	c.Assert(err, check.ErrorMatches, "updating is not supported by router \"fake-tls\"")
+}
+
+func (s *S) TestUpdateRouterNotFound(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = app.UpdateRouter(appTypes.AppRouter{Name: "fake-opts", Opts: map[string]string{
+		"c": "d",
+	}})
+	c.Assert(err, check.DeepEquals, &router.ErrRouterNotFound{Name: "fake-opts"})
+}
+
 func (s *S) TestAppAddRouter(c *check.C) {
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
