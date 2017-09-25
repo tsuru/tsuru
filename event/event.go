@@ -416,10 +416,14 @@ func (f *Filter) PruneUserValues() {
 }
 
 func (f *Filter) LoadKindNames(form map[string][]string) {
-	f.KindNames = []string{}
-	for k, v := range form {
-		if strings.ToLower(k) == "kindname" {
-			f.KindNames = append(f.KindNames, v...)
+	for k, values := range form {
+		if strings.ToLower(k) != "kindname" {
+			continue
+		}
+		for _, val := range values {
+			if val != "" {
+				f.KindNames = append(f.KindNames, val)
+			}
 		}
 	}
 }

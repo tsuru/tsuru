@@ -885,7 +885,7 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 func (s *S) TestLoadKindNames(c *check.C) {
 	f := &Filter{}
 	form := map[string][]string{
-		"kindname": {"a", "b"},
+		"kindname": {"a", "b", ""},
 		"kindName": {"c", "d"},
 		"KindName": {"e", "f"},
 		"KINDNAME": {"g", "h"},
@@ -893,6 +893,15 @@ func (s *S) TestLoadKindNames(c *check.C) {
 	f.LoadKindNames(form)
 	sort.Strings(f.KindNames)
 	c.Assert(f.KindNames, check.DeepEquals, []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+}
+
+func (s *S) TestLoadKindNamesOnlyEmptyValues(c *check.C) {
+	f := &Filter{}
+	form := map[string][]string{
+		"kindname": {""},
+	}
+	f.LoadKindNames(form)
+	c.Assert(f.KindNames, check.IsNil)
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
