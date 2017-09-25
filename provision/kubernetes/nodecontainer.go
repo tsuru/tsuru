@@ -47,8 +47,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		}
 		oldDs = nil
 	}
+	nodePoolLabelKey := tsuruLabelPrefix + provision.LabelNodePool
 	nodeReq := apiv1.NodeSelectorRequirement{
-		Key: tsuruLabelPrefix + provision.LabelNodePool,
+		Key: nodePoolLabelKey,
 	}
 	if len(filter.Exclude) > 0 {
 		nodeReq.Operator = apiv1.NodeSelectorOpNotIn
@@ -57,25 +58,28 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		nodeReq.Operator = apiv1.NodeSelectorOpIn
 		nodeReq.Values = filter.Include
 	}
-	affinityAnnotation := map[string]string{}
-	var affinity *apiv1.Affinity
-	if len(nodeReq.Values) != 0 {
-		affinity = &apiv1.Affinity{
-			NodeAffinity: &apiv1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
-					NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
-						MatchExpressions: []apiv1.NodeSelectorRequirement{nodeReq},
-					}},
-				},
-			},
-		}
-		var affinityData []byte
-		affinityData, err = json.Marshal(affinity)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		affinityAnnotation[alphaAffinityAnnotation] = string(affinityData)
+	selectors := []apiv1.NodeSelectorRequirement{
+		{Key: nodePoolLabelKey, Operator: apiv1.NodeSelectorOpExists},
 	}
+	if len(nodeReq.Values) != 0 {
+		selectors = append(selectors, nodeReq)
+	}
+	affinityAnnotation := map[string]string{}
+	affinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: selectors,
+				}},
+			},
+		},
+	}
+	var affinityData []byte
+	affinityData, err = json.Marshal(affinity)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	affinityAnnotation[alphaAffinityAnnotation] = string(affinityData)
 	if oldDs != nil && placementOnly {
 		if reflect.DeepEqual(oldDs.Spec.Template.ObjectMeta.Annotations, affinityAnnotation) &&
 			reflect.DeepEqual(oldDs.Spec.Template.Spec.Affinity, affinity) {
