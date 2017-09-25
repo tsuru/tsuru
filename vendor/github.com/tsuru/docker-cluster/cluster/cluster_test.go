@@ -88,7 +88,7 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := docker.CreateContainerOptions{}
-	node, err = scheduler.Schedule(cluster, opts, nil)
+	node, err = scheduler.Schedule(cluster, &opts, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,14 +99,14 @@ func TestRegister(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	node, err = scheduler.Schedule(cluster, opts, nil)
+	node, err = scheduler.Schedule(cluster, &opts, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if node.Address != "http://localhost2:4243" {
 		t.Errorf("Register failed. Got wrong ID. Want %q. Got %q.", "http://localhost2:4243", node.Address)
 	}
-	node, err = scheduler.Schedule(cluster, opts, nil)
+	node, err = scheduler.Schedule(cluster, &opts, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func TestUnregister(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := docker.CreateContainerOptions{}
-	_, err = scheduler.Schedule(cluster, opts, nil)
+	_, err = scheduler.Schedule(cluster, &opts, nil)
 	if err == nil || err.Error() != "No nodes available" {
 		t.Fatal("Expected no nodes available error")
 	}

@@ -23,13 +23,13 @@ func TestRoundRobinScheduleIsRaceFree(t *testing.T) {
 	}
 	c.Register(Node{Address: "url1"})
 	c.Register(Node{Address: "url2"})
-	opts := docker.CreateContainerOptions{Config: &docker.Config{}}
 	var wg sync.WaitGroup
 	wg.Add(8)
 	for i := 0; i < tasks; i++ {
 		go func() {
 			defer wg.Done()
-			node, err := c.scheduler.Schedule(c, opts, nil)
+			opts := docker.CreateContainerOptions{Config: &docker.Config{}}
+			node, err := c.scheduler.Schedule(c, &opts, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
