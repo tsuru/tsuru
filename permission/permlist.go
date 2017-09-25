@@ -43,6 +43,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.certificate.unset",
 	"app.update.deploy.rollback",
 	"app.update.router.add",
+	"app.update.router.update",
 	"app.update.router.remove",
 	"app.deploy",
 	"app.deploy.archive-url",

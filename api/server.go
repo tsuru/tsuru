@@ -168,7 +168,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "Delete", "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
 
 	m.Add("1.5", "Post", "/apps/{app}/routers", AuthorizationRequiredHandler(addAppRouter))
-	m.Add("1.5", "Delete", "/apps/{app}/routers", AuthorizationRequiredHandler(removeAppRouter))
+	m.Add("1.5", "Put", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(updateAppRouter))
+	m.Add("1.5", "Delete", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(removeAppRouter))
 	m.Add("1.5", "Get", "/apps/{app}/routers", AuthorizationRequiredHandler(listAppRouters))
 
 	m.Add("1.0", "Post", "/node/status", AuthorizationRequiredHandler(setNodeStatus))

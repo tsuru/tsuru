@@ -165,6 +165,53 @@ func (s *S) TestAddAppRouterInvalidRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound, check.Commentf("body: %q", recorder.Body.String()))
 }
 
+func (s *S) TestUpdateAppRouter(c *check.C) {
+	config.Set("routers:fake-opts:type", "fake-opts")
+	defer config.Unset("routers:fake-opts:type")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateRouterUpdate,
+		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+	})
+	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := app.CreateApp(&myapp, s.user)
+	c.Assert(err, check.IsNil)
+	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake-opts"})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader(`opts.x=y&opts.z=w`)
+	request, err := http.NewRequest("PUT", "/1.5/apps/myapp/routers/fake-opts", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	dbApp, err := app.GetByName(myapp.Name)
+	c.Assert(err, check.IsNil)
+	routers := dbApp.GetRouters()
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Opts: map[string]string{}},
+		{Name: "fake-opts", Opts: map[string]string{"x": "y", "z": "w"}},
+	})
+}
+
+func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateRouterUpdate,
+		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+	})
+	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := app.CreateApp(&myapp, s.user)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader(`opts.x=y&opts.z=w`)
+	request, err := http.NewRequest("PUT", "/1.5/apps/myapp/routers/xyz", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRemoveAppRouter(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
@@ -174,7 +221,7 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 	err := app.CreateApp(&myapp, s.user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("DELETE", "/1.5/apps/myapp/routers?name=fake", nil)
+	request, err := http.NewRequest("DELETE", "/1.5/apps/myapp/routers/fake", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
