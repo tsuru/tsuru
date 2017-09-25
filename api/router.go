@@ -124,14 +124,15 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	return err
 }
 
-// title: delete app router
-// path: /app/{app}/routers
-// method: DELETE
+// title: update app router
+// path: /app/{app}/routers/{name}
+// method: PUT
 // produce: application/json
 // responses:
 //   200: OK
 //   404: App or router not found
-func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+//   400: Invalid request
+func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -144,7 +145,48 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	routerName := r.URL.Query().Get(":router")
+	appRouter.Name = routerName
 	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateRouterUpdate,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateRouterUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = a.UpdateRouter(appRouter)
+	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
+}
+
+// title: delete app router
+// path: /app/{app}/routers/{router}
+// method: DELETE
+// produce: application/json
+// responses:
+//   200: OK
+//   404: App or router not found
+func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	appName := r.URL.Query().Get(":app")
+	routerName := r.URL.Query().Get(":router")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -166,7 +208,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.RemoveRouter(appRouter.Name)
+	err = a.RemoveRouter(routerName)
 	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
