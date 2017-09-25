@@ -132,6 +132,10 @@ func checkCanceled(evt *event.Event) error {
 	return nil
 }
 
+func generateContainerName(appName string) string {
+	return appName + "-" + randomString()
+}
+
 var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -143,13 +147,13 @@ var insertEmptyContainerInDB = action.Action{
 		if args.isDeploy {
 			initialStatus = provision.StatusBuilding
 		}
-		contName := args.app.GetName() + "-" + randomString()
 		cont := container.Container{
 			Container: types.Container{
+				MongoID:       bson.NewObjectId(),
 				AppName:       args.app.GetName(),
 				ProcessName:   args.processName,
 				Type:          args.app.GetPlatform(),
-				Name:          contName,
+				Name:          generateContainerName(args.app.GetName()),
 				Status:        initialStatus.String(),
 				Image:         args.imageID,
 				BuildingImage: args.buildingImage,
@@ -169,7 +173,7 @@ var insertEmptyContainerInDB = action.Action{
 		args := ctx.Params[0].(runContainerActionsArgs)
 		coll := args.provisioner.Collection()
 		defer coll.Close()
-		coll.Remove(bson.M{"name": c.Name})
+		coll.RemoveId(c.MongoID)
 	},
 }
 

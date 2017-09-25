@@ -41,6 +41,7 @@ type DockerProvisioner interface {
 type SchedulerOpts struct {
 	AppName       string
 	ProcessName   string
+	UpdateName    bool
 	ActionLimiter provision.ActionLimiter
 	LimiterDone   func()
 }
@@ -142,6 +143,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	schedulerOpts := &SchedulerOpts{
 		AppName:       args.App.GetName(),
 		ProcessName:   args.ProcessName,
+		UpdateName:    true,
 		ActionLimiter: args.Provisioner.ActionLimiter(),
 	}
 	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
@@ -153,6 +155,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
 	}
+	c.Name = cont.Name
 	c.ID = cont.ID
 	c.HostAddr = hostAddr
 	return nil
