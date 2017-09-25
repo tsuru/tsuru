@@ -93,6 +93,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *check.C) {
 	c.Assert(cont.Status, check.Equals, "created")
 	c.Assert(cont.Image, check.Equals, "image-id")
 	c.Assert(cont.BuildingImage, check.Equals, "next-image")
+	c.Assert(string(cont.MongoID), check.Not(check.Equals), "")
 	coll := s.p.Collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
@@ -124,6 +125,7 @@ func (s *S) TestInsertEmptyContainerInDBForDeployForward(c *check.C) {
 	c.Assert(cont.Status, check.Equals, "building")
 	c.Assert(cont.Image, check.Equals, "image-id")
 	c.Assert(cont.BuildingImage, check.Equals, "next-image")
+	c.Assert(string(cont.MongoID), check.Not(check.Equals), "")
 	coll := s.p.Collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
@@ -134,7 +136,7 @@ func (s *S) TestInsertEmptyContainerInDBForDeployForward(c *check.C) {
 }
 
 func (s *S) TestInsertEmptyContainerInDBBackward(c *check.C) {
-	cont := container.Container{Container: types.Container{Name: "myName"}}
+	cont := container.Container{Container: types.Container{MongoID: bson.NewObjectId()}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(&cont)
