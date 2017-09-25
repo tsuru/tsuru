@@ -5513,10 +5513,8 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 			{"name": ":app", "value": a.Name},
 		},
 		EndCustomData: map[string]interface{}{
-			"fake": map[string]interface{}{
-				"added":   []string(nil),
-				"removed": []string(nil),
-			},
+			"fake.added":   []string(nil),
+			"fake.removed": []string(nil),
 		},
 	}, eventtest.HasEvent)
 }
