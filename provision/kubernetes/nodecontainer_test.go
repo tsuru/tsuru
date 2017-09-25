@@ -48,6 +48,22 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	trueVar := true
 	maxUnavailable := intstr.FromString("20%")
+	expectedAffinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
+					},
+				}},
+			},
+		},
+	}
+	affinityData, err := json.Marshal(expectedAffinity)
+	c.Assert(err, check.IsNil)
 	c.Assert(daemon, check.DeepEquals, &v1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-all",
@@ -75,9 +91,12 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						"tsuru.io/node-container-name": "bs",
 						"tsuru.io/node-container-pool": "",
 					},
-					Annotations: map[string]string{},
+					Annotations: map[string]string{
+						"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
+					},
 				},
 				Spec: apiv1.PodSpec{
+					Affinity: expectedAffinity,
 					Volumes: []apiv1.Volume{
 						{
 							Name: "volume-0",
@@ -142,6 +161,10 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
 							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
+						{
+							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpNotIn,
 							Values:   []string{"p1", "p2"},
 						},
@@ -165,6 +188,10 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
 				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
 						{
 							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpIn,
@@ -265,17 +292,39 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{})
-	c.Assert(daemon.Spec.Template.Spec.Affinity, check.IsNil)
-	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
-	c.Assert(err, check.IsNil)
-	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
 				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
 					MatchExpressions: []apiv1.NodeSelectorRequirement{
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
+					},
+				}},
+			},
+		},
+	}
+	affinityData, err := json.Marshal(expectedAffinity)
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
+		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
+	})
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
+	c.Assert(err, check.IsNil)
+	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity = &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
 						{
 							Key:      "tsuru.io/pool",
 							Operator: apiv1.NodeSelectorOpNotIn,
@@ -286,7 +335,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 			},
 		},
 	}
-	affinityData, err := json.Marshal(expectedAffinity)
+	affinityData, err = json.Marshal(expectedAffinity)
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
 		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
