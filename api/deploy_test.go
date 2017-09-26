@@ -129,7 +129,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -169,7 +169,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?origin=drag-and-drop", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?origin=drag-and-drop", a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	file, err := writer.CreateFormFile("file", "archive.tar.gz")
@@ -214,7 +214,7 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s&origin=drag", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -274,7 +274,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -319,7 +319,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	file, err := writer.CreateFormFile("file", "archive.tar.gz")
@@ -372,7 +372,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -418,7 +418,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -465,7 +465,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&message=and when he falleth"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -511,7 +511,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -566,7 +566,7 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -580,7 +580,7 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", strings.NewReader("archive-url=http://something.tar.gz"))
+	request, err := http.NewRequest("POST", "/apps/abc/deploy", strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -602,7 +602,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, adminUser)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -624,7 +624,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.AppLogin(app2.Name)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", app1.Name, app2.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", app1.Name, app2.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -648,7 +648,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -667,7 +667,7 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
+	request, err := http.NewRequest("POST", "/apps/abc/deploy", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
