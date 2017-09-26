@@ -85,7 +85,6 @@ func checkDocker() error {
 // Check default configs to Docker.
 func checkDockerBasicConfig() error {
 	return checkConfigPresent([]string{
-		"docker:repository-namespace",
 		"docker:collection",
 	}, "Config error: you should configure %q")
 }

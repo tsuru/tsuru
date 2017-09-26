@@ -14,6 +14,7 @@ var (
 	PermAppAdminQuota                    = PermissionRegistry.get("app.admin.quota")                     // [global app team pool]
 	PermAppAdminRoutes                   = PermissionRegistry.get("app.admin.routes")                    // [global app team pool]
 	PermAppAdminUnlock                   = PermissionRegistry.get("app.admin.unlock")                    // [global app team pool]
+	PermAppBuild                         = PermissionRegistry.get("app.build")                           // [global app team pool]
 	PermAppCreate                        = PermissionRegistry.get("app.create")                          // [global team]
 	PermAppDelete                        = PermissionRegistry.get("app.delete")                          // [global app team pool]
 	PermAppDeploy                        = PermissionRegistry.get("app.deploy")                          // [global app team pool]

@@ -253,6 +253,10 @@ func (a *FakeApp) GetDeploys() uint {
 	return a.Deploys
 }
 
+func (a *FakeApp) GetTeamOwner() string {
+	return a.TeamOwner
+}
+
 func (a *FakeApp) Units() ([]provision.Unit, error) {
 	return a.units, nil
 }

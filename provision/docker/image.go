@@ -22,9 +22,9 @@ func MigrateImages() error {
 	if registry != "" {
 		registry += "/"
 	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return err
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	if repoNamespace == "" {
+		repoNamespace = "tsuru"
 	}
 	apps, err := app.List(nil)
 	if err != nil {

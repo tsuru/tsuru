@@ -248,6 +248,35 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 	c.Assert(lastDeploy, check.IsNil)
 }
 
+func (s *S) TestBuildApp(c *check.C) {
+	a := App{
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my file")
+	imgID, err := Build(DeployOptions{
+		App:          &a,
+		OutputStream: ioutil.Discard,
+		File:         ioutil.NopCloser(buf),
+		FileSize:     int64(buf.Len()),
+		Event:        evt,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "registry.somewhere/"+a.TeamOwner+"/app-some-app:v1-builder")
+}
+
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
 		Name:      "some-app",
