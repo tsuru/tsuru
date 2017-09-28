@@ -206,7 +206,7 @@ func (m *Manager) Run(args []string) {
 			levenshtein := fuzzy.Levenshtein(&key, &args[0])
 			if levenshtein < 3 || strings.Contains(key, args[0]) {
 				if !strings.Contains(msg, "Did you mean?") {
-					msg += fmt.Sprintf("\nDid you mean?\n")
+					msg += "\nDid you mean?\n"
 				}
 				msg += fmt.Sprintf("\t%s\n", key)
 			}

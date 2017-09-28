@@ -5,7 +5,6 @@
 package dockermachine
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -133,7 +132,7 @@ func (s *S) TestCreateMachineGeneratesName(c *check.C) {
 		"driver": "driver-name",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.Id, check.Matches, fmt.Sprintf("theonepool-.*"))
+	c.Assert(m.Id, check.Matches, "theonepool-.*")
 }
 
 func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
