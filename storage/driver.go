@@ -11,12 +11,14 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 )
 
 type DbDriver struct {
 	TeamService     auth.TeamService
 	PlatformService app.PlatformService
 	PlanService     app.PlanService
+	CacheService    cache.CacheService
 }
 
 var (
