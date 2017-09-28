@@ -638,7 +638,7 @@ func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 		Scheme:  permission.PermEventBlockRemove,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/abc"), nil)
+	request, err := http.NewRequest("DELETE", "/events/blocks/abc", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

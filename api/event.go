@@ -205,7 +205,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse block: %s", err)}
 	}
 	if block.Reason == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("reason is required")}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is required"}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeEventBlock},

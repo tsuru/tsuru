@@ -977,7 +977,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 
 func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *check.C) {
 	recorder := httptest.NewRecorder()
-	url := fmt.Sprintf("/deploys/xpto")
+	url := "/deploys/xpto"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	server := RunServer(true)
