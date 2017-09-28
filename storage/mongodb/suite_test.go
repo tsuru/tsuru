@@ -25,7 +25,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_storage_test")
+	config.Set("database:name", "tsuru_storage_mongodb_test")
 	s.conn, _ = db.Conn()
 	s.TeamService = &TeamService{}
 	s.PlatformService = &PlatformService{}
