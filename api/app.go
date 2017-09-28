@@ -121,10 +121,6 @@ func minifyApp(app app.App) (miniApp, error) {
 	if err != nil {
 		errorStr = fmt.Sprintf("unable to list app units: %+v", err)
 	}
-	routers, err := app.GetRoutersWithAddr()
-	if err != nil {
-		errorStr = fmt.Sprintf("unable to get app addresses: %+v", err)
-	}
 	ma := miniApp{
 		Name:      app.Name,
 		Pool:      app.Pool,
@@ -132,7 +128,7 @@ func minifyApp(app app.App) (miniApp, error) {
 		TeamOwner: app.TeamOwner,
 		Units:     units,
 		CName:     app.CName,
-		Routers:   routers,
+		Routers:   app.Routers,
 		Lock:      &app.Lock,
 		Tags:      app.Tags,
 		Error:     errorStr,

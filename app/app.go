@@ -36,8 +36,10 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/mgo.v2"
@@ -1663,7 +1665,7 @@ func List(filter *Filter) ([]App, error) {
 	defer conn.Close()
 	query := filter.Query()
 	if err = conn.Apps().Find(query).All(&apps); err != nil {
-		return apps, err
+		return nil, err
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
@@ -1694,7 +1696,54 @@ func List(filter *Filter) ([]App, error) {
 		}
 		apps = apps[:len(provisionApps)]
 	}
+	err = loadCachedAddrsInApps(apps)
+	if err != nil {
+		return nil, err
+	}
 	return apps, nil
+}
+
+func appRouterAddrKey(appName, routerName string) string {
+	return strings.Join([]string{"app-router-addr", appName, routerName}, "\x00")
+}
+
+func loadCachedAddrsInApps(apps []App) error {
+	keys := make([]string, 0, len(apps))
+	for i := range apps {
+		for j := range apps[i].Routers {
+			keys = append(keys, appRouterAddrKey(apps[i].Name, apps[i].Routers[j].Name))
+		}
+	}
+	entries, err := cacheService().GetAll(keys...)
+	if err != nil {
+		return err
+	}
+	entryMap := make(map[string]cache.CacheEntry, len(entries))
+	for _, e := range entries {
+		entryMap[e.Key] = e
+	}
+	for i := range apps {
+		a := &apps[i]
+		for j := range apps[i].Routers {
+			entry := entryMap[appRouterAddrKey(a.Name, a.Routers[j].Name)]
+			a.Routers[j].Address = entry.Value
+			if entry.Value == "" {
+				go a.GetRoutersWithAddr()
+			}
+		}
+	}
+	return nil
+}
+
+func cacheService() cache.CacheService {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
+	}
+	return dbDriver.CacheService
 }
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
@@ -1922,7 +1971,8 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 	routers := app.GetRouters()
 	for i := range routers {
-		r, err := router.Get(routers[i].Name)
+		routerName := routers[i].Name
+		r, err := router.Get(routerName)
 		if err != nil {
 			return routers, err
 		}
@@ -1930,6 +1980,10 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		if err != nil {
 			return routers, err
 		}
+		cacheService().Put(cache.CacheEntry{
+			Key:   appRouterAddrKey(app.Name, routerName),
+			Value: addr,
+		})
 		routers[i].Address = addr
 	}
 	return routers, nil
