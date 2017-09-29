@@ -3036,6 +3036,53 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 	c.Assert(apps[1].Routers[0].Address, check.Equals, "app2.fakerouter.com")
 }
 
+func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
+	a := App{
+		Name:      "app1",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Router:    "fake",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = routertest.FakeRouter.AddBackend(a.Name)
+	c.Assert(err, check.IsNil)
+	apps, err := List(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps, check.DeepEquals, []App{
+		{
+			Name:        "app1",
+			CName:       []string{},
+			Teams:       []string{"tsuruteam"},
+			TeamOwner:   "tsuruteam",
+			Env:         map[string]bind.EnvVar{},
+			ServiceEnvs: []bind.ServiceEnvVar{},
+			Router:      "fake",
+			RouterOpts:  map[string]string{},
+			Tags:        []string{},
+			Routers: []appTypes.AppRouter{
+				{Name: "fake", Opts: map[string]string{}},
+			},
+		},
+	})
+	timeout := time.After(5 * time.Second)
+	for {
+		apps, err = List(nil)
+		c.Assert(err, check.IsNil)
+		c.Assert(apps, check.HasLen, 1)
+		if apps[0].Routers[0].Address != "" {
+			break
+		}
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-timeout:
+			c.Fatal("timeout waiting for routers addr to show up")
+		}
+	}
+	c.Assert(apps[0].Routers[0].Address, check.Equals, "app1.fakerouter.com")
+}
+
 func (s *S) TestListFilteringByNameMatch(c *check.C) {
 	a := App{
 		Name:      "app1",
