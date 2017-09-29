@@ -630,6 +630,11 @@ func (c *Client) CreateContainer(opts CreateContainerOptions) (*Container, error
 		if e.Status == http.StatusConflict {
 			return nil, ErrContainerAlreadyExists
 		}
+		// Workaround for 17.09 bug returning 400 instead of 409.
+		// See https://github.com/moby/moby/issues/35021
+		if e.Status == http.StatusBadRequest && strings.Contains(e.Message, "Conflict.") {
+			return nil, ErrContainerAlreadyExists
+		}
 	}
 
 	if err != nil {
@@ -778,6 +783,7 @@ type HostConfig struct {
 	IOMaximumBandwidth   int64                  `json:"IOMaximumBandwidth,omitempty" yaml:"IOMaximumBandwidth,omitempty"`
 	IOMaximumIOps        int64                  `json:"IOMaximumIOps,omitempty" yaml:"IOMaximumIOps,omitempty"`
 	Mounts               []HostMount            `json:"Mounts,omitempty" yaml:"Mounts,omitempty" toml:"Mounts,omitempty"`
+	Init                 bool                   `json:",omitempty" yaml:",omitempty"`
 }
 
 // NetworkingConfig represents the container's networking configuration for each of its interfaces
