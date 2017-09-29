@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -2942,6 +2943,99 @@ func (s *S) TestListAll(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 }
 
+func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
+	a := App{
+		Name:      "app1",
+		TeamOwner: s.team.Name,
+	}
+	a2 := App{
+		Name:      "app2",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = CreateApp(&a2, s.user)
+	c.Assert(err, check.IsNil)
+	apps, err := List(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 2)
+	delete(apps[0].Env, "TSURU_APP_TOKEN")
+	delete(apps[1].Env, "TSURU_APP_TOKEN")
+	sort.Slice(apps, func(i, j int) bool {
+		return apps[i].Name < apps[j].Name
+	})
+	c.Assert(apps, check.DeepEquals, []App{
+		{
+			Name:      "app1",
+			CName:     []string{},
+			Teams:     []string{"tsuruteam"},
+			TeamOwner: "tsuruteam",
+			Owner:     "whydidifall@thewho.com",
+			Env: map[string]bind.EnvVar{
+				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app1"},
+				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
+			},
+			ServiceEnvs: []bind.ServiceEnvVar{},
+			Plan: appTypes.Plan{
+				Name:     "default-plan",
+				Memory:   1024,
+				Swap:     1024,
+				CpuShare: 100,
+				Default:  true,
+			},
+			Pool:       "pool1",
+			RouterOpts: map[string]string{},
+			Tags:       []string{},
+			Routers: []appTypes.AppRouter{
+				{Name: "fake", Opts: map[string]string{}},
+			},
+			Quota: quota.Quota{Limit: -1, InUse: 0},
+		},
+		{
+			Name:      "app2",
+			CName:     []string{},
+			Teams:     []string{"tsuruteam"},
+			TeamOwner: "tsuruteam",
+			Owner:     "whydidifall@thewho.com",
+			Env: map[string]bind.EnvVar{
+				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app2"},
+				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
+			},
+			ServiceEnvs: []bind.ServiceEnvVar{},
+			Plan: appTypes.Plan{
+				Name:     "default-plan",
+				Memory:   1024,
+				Swap:     1024,
+				CpuShare: 100,
+				Default:  true,
+			},
+			Pool:       "pool1",
+			RouterOpts: map[string]string{},
+			Tags:       []string{},
+			Routers: []appTypes.AppRouter{
+				{Name: "fake", Opts: map[string]string{}},
+			},
+			Quota: quota.Quota{Limit: -1, InUse: 0},
+		},
+	})
+	timeout := time.After(5 * time.Second)
+	for {
+		apps, err = List(nil)
+		c.Assert(err, check.IsNil)
+		c.Assert(apps, check.HasLen, 2)
+		if apps[0].Routers[0].Address != "" && apps[1].Routers[0].Address != "" {
+			break
+		}
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-timeout:
+			c.Fatal("timeout waiting for routers addr to show up")
+		}
+	}
+	c.Assert(apps[0].Routers[0].Address, check.Equals, "app1.fakerouter.com")
+	c.Assert(apps[1].Routers[0].Address, check.Equals, "app2.fakerouter.com")
+}
+
 func (s *S) TestListFilteringByNameMatch(c *check.C) {
 	a := App{
 		Name:      "app1",
@@ -4509,4 +4603,52 @@ func (s *S) TestAppRemoveRouter(c *check.C) {
 	addrs, err := app.GetAddresses()
 	c.Assert(err, check.IsNil)
 	c.Assert(addrs, check.DeepEquals, []string{"myapp.faketlsrouter.com"})
+}
+
+func (s *S) TestGetRoutersWithAddr(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Address: "myapp.fakerouter.com"},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+	})
+	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
+	entry, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Value, check.Equals, "myapp.faketlsrouter.com")
+}
+
+func (s *S) TestGetRoutersWithAddrError(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.FailForIp("fakemyapp")
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.ErrorMatches, `(?s)Forced failure.*`)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Address: ""},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+	})
+	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Value, check.Equals, "myapp.faketlsrouter.com")
 }

@@ -1264,17 +1264,13 @@ func (app *App) GetCpuShare() int {
 }
 
 func (app *App) GetAddresses() ([]string, error) {
-	var addresses []string
-	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(appRouter.Name)
-		if err != nil {
-			return nil, err
-		}
-		addr, err := r.Addr(app.Name)
-		if err != nil {
-			return nil, err
-		}
-		addresses = append(addresses, addr)
+	routers, err := app.GetRoutersWithAddr()
+	if err != nil {
+		return nil, err
+	}
+	addresses := make([]string, len(routers))
+	for i := range routers {
+		addresses[i] = routers[i].Address
 	}
 	return addresses, nil
 }
@@ -1669,9 +1665,10 @@ func List(filter *Filter) ([]App, error) {
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
+		var prov provision.Provisioner
 		for i := range apps {
 			a := &apps[i]
-			prov, err := a.getProvisioner()
+			prov, err = a.getProvisioner()
 			if err != nil {
 				return nil, err
 			}
@@ -1679,7 +1676,7 @@ func List(filter *Filter) ([]App, error) {
 		}
 		var provisionApps []provision.App
 		for provName, apps := range appsProvisionerMap {
-			prov, err := provision.Get(provName)
+			prov, err = provision.Get(provName)
 			if err != nil {
 				return nil, err
 			}
@@ -1724,12 +1721,16 @@ func loadCachedAddrsInApps(apps []App) error {
 	}
 	for i := range apps {
 		a := &apps[i]
+		hasEmpty := false
 		for j := range apps[i].Routers {
 			entry := entryMap[appRouterAddrKey(a.Name, a.Routers[j].Name)]
 			a.Routers[j].Address = entry.Value
 			if entry.Value == "" {
-				go a.GetRoutersWithAddr()
+				hasEmpty = true
 			}
+		}
+		if hasEmpty {
+			go a.GetRoutersWithAddr()
 		}
 	}
 	return nil
@@ -1958,7 +1959,7 @@ func (app *App) updateRoutersDB(routers []appTypes.AppRouter) error {
 }
 
 func (app *App) GetRouters() []appTypes.AppRouter {
-	routers := app.Routers
+	routers := append([]appTypes.AppRouter{}, app.Routers...)
 	if app.Router != "" {
 		routers = append([]appTypes.AppRouter{{
 			Name: app.Router,
@@ -1970,15 +1971,18 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 
 func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 	routers := app.GetRouters()
+	multi := tsuruErrors.NewMultiError()
 	for i := range routers {
 		routerName := routers[i].Name
 		r, err := router.Get(routerName)
 		if err != nil {
-			return routers, err
+			multi.Add(err)
+			continue
 		}
 		addr, err := r.Addr(app.Name)
 		if err != nil {
-			return routers, err
+			multi.Add(err)
+			continue
 		}
 		cacheService().Put(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
@@ -1986,7 +1990,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		})
 		routers[i].Address = addr
 	}
-	return routers, nil
+	return routers, multi.ToError()
 }
 
 func (app *App) MetricEnvs() (map[string]string, error) {
