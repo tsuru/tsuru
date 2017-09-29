@@ -247,17 +247,7 @@ func AppCurrentImageName(appName string) (string, error) {
 }
 
 func AppCurrentImageVersion(appName string) (string, error) {
-	coll, err := appImagesColl()
-	if err != nil {
-		return "", err
-	}
-	defer coll.Close()
-	var imgs appImages
-	err = coll.FindId(appName).One(&imgs)
-	if err != nil && err != mgo.ErrNotFound {
-		return "", err
-	}
-	version := imgs.Count
+	version, err := getAppImageVersion(appName)
 	if err == mgo.ErrNotFound || version == 0 {
 		version = 1
 	}
@@ -369,7 +359,7 @@ func PullAppImageNames(appName string, images []string) error {
 }
 
 func PlatformImageName(platformName string) string {
-	return fmt.Sprintf("%s/%s:latest", basicImageName(), platformName)
+	return fmt.Sprintf("%s/%s:latest", basicImageName("tsuru"), platformName)
 }
 
 func GetProcessesFromProcfile(strProcfile string) map[string][]string {
@@ -383,19 +373,12 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	return processes
 }
 
-func AppNewBuilderImageName(appName string) (string, error) {
-	coll, err := appImagesColl()
-	if err != nil {
-		return "", err
+func AppNewBuilderImageName(appName, teamOwner, tag string) (string, error) {
+	if tag == "" {
+		version, _ := getAppImageVersion(appName)
+		tag = fmt.Sprintf("v%d-builder", version+1)
 	}
-	defer coll.Close()
-	var imgs appImages
-	err = coll.FindId(appName).One(&imgs)
-	if err != nil && err != mgo.ErrNotFound {
-		return "", err
-	}
-	version := imgs.Count + 1
-	return fmt.Sprintf("%s:v%d-builder", appBasicImageName(appName), version), nil
+	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(appName, teamOwner), tag), nil
 }
 
 func ListAppBuilderImages(appName string) ([]string, error) {
@@ -448,11 +431,35 @@ func AppCurrentBuilderImageName(appName string) (string, error) {
 	return imgs.Images[len(imgs.Images)-1], nil
 }
 
-func appBasicImageName(appName string) string {
-	return fmt.Sprintf("%s/app-%s", basicImageName(), appName)
+func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
+	inputImage := imageIdSuffix
+	validImgs, err := ListValidAppImages(appName)
+	if err != nil {
+		return "", err
+	}
+	if len(validImgs) == 0 {
+		return "", &ImageNotFoundErr{App: appName, Image: inputImage}
+	}
+	for _, img := range validImgs {
+		if strings.HasSuffix(img, inputImage) {
+			return img, nil
+		}
+	}
+	return "", &InvalidVersionErr{Image: inputImage}
 }
 
-func basicImageName() string {
+func appBasicImageName(appName string) string {
+	return fmt.Sprintf("%s/app-%s", basicImageName("tsuru"), appName)
+}
+
+func appBasicBuilderImageName(appName, teamName string) string {
+	if teamName == "" {
+		teamName = "tsuru"
+	}
+	return fmt.Sprintf("%s/app-%s", basicImageName(teamName), appName)
+}
+
+func basicImageName(repoName string) string {
 	parts := make([]string, 0, 2)
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
@@ -460,7 +467,7 @@ func basicImageName() string {
 	}
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	if repoNamespace == "" {
-		repoNamespace = "tsuru"
+		repoNamespace = repoName
 	}
 	parts = append(parts, repoNamespace)
 	return strings.Join(parts, "/")
@@ -506,19 +513,16 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
-func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
-	inputImage := imageIdSuffix
-	validImgs, err := ListValidAppImages(appName)
+func getAppImageVersion(appName string) (int, error) {
+	coll, err := appImagesColl()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	if len(validImgs) == 0 {
-		return "", &ImageNotFoundErr{App: appName, Image: inputImage}
+	defer coll.Close()
+	var imgs appImages
+	err = coll.FindId(appName).One(&imgs)
+	if err != nil && err != mgo.ErrNotFound {
+		return 0, err
 	}
-	for _, img := range validImgs {
-		if strings.HasSuffix(img, inputImage) {
-			return img, nil
-		}
-	}
-	return "", &InvalidVersionErr{Image: inputImage}
+	return imgs.Count, nil
 }

@@ -253,10 +253,9 @@ func (s *S) newApp(name string) app.App {
 }
 
 func (s *S) newAppFromFake(fake *provisiontest.FakeApp) app.App {
-	router, _ := fake.GetRouterName()
 	return app.App{
 		Name:     fake.GetName(),
 		Platform: fake.GetPlatform(),
-		Router:   router,
+		Routers:  fake.GetRouters(),
 	}
 }

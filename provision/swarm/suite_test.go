@@ -58,6 +58,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:default", true)
 	config.Set("docker:registry", "registry.tsuru.io")
 	config.Set("host", "http://tsuruhost")
+	config.Set("docker:repository-namespace", "tsuru")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

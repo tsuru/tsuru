@@ -108,6 +108,9 @@ func (g *GceClusterManager) Delete() *Result {
 	if g.env.Get("clustername") != "" {
 		return &Result{ExitCode: 0}
 	}
+	if g.client == nil || g.cluster == nil {
+		return &Result{ExitCode: 0}
+	}
 	if g.env.VerboseLevel() > 0 {
 		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, g.zone)
 	}

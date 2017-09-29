@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var (
@@ -33,6 +34,9 @@ var (
 	uniqueIpCounter     int32 = 0
 
 	_ provision.NodeProvisioner = &FakeProvisioner{}
+	_ provision.Provisioner     = &FakeProvisioner{}
+	_ provision.App             = &FakeApp{}
+	_ bind.App                  = &FakeApp{}
 )
 
 const fakeAppImage = "app-image"
@@ -94,10 +98,6 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		}
 	}
 	return &app
-}
-
-func (a *FakeApp) GetRouterOpts() map[string]string {
-	return nil
 }
 
 func (a *FakeApp) GetMemory() int64 {
@@ -253,6 +253,10 @@ func (a *FakeApp) GetDeploys() uint {
 	return a.Deploys
 }
 
+func (a *FakeApp) GetTeamOwner() string {
+	return a.TeamOwner
+}
+
 func (a *FakeApp) Units() ([]provision.Unit, error) {
 	return a.units, nil
 }
@@ -280,10 +284,6 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 		delete(a.env, env)
 	}
 	return nil
-}
-
-func (a *FakeApp) GetIp() string {
-	return a.IP
 }
 
 func (a *FakeApp) GetLock() provision.AppLock {
@@ -320,8 +320,16 @@ func (a *FakeApp) SetUpdatePlatform(check bool) error {
 	return nil
 }
 
-func (app *FakeApp) GetRouterName() (string, error) {
-	return "fake", nil
+func (app *FakeApp) GetRouters() []appTypes.AppRouter {
+	return []appTypes.AppRouter{{Name: "fake"}}
+}
+
+func (app *FakeApp) GetAddresses() ([]string, error) {
+	addr, err := routertest.FakeRouter.Addr(app.GetName())
+	if err != nil {
+		return nil, err
+	}
+	return []string{addr}, nil
 }
 
 type Cmd struct {

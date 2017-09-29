@@ -87,6 +87,10 @@ type hipacheRouter struct {
 	prefix     string
 }
 
+func (r *hipacheRouter) GetName() string {
+	return r.routerName
+}
+
 func (r *hipacheRouter) AddBackend(name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {

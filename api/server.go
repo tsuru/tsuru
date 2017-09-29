@@ -167,6 +167,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "Put", "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
 	m.Add("1.2", "Delete", "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
 
+	m.Add("1.5", "Post", "/apps/{app}/routers", AuthorizationRequiredHandler(addAppRouter))
+	m.Add("1.5", "Put", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(updateAppRouter))
+	m.Add("1.5", "Delete", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(removeAppRouter))
+	m.Add("1.5", "Get", "/apps/{app}/routers", AuthorizationRequiredHandler(listAppRouters))
+
 	m.Add("1.0", "Post", "/node/status", AuthorizationRequiredHandler(setNodeStatus))
 
 	m.Add("1.0", "Get", "/deploys", AuthorizationRequiredHandler(deploysList))
@@ -192,6 +197,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/apps/{appname}/deploy", AuthorizationRequiredHandler(deploy))
 	diffDeployHandler := AuthorizationRequiredHandler(diffDeploy)
 	m.Add("1.0", "Post", "/apps/{appname}/diff", diffDeployHandler)
+	m.Add("1.5", "Post", "/apps/{appname}/build", AuthorizationRequiredHandler(build))
 
 	// Shell also doesn't use {app} on purpose. Middlewares don't play well
 	// with websocket.

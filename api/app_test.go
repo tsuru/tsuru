@@ -38,7 +38,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -474,12 +473,20 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
-	c.Assert(apps[0].IP, check.Equals, app1.IP)
+	c.Assert(apps[0].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "app1.fakerouter.com",
+		Opts:    map[string]string{},
+	}})
 	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
 	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
-	c.Assert(apps[1].IP, check.Equals, app2.IP)
+	c.Assert(apps[1].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "app2.fakerouter.com",
+		Opts:    map[string]string{},
+	}})
 	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
 	c.Assert(apps[1].Tags, check.DeepEquals, app2.Tags)
 }
@@ -1137,7 +1144,10 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Router, check.DeepEquals, "fake")
+	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name: "fake",
+		Opts: map[string]string{},
+	}})
 }
 
 func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
@@ -1169,7 +1179,10 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val1", "opt2": "val2"})
+	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name: "fake",
+		Opts: map[string]string{"opt1": "val1", "opt2": "val2"},
+	}})
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
@@ -1473,49 +1486,6 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("router=fake-tls")
-	request, err := http.NewRequest("PUT", "/apps/myappx", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Router, check.DeepEquals, "fake-tls")
-}
-
-func (s *S) TestUpdateAppRouterOpts(c *check.C) {
-	config.Set("routers:fake-opts:type", "fake-opts")
-	a := app.App{
-		Name:       "myappx",
-		Platform:   "zend",
-		TeamOwner:  s.team.Name,
-		Router:     "fake-opts",
-		RouterOpts: map[string]string{"opt1": "val1"},
-	}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("routeropts.opt1=val2")
-	request, err := http.NewRequest("PUT", "/apps/myappx", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val2"})
-}
-
 func (s *S) TestUpdateAppImageReset(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -1532,22 +1502,6 @@ func (s *S) TestUpdateAppImageReset(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
-}
-
-func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("router=invalid-router")
-	request, err := http.NewRequest("PUT", "/apps/myappx", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	expectedErr := &router.ErrRouterNotFound{Name: "invalid-router"}
-	c.Check(recorder.Body.String(), check.Equals, expectedErr.Error()+"\n")
 }
 
 func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
@@ -1663,7 +1617,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	errorMessage := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one.\n"
+	errorMessage := "Neither the description, plan, pool, team owner or platform were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
@@ -5559,8 +5513,8 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 			{"name": ":app", "value": a.Name},
 		},
 		EndCustomData: map[string]interface{}{
-			"added":   []string(nil),
-			"removed": []string(nil),
+			"fake.added":   []string(nil),
+			"fake.removed": []string(nil),
 		},
 	}, eventtest.HasEvent)
 }
@@ -5632,11 +5586,11 @@ func (s *S) TestSetCertificateInvalidCertificate(c *check.C) {
 }
 
 func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"myapp.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("cname", "myapp.io")
+	v.Set("cname", "app.io")
 	v.Set("certificate", testCert)
 	v.Set("key", testKey)
 	body := strings.NewReader(v.Encode())
@@ -5646,7 +5600,7 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "router does not support tls\n")
+	c.Assert(recorder.Body.String(), check.Equals, "no router with tls support\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -5718,11 +5672,13 @@ func (s *S) TestListCertificates(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	certs := make(map[string]string)
+	var certs map[string]map[string]string
 	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
 	c.Assert(err, check.IsNil)
-	c.Assert(certs, check.DeepEquals, map[string]string{
-		"app.io":               testCert,
-		"myapp.fakerouter.com": "",
+	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
+		"fake-tls": {
+			"app.io":                  testCert,
+			"myapp.faketlsrouter.com": "",
+		},
 	})
 }

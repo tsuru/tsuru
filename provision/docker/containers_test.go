@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -554,9 +555,10 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	appStruct.Pool = "test-default"
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	router, err := getRouterForApp(appInstance)
+	routers := appInstance.GetRouters()
+	r, err := router.Get(routers[0].Name)
 	c.Assert(err, check.IsNil)
-	beforeRoutes, err := router.Routes(appStruct.Name)
+	beforeRoutes, err := r.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(beforeRoutes, check.HasLen, 5)
 	var serviceCalled bool
@@ -574,7 +576,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.HasLen, 5)
 	c.Assert(c2, check.HasLen, 0)
-	routes, err := router.Routes(appStruct.Name)
+	routes, err := r.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, beforeRoutes)
 	c.Assert(serviceCalled, check.Equals, false)

@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -44,10 +45,6 @@ func (s *S) TestReserveUnitsToAddName(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsName(c *check.C) {
 	c.Assert(provisionAddUnits.Name, check.Equals, "provision-add-units")
-}
-
-func (s *S) TestSetAppIpName(c *check.C) {
-	c.Assert(setAppIp.Name, check.Equals, "set-app-ip")
 }
 
 func (s *S) TestAddRouterBackendName(c *check.C) {
@@ -265,7 +262,7 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -283,7 +280,7 @@ func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -307,7 +304,7 @@ func (s *S) TestProvisionAppBackward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -468,7 +465,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Unlimited,
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -486,7 +483,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Unlimited,
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -504,7 +501,7 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 1, InUse: 1},
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -545,7 +542,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 5, InUse: 4},
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -602,47 +599,11 @@ func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 	c.Assert(provisionAddUnits.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestSetAppIpForward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
-	err := CreateApp(app, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	ctx := action.FWContext{
-		Params: []interface{}{app},
-	}
-	r, err := setAppIp.Forward(ctx)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.IP, check.Equals, "conviction.fakerouter.com")
-	a, ok := r.(*App)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(a.IP, check.Equals, "conviction.fakerouter.com")
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.IP, check.Equals, "conviction.fakerouter.com")
-}
-
-func (s *S) TestSetAppIpBackward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey", IP: "some-value", TeamOwner: s.team.Name}
-	err := CreateApp(app, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	ctx := action.BWContext{
-		Params:   []interface{}{app},
-		FWResult: app,
-	}
-	setAppIp.Backward(ctx)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.IP, check.Equals, "")
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.IP, check.Equals, "")
-}
-
 func (s *S) TestAddRouterBackendForward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -666,7 +627,7 @@ func (s *S) TestAddRouterBackendBackward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Router:   "fake",
+		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)

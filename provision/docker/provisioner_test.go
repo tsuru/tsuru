@@ -257,6 +257,8 @@ func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 }
 
 func (s *S) TestDeploy(c *check.C) {
+	config.Unset("docker:repository-namespace")
+	defer config.Set("docker:repository-namespace", "tsuru")
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -290,9 +292,9 @@ func (s *S) TestDeploy(c *check.C) {
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
+	c.Assert(builderImgID, check.Equals, s.team.Name+"/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
-		Repository: "tsuru/app-" + a.Name,
+		Repository: s.team.Name + "/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
@@ -537,7 +539,8 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 }
 
 func (s *S) TestDeployRegisterRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	var p dockerProvisioner
 	var registerCount int64
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -951,14 +954,8 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 }
 
 func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
-	var registryRequests []*http.Request
-	registryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		registryRequests = append(registryRequests, r)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer registryServer.Close()
-	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
-	config.Set("docker:registry", registryURL)
+	u, _ := url.Parse(s.server.URL())
+	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
@@ -971,7 +968,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = image.SaveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
+	err = image.SaveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", u.Host, a.Name), customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -987,7 +984,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, registryURL+"/tsuru/app-"+a.Name+":v1-builder")
+	c.Assert(builderImgID, check.Equals, u.Host+"/tsuru/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -1003,9 +1000,6 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
-	c.Assert(registryRequests, check.HasLen, 1)
-	c.Assert(registryRequests[0].Method, check.Equals, "DELETE")
-	c.Assert(registryRequests[0].URL.Path, check.Equals, "/v1/repositories/tsuru/app-mydoomedapp:v1/")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)
@@ -1319,7 +1313,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
@@ -1418,7 +1412,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{

@@ -507,7 +507,8 @@ func (s *S) TestScopedConfigSaveMerge(c *check.C) {
 }
 
 func (s *S) TestScopedConfigSetFieldAtomic(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	nRoutines := 50
 	values := make([]bool, nRoutines)
 	var wg sync.WaitGroup

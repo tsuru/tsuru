@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -47,6 +48,7 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *InstanceSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "Raul"}
@@ -991,7 +993,8 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 }
 
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	originalMaxProcs := runtime.GOMAXPROCS(4)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

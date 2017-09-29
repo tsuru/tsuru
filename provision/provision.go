@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const defaultDockerProvisioner = "docker"
@@ -218,9 +219,11 @@ type App interface {
 	SetUpdatePlatform(bool) error
 	GetUpdatePlatform() bool
 
-	GetRouterName() (string, error)
+	GetRouters() []appTypes.AppRouter
 
 	GetPool() string
+
+	GetTeamOwner() string
 
 	SetQuotaInUse(int) error
 }

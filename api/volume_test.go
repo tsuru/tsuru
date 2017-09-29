@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -31,7 +30,7 @@ func (s *S) TestVolumeList(c *check.C) {
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
 	err := v1.Save()
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes")
+	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -77,7 +76,7 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 		Scheme:  permission.PermVolumeRead,
 		Context: permission.Context(permission.CtxTeam, "otherteam"),
 	})
-	url := fmt.Sprintf("/1.4/volumes")
+	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+token1.GetValue())
@@ -116,7 +115,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt2", true)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes")
+	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -165,7 +164,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
 	err := v1.Save()
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1")
+	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -189,7 +188,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 }
 
 func (s *S) TestVolumeInfoNotFound(c *check.C) {
-	url := fmt.Sprintf("/1.4/volumes/v1")
+	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -202,7 +201,7 @@ func (s *S) TestVolumeCreate(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=b`)
-	url := fmt.Sprintf("/1.4/volumes")
+	url := "/1.4/volumes"
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -233,7 +232,7 @@ func (s *S) TestVolumeCreateConflict(c *check.C) {
 	err := v1.Save()
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored`)
-	url := fmt.Sprintf("/1.4/volumes")
+	url := "/1.4/volumes"
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -250,7 +249,7 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 	err := v1.Save()
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
-	url := fmt.Sprintf("/1.4/volumes/v1")
+	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -278,7 +277,7 @@ func (s *S) TestVolumeUpdateNotFound(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
-	url := fmt.Sprintf("/1.4/volumes/v1")
+	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -293,7 +292,7 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	config.Set("volume-plans:other:fake:storage-class", "ebs")
 	config.Set("volume-plans:nfs1:otherprov:opts", "-t=nfs")
 	defer config.Unset("volume-plans")
-	url := fmt.Sprintf("/1.4/volumeplans")
+	url := "/1.4/volumeplans"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -323,7 +322,7 @@ func (s *S) TestVolumeDelete(c *check.C) {
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
 	err := v1.Save()
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1")
+	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -345,7 +344,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	url := "/1.4/volumes/v1/bind"
 	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false`)
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
@@ -407,7 +406,7 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	url := "/1.4/volumes/v1/bind"
 	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false`)
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
@@ -436,7 +435,7 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	url := "/1.4/volumes/v1/bind"
 	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false&norestart=true`)
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
@@ -462,7 +461,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt2", true)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt2")
+	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt2"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -506,7 +505,7 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Save()
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1")
+	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
@@ -527,7 +526,7 @@ func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt1", false)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1&norestart=true")
+	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1&norestart=true"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())

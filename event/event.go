@@ -389,7 +389,7 @@ type TargetFilter struct {
 type Filter struct {
 	Target         Target
 	KindType       kindType
-	KindName       string
+	KindNames      []string `form:"-"`
 	OwnerType      ownerType
 	OwnerName      string
 	Since          time.Time
@@ -412,6 +412,19 @@ func (f *Filter) PruneUserValues() {
 	f.Permissions = nil
 	if f.Limit > filterMaxLimit || f.Limit <= 0 {
 		f.Limit = filterMaxLimit
+	}
+}
+
+func (f *Filter) LoadKindNames(form map[string][]string) {
+	for k, values := range form {
+		if strings.ToLower(k) != "kindname" {
+			continue
+		}
+		for _, val := range values {
+			if val != "" {
+				f.KindNames = append(f.KindNames, val)
+			}
+		}
 	}
 }
 
@@ -468,8 +481,8 @@ func (f *Filter) toQuery() (bson.M, error) {
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
-	if f.KindName != "" {
-		query["kind.name"] = f.KindName
+	if len(f.KindNames) > 0 {
+		query["kind.name"] = bson.M{"$in": f.KindNames}
 	}
 	if f.OwnerType != "" {
 		query["owner.type"] = f.OwnerType

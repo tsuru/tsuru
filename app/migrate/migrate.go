@@ -113,3 +113,33 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 	}
 	return nil
 }
+
+type appWithPlanID struct {
+	Name string
+	Plan planWithID
+}
+
+type planWithID struct {
+	ID   string `bson:"_id"`
+	Name string
+}
+
+func MigrateAppPlanIDToPlanName() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	iter := conn.Apps().Find(nil).Iter()
+	var a appWithPlanID
+	for iter.Next(&a) {
+		if a.Plan.Name != "" || a.Plan.ID == "" {
+			continue
+		}
+		err = conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"plan.name": a.Plan.ID}})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

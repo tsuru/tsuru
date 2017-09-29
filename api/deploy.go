@@ -7,14 +7,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -34,36 +30,15 @@ import (
 //   403: Forbidden
 //   404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	var file multipart.File
-	var fileSize int64
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		file, _, err = r.FormFile("file")
-		if err != nil {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-		fileSize, err = file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return errors.Wrap(err, "unable to find uploaded file size")
-		}
-		file.Seek(0, io.SeekStart)
-		defer file.Close()
-	}
-	archiveURL := r.FormValue("archive-url")
-	image := r.FormValue("image")
-	if image == "" && archiveURL == "" && file == nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "you must specify either the archive-url, a image url or upload a file.",
-		}
+	opts, err := prepareToBuild(r)
+	if err != nil {
+		return err
 	}
 	commit := r.FormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	origin := r.FormValue("origin")
-	if image != "" {
+	if opts.Image != "" {
 		origin = "image"
 	}
 	if origin != "" {
@@ -88,17 +63,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	var build bool
-	buildString := r.FormValue("build")
-	if buildString != "" {
-		build, err = strconv.ParseBool(buildString)
-		if err != nil {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-	}
 	message := r.FormValue("message")
 	if commit != "" && message == "" {
 		var messages []string
@@ -113,18 +77,11 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if origin == "" && commit != "" {
 		origin = "git"
 	}
-	opts := app.DeployOptions{
-		App:        instance,
-		Commit:     commit,
-		FileSize:   fileSize,
-		File:       file,
-		ArchiveURL: archiveURL,
-		User:       userName,
-		Image:      image,
-		Origin:     origin,
-		Build:      build,
-		Message:    message,
-	}
+	opts.App = instance
+	opts.Commit = commit
+	opts.User = userName
+	opts.Origin = origin
+	opts.Message = message
 	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)

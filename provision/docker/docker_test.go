@@ -491,13 +491,13 @@ func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(s.p.cluster, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
+	_, err = scheduler.Schedule(s.p.cluster, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
 	c.Assert(err, check.IsNil)
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.(*dbAwareClient).Endpoint(), check.Equals, nodes[1].Address)
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	_, err = scheduler.Schedule(s.p.cluster, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
+	_, err = scheduler.Schedule(s.p.cluster, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
 	c.Assert(err, check.IsNil)
 	client, err = s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)

@@ -60,10 +60,15 @@ func newFakeRouter() fakeRouter {
 
 type fakeRouter struct {
 	backends     map[string][]string
+	backendAddrs map[string]string
 	cnames       map[string]string
 	failuresByIp map[string]bool
 	healthcheck  map[string]router.HealthcheckData
 	mutex        *sync.Mutex
+}
+
+func (r *fakeRouter) GetName() string {
+	return "fake"
 }
 
 func (r *fakeRouter) FailForIp(ip string) {
@@ -282,6 +287,15 @@ func (r *fakeRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
+func (r *fakeRouter) SetBackendAddr(name, addr string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.backendAddrs == nil {
+		r.backendAddrs = make(map[string]string)
+	}
+	r.backendAddrs[name] = addr
+}
+
 func (r *fakeRouter) Addr(name string) (string, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
@@ -290,6 +304,9 @@ func (r *fakeRouter) Addr(name string) (string, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if _, ok := r.backends[backendName]; ok {
+		if r.backendAddrs != nil && r.backendAddrs[backendName] != "" {
+			return r.backendAddrs[backendName], nil
+		}
 		return fmt.Sprintf("%s.fakerouter.com", backendName), nil
 	}
 	return "", router.ErrBackendNotFound
@@ -298,6 +315,7 @@ func (r *fakeRouter) Addr(name string) (string, error) {
 func (r *fakeRouter) Reset() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	r.backendAddrs = nil
 	r.backends = make(map[string][]string)
 	r.failuresByIp = make(map[string]bool)
 	r.cnames = make(map[string]string)
@@ -379,6 +397,14 @@ func (r *tlsRouter) GetCertificate(cname string) (string, error) {
 		return "", router.ErrCertificateNotFound
 	}
 	return data, nil
+}
+
+func (r *tlsRouter) Addr(name string) (string, error) {
+	addr, err := r.fakeRouter.Addr(name)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(addr, ".fakerouter.com", ".faketlsrouter.com", -1), nil
 }
 
 type optsRouter struct {

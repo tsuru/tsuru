@@ -18,6 +18,7 @@ services:
         image: registry:2
         environment:
             - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
+            - REGISTRY_STORAGE_DELETE_ENABLED=true
         volumes:
             - ./data/registry:/var/lib/registry
         networks:

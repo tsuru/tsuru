@@ -32,7 +32,7 @@ func (s *S) TestBuildArchiveURL(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, opts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	c.Assert(s.b.IsArchiveURLDeploy, check.Equals, true)
 }
 
@@ -54,7 +54,7 @@ func (s *S) TestBuildArchiveUpload(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, opts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	c.Assert(s.b.IsArchiveFileDeploy, check.Equals, true)
 }
 
@@ -99,7 +99,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, opts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	c.Assert(s.b.IsArchiveFileDeploy, check.Equals, true)
 	_, err = image.AppNewImageName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -109,5 +109,5 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	imgID, err = s.b.Build(s.provisioner, a, evt, opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.b.IsRebuildDeploy, check.Equals, true)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v2-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }

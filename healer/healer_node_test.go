@@ -774,7 +774,8 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 }
 
 func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
