@@ -1707,8 +1707,10 @@ func appRouterAddrKey(appName, routerName string) string {
 func loadCachedAddrsInApps(apps []App) error {
 	keys := make([]string, 0, len(apps))
 	for i := range apps {
-		for j := range apps[i].Routers {
-			keys = append(keys, appRouterAddrKey(apps[i].Name, apps[i].Routers[j].Name))
+		a := &apps[i]
+		a.Routers = a.GetRouters()
+		for j := range a.Routers {
+			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
 	}
 	entries, err := cacheService().GetAll(keys...)

@@ -39,6 +39,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -535,6 +536,52 @@ func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
 	}})
 	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
 	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
+}
+
+func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Teams:     []string{s.team.Name},
+		Router:    "fake",
+	}
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(app1)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.AddBackend(app1.Name)
+	request, err := http.NewRequest("GET", "/apps/app1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	request, err = http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "app1.fakerouter.com",
+		Opts:    map[string]string{},
+	}})
 }
 
 func (s *S) TestAppListUnitsError(c *check.C) {
