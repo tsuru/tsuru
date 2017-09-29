@@ -18,44 +18,33 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 )
 
-const (
-	archiveDirPath  = "/home/application"
-	archiveFileName = "archive.tar.gz"
-)
-
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provision.BuilderDockerClient, app provision.App, commands []string, evt *event.Event, imageID, imageTag string) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
-		&uploadToContainer,
 		&startContainer,
 		&followLogsAndCommit,
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	imageName := image.GetBuildImage(app)
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), imageTag)
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
-	archiveFileURI := fmt.Sprintf("file://%s/%s", archiveDirPath, archiveFileName)
-	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
 	var writer io.Writer = evt
 	if evt == nil {
 		writer = ioutil.Discard
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       imageName,
-		commands:      cmds,
+		imageID:       imageID,
+		commands:      commands,
 		writer:        writer,
 		buildingImage: buildingImage,
 		client:        client,
 		event:         evt,
 		provisioner:   p,
-		tarFile:       tarFile,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
