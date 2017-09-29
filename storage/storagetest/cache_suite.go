@@ -13,7 +13,7 @@ import (
 )
 
 type CacheSuite struct {
-	CustomSuite
+	SuiteHooks
 	CacheService cache.CacheService
 }
 
