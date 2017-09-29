@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"net/url"
 
 	"github.com/fsouza/go-dockerclient"
@@ -74,6 +75,30 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	_, err = client.InspectContainer(cont.ID)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.FitsTypeOf, &docker.NoSuchContainer{})
+}
+
+func (s *S) TestUploadToContainerName(c *check.C) {
+	c.Assert(uploadToContainer.Name, check.Equals, "upload-to-container")
+}
+
+func (s *S) TestUploadToContainerForward(c *check.C) {
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	conta, err := s.newContainer(client)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(conta, client)
+	cont := *conta
+	imgFile := bytes.NewBufferString("file data")
+	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
+		provisioner: s.provisioner,
+		app:         provisiontest.NewFakeApp("myapp", "python", 1),
+		client:      client,
+		tarFile:     imgFile,
+	}}}
+	r, err := uploadToContainer.Forward(context)
+	c.Assert(err, check.IsNil)
+	cont = r.(Container)
+	c.Assert(cont, check.FitsTypeOf, Container{})
 }
 
 func (s *S) TestStartContainerName(c *check.C) {
