@@ -175,7 +175,7 @@
   branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = [".","testing"]
-  revision = "75772940379e725b5aae213e570f9dcd751951cb"
+  revision = "a939d380adff2bdea1f17780be15789d144f313d"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
