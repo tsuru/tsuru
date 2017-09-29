@@ -297,6 +297,9 @@ func (r *fakeRouter) SetBackendAddr(name, addr string) {
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {
+	if r.failuresByIp[r.GetName()+name] || r.failuresByIp[name] {
+		return "", ErrForcedFailure
+	}
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return "", err
