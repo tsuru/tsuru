@@ -72,7 +72,7 @@ func (s *SyncSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *SyncSuite) TestBindSyncer(c *check.C) {
-	h := TestHandler{}
+	h := service.TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
@@ -148,7 +148,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 }
 
 func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
-	h := TestHandler{}
+	h := service.TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
@@ -240,7 +240,7 @@ func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
 }
 
 func (s *SyncSuite) TestBindSyncerError(c *check.C) {
-	h := TestHandler{}
+	h := service.TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	h.Err = errors.New("my awful error")
