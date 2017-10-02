@@ -598,6 +598,15 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	} else if opts.Enable {
 		node.Spec.Unschedulable = false
 	}
+	taints := node.Spec.Taints
+	for i := 0; i < len(taints); i++ {
+		if taints[i].Key == tsuruInProgressTaint {
+			taints[i] = taints[len(taints)-1]
+			taints = taints[:len(taints)-1]
+			i--
+		}
+	}
+	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
