@@ -31,9 +31,10 @@ import (
 )
 
 const (
-	tsuruLabelPrefix   = "tsuru.io/"
-	replicaDepRevision = "deployment.kubernetes.io/revision"
-	kubeKindReplicaSet = "ReplicaSet"
+	tsuruLabelPrefix     = "tsuru.io/"
+	tsuruInProgressTaint = tsuruLabelPrefix + "inprogress"
+	replicaDepRevision   = "deployment.kubernetes.io/revision"
+	kubeKindReplicaSet   = "ReplicaSet"
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
