@@ -85,6 +85,7 @@ var (
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
 
+	TargetTypeGlobal          = TargetType("global")
 	TargetTypeApp             = TargetType("app")
 	TargetTypeNode            = TargetType("node")
 	TargetTypeContainer       = TargetType("container")

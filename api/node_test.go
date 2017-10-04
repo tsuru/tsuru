@@ -966,6 +966,11 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	}
 	sort.Strings(nodes)
 	c.Assert(nodes, check.DeepEquals, []string{"n1", "n1", "n2", "n2"})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeGlobal},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.update.rebalance",
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestNodeRebalanceFilters(c *check.C) {
@@ -1003,4 +1008,17 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches, `(?s).*rebalancing - dry: true, force: true.*filtering apps: \[myapp\].*filtering pool: pool1.*`)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.update.rebalance",
+		StartCustomData: []map[string]interface{}{
+			{"name": "AppFilter.0", "value": "myapp"},
+			{"name": "Dry", "value": "true"},
+			{"name": "Force", "value": ""},
+			{"name": "MetadataFilter.pool", "value": "pool1"},
+			{"name": "Pool", "value": ""},
+			{"name": "Writer", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
