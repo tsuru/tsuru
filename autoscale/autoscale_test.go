@@ -353,6 +353,77 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	c.Assert(u1, check.HasLen, 3)
 }
 
+func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *check.C) {
+	machine, err := iaas.CreateMachineForIaaS("my-scale-iaas", map[string]string{})
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{
+		Address: machine.FormatNodeAddress(),
+		Pool:    "pool1",
+		Metadata: map[string]string{
+			"iaas":     "my-scale-iaas",
+			"totalMem": "25165824",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	s.p.PrepareFailure("AddNode:http://n3:3", errors.New("my error adding node"))
+	_, err = s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
+	c.Assert(err, check.IsNil)
+	a := newConfig()
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
+	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -2",
+			"nodes":              bson.M{"$size": 0},
+		},
+		ErrorMatches: `error adding new node http://n3:3: my error adding node`,
+		LogMatches:   `(?s).*running scaler.*countScaler.*pool1.*new machine created.*.*error adding new node http://n3:3: my error adding node.*rebalancing - dry: false, force: false.*`,
+	}, eventtest.HasEvent)
+	u0, err := nodes[0].Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(u0, check.HasLen, 3)
+	u1, err := nodes[1].Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(u1, check.HasLen, 3)
+}
+
+func (s *S) TestAutoScaleConfigRunOnceSingleNodeAddNodesErrorNoRebalance(c *check.C) {
+	s.p.PrepareFailure("AddNode:http://n2:2", errors.New("my error adding node"))
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	c.Assert(err, check.IsNil)
+	a := newConfig()
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": false,
+			"result.reason":      "number of free slots is -2",
+			"nodes":              bson.M{"$size": 0},
+		},
+		ErrorMatches: `error adding new node http://n2:2: my error adding node`,
+		LogMatches:   `(?s).*running scaler.*countScaler.*pool1.*new machine created.*.*error adding new node http://n2:2: my error adding node.*rebalancing - dry: false, force: false.*`,
+	}, eventtest.HasEvent)
+	u0, err := nodes[0].Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(u0, check.HasLen, 4)
+}
+
 func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
