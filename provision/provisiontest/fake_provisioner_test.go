@@ -1284,8 +1284,16 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
 	p.AddUnitsToNode(app, 4, "web", nil, "mynode1")
 	w := bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "global"},
+		Kind:     permission.PermNodeUpdateRebalance,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermNode),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(&w)
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         &w,
+		Event:          evt,
 		Pool:           "mypool",
 		MetadataFilter: map[string]string{"m1": "x1"},
 	})
@@ -1316,8 +1324,16 @@ func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1")
 	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3")
 	w := bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "global"},
+		Kind:     permission.PermNodeUpdateRebalance,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermNode),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(&w)
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer: &w,
+		Event: evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
@@ -1347,8 +1363,16 @@ func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 	p.AddUnitsToNode(app, 2, "web", nil, "mynode1")
 	p.AddUnitsToNode(app, 2, "web", nil, "mynode2")
 	w := bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "global"},
+		Kind:     permission.PermNodeUpdateRebalance,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermNode),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(&w)
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         &w,
+		Event:          evt,
 		MetadataFilter: map[string]string{"pool": "mypool"},
 	})
 	c.Assert(err, check.IsNil)

@@ -51,7 +51,7 @@ import (
 var (
 	mainDockerProvisioner *dockerProvisioner
 
-	ErrDeployCanceled = errors.New("deploy canceled by user action")
+	ErrUnitRecreationCanceled = errors.New("unit creation canceled by user action")
 )
 
 const (
@@ -1167,7 +1167,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 	}
 	isOnlyPool := len(opts.MetadataFilter) == 1 && opts.MetadataFilter[provision.PoolMetadataName] != ""
 	if opts.Force || !isOnlyPool || len(opts.AppFilter) > 0 {
-		_, err := p.rebalanceContainersByFilter(opts.Writer, opts.AppFilter, opts.MetadataFilter, opts.Dry)
+		_, err := p.rebalanceContainersByFilter(opts.Event, opts.AppFilter, opts.MetadataFilter, opts.Dry)
 		return true, err
 	}
 	nodes, err := p.Cluster().NodesForMetadata(opts.MetadataFilter)
@@ -1196,8 +1196,8 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 		return false, errors.Wrap(err, "couldn't find containers from rebalanced nodes")
 	}
 	if math.Abs((float64)(gap-gapAfter)) > 2.0 {
-		fmt.Fprintf(opts.Writer, "Rebalancing as gap is %d, after rebalance gap will be %d\n", gap, gapAfter)
-		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, opts.MetadataFilter, opts.Dry)
+		fmt.Fprintf(opts.Event, "Rebalancing as gap is %d, after rebalance gap will be %d\n", gap, gapAfter)
+		_, err := p.rebalanceContainersByFilter(opts.Event, nil, opts.MetadataFilter, opts.Dry)
 		return true, err
 	}
 	return false, nil

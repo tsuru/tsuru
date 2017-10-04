@@ -615,12 +615,14 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      evtTarget,
-		Kind:        permission.PermNodeUpdateRebalance,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, permContexts...),
+		Target:        evtTarget,
+		Kind:          permission.PermNodeUpdateRebalance,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(r.Form),
+		DisableLock:   true,
+		Allowed:       event.Allowed(permission.PermPoolReadEvents, permContexts...),
+		Cancelable:    true,
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, permContexts...),
 	})
 	if err != nil {
 		return err
@@ -630,7 +632,8 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	params.Writer = writer
+	evt.SetLogWriter(writer)
+	params.Event = evt
 	var provs []provision.Provisioner
 	if params.Pool != "" {
 		var p *pool.Pool
