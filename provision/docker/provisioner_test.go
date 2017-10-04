@@ -527,7 +527,7 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	go func() {
 		defer close(done)
 		img, depErr := s.p.Deploy(app, builderImgID, evt)
-		c.Assert(depErr, check.ErrorMatches, "deploy canceled by user action")
+		c.Assert(depErr, check.ErrorMatches, "unit creation canceled by user action")
 		c.Assert(img, check.Equals, "")
 	}()
 	time.Sleep(100 * time.Millisecond)
@@ -3167,8 +3167,16 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeGlobal},
+		Kind:    permission.PermNodeUpdateRebalance,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermPoolReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(buf)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         buf,
+		Event:          evt,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
@@ -3180,6 +3188,73 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	containers, err = p.listContainersByHost("127.0.0.1")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
+}
+
+func (s *S) TestRebalanceNodesCancel(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	blockCh := make(chan struct{})
+	createCalled := make(chan struct{}, 2)
+	s.extraServer.SetHook(func(r *http.Request) {
+		if r.URL.Path == "/containers/create" {
+			createCalled <- struct{}{}
+			<-blockCh
+		}
+	})
+	mainDockerProvisioner = p
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
+		app:         appInstance,
+		imageID:     imageID,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
+	err = s.conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	evt, err := event.New(&event.Opts{
+		Target:        event.Target{Type: event.TargetTypeGlobal},
+		Kind:          permission.PermNodeUpdateRebalance,
+		Owner:         s.token,
+		Allowed:       event.Allowed(permission.PermPoolReadEvents),
+		Cancelable:    true,
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(buf)
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		toRebalance, rebalanceErr := p.RebalanceNodes(provision.RebalanceNodesOptions{
+			Event:          evt,
+			MetadataFilter: map[string]string{"pool": "test-default"},
+		})
+		c.Assert(rebalanceErr, check.ErrorMatches, "(?s).*Caused by: unit creation canceled by user action.*")
+		c.Assert(toRebalance, check.Equals, true)
+	}()
+	<-createCalled
+	evtDB, err := event.GetByID(evt.UniqueID)
+	c.Assert(err, check.IsNil)
+	err = evtDB.TryCancel("because yes", "majortom@ground.control")
+	c.Assert(err, check.IsNil)
+	close(blockCh)
+	<-done
+	c.Assert(buf.String(), check.Matches, "(?s)^Rebalancing as gap is 4, after rebalance gap will be 0.*Moving unit.*")
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 0)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 4)
 }
 
 func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
@@ -3213,8 +3288,16 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeGlobal},
+		Kind:    permission.PermNodeUpdateRebalance,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermPoolReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(buf)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         buf,
+		Event:          evt,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
@@ -3256,8 +3339,16 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeGlobal},
+		Kind:    permission.PermNodeUpdateRebalance,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermPoolReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(buf)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         buf,
+		Event:          evt,
 		Force:          true,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
@@ -3292,8 +3383,16 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeGlobal},
+		Kind:    permission.PermNodeUpdateRebalance,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermPoolReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt.SetLogWriter(buf)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer:         buf,
+		Event:          evt,
 		Dry:            true,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})

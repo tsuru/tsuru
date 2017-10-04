@@ -127,7 +127,7 @@ func checkCanceled(evt *event.Event) error {
 		return nil
 	}
 	if canceled {
-		return ErrDeployCanceled
+		return ErrUnitRecreationCanceled
 	}
 	return nil
 }

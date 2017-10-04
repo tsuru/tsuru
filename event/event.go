@@ -911,6 +911,10 @@ func (e *Event) SetLogWriter(w io.Writer) {
 	e.logWriter = w
 }
 
+func (e *Event) GetLogWriter() io.Writer {
+	return e.logWriter
+}
+
 func (e *Event) SetOtherCustomData(data interface{}) error {
 	conn, err := db.Conn()
 	if err != nil {

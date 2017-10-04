@@ -463,7 +463,7 @@ type NodeProvisioner interface {
 }
 
 type RebalanceNodesOptions struct {
-	Writer         io.Writer
+	Event          *event.Event
 	Pool           string
 	MetadataFilter map[string]string
 	AppFilter      []string

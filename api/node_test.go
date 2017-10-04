@@ -1019,7 +1019,7 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 			{"name": "Force", "value": ""},
 			{"name": "MetadataFilter.pool", "value": "pool1"},
 			{"name": "Pool", "value": ""},
-			{"name": "Writer", "value": ""},
+			{"name": "Event", "value": ""},
 		},
 	}, eventtest.HasEvent)
 }

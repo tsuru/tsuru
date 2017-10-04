@@ -312,11 +312,15 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 		return nil
 	}
 	buf := safe.NewBuffer(nil)
-	writer := io.MultiWriter(buf, evt)
+	oldWriter := evt.GetLogWriter()
+	if oldWriter != nil {
+		evt.SetLogWriter(io.MultiWriter(oldWriter, buf))
+		defer evt.SetLogWriter(oldWriter)
+	}
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
-		Force:  len(customData.Nodes) > 0,
-		Pool:   pool,
-		Writer: writer,
+		Force: len(customData.Nodes) > 0,
+		Pool:  pool,
+		Event: evt,
 	})
 	customData.Result.ToRebalance = shouldRebalance
 	if err != nil {
