@@ -28,6 +28,8 @@ import (
 
 const (
 	EventKind = "autoscale"
+
+	lockWaitTimeout = 10 * time.Second
 )
 
 var globalConfig *Config
@@ -527,7 +529,7 @@ func preciseUnitsByNode(pool string, nodes []provision.Node) (map[string][]provi
 	}
 	for _, a := range appsInPool {
 		var locked bool
-		locked, err = app.AcquireApplicationLock(a.Name, app.InternalAppName, "node auto scale")
+		locked, err = app.AcquireApplicationLockWait(a.Name, app.InternalAppName, "node auto scale", lockWaitTimeout)
 		if err != nil {
 			return nil, err
 		}

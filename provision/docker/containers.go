@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -23,6 +24,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/router/rebuild"
+)
+
+const (
+	lockWaitTimeout = 5 * time.Second
 )
 
 type appLocker struct {
@@ -40,7 +45,7 @@ func (l *appLocker) Lock(appName string) bool {
 		l.refCount[appName]++
 		return true
 	}
-	ok, err := app.AcquireApplicationLock(appName, app.InternalAppName, "container-move")
+	ok, err := app.AcquireApplicationLockWait(appName, app.InternalAppName, "container-move", lockWaitTimeout)
 	if err != nil || !ok {
 		return false
 	}
@@ -371,7 +376,7 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 		return nil, err
 	}
 	for _, appName := range appNames {
-		locked, err := app.AcquireApplicationLock(appName, app.InternalAppName, "node auto scale")
+		locked, err := app.AcquireApplicationLockWait(appName, app.InternalAppName, "rebalance check", lockWaitTimeout)
 		if err != nil {
 			return nil, err
 		}
