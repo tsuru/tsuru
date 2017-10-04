@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	lockWaitTimeout = 5 * time.Second
+	lockWaitTimeout = 30 * time.Second
 )
 
 type appLocker struct {
@@ -375,16 +375,11 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 	if err != nil {
 		return nil, err
 	}
-	for _, appName := range appNames {
-		locked, err := app.AcquireApplicationLockWait(appName, app.InternalAppName, "rebalance check", lockWaitTimeout)
-		if err != nil {
-			return nil, err
-		}
-		if !locked {
-			return nil, errors.Errorf("unable to lock app %q for container count", appName)
-		}
-		defer app.ReleaseApplicationLock(appName)
+	err = app.AcquireApplicationLockWaitMany(appNames, app.InternalAppName, "rebalance check", lockWaitTimeout)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to lock apps for container count")
 	}
+	defer app.ReleaseApplicationLockMany(appNames)
 	result := map[string][]container.Container{}
 	for _, n := range nodes {
 		nodeConts, err := p.listRunningContainersByHost(net.URLToHost(n.Address))

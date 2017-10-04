@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -246,6 +247,14 @@ type Applog struct {
 	Unit    string
 }
 
+type ErrAppNotLocked struct {
+	App string
+}
+
+func (e ErrAppNotLocked) Error() string {
+	return fmt.Sprintf("unable to lock app %q", e.App)
+}
+
 // AcquireApplicationLock acquires an application lock by setting the lock
 // field in the database.  This method is already called by a connection
 // middleware on requests with :app or :appname params that have side-effects.
@@ -281,6 +290,45 @@ func AcquireApplicationLockWait(appName string, owner string, reason string, tim
 			return false, nil
 		case <-time.After(300 * time.Millisecond):
 		}
+	}
+}
+
+func AcquireApplicationLockWaitMany(appNames []string, owner string, reason string, timeout time.Duration) error {
+	lockedApps := make(chan string, len(appNames))
+	errCh := make(chan error, len(appNames))
+	wg := sync.WaitGroup{}
+	for _, appName := range appNames {
+		wg.Add(1)
+		go func(appName string) {
+			defer wg.Done()
+			locked, err := AcquireApplicationLockWait(appName, owner, reason, timeout)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if !locked {
+				errCh <- ErrAppNotLocked{App: appName}
+				return
+			}
+			lockedApps <- appName
+		}(appName)
+	}
+	wg.Wait()
+	close(lockedApps)
+	close(errCh)
+	err := <-errCh
+	if err != nil {
+		for appName := range lockedApps {
+			ReleaseApplicationLock(appName)
+		}
+		return err
+	}
+	return nil
+}
+
+func ReleaseApplicationLockMany(appNames []string) {
+	for _, appName := range appNames {
+		ReleaseApplicationLock(appName)
 	}
 }
 
