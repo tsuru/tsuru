@@ -327,7 +327,7 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 	buf := safe.NewBuffer(nil)
 	writer := io.MultiWriter(buf, evt)
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
-		Force:  false,
+		Force:  sResult.ToAdd > 0,
 		Pool:   pool,
 		Writer: writer,
 	})
