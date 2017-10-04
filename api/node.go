@@ -597,16 +597,18 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	params.Force = true
 	var permContexts []permission.PermissionContext
 	var ok bool
+	evtTarget := event.Target{Type: event.TargetTypeGlobal}
 	params.Pool, ok = params.MetadataFilter[provision.PoolMetadataName]
 	if ok {
 		delete(params.MetadataFilter, provision.PoolMetadataName)
 		permContexts = append(permContexts, permission.Context(permission.CtxPool, params.Pool))
+		evtTarget = event.Target{Type: event.TargetTypePool, Value: params.Pool}
 	}
 	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: params.Pool},
+		Target:      evtTarget,
 		Kind:        permission.PermNodeUpdateRebalance,
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
