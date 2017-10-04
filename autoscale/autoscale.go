@@ -238,27 +238,21 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	}
 	evt.SetLogWriter(a.writer)
 	var retErr error
-	var sResult *ScalerResult
-	var evtNodes []provision.NodeSpec
-	var rule *Rule
+	customData := EventCustomData{}
 	defer func() {
 		if retErr != nil {
 			evt.Logf(retErr.Error())
 		}
-		if (sResult == nil && retErr == nil) || (sResult != nil && sResult.NoAction()) {
+		if (customData.Result == nil && retErr == nil) || (customData.Result != nil && customData.Result.NoAction()) {
 			evt.Logf("nothing to do for %q: %q", provision.PoolMetadataName, pool)
 			evt.Abort()
 		} else {
-			evt.DoneCustomData(retErr, EventCustomData{
-				Result: sResult,
-				Nodes:  evtNodes,
-				Rule:   rule,
-			})
+			evt.DoneCustomData(retErr, customData)
 		}
 	}()
-	rule, err = AutoScaleRuleForMetadata(pool)
+	customData.Rule, err = AutoScaleRuleForMetadata(pool)
 	if err == mgo.ErrNotFound {
-		rule, err = AutoScaleRuleForMetadata("")
+		customData.Rule, err = AutoScaleRuleForMetadata("")
 	}
 	if err != nil {
 		if err != mgo.ErrNotFound {
@@ -268,17 +262,17 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 		evt.Logf("no auto scale rule for %s", pool)
 		return
 	}
-	if !rule.Enabled {
+	if !customData.Rule.Enabled {
 		evt.Logf("auto scale rule disabled for %s", pool)
 		return
 	}
-	scaler, err := a.scalerForRule(rule)
+	scaler, err := a.scalerForRule(customData.Rule)
 	if err != nil {
 		retErr = errors.Wrapf(err, "error getting scaler for %s", pool)
 		return
 	}
 	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
-	sResult, err = scaler.scale(pool, nodes)
+	customData.Result, err = scaler.scale(pool, nodes)
 	if err != nil {
 		if _, ok := err.(errAppNotLocked); ok {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
@@ -287,29 +281,28 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 		retErr = errors.Wrapf(err, "error scaling group %s", pool)
 		return
 	}
-	if sResult.ToAdd > 0 {
-		evt.Logf("running event \"add\" for %q: %#v", pool, sResult)
-		evtNodes, err = a.addMultipleNodes(evt, prov, pool, nodes, sResult.ToAdd)
+	if customData.Result.ToAdd > 0 {
+		evt.Logf("running event \"add\" for %q: %#v", pool, customData.Result)
+		customData.Nodes, err = a.addMultipleNodes(evt, prov, pool, nodes, customData.Result.ToAdd)
 		if err != nil {
-			if len(evtNodes) == 0 {
+			if len(customData.Nodes) == 0 {
 				retErr = err
-				return
 			}
 			evt.Logf("not all required nodes were created: %s", err)
 		}
-	} else if len(sResult.ToRemove) > 0 {
-		evt.Logf("running event \"remove\" for %q: %#v", pool, sResult)
-		evtNodes = sResult.ToRemove
-		err = a.removeMultipleNodes(evt, prov, sResult.ToRemove)
+	} else if len(customData.Result.ToRemove) > 0 {
+		evt.Logf("running event \"remove\" for %q: %#v", pool, customData.Result)
+		customData.Nodes = customData.Result.ToRemove
+		err = a.removeMultipleNodes(evt, prov, customData.Result.ToRemove)
 		if err != nil {
 			retErr = err
 			return
 		}
 	}
-	if !rule.PreventRebalance {
-		err := a.rebalanceIfNeeded(evt, prov, pool, nodes, sResult)
+	if !customData.Rule.PreventRebalance {
+		err := a.rebalanceIfNeeded(evt, prov, pool, nodes, &customData)
 		if err != nil {
-			if sResult.IsRebalanceOnly() {
+			if customData.Result.IsRebalanceOnly() {
 				retErr = err
 			} else {
 				evt.Logf("unable to rebalance: %s", err.Error())
@@ -318,8 +311,8 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	}
 }
 
-func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, sResult *ScalerResult) error {
-	if len(sResult.ToRemove) > 0 {
+func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, customData *EventCustomData) error {
+	if len(customData.Result.ToRemove) > 0 {
 		return nil
 	}
 	rebalanceProv, ok := prov.(provision.NodeRebalanceProvisioner)
@@ -329,11 +322,11 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 	buf := safe.NewBuffer(nil)
 	writer := io.MultiWriter(buf, evt)
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
-		Force:  sResult.ToAdd > 0,
+		Force:  len(customData.Nodes) > 0,
 		Pool:   pool,
 		Writer: writer,
 	})
-	sResult.ToRebalance = shouldRebalance
+	customData.Result.ToRebalance = shouldRebalance
 	if err != nil {
 		return errors.Wrapf(err, "unable to rebalance containers. log: %s", buf.String())
 	}
