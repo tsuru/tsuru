@@ -133,7 +133,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 				"_id": "http://n2:2",
 			}},
 		},
-		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*`,
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*rebalancing - dry: false, force: true.*`,
 	}, eventtest.HasEvent)
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -378,6 +378,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 			"result.toadd":       0,
 			"result.torebalance": true,
 		},
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*rebalancing - dry: false, force: false.*`,
 	}, eventtest.HasEvent)
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)
