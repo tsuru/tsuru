@@ -224,6 +224,8 @@ type TargetType string
 
 func GetTargetType(t string) (TargetType, error) {
 	switch t {
+	case "global":
+		return TargetTypeGlobal, nil
 	case "app":
 		return TargetTypeApp, nil
 	case "node":
