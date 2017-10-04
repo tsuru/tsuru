@@ -3694,6 +3694,64 @@ func (s *S) TestAppAcquireApplicationLockWaitWithoutRelease(c *check.C) {
 	c.Assert(app.Lock.AcquireDate, check.NotNil)
 }
 
+func (s *S) TestAppAcquireApplicationLockWaitMany(c *check.C) {
+	a1 := App{Name: "test-lock-app1", TeamOwner: s.team.Name}
+	err := CreateApp(&a1, s.user)
+	c.Assert(err, check.IsNil)
+	a2 := App{Name: "test-lock-app2", TeamOwner: s.team.Name}
+	err = CreateApp(&a2, s.user)
+	c.Assert(err, check.IsNil)
+	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "foo", "/something", 0)
+	c.Assert(err, check.IsNil)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second)
+		ReleaseApplicationLockMany([]string{a1.Name, a2.Name})
+	}()
+	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 10*time.Second)
+	c.Assert(err, check.IsNil)
+	app1, err := GetByName(a1.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app1.Lock.Locked, check.Equals, true)
+	c.Assert(app1.Lock.Owner, check.Equals, "zzz")
+	c.Assert(app1.Lock.Reason, check.Equals, "/other")
+	c.Assert(app1.Lock.AcquireDate, check.NotNil)
+	app2, err := GetByName(a2.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app2.Lock.Locked, check.Equals, true)
+	c.Assert(app2.Lock.Owner, check.Equals, "zzz")
+	c.Assert(app2.Lock.Reason, check.Equals, "/other")
+	c.Assert(app2.Lock.AcquireDate, check.NotNil)
+}
+
+func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
+	a1 := App{Name: "test-lock-app1", TeamOwner: s.team.Name}
+	err := CreateApp(&a1, s.user)
+	c.Assert(err, check.IsNil)
+	a2 := App{Name: "test-lock-app2", TeamOwner: s.team.Name}
+	err = CreateApp(&a2, s.user)
+	c.Assert(err, check.IsNil)
+	locked, err := AcquireApplicationLock(a2.Name, "x", "y")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 0)
+	c.Assert(err, check.DeepEquals, ErrAppNotLocked{
+		App: a2.Name,
+	})
+	app1, err := GetByName(a1.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app1.Lock.Locked, check.Equals, false)
+	app2, err := GetByName(a2.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app2.Lock.Locked, check.Equals, true)
+	c.Assert(app2.Lock.Owner, check.Equals, "x")
+	c.Assert(app2.Lock.Reason, check.Equals, "y")
+	c.Assert(app2.Lock.AcquireDate, check.NotNil)
+}
+
 func (s *S) TestAppLockStringUnlocked(c *check.C) {
 	lock := AppLock{Locked: false}
 	c.Assert(lock.String(), check.Equals, "Not locked")

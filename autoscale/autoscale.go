@@ -29,7 +29,7 @@ import (
 const (
 	EventKind = "autoscale"
 
-	lockWaitTimeout = 10 * time.Second
+	lockWaitTimeout = 30 * time.Second
 )
 
 var globalConfig *Config
@@ -83,14 +83,6 @@ func newConfig() *Config {
 		c.WaitTimeNewMachine = 5 * time.Minute
 	}
 	return c
-}
-
-type errAppNotLocked struct {
-	app string
-}
-
-func (e errAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.app)
 }
 
 type ScalerResult struct {
@@ -274,7 +266,7 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
 	customData.Result, err = scaler.scale(pool, nodes)
 	if err != nil {
-		if _, ok := err.(errAppNotLocked); ok {
+		if _, ok := err.(app.ErrAppNotLocked); ok {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
 			return
 		}
@@ -520,17 +512,15 @@ func preciseUnitsByNode(pool string, nodes []provision.Node) (map[string][]provi
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range appsInPool {
-		var locked bool
-		locked, err = app.AcquireApplicationLockWait(a.Name, app.InternalAppName, "node auto scale", lockWaitTimeout)
-		if err != nil {
-			return nil, err
-		}
-		if !locked {
-			return nil, errAppNotLocked{app: a.Name}
-		}
-		defer app.ReleaseApplicationLock(a.Name)
+	appNames := make([]string, len(appsInPool))
+	for i, a := range appsInPool {
+		appNames[i] = a.Name
 	}
+	err = app.AcquireApplicationLockWaitMany(appNames, app.InternalAppName, "node auto scale", lockWaitTimeout)
+	if err != nil {
+		return nil, err
+	}
+	defer app.ReleaseApplicationLockMany(appNames)
 	unitsByNode := map[string][]provision.Unit{}
 	for _, node := range nodes {
 		var nodeUnits []provision.Unit
