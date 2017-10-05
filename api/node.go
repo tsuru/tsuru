@@ -63,6 +63,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		params.CaCert = m.CaCert
 		params.ClientCert = m.ClientCert
 		params.ClientKey = m.ClientKey
+		params.IaaSID = m.Id
 	}
 	prov, _, err := provision.FindNode(address)
 	if err != provision.ErrNodeNotFound {
@@ -109,6 +110,8 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	params.Pool = params.Metadata[provision.PoolMetadataName]
 	delete(params.Metadata, provision.PoolMetadataName)
+	params.IaaSID = params.Metadata[provision.IaaSIDMetadataName]
+	delete(params.Metadata, provision.IaaSIDMetadataName)
 	if params.Pool == "" {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
@@ -208,7 +211,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
 	if removeIaaS {
 		var m iaas.Machine
-		m, err = iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], net.URLToHost(address))
+		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(address))
 		if err != nil && err != mgo.ErrNotFound {
 			return nil
 		}

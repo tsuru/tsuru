@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -94,7 +95,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 		machineCreateErrors.WithLabelValues(iaasName).Inc()
 		return nil, err
 	}
-	params["iaas-id"] = m.Id
+	params[provision.IaaSIDMetadataName] = m.Id
 	m.Iaas = iaasName
 	m.CreationParams = params
 	err = m.saveToDB()

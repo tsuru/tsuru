@@ -21,6 +21,10 @@ var (
 	_ provision.Node = &kubernetesNodeWrapper{}
 )
 
+func (n *kubernetesNodeWrapper) IaaSID() string {
+	return labelSetFromMeta(&n.node.ObjectMeta).NodeIaaSID()
+}
+
 func (n *kubernetesNodeWrapper) Pool() string {
 	return labelSetFromMeta(&n.node.ObjectMeta).NodePool()
 }

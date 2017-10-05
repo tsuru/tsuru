@@ -945,6 +945,10 @@ type clusterNodeWrapper struct {
 	prov *dockerProvisioner
 }
 
+func (n *clusterNodeWrapper) IaaSID() string {
+	return n.Node.Metadata[provision.IaaSIDMetadataName]
+}
+
 func (n *clusterNodeWrapper) Address() string {
 	return n.Node.Address
 }
@@ -1062,6 +1066,7 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		opts.Metadata = map[string]string{}
 	}
 	opts.Metadata[provision.PoolMetadataName] = opts.Pool
+	opts.Metadata[provision.IaaSIDMetadataName] = opts.IaaSID
 	node := cluster.Node{
 		Address:        opts.Address,
 		Metadata:       opts.Metadata,

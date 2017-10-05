@@ -125,6 +125,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
+		IaaSID:     machine.Id,
 		Address:    newAddr,
 		Metadata:   newNodeMetadata,
 		Pool:       node.Pool(),
@@ -158,7 +159,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	if err != nil {
 		log.Errorf("Unable to remove node %s status from healer: %s", node.Address(), err)
 	}
-	failingMachine, err := iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], failingHost)
+	failingMachine, err := iaas.FindMachineByIdOrAddress(node.IaaSID(), failingHost)
 	if err != nil {
 		return &nodeSpec, errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost)
 	}

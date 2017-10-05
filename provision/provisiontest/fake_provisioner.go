@@ -374,6 +374,7 @@ func (p *FakeProvisioner) getError(method string) error {
 }
 
 type FakeNode struct {
+	ID         string
 	Addr       string
 	PoolName   string
 	Meta       map[string]string
@@ -381,6 +382,10 @@ type FakeNode struct {
 	p          *FakeProvisioner
 	failures   int
 	hasSuccess bool
+}
+
+func (n *FakeNode) IaaSID() string {
+	return n.ID
 }
 
 func (n *FakeNode) Pool() string {
@@ -448,6 +453,7 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		metadata = map[string]string{}
 	}
 	p.nodes[opts.Address] = FakeNode{
+		ID:       opts.IaaSID,
 		Addr:     opts.Address,
 		PoolName: opts.Pool,
 		Meta:     metadata,
