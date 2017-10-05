@@ -12,7 +12,10 @@ import (
 	"github.com/tsuru/tsuru/net"
 )
 
-const PoolMetadataName = "pool"
+const (
+	PoolMetadataName   = "pool"
+	IaaSIDMetadataName = "iaas-id"
+)
 
 type MetaWithFrequency struct {
 	Metadata map[string]string

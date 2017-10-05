@@ -498,6 +498,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return errors.WithStack(err)
 	}
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
+		IaaSID:       opts.IaaSID,
 		Addr:         opts.Address,
 		Pool:         opts.Pool,
 		CustomLabels: opts.Metadata,

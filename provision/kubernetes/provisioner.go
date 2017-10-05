@@ -454,7 +454,7 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 	return node, nil
 }
 
-func setNodeMetadata(node *apiv1.Node, pool string, meta map[string]string) {
+func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]string) {
 	if node.Labels == nil {
 		node.Labels = map[string]string{}
 	}
@@ -470,7 +470,7 @@ func setNodeMetadata(node *apiv1.Node, pool string, meta map[string]string) {
 		}
 	}
 	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
-		IaaSID: meta["iaas-id"],
+		IaaSID: iaasID,
 		Pool:   pool,
 		Prefix: tsuruLabelPrefix,
 	})
@@ -494,7 +494,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 			Name: hostAddr,
 		},
 	}
-	setNodeMetadata(node, opts.Pool, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
 	_, err = client.Core().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
 		return p.UpdateNode(provision.UpdateNodeOptions{
@@ -609,7 +609,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 		}
 	}
 	node.Spec.Taints = taints
-	setNodeMetadata(node, opts.Pool, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)

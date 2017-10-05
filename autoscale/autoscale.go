@@ -367,6 +367,7 @@ func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, pool 
 	newAddr := machine.FormatNodeAddress()
 	evt.Logf("new machine created: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
+		IaaSID:     machine.Id,
 		Address:    newAddr,
 		Pool:       pool,
 		Metadata:   metadata,
@@ -415,7 +416,7 @@ func (a *Config) removeMultipleNodes(evt *event.Event, prov provision.NodeProvis
 				errCh <- errors.Wrapf(err, "unable to unregister node %s for removal", node.Address)
 				return
 			}
-			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], net.URLToHost(node.Address))
+			m, err := iaas.FindMachineByIdOrAddress(node.IaaSID, net.URLToHost(node.Address))
 			if err != nil {
 				evt.Logf("unable to find machine for removal in iaas: %s", err)
 				return
