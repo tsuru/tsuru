@@ -6,6 +6,7 @@ package event
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"runtime"
@@ -457,7 +458,7 @@ func (s *S) TestEventCancel(c *check.C) {
 	})
 }
 
-func (s *S) TestEventCancelMulttipleTimes(c *check.C) {
+func (s *S) TestEventCancelMultipleTimes(c *check.C) {
 	evt, err := New(&Opts{
 		Target:        Target{Type: "app", Value: "myapp"},
 		Kind:          permission.PermAppUpdateEnvSet,
@@ -1187,4 +1188,65 @@ event:
 	err = LoadThrottling()
 	c.Assert(err, check.ErrorMatches, `json: cannot unmarshal string into Go struct field throttlingSpecAlias.limit of type int`)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
+}
+
+func (s *S) TestEventCancelableContext(c *check.C) {
+	evt, err := New(&Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	err = evts[0].TryCancel("because I want", "admin@admin.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason: "because I want",
+		Owner:  "admin@admin.com",
+		Asked:  true,
+	})
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason: "because I want",
+		Owner:  "admin@admin.com",
+		Asked:  true,
+	})
+	ctx, cancel := evt.CancelableContext(context.Background())
+	defer cancel()
+	<-ctx.Done()
+	c.Assert(ctx.Err(), check.Equals, context.Canceled)
+	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.CancelInfo.AckTime.IsZero(), check.Equals, false)
+	evt.CancelInfo.StartTime = time.Time{}
+	evt.CancelInfo.AckTime = time.Time{}
+	c.Assert(evt.CancelInfo, check.DeepEquals, cancelInfo{
+		Reason:   "because I want",
+		Owner:    "admin@admin.com",
+		Asked:    true,
+		Canceled: true,
+	})
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].CancelInfo.AckTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	evts[0].CancelInfo.AckTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason:   "because I want",
+		Owner:    "admin@admin.com",
+		Asked:    true,
+		Canceled: true,
+	})
 }
