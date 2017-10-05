@@ -278,8 +278,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	port := provision.WebProcessDefaultPort()
-	portInt, _ := strconv.Atoi(port)
+	portInt := getTargetPortForImage(imageName)
 	var probe *apiv1.Probe
 	if process == webProcessName {
 		yamlData, errImg := image.GetImageTsuruYamlData(imageName)
@@ -495,7 +494,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 	return nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
+func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
 	err := ensureNodeContainers()
 	if err != nil {
 		return err
@@ -508,7 +507,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		dep = nil
 	}
-	dep, labels, err = createAppDeployment(m.client, dep, a, process, image, replicas, labels)
+	dep, labels, err = createAppDeployment(m.client, dep, a, process, img, replicas, labels)
 	if err != nil {
 		return err
 	}
@@ -526,8 +525,8 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		return err
 	}
-	port := provision.WebProcessDefaultPort()
-	portInt, _ := strconv.Atoi(port)
+	targetPort := getTargetPortForImage(img)
+	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	_, err = m.client.Core().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
@@ -539,8 +538,8 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			Ports: []apiv1.ServicePort{
 				{
 					Protocol:   "TCP",
-					Port:       int32(portInt),
-					TargetPort: intstr.FromInt(portInt),
+					Port:       int32(port),
+					TargetPort: intstr.FromInt(targetPort),
 				},
 			},
 			Type: apiv1.ServiceTypeNodePort,
@@ -550,6 +549,16 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		return nil
 	}
 	return err
+}
+
+func getTargetPortForImage(imgName string) int {
+	port := provision.WebProcessDefaultPort()
+	imageData, _ := image.GetImageMetaData(imgName)
+	if imageData.ExposedPort != "" {
+		port = imageData.ExposedPort
+	}
+	portInt, _ := strconv.Atoi(port)
+	return portInt
 }
 
 func procfileInspectPod(client *clusterClient, a provision.App, image string) (string, error) {
