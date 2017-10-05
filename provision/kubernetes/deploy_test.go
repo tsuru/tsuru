@@ -128,6 +128,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{},
 							},
+							Ports: []apiv1.ContainerPort{
+								{ContainerPort: 8888},
+							},
 						},
 					},
 				},
