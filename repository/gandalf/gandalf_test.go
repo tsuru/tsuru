@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -106,7 +107,7 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	err = manager.CreateUser(user1.Email)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "superteam"}
-	err = auth.TeamService().Insert(team)
+	err = service.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{Name: "myapp", Teams: []string{team.Name}}
 	app2 := app.App{Name: "yourapp", Teams: []string{team.Name}}

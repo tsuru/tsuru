@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 )
@@ -78,7 +79,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.team = &authTypes.Team{Name: "admin"}
-	err = auth.TeamService().Insert(*s.team)
+	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

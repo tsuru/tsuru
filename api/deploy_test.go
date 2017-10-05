@@ -37,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -60,7 +61,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = auth.TeamService().Insert(*s.team)
+	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -795,7 +796,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newteam"}
-	err = auth.TeamService().Insert(team)
+	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -1007,7 +1008,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = auth.TeamService().Insert(team)
+	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1045,7 +1046,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = auth.TeamService().Insert(team)
+	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)

@@ -30,6 +30,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -83,7 +84,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "tsuruteam"}
-	err = auth.TeamService().Insert(s.team)
+	err = serviceTypes.Team().Insert(s.team)
 	c.Assert(err, check.IsNil)
 }
 

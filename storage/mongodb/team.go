@@ -7,12 +7,15 @@ package mongodb
 import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-type TeamService struct{}
+type TeamStorage struct{}
+
+var _ storage.TeamStorage = &TeamStorage{}
 
 type team struct {
 	Name         string `bson:"_id"`
@@ -23,7 +26,7 @@ func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (s *TeamService) Insert(t auth.Team) error {
+func (s *TeamStorage) Insert(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -36,11 +39,11 @@ func (s *TeamService) Insert(t auth.Team) error {
 	return err
 }
 
-func (s *TeamService) FindAll() ([]auth.Team, error) {
+func (s *TeamStorage) FindAll() ([]auth.Team, error) {
 	return s.findByQuery(nil)
 }
 
-func (s *TeamService) FindByName(name string) (*auth.Team, error) {
+func (s *TeamStorage) FindByName(name string) (*auth.Team, error) {
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
@@ -58,12 +61,12 @@ func (s *TeamService) FindByName(name string) (*auth.Team, error) {
 	return &team, nil
 }
 
-func (s *TeamService) FindByNames(names []string) ([]auth.Team, error) {
+func (s *TeamStorage) FindByNames(names []string) ([]auth.Team, error) {
 	query := bson.M{"_id": bson.M{"$in": names}}
 	return s.findByQuery(query)
 }
 
-func (s *TeamService) findByQuery(query bson.M) ([]auth.Team, error) {
+func (s *TeamStorage) findByQuery(query bson.M) ([]auth.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -81,7 +84,7 @@ func (s *TeamService) findByQuery(query bson.M) ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (s *TeamService) Delete(t auth.Team) error {
+func (s *TeamStorage) Delete(t auth.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

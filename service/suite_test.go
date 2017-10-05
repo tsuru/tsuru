@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -63,7 +64,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "Raul"}
-	err = auth.TeamService().Insert(*s.team)
+	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

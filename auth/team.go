@@ -13,8 +13,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -23,17 +23,6 @@ var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
 type ErrTeamStillUsed struct {
 	Apps             []string
 	ServiceInstances []string
-}
-
-func TeamService() authTypes.TeamService {
-	dbDriver, err := storage.GetCurrentDbDriver()
-	if err != nil {
-		dbDriver, err = storage.GetDefaultDbDriver()
-		if err != nil {
-			return nil
-		}
-	}
-	return dbDriver.TeamService
 }
 
 func (e *ErrTeamStillUsed) Error() string {
@@ -63,7 +52,7 @@ func CreateTeam(name string, user *User) error {
 	if err := validateTeam(team); err != nil {
 		return err
 	}
-	err := TeamService().Insert(team)
+	err := service.Team().Insert(team)
 	if err != nil {
 		return err
 	}
@@ -76,7 +65,7 @@ func CreateTeam(name string, user *User) error {
 
 // GetTeam find a team by name.
 func GetTeam(name string) (*authTypes.Team, error) {
-	return TeamService().FindByName(name)
+	return service.Team().FindByName(name)
 }
 
 // GetTeamsNames maps teams to a list of team names.
@@ -110,9 +99,9 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	return TeamService().Delete(authTypes.Team{Name: teamName})
+	return service.Team().Delete(authTypes.Team{Name: teamName})
 }
 
 func ListTeams() ([]authTypes.Team, error) {
-	return TeamService().FindAll()
+	return service.Team().FindAll()
 }

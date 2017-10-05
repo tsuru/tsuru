@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/service"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -76,7 +77,7 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 
 func (s *S) TestGetTeam(c *check.C) {
 	team := authTypes.Team{Name: "symfonia"}
-	err := TeamService().Insert(team)
+	err := service.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)
@@ -88,7 +89,7 @@ func (s *S) TestGetTeam(c *check.C) {
 
 func (s *S) TestRemoveTeam(c *check.C) {
 	team := authTypes.Team{Name: "atreides"}
-	err := TeamService().Insert(team)
+	err := service.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
@@ -99,7 +100,7 @@ func (s *S) TestRemoveTeam(c *check.C) {
 
 func (s *S) TestRemoveTeamWithApps(c *check.C) {
 	team := authTypes.Team{Name: "atreides"}
-	err := TeamService().Insert(team)
+	err := service.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
 	c.Assert(err, check.IsNil)
@@ -109,7 +110,7 @@ func (s *S) TestRemoveTeamWithApps(c *check.C) {
 
 func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 	team := authTypes.Team{Name: "harkonnen"}
-	err := TeamService().Insert(team)
+	err := service.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
 	c.Assert(err, check.IsNil)
@@ -118,9 +119,9 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 }
 
 func (s *S) TestListTeams(c *check.C) {
-	err := TeamService().Insert(authTypes.Team{Name: "corrino"})
+	err := service.Team().Insert(authTypes.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = TeamService().Insert(authTypes.Team{Name: "fenring"})
+	err = service.Team().Insert(authTypes.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := ListTeams()
 	c.Assert(err, check.IsNil)
