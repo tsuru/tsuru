@@ -469,15 +469,17 @@ func setNodeMetadata(node *apiv1.Node, pool string, meta map[string]string) {
 			node.Annotations[k] = v
 		}
 	}
-	if pool != "" {
-		baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
-			Pool:   pool,
-			Prefix: tsuruLabelPrefix,
-		})
-		for k, v := range baseNodeLabels.ToLabels() {
-			delete(node.Annotations, k)
-			node.Labels[k] = v
+	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
+		IaaSID: meta["iaas-id"],
+		Pool:   pool,
+		Prefix: tsuruLabelPrefix,
+	})
+	for k, v := range baseNodeLabels.ToLabels() {
+		if v == "" {
+			continue
 		}
+		delete(node.Annotations, k)
+		node.Labels[k] = v
 	}
 }
 

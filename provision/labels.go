@@ -299,6 +299,7 @@ func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 }
 
 type NodeLabelsOpts struct {
+	IaaSID       string
 	Addr         string
 	Pool         string
 	Prefix       string
