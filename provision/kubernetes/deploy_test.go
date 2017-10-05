@@ -177,6 +177,67 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 }
 
+func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.client.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgData := image.ImageMetadata{
+		Name:        "myimg",
+		ExposedPort: "7777",
+		Processes:   map[string][]string{"p1": []string{"cmd1"}},
+	}
+	err = imgData.Save()
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	srv, err := s.client.Core().Services(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv, check.DeepEquals, &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/is-service":           "true",
+				"tsuru.io/is-build":             "false",
+				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/app-name":             "myapp",
+				"tsuru.io/app-process":          "p1",
+				"tsuru.io/app-process-replicas": "1",
+				"tsuru.io/app-platform":         "",
+				"tsuru.io/app-pool":             "test-default",
+				"tsuru.io/router-type":          "fake",
+				"tsuru.io/router-name":          "fake",
+				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/builder":              "",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-process":     "p1",
+				"tsuru.io/is-build":        "false",
+				"tsuru.io/is-isolated-run": "false",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(7777),
+				},
+			},
+			Type: apiv1.ServiceTypeNodePort,
+		},
+	})
+}
+
 func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
