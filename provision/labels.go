@@ -35,6 +35,7 @@ var (
 	labelNodeInternalPrefix = "tsuru-internal-"
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
 	LabelNodePool           = PoolMetadataName
+	labelNodeIaaSID         = "iaas-id"
 
 	labelVolumeName = "volume-name"
 	labelVolumePool = "volume-pool"
@@ -311,13 +312,16 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
-	for _, r := range []string{LabelNodePool, labelNodeAddr} {
+	for _, r := range []string{LabelNodePool, labelNodeAddr, labelNodeIaaSID} {
 		delete(labels, r)
 		delete(labels, opts.Prefix+r)
 	}
 	labels[LabelNodePool] = opts.Pool
 	if opts.Addr != "" {
 		labels[labelNodeAddr] = opts.Addr
+	}
+	if opts.IaaSID != "" {
+		labels[labelNodeIaaSID] = opts.IaaSID
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
