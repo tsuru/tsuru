@@ -654,6 +654,7 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var hostInput provision.NodeStatusData
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&hostInput, r.Form)
 	if err != nil {
