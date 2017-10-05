@@ -346,6 +346,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 								Limits: resourceLimits,
 							},
 							VolumeMounts: mounts,
+							Ports: []apiv1.ContainerPort{
+								{ContainerPort: int32(portInt)},
+							},
 						},
 					},
 				},
