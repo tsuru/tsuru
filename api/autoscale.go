@@ -79,6 +79,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	var rule autoscale.Rule
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&rule, r.Form)
 	if err != nil {

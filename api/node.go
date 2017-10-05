@@ -97,6 +97,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	var params provision.AddNodeOptions
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
@@ -322,6 +323,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	var params provision.UpdateNodeOptions
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
@@ -527,6 +529,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	defer func() { evt.Done(err) }()
 	var config healer.NodeHealerConfig
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&config, r.Form)
 	if err != nil {
@@ -590,6 +593,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	var params provision.RebalanceNodesOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
 		return &tsuruErrors.HTTP{
