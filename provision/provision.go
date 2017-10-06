@@ -433,7 +433,6 @@ type RemoveNodeOptions struct {
 }
 
 type UpdateNodeOptions struct {
-	IaaSID   string
 	Address  string
 	Pool     string
 	Metadata map[string]string
