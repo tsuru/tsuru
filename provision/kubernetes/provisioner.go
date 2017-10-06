@@ -609,7 +609,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 		}
 	}
 	node.Spec.Taints = taints
-	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, "", opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)
