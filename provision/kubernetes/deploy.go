@@ -558,7 +558,10 @@ func getTargetPortForImage(imgName string) int {
 	port := provision.WebProcessDefaultPort()
 	imageData, _ := image.GetImageMetaData(imgName)
 	if imageData.ExposedPort != "" {
-		port = imageData.ExposedPort
+		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
+		if len(parts) == 2 {
+			port = parts[0]
+		}
 	}
 	portInt, _ := strconv.Atoi(port)
 	return portInt

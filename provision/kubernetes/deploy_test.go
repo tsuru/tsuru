@@ -189,7 +189,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgData := image.ImageMetadata{
 		Name:        "myimg",
-		ExposedPort: "7777",
+		ExposedPort: "7777/tcp",
 		Processes:   map[string][]string{"p1": {"cmd1"}},
 	}
 	err = imgData.Save()
