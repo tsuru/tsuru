@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -641,6 +642,28 @@ func TestCreateContainerNetworkFailureInHook(t *testing.T) {
 	}
 	if nodes[0].FailureCount() != 1 {
 		t.Fatalf("Expected failure count to be 1, got: %d", nodes[0].FailureCount())
+	}
+}
+
+func TestCreateContainerContextDone(t *testing.T) {
+	body := `{"Id":"e90302"}`
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(body))
+	}))
+	defer server1.Close()
+	cluster, err := New(firstNodeScheduler{}, &MapStorage{}, "",
+		Node{Address: server1.URL},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := docker.Config{Memory: 67108864, Image: "myimg"}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, _, err = cluster.CreateContainer(docker.CreateContainerOptions{Config: &config, Context: ctx}, time.Minute)
+	if err != context.Canceled {
+		t.Errorf("CreateContainer(): Expected ErrCreateCanceled error, got %v", err)
 	}
 }
 
