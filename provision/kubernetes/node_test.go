@@ -41,7 +41,7 @@ func (s *S) TestNodePool(c *check.C) {
 		node: &apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					"pool": "p1",
+					"tsuru.io/pool": "p1",
 				},
 			},
 			Status: apiv1.NodeStatus{
@@ -96,30 +96,38 @@ func (s *S) TestNodeMetadata(c *check.C) {
 		node: &apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					"pool":  "p1",
-					"m1":    "v1",
-					"m2.m3": "v2",
+					"tsuru.io/pool":    "p1",
+					"tsuru.io/iaas-id": "i1",
+					"m2.m3":            "v2",
 				},
 				Annotations: map[string]string{
-					"a1":    "v3",
-					"a2.a3": "v4",
+					"a1":          "v3",
+					"a2.a3":       "v4",
+					"tsuru.io/a4": "v5",
 				},
 			},
 		},
 	}
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"pool": "p1",
-		"m1":   "v1",
-		"a1":   "v3",
+		"tsuru.io/pool":    "p1",
+		"tsuru.io/iaas-id": "i1",
+		"tsuru.io/a4":      "v5",
+	})
+	c.Assert(node.MetadataNoPrefix(), check.DeepEquals, map[string]string{
+		"pool":    "p1",
+		"iaas-id": "i1",
+		"a4":      "v5",
 	})
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
 		"m2.m3": "v2",
+		"a1":    "v3",
 		"a2.a3": "v4",
 	})
 	node.cluster = s.client.clusterClient
 	node.cluster.Name = "fakecluster"
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
 		"m2.m3":            "v2",
+		"a1":               "v3",
 		"a2.a3":            "v4",
 		"tsuru.io/cluster": "fakecluster",
 	})

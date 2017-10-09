@@ -504,12 +504,20 @@ type Node interface {
 	IaaSID() string
 	Address() string
 	Status() string
+
+	// Metadata returns node metadata exclusively managed by tsuru
 	Metadata() map[string]string
 	Units() ([]Unit, error)
 	Provisioner() NodeProvisioner
+
+	// MetadataNoPrefix returns node metadata managed by tsuru without any
+	// tsuru specific prefix. This can be used with iaas providers.
+	MetadataNoPrefix() map[string]string
 }
 
 type NodeExtraData interface {
+	// ExtraData returns node metadata not managed by tsuru, like metadata
+	// added by external sources.
 	ExtraData() map[string]string
 }
 

@@ -86,9 +86,9 @@ func metadataNoIaasID(n Node) map[string]string {
 	// iaas-id is ignored because it wasn't created in previous tsuru versions
 	// and having nodes with and without it would cause unbalanced metadata
 	// errors.
-	ignoredMetadata := []string{"iaas-id"}
+	ignoredMetadata := []string{IaaSIDMetadataName}
 	metadata := map[string]string{}
-	for k, v := range n.Metadata() {
+	for k, v := range n.MetadataNoPrefix() {
 		metadata[k] = v
 	}
 	for _, val := range ignoredMetadata {

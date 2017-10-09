@@ -961,6 +961,10 @@ func (n *clusterNodeWrapper) Metadata() map[string]string {
 	return n.Node.CleanMetadata()
 }
 
+func (n *clusterNodeWrapper) MetadataNoPrefix() map[string]string {
+	return n.Metadata()
+}
+
 func (n *clusterNodeWrapper) ExtraData() map[string]string {
 	return n.Node.ExtraMetadata()
 }
