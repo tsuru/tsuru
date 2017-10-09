@@ -360,6 +360,60 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		Router:    "fake",
+		TeamOwner: s.team.Name,
+	}
+
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("file", "archive.tar.gz")
+	c.Assert(err, check.IsNil)
+	// Must be larger than 32MB to be stored in a tempfile.
+	payload := bytes.Repeat([]byte("*"), 33<<20)
+	file.Write(payload)
+	writer.Close()
+	request, err := http.NewRequest("POST", url, &body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   33 << 20,
+			"kind":       "upload",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Builder deploy called`,
+	}, eventtest.HasEvent)
+}
+
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)

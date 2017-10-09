@@ -7,6 +7,7 @@ package fake
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
@@ -42,6 +43,10 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
 	if opts.ArchiveFile != nil && opts.ArchiveSize != 0 {
+		_, err := ioutil.ReadAll(opts.ArchiveFile)
+		if err != nil {
+			return "", err
+		}
 		b.IsArchiveFileDeploy = true
 	} else if opts.Rebuild {
 		b.IsRebuildDeploy = true
