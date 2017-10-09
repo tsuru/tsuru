@@ -34,6 +34,9 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
+	if opts.File != nil {
+		defer opts.File.Close()
+	}
 	commit := r.FormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")

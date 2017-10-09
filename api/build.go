@@ -43,6 +43,9 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
+	if opts.File != nil {
+		defer opts.File.Close()
+	}
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	var userName string
@@ -109,7 +112,6 @@ func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
 			return opts, errors.Wrap(err, "unable to find uploaded file size")
 		}
 		file.Seek(0, io.SeekStart)
-		defer file.Close()
 	}
 	archiveURL := r.FormValue("archive-url")
 	image := r.FormValue("image")
