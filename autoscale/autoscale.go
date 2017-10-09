@@ -476,7 +476,7 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 		return true, nil
 	}
 	hasMetadata := func(n provision.Node, meta map[string]string) bool {
-		metadata := n.Metadata()
+		metadata := n.MetadataNoPrefix()
 		for k, v := range meta {
 			if metadata[k] != v {
 				return false

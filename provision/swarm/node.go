@@ -48,18 +48,24 @@ func (n *swarmNodeWrapper) Status() string {
 	return base
 }
 
+func labelsFromAnnotations(ann swarm.Annotations) *provision.LabelSet {
+	return &provision.LabelSet{Labels: ann.Labels, Prefix: tsuruLabelPrefix}
+}
+
 func (n *swarmNodeWrapper) Metadata() map[string]string {
-	labels := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
-	return labels.PublicNodeLabels()
+	return labelsFromAnnotations(n.Node.Spec.Annotations).NodeMetadata()
+}
+
+func (n *swarmNodeWrapper) MetadataNoPrefix() map[string]string {
+	return labelsFromAnnotations(n.Node.Spec.Annotations).NodeMetadataNoPrefix()
 }
 
 func (n *swarmNodeWrapper) ExtraData() map[string]string {
-	if n.client == nil {
-		return nil
+	var clusterName string
+	if n.client != nil {
+		clusterName = n.client.Cluster.Name
 	}
-	return map[string]string{
-		provision.LabelClusterMetadata: n.client.Cluster.Name,
-	}
+	return labelsFromAnnotations(n.Node.Spec.Annotations).NodeExtraData(clusterName)
 }
 
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {

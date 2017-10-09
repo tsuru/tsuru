@@ -34,7 +34,7 @@ func (a *memoryScaler) nodesMemoryData(pool string, nodes []provision.Node) (map
 		return nil, err
 	}
 	for _, node := range nodes {
-		metadata := node.Metadata()
+		metadata := node.MetadataNoPrefix()
 		totalMemory, _ := strconv.ParseFloat(metadata[a.TotalMemoryMetadata], 64)
 		if totalMemory == 0.0 {
 			return nil, errors.Errorf("no value found for memory metadata (%s) in node %s", a.TotalMemoryMetadata, node.Address())

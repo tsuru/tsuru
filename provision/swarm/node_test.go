@@ -16,9 +16,10 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 		Spec: swarm.NodeSpec{
 			Annotations: swarm.Annotations{
 				Labels: map[string]string{
-					"tsuru-internal-node-addr": "myaddr:1234",
-					"pool": "p1",
-					"l1":   "v1",
+					"tsuru.internal-node-addr": "myaddr:1234",
+					"tsuru.pool":               "p1",
+					"l1":                       "v1",
+					"tsuru.l2":                 "v2",
 				},
 			},
 		},
@@ -28,18 +29,23 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	}
 	node := swarmNodeWrapper{Node: swarmNode}
 	c.Assert(node.Address(), check.Equals, "myaddr:1234")
-	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{"pool": "p1", "l1": "v1"})
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{"tsuru.pool": "p1", "tsuru.l2": "v2"})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 	swarmNode.Status.Message = "msg1"
 	c.Assert(node.Status(), check.Equals, "ready (msg1)")
-	c.Assert(node.ExtraData(), check.IsNil)
+	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
+		"tsuru.internal-node-addr": "myaddr:1234",
+		"l1": "v1",
+	})
 	s.addCluster(c)
 	var err error
 	node.client, err = clusterForPool("")
 	c.Assert(err, check.IsNil)
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
-		"tsuru.io/cluster": "c1",
+		"tsuru.io/cluster":         "c1",
+		"tsuru.internal-node-addr": "myaddr:1234",
+		"l1": "v1",
 	})
 }
 

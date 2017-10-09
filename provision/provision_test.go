@@ -146,6 +146,9 @@ func (n *testNode) Status() string {
 func (n *testNode) Metadata() map[string]string {
 	return map[string]string{"d": "e"}
 }
+func (n *testNode) MetadataNoPrefix() map[string]string {
+	return n.Metadata()
+}
 func (n *testNode) Units() ([]Unit, error) {
 	return nil, nil
 }

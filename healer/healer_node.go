@@ -98,7 +98,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	failingAddr := node.Address()
 	// Copy metadata to ensure underlying data structure is not modified.
 	newNodeMetadata := map[string]string{}
-	for k, v := range node.Metadata() {
+	for k, v := range node.MetadataNoPrefix() {
 		newNodeMetadata[k] = v
 	}
 	failingHost := net.URLToHost(failingAddr)
@@ -178,7 +178,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 }
 
 func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *NodeChecks) error {
-	_, hasIaas := node.Metadata()["iaas"]
+	_, hasIaas := node.MetadataNoPrefix()["iaas"]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address(), reason)
 		return nil

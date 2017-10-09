@@ -400,6 +400,10 @@ func (n *FakeNode) Metadata() map[string]string {
 	return n.Meta
 }
 
+func (n *FakeNode) MetadataNoPrefix() map[string]string {
+	return n.Meta
+}
+
 func (n *FakeNode) Units() ([]provision.Unit, error) {
 	n.p.mut.Lock()
 	defer n.p.mut.Unlock()
