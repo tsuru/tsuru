@@ -403,6 +403,10 @@ func (n *FakeNode) Metadata() map[string]string {
 func (n *FakeNode) Units() ([]provision.Unit, error) {
 	n.p.mut.Lock()
 	defer n.p.mut.Unlock()
+	return n.unitsLocked()
+}
+
+func (n *FakeNode) unitsLocked() ([]provision.Unit, error) {
 	var units []provision.Unit
 	for _, a := range n.p.apps {
 		for _, u := range a.units {
@@ -489,11 +493,9 @@ func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 	if opts.Writer != nil {
 		if opts.Rebalance {
 			opts.Writer.Write([]byte("rebalancing..."))
-			p.mut.Unlock()
-			p.RebalanceNodes(provision.RebalanceNodesOptions{
+			p.rebalanceNodesLocked(provision.RebalanceNodesOptions{
 				Force: true,
 			})
-			p.mut.Lock()
 		}
 		opts.Writer.Write([]byte("remove done!"))
 	}
@@ -563,6 +565,10 @@ func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (pr
 func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
+	return p.rebalanceNodesLocked(opts)
+}
+
+func (p *FakeProvisioner) rebalanceNodesLocked(opts provision.RebalanceNodesOptions) (bool, error) {
 	if err := p.getError("RebalanceNodes"); err != nil {
 		return true, err
 	}
@@ -589,9 +595,7 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	var nodes []FakeNode
 	for _, n := range p.nodes {
 		nodes = append(nodes, n)
-		p.mut.Unlock()
-		units, err := n.Units()
-		p.mut.Lock()
+		units, err := n.unitsLocked()
 		if err != nil {
 			return true, err
 		}
