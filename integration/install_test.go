@@ -291,7 +291,7 @@ func poolAdd() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		for _, cluster := range clusterManagers {
-			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
+			res := T("cluster-remove", "-y", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete()
 			c.Check(res, ResultOk)
