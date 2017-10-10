@@ -8,7 +8,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -145,7 +144,7 @@ func (s *S) TestFindMachineByAddress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machine.Id, check.Equals, "myid2")
 	_, err = FindMachineByAddress("myid3.somewhere.com")
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, ErrMachineNotFound)
 }
 
 func (s *S) TestDestroy(c *check.C) {
@@ -171,7 +170,7 @@ func (s *S) TestFindById(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machine.Id, check.Equals, "myid2")
 	_, err = FindMachineById("myid3")
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, ErrMachineNotFound)
 }
 
 func (s *S) TestFormatNodeAddress(c *check.C) {

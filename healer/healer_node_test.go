@@ -292,6 +292,59 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(machines[0].Address, check.Equals, "addr2")
 }
 
+func (s *S) TestHealerHealNodeDestroyNotFound(c *check.C) {
+	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
+	machine, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	c.Assert(err, check.IsNil)
+	iaasInst.Addr = "addr2"
+	config.Set("iaas:node-protocol", "http")
+	config.Set("iaas:node-port", 2)
+	defer config.Unset("iaas:node-protocol")
+	defer config.Unset("iaas:node-port")
+	p := provisiontest.ProvisionerInstance
+	err = p.AddNode(provision.AddNodeOptions{
+		Address:  "http://addr1:1",
+		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+	})
+	c.Assert(err, check.IsNil)
+
+	healer := newNodeHealer(nodeHealerArgs{
+		WaitTimeNewMachine: time.Minute,
+	})
+	healer.Shutdown(context.Background())
+	nodes, err := p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
+
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr1")
+
+	err = machine.Destroy()
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.Buffer{}
+	log.SetLogger(log.NewWriterLogger(&buf, false))
+	defer log.SetLogger(nil)
+	created, err := healer.healNode(nodes[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(created.Address, check.Equals, "http://addr2:2")
+	c.Assert(buf.String(), check.Equals, "")
+
+	nodes, err = p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://addr2:2")
+
+	machines, err = iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr2")
+}
+
 func (s *S) TestHealerHandleError(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)

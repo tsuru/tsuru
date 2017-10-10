@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
-	"gopkg.in/mgo.v2"
 )
 
 func validateNodeAddress(address string) error {
@@ -213,7 +212,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if removeIaaS {
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(address))
-		if err != nil && err != mgo.ErrNotFound {
+		if err != nil && err != iaas.ErrMachineNotFound {
 			return nil
 		}
 		return m.Destroy()

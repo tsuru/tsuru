@@ -67,7 +67,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	}
 	m, err := iaas.FindMachineById(machineID)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == iaas.ErrMachineNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "machine not found"}
 		}
 		return err
