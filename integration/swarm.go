@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	"github.com/mattn/go-shellwords"
+	check "gopkg.in/check.v1"
 )
 
 type SwarmClusterManager struct {
 	env *Environment
+	c   *check.C
 }
 
 func (m *SwarmClusterManager) Name() string {
@@ -35,11 +37,11 @@ func (m *SwarmClusterManager) RequiredNodes() int {
 	return 1
 }
 
-func (m *SwarmClusterManager) UpdateParams() []string {
-	nodeopts := m.env.All("nodeopts")
-	m.env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
-	parts, _ := shellwords.Parse(nodeopts[0])
+func (m *SwarmClusterManager) UpdateParams() ([]string, bool) {
+	opts := nodeOrRegisterOpts(m.c, m.env)
+	parts, _ := shellwords.Parse(opts)
 	var clusterParts []string
+	createNode := false
 	for _, part := range parts {
 		if part == "--register" {
 			continue
@@ -49,11 +51,12 @@ func (m *SwarmClusterManager) UpdateParams() []string {
 			if metadata[0] == "address" {
 				clusterParts = append(clusterParts, "--addr", metadata[1])
 			} else {
+				createNode = true
 				clusterParts = append(clusterParts, "--create-data", fmt.Sprintf("'%s'", part))
 			}
 		} else {
 			clusterParts = append(clusterParts, part)
 		}
 	}
-	return clusterParts
+	return clusterParts, createNode
 }
