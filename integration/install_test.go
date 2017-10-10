@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"gopkg.in/check.v1"
 )
 
@@ -31,6 +32,7 @@ var (
 		quotaTest(),
 		teamTest(),
 		poolAdd(),
+		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
 		serviceImageSetup(),
@@ -122,7 +124,7 @@ func installerTest() ExecFlow {
 				continue
 			}
 			c.Assert(parts, check.HasLen, 2)
-			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
+			env.Add("noderegisteropts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
 			env.Add("installernodes", parts[1])
 		}
 		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
@@ -205,6 +207,98 @@ func teamTest() ExecFlow {
 	return flow
 }
 
+func nodeHealer() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"nodeopts"},
+		matrix: map[string]string{
+			"pool": "multinodepools",
+		},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		poolName := env.Get("pool")
+		res := T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
+		c.Assert(res, ResultOk)
+		nodeAddr := waitNewNode(c, env)
+		env.Add("healnodeaddrs", nodeAddr)
+		res = T("node-healing-update", "--enable", "--max-unresponsive", "130").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
+		c.Assert(res, ResultOk)
+		// Wait BS node status upgrade
+		time.Sleep(time.Minute)
+		res = T("machine-list").Run(env)
+		c.Assert(res, ResultOk)
+		table := resultTable{raw: res.Stdout.String()}
+		table.parse()
+		var machineID string
+		for _, row := range table.rows {
+			c.Assert(row, check.HasLen, 4)
+			if tsuruNet.URLToHost(nodeAddr) == row[2] {
+				machineID = row[0]
+				break
+			}
+		}
+		c.Assert(machineID, check.Not(check.Equals), "")
+		res = T("machine-destroy", machineID).Run(env)
+		c.Assert(res, ResultOk)
+		ok := retry(15*time.Minute, func() bool {
+			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
+			c.Assert(res, ResultOk)
+			return res.Stdout.String() != ""
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
+		ok = retry(15*time.Minute, func() bool {
+			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
+			c.Assert(res, ResultOk)
+			return res.Stdout.String() == ""
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not finish after 15 minutes: %v", res))
+		res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
+		c.Assert(res, ResultOk)
+		table = resultTable{raw: res.Stdout.String()}
+		table.parse()
+		c.Assert(table.rows, check.HasLen, 1)
+		c.Assert(table.rows[0][2], check.Equals, "true", check.Commentf("expected success, got: %v", res))
+		eventId := table.rows[0][0]
+		res = T("event-info", eventId).Run(env)
+		c.Assert(res, ResultOk)
+		newAddrRegexp := regexp.MustCompile(`(?s)End Custom Data:.*?_id: (.*?)\s`)
+		newAddrParts := newAddrRegexp.FindStringSubmatch(res.Stdout.String())
+		newAddr := newAddrParts[1]
+		var newAddrs []string
+		for _, addr := range env.All("healnodeaddrs") {
+			if addr == nodeAddr {
+				addr = newAddr
+			}
+			newAddrs = append(newAddrs, addr)
+		}
+		env.Set("healnodeaddrs", newAddrs...)
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		for _, node := range env.All("healnodeaddrs") {
+			res := T("node-remove", "-y", "--destroy", "--no-rebalance", node).Run(env)
+			c.Check(res, ResultOk)
+		}
+	}
+	return flow
+}
+
+func waitNewNode(c *check.C, env *Environment) string {
+	regex := regexp.MustCompile(`node.create.*?node:\s+(.*?)\s+`)
+	res := T("event-list").Run(env)
+	c.Assert(res, ResultOk)
+	parts := regex.FindStringSubmatch(res.Stdout.String())
+	c.Assert(parts, check.HasLen, 2)
+	nodeAddr := parts[1]
+	regex = regexp.MustCompile("(?i)" + nodeAddr + `.*?ready`)
+	ok := retry(5*time.Minute, func() bool {
+		res = T("node-list").Run(env)
+		return regex.MatchString(res.Stdout.String())
+	})
+	c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 5 minutes: %v", res))
+	return nodeAddr
+}
+
 func poolAdd() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"poolnames"},
@@ -215,24 +309,14 @@ func poolAdd() ExecFlow {
 			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
+			env.Add("multinodepools", poolName)
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
-			res = T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
+			opts := nodeOrRegisterOpts(c, env)
+			res = T("node-add", opts, "pool="+poolName).Run(env)
 			c.Assert(res, ResultOk)
-			nodeopts := env.All("nodeopts")
-			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
-			regex := regexp.MustCompile(`node.create.*?node:\s+(.*?)\s+`)
-			res = T("event-list").Run(env)
-			c.Assert(res, ResultOk)
-			parts := regex.FindStringSubmatch(res.Stdout.String())
-			c.Assert(parts, check.HasLen, 2)
-			env.Add("nodeaddrs", parts[1])
-			regex = regexp.MustCompile("(?i)" + parts[1] + `.*?ready`)
-			ok := retry(5*time.Minute, func() bool {
-				res = T("node-list").Run(env)
-				return regex.MatchString(res.Stdout.String())
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 5 minutes: %v", res))
+			nodeAddr := waitNewNode(c, env)
+			env.Add("nodeaddrs", nodeAddr)
 		}
 		for _, cluster := range clusterManagers {
 			poolName := "ipool-" + cluster.Name()
@@ -245,8 +329,11 @@ func poolAdd() ExecFlow {
 			c.Assert(res, ResultOk)
 			clusterName := "icluster-" + cluster.Name()
 			params := []string{"cluster-add", clusterName, cluster.Provisioner(), "--pool", poolName}
-			params = append(params, cluster.UpdateParams()...)
-			res = T(params...).Run(env)
+			clusterParams, nodeCreate := cluster.UpdateParams()
+			if nodeCreate {
+				env.Add("multinodepools", poolName)
+			}
+			res = T(append(params, clusterParams...)...).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			regex := regexp.MustCompile("(?i)ready")
@@ -501,7 +588,7 @@ func serviceBind() ExecFlow {
 }
 
 func (s *S) TestBase(c *check.C) {
-	s.config()
+	s.config(c)
 	if s.env == nil {
 		return
 	}

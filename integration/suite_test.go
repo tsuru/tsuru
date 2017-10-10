@@ -6,7 +6,9 @@ package integration
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +28,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.tmpDir, err = ioutil.TempDir("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
+	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
 	err = os.Setenv("HOME", s.tmpDir)
 	c.Assert(err, check.IsNil)
 }
@@ -45,6 +48,42 @@ func retry(timeout time.Duration, fn func() bool) bool {
 		case <-time.After(5 * time.Second):
 		case <-timeoutTimer:
 			return false
+		}
+	}
+}
+
+type resultTable struct {
+	raw    string
+	rows   [][]string
+	header []string
+}
+
+func (r *resultTable) parse() {
+	lines := strings.Split(r.raw, "\n")
+	for _, line := range lines {
+		if len(line) == 0 || line[0] != '|' {
+			continue
+		}
+		parts := strings.Split(strings.Trim(line, "|"), "|")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		if r.header == nil {
+			r.header = append(r.header, parts...)
+			continue
+		}
+		if len(parts) != len(r.header) {
+			continue
+		}
+		if parts[0] == "" {
+			for i := range r.rows[len(r.rows)-1] {
+				if parts[i] == "" {
+					continue
+				}
+				r.rows[len(r.rows)-1][i] += "\n" + parts[i]
+			}
+		} else {
+			r.rows = append(r.rows, parts)
 		}
 	}
 }

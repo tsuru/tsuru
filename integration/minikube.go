@@ -61,8 +61,8 @@ func (m *MinikubeClusterManager) certificateFiles() map[string]string {
 	}
 }
 
-func (m *MinikubeClusterManager) UpdateParams() []string {
+func (m *MinikubeClusterManager) UpdateParams() ([]string, bool) {
 	address := fmt.Sprintf("https://%s:8443", m.IP())
 	certfiles := m.certificateFiles()
-	return []string{"--addr", address, "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}
+	return []string{"--addr", address, "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}, false
 }

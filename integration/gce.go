@@ -170,16 +170,16 @@ func (g *GceClusterManager) credentials() (map[string]string, error) {
 	return credentials, nil
 }
 
-func (g *GceClusterManager) UpdateParams() []string {
+func (g *GceClusterManager) UpdateParams() ([]string, bool) {
 	address := fmt.Sprintf("https://%s", g.IP())
 	credentials, err := g.credentials()
 	if err != nil {
-		return []string{}
+		return []string{}, false
 	}
 	return []string{
 		"--addr", address,
 		"--custom", "username=" + credentials["username"],
 		"--custom", "password=" + credentials["password"],
 		"--cacert", credentials["certificateFilename"],
-	}
+	}, false
 }

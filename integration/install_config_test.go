@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) getInstallerConfig() string {
@@ -92,11 +94,11 @@ func (s *S) getProvisioners() []string {
 	return selectedProvisioners
 }
 
-func (s *S) getClusterManagers() []ClusterManager {
+func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"gce":      &GceClusterManager{env: s.env},
 		"minikube": &MinikubeClusterManager{env: s.env},
-		"swarm":    &SwarmClusterManager{env: s.env},
+		"swarm":    &SwarmClusterManager{c: c, env: s.env},
 	}
 	if _, ok := os.LookupEnv(integrationEnvID + "clusters"); !ok {
 		return []ClusterManager{availableClusterManagers["swarm"]}
@@ -123,7 +125,7 @@ func installerName(env *Environment) string {
 	return name
 }
 
-func (s *S) config() {
+func (s *S) config(c *check.C) {
 	env := NewEnvironment()
 	if !env.Has("enabled") {
 		return
@@ -131,6 +133,6 @@ func (s *S) config() {
 	s.env = env
 	platforms = s.getPlatforms()
 	provisioners = s.getProvisioners()
-	clusterManagers = s.getClusterManagers()
+	clusterManagers = s.getClusterManagers(c)
 	installerConfig = s.getInstallerConfig()
 }
