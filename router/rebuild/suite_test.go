@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -32,7 +32,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	conn *db.Storage
 	user *auth.User
-	team *authTypes.Team
+	team *types.Team
 }
 
 var _ = check.Suite(&S{})
@@ -80,7 +80,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "admin"}
+	s.team = &types.Team{Name: "admin"}
 	err = service.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	err = pool.AddPool(pool.AddPoolOptions{

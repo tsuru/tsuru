@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -134,7 +134,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 }
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
-	team := authTypes.Team{Name: "team"}
+	team := types.Team{Name: "team"}
 	err := serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{
@@ -188,7 +188,7 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &authTypes.Team{Name: "team"}
+	team := &types.Team{Name: "team"}
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "app1",

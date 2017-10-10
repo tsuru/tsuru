@@ -22,7 +22,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -32,7 +32,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	user *auth.User
-	team *authTypes.Team
+	team *types.Team
 }
 
 var _ = check.Suite(&S{})
@@ -54,7 +54,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "me@me.com", Password: "123456"}
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "angra"}
+	s.team = &types.Team{Name: "angra"}
 	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	provision.DefaultProvisioner = "fake"

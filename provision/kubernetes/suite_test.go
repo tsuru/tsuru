@@ -32,7 +32,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -55,7 +55,7 @@ type S struct {
 	p        *kubernetesProvisioner
 	conn     *db.Storage
 	user     *auth.User
-	team     *authTypes.Team
+	team     *types.Team
 	token    auth.Token
 	client   *clientWrapper
 	lastConf *rest.Config
@@ -168,7 +168,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "admin"}
+	s.team = &types.Team{Name: "admin"}
 	err = service.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})

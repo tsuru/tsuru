@@ -6,16 +6,16 @@ package service
 
 import (
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 )
 
 type TeamService struct {
 	storage storage.TeamStorage
 }
 
-var ts auth.TeamService
+var ts types.TeamService
 
-func Team() auth.TeamService {
+func Team() types.TeamService {
 	if ts == nil {
 		ts = &TeamService{
 			storage: teamStorage(),
@@ -35,22 +35,22 @@ func teamStorage() storage.TeamStorage {
 	return dbDriver.TeamStorage
 }
 
-func (t *TeamService) Insert(team auth.Team) error {
+func (t *TeamService) Insert(team types.Team) error {
 	return t.storage.Insert(team)
 }
 
-func (t *TeamService) FindAll() ([]auth.Team, error) {
+func (t *TeamService) FindAll() ([]types.Team, error) {
 	return t.storage.FindAll()
 }
 
-func (t *TeamService) FindByName(name string) (*auth.Team, error) {
+func (t *TeamService) FindByName(name string) (*types.Team, error) {
 	return t.storage.FindByName(name)
 }
 
-func (t *TeamService) FindByNames(names []string) ([]auth.Team, error) {
+func (t *TeamService) FindByNames(names []string) ([]types.Team, error) {
 	return t.storage.FindByNames(names)
 }
 
-func (t *TeamService) Delete(team auth.Team) error {
+func (t *TeamService) Delete(team types.Team) error {
 	return t.storage.Delete(team)
 }

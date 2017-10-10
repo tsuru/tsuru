@@ -32,11 +32,11 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/types"
+	dockerTypes "github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -46,7 +46,7 @@ type HandlersSuite struct {
 	conn        *db.Storage
 	user        *auth.User
 	token       auth.Token
-	team        *authTypes.Team
+	team        *types.Team
 	clusterSess *mgo.Session
 	p           *dockerProvisioner
 	server      *dtesting.DockerServer
@@ -78,7 +78,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	s.clusterSess, err = mgo.Dial(clusterDbURL)
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
-	s.team = &authTypes.Team{Name: "admin"}
+	s.team = &types.Team{Name: "admin"}
 	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
@@ -263,22 +263,22 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 	doReq(values2)
 	entries, err = container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"":      {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
-		"POOL1": {DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
+		"":      {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"POOL1": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
 	})
 	doReq(values3)
 	entries, err = container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"":      {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
-		"POOL1": {DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
-		"POOL2": {DockerLogConfig: types.DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:2222"}}},
+		"":      {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"POOL1": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
+		"POOL2": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:2222"}}},
 	})
 }
 
@@ -301,7 +301,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 }
 
@@ -351,7 +351,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
 		"":      {},
-		"pool2": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"pool2": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 }
 
@@ -370,7 +370,7 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	c.Assert(conf, check.DeepEquals, map[string]container.DockerLogConfig{
 		"": {},
 	})
-	newConf := container.DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "syslog"}}
+	newConf := container.DockerLogConfig{DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "syslog"}}
 	err = newConf.Save("p1")
 	c.Assert(err, check.IsNil)
 	request, err = http.NewRequest("GET", "/docker/logs", nil)
@@ -384,6 +384,6 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conf2, check.DeepEquals, map[string]container.DockerLogConfig{
 		"":   {},
-		"p1": {DockerLogConfig: types.DockerLogConfig{Driver: "syslog", LogOpts: map[string]string{}}},
+		"p1": {DockerLogConfig: dockerTypes.DockerLogConfig{Driver: "syslog", LogOpts: map[string]string{}}},
 	})
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
@@ -103,7 +103,7 @@ func (s *Service) GetUsername() string {
 	return s.Name
 }
 
-func (s *Service) findTeam(team *authTypes.Team) int {
+func (s *Service) findTeam(team *types.Team) int {
 	for i, t := range s.Teams {
 		if team.Name == t {
 			return i
@@ -112,11 +112,11 @@ func (s *Service) findTeam(team *authTypes.Team) int {
 	return -1
 }
 
-func (s *Service) HasTeam(team *authTypes.Team) bool {
+func (s *Service) HasTeam(team *types.Team) bool {
 	return s.findTeam(team) > -1
 }
 
-func (s *Service) GrantAccess(team *authTypes.Team) error {
+func (s *Service) GrantAccess(team *types.Team) error {
 	if s.HasTeam(team) {
 		return errors.New("This team already has access to this service")
 	}
@@ -124,7 +124,7 @@ func (s *Service) GrantAccess(team *authTypes.Team) error {
 	return nil
 }
 
-func (s *Service) RevokeAccess(team *authTypes.Team) error {
+func (s *Service) RevokeAccess(team *types.Team) error {
 	index := s.findTeam(team)
 	if index < 0 {
 		return errors.New("This team does not have access to this service")

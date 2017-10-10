@@ -36,7 +36,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -61,7 +61,7 @@ type S struct {
 	p             *dockerProvisioner
 	user          *auth.User
 	token         auth.Token
-	team          *authTypes.Team
+	team          *types.Team
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
 	b             *fakebuilder.FakeBuilder
@@ -149,7 +149,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
-	s.team = &authTypes.Team{Name: "admin"}
+	s.team = &types.Team{Name: "admin"}
 	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }

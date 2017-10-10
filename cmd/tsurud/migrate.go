@@ -25,7 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -310,7 +310,7 @@ func migrateRoles() error {
 	}
 	defer conn.Close()
 	for _, u := range users {
-		var teams []authTypes.Team
+		var teams []types.Team
 		err := conn.Collection("teams").Find(bson.M{"users": bson.M{"$in": []string{u.Email}}}).All(&teams)
 		if err != nil {
 			return err

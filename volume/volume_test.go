@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
@@ -100,9 +100,9 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = service.Team().Insert(authTypes.Team{Name: "myteam"})
+	err = service.Team().Insert(types.Team{Name: "myteam"})
 	c.Assert(err, check.IsNil)
-	err = service.Team().Insert(authTypes.Team{Name: "otherteam"})
+	err = service.Team().Insert(types.Team{Name: "otherteam"})
 	c.Assert(err, check.IsNil)
 	updateConfig(baseConfig)
 }
@@ -201,7 +201,7 @@ func (s *S) TestVolumeSaveLoad(c *check.C) {
 		},
 		{
 			v:   Volume{Name: "v1", Pool: "mypool"},
-			err: authTypes.ErrTeamNotFound.Error(),
+			err: types.ErrTeamNotFound.Error(),
 		},
 		{
 			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
@@ -513,7 +513,7 @@ volume-plans:
 		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
-		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
+		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, types.ErrTeamNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {

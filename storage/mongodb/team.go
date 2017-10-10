@@ -8,7 +8,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/storage"
-	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -26,7 +26,7 @@ func teamsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("teams")
 }
 
-func (s *TeamStorage) Insert(t auth.Team) error {
+func (s *TeamStorage) Insert(t types.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -34,16 +34,16 @@ func (s *TeamStorage) Insert(t auth.Team) error {
 	defer conn.Close()
 	err = teamsCollection(conn).Insert(team(t))
 	if mgo.IsDup(err) {
-		return auth.ErrTeamAlreadyExists
+		return types.ErrTeamAlreadyExists
 	}
 	return err
 }
 
-func (s *TeamStorage) FindAll() ([]auth.Team, error) {
+func (s *TeamStorage) FindAll() ([]types.Team, error) {
 	return s.findByQuery(nil)
 }
 
-func (s *TeamStorage) FindByName(name string) (*auth.Team, error) {
+func (s *TeamStorage) FindByName(name string) (*types.Team, error) {
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
@@ -53,20 +53,20 @@ func (s *TeamStorage) FindByName(name string) (*auth.Team, error) {
 	err = teamsCollection(conn).FindId(name).One(&t)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = auth.ErrTeamNotFound
+			err = types.ErrTeamNotFound
 		}
 		return nil, err
 	}
-	team := auth.Team(t)
+	team := types.Team(t)
 	return &team, nil
 }
 
-func (s *TeamStorage) FindByNames(names []string) ([]auth.Team, error) {
+func (s *TeamStorage) FindByNames(names []string) ([]types.Team, error) {
 	query := bson.M{"_id": bson.M{"$in": names}}
 	return s.findByQuery(query)
 }
 
-func (s *TeamStorage) findByQuery(query bson.M) ([]auth.Team, error) {
+func (s *TeamStorage) findByQuery(query bson.M) ([]types.Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -77,14 +77,14 @@ func (s *TeamStorage) findByQuery(query bson.M) ([]auth.Team, error) {
 	if err != nil {
 		return nil, err
 	}
-	authTeams := make([]auth.Team, len(teams))
+	authTeams := make([]types.Team, len(teams))
 	for i, t := range teams {
-		authTeams[i] = auth.Team(t)
+		authTeams[i] = types.Team(t)
 	}
 	return authTeams, nil
 }
 
-func (s *TeamStorage) Delete(t auth.Team) error {
+func (s *TeamStorage) Delete(t types.Team) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (s *TeamStorage) Delete(t auth.Team) error {
 	defer conn.Close()
 	err = teamsCollection(conn).RemoveId(t.Name)
 	if err == mgo.ErrNotFound {
-		return auth.ErrTeamNotFound
+		return types.ErrTeamNotFound
 	}
 	return err
 }

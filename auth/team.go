@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -32,9 +32,9 @@ func (e *ErrTeamStillUsed) Error() string {
 	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
 }
 
-func validateTeam(t authTypes.Team) error {
+func validateTeam(t types.Team) error {
 	if !teamNameRegexp.MatchString(t.Name) {
-		return authTypes.ErrInvalidTeamName
+		return types.ErrInvalidTeamName
 	}
 	return nil
 }
@@ -45,7 +45,7 @@ func CreateTeam(name string, user *User) error {
 		return errors.New("user cannot be null")
 	}
 	name = strings.TrimSpace(name)
-	team := authTypes.Team{
+	team := types.Team{
 		Name:         name,
 		CreatingUser: user.Email,
 	}
@@ -64,12 +64,12 @@ func CreateTeam(name string, user *User) error {
 }
 
 // GetTeam find a team by name.
-func GetTeam(name string) (*authTypes.Team, error) {
+func GetTeam(name string) (*types.Team, error) {
 	return service.Team().FindByName(name)
 }
 
 // GetTeamsNames maps teams to a list of team names.
-func GetTeamsNames(teams []authTypes.Team) []string {
+func GetTeamsNames(teams []types.Team) []string {
 	tn := make([]string, len(teams))
 	for i, t := range teams {
 		tn[i] = t.Name
@@ -99,9 +99,9 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	return service.Team().Delete(authTypes.Team{Name: teamName})
+	return service.Team().Delete(types.Team{Name: teamName})
 }
 
-func ListTeams() ([]authTypes.Team, error) {
+func ListTeams() ([]types.Team, error) {
 	return service.Team().FindAll()
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
@@ -19,7 +19,7 @@ import (
 type S struct {
 	conn    *db.Storage
 	service *Service
-	team    *authTypes.Team
+	team    *types.Team
 	user    *auth.User
 }
 
@@ -35,7 +35,7 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	if len(params) != 2 {
 		return false, "you must provide two parameters"
 	}
-	team, ok := params[0].(authTypes.Team)
+	team, ok := params[0].(types.Team)
 	if !ok {
 		return false, "first parameter should be a team instance"
 	}
@@ -63,7 +63,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "Raul"}
+	s.team = &types.Team{Name: "Raul"}
 	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }

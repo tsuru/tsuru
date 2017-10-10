@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
@@ -39,7 +39,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
-	team        authTypes.Team
+	team        types.Team
 	user        *auth.User
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan appTypes.Plan
@@ -83,7 +83,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = authTypes.Team{Name: "tsuruteam"}
+	s.team = types.Team{Name: "tsuruteam"}
 	err = serviceTypes.Team().Insert(s.team)
 	c.Assert(err, check.IsNil)
 }

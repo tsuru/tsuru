@@ -4,12 +4,12 @@
 
 package storage
 
-import "github.com/tsuru/tsuru/types/auth"
+import "github.com/tsuru/tsuru/types"
 
 type TeamStorage interface {
-	Insert(auth.Team) error
-	FindAll() ([]auth.Team, error)
-	FindByName(string) (*auth.Team, error)
-	FindByNames([]string) ([]auth.Team, error)
-	Delete(auth.Team) error
+	Insert(types.Team) error
+	FindAll() ([]types.Team, error)
+	FindByName(string) (*types.Team, error)
+	FindByNames([]string) ([]types.Team, error)
+	Delete(types.Team) error
 }

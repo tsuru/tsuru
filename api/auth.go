@@ -22,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/volume"
 )
 
@@ -275,7 +275,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	_, err = auth.GetTeam(name)
 	if err != nil {
-		if err == authTypes.ErrTeamNotFound {
+		if err == types.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -342,7 +342,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	name := r.FormValue("name")
 	if name == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: authTypes.ErrInvalidTeamName.Error()}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: types.ErrInvalidTeamName.Error()}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     teamTarget(name),
@@ -361,9 +361,9 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	err = auth.CreateTeam(name, u)
 	switch err {
-	case authTypes.ErrInvalidTeamName:
+	case types.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	case authTypes.ErrTeamAlreadyExists:
+	case types.ErrTeamAlreadyExists:
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	if err == nil {
@@ -406,7 +406,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
 			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 		}
-		if err == authTypes.ErrTeamNotFound {
+		if err == types.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 		}
 		return err

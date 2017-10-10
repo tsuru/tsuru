@@ -36,7 +36,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -47,7 +47,7 @@ type DeploySuite struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
 	token       auth.Token
-	team        *authTypes.Team
+	team        *types.Team
 	provisioner *provisiontest.FakeProvisioner
 	builder     *fake.FakeBuilder
 	testServer  http.Handler
@@ -60,7 +60,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "tsuruteam"}
+	s.team = &types.Team{Name: "tsuruteam"}
 	err = serviceTypes.Team().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
@@ -795,7 +795,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newteam"}
+	team := types.Team{Name: "newteam"}
 	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
@@ -1007,7 +1007,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "team"}
+	team := types.Team{Name: "team"}
 	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
@@ -1045,7 +1045,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "team"}
+	team := types.Team{Name: "team"}
 	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}

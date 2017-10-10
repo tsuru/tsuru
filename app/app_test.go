@@ -41,7 +41,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"github.com/tsuru/tsuru/types/cache"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/volume"
@@ -386,7 +386,7 @@ func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := App{Name: "beyond"}
 	err = CreateApp(&a, &u)
-	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
+	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: types.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
@@ -939,7 +939,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	team := authTypes.Team{Name: "abcd"}
+	team := types.Team{Name: "abcd"}
 	err := serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
@@ -961,7 +961,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
-	team := authTypes.Team{Name: "abcd"}
+	team := types.Team{Name: "abcd"}
 	err := serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
@@ -3901,7 +3901,7 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 }
 
 func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
-	team := authTypes.Team{Name: "test"}
+	team := types.Team{Name: "test"}
 	err := serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
@@ -3961,7 +3961,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: authTypes.ErrTeamNotFound.Error()})
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: types.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
@@ -4320,7 +4320,7 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
+	team := types.Team{Name: "newowner"}
 	err = serviceTypes.Team().Insert(team)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", TeamOwner: "newowner"}
