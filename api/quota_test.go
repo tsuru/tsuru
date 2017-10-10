@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -55,7 +54,7 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
 	s.team = &types.Team{Name: "superteam"}
-	err := serviceTypes.Team().Insert(*s.team)
+	err := auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,

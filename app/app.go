@@ -39,10 +39,9 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/storage"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/cache"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/mgo.v2"
@@ -1002,7 +1001,7 @@ func (app *App) Revoke(team *types.Team) error {
 
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []types.Team {
-	t, _ := serviceTypes.Team().FindByNames(app.Teams)
+	t, _ := auth.TeamService().FindByNames(app.Teams)
 	return t
 }
 

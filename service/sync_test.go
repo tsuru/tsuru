@@ -29,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
 
@@ -60,7 +59,7 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = types.Team{Name: "metallica"}
-	err = serviceTypes.Team().Insert(s.team)
+	err = auth.TeamService().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)

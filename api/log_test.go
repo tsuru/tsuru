@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
@@ -46,7 +45,7 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &types.Team{Name: "tsuruteam"}
-	err = serviceTypes.Team().Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)

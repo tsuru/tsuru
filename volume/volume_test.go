@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -18,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types"
-	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -100,9 +100,9 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = service.Team().Insert(types.Team{Name: "myteam"})
+	err = auth.TeamService().Insert(types.Team{Name: "myteam"})
 	c.Assert(err, check.IsNil)
-	err = service.Team().Insert(types.Team{Name: "otherteam"})
+	err = auth.TeamService().Insert(types.Team{Name: "otherteam"})
 	c.Assert(err, check.IsNil)
 	updateConfig(baseConfig)
 }

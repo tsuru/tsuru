@@ -19,9 +19,8 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types"
-	"github.com/tsuru/tsuru/types/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -80,7 +79,7 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &types.Team{Name: "admin"}
-	err = service.Team().Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)

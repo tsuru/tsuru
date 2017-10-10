@@ -10,10 +10,10 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -161,7 +161,7 @@ func (s *Service) validateOwnerTeams() error {
 	if len(s.OwnerTeams) == 0 {
 		return fmt.Errorf("At least one service team owner is required")
 	}
-	teams, err := serviceTypes.Team().FindByNames(s.OwnerTeams)
+	teams, err := auth.TeamService().FindByNames(s.OwnerTeams)
 	if err != nil {
 		return nil
 	}

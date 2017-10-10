@@ -21,7 +21,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -382,7 +381,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 	if si.TeamOwner == "" {
 		return ErrTeamMandatory
 	}
-	_, err := serviceTypes.Team().FindByName(si.TeamOwner)
+	_, err := auth.TeamService().FindByName(si.TeamOwner)
 	if err == types.ErrTeamNotFound {
 		return fmt.Errorf("Team owner doesn't exist")
 	}

@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -75,7 +74,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &types.Team{Name: "tsuruteam"}
-	err := serviceTypes.Team().Insert(*s.team)
+	err := auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
@@ -265,7 +264,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	t := types.Team{Name: "myteam"}
-	err = serviceTypes.Team().Insert(t)
+	err = auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("username", "mysqltest")
@@ -380,7 +379,7 @@ func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestServiceUpdateReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := types.Team{Name: "some-other-team"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysqlapi",
@@ -437,7 +436,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := types.Team{Name: "some-team"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysql",
@@ -700,7 +699,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	}))
 	defer ts.Close()
 	t := types.Team{Name: "newteam"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()
@@ -722,7 +721,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &types.Team{Name: "blaaaa"}
-	serviceTypes.Team().Insert(*t)
+	auth.TeamService().Insert(*t)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -759,7 +758,7 @@ func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeamNoAccess(c *check.C) {
 	t := types.Team{Name: "my-team"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "my-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()
@@ -840,7 +839,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 
 func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *check.C) {
 	t := types.Team{Name: "alle-da"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
@@ -893,7 +892,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
 	t := types.Team{Name: "Rammlied"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
@@ -951,7 +950,7 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 
 func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {
 	t := types.Team{Name: "new-team"}
-	err := serviceTypes.Team().Insert(t)
+	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()

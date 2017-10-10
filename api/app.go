@@ -34,7 +34,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -713,7 +712,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := serviceTypes.Team().FindByName(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -757,7 +756,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := serviceTypes.Team().FindByName(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}

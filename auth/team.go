@@ -13,16 +13,21 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types"
-	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
+var ts types.TeamService
 
 type ErrTeamStillUsed struct {
 	Apps             []string
 	ServiceInstances []string
+}
+
+type teamService struct {
+	storage storage.TeamStorage
 }
 
 func (e *ErrTeamStillUsed) Error() string {
@@ -32,11 +37,51 @@ func (e *ErrTeamStillUsed) Error() string {
 	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
 }
 
+func (t *teamService) Insert(team types.Team) error {
+	return t.storage.Insert(team)
+}
+
+func (t *teamService) FindAll() ([]types.Team, error) {
+	return t.storage.FindAll()
+}
+
+func (t *teamService) FindByName(name string) (*types.Team, error) {
+	return t.storage.FindByName(name)
+}
+
+func (t *teamService) FindByNames(names []string) ([]types.Team, error) {
+	return t.storage.FindByNames(names)
+}
+
+func (t *teamService) Delete(team types.Team) error {
+	return t.storage.Delete(team)
+}
+
+func teamStorage() storage.TeamStorage {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
+	}
+	return dbDriver.TeamStorage
+}
+
 func validateTeam(t types.Team) error {
 	if !teamNameRegexp.MatchString(t.Name) {
 		return types.ErrInvalidTeamName
 	}
 	return nil
+}
+
+func TeamService() types.TeamService {
+	if ts == nil {
+		ts = &teamService{
+			storage: teamStorage(),
+		}
+	}
+	return ts
 }
 
 // CreateTeam creates a team and add users to this team.
@@ -52,7 +97,7 @@ func CreateTeam(name string, user *User) error {
 	if err := validateTeam(team); err != nil {
 		return err
 	}
-	err := service.Team().Insert(team)
+	err := TeamService().Insert(team)
 	if err != nil {
 		return err
 	}
@@ -63,9 +108,9 @@ func CreateTeam(name string, user *User) error {
 	return nil
 }
 
-// GetTeam find a team by name.
+// GetTeam finds a team by name.
 func GetTeam(name string) (*types.Team, error) {
-	return service.Team().FindByName(name)
+	return TeamService().FindByName(name)
 }
 
 // GetTeamsNames maps teams to a list of team names.
@@ -99,9 +144,9 @@ func RemoveTeam(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	return service.Team().Delete(types.Team{Name: teamName})
+	return TeamService().Delete(types.Team{Name: teamName})
 }
 
 func ListTeams() ([]types.Team, error) {
-	return service.Team().FindAll()
+	return TeamService().FindAll()
 }

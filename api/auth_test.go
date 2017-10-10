@@ -36,9 +36,8 @@ import (
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -107,9 +106,9 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = &types.Team{Name: "tsuruteam"}
 	s.team2 = &types.Team{Name: "tsuruteam2"}
-	err = serviceTypes.Team().Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
-	err = serviceTypes.Team().Insert(*s.team2)
+	err = auth.TeamService().Insert(*s.team2)
 	c.Assert(err, check.IsNil)
 }
 
@@ -382,7 +381,7 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	t, err := serviceTypes.Team().FindByName("timeredbull")
+	t, err := auth.TeamService().FindByName("timeredbull")
 	c.Assert(err, check.IsNil)
 	c.Assert(t, check.NotNil)
 	c.Assert(eventtest.EventDesc{
@@ -409,7 +408,7 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 	team := types.Team{Name: "timeredbull"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("name=" + team.Name)
 	request, err := http.NewRequest("POST", "/teams", b)
@@ -424,14 +423,14 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 	team := types.Team{Name: "painofsalvation"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	t, err := serviceTypes.Team().FindByName(team.Name)
+	t, err := auth.TeamService().FindByName(team.Name)
 	c.Assert(err, check.Equals, types.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 	c.Assert(eventtest.EventDesc{
@@ -446,7 +445,7 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 
 func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	team := types.Team{Name: "thegathering"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s", team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -454,7 +453,7 @@ func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	_, err = serviceTypes.Team().FindByName(team.Name)
+	_, err = auth.TeamService().FindByName(team.Name)
 	c.Assert(err, check.Equals, types.ErrTeamNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget("thegathering"),
@@ -484,7 +483,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
 	team := types.Team{Name: "painofsalvation"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -499,7 +498,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) {
 	team := types.Team{Name: "evergrey"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -519,7 +518,7 @@ Apps: i-should`
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
 	team := types.Team{Name: "evergrey"}
-	err := serviceTypes.Team().Insert(team)
+	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}
 	err = s.conn.ServiceInstances().Insert(si1)
@@ -1656,7 +1655,7 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeam(c *check.C) {
-	err := serviceTypes.Team().Insert(types.Team{Name: "team1"})
+	err := auth.TeamService().Insert(types.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1687,7 +1686,7 @@ func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
-	err := serviceTypes.Team().Insert(types.Team{Name: "team1"})
+	err := auth.TeamService().Insert(types.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1715,7 +1714,7 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	err := serviceTypes.Team().Insert(types.Team{Name: "team1"})
+	err := auth.TeamService().Insert(types.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1757,7 +1756,7 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	err := serviceTypes.Team().Insert(types.Team{Name: "team1"})
+	err := auth.TeamService().Insert(types.Team{Name: "team1"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)

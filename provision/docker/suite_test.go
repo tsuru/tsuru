@@ -37,7 +37,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -150,7 +149,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 	s.team = &types.Team{Name: "admin"}
-	err = serviceTypes.Team().Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 

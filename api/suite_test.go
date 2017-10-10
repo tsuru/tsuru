@@ -26,9 +26,8 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types"
-	serviceTypes "github.com/tsuru/tsuru/types/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -82,7 +81,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	s.team = &types.Team{Name: "tsuruteam"}
-	err = serviceTypes.Team().Insert(*s.team)
+	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 }
 
