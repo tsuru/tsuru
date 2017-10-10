@@ -10,6 +10,8 @@ func init() {
 	mongodbDriver := storage.DbDriver{
 		TeamService:     &TeamService{},
 		PlatformService: &PlatformService{},
+		PlanService:     &PlanService{},
+		CacheService:    &cacheService{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }

@@ -11,28 +11,31 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 )
 
 type DbDriver struct {
 	TeamService     auth.TeamService
 	PlatformService app.PlatformService
+	PlanService     app.PlanService
+	CacheService    cache.CacheService
 }
 
 var (
 	DefaultDbDriverName = "mongodb"
-	DbDrivers           = make(map[string]DbDriver)
+	dbDrivers           = make(map[string]DbDriver)
 	driverLock          sync.RWMutex
 	currentDbDriver     *DbDriver
 )
 
 // RegisterDbDriver registers a new DB driver
 func RegisterDbDriver(name string, driver DbDriver) {
-	DbDrivers[name] = driver
+	dbDrivers[name] = driver
 }
 
 // GetDbDriver returns the DB driver that was registered with a specific name
 func GetDbDriver(name string) (*DbDriver, error) {
-	driver, ok := DbDrivers[name]
+	driver, ok := dbDrivers[name]
 	if !ok {
 		return nil, errors.Errorf("Unknown database driver: %q.", name)
 	}
@@ -40,7 +43,7 @@ func GetDbDriver(name string) (*DbDriver, error) {
 }
 
 // GetCurrentDbDriver returns the DB driver specified in the configuration file.
-// If this configuration was omitted, it returns the default db driver
+// If this configuration was omitted, it returns the default DB driver
 func GetCurrentDbDriver() (*DbDriver, error) {
 	driverLock.RLock()
 	if currentDbDriver != nil {
@@ -64,7 +67,7 @@ func GetCurrentDbDriver() (*DbDriver, error) {
 	return currentDbDriver, nil
 }
 
-// GetDefaultDbDriver returns the default db driver
+// GetDefaultDbDriver returns the default DB driver
 func GetDefaultDbDriver() (*DbDriver, error) {
 	return GetDbDriver(DefaultDbDriverName)
 }

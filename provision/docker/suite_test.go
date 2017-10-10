@@ -56,7 +56,7 @@ type S struct {
 	sshUser       string
 	server        *dtesting.DockerServer
 	extraServer   *dtesting.DockerServer
-	storage       *db.Storage
+	conn          *db.Storage
 	p             *dockerProvisioner
 	user          *auth.User
 	token         auth.Token
@@ -75,6 +75,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.sshUser = "root"
 	s.port = "8888"
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)
@@ -98,12 +99,12 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.runArgs = "/etc/circus/circus.ini"
 	os.Setenv("TSURU_TARGET", "http://localhost")
 	var err error
-	s.storage, err = db.Conn()
+	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	clusterDbURL, _ := config.GetString("docker:cluster:mongo-url")
 	s.clusterSess, err = mgo.Dial(clusterDbURL)
 	c.Assert(err, check.IsNil)
-	err = dbtest.ClearAllCollections(s.storage.Apps().Database)
+	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	repositorytest.Reset()
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
@@ -135,7 +136,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
-	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens"})
+	err = dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
 	c.Assert(err, check.IsNil)
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
@@ -143,7 +144,7 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test-default", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
+	s.conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 	s.team = &authTypes.Team{Name: "admin"}
@@ -162,7 +163,7 @@ func (s *S) TearDownTest(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	defer s.clusterSess.Close()
-	defer s.storage.Close()
+	defer s.conn.Close()
 	os.Unsetenv("TSURU_TARGET")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -204,10 +205,8 @@ func (s *S) addServiceInstance(c *check.C, appName string, unitsIDs []string, fn
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
-		s.storage.Services().Remove(bson.M{"_id": "mysql"})
-		s.storage.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	}
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	var units []service.Unit
@@ -221,7 +220,7 @@ func (s *S) addServiceInstance(c *check.C, appName string, unitsIDs []string, fn
 		BoundUnits:  units,
 		Apps:        []string{appName},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	return ret
 }
@@ -254,10 +253,9 @@ func (s *S) newApp(name string) app.App {
 }
 
 func (s *S) newAppFromFake(fake *provisiontest.FakeApp) app.App {
-	router, _ := fake.GetRouterName()
 	return app.App{
 		Name:     fake.GetName(),
 		Platform: fake.GetPlatform(),
-		Router:   router,
+		Routers:  fake.GetRouters(),
 	}
 }

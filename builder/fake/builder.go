@@ -7,6 +7,7 @@ package fake
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
@@ -42,6 +43,10 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
 	if opts.ArchiveFile != nil && opts.ArchiveSize != 0 {
+		_, err := ioutil.ReadAll(opts.ArchiveFile)
+		if err != nil {
+			return "", err
+		}
 		b.IsArchiveFileDeploy = true
 	} else if opts.Rebuild {
 		b.IsRebuildDeploy = true
@@ -49,12 +54,11 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		b.IsArchiveURLDeploy = true
 	} else if opts.ImageID != "" {
 		b.IsImageDeploy = true
-		app.SetUpdatePlatform(true)
 		return image.AppNewImageName(app.GetName())
 	} else {
 		return "", errors.New("no valid files found")
 	}
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), opts.Tag)
 	if err != nil {
 		return "", fmt.Errorf("error getting new image name for app %s", app.GetName())
 	}

@@ -6,7 +6,9 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/validation"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,6 +33,7 @@ var (
 	ErrAppNotBound               = errors.New("app is not bound to this service instance")
 	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -47,7 +50,7 @@ type ServiceInstance struct {
 }
 
 type Unit struct {
-	ID, IP string
+	AppName, ID, IP string
 }
 
 func (bu Unit) GetID() string {
@@ -117,15 +120,6 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	return info, nil
 }
 
-func (si *ServiceInstance) Create() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Insert(si)
-}
-
 func (si *ServiceInstance) Service() *Service {
 	conn, err := db.Conn()
 	if err != nil {
@@ -150,7 +144,11 @@ func (si *ServiceInstance) FindApp(appName string) int {
 }
 
 // Update changes informations of the service instance.
-func (si *ServiceInstance) Update(updateData ServiceInstance) error {
+func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, requestID string) error {
+	err := validateServiceInstanceTeamOwner(updateData)
+	if err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -162,7 +160,9 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 	} else {
 		updateData.Tags = tags
 	}
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, updateData)
+	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(service, *si, updateData, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
@@ -206,6 +206,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	updateOp := bson.M{
 		"$addToSet": bson.M{
 			"bound_units": bson.D([]bson.DocElem{
+				{Name: "appname", Value: app.GetName()},
 				{Name: "id", Value: unit.GetID()},
 				{Name: "ip", Value: unit.GetIp()},
 			}),
@@ -223,6 +224,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 		updateOp = bson.M{
 			"$pull": bson.M{
 				"bound_units": bson.D([]bson.DocElem{
+					{Name: "appname", Value: app.GetName()},
 					{Name: "id", Value: unit.GetID()},
 					{Name: "ip", Value: unit.GetIp()},
 				}),
@@ -272,6 +274,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	updateOp := bson.M{
 		"$pull": bson.M{
 			"bound_units": bson.D([]bson.DocElem{
+				{Name: "appname", Value: app.GetName()},
 				{Name: "id", Value: unit.GetID()},
 				{Name: "ip", Value: unit.GetIp()},
 			}),
@@ -289,6 +292,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 		updateOp = bson.M{
 			"$addToSet": bson.M{
 				"bound_units": bson.D([]bson.DocElem{
+					{Name: "appname", Value: app.GetName()},
 					{Name: "id", Value: unit.GetID()},
 					{Name: "ip", Value: unit.GetIp()},
 				}),
@@ -343,8 +347,16 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 	return query
 }
 
-func validateServiceInstanceName(service string, instance string) error {
-	if !validation.ValidateName(instance) {
+func validateServiceInstance(si ServiceInstance, s *Service) error {
+	err := validateServiceInstanceName(s.Name, si.Name)
+	if err != nil {
+		return err
+	}
+	return validateServiceInstanceTeamOwner(si)
+}
+
+func validateServiceInstanceName(service, instance string) error {
+	if !instanceNameRegexp.MatchString(instance) {
 		return ErrInvalidInstanceName
 	}
 	conn, err := db.Conn()
@@ -363,18 +375,26 @@ func validateServiceInstanceName(service string, instance string) error {
 	return nil
 }
 
+func validateServiceInstanceTeamOwner(si ServiceInstance) error {
+	if si.TeamOwner == "" {
+		return ErrTeamMandatory
+	}
+	_, err := auth.TeamService().FindByName(si.TeamOwner)
+	if err == authTypes.ErrTeamNotFound {
+		return fmt.Errorf("Team owner doesn't exist")
+	}
+	return err
+}
+
 func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User, requestID string) error {
-	err := validateServiceInstanceName(service.Name, instance.Name)
+	err := validateServiceInstance(instance, service)
 	if err != nil {
 		return err
 	}
 	instance.ServiceName = service.Name
-	if instance.TeamOwner == "" {
-		return ErrTeamMandatory
-	}
 	instance.Teams = []string{instance.TeamOwner}
 	instance.Tags = processTags(instance.Tags)
-	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
+	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email, requestID)
 }

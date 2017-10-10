@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -47,6 +48,7 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *InstanceSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "Raul"}
@@ -393,6 +395,19 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 }
 
+func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: "unknown", Tags: []string{"tag1", "tag2"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
+}
+
 func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -447,10 +462,8 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
-	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
 	team := authTypes.Team{Name: "owner"}
@@ -501,12 +514,12 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 		err   error
 	}{
 		{"my-service", nil},
-		{"my_service", ErrInvalidInstanceName},
-		{"MyService", ErrInvalidInstanceName},
+		{"my_service", nil},
+		{"MyService", nil},
 		{"a1", nil},
 		{"--app", ErrInvalidInstanceName},
 		{"123servico", ErrInvalidInstanceName},
-		{"a", nil},
+		{"a", ErrInvalidInstanceName},
 		{"a@123", ErrInvalidInstanceName},
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -519,7 +532,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
 		err := CreateServiceInstance(instance, &srv, s.user, "")
-		c.Check(err, check.Equals, t.err)
+		c.Check(err, check.Equals, t.err, check.Commentf(t.input))
 	}
 }
 
@@ -543,10 +556,39 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
-	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}, Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	newTeam := authTypes.Team{Name: "new-team-owner"}
+	err = auth.TeamService().Insert(newTeam)
+	c.Assert(err, check.IsNil)
+	si.Description = "desc"
+	si.Tags = []string{"tag2"}
+	si.TeamOwner = newTeam.Name
+	err = instance.Update(srv, si, "")
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.PlanName, check.Equals, "small")
+	c.Assert(si.Description, check.Equals, "desc")
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
+	c.Assert(si.TeamOwner, check.Equals, newTeam.Name)
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name, newTeam.Name})
+}
+
+func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
@@ -555,17 +597,12 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	instance.Description = "desc"
-	instance.Tags = []string{"tag2"}
-	err = instance.Update(instance)
-	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
-	c.Assert(si.PlanName, check.Equals, "small")
-	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
-	c.Assert(si.Description, check.Equals, "desc")
-	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
+	si.TeamOwner = "unknown"
+	err = instance.Update(srv, si, "")
+	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
@@ -578,12 +615,13 @@ func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}, Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance.Tags = []string{"tag2", " ", " tag2 "}
-	err = instance.Update(instance)
+	err = instance.Update(srv, instance, "")
 	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
@@ -688,7 +726,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
@@ -698,7 +736,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
@@ -750,7 +788,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
@@ -760,7 +798,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
@@ -815,7 +853,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
@@ -825,7 +863,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{a.GetName()},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -873,7 +911,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
@@ -881,7 +919,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
@@ -919,7 +957,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
@@ -927,7 +965,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
 	var expectedNames []string
@@ -955,7 +993,8 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 }
 
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	originalMaxProcs := runtime.GOMAXPROCS(4)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -968,7 +1007,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
@@ -976,7 +1015,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = si.Create()
+	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
 	for i := 0; i < 20; i++ {

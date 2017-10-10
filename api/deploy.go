@@ -7,14 +7,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -34,36 +30,18 @@ import (
 //   403: Forbidden
 //   404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	var file multipart.File
-	var fileSize int64
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		file, _, err = r.FormFile("file")
-		if err != nil {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-		fileSize, err = file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return errors.Wrap(err, "unable to find uploaded file size")
-		}
-		file.Seek(0, io.SeekStart)
-		defer file.Close()
+	opts, err := prepareToBuild(r)
+	if err != nil {
+		return err
 	}
-	archiveURL := r.FormValue("archive-url")
-	image := r.FormValue("image")
-	if image == "" && archiveURL == "" && file == nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "you must specify either the archive-url, a image url or upload a file.",
-		}
+	if opts.File != nil {
+		defer opts.File.Close()
 	}
 	commit := r.FormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	origin := r.FormValue("origin")
-	if image != "" {
+	if opts.Image != "" {
 		origin = "image"
 	}
 	if origin != "" {
@@ -88,17 +66,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	var build bool
-	buildString := r.FormValue("build")
-	if buildString != "" {
-		build, err = strconv.ParseBool(buildString)
-		if err != nil {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-	}
 	message := r.FormValue("message")
 	if commit != "" && message == "" {
 		var messages []string
@@ -113,18 +80,11 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if origin == "" && commit != "" {
 		origin = "git"
 	}
-	opts := app.DeployOptions{
-		App:        instance,
-		Commit:     commit,
-		FileSize:   fileSize,
-		File:       file,
-		ArchiveURL: archiveURL,
-		User:       userName,
-		Image:      image,
-		Origin:     origin,
-		Build:      build,
-		Message:    message,
-	}
+	opts.App = instance
+	opts.Commit = commit
+	opts.User = userName
+	opts.Origin = origin
+	opts.Message = message
 	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
@@ -399,4 +359,73 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
 	return nil
+}
+
+// title: rollback update
+// path: /apps/{appname}/deploy/rollback/update
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Rollback updated
+//   400: Invalid data
+//   403: Forbidden
+func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("App %s was not found", appName),
+		}
+	}
+	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
+	if !canUpdateRollback {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: "User does not have permission to do this action in this app",
+		}
+	}
+	img := r.FormValue("image")
+	if img == "" {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify an image",
+		}
+	}
+	disable := r.FormValue("disable")
+	disableRollback, err := strconv.ParseBool(disable)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Cannot set 'disable' status to: '%s', instead of 'true' or 'false'", disable),
+		}
+	}
+	reason := r.FormValue("reason")
+	if (reason == "") && (disableRollback) {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Reason cannot be empty while disabling a image rollback",
+		}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateDeployRollback,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(r.Form),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    false,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = app.RollbackUpdate(instance.Name, img, reason, disableRollback)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	return err
 }

@@ -242,12 +242,12 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err = serviceSpecForNodeContainer(loadedC1, "p1", servicecommon.PoolFilter{Include: []string{"p1"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(serviceSpec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	c.Assert(serviceSpec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool == p1"})
 	serviceSpec, err = serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}})
 	c.Assert(err, check.IsNil)
 	constraints := sort.StringSlice(serviceSpec.TaskTemplate.Placement.Constraints)
 	constraints.Sort()
-	c.Assert([]string(constraints), check.DeepEquals, []string{"node.labels.pool != p1", "node.labels.pool != p2"})
+	c.Assert([]string(constraints), check.DeepEquals, []string{"node.labels.tsuru.pool != p1", "node.labels.tsuru.pool != p2"})
 }
 
 func tmpFileWith(c *check.C, contents []byte) string {

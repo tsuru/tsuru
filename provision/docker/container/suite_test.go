@@ -35,6 +35,7 @@ type S struct {
 func (s *S) SetUpSuite(c *check.C) {
 	s.user = "root"
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_container_tests")
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")

@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type RebuildRoutesResult struct {
@@ -18,32 +19,38 @@ type RebuildRoutesResult struct {
 }
 
 type RebuildApp interface {
-	GetRouterOpts() map[string]string
 	GetName() string
 	GetCname() []string
-	GetRouter() (router.Router, error)
+	GetRouters() []appTypes.AppRouter
 	RoutableAddresses() ([]url.URL, error)
-	UpdateAddr() error
 	InternalLock(string) (bool, error)
 	Unlock()
 }
 
-func RebuildRoutes(app RebuildApp, dry bool) (*RebuildRoutesResult, error) {
+func RebuildRoutes(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
+	result := make(map[string]RebuildRoutesResult)
+	for _, appRouter := range app.GetRouters() {
+		resultInRouter, err := rebuildRoutesInRouter(app, dry, appRouter)
+		if err != nil {
+			return nil, err
+		}
+		result[appRouter.Name] = *resultInRouter
+	}
+	return result, nil
+}
+
+func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", app.GetName())
-	r, err := app.GetRouter()
+	r, err := router.Get(appRouter.Name)
 	if err != nil {
 		return nil, err
 	}
 	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(app.GetName(), app.GetRouterOpts())
+		err = optsRouter.AddBackendOpts(app.GetName(), appRouter.Opts)
 	} else {
 		err = r.AddBackend(app.GetName())
 	}
 	if err != nil && err != router.ErrBackendExists {
-		return nil, err
-	}
-	err = app.UpdateAddr()
-	if err != nil {
 		return nil, err
 	}
 	if cnameRouter, ok := r.(router.CNameRouter); ok {

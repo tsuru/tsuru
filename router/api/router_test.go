@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"net/url"
@@ -18,8 +19,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	check "gopkg.in/check.v1"
 )
 
@@ -34,6 +38,31 @@ type S struct {
 
 var _ = check.Suite(&S{})
 
+func init() {
+	suite := &routertest.RouterSuite{}
+	var r *fakeRouterAPI
+	suite.SetUpTestFunc = func(c *check.C) {
+		r = newFakeRouter(c)
+		r.router.HandleFunc("/support/{feature}", func(http.ResponseWriter, *http.Request) {
+		})
+		config.Set("routers:apirouter:api-url", r.endpoint)
+		config.Set("database:name", "router_api_tests")
+		r.backends = make(map[string]*backend)
+		apiRouter, err := createRouter("api", "routers:apirouter")
+		c.Assert(err, check.IsNil)
+		suite.Router = apiRouter
+	}
+	suite.TearDownTestFunc = func(c *check.C) {
+		r.stop()
+		config.Unset("routers:apirouter")
+		conn, err := db.Conn()
+		c.Assert(err, check.IsNil)
+		defer conn.Close()
+		dbtest.ClearAllCollections(conn.Collection("router_api_tests").Database)
+	}
+	check.Suite(suite)
+}
+
 func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter = newFakeRouter(c)
 	s.apiRouter.certificates = make(map[string]certData)
@@ -43,6 +72,9 @@ func (s *S) SetUpTest(c *check.C) {
 		routerName: "apirouter",
 	}
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
+	config.Set("database:name", "router_api_tests")
+	s.apiRouter.backends = make(map[string]*backend)
+	s.testRouter.AddBackend("mybackend")
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": {addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
@@ -50,6 +82,10 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	config.Unset("routers:apirouter")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Collection("router_api_tests").Database)
 	s.apiRouter.stop()
 }
 
@@ -102,7 +138,9 @@ func (s *S) TestRemoveBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveBackendSwapped(c *check.C) {
-	err := s.testRouter.Swap("mybackend", "backend2", false)
+	err := s.testRouter.AddBackend("backend2")
+	c.Assert(err, check.IsNil)
+	err = s.testRouter.Swap("mybackend", "backend2", false)
 	c.Assert(err, check.IsNil)
 	err = s.testRouter.RemoveBackend("mybackend")
 	c.Assert(err, check.DeepEquals, router.ErrBackendSwapped)
@@ -168,14 +206,15 @@ func (s *S) TestGetRoutesBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestSwap(c *check.C) {
-	err := s.testRouter.Swap("mybackend", "backend2", false)
+	err := s.testRouter.AddBackend("backend2")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, false)
-	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
 	err = s.testRouter.Swap("mybackend", "backend2", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, true)
 	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
+	err = s.testRouter.Swap("mybackend", "backend2", true)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "")
 }
 
 func (s *S) TestSwapNotFound(c *check.C) {
@@ -338,7 +377,7 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 			return
 		}
 	})
-	config.Set("routers:apirouter:headers", map[string]string{"X-CUSTOM": "HI"})
+	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI"})
 	defer config.Unset("router:apirouter:headers")
 	r, err := createRouter("apirouter", "routers:apirouter")
 	c.Assert(err, check.IsNil)
@@ -356,7 +395,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}", api.removeBackend).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/routes", api.getRoutes).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/routes", api.addRoutes).Methods(http.MethodPost)
-	r.HandleFunc("/backend/{name}/routes", api.removeRoutes).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/routes/remove", api.removeRoutes).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/swap", api.swap).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
@@ -414,7 +453,7 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 	}
 	var req map[string]string
 	json.NewDecoder(r.Body).Decode(&req)
-	f.backends[name] = &backend{opts: req}
+	f.backends[name] = &backend{opts: req, addr: name + ".apirouter.com"}
 }
 
 func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
@@ -473,7 +512,21 @@ func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	backend.addresses = append(backend.addresses, req.Addresses...)
+	rMap := make(map[string]struct{})
+	addressToKey := func(a string) string {
+		u, _ := url.Parse(a)
+		return u.Host + ":" + u.Port()
+	}
+	for _, a := range backend.addresses {
+		rMap[addressToKey(a)] = struct{}{}
+	}
+	for i, a := range req.Addresses {
+		if _, ok := rMap[addressToKey(a)]; ok {
+			continue
+		}
+		rMap[addressToKey(a)] = struct{}{}
+		backend.addresses = append(backend.addresses, req.Addresses[i])
+	}
 }
 
 func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -490,15 +543,19 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	addrMap := make(map[string]struct{})
+	addressToKey := func(a string) string {
+		u, _ := url.Parse(a)
+		return u.Host + ":" + u.Port()
+	}
+	addrMap := make(map[string]string)
 	for _, b := range backend.addresses {
-		addrMap[b] = struct{}{}
+		addrMap[addressToKey(b)] = b
 	}
 	for _, b := range req.Addresses {
-		delete(addrMap, b)
+		delete(addrMap, addressToKey(b))
 	}
 	backend.addresses = nil
-	for b := range addrMap {
+	for _, b := range addrMap {
 		backend.addresses = append(backend.addresses, b)
 	}
 }
@@ -506,15 +563,27 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	target := r.FormValue("target")
+	targetName := r.FormValue("target")
 	cnameOnly := r.FormValue("cnameOnly")
 	backend, ok := f.backends[name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	backend.swapWith = target
+	target, ok := f.backends[targetName]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if backend.swapWith == targetName {
+		backend.swapWith = ""
+		target.swapWith = ""
+	} else {
+		backend.swapWith = targetName
+		target.swapWith = name
+	}
 	backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
+	target.cnameOnly = backend.cnameOnly
 }
 
 func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
@@ -524,6 +593,10 @@ func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
 	backend, ok := f.backends[name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if strings.HasSuffix(cname, fmt.Sprintf(".%s.apirouter.com", name)) {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	var hasCname bool

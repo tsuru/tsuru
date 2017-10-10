@@ -26,9 +26,8 @@ type TeamService interface {
 
 var (
 	ErrInvalidTeamName = &tsuruErrors.ValidationError{
-		Message: "Invalid team name, team name should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter.",
+		Message: "Invalid team name, team names should start with a letter and" +
+			"contain only lower case letters, numbers, dashes, underscore and @.",
 	}
 	ErrTeamAlreadyExists = errors.New("team already exists")
 	ErrTeamNotFound      = errors.New("team not found")

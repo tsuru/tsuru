@@ -142,6 +142,29 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 	return log.WrapError(err)
 }
 
+func (c *Client) Update(instance *ServiceInstance, requestID string) error {
+	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
+	params := map[string][]string{
+		"description": {instance.Description},
+		"team":        {instance.TeamOwner},
+		"tags":        instance.Tags,
+		"plan":        {instance.PlanName},
+		"requestID":   {requestID},
+	}
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params)
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode > 299 {
+			if resp.StatusCode == http.StatusNotFound {
+				return nil
+			}
+			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to update the instance %s", instance.Name)
+			return log.WrapError(err)
+		}
+	}
+	return err
+}
+
 func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
@@ -164,9 +187,15 @@ func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
-	var resp *http.Response
+	appAddrs, err := app.GetAddresses()
+	if err != nil {
+		return nil, err
+	}
 	params := map[string][]string{
-		"app-host": {app.GetIp()},
+		"app-hosts": appAddrs,
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
 	if err != nil {
@@ -200,10 +229,16 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 
 func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
-	var resp *http.Response
+	appAddrs, err := app.GetAddresses()
+	if err != nil {
+		return err
+	}
 	params := map[string][]string{
-		"app-host":  {app.GetIp()},
+		"app-hosts": appAddrs,
 		"unit-host": {unit.GetIp()},
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	if err != nil {
@@ -225,10 +260,16 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 
 func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
-	var resp *http.Response
+	appAddrs, err := app.GetAddresses()
+	if err != nil {
+		return err
+	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
 	params := map[string][]string{
-		"app-host": {app.GetIp()},
+		"app-hosts": appAddrs,
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil {
@@ -246,11 +287,17 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 
 func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
-	var resp *http.Response
+	appAddrs, err := app.GetAddresses()
+	if err != nil {
+		return err
+	}
 	url := "/resources/" + instance.GetIdentifier() + "/bind"
 	params := map[string][]string{
-		"app-host":  {app.GetIp()},
+		"app-hosts": appAddrs,
 		"unit-host": {unit.GetIp()},
+	}
+	if len(appAddrs) > 0 {
+		params["app-host"] = []string{appAddrs[0]}
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil {

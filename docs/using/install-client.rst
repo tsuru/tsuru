@@ -19,7 +19,7 @@ binaries, packages or building them from source.
 
 - `Downloading binaries (Mac OS X, Linux and Windows)`_
 - `Using homebrew (Mac OS X only)`_
-- `Using the PPA (Ubuntu only)`_
+- `Using the packagecloud.io (Linux)`_
 - `Build from source (Linux, Mac OS X and Windows)`_
 
 Downloading binaries (Mac OS X, Linux and Windows)
@@ -66,27 +66,31 @@ For more details on taps, check `homebrew documentation
 **NOTE:** tsuru client require Go 1.4 or higher. Make sure you have the last version
 of Go installed in your system.
 
-Using the PPA (Ubuntu only)
-===========================
+Using the packagecloud.io (Linux)
+=================================
 
-Ubuntu users can install tsuru clients using ``apt-get`` and the `tsuru PPA
-<https://launchpad.net/~tsuru/+archive/ppa>`_. You'll need to add the PPA
-repository locally and run an ``apt-get update``:
+**Quick install**
 
-.. highlight:: bash
-
-::
-
-    $ sudo apt-add-repository ppa:tsuru/ppa
-    $ sudo apt-get update
-
-Now you can install tsuru clients:
+deb:
 
 .. highlight:: bash
 
 ::
 
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.deb.sh | sudo bash
     $ sudo apt-get install tsuru-client
+
+rpm:
+
+.. highlight:: bash
+
+::
+
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.rpm.sh | sudo bash
+    $ sudo yum install tsuru-client
+
+For more details, check `packagecloud.io documentation
+<https://packagecloud.io/tsuru/stable/install#bash>`_.
 
 Build from source (Linux, Mac OS X and Windows)
 ===============================================

@@ -15,28 +15,26 @@ import (
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-type S struct {
-	conn            *db.Storage
-	TeamService     *TeamService
-	PlatformService *PlatformService
-}
+type mongodbBaseTest struct{}
 
-var _ = check.Suite(&S{})
-
-func (s *S) SetUpSuite(c *check.C) {
+func (t *mongodbBaseTest) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_storage_test")
-	s.conn, _ = db.Conn()
-	s.TeamService = &TeamService{}
-	s.PlatformService = &PlatformService{}
+	config.Set("database:name", "tsuru_storage_mongodb_test")
 }
 
-func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Users().Database.DropDatabase()
-	s.conn.Close()
-}
-
-func (s *S) SetUpTest(c *check.C) {
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+func (t *mongodbBaseTest) SetUpTest(c *check.C) {
+	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	err = dbtest.ClearAllCollections(cacheCollection(conn).Database)
+	c.Assert(err, check.IsNil)
+}
+
+func (t *mongodbBaseTest) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	err = cacheCollection(conn).Database.DropDatabase()
+	c.Assert(err, check.IsNil)
+}
+
+func (t *mongodbBaseTest) TearDownTest(c *check.C) {
 }

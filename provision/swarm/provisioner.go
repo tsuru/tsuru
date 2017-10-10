@@ -368,12 +368,12 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
-	if customData == nil {
-		return nil
-	}
 	task, err := findTaskByContainerId(tasks, unitId)
 	if err != nil {
 		return err
+	}
+	if customData == nil {
+		return nil
 	}
 	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 	if !labels.IsDeploy() {
@@ -435,10 +435,9 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
-			return nil, nil
+		if errors.Cause(err) != cluster.ErrNoCluster {
+			return nil, err
 		}
-		return nil, err
 	}
 	for _, client := range clusters {
 		tasks, err := client.ListTasks(docker.ListTasksOptions{})
@@ -470,8 +469,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	pool := opts.Metadata[provision.PoolMetadataName]
-	existingClient, err := clusterForPool(pool)
+	existingClient, err := clusterForPool(opts.Pool)
 	if err != nil {
 		return err
 	}
@@ -500,8 +498,11 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return errors.WithStack(err)
 	}
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
+		IaaSID:       opts.IaaSID,
 		Addr:         opts.Address,
+		Pool:         opts.Pool,
 		CustomLabels: opts.Metadata,
+		Prefix:       tsuruLabelPrefix,
 	}).ToLabels()
 	err = existingClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
@@ -555,7 +556,20 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	} else if opts.Enable {
 		swarmNode.Spec.Availability = swarm.NodeAvailabilityActive
 	}
+	if swarmNode.Spec.Annotations.Labels == nil {
+		swarmNode.Spec.Annotations.Labels = map[string]string{}
+	}
+	if opts.Pool != "" {
+		baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
+			Pool:   opts.Pool,
+			Prefix: tsuruLabelPrefix,
+		})
+		for k, v := range baseNodeLabels.ToLabels() {
+			swarmNode.Spec.Annotations.Labels[k] = v
+		}
+	}
 	for k, v := range opts.Metadata {
+		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
 		if v == "" {
 			delete(swarmNode.Spec.Annotations.Labels, k)
 		} else {
@@ -576,7 +590,7 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) GetDockerClient(a provision.App) (*docker.Client, error) {
+func (p *swarmProvisioner) GetDockerClient(a provision.App) (provision.BuilderDockerClient, error) {
 	if a == nil {
 		clusters, err := allClusters()
 		if err != nil {
@@ -591,7 +605,7 @@ func (p *swarmProvisioner) GetDockerClient(a provision.App) (*docker.Client, err
 	if err != nil {
 		return nil, err
 	}
-	return client.Client, nil
+	return &dockercommon.ClientWithTimeout{Client: client.Client}, nil
 }
 
 func (p *swarmProvisioner) CleanImage(appName, imgName string) {
@@ -614,7 +628,8 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	if err != nil {
 		return "", err
 	}
-	srvID, task, err := runOnceBuildCmds(client, a, nil, buildImageID, deployImage, evt)
+	cmds := dockercommon.DeployCmds(a)
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, buildImageID, deployImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}

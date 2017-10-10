@@ -291,7 +291,7 @@ func poolAdd() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		for _, cluster := range clusterManagers {
-			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
+			res := T("cluster-remove", "-y", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete()
 			c.Check(res, ResultOk)
@@ -494,7 +494,7 @@ func serviceBind() ExecFlow {
 		env.Add("bindnames", bindName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("service-instance-remove", "{{.servicename}}", bindName, "-u", "-y").Run(env)
+		res := T("service-instance-remove", "{{.servicename}}", bindName, "-f", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -50,12 +51,14 @@ func Test(t *testing.T) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_swarm_tests_s")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	config.Set("docker:registry", "registry.tsuru.io")
 	config.Set("host", "http://tsuruhost")
+	config.Set("docker:repository-namespace", "tsuru")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -73,12 +76,12 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.AddPool(pool.AddPoolOptions{Name: "bonehunters", Default: true, Provisioner: "swarm"})
 	c.Assert(err, check.IsNil)
-	p := app.Plan{
+	p := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	err = p.Save()
+	err = app.SavePlan(p)
 	c.Assert(err, check.IsNil)
 	s.p = &swarmProvisioner{}
 	err = s.p.Initialize()
@@ -153,10 +156,9 @@ func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
 	nodeData, err := s.clusterCli.InspectNode(dockerInfo.Swarm.NodeID)
 	c.Assert(err, check.IsNil)
 	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
-		Addr: s.clusterSrv.URL(),
-		CustomLabels: map[string]string{
-			"pool": "bonehunters",
-		},
+		Addr:   s.clusterSrv.URL(),
+		Pool:   "bonehunters",
+		Prefix: tsuruLabelPrefix,
 	}).ToLabels()
 	err = s.clusterCli.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,

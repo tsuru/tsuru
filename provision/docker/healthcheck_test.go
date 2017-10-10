@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestHealthcheck(c *check.C) {
@@ -40,9 +39,8 @@ func (s *S) TestHealthcheck(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -78,9 +76,8 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 	imageName := "tsuru/app"
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -112,9 +109,8 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -134,9 +130,8 @@ func (s *S) TestHealthcheckNoHealthcheck(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	err := s.storage.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port}}
@@ -163,9 +158,8 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -202,9 +196,8 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 	imageName := "tsuru/app"
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -229,9 +222,8 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
@@ -281,9 +273,8 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 	imageName := "tsuru/app"
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}

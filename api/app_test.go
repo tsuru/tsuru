@@ -38,8 +38,8 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -474,14 +474,114 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
-	c.Assert(apps[0].IP, check.Equals, app1.IP)
+	c.Assert(apps[0].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "",
+		Opts:    map[string]string{},
+	}})
 	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
 	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
-	c.Assert(apps[1].IP, check.Equals, app2.IP)
+	c.Assert(apps[1].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "",
+		Opts:    map[string]string{},
+	}})
 	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
 	c.Assert(apps[1].Tags, check.DeepEquals, app2.Tags)
+
+}
+
+func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app1"},
+		Pool:      "pool1",
+		Tags:      []string{},
+	}
+	err = app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps/app1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	request, err = http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
+	c.Assert(apps[0].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "app1.fakerouter.com",
+		Opts:    map[string]string{},
+	}})
+	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
+	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
+}
+
+func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Teams:     []string{s.team.Name},
+		Router:    "fake",
+	}
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(app1)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.AddBackend(app1.Name)
+	request, err := http.NewRequest("GET", "/apps/app1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	request, err = http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name:    "fake",
+		Address: "app1.fakerouter.com",
+		Opts:    map[string]string{},
+	}})
 }
 
 func (s *S) TestAppListUnitsError(c *check.C) {
@@ -928,13 +1028,13 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	a := app.App{Name: "someapp"}
-	expectedPlan := app.Plan{
+	expectedPlan := appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
 		Swap:     5,
 		CpuShare: 10,
 	}
-	err := expectedPlan.Save()
+	err := app.SavePlan(expectedPlan)
 	c.Assert(err, check.IsNil)
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
@@ -1137,7 +1237,10 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Router, check.DeepEquals, "fake")
+	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name: "fake",
+		Opts: map[string]string{},
+	}})
 }
 
 func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
@@ -1169,7 +1272,10 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val1", "opt2": "val2"})
+	c.Assert(gotApp.Routers, check.DeepEquals, []appTypes.AppRouter{{
+		Name: "fake",
+		Opts: map[string]string{"opt1": "val1", "opt2": "val2"},
+	}})
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
@@ -1473,49 +1579,6 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("router=fake-tls")
-	request, err := http.NewRequest("PUT", "/apps/myappx", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Router, check.DeepEquals, "fake-tls")
-}
-
-func (s *S) TestUpdateAppRouterOpts(c *check.C) {
-	config.Set("routers:fake-opts:type", "fake-opts")
-	a := app.App{
-		Name:       "myappx",
-		Platform:   "zend",
-		TeamOwner:  s.team.Name,
-		Router:     "fake-opts",
-		RouterOpts: map[string]string{"opt1": "val1"},
-	}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("routeropts.opt1=val2")
-	request, err := http.NewRequest("PUT", "/apps/myappx", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val2"})
-}
-
 func (s *S) TestUpdateAppImageReset(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -1532,22 +1595,6 @@ func (s *S) TestUpdateAppImageReset(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
-}
-
-func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("router=invalid-router")
-	request, err := http.NewRequest("PUT", "/apps/myappx", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	expectedErr := &router.ErrRouterNotFound{Name: "invalid-router"}
-	c.Check(recorder.Body.String(), check.Equals, expectedErr.Error()+"\n")
 }
 
 func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
@@ -1605,12 +1652,12 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	config.Set("docker:router", "fake")
 	defer config.Unset("docker:router")
-	plans := []app.Plan{
+	plans := []appTypes.Plan{
 		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
 		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
 	}
 	for _, plan := range plans {
-		err := plan.Save()
+		err := app.SavePlan(plan)
 		c.Assert(err, check.IsNil)
 	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
@@ -1631,8 +1678,8 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
-	plan := app.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
-	err := plan.Save()
+	plan := appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
+	err := app.SavePlan(plan)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
 	err = app.CreateApp(&a, s.user)
@@ -1645,7 +1692,7 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Check(recorder.Body.String(), check.Equals, app.ErrPlanNotFound.Error()+"\n")
+	c.Check(recorder.Body.String(), check.Equals, appTypes.ErrPlanNotFound.Error()+"\n")
 }
 
 func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
@@ -1663,7 +1710,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	errorMessage := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one.\n"
+	errorMessage := "Neither the description, plan, pool, team owner or platform were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
@@ -4025,7 +4072,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 }
 
 func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4033,7 +4080,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4075,7 +4122,7 @@ func (s *S) TestBindHandler(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4083,7 +4130,7 @@ func (s *S) TestBindHandler(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4140,11 +4187,11 @@ func (s *S) TestBindHandler(c *check.C) {
 func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
@@ -4172,11 +4219,11 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(
 func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvailable(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
@@ -4185,7 +4232,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvaila
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
-	srvc2 := service.Service{Name: "varus", Endpoint: map[string]string{"production": ts.URL}, Password: "varus123"}
+	srvc2 := service.Service{Name: "varus", Endpoint: map[string]string{"production": ts.URL}, Password: "varus123", OwnerTeams: []string{s.team.Name}}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
@@ -4210,7 +4257,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 		w.Write([]byte(`{}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4218,7 +4265,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4290,7 +4337,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -4309,7 +4356,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:instance=%s&:app=unknown&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, instance.Name, instance.ServiceName)
@@ -4333,7 +4380,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
 	err = s.conn.Apps().Insert(a)
@@ -4356,8 +4403,8 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	}))
 	defer ts.Close()
 	srvc := []service.Service{
-		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
-		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, service := range srvc {
 		err := service.Create()
@@ -4368,14 +4415,14 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 	}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance2 := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql2",
 		Teams:       []string{s.team.Name},
 	}
-	err = instance2.Create()
+	err = s.conn.ServiceInstances().Insert(instance2)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4442,7 +4489,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -4463,7 +4510,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		Apps:        []string{"painkiller"},
 		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4540,7 +4587,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -4561,7 +4608,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		Apps:        []string{"painkiller"},
 		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4638,8 +4685,8 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := []service.Service{
-		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
-		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, service := range srvc {
 		err := service.Create()
@@ -4673,7 +4720,7 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 		},
 	}
 	for _, instance := range instances {
-		err = instance.Create()
+		err = s.conn.ServiceInstances().Insert(instance)
 		c.Assert(err, check.IsNil)
 	}
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instances[1].ServiceName, instances[1].Name, a.Name,
@@ -4717,7 +4764,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -4736,7 +4783,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 
 func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:service=%s&:instance=%s&:app=unknown&noRestart=false", instance.ServiceName,
 		instance.Name, instance.ServiceName, instance.Name)
@@ -4760,7 +4807,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err := s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "serviceapp", Platform: "zend"}
 	err = s.conn.Apps().Insert(a)
@@ -5372,6 +5419,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("X-Agent-Version", "0.2.4")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -5406,10 +5454,35 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("X-Agent-Version", "0.2.4")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "unit \"invalid-unit-host\" not found\n")
+}
+
+func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
+	a := app.App{
+		Name:     "myappx",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("hostname=invalid-unit-host")
+	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
 }
 
 func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
@@ -5435,6 +5508,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("X-Agent-Version", "0.2.4")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -5532,8 +5606,8 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 			{"name": ":app", "value": a.Name},
 		},
 		EndCustomData: map[string]interface{}{
-			"added":   []string(nil),
-			"removed": []string(nil),
+			"fake.added":   []string(nil),
+			"fake.removed": []string(nil),
 		},
 	}, eventtest.HasEvent)
 }
@@ -5605,11 +5679,11 @@ func (s *S) TestSetCertificateInvalidCertificate(c *check.C) {
 }
 
 func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"myapp.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("cname", "myapp.io")
+	v.Set("cname", "app.io")
 	v.Set("certificate", testCert)
 	v.Set("key", testKey)
 	body := strings.NewReader(v.Encode())
@@ -5619,7 +5693,7 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "router does not support tls\n")
+	c.Assert(recorder.Body.String(), check.Equals, "no router with tls support\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -5691,11 +5765,13 @@ func (s *S) TestListCertificates(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	certs := make(map[string]string)
+	var certs map[string]map[string]string
 	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
 	c.Assert(err, check.IsNil)
-	c.Assert(certs, check.DeepEquals, map[string]string{
-		"app.io":               testCert,
-		"myapp.fakerouter.com": "",
+	c.Assert(certs, check.DeepEquals, map[string]map[string]string{
+		"fake-tls": {
+			"app.io":                  testCert,
+			"myapp.faketlsrouter.com": "",
+		},
 	})
 }

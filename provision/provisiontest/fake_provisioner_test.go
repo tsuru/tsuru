@@ -35,6 +35,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "fake_provision_tests_s")
 }
@@ -1236,13 +1237,13 @@ func (s *S) TestFakeProvisionerShellNoUnits(c *check.C) {
 
 func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	p := NewFakeProvisioner()
-	p.AddNode(provision.AddNodeOptions{Address: "mynode", Metadata: map[string]string{
-		"pool": "mypool",
+	p.AddNode(provision.AddNodeOptions{Address: "mynode", Pool: "mypool", Metadata: map[string]string{
+		"m1": "v1",
 	}})
 	c.Assert(p.nodes, check.DeepEquals, map[string]FakeNode{"mynode": {
 		Addr:     "mynode",
 		PoolName: "mypool",
-		Meta:     map[string]string{"pool": "mypool"},
+		Meta:     map[string]string{"m1": "v1"},
 		p:        p,
 		status:   "enabled",
 	}})
@@ -1256,23 +1257,21 @@ func (l NodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
 
 func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	p := NewFakeProvisioner()
-	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool", Metadata: map[string]string{
+		"m1": "v1",
 	}})
-	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
-		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{}, p: p},
 	})
 	nodes, err = p.ListNodes([]string{"mynode2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{}, p: p},
 	})
 }
 
@@ -1281,21 +1280,18 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	app := NewFakeApp("shine-on", "diamond", 1)
 	app.Pool = "mypool"
 	p.Provision(app)
-	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
 	p.AddUnitsToNode(app, 4, "web", nil, "mynode1")
 	w := bytes.Buffer{}
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
 		Writer:         &w,
-		MetadataFilter: map[string]string{"pool": "mypool"},
+		Pool:           "mypool",
+		MetadataFilter: map[string]string{"m1": "x1"},
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[pool:mypool\].*`)
+	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[m1:x1\].*filtering pool: mypool.*`)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	var addrs []string
@@ -1314,15 +1310,9 @@ func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 	app2 := NewFakeApp("a2", "diamond", 1)
 	app2.Pool = "mypool2"
 	p.Provision(app2)
-	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	p.AddNode(provision.AddNodeOptions{Address: "mynode3", Metadata: map[string]string{
-		"pool": "mypool2",
-	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode3", Pool: "mypool2"})
 	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1")
 	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3")
 	w := bytes.Buffer{}

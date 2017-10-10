@@ -64,18 +64,19 @@ var (
 	throttlingInfo  = map[string]ThrottlingSpec{}
 	errInvalidQuery = errors.New("invalid query")
 
-	ErrNotCancelable     = errors.New("event is not cancelable")
-	ErrEventNotFound     = errors.New("event not found")
-	ErrNoTarget          = ErrValidation("event target is mandatory")
-	ErrNoKind            = ErrValidation("event kind is mandatory")
-	ErrNoOwner           = ErrValidation("event owner is mandatory")
-	ErrNoOpts            = ErrValidation("event opts is mandatory")
-	ErrNoInternalKind    = ErrValidation("event internal kind is mandatory")
-	ErrNoAllowed         = errors.New("event allowed is mandatory")
-	ErrNoAllowedCancel   = errors.New("event allowed cancel is mandatory for cancelable events")
-	ErrInvalidOwner      = ErrValidation("event owner must not be set on internal events")
-	ErrInvalidKind       = ErrValidation("event kind must not be set on internal events")
-	ErrInvalidTargetType = errors.New("invalid event target type")
+	ErrNotCancelable          = errors.New("event is not cancelable")
+	ErrCancelAlreadyRequested = errors.New("event cancel already requested")
+	ErrEventNotFound          = errors.New("event not found")
+	ErrNoTarget               = ErrValidation("event target is mandatory")
+	ErrNoKind                 = ErrValidation("event kind is mandatory")
+	ErrNoOwner                = ErrValidation("event owner is mandatory")
+	ErrNoOpts                 = ErrValidation("event opts is mandatory")
+	ErrNoInternalKind         = ErrValidation("event internal kind is mandatory")
+	ErrNoAllowed              = errors.New("event allowed is mandatory")
+	ErrNoAllowedCancel        = errors.New("event allowed cancel is mandatory for cancelable events")
+	ErrInvalidOwner           = ErrValidation("event owner must not be set on internal events")
+	ErrInvalidKind            = ErrValidation("event kind must not be set on internal events")
+	ErrInvalidTargetType      = errors.New("invalid event target type")
 
 	OwnerTypeUser     = ownerType("user")
 	OwnerTypeApp      = ownerType("app")
@@ -84,6 +85,7 @@ var (
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
 
+	TargetTypeGlobal          = TargetType("global")
 	TargetTypeApp             = TargetType("app")
 	TargetTypeNode            = TargetType("node")
 	TargetTypeContainer       = TargetType("container")
@@ -222,6 +224,8 @@ type TargetType string
 
 func GetTargetType(t string) (TargetType, error) {
 	switch t {
+	case "global":
+		return TargetTypeGlobal, nil
 	case "app":
 		return TargetTypeApp, nil
 	case "node":
@@ -388,7 +392,7 @@ type TargetFilter struct {
 type Filter struct {
 	Target         Target
 	KindType       kindType
-	KindName       string
+	KindNames      []string `form:"-"`
 	OwnerType      ownerType
 	OwnerName      string
 	Since          time.Time
@@ -411,6 +415,19 @@ func (f *Filter) PruneUserValues() {
 	f.Permissions = nil
 	if f.Limit > filterMaxLimit || f.Limit <= 0 {
 		f.Limit = filterMaxLimit
+	}
+}
+
+func (f *Filter) LoadKindNames(form map[string][]string) {
+	for k, values := range form {
+		if strings.ToLower(k) != "kindname" {
+			continue
+		}
+		for _, val := range values {
+			if val != "" {
+				f.KindNames = append(f.KindNames, val)
+			}
+		}
 	}
 }
 
@@ -467,8 +484,8 @@ func (f *Filter) toQuery() (bson.M, error) {
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
-	if f.KindName != "" {
-		query["kind.name"] = f.KindName
+	if len(f.KindNames) > 0 {
+		query["kind.name"] = bson.M{"$in": f.KindNames}
 	}
 	if f.OwnerType != "" {
 		query["owner.type"] = f.OwnerType
@@ -945,7 +962,10 @@ func (e *Event) TryCancel(reason, owner string) error {
 	}
 	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": false}).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
-		return ErrEventNotFound
+		if _, errID := GetByID(e.UniqueID); errID == ErrEventNotFound {
+			return ErrEventNotFound
+		}
+		err = ErrCancelAlreadyRequested
 	}
 	return err
 }

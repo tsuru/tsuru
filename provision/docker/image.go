@@ -22,9 +22,9 @@ func MigrateImages() error {
 	if registry != "" {
 		registry += "/"
 	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return err
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	if repoNamespace == "" {
+		repoNamespace = "tsuru"
 	}
 	apps, err := app.List(nil)
 	if err != nil {
@@ -51,7 +51,10 @@ func MigrateImages() error {
 			return err
 		}
 		if registry != "" {
-			pushOpts := docker.PushImageOptions{Name: newImage, InactivityTimeout: net.StreamInactivityTimeout, RawJSONStream: true}
+			pushOpts := docker.PushImageOptions{
+				Name:              newImage,
+				InactivityTimeout: net.StreamInactivityTimeout,
+			}
 			err = dcluster.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 			if err != nil {
 				return err

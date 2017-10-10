@@ -21,20 +21,23 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
-	dockerSockPath = "/var/run/docker.sock"
+	dockerSockPath            = "/var/run/docker.sock"
+	buildIntercontainerPath   = "/tmp/intercontainer"
+	buildIntercontainerStatus = buildIntercontainerPath + "/status"
+	buildIntercontainerDone   = buildIntercontainerPath + "/done"
 )
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
@@ -75,7 +78,6 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName,
 type buildPodParams struct {
 	client           *clusterClient
 	app              provision.App
-	buildCmd         []string
 	sourceImage      string
 	destinationImage string
 	attachInput      io.Reader
@@ -110,11 +112,23 @@ func createBuildPod(params buildPodParams) error {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: params.app.GetPool(),
+		Pool:   params.app.GetPool(),
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	kubeConf := getKubeConfig()
+	cmds := dockercommon.ArchiveDeployCmds(params.app, "file:///home/application/archive.tar.gz")
+	if len(cmds) != 3 {
+		return errors.Errorf("unexpected cmds list: %#v", cmds)
+	}
+	cmds[2] = fmt.Sprintf(`
+		cat >/home/application/archive.tar.gz && %[1]s
+		exit_code=$?
+		echo "${exit_code}" >%[2]s
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f %[3]s ]; do sleep 1; done
+	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -133,42 +147,53 @@ func createBuildPod(params buildPodParams) error {
 						},
 					},
 				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
 			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
 					Name:      baseName,
 					Image:     params.sourceImage,
-					Command:   params.buildCmd,
+					Command:   cmds,
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       envs,
 					SecurityContext: &apiv1.SecurityContext{
 						RunAsUser: uid,
 					},
+					VolumeMounts: append([]apiv1.VolumeMount{
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
+					}, mounts...),
 				},
 				{
 					Name:  commitContainer,
 					Image: kubeConf.DeploySidecarImage,
 					VolumeMounts: append([]apiv1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
 					}, mounts...),
+					TTY: true,
 					Command: []string{
 						"sh", "-ec",
 						fmt.Sprintf(`
-							img="%s"
-							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z "${id}" ]; do
-								sleep 1;
-							done;
-							exit_code=$(docker wait "${id}")
+							while [ ! -f %[3]s ]; do sleep 1; done
+							exit_code=$(cat %[3]s)
 							[ "${exit_code}" != "0" ] && exit "${exit_code}"
+							id=$(docker ps -aq -f "label=io.kubernetes.container.name=%[2]s" -f "label=io.kubernetes.pod.name=$(hostname)")
+							img="%[1]s"
 							echo
 							echo '---- Building application image ----'
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}" >/dev/null
-						`, params.destinationImage, baseName),
+							docker push "${img}"
+							touch %[4]s
+						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone),
 					},
 				},
 			},
@@ -253,8 +278,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	port := provision.WebProcessDefaultPort()
-	portInt, _ := strconv.Atoi(port)
+	portInt := getTargetPortForImage(imageName)
 	var probe *apiv1.Probe
 	if process == webProcessName {
 		yamlData, errImg := image.GetImageTsuruYamlData(imageName)
@@ -269,7 +293,8 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: a.GetPool(),
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
@@ -321,6 +346,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 								Limits: resourceLimits,
 							},
 							VolumeMounts: mounts,
+							Ports: []apiv1.ContainerPort{
+								{ContainerPort: int32(portInt)},
+							},
 						},
 					},
 				},
@@ -376,7 +404,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
+func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
 	messages, err := notReadyPodEvents(client, a, processName)
 	var msgErrorPart string
 	if err == nil {
@@ -387,7 +415,7 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 			msgErrorPart = ": " + strings.Join(messages, ", ")
 		}
 	}
-	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
+	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
 func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provision.App, processName string, w io.Writer) error {
@@ -431,8 +459,12 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 			fmt.Fprintf(w, " ---> %d of %d new units created\n", dep.Status.UpdatedReplicas, specReplicas)
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
-			healthcheckTimeout = time.After(maxWaitTimeDuration)
-			fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+			var allInit bool
+			allInit, err = allNewPodsRunning(client, a, processName, dep.Status.ObservedGeneration)
+			if allInit && err == nil {
+				healthcheckTimeout = time.After(maxWaitTimeDuration)
+				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+			}
 		}
 		readyUnits := dep.Status.UpdatedReplicas - dep.Status.UnavailableReplicas
 		if oldReadyUnits != readyUnits && readyUnits >= 0 {
@@ -452,9 +484,9 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 		select {
 		case <-time.After(100 * time.Millisecond):
 		case <-healthcheckTimeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
 		case <-timeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		}
 		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
@@ -465,7 +497,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 	return nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
+func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
 	err := ensureNodeContainers()
 	if err != nil {
 		return err
@@ -478,7 +510,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		dep = nil
 	}
-	dep, labels, err = createAppDeployment(m.client, dep, a, process, image, replicas, labels)
+	dep, labels, err = createAppDeployment(m.client, dep, a, process, img, replicas, labels)
 	if err != nil {
 		return err
 	}
@@ -496,8 +528,8 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		return err
 	}
-	port := provision.WebProcessDefaultPort()
-	portInt, _ := strconv.Atoi(port)
+	targetPort := getTargetPortForImage(img)
+	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	_, err = m.client.Core().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
@@ -509,8 +541,8 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			Ports: []apiv1.ServicePort{
 				{
 					Protocol:   "TCP",
-					Port:       int32(portInt),
-					TargetPort: intstr.FromInt(portInt),
+					Port:       int32(port),
+					TargetPort: intstr.FromInt(targetPort),
 				},
 			},
 			Type: apiv1.ServiceTypeNodePort,
@@ -520,6 +552,19 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		return nil
 	}
 	return err
+}
+
+func getTargetPortForImage(imgName string) int {
+	port := provision.WebProcessDefaultPort()
+	imageData, _ := image.GetImageMetaData(imgName)
+	if imageData.ExposedPort != "" {
+		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
+		if len(parts) == 2 {
+			port = parts[0]
+		}
+	}
+	portInt, _ := strconv.Atoi(port)
+	return portInt
 }
 
 func procfileInspectPod(client *clusterClient, a provision.App, image string) (string, error) {

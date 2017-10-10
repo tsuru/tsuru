@@ -42,7 +42,7 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 	maxTries := 5
 	for ; maxTries > 0; maxTries-- {
 		if useScheduler {
-			node, scheduleErr := c.scheduler.Schedule(c, opts, schedulerOpts)
+			node, scheduleErr := c.scheduler.Schedule(c, &opts, schedulerOpts)
 			if scheduleErr != nil {
 				if err != nil {
 					scheduleErr = fmt.Errorf("Error in scheduler after previous errors (%s) trying to create container: %s", err.Error(), scheduleErr.Error())
@@ -100,7 +100,6 @@ func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, inac
 		err := c.PullImage(docker.PullImageOptions{
 			Repository:        opts.Config.Image,
 			InactivityTimeout: inactivityTimeout,
-			RawJSONStream:     true,
 		}, docker.AuthConfiguration{}, nodeAddress)
 		if err != nil {
 			return nil, err

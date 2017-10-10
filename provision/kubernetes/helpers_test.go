@@ -7,15 +7,16 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -83,15 +84,36 @@ func (s *S) TestDaemonSetName(c *check.C) {
 func (s *S) TestWaitFor(c *check.C) {
 	err := waitFor(100*time.Millisecond, func() (bool, error) {
 		return true, nil
+	}, nil)
+	c.Assert(err, check.IsNil)
+	called := false
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return true, nil
+	}, func() error {
+		called = true
+		return nil
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, false)
 	err = waitFor(100*time.Millisecond, func() (bool, error) {
 		return false, nil
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, `timeout after .*`)
 	err = waitFor(100*time.Millisecond, func() (bool, error) {
-		return true, errors.New("myerr")
+		return false, nil
+	}, func() error {
+		return errors.New("my error")
 	})
+	c.Assert(err, check.ErrorMatches, `timeout after .*?: my error$`)
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return false, nil
+	}, func() error {
+		return nil
+	})
+	c.Assert(err, check.ErrorMatches, `timeout after .*?: <nil>$`)
+	err = waitFor(100*time.Millisecond, func() (bool, error) {
+		return true, errors.New("myerr")
+	}, nil)
 	c.Assert(err, check.ErrorMatches, `myerr`)
 }
 
@@ -157,6 +179,10 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 }
 
 func (s *S) TestWaitForPod(c *check.C) {
+	srv, wg := s.createDeployReadyServer(c)
+	s.mockfakeNodes(c, srv.URL)
+	defer srv.Close()
+	defer wg.Wait()
 	err := waitForPod(s.client.clusterClient, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
@@ -168,12 +194,16 @@ func (s *S) TestWaitForPod(c *check.C) {
 		pod.Status.Message = wantedMessage
 		return false, nil, nil
 	})
+	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`my log error`))
+	}
 	tests := []struct {
-		phase   apiv1.PodPhase
-		msg     string
-		err     string
-		evt     *apiv1.Event
-		running bool
+		phase      apiv1.PodPhase
+		containers []apiv1.Container
+		msg        string
+		err        string
+		evt        *apiv1.Event
+		running    bool
 	}{
 		{phase: apiv1.PodSucceeded},
 		{phase: apiv1.PodRunning, err: `timeout after .*`},
@@ -182,7 +212,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
 		{phase: apiv1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
 		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
-		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &apiv1.Event{
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - last event: my evt message`, evt: &apiv1.Event{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1.evt1",
 				Namespace: s.client.Namespace(),
@@ -194,16 +224,37 @@ func (s *S) TestWaitForPod(c *check.C) {
 			},
 			Message: "my evt message",
 		}},
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - log: my log error`, containers: []apiv1.Container{
+			{Name: "cont1"},
+		}},
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - last event: my evt with log - log: my log error`, containers: []apiv1.Container{
+			{Name: "cont1"},
+		}, evt: &apiv1.Event{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1.evt1",
+				Namespace: s.client.Namespace(),
+			},
+			InvolvedObject: apiv1.ObjectReference{
+				Kind:      "Pod",
+				Name:      "pod1",
+				Namespace: s.client.Namespace(),
+			},
+			Message: "my evt with log",
+		}},
 	}
 	for _, tt := range tests {
 		wantedPhase = tt.phase
 		wantedMessage = tt.msg
-		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+		pod := &apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: s.client.Namespace(),
 			},
-		})
+		}
+		if len(tt.containers) > 0 {
+			pod.Spec.Containers = tt.containers
+		}
+		_, err = s.client.Core().Pods(s.client.Namespace()).Create(pod)
 		c.Assert(err, check.IsNil)
 		if tt.evt != nil {
 			_, err = s.client.Core().Events(s.client.Namespace()).Create(tt.evt)
@@ -217,6 +268,10 @@ func (s *S) TestWaitForPod(c *check.C) {
 		}
 		err = cleanupPod(s.client.clusterClient, "pod1")
 		c.Assert(err, check.IsNil)
+		if tt.evt != nil {
+			err = s.client.Core().Events(s.client.Namespace()).Delete(tt.evt.Name, nil)
+			c.Assert(err, check.IsNil)
+		}
 	}
 }
 

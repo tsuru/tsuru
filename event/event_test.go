@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -456,6 +457,22 @@ func (s *S) TestEventCancel(c *check.C) {
 	})
 }
 
+func (s *S) TestEventCancelMulttipleTimes(c *check.C) {
+	evt, err := New(&Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("because I want", "admin@admin.com")
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("because I still want", "admin@admin.com")
+	c.Assert(err, check.DeepEquals, ErrCancelAlreadyRequested)
+}
+
 func (s *S) TestEventCancelNotCancelable(c *check.C) {
 	evt, err := New(&Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -833,7 +850,7 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 	f := Filter{
 		Target:         Target{Type: "app", Value: "myapp"},
 		KindType:       KindTypePermission,
-		KindName:       "a",
+		KindNames:      []string{"a"},
 		OwnerType:      OwnerTypeUser,
 		OwnerName:      "u",
 		Since:          time.Now(),
@@ -863,6 +880,28 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 	expectedFilter.Limit = 100
 	f.PruneUserValues()
 	c.Assert(f, check.DeepEquals, expectedFilter)
+}
+
+func (s *S) TestLoadKindNames(c *check.C) {
+	f := &Filter{}
+	form := map[string][]string{
+		"kindname": {"a", "b", ""},
+		"kindName": {"c", "d"},
+		"KindName": {"e", "f"},
+		"KINDNAME": {"g", "h"},
+	}
+	f.LoadKindNames(form)
+	sort.Strings(f.KindNames)
+	c.Assert(f.KindNames, check.DeepEquals, []string{"a", "b", "c", "d", "e", "f", "g", "h"})
+}
+
+func (s *S) TestLoadKindNamesOnlyEmptyValues(c *check.C) {
+	f := &Filter{}
+	form := map[string][]string{
+		"kindname": {""},
+	}
+	f.LoadKindNames(form)
+	c.Assert(f.KindNames, check.IsNil)
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
@@ -1003,7 +1042,8 @@ func (s *S) TestNewWithPermission(c *check.C) {
 }
 
 func (s *S) TestNewLockRetryRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
+	originalMaxProcs := runtime.GOMAXPROCS(100)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	wg := sync.WaitGroup{}
 	var countOK int32
 	for i := 0; i < 150; i++ {
@@ -1125,7 +1165,7 @@ func (s *S) TestLoadThrottlingInvalid(c *check.C) {
 	err = config.ReadConfigBytes([]byte(`
 event:
   throttling:
-    a: 
+    a:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()

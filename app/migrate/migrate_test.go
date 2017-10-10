@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -219,8 +220,6 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		c.Assert(err, check.IsNil)
 		resultApps = append(resultApps, *dbApp)
 		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
-		_, hasSpecialEnv := dbApp.Env[app.TsuruServicesEnvVar]
-		c.Assert(hasSpecialEnv, check.Equals, false)
 		allEnvs := dbApp.Envs()
 		if tt.expectedServicesEnv == "" {
 			tt.expectedServicesEnv = tt.app.Env[app.TsuruServicesEnvVar].Value
@@ -250,4 +249,23 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvsNothingToDo(c *check.C) {
 	err := MigrateAppTsuruServicesVarToServiceEnvs()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestMigrateAppPlanIDToPlanName(c *check.C) {
+	a := &app.App{Name: "app-with-plan-name", Plan: appTypes.Plan{Name: "plan-name"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	a = &app.App{Name: "app-with-plan-id"}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Update(bson.M{"name": "app-with-plan-id"}, bson.M{"$set": bson.M{"plan._id": "plan-id"}})
+	c.Assert(err, check.IsNil)
+	err = MigrateAppPlanIDToPlanName()
+	c.Assert(err, check.IsNil)
+	a, err = app.GetByName("app-with-plan-name")
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Plan.Name, check.Equals, "plan-name")
+	a, err = app.GetByName("app-with-plan-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Plan.Name, check.Equals, "plan-id")
 }

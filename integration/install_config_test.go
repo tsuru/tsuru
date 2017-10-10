@@ -11,17 +11,17 @@ import (
 )
 
 func (s *S) getInstallerConfig() string {
-	// if no provisioner is set, add an extra host, so Tsuru can build platforms
 	hosts := len(provisioners)
-	if hosts == 0 {
-		hosts = 1
-	}
 	for _, m := range clusterManagers {
 		if req, ok := m.(interface {
 			RequiredNodes() int
 		}); ok {
 			hosts += req.RequiredNodes()
 		}
+	}
+	// if no host is set, add one, so Tsuru can build platforms
+	if hosts == 0 {
+		hosts = 1
 	}
 	return fmt.Sprintf(`driver:
   name: virtualbox
@@ -51,7 +51,6 @@ func (s *S) getPlatforms() []string {
 		"tsuru/php",
 		"tsuru/play",
 		"tsuru/pypy",
-		"tsuru/python3",
 		"tsuru/ruby",
 		"tsuru/static",
 		"tsuru/perl",

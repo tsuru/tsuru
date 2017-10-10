@@ -754,7 +754,7 @@ docker:repository-namespace
 
 Docker repository namespace to be used for application and platform images. Images
 will be tagged in docker as <docker:repository-namespace>/<platform-name> and
-<docker:repository-namespace>/<app-name>
+<docker:repository-namespace>/<app-name>. The default value is 'tsuru'.
 
 docker:max-layers
 +++++++++++++++++

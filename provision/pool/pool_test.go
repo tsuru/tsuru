@@ -32,6 +32,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "pool_tests_s")
 	var err error
@@ -484,7 +485,7 @@ func (s *S) TestGetRouters(c *check.C) {
 }
 
 func (s *S) TestGetServices(c *check.C) {
-	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}}
+	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}, OwnerTeams: []string{"ateam"}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
 	err = AddPool(AddPoolOptions{Name: "pool1"})

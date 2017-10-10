@@ -27,7 +27,6 @@ import (
 
 const (
 	nodeHealerConfigCollection = "node-healer"
-	poolMetadataName           = "pool"
 )
 
 type NodeHealer struct {
@@ -126,8 +125,10 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
+		IaaSID:     machine.Id,
 		Address:    newAddr,
 		Metadata:   newNodeMetadata,
+		Pool:       node.Pool(),
 		WaitTO:     h.waitTimeNewMachine,
 		CaCert:     machine.CaCert,
 		ClientCert: machine.ClientCert,
@@ -158,7 +159,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	if err != nil {
 		log.Errorf("Unable to remove node %s status from healer: %s", node.Address(), err)
 	}
-	failingMachine, err := iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], failingHost)
+	failingMachine, err := iaas.FindMachineByIdOrAddress(node.IaaSID(), failingHost)
 	if err != nil {
 		return &nodeSpec, errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost)
 	}
@@ -182,7 +183,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address(), reason)
 		return nil
 	}
-	poolName := node.Metadata()[poolMetadataName]
+	poolName := node.Pool()
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeNode, Value: node.Address()},
 		InternalKind: "healer",
@@ -375,7 +376,7 @@ func (h *NodeHealer) queryPartForConfig(nodes []provision.Node, config NodeHeale
 func (h *NodeHealer) shouldHealNode(node provision.Node) (bool, error) {
 	conf := healerConfig()
 	var configEntry NodeHealerConfig
-	err := conf.Load(node.Metadata()[poolMetadataName], &configEntry)
+	err := conf.Load(node.Pool(), &configEntry)
 	if err != nil {
 		return false, err
 	}
@@ -409,7 +410,7 @@ func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provisi
 		if _, ok := n.Provisioner().(provision.NodeContainerProvisioner); !ok {
 			continue
 		}
-		pool := n.Metadata()[poolMetadataName]
+		pool := n.Pool()
 		nodesPoolMap[pool] = append(nodesPoolMap[pool], nodes[i])
 		nodesAddrMap[n.Address()] = nodes[i]
 	}

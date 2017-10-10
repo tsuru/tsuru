@@ -40,7 +40,6 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/api"
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -65,14 +64,6 @@ func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainDockerProvisioner, nil
 	})
-}
-
-func getRouterForApp(app provision.App) (router.Router, error) {
-	routerName, err := app.GetRouterName()
-	if err != nil {
-		return nil, err
-	}
-	return router.Get(routerName)
 }
 
 type dockerProvisioner struct {
@@ -368,19 +359,16 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 }
 
 func (p *dockerProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
-	validImgs, err := image.ListValidAppImages(a.GetName())
+	imageID, err := image.GetAppImageBySuffix(a.GetName(), imageID)
 	if err != nil {
 		return "", err
 	}
-	valid := false
-	for _, img := range validImgs {
-		if img == imageID {
-			valid = true
-			break
-		}
+	imgMetaData, err := image.GetImageMetaData(imageID)
+	if err != nil {
+		return "", err
 	}
-	if !valid {
-		return "", errors.Errorf("Image %q not found in app", imageID)
+	if imgMetaData.DisableRollback {
+		return "", fmt.Errorf("Can't Rollback image %s, reason: %s", imageID, imgMetaData.Reason)
 	}
 	return imageID, p.deploy(a, imageID, evt)
 }
@@ -393,7 +381,8 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 		}
 		return buildImageID, nil
 	}
-	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
+	cmds := dockercommon.DeployCmds(app)
+	imageID, err := p.deployPipeline(app, buildImageID, cmds, evt)
 	if err != nil {
 		return "", err
 	}
@@ -420,7 +409,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageID)
+	imageData, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return err
 	}
@@ -519,10 +508,6 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		err = cluster.RemoveImage(imageID)
 		if err != nil && err != docker.ErrNoSuchImage {
 			log.Errorf("Failed to remove image %s: %s", imageID, err)
-		}
-		err = cluster.RemoveFromRegistry(imageID)
-		if err != nil {
-			log.Errorf("Failed to remove image %s from registry: %s", imageID, err)
 		}
 	}
 	return nil
@@ -624,7 +609,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageID)
+	imageData, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return err
 	}
@@ -643,11 +628,11 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imgId, err := image.AppCurrentImageName(a.GetName())
+	imgID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgId)
+	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgID)
 	if err != nil {
 		return err
 	}
@@ -858,7 +843,7 @@ func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 	poolName := app.GetPool()
-	nodes, err := p.Cluster().NodesForMetadata(map[string]string{"pool": poolName})
+	nodes, err := p.Cluster().NodesForMetadata(map[string]string{provision.PoolMetadataName: poolName})
 	if err != nil {
 		return nil, err
 	}
@@ -960,12 +945,16 @@ type clusterNodeWrapper struct {
 	prov *dockerProvisioner
 }
 
+func (n *clusterNodeWrapper) IaaSID() string {
+	return n.Node.Metadata[provision.IaaSIDMetadataName]
+}
+
 func (n *clusterNodeWrapper) Address() string {
 	return n.Node.Address
 }
 
 func (n *clusterNodeWrapper) Pool() string {
-	return n.Node.Metadata["pool"]
+	return n.Node.Metadata[provision.PoolMetadataName]
 }
 
 func (n *clusterNodeWrapper) Metadata() map[string]string {
@@ -1073,6 +1062,11 @@ func (p *dockerProvisioner) GetName() string {
 }
 
 func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	if opts.Metadata == nil {
+		opts.Metadata = map[string]string{}
+	}
+	opts.Metadata[provision.PoolMetadataName] = opts.Pool
+	opts.Metadata[provision.IaaSIDMetadataName] = opts.IaaSID
 	node := cluster.Node{
 		Address:        opts.Address,
 		Metadata:       opts.Metadata,
@@ -1103,6 +1097,12 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *dockerProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	if opts.Metadata == nil {
+		opts.Metadata = map[string]string{}
+	}
+	if opts.Pool != "" {
+		opts.Metadata[provision.PoolMetadataName] = opts.Pool
+	}
 	node := cluster.Node{Address: opts.Address, Metadata: opts.Metadata}
 	if opts.Disable {
 		node.CreationStatus = cluster.NodeCreationStatusDisabled
@@ -1159,6 +1159,12 @@ func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer
 }
 
 func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	if opts.MetadataFilter == nil {
+		opts.MetadataFilter = map[string]string{}
+	}
+	if opts.Pool != "" {
+		opts.MetadataFilter[provision.PoolMetadataName] = opts.Pool
+	}
 	isOnlyPool := len(opts.MetadataFilter) == 1 && opts.MetadataFilter[provision.PoolMetadataName] != ""
 	if opts.Force || !isOnlyPool || len(opts.AppFilter) > 0 {
 		_, err := p.rebalanceContainersByFilter(opts.Writer, opts.AppFilter, opts.MetadataFilter, opts.Dry)

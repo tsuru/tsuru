@@ -22,21 +22,21 @@ func Test(t *testing.T) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	DbDrivers = make(map[string]DbDriver)
+	dbDrivers = make(map[string]DbDriver)
 }
 
 func (s *S) TestRegisterDbDriver(c *check.C) {
 	RegisterDbDriver("mysql", DbDriver{})
-	c.Assert(DbDrivers, check.HasLen, 1)
+	c.Assert(dbDrivers, check.HasLen, 1)
 	RegisterDbDriver("postgres", DbDriver{})
-	c.Assert(DbDrivers, check.HasLen, 2)
+	c.Assert(dbDrivers, check.HasLen, 2)
 }
 
 func (s *S) TestRegisterDbDriverIgnoresDuplicates(c *check.C) {
 	RegisterDbDriver("mysql", DbDriver{})
 	RegisterDbDriver("mysql", DbDriver{})
 	RegisterDbDriver("mysql", DbDriver{})
-	c.Assert(DbDrivers, check.HasLen, 1)
+	c.Assert(dbDrivers, check.HasLen, 1)
 }
 
 func (s *S) TestGetDbDriver(c *check.C) {

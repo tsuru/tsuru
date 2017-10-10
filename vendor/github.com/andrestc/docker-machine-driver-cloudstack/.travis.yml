@@ -1,0 +1,18 @@
+language: go
+
+env:
+  global:
+    - GO_FOR_RELEASE=1.8
+
+go:
+  - 1.7
+  - 1.8
+  - tip
+
+install:
+  - go get -u github.com/golang/dep/cmd/dep
+  - go get github.com/mitchellh/gox
+  - $GOPATH/bin/dep ensure
+
+after_success:
+  - test -n "$TRAVIS_TAG" && test $TRAVIS_GO_VERSION = $GO_FOR_RELEASE && make release

@@ -12,39 +12,50 @@ import (
 	"io/ioutil"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
+const (
+	archiveDirPath  = "/home/application"
+	archiveFileName = "archive.tar.gz"
+)
+
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
-		&commitContainer,
+		&uploadToContainer,
+		&startContainer,
+		&followLogsAndCommit,
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
+	imageName := image.GetBuildImage(app)
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), imageTag)
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
+	archiveFileURI := fmt.Sprintf("file://%s/%s", archiveDirPath, archiveFileName)
+	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
 	var writer io.Writer = evt
 	if evt == nil {
 		writer = ioutil.Discard
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       imageID,
-		commands:      commands,
+		imageID:       imageName,
+		commands:      cmds,
 		writer:        writer,
 		buildingImage: buildingImage,
 		client:        client,
 		event:         evt,
 		provisioner:   p,
+		tarFile:       tarFile,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {

@@ -21,7 +21,7 @@ type SchedulerOptions interface{}
 type Scheduler interface {
 	// Schedule creates a new container, returning the ID of the node where
 	// the container is running, and the container, or an error.
-	Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error)
+	Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error)
 }
 
 type roundRobin struct {
@@ -29,7 +29,7 @@ type roundRobin struct {
 	once     sync.Once
 }
 
-func (s *roundRobin) Schedule(c *Cluster, opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
+func (s *roundRobin) Schedule(c *Cluster, opts *docker.CreateContainerOptions, schedulerOpts SchedulerOptions) (Node, error) {
 	nodes, _ := c.Nodes()
 	if len(nodes) == 0 {
 		return Node{}, errors.New("No nodes available")

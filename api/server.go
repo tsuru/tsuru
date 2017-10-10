@@ -5,15 +5,15 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	stdLog "log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"context"
 
 	"github.com/codegangsta/negroni"
 	"github.com/pkg/errors"
@@ -42,7 +42,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.4.0-dev"
+const Version = "1.4.0-rc4"
 
 type TsuruHandler struct {
 	version string
@@ -85,7 +85,10 @@ func getAuthScheme() (string, error) {
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
 func RunServer(dry bool) http.Handler {
-	log.Init()
+	err := log.Init()
+	if err != nil {
+		stdLog.Fatalf("unable to initialize logging: %v", err)
+	}
 	setupDatabase()
 
 	m := apiRouter.NewRouter()
@@ -156,12 +159,18 @@ func RunServer(dry bool) http.Handler {
 	logPostHandler := AuthorizationRequiredHandler(addLog)
 	m.Add("1.0", "Post", "/apps/{app}/log", logPostHandler)
 	m.Add("1.0", "Post", "/apps/{appname}/deploy/rollback", AuthorizationRequiredHandler(deployRollback))
+	m.Add("1.4", "Put", "/apps/{appname}/deploy/rollback/update", AuthorizationRequiredHandler(deployRollbackUpdate))
 	m.Add("1.3", "Post", "/apps/{appname}/deploy/rebuild", AuthorizationRequiredHandler(deployRebuild))
 	m.Add("1.0", "Get", "/apps/{app}/metric/envs", AuthorizationRequiredHandler(appMetricEnvs))
 	m.Add("1.0", "Post", "/apps/{app}/routes", AuthorizationRequiredHandler(appRebuildRoutes))
 	m.Add("1.2", "Get", "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
 	m.Add("1.2", "Put", "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
 	m.Add("1.2", "Delete", "/apps/{app}/certificate", AuthorizationRequiredHandler(unsetCertificate))
+
+	m.Add("1.5", "Post", "/apps/{app}/routers", AuthorizationRequiredHandler(addAppRouter))
+	m.Add("1.5", "Put", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(updateAppRouter))
+	m.Add("1.5", "Delete", "/apps/{app}/routers/{router}", AuthorizationRequiredHandler(removeAppRouter))
+	m.Add("1.5", "Get", "/apps/{app}/routers", AuthorizationRequiredHandler(listAppRouters))
 
 	m.Add("1.0", "Post", "/node/status", AuthorizationRequiredHandler(setNodeStatus))
 
@@ -188,6 +197,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/apps/{appname}/deploy", AuthorizationRequiredHandler(deploy))
 	diffDeployHandler := AuthorizationRequiredHandler(diffDeploy)
 	m.Add("1.0", "Post", "/apps/{appname}/diff", diffDeployHandler)
+	m.Add("1.5", "Post", "/apps/{appname}/build", AuthorizationRequiredHandler(build))
 
 	// Shell also doesn't use {app} on purpose. Middlewares don't play well
 	// with websocket.

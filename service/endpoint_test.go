@@ -54,6 +54,7 @@ type TestHandler struct {
 	method  string
 	url     string
 	request *http.Request
+	Err     error
 	sync.Mutex
 }
 
@@ -65,6 +66,10 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.url = r.URL.String()
 	h.body, _ = ioutil.ReadAll(r.Body)
 	h.request = r
+	if h.Err != nil {
+		http.Error(w, h.Err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Write([]byte(content))
 }
 
@@ -81,7 +86,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(h.url, check.Equals, expectedURL)
-	c.Assert(h.method, check.Equals, "POST")
+	c.Assert(h.method, check.Equals, http.MethodPost)
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
@@ -121,7 +126,7 @@ func (s *S) TestEndpointCreatePlans(c *check.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(h.url, check.Equals, expectedURL)
-	c.Assert(h.method, check.Equals, "POST")
+	c.Assert(h.method, check.Equals, http.MethodPost)
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
@@ -148,7 +153,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *check.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(h.url, check.Equals, expectedURL)
-	c.Assert(h.method, check.Equals, "POST")
+	c.Assert(h.method, check.Equals, http.MethodPost)
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
@@ -183,6 +188,54 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `^Failed to create the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
+func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
+	requestIDHeader := "request-id"
+	requestIDValue := "request-id-value"
+	config.Set("request-id-header", requestIDHeader)
+	defer config.Unset("request-id-header")
+	var requests int32
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", TeamOwner: "team-owner", Description: "my service", Tags: []string{"tag1", "tag2"}, PlanName: "small"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		c.Check(r.Method, check.Equals, http.MethodPut)
+		c.Check(r.URL.Path, check.Equals, "/resources/"+instance.Name)
+		r.ParseForm()
+		c.Check(r.FormValue("description"), check.Equals, instance.Description)
+		c.Check(r.Form["tags"], check.DeepEquals, instance.Tags)
+		c.Check(r.FormValue("team"), check.Equals, instance.TeamOwner)
+		c.Check(r.FormValue("plan"), check.Equals, instance.PlanName)
+		c.Check(r.Header.Get(requestIDHeader), check.Equals, requestIDValue)
+		c.Assert(r.Header.Get("Authorization"), check.Equals, "Basic dXNlcjphYmNkZQ==")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, requestIDValue)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
+}
+
+func (s *S) TestUpdateShouldReturnErrorIfTheRequestFails(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `Failed to update the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
+}
+
+func (s *S) TestUpdateShouldIgnoreNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Update(&instance, "")
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -194,7 +247,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
 	c.Assert(h.url, check.Equals, "/resources/"+instance.Name)
-	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 }
 
@@ -212,6 +265,7 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
+	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance, "")
@@ -239,11 +293,11 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
 	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-app")
-	c.Assert(h.method, check.Equals, "POST")
+	c.Assert(h.method, check.Equals, http.MethodPost)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}}
+	expected := map[string][]string{"app-host": {"her-app.fakerouter.com"}, "app-hosts": {"her-app.fakerouter.com"}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -341,13 +395,13 @@ func (s *S) TestBindUnit(c *check.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind")
-	c.Assert(h.method, check.Equals, "POST")
+	c.Assert(h.method, check.Equals, http.MethodPost)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	units, err = a.GetUnits()
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
+	expected := map[string][]string{"app-host": {"her-app.fakerouter.com"}, "app-hosts": {"her-app.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -407,11 +461,11 @@ func (s *S) TestUnbindApp(c *check.C) {
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
 	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind-app")
-	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}}
+	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -453,13 +507,13 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
 	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind")
-	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	units, err = a.GetUnits()
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
+	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -595,7 +649,7 @@ func (s *S) TestEndpointProxy(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	request, err := http.NewRequest("GET", "/", nil)
+	request, err := http.NewRequest(http.MethodGet, "/", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = client.Proxy("/backup", recorder, request)
@@ -615,7 +669,7 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	b := bytes.NewBufferString(`{"bla": "bla"}`)
-	request, err := http.NewRequest("POST", "http://somewhere.com/", b)
+	request, err := http.NewRequest(http.MethodPost, "http://somewhere.com/", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "text/new-crobuzon")
 	recorder := httptest.NewRecorder()
@@ -623,7 +677,7 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 	c.Assert(proxiedRequest.Header.Get("Content-Type"), check.Equals, "text/new-crobuzon")
-	c.Assert(proxiedRequest.Method, check.Equals, "POST")
+	c.Assert(proxiedRequest.Method, check.Equals, http.MethodPost)
 	c.Assert(proxiedRequest.URL.String(), check.Equals, "/backup")
 	tsURL, err := url.Parse(ts.URL)
 	c.Assert(err, check.IsNil)

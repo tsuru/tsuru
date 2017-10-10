@@ -72,9 +72,10 @@ func (s *S) TestAddNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
+		Pool:     "p1",
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
@@ -82,7 +83,36 @@ func (s *S) TestAddNode(c *check.C) {
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, srv.URL())
-	c.Assert(node.Metadata(), check.DeepEquals, metadata)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.m2":   "v2",
+		"tsuru.pool": "p1",
+	})
+	c.Assert(node.Pool(), check.Equals, "p1")
+	c.Assert(node.Status(), check.Equals, "ready")
+}
+
+func (s *S) TestAddNodeWithPrefix(c *check.C) {
+	s.addCluster(c)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	metadata := map[string]string{"m1": "v1", "tsuru.m2": "v2", "pool": "ignored1", "tsuru.pool": "ignored2"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Pool:     "p1",
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(srv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, srv.URL())
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.m2":   "v2",
+		"tsuru.pool": "p1",
+	})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 }
@@ -96,18 +126,23 @@ func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = joinSwarm(s.clusterCli, cli, srv.URL())
 	c.Assert(err, check.IsNil)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
+		Pool:     "pxyz",
 	}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, srv.URL())
-	c.Assert(node.Metadata(), check.DeepEquals, metadata)
-	c.Assert(node.Pool(), check.Equals, "p1")
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.m2":   "v2",
+		"tsuru.pool": "pxyz",
+	})
+	c.Assert(node.Pool(), check.Equals, "pxyz")
 	c.Assert(node.Status(), check.Equals, "ready")
 }
 
@@ -119,9 +154,10 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 		c.Assert(err, check.IsNil)
 		addrs = append(addrs, srv.URL())
 		defer srv.Stop()
-		metadata := map[string]string{"count": fmt.Sprintf("%d", i), "pool": "p1"}
+		metadata := map[string]string{"count": fmt.Sprintf("%d", i)}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
+			Pool:     "p1",
 			Metadata: metadata,
 		}
 		err = s.p.AddNode(opts)
@@ -132,8 +168,8 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	c.Assert(nodes, check.HasLen, 5)
 	for i, n := range nodes {
 		c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-			"count": fmt.Sprintf("%d", i),
-			"pool":  "p1",
+			"tsuru.count": fmt.Sprintf("%d", i),
+			"tsuru.pool":  "p1",
 		})
 	}
 }
@@ -154,9 +190,10 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	url := strings.Replace(srv.URL(), "http://", "https://", 1)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2"}
 	opts := provision.AddNodeOptions{
 		Address:  url,
+		Pool:     "p1",
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
@@ -164,7 +201,11 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	node, err := s.p.GetNode(url)
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, url)
-	c.Assert(node.Metadata(), check.DeepEquals, metadata)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.m2":   "v2",
+		"tsuru.pool": "p1",
+	})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 }
@@ -174,9 +215,10 @@ func (s *S) TestListNodes(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	metadata := map[string]string{"m1": "v1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
+		Pool:     "p1",
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
@@ -188,7 +230,10 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, srv.URL())
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, metadata)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.pool": "p1",
+	})
 	c.Assert(nodes[0].Pool(), check.DeepEquals, "p1")
 	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
 }
@@ -689,7 +734,7 @@ func (s *S) TestGetNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"pool": "bonehunters",
+		"tsuru.pool": "bonehunters",
 	})
 	c.Assert(node.Pool(), check.DeepEquals, "bonehunters")
 	c.Assert(node.Status(), check.DeepEquals, "ready")
@@ -780,9 +825,52 @@ func (s *S) TestUpdateNode(c *check.C) {
 	node, err := s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1":   "v2",
-		"m2":   "v3",
-		"pool": "bonehunters",
+		"tsuru.m1":   "v2",
+		"tsuru.m2":   "v3",
+		"tsuru.pool": "bonehunters",
+	})
+}
+
+func (s *S) TestUpdateNodeNewPool(c *check.C) {
+	s.addCluster(c)
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  s.clusterSrv.URL(),
+		Pool:     "pxyz",
+		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(s.clusterSrv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Pool(), check.Equals, "pxyz")
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v2",
+		"tsuru.m2":   "v3",
+		"tsuru.pool": "pxyz",
+	})
+}
+
+func (s *S) TestUpdateNodeNoPreviousMetadata(c *check.C) {
+	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer clusterSrv.Stop()
+	clust := &cluster.Cluster{
+		Addresses:   []string{clusterSrv.URL()},
+		Default:     true,
+		Name:        "c1",
+		Provisioner: provisionerName,
+	}
+	err = clust.Save()
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  "http://127.0.0.1:2375",
+		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode("http://127.0.0.1:2375")
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1": "v2",
+		"tsuru.m2": "v3",
 	})
 }
 
@@ -796,7 +884,7 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	node, err := s.p.GetNode(s.clusterSrv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"pool": "bonehunters",
+		"tsuru.pool": "bonehunters",
 	})
 	c.Assert(node.Status(), check.Equals, "ready (pause)")
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
@@ -856,7 +944,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	data, err := image.GetImageCustomData("app:v1")
+	data, err := image.GetImageMetaData("app:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data.Processes, check.DeepEquals, map[string][]string{"web": {"python myapp.py"}})
 }
@@ -900,7 +988,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	data, err := image.GetImageCustomData("notset:v1")
+	data, err := image.GetImageMetaData("notset:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, image.ImageMetadata{})
 }
@@ -1060,9 +1148,6 @@ func (s *S) TestDeployImageID(c *check.C) {
 		),
 		"/bin/sh", "-c", "python test.py",
 	})
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestDestroy(c *check.C) {
@@ -1427,10 +1512,10 @@ func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := client.InspectService("node-container-bs-all")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool != p1"})
 	service, err = client.InspectService("node-container-bs-p1")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool == p1"})
 }
 
 func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
@@ -1451,10 +1536,10 @@ func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := client.InspectService("node-container-bs-all")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool != p1"})
 	service, err = client.InspectService("node-container-bs-p1")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.tsuru.pool == p1"})
 }
 
 func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
@@ -1535,11 +1620,27 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
 	data = provision.NodeStatusData{
+		Addrs: []string{s.clusterSrv.URL()},
+	}
+	node, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, s.clusterSrv.URL())
+	data = provision.NodeStatusData{
 		Units: []provision.UnitStatusData{
 			{ID: "invalidid"},
 		},
 	}
 	_, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestNodeForNodeDataNoCluster(c *check.C) {
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: "invalidid"},
+		},
+	}
+	_, err := s.p.NodeForNodeData(data)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 

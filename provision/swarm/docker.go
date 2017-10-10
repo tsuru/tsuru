@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"github.com/tsuru/tsuru/safe"
 )
 
 const (
@@ -180,28 +179,11 @@ func commitPushBuildImage(client *clusterClient, img, contID string, app provisi
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	err = pushImage(client, repository, tag)
+	err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
 	if err != nil {
 		return "", err
 	}
 	return img, nil
-}
-
-func pushImage(client *clusterClient, repo, tag string) error {
-	if _, err := config.GetString("docker:registry"); err == nil {
-		var buf safe.Buffer
-		pushOpts := docker.PushImageOptions{Name: repo,
-			Tag:               tag,
-			OutputStream:      &buf,
-			InactivityTimeout: tsuruNet.StreamInactivityTimeout,
-			RawJSONStream:     true,
-		}
-		err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
 }
 
 func serviceNameForApp(a provision.App, process string) string {
@@ -292,10 +274,14 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		Provisioner:   provisionerName,
 		Prefix:        tsuruLabelPrefix,
 	})
+	var logDriver *swarm.Driver
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
 		opts.replicas = 1
 		srvName = fmt.Sprintf("%s-build", srvName)
+		logDriver = &swarm.Driver{
+			Name: dockercommon.JsonFileLogDriver,
+		}
 	}
 	if opts.isIsolatedRun {
 		opts.replicas = 1
@@ -303,7 +289,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	uReplicas := uint64(opts.replicas)
 	user, _ := dockercommon.UserForContainer()
-	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, opts.app.GetPool()))
+	opts.constraints = append(opts.constraints, toNodePoolConstraint(opts.app.GetPool(), true))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -322,6 +308,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			Placement: &swarm.Placement{
 				Constraints: opts.constraints,
 			},
+			LogDriver: logDriver,
 		},
 		Networks:     networks,
 		EndpointSpec: endpointSpec,
@@ -443,11 +430,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	var constraints []string
 	if len(filter.Exclude) > 0 {
 		for _, v := range filter.Exclude {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", provision.LabelNodePool, v))
+			constraints = append(constraints, toNodePoolConstraint(v, false))
 		}
 	} else {
 		for _, v := range filter.Include {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, v))
+			constraints = append(constraints, toNodePoolConstraint(v, true))
 		}
 	}
 	var mounts []mount.Mount
@@ -569,4 +556,12 @@ func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
 				imgName, errors.WithStack(err))
 		}
 	}
+}
+
+func toNodePoolConstraint(pool string, equal bool) string {
+	operator := "=="
+	if !equal {
+		operator = "!="
+	}
+	return fmt.Sprintf("node.labels.%s%s %s %s", tsuruLabelPrefix, provision.LabelNodePool, operator, pool)
 }

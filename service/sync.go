@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app/bind"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -98,6 +99,9 @@ func (b *bindSyncer) start() error {
 					if err != nil {
 						log.Errorf("[bind-syncer] error syncing app %q: %v", a.GetName(), err)
 					}
+					if len(b.shutdown) > 0 {
+						break
+					}
 				}
 				log.Debugf("[bind-syncer] finished running. Synced %d apps.", len(apps))
 				d = b.interval
@@ -142,9 +146,6 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 		return errors.Wrap(err, "error trying to insert bind sync event, aborted")
 	}
 	defer func() {
-		if err != nil {
-			evt.Logf(err.Error())
-		}
 		if len(binds)+len(unbinds) > 0 || err != nil {
 			evt.DoneCustomData(err, map[string]interface{}{
 				"binds":   binds,
@@ -162,15 +163,19 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	}
 	units := make([]Unit, len(appUnits))
 	for i := range appUnits {
-		units[i] = Unit{ID: appUnits[i].GetID(), IP: appUnits[i].GetIp()}
+		units[i] = Unit{AppName: a.GetName(), ID: appUnits[i].GetID(), IP: appUnits[i].GetIp()}
 	}
 	instances, err := GetServiceInstancesBoundToApp(a.GetName())
 	if err != nil {
 		return errors.WithMessage(err, "error retrieving service instances bound to app")
 	}
+	multiErr := tsuruErrors.NewMultiError()
 	for _, instance := range instances {
 		boundUnits := make(map[Unit]struct{})
 		for _, u := range instance.BoundUnits {
+			if u.AppName != a.GetName() {
+				continue
+			}
 			boundUnits[u] = struct{}{}
 		}
 		for _, u := range units {
@@ -181,7 +186,8 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 				err = instance.BindUnit(a, u)
 				binds[instance.Name] = append(binds[instance.Name], u.GetID())
 				if err != nil {
-					log.Errorf("[bind-syncer] failed to bind unit %q: %v", u.ID, err)
+					err = errors.Wrapf(err, "failed to bind unit %q for %s(%s)", u.ID, instance.ServiceName, instance.Name)
+					multiErr.Add(err)
 					syncErrors.WithLabelValues("bind").Inc()
 				}
 				syncOperations.WithLabelValues("bind").Inc()
@@ -192,12 +198,13 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			err = instance.UnbindUnit(a, u)
 			unbinds[instance.Name] = append(unbinds[instance.Name], u.GetID())
 			if err != nil {
-				log.Errorf("[bind-syncer] failed to unbind unit %q: %v", u.ID, err)
+				err = errors.Wrapf(err, "failed to unbind unit %q for %s(%s)", u.ID, instance.ServiceName, instance.Name)
+				multiErr.Add(err)
 				syncErrors.WithLabelValues("unbind").Inc()
 			}
 			syncOperations.WithLabelValues("unbind").Inc()
 		}
 	}
 	log.Debugf("[bind-syncer] finished sync for app %q", a.GetName())
-	return nil
+	return multiErr.ToError()
 }

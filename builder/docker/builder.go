@@ -1,3 +1,7 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package docker
 
 import (
@@ -9,10 +13,10 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -61,56 +65,26 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
 	imageName := image.GetBuildImage(app)
-	options := docker.CreateContainerOptions{
-		Config: &docker.Config{
-			AttachStdout: true,
-			AttachStderr: true,
-			AttachStdin:  true,
-			User:         user,
-			Image:        imageName,
-		},
+	w := evt
+	fmt.Fprintln(w, "---- Pulling image to node ----")
+	pullOpts := docker.PullImageOptions{
+		Repository:        imageName,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
 	}
-	var cont *docker.Container
-	cont, err = client.CreateContainer(options)
-	if err != nil && err == docker.ErrNoSuchImage {
-		w := evt
-		fmt.Fprintln(w, "---- Pulling image to node ----")
-		pullOpts := docker.PullImageOptions{
-			Repository:        imageName,
-			OutputStream:      w,
-			InactivityTimeout: net.StreamInactivityTimeout,
-		}
-		err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
-		if err != nil {
-			return "", err
-		}
-		cont, err = client.CreateContainer(options)
-		if err != nil {
-			return "", err
-		}
-	} else if err != nil {
-		return "", err
-	}
-	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-	intermediateImageID, fileURI, err := dockercommon.UploadToContainer(client, cont.ID, tarFile)
+	err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
 	if err != nil {
 		return "", err
 	}
-	defer client.RemoveImage(intermediateImageID)
-	cmds := dockercommon.ArchiveDeployCmds(app, fileURI)
-	imageID, err := b.buildPipeline(p, client, app, intermediateImageID, cmds, evt)
+	imageID, err := b.buildPipeline(p, client, app, tarFile, evt, opts.Tag)
 	if err != nil {
 		return "", err
 	}
 	return imageID, nil
 }
 
-func imageBuild(client *docker.Client, app provision.App, imageID string, evt *event.Event) (string, error) {
+func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (string, error) {
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
@@ -118,8 +92,9 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
 	pullOpts := docker.PullImageOptions{
 		Repository:        imageID,
-		OutputStream:      w,
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
 		InactivityTimeout: net.StreamInactivityTimeout,
+		RawJSONStream:     true,
 	}
 	err := client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
 	if err != nil {
@@ -142,11 +117,10 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 	if err != nil {
 		return "", err
 	}
-	app.SetUpdatePlatform(true)
 	return newImage, nil
 }
 
-func runCommandInContainer(client *docker.Client, image string, command string, app provision.App, stdout, stderr io.Writer) error {
+func runCommandInContainer(client provision.BuilderDockerClient, image string, command string, app provision.App, stdout, stderr io.Writer) error {
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -183,7 +157,7 @@ func runCommandInContainer(client *docker.Client, image string, command string, 
 	return nil
 }
 
-func downloadFromContainer(client *docker.Client, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
+func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
 	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
 	if err != nil {
 		return nil, nil, errors.Errorf("App %s image not found", app.GetName())

@@ -31,11 +31,10 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +44,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -80,6 +81,7 @@ func Test(t *testing.T) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_kubernetes_tests_s")
 	config.Set("routers:fake:type", "fake")
@@ -152,12 +154,12 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	p := app.Plan{
+	p := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	err = p.Save()
+	err = app.SavePlan(p)
 	c.Assert(err, check.IsNil)
 	s.p = &kubernetesProvisioner{}
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.Unlimited}
@@ -184,7 +186,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
-					"pool": "test-default",
+					"tsuru.io/pool": "test-default",
 				},
 			},
 			Status: apiv1.NodeStatus{
@@ -371,7 +373,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			provision.PoolMetadataName: a.GetPool(),
+			"tsuru.io/pool": a.GetPool(),
 		})
 		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, "true")

@@ -7,7 +7,7 @@ package dockermachine
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base32"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,6 +19,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 )
 
 var errDriverNotSet = errors.Errorf("driver is mandatory")
@@ -66,7 +67,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	}
 	machineName, ok := params["name"]
 	if !ok {
-		name, err := generateMachineName(params["pool"])
+		name, err := generateMachineName(params[provision.PoolMetadataName])
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +207,9 @@ func generateRandomID() (string, error) {
 	if _, err := io.ReadFull(rand.Reader, id); err != nil {
 		return "", errors.Wrap(err, "failed to generate random id")
 	}
-	return hex.EncodeToString(id), nil
+	str := string(id[0]%('z'-'a') + 'a')
+	encoded := base32.StdEncoding.EncodeToString(id[1:])
+	return str + strings.ToLower(strings.TrimRight(encoded, "=")), nil
 }
 
 func (i *dockerMachineIaaS) Describe() string {

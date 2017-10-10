@@ -79,6 +79,10 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 		if err != nil {
 			return err
 		}
+		envsMap := map[bind.ServiceEnvVar]struct{}{}
+		for _, sEnv := range a.ServiceEnvs {
+			envsMap[sEnv] = struct{}{}
+		}
 		var serviceNames []string
 		for serviceName := range data {
 			serviceNames = append(serviceNames, serviceName)
@@ -89,18 +93,50 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 			instances := data[serviceName]
 			for _, instance := range instances {
 				for k, v := range instance.Envs {
-					serviceEnvs = append(serviceEnvs, bind.ServiceEnvVar{
+					toAppendEnv := bind.ServiceEnvVar{
 						ServiceName:  serviceName,
 						InstanceName: instance.InstanceName,
 						EnvVar:       bind.EnvVar{Name: k, Value: v},
-					})
+					}
+					if _, ok := envsMap[toAppendEnv]; !ok {
+						serviceEnvs = append(serviceEnvs, toAppendEnv)
+					}
 				}
 			}
 		}
 		err = conn.Apps().Update(bson.M{"name": a.Name}, bson.M{
-			"$push":  bson.M{"serviceenvs": bson.M{"$each": serviceEnvs, "$position": 0}},
-			"$unset": bson.M{"env." + app.TsuruServicesEnvVar: ""},
+			"$push": bson.M{"serviceenvs": bson.M{"$each": serviceEnvs, "$position": 0}},
 		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type appWithPlanID struct {
+	Name string
+	Plan planWithID
+}
+
+type planWithID struct {
+	ID   string `bson:"_id"`
+	Name string
+}
+
+func MigrateAppPlanIDToPlanName() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	iter := conn.Apps().Find(nil).Iter()
+	var a appWithPlanID
+	for iter.Next(&a) {
+		if a.Plan.Name != "" || a.Plan.ID == "" {
+			continue
+		}
+		err = conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"plan.name": a.Plan.ID}})
 		if err != nil {
 			return err
 		}

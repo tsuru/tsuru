@@ -59,10 +59,10 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		{"Abacaxi", authTypes.ErrInvalidTeamName},
 		{"TEAM", authTypes.ErrInvalidTeamName},
 		{"TeaM", authTypes.ErrInvalidTeamName},
-		{"team_1", authTypes.ErrInvalidTeamName},
-		{"tsuru@corp.globo.com", authTypes.ErrInvalidTeamName},
+		{"team_1", nil},
+		{"tsuru@corp.globo.com", nil},
 		{"team-1", nil},
-		{"a", nil},
+		{"a", authTypes.ErrInvalidTeamName},
 		{"ab", nil},
 		{"team1", nil},
 	}

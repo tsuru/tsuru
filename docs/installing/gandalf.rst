@@ -26,20 +26,26 @@ Installing
 
 Let's start adding the repositories for tsuru which contain the Gandalf package.
 
-.. highlight:: bash
-
-::
-
-    sudo apt-get update
-    sudo apt-get install curl python-software-properties
-    sudo apt-add-repository ppa:tsuru/ppa -y
-    sudo apt-get update
+deb:
 
 .. highlight:: bash
 
 ::
 
-    sudo apt-get install gandalf-server
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.deb.sh | sudo bash
+    $ sudo apt-get install gandalf-server
+
+rpm:
+
+.. highlight:: bash
+
+::
+
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.rpm.sh | sudo bash
+    $ sudo yum install gandalf-server
+
+For more details, check `packagecloud.io documentation
+<https://packagecloud.io/tsuru/stable/install#bash>`_.
 
 A deploy is executed in the ``git push``. In order to get it working, you will
 need to add a pre-receive hook. tsuru comes with three pre-receive hooks, all

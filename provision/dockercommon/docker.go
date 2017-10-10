@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -21,33 +22,24 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	JsonFileLogDriver = "json-file"
+)
+
+type ClientWithTimeout struct {
+	*docker.Client
+}
+
+func (c *ClientWithTimeout) SetTimeout(timeout time.Duration) {
+	c.Client.HTTPClient.Timeout = timeout
+}
+
 type Client interface {
 	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
 	InspectImage(string) (*docker.Image, error)
 	TagImage(string, docker.TagImageOptions) error
-	UploadToContainer(string, docker.UploadToContainerOptions) error
 	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
 	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
-}
-
-func UploadToContainer(client Client, contID string, archiveFile io.Reader) (string, string, error) {
-	dirPath := "/home/application/"
-	fileName := "archive.tar.gz"
-	uploadOpts := docker.UploadToContainerOptions{
-		InputStream: archiveFile,
-		Path:        dirPath,
-	}
-	err := client.UploadToContainer(contID, uploadOpts)
-	if err != nil {
-		return "", "", err
-	}
-	image, err := client.CommitContainer(docker.CommitContainerOptions{
-		Container: contID,
-	})
-	if err != nil {
-		return "", "", err
-	}
-	return image.ID, fmt.Sprintf("file://%s%s", dirPath, fileName), nil
 }
 
 func DownloadFromContainer(client Client, contID string, filePath string) (io.ReadCloser, error) {
@@ -108,7 +100,7 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 		Name:              repo,
 		Tag:               tag,
 		Registry:          registry,
-		OutputStream:      args.Out,
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: args.Out},
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
@@ -178,7 +170,6 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 			Tag:               tag,
 			OutputStream:      &buf,
 			InactivityTimeout: net.StreamInactivityTimeout,
-			RawJSONStream:     true,
 		}
 		err = client.PushImage(pushOpts, authconfig)
 		if err != nil {

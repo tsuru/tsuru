@@ -914,6 +914,22 @@ func (s *S) TestRoleUpdateUnauthorized(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
+func (s *S) TestRoleUpdateWithoutFields(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	role := bytes.NewBufferString("name=r1&newName=&contextType=&description=")
+	req, err := http.NewRequest("PUT", "/roles", role)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,

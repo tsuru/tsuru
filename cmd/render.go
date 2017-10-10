@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"reflect"
@@ -68,7 +69,7 @@ func (t *Table) SortByColumn(columns ...int) {
 	sort.Sort(rowSliceByColumn{rowSlice: t.rows, columns: columns})
 }
 
-func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
+func (t *Table) addRows(rows rowSlice, sizes []int, buf *bytes.Buffer) {
 	for _, row := range rows {
 		extraRows := rowSlice{}
 		for column, field := range row {
@@ -84,18 +85,18 @@ func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 				}
 				newRow[column] = parts[i+1]
 			}
-			result += "| " + field
-			result += strings.Repeat(" ", sizes[column]+1-runeLen(field))
+			buf.WriteString("| ")
+			buf.WriteString(field)
+			buf.Write(bytes.Repeat([]byte(" "), sizes[column]+1-runeLen(field)))
 		}
-		result += "|\n"
-		result = t.addRows(extraRows, sizes, result)
+		buf.WriteString("|\n")
+		t.addRows(extraRows, sizes, buf)
 		ptr1 := reflect.ValueOf(rows).Pointer()
 		ptr2 := reflect.ValueOf(t.rows).Pointer()
 		if ptr1 == ptr2 && t.LineSeparator {
-			result += t.separator()
+			t.separator(buf, sizes)
 		}
 	}
-	return result
 }
 
 func splitJoinEvery(str string, n int) string {
@@ -231,20 +232,22 @@ func (t *Table) String() string {
 		ttyWidth, _, _ = terminal.GetSize(terminalFd)
 	}
 	sizes := t.resizeLargestColumn(ttyWidth)
-	result := t.separator()
+	buf := bytes.NewBuffer(nil)
+	t.separator(buf, sizes)
 	if t.Headers != nil {
 		for column, header := range t.Headers {
-			result += "| " + header
-			result += strings.Repeat(" ", sizes[column]+1-len(header))
+			buf.WriteString("| ")
+			buf.WriteString(header)
+			buf.Write(bytes.Repeat([]byte(" "), sizes[column]+1-len(header)))
 		}
-		result += "|\n"
-		result += t.separator()
+		buf.WriteString("|\n")
+		t.separator(buf, sizes)
 	}
-	result = t.addRows(t.rows, sizes, result)
+	t.addRows(t.rows, sizes, buf)
 	if !t.LineSeparator {
-		result += t.separator()
+		t.separator(buf, sizes)
 	}
-	return result
+	return buf.String()
 }
 
 func (t *Table) Bytes() []byte {
@@ -296,14 +299,12 @@ func (t *Table) columnsSize() []int {
 	return sizes
 }
 
-func (t *Table) separator() string {
-	result := ""
-	sizes := t.columnsSize()
-	for i := 0; i < len(sizes); i++ {
-		result = result + "+" + strings.Repeat("-", sizes[i]+2)
+func (t *Table) separator(buf *bytes.Buffer, sizes []int) {
+	for _, sz := range sizes {
+		buf.WriteString("+")
+		buf.Write(bytes.Repeat([]byte("-"), sz+2))
 	}
-	result = result + "+" + "\n"
-	return result
+	buf.WriteString("+\n")
 }
 
 type rowSlice []Row

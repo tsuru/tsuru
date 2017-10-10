@@ -98,8 +98,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	err = service.CreateServiceInstance(instance, &srv, user, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &tsuruErrors.HTTP{
@@ -136,7 +135,13 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
+	teamOwner := r.FormValue("teamowner")
+	plan := r.FormValue("plan")
 	tags := r.Form["tag"]
+	srv, err := getService(serviceName)
+	if err != nil {
+		return err
+	}
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
@@ -145,13 +150,19 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 	}
+	if teamOwner != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamowner)
+	}
 	if tags != nil {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
+	}
+	if plan != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdatePlan)
 	}
 	if len(wantedPerms) == 0 {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Neither the description or tags were set. You must define at least one.",
+			Message: "Neither the description, team owner, tags or plan were set. You must define at least one.",
 		}
 	}
 	for _, perm := range wantedPerms {
@@ -164,7 +175,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
-		Kind:       permission.PermServiceInstanceUpdateDescription,
+		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
@@ -177,10 +188,14 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		si.Description = description
 	}
+	if teamOwner != "" {
+		si.TeamOwner = teamOwner
+	}
 	if tags != nil {
 		si.Tags = tags
 	}
-	return si.Update(*si)
+	requestID := requestIDHeader(r)
+	return si.Update(srv, *si, requestID)
 }
 
 // title: remove service instance
@@ -189,6 +204,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // produce: application/x-json-stream
 // responses:
 //   200: Service removed
+//   400: Bad request
 //   401: Unauthorized
 //   404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
@@ -243,12 +259,14 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			}
 		}
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	err = service.DeleteInstance(serviceInstance, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
-			writer.Write([]byte(strings.Join(serviceInstance.Apps, ",")))
+			return &tsuruErrors.HTTP{
+				Message: errors.Wrapf(err, `Applications bound to the service "%s": "%s"`+"\n", instanceName, strings.Join(serviceInstance.Apps, ",")).Error(),
+				Code:    http.StatusBadRequest,
+			}
 		}
 		return err
 	}
@@ -373,8 +391,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	var b string
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	if b, err = serviceInstance.Status(requestID); err != nil {
 		return errors.Wrap(err, "Could not retrieve status of service instance, error")
 	}
@@ -414,8 +431,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	info, err := serviceInstance.Info(requestID)
 	if err != nil {
 		return err
@@ -521,8 +537,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	requestIDHeader, _ := config.GetString("request-id-header")
-	requestID := context.GetRequestID(r, requestIDHeader)
+	requestID := requestIDHeader(r)
 	plans, err := service.GetPlansByServiceName(serviceName, requestID)
 	if err != nil {
 		return err
@@ -686,4 +701,9 @@ func sortedServiceNames(services map[string]*service.ServiceModel) []string {
 	}
 	sort.Strings(serviceNames)
 	return serviceNames
+}
+
+func requestIDHeader(r *http.Request) string {
+	requestIDHeader, _ := config.GetString("request-id-header")
+	return context.GetRequestID(r, requestIDHeader)
 }

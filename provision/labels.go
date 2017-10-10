@@ -34,7 +34,8 @@ var (
 
 	labelNodeInternalPrefix = "tsuru-internal-"
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
-	LabelNodePool           = "pool"
+	LabelNodePool           = PoolMetadataName
+	LabelNodeIaaSID         = IaaSIDMetadataName
 
 	labelVolumeName = "volume-name"
 	labelVolumePool = "volume-pool"
@@ -110,10 +111,15 @@ func (s *LabelSet) NodePool() string {
 	return s.getLabel(LabelNodePool)
 }
 
+func (s *LabelSet) NodeIaaSID() string {
+	return s.getLabel(LabelNodeIaaSID)
+}
+
 func (s *LabelSet) PublicNodeLabels() map[string]string {
 	internalLabels := make(map[string]string)
 	for k, v := range s.Labels {
-		if strings.HasPrefix(k, labelNodeInternalPrefix) {
+		if strings.HasPrefix(k, labelNodeInternalPrefix) ||
+			strings.HasPrefix(k, s.Prefix+labelNodeInternalPrefix) {
 			continue
 		}
 		internalLabels[k] = v
@@ -249,13 +255,14 @@ type ProcessLabelsOpts struct {
 }
 
 func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
-	routerName, err := opts.App.GetRouterName()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	routerType, _, err := router.Type(routerName)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var routerNames, routerTypes []string
+	for _, appRouter := range opts.App.GetRouters() {
+		routerType, _, err := router.Type(appRouter.Name)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		routerNames = append(routerNames, appRouter.Name)
+		routerTypes = append(routerTypes, routerType)
 	}
 	return &LabelSet{
 		Labels: map[string]string{
@@ -265,8 +272,8 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 			labelAppProcess:  opts.Process,
 			labelAppPlatform: opts.App.GetPlatform(),
 			labelAppPool:     opts.App.GetPool(),
-			labelRouterName:  routerName,
-			labelRouterType:  routerType,
+			labelRouterName:  strings.Join(routerNames, ","),
+			labelRouterType:  strings.Join(routerTypes, ","),
 			labelProvisioner: opts.Provisioner,
 			labelBuilder:     opts.Builder,
 		},
@@ -297,20 +304,30 @@ func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 }
 
 type NodeLabelsOpts struct {
+	IaaSID       string
 	Addr         string
 	Pool         string
+	Prefix       string
 	CustomLabels map[string]string
 }
 
 func NodeLabels(opts NodeLabelsOpts) *LabelSet {
-	labels := map[string]string{
-		LabelNodePool: opts.Pool,
-		labelNodeAddr: opts.Addr,
-	}
+	labels := map[string]string{}
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
-	return &LabelSet{Labels: labels}
+	for _, r := range []string{LabelNodePool, labelNodeAddr, LabelNodeIaaSID} {
+		delete(labels, r)
+		delete(labels, opts.Prefix+r)
+	}
+	labels[LabelNodePool] = opts.Pool
+	if opts.Addr != "" {
+		labels[labelNodeAddr] = opts.Addr
+	}
+	if opts.IaaSID != "" {
+		labels[LabelNodeIaaSID] = opts.IaaSID
+	}
+	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
 type VolumeLabelsOpts struct {

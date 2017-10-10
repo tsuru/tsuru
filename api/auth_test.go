@@ -50,6 +50,7 @@ type AuthSuite struct {
 	token      auth.Token
 	server     *authtest.SMTPServer
 	testServer http.Handler
+	conn       *db.Storage
 }
 
 var _ = check.Suite(&AuthSuite{})
@@ -58,6 +59,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	var err error
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:user-registration", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
@@ -72,28 +74,25 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	s.testServer = RunServer(true)
+	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
+	defer s.conn.Close()
 	s.server.Stop()
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	app.PlatformService().Insert(appTypes.Platform{Name: "python"})
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 
@@ -288,13 +287,11 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var user auth.User
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err = conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
+	err = s.conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 	c.Assert(err, check.IsNil)
 	var recorderJSON map[string]string
 	json.Unmarshal(recorder.Body.Bytes(), &recorderJSON)
-	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
+	n, err := s.conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
 }
@@ -506,7 +503,6 @@ func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) 
 	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -525,10 +521,10 @@ func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(
 	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}
-	err = si1.Create()
+	err = s.conn.ServiceInstances().Insert(si1)
 	c.Assert(err, check.IsNil)
 	si2 := service.ServiceInstance{Name: "my_nosql-2", ServiceName: "nosql-service", Teams: []string{team.Name}}
-	err = si2.Create()
+	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -623,13 +619,6 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	defer func() {
-		s.user.RemoveKey(repository.Key{Name: "the-key"})
-		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	}()
 	b := strings.NewReader("name=the-key&key=my-key")
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -695,15 +684,8 @@ func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
-	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	defer func() {
-		s.user.RemoveKey(repository.Key{Name: "the-key", Body: "my-key"})
-		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	}()
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	b := strings.NewReader("name=the-key&key=your-key")
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -716,15 +698,8 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *c
 }
 
 func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
-	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	defer func() {
-		s.user.RemoveKey(repository.Key{Name: "the-key", Body: "my-key"})
-		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	}()
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	b := strings.NewReader("name=the-key&key=my-other-key&force=true")
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -847,8 +822,6 @@ func (s *AuthSuite) TestListKeysKeyManagerDisabled(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
@@ -859,7 +832,7 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUser(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
+	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
 	c.Assert(eventtest.EventDesc{
@@ -873,8 +846,6 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
@@ -885,7 +856,7 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUser(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
+	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
 	c.Assert(eventtest.EventDesc{
@@ -902,8 +873,6 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
@@ -913,7 +882,7 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
+	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
 	c.Assert(eventtest.EventDesc{
@@ -988,15 +957,11 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordAndConfirmPasswordDidntMatch(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	body := strings.NewReader("old=123456&new=12345678&confirm=1234567810")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
@@ -1045,13 +1010,9 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err := resetPassword(recorder, request)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	var m map[string]interface{}
-	err = conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
 	c.Assert(err, check.IsNil)
-	defer conn.PasswordTokens().RemoveId(m["_id"])
 	err = tsurutest.WaitCondition(time.Second, func() bool {
 		s.server.RLock()
 		defer s.server.RUnlock()
@@ -1095,18 +1056,14 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *check.C) {
 }
 
 func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	user := auth.User{Email: "uns@alanis.com", Password: "145678"}
-	err = user.Create()
+	err := user.Create()
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	oldPassword := user.Password
 	err = nativeScheme.StartPasswordReset(&user)
 	c.Assert(err, check.IsNil)
 	var t map[string]interface{}
-	err = conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/users/%s/password?:email=%s&token=%s", user.Email, user.Email, t["_id"])
 	request, _ := http.NewRequest("POST", url, nil)
@@ -1175,15 +1132,11 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("POST", "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
@@ -1194,7 +1147,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 	c.Assert(eventtest.EventDesc{
@@ -1205,15 +1158,11 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "leto@arrakis.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token := s.token
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("POST", "/users/api-key?user=leto@arrakis.com", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1222,7 +1171,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 	c.Assert(eventtest.EventDesc{
@@ -1236,15 +1185,11 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "user@example.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("POST", "/users/api-key?user=myadmin@arrakis.com", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1254,15 +1199,11 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *che
 }
 
 func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("GET", "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1271,21 +1212,17 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 	var got string
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
-	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	count, err := s.conn.Users().Find(bson.M{"apikey": got}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 }
 
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("GET", "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
@@ -1300,8 +1237,6 @@ func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
 }
 
 func (s *AuthSuite) TestShowAPITokenOtherUserAndIsAdminUser(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	user := auth.User{
 		Email:    "user@example.com",
 		Password: "123456",
@@ -1309,9 +1244,7 @@ func (s *AuthSuite) TestShowAPITokenOtherUserAndIsAdminUser(c *check.C) {
 	}
 	_, err := nativeScheme.Create(&user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	token := s.token
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("GET", "/users/api-key?user=user@example.com", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1324,8 +1257,6 @@ func (s *AuthSuite) TestShowAPITokenOtherUserAndIsAdminUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestShowAPITokenOtherUserWithoutPermission(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	users := []auth.User{
 		{
 			Email:    "user1@example.com",
@@ -1341,7 +1272,6 @@ func (s *AuthSuite) TestShowAPITokenOtherUserWithoutPermission(c *check.C) {
 	for _, u := range users {
 		_, err := nativeScheme.Create(&u)
 		c.Assert(err, check.IsNil)
-		defer conn.Users().Remove(bson.M{"email": u.Email})
 	}
 	token := userWithPermission(c)
 	request, err := http.NewRequest("GET", "/users/api-key?user=user@example.com", nil)

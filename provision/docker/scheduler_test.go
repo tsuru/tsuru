@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/pool"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -33,7 +34,7 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
-	err := s.storage.Apps().Insert(a1, a2, a3)
+	err := s.conn.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
@@ -72,13 +73,47 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	node, err := scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
+	node, err := scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	c.Check(node.Address, check.Equals, server1.URL())
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	node, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: "web"})
+	node, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	c.Check(node.Address, check.Equals, localURL)
+}
+
+func (s *S) TestSchedulerScheduleChangesContainerName(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "test-default"}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
+	err := s.conn.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	contColl := s.p.Collection()
+	defer contColl.Close()
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	err = clusterInstance.Register(cluster.Node{
+		Address:  server1.URL(),
+		Metadata: map[string]string{"pool": "test-default"},
+	})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	node, err := scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web", UpdateName: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(opts.Name, check.Not(check.Equals), cont1.Name)
+	c.Assert(node.Address, check.Equals, server1.URL())
+	var dbConts []container.Container
+	err = contColl.Find(nil).All(&dbConts)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbConts, check.HasLen, 1)
+	c.Assert(dbConts[0].Name, check.Equals, opts.Name)
+	c.Assert(dbConts[0].HostAddr, check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestSchedulerScheduleNoName(c *check.C) {
@@ -88,7 +123,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
-	err := s.storage.Apps().Insert(a1, a2, a3)
+	err := s.conn.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
@@ -127,7 +162,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
-	node, err := scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
+	node, err := scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	c.Check(node.Address, check.Equals, server1.URL())
 	container, err := s.p.GetContainer(cont1.ID)
@@ -137,7 +172,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 
 func (s *S) TestSchedulerNoNodes(c *check.C) {
 	app := app.App{Name: "bill", Pool: "mypool"}
-	err := s.storage.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
@@ -150,7 +185,7 @@ func (s *S) TestSchedulerNoNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
 	schedOpts := &container.SchedulerOpts{AppName: app.Name, ProcessName: "web"}
-	node, err := scheduler.Schedule(clusterInstance, opts, schedOpts)
+	node, err := scheduler.Schedule(clusterInstance, &opts, schedOpts)
 	c.Assert(node.Address, check.Equals, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, "error in scheduler: No nodes found with one of the following metadata: pool=mypool")
@@ -160,11 +195,11 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
-	err := s.storage.Apps().Insert(app1)
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
+	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -205,7 +240,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
 		}
-		node, schedErr := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+		node, schedErr := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 		c.Assert(schedErr, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
@@ -227,7 +262,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	opts := docker.CreateContainerOptions{
 		Name: cont.Name,
 	}
-	node, err := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+	node, err := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 	c.Assert(err, check.ErrorMatches, `.*no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
 	c.Assert(node, check.DeepEquals, cluster.Node{})
 }
@@ -251,11 +286,11 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app1)
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -296,7 +331,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
 		}
-		node, schedErr := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+		node, schedErr := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 		c.Assert(schedErr, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
@@ -318,7 +353,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	opts := docker.CreateContainerOptions{
 		Name: cont.Name,
 	}
-	node, err := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+	node, err := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
 	c.Assert(node, check.NotNil)
 	c.Assert(logBuf.String(), check.Matches, `(?s).*WARNING: no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
@@ -340,11 +375,11 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app1)
+	app1 := app.App{Name: "skyrim", Plan: appTypes.Plan{Memory: 60000}, Pool: "mypool"}
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
-	err = s.storage.Apps().Insert(app2)
+	app2 := app.App{Name: "oblivion", Plan: appTypes.Plan{Memory: 20000}, Pool: "mypool"}
+	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
@@ -385,7 +420,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
 		}
-		node, schedErr := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+		node, schedErr := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 		c.Assert(schedErr, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
@@ -407,13 +442,14 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	opts := docker.CreateContainerOptions{
 		Name: cont.Name,
 	}
-	node, err := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+	node, err := segSched.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
 	c.Assert(err, check.ErrorMatches, `.*no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
 	c.Assert(node, check.DeepEquals, cluster.Node{})
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	nodes := []cluster.Node{
 		{Address: "http://server1:1234"},
 		{Address: "http://server2:1234"},
@@ -757,9 +793,9 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	a2 := app.App{Name: "notimpius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a2.Name, ProcessName: "web"}}
 	cont4 := container.Container{Container: types.Container{ID: "4", Name: "dedication2", AppName: a2.Name, ProcessName: "worker"}}
-	err := s.storage.Apps().Insert(a1)
+	err := s.conn.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Insert(a2)
+	err = s.conn.Apps().Insert(a2)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
@@ -798,16 +834,16 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: cont3.ProcessName})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: cont3.ProcessName})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont4.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: cont4.ProcessName})
+	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a2.Name, ProcessName: cont4.ProcessName})
 	c.Assert(err, check.IsNil)
 	cont, err := scheduler.GetRemovableContainer(a1.Name, "web")
 	c.Assert(err, check.IsNil)

@@ -102,36 +102,41 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // miniApp is a minimal representation of the app, created to make appList
 // faster and transmit less data.
 type miniApp struct {
-	Name      string            `json:"name"`
-	Pool      string            `json:"pool"`
-	TeamOwner string            `json:"teamowner"`
-	Plan      app.Plan          `json:"plan"`
-	Units     []provision.Unit  `json:"units"`
-	CName     []string          `json:"cname"`
-	IP        string            `json:"ip"`
-	Lock      provision.AppLock `json:"lock"`
-	Tags      []string          `json:"tags"`
-	Error     string            `json:"error,omitempty"`
+	Name      string               `json:"name"`
+	Pool      string               `json:"pool"`
+	TeamOwner string               `json:"teamowner"`
+	Plan      appTypes.Plan        `json:"plan"`
+	Units     []provision.Unit     `json:"units"`
+	CName     []string             `json:"cname"`
+	IP        string               `json:"ip"`
+	Routers   []appTypes.AppRouter `json:"routers"`
+	Lock      provision.AppLock    `json:"lock"`
+	Tags      []string             `json:"tags"`
+	Error     string               `json:"error,omitempty"`
 }
 
 func minifyApp(app app.App) (miniApp, error) {
-	var unitsError string
+	var errorStr string
 	units, err := app.Units()
 	if err != nil {
-		unitsError = fmt.Sprintf("unable to list app units: %+v", err)
+		errorStr = fmt.Sprintf("unable to list app units: %+v", err)
 	}
-	return miniApp{
+	ma := miniApp{
 		Name:      app.Name,
 		Pool:      app.Pool,
 		Plan:      app.Plan,
 		TeamOwner: app.TeamOwner,
 		Units:     units,
 		CName:     app.CName,
-		IP:        app.IP,
+		Routers:   app.Routers,
 		Lock:      &app.Lock,
 		Tags:      app.Tags,
-		Error:     unitsError,
-	}, nil
+		Error:     errorStr,
+	}
+	if len(ma.Routers) > 0 {
+		ma.IP = ma.Routers[0].Address
+	}
+	return ma, nil
 }
 
 func appFilterByContext(contexts []permission.PermissionContext, filter *app.Filter) *app.Filter {
@@ -272,7 +277,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	a := app.App{
 		TeamOwner:   ia.TeamOwner,
 		Platform:    ia.Platform,
-		Plan:        app.Plan{Name: ia.Plan},
+		Plan:        appTypes.Plan{Name: ia.Plan},
 		Name:        ia.Name,
 		Description: ia.Description,
 		Pool:        ia.Pool,
@@ -359,10 +364,16 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	msg := map[string]string{
+	msg := map[string]interface{}{
 		"status":         "success",
 		"repository_url": repo.ReadWriteURL,
-		"ip":             a.IP,
+	}
+	addrs, err := a.GetAddresses()
+	if err != nil {
+		return err
+	}
+	if len(addrs) > 0 {
+		msg["ip"] = addrs[0]
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
@@ -396,7 +407,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	imageReset, _ := strconv.ParseBool(r.FormValue("imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
-		Plan:           app.Plan{Name: ia.Plan},
+		Plan:           appTypes.Plan{Name: ia.Plan},
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
@@ -411,6 +422,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	var wantedPerms []*permission.PermissionScheme
+	if updateData.Router != "" || len(updateData.RouterOpts) > 0 {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "updating router was deprecated, please add the wanted router and remove the old one"}
+	}
 	if updateData.Description != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateDescription)
 	}
@@ -426,9 +440,6 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.TeamOwner != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTeamowner)
 	}
-	if updateData.Router != "" {
-		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouter)
-	}
 	if updateData.Platform != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlatform)
 		updateData.UpdatePlatform = true
@@ -436,11 +447,8 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.UpdatePlatform {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
 	}
-	if len(updateData.RouterOpts) > 0 {
-		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouterOpts)
-	}
 	if len(wantedPerms) == 0 {
-		msg := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one."
+		msg := "Neither the description, plan, pool, team owner or platform were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
@@ -467,7 +475,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Update(updateData, writer)
-	if err == app.ErrPlanNotFound {
+	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if _, ok := err.(*router.ErrRouterNotFound); ok {
@@ -646,6 +654,7 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var hostInput provision.NodeStatusData
 	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&hostInput, r.Form)
 	if err != nil {
@@ -1669,6 +1678,10 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	if r.Header.Get("X-Agent-Version") == "" {
+		msgError := fmt.Sprintf("Please contact admin. %s platform is using outdated deploy-agent version, minimum required version is 0.2.4", a.GetPlatform())
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msgError}
+	}
 	defer r.Body.Close()
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1689,7 +1702,7 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	err = a.RegisterUnit(hostname, customData)
 	if err != nil {
-		if _, ok := err.(*provision.UnitNotFoundError); ok {
+		if err, ok := err.(*provision.UnitNotFoundError); ok {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -1754,7 +1767,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	result := &rebuild.RebuildRoutesResult{}
+	result := map[string]rebuild.RebuildRoutesResult{}
 	defer func() { evt.DoneCustomData(err, result) }()
 	w.Header().Set("Content-Type", "application/json")
 	result, err = rebuild.RebuildRoutes(&a, dry)

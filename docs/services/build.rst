@@ -148,6 +148,38 @@ Let's create the view for this action:
         # use the given parameters to create the instance
         return "", 201
 
+Updating service instances
+--------------------------
+
+When a service instance is updated, tsuru sends a PUT to /resources with the updated
+parameters for the instance. If the service instance is successfully updated, your
+API should return 200 in status code.
+
+This endpoint is optional. That means you could leave it unimplemented and return a
+404 status code, and tsuru would simply ignore it.
+
+Here's an example implementation for this endpoint:
+
+.. highlight:: python
+
+::
+
+    from flask import request
+
+
+    @app.route("/resources", methods=["POST"])
+    def add_instance():
+
+    @app.route("/resources/<name>", methods=["PUT"])
+    def update_instance(name):
+        name = request.form.get("name")
+        description = request.form.get("description")
+        tags = request.form.get("tag")
+        team = request.form.get("team")
+        plan = request.form.get("plan")
+        # use the given parameters to update the instance "name"
+        return "", 200
+
 Binding instances to apps
 -------------------------
 

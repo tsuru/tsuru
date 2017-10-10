@@ -28,6 +28,8 @@ import (
 
 const (
 	EventKind = "autoscale"
+
+	lockWaitTimeout = 30 * time.Second
 )
 
 var globalConfig *Config
@@ -39,6 +41,7 @@ type Config struct {
 	done                chan bool
 	writer              io.Writer
 	running             bool
+	Enabled             bool
 }
 
 func CurrentConfig() (*Config, error) {
@@ -51,6 +54,7 @@ func CurrentConfig() (*Config, error) {
 func Initialize() error {
 	globalConfig = newConfig()
 	shutdown.Register(globalConfig)
+	globalConfig.running = true
 	go globalConfig.run()
 	return nil
 }
@@ -69,6 +73,7 @@ func newConfig() *Config {
 		TotalMemoryMetadata: totalMemoryMetadata,
 		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		RunInterval:         time.Duration(runInterval) * time.Second,
+		Enabled:             true,
 		done:                make(chan bool),
 	}
 	if c.RunInterval == 0 {
@@ -78,14 +83,6 @@ func newConfig() *Config {
 		c.WaitTimeNewMachine = 5 * time.Minute
 	}
 	return c
-}
-
-type errAppNotLocked struct {
-	app string
-}
-
-func (e errAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.app)
 }
 
 type ScalerResult struct {
@@ -115,7 +112,6 @@ func (a *Config) scalerForRule(rule *Rule) (autoScaler, error) {
 }
 
 func (a *Config) run() error {
-	a.running = true
 	for {
 		err := a.runScaler()
 		if err != nil {
@@ -234,27 +230,21 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	}
 	evt.SetLogWriter(a.writer)
 	var retErr error
-	var sResult *ScalerResult
-	var evtNodes []provision.NodeSpec
-	var rule *Rule
+	customData := EventCustomData{}
 	defer func() {
 		if retErr != nil {
 			evt.Logf(retErr.Error())
 		}
-		if (sResult == nil && retErr == nil) || (sResult != nil && sResult.NoAction()) {
+		if (customData.Result == nil && retErr == nil) || (customData.Result != nil && customData.Result.NoAction()) {
 			evt.Logf("nothing to do for %q: %q", provision.PoolMetadataName, pool)
 			evt.Abort()
 		} else {
-			evt.DoneCustomData(retErr, EventCustomData{
-				Result: sResult,
-				Nodes:  evtNodes,
-				Rule:   rule,
-			})
+			evt.DoneCustomData(retErr, customData)
 		}
 	}()
-	rule, err = AutoScaleRuleForMetadata(pool)
+	customData.Rule, err = AutoScaleRuleForMetadata(pool)
 	if err == mgo.ErrNotFound {
-		rule, err = AutoScaleRuleForMetadata("")
+		customData.Rule, err = AutoScaleRuleForMetadata("")
 	}
 	if err != nil {
 		if err != mgo.ErrNotFound {
@@ -264,48 +254,47 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 		evt.Logf("no auto scale rule for %s", pool)
 		return
 	}
-	if !rule.Enabled {
+	if !customData.Rule.Enabled {
 		evt.Logf("auto scale rule disabled for %s", pool)
 		return
 	}
-	scaler, err := a.scalerForRule(rule)
+	scaler, err := a.scalerForRule(customData.Rule)
 	if err != nil {
 		retErr = errors.Wrapf(err, "error getting scaler for %s", pool)
 		return
 	}
 	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
-	sResult, err = scaler.scale(pool, nodes)
+	customData.Result, err = scaler.scale(pool, nodes)
 	if err != nil {
-		if _, ok := err.(errAppNotLocked); ok {
+		if _, ok := err.(app.ErrAppNotLocked); ok {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
 			return
 		}
 		retErr = errors.Wrapf(err, "error scaling group %s", pool)
 		return
 	}
-	if sResult.ToAdd > 0 {
-		evt.Logf("running event \"add\" for %q: %#v", pool, sResult)
-		evtNodes, err = a.addMultipleNodes(evt, prov, nodes, sResult.ToAdd)
+	if customData.Result.ToAdd > 0 {
+		evt.Logf("running event \"add\" for %q: %#v", pool, customData.Result)
+		customData.Nodes, err = a.addMultipleNodes(evt, prov, pool, nodes, customData.Result.ToAdd)
 		if err != nil {
-			if len(evtNodes) == 0 {
+			if len(customData.Nodes) == 0 {
 				retErr = err
-				return
 			}
 			evt.Logf("not all required nodes were created: %s", err)
 		}
-	} else if len(sResult.ToRemove) > 0 {
-		evt.Logf("running event \"remove\" for %q: %#v", pool, sResult)
-		evtNodes = sResult.ToRemove
-		err = a.removeMultipleNodes(evt, prov, sResult.ToRemove)
+	} else if len(customData.Result.ToRemove) > 0 {
+		evt.Logf("running event \"remove\" for %q: %#v", pool, customData.Result)
+		customData.Nodes = customData.Result.ToRemove
+		err = a.removeMultipleNodes(evt, prov, customData.Result.ToRemove)
 		if err != nil {
 			retErr = err
 			return
 		}
 	}
-	if !rule.PreventRebalance {
-		err := a.rebalanceIfNeeded(evt, prov, pool, nodes, sResult)
+	if !customData.Rule.PreventRebalance {
+		err := a.rebalanceIfNeeded(evt, prov, pool, nodes, &customData)
 		if err != nil {
-			if sResult.IsRebalanceOnly() {
+			if customData.Result.IsRebalanceOnly() {
 				retErr = err
 			} else {
 				evt.Logf("unable to rebalance: %s", err.Error())
@@ -314,8 +303,8 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	}
 }
 
-func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, sResult *ScalerResult) error {
-	if len(sResult.ToRemove) > 0 {
+func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, customData *EventCustomData) error {
+	if len(customData.Result.ToRemove) > 0 {
 		return nil
 	}
 	rebalanceProv, ok := prov.(provision.NodeRebalanceProvisioner)
@@ -325,18 +314,18 @@ func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisio
 	buf := safe.NewBuffer(nil)
 	writer := io.MultiWriter(buf, evt)
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
-		Force:          false,
-		MetadataFilter: map[string]string{provision.PoolMetadataName: pool},
-		Writer:         writer,
+		Force:  len(customData.Nodes) > 0,
+		Pool:   pool,
+		Writer: writer,
 	})
-	sResult.ToRebalance = shouldRebalance
+	customData.Result.ToRebalance = shouldRebalance
 	if err != nil {
 		return errors.Wrapf(err, "unable to rebalance containers. log: %s", buf.String())
 	}
 	return nil
 }
 
-func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
+func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, pool string, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 	nodesCh := make(chan provision.Node, count)
@@ -344,7 +333,7 @@ func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvision
 	for i := 0; i < count; i++ {
 		go func() {
 			defer wg.Done()
-			node, err := a.addNode(evt, prov, modelNodes)
+			node, err := a.addNode(evt, prov, pool, modelNodes)
 			if err != nil {
 				errCh <- err
 				return
@@ -362,7 +351,7 @@ func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvision
 	return nodes, <-errCh
 }
 
-func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node) (provision.Node, error) {
+func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, pool string, modelNodes []provision.Node) (provision.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
 		return nil, err
@@ -378,7 +367,9 @@ func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, model
 	newAddr := machine.FormatNodeAddress()
 	evt.Logf("new machine created: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
+		IaaSID:     machine.Id,
 		Address:    newAddr,
+		Pool:       pool,
 		Metadata:   metadata,
 		WaitTO:     a.WaitTimeNewMachine,
 		CaCert:     machine.CaCert,
@@ -425,7 +416,7 @@ func (a *Config) removeMultipleNodes(evt *event.Event, prov provision.NodeProvis
 				errCh <- errors.Wrapf(err, "unable to unregister node %s for removal", node.Address)
 				return
 			}
-			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], net.URLToHost(node.Address))
+			m, err := iaas.FindMachineByIdOrAddress(node.IaaSID, net.URLToHost(node.Address))
 			if err != nil {
 				evt.Logf("unable to find machine for removal in iaas: %s", err)
 				return
@@ -522,17 +513,15 @@ func preciseUnitsByNode(pool string, nodes []provision.Node) (map[string][]provi
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range appsInPool {
-		var locked bool
-		locked, err = app.AcquireApplicationLock(a.Name, app.InternalAppName, "node auto scale")
-		if err != nil {
-			return nil, err
-		}
-		if !locked {
-			return nil, errAppNotLocked{app: a.Name}
-		}
-		defer app.ReleaseApplicationLock(a.Name)
+	appNames := make([]string, len(appsInPool))
+	for i, a := range appsInPool {
+		appNames[i] = a.Name
 	}
+	err = app.AcquireApplicationLockWaitMany(appNames, app.InternalAppName, "node auto scale", lockWaitTimeout)
+	if err != nil {
+		return nil, err
+	}
+	defer app.ReleaseApplicationLockMany(appNames)
 	unitsByNode := map[string][]provision.Unit{}
 	for _, node := range nodes {
 		var nodeUnits []provision.Unit

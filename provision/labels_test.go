@@ -135,15 +135,19 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 
 func (s *S) TestNodeLabels(c *check.C) {
 	opts := provision.NodeLabelsOpts{
+		IaaSID:       "vm-1234",
 		Addr:         "localhost:80",
 		Pool:         "mypool",
 		CustomLabels: map[string]string{"data": "1"},
+		Prefix:       "myprefix",
 	}
 	c.Assert(provision.NodeLabels(opts), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"tsuru-internal-node-addr": "localhost:80",
-			"pool": "mypool",
-			"data": "1",
+			"pool":    "mypool",
+			"data":    "1",
+			"iaas-id": "vm-1234",
 		},
+		Prefix: "myprefix",
 	})
 }

@@ -82,6 +82,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
@@ -344,6 +345,60 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   12,
+			"kind":       "upload",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Builder deploy called`,
+	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		Router:    "fake",
+		TeamOwner: s.team.Name,
+	}
+
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("file", "archive.tar.gz")
+	c.Assert(err, check.IsNil)
+	// Must be larger than 32MB to be stored in a tempfile.
+	payload := bytes.Repeat([]byte("*"), 33<<20)
+	file.Write(payload)
+	writer.Close()
+	request, err := http.NewRequest("POST", url, &body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   33 << 20,
 			"kind":       "upload",
 			"archiveurl": "",
 			"user":       s.token.GetUserName(),
@@ -976,7 +1031,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 
 func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *check.C) {
 	recorder := httptest.NewRecorder()
-	url := fmt.Sprintf("/deploys/xpto")
+	url := "/deploys/xpto"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	server := RunServer(true)
@@ -1146,11 +1201,21 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Router:    "fake",
+	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	b := app.App{Name: "otherapp2", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(&b, user)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("origin", "rollback")
@@ -1168,7 +1233,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	var body map[string]string
 	err = json.Unmarshal(recorder.Body.Bytes(), &body)
 	c.Assert(err, check.IsNil)
-	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": `invalid version: "v3"`})
+	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": "Invalid version: v3"})
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
@@ -1301,4 +1366,170 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 			"image": "app-image",
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	d, err := image.GetImageMetaData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(d.DisableRollback, check.Equals, false)
+	v := url.Values{}
+	v.Set("disable", "true")
+	v.Set("reason", "because of reasons")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	d, err = image.GetImageMetaData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(d.DisableRollback, check.Equals, true)
+}
+
+func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	v.Set("reason", "")
+	v.Set("image", "v10")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid version: v10\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	v.Set("reason", "")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Image v1 not found in app \"otherapp\"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "rimworld", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "you must specify an image\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "true")
+	v.Set("reason", "")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Reason cannot be empty while disabling a image rollback\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateErrNoPerms(c *check.C) {
+	user := &auth.User{Email: "janna@zaun.com", Password: "jannazaun123"}
+	err := user.Create()
+	c.Assert(err, check.IsNil)
+	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	err = app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	v.Set("reason", "Zaun is under attack!")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }

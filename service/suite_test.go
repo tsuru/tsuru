@@ -54,21 +54,17 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_service_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.user = &auth.User{Email: "cidade@raul.com"}
-	err = s.user.Create()
-	c.Assert(err, check.IsNil)
-	if err != nil {
-		c.Fail()
-	}
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
-	s.team = &authTypes.Team{Name: "Raul"}
-	err := auth.TeamService().Insert(*s.team)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.user = &auth.User{Email: "cidade@raul.com"}
+	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens"})
+	s.team = &authTypes.Team{Name: "Raul"}
+	err = auth.TeamService().Insert(*s.team)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

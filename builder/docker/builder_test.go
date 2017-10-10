@@ -27,6 +27,8 @@ import (
 )
 
 func (s *S) TestBuilderArchiveURL(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -50,7 +52,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 }
 
 func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
@@ -80,6 +82,8 @@ func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 }
 
 func (s *S) TestBuilderArchiveFile(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -100,7 +104,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 }
 
 func (s *S) TestBuilderImageID(c *check.C) {
@@ -153,16 +157,15 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
-	updatedApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -213,7 +216,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
 }
@@ -311,7 +314,7 @@ func (s *S) TestBuilderImageIDMWithProcfile(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -368,13 +371,15 @@ func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 2)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -395,7 +400,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	_, err = image.AppNewImageName(a.Name)
 	c.Assert(err, check.IsNil)
 	bopts = builder.BuildOpts{
@@ -403,10 +408,12 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	imgID, err = s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v2-builder")
+	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }
 
 func (s *S) TestBuilderErasesOldImages(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 2)
+	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -439,7 +446,7 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-myapp:v1-builder", "tsuru/python:latest"}
+	expected := []string{s.team.Name + "/app-myapp:v1-builder", "tsuru/python:latest"}
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
@@ -449,11 +456,11 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgs, err = dclient.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	got = []string{imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-myapp:v2-builder", "tsuru/python:latest"}
+	expected = []string{s.team.Name + "/app-myapp:v2-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 }

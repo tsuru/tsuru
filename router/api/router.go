@@ -78,13 +78,20 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	}
 	debug, _ := config.GetBool(configPrefix + ":debug")
 	headers, _ := config.Get(configPrefix + ":headers")
-	var headerMap map[string]string
+	headerMap := make(map[string]string)
 	if headers != nil {
-		h, ok := headers.(map[string]string)
+		h, ok := headers.(map[interface{}]interface{})
 		if !ok {
 			return nil, errors.Errorf("invalid header configuration: %v", headers)
 		}
-		headerMap = h
+		for k, v := range h {
+			k, okK := k.(string)
+			v, okV := v.(string)
+			if !okK || !okV {
+				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
+			}
+			headerMap[k] = v
+		}
 	}
 	baseRouter := &apiRouter{
 		routerName: routerName,
@@ -133,12 +140,20 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return baseRouter, nil
 }
 
+func (r *apiRouter) GetName() string {
+	return r.routerName
+}
+
 func (r *apiRouter) AddBackend(name string) (err error) {
 	return r.AddBackendOpts(name, nil)
 }
 
 func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
-	return r.doBackendOpts(name, http.MethodPost, opts)
+	err := r.doBackendOpts(name, http.MethodPost, opts)
+	if err != nil {
+		return err
+	}
+	return router.Store(name, name, routerType)
 }
 
 func (r *apiRouter) UpdateBackendOpts(name string, opts map[string]string) error {
@@ -177,14 +192,18 @@ func (r *apiRouter) RemoveBackend(name string) (err error) {
 }
 
 func (r *apiRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(name, http.MethodPost, addresses)
+	return r.doRoutes(name, addresses, "")
 }
 
 func (r *apiRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(name, http.MethodDelete, addresses)
+	return r.doRoutes(name, addresses, "/remove")
 }
 
-func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
+func (r *apiRouter) doRoutes(name string, addresses []*url.URL, suffix string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	req := &routesReq{}
 	req.Addresses = make([]string, len(addresses))
 	for i := range addresses {
@@ -195,8 +214,8 @@ func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
 		return err
 	}
 	body := bytes.NewReader(data)
-	path := fmt.Sprintf("backend/%s/routes", name)
-	_, statusCode, err := r.do(method, path, body)
+	path := fmt.Sprintf("backend/%s/routes%s", backendName, suffix)
+	_, statusCode, err := r.do(http.MethodPost, path, body)
 	if statusCode == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
@@ -204,7 +223,11 @@ func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
 }
 
 func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
-	path := fmt.Sprintf("backend/%s/routes", name)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("backend/%s/routes", backendName)
 	data, statusCode, err := r.do(http.MethodGet, path, nil)
 	if statusCode == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
@@ -217,6 +240,7 @@ func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
+	result = []*url.URL{}
 	for _, addr := range req.Addresses {
 		u, err := url.Parse(addr)
 		if err != nil {
@@ -228,7 +252,11 @@ func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
 }
 
 func (r *apiRouter) Addr(name string) (addr string, err error) {
-	path := fmt.Sprintf("backend/%s", name)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", err
+	}
+	path := fmt.Sprintf("backend/%s", backendName)
 	data, code, err := r.do(http.MethodGet, path, nil)
 	if err != nil {
 		if code == http.StatusNotFound {
@@ -247,7 +275,10 @@ func (r *apiRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err 
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *apiRouter) StartupMessage() (string, error) {
@@ -315,8 +346,14 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 }
 
 func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
-	_, code, err := r.do(http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", name, cname), nil)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), nil)
 	switch code {
+	case http.StatusBadRequest:
+		return router.ErrCNameNotAllowed
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
 	case http.StatusConflict:
@@ -326,7 +363,11 @@ func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
 }
 
 func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
-	data, code, err := r.do(http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", name, cname), nil)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	data, code, err := r.do(http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), nil)
 	switch code {
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
@@ -339,7 +380,11 @@ func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
 }
 
 func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
-	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/cname", name), nil)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/cname", backendName), nil)
 	if code == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
@@ -353,11 +398,7 @@ func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
 	}
 	var urls []*url.URL
 	for _, addr := range resp.Cnames {
-		parsed, err := url.Parse(addr)
-		if err != nil {
-			return nil, err
-		}
-		urls = append(urls, parsed)
+		urls = append(urls, &url.URL{Host: addr})
 	}
 	return urls, nil
 }
@@ -397,11 +438,15 @@ func (r *apiRouterWithTLSSupport) GetCertificate(cname string) (string, error) {
 }
 
 func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data router.HealthcheckData) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	_, code, err := r.do(http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", name), bytes.NewReader(b))
+	_, code, err := r.do(http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", backendName), bytes.NewReader(b))
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}

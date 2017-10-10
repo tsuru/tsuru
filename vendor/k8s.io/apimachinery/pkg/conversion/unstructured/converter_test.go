@@ -121,7 +121,8 @@ func doRoundTrip(t *testing.T, item runtime.Object) {
 		return
 	}
 
-	newUnstr, err := DefaultConverter.ToUnstructured(item)
+	newUnstr := make(map[string]interface{})
+	err = DefaultConverter.ToUnstructured(item, &newUnstr)
 	if err != nil {
 		t.Errorf("ToUnstructured failed: %v", err)
 		return

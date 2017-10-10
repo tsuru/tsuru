@@ -5,8 +5,10 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"sort"
+	"testing"
 
 	"gopkg.in/check.v1"
 )
@@ -71,11 +73,10 @@ func (s *S) TestColumnsSize(c *check.C) {
 
 func (s *S) TestSeparator(c *check.C) {
 	table := NewTable()
-	table.AddRow(Row{"One", "1"})
-	table.AddRow(Row{"Two", "2"})
-	table.AddRow(Row{"Three", "3"})
 	expected := "+-------+---+\n"
-	c.Assert(table.separator(), check.Equals, expected)
+	buf := bytes.NewBuffer(nil)
+	table.separator(buf, []int{5, 1})
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
 func (s *S) TestHeadings(c *check.C) {
@@ -463,4 +464,20 @@ jk`})
 	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
 3: ↵
 4`})
+}
+
+func BenchmarkString(b *testing.B) {
+	b.StopTimer()
+	table := NewTable()
+	table.Headers = Row{"row 1", "row 2", "row 3", "row 4"}
+	for i := 0; i < 100; i++ {
+		table.AddRow(Row{"my big string", "other string", "small", `largest string in the whole table
+continuing string
+another line
+yet another big line`})
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_ = table.String()
+	}
 }

@@ -140,6 +140,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Password: r.FormValue("password"),
 		Name:     r.URL.Query().Get(":name"),
 	}
+	team := r.FormValue("team")
 	s, err := getService(d.Name)
 	if err != nil {
 		return err
@@ -165,6 +166,9 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
+	if team != "" {
+		s.OwnerTeams = []string{team}
+	}
 	return s.Update()
 }
 

@@ -7,7 +7,9 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,19 +18,23 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
-	tsuruLabelPrefix = "tsuru.io/"
+	tsuruLabelPrefix     = "tsuru.io/"
+	tsuruInProgressTaint = tsuruLabelPrefix + "inprogress"
+	replicaDepRevision   = "deployment.kubernetes.io/revision"
+	kubeKindReplicaSet   = "ReplicaSet"
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
@@ -70,7 +76,7 @@ func volumeClaimName(name string) string {
 	return fmt.Sprintf("%s-tsuru-claim", name)
 }
 
-func waitFor(timeout time.Duration, fn func() (bool, error)) error {
+func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() error) error {
 	timeoutCh := time.After(timeout)
 	for {
 		done, err := fn()
@@ -82,56 +88,118 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 		}
 		select {
 		case <-timeoutCh:
-			return errors.Errorf("timeout after %v", timeout)
+			if onTimeout == nil {
+				err = errors.Errorf("timeout after %v", timeout)
+			} else {
+				err = errors.Errorf("timeout after %v: %v", timeout, onTimeout())
+			}
+			return err
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
 }
 
-func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func podsForAppProcess(client *clusterClient, a provision.App, process string) (*apiv1.PodList, error) {
+	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
 		},
+	}
+	l, err := provision.ServiceLabels(labelOpts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var selector map[string]string
+	if process == "" {
+		selector = l.ToAppSelector()
+	} else {
+		selector = l.ToSelector()
+	}
+	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
+	return podList, nil
+}
+
+func allNewPodsRunning(client *clusterClient, a provision.App, process string, generation int64) (bool, error) {
+	labelOpts := provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	}
+	ls, err := provision.ServiceLabels(labelOpts)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	replicaSets, err := client.Extensions().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return false, errors.WithStack(err)
 	}
-	var podsForEvts []string
-podsLoop:
+	generationStr := strconv.Itoa(int(generation))
+	var replica *v1beta1.ReplicaSet
+	for i, rs := range replicaSets.Items {
+		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == generationStr {
+			replica = &replicaSets.Items[i]
+			break
+		}
+	}
+	if replica == nil {
+		return false, nil
+	}
+	pods, err := podsForAppProcess(client, a, process)
+	if err != nil {
+		return false, err
+	}
+	newCount := 0
 	for _, pod := range pods.Items {
+		newPod := false
+		for _, ref := range pod.OwnerReferences {
+			if ref.Kind == kubeKindReplicaSet && ref.Name == replica.Name {
+				newPod = true
+				break
+			}
+		}
+		if !newPod {
+			continue
+		}
+		newCount++
+		if pod.Status.Phase != apiv1.PodRunning {
+			return false, nil
+		}
+	}
+	return newCount > 0, nil
+}
+
+func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
+	pods, err := podsForAppProcess(client, a, process)
+	if err != nil {
+		return nil, err
+	}
+	var podsForEvts []*apiv1.Pod
+podsLoop:
+	for i, pod := range pods.Items {
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
-				podsForEvts = append(podsForEvts, pod.Name)
+				podsForEvts = append(podsForEvts, &pods.Items[i])
 				continue podsLoop
 			}
 		}
 	}
 	var messages []string
-	for _, podName := range podsForEvts {
-		eventsInterface := client.Core().Events(client.Namespace())
-		ns := client.Namespace()
-		selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-		options := metav1.ListOptions{FieldSelector: selector.String()}
-		var events *apiv1.EventList
-		events, err = eventsInterface.List(options)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if len(events.Items) == 0 {
-			continue
-		}
-		lastEvt := events.Items[len(events.Items)-1]
-		messages = append(messages, fmt.Sprintf("Pod %s: %s - %s", podName, lastEvt.Reason, lastEvt.Message))
+	for _, pod := range podsForEvts {
+		err = newInvalidPodPhaseError(client, pod)
+		messages = append(messages, fmt.Sprintf("Pod %s: %v", pod.Name, err))
 	}
 	return messages, nil
 }
@@ -160,7 +228,45 @@ func waitForPodContainersRunning(client *clusterClient, podName string, timeout 
 			return true, nil
 		}
 		return false, nil
+	}, func() error {
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return newInvalidPodPhaseError(client, pod)
 	})
+}
+
+func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
+	phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
+	if pod.Status.Message != "" {
+		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
+	}
+	retErr := errors.Errorf("invalid pod phase %s", phaseWithMsg)
+	eventsInterface := client.Core().Events(client.Namespace())
+	ns := client.Namespace()
+	selector := eventsInterface.GetFieldSelector(&pod.Name, &ns, nil, nil)
+	options := metav1.ListOptions{FieldSelector: selector.String()}
+	events, err := eventsInterface.List(options)
+	if err == nil && len(events.Items) > 0 {
+		lastEvt := events.Items[len(events.Items)-1]
+		retErr = errors.Errorf("%v - last event: %s", retErr, lastEvt.Message)
+	}
+	if len(pod.Spec.Containers) > 0 {
+		lastLog := int64(100)
+		req := client.Core().Pods(client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
+			Container: pod.Spec.Containers[0].Name,
+			TailLines: &lastLog,
+		})
+		reader, logErr := req.Stream()
+		if logErr == nil {
+			logContent, _ := ioutil.ReadAll(reader)
+			if len(logContent) > 0 {
+				retErr = errors.Errorf("%v - log: %s", retErr, string(logContent))
+			}
+		}
+	}
+	return retErr
 }
 
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
@@ -180,26 +286,15 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 		case apiv1.PodUnknown:
 			fallthrough
 		case apiv1.PodFailed:
-			phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
-			if pod.Status.Message != "" {
-				phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
-			}
-			eventsInterface := client.Core().Events(client.Namespace())
-			ns := client.Namespace()
-			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-			options := metav1.ListOptions{FieldSelector: selector.String()}
-			var events *apiv1.EventList
-			events, err = eventsInterface.List(options)
-			if err != nil {
-				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %s", podName, phaseWithMsg)
-			}
-			if len(events.Items) == 0 {
-				return true, errors.Errorf("invalid pod phase %s", phaseWithMsg)
-			}
-			lastEvt := events.Items[len(events.Items)-1]
-			return true, errors.Errorf("invalid pod phase %s: %s", phaseWithMsg, lastEvt.Message)
+			return true, newInvalidPodPhaseError(client, pod)
 		}
 		return true, nil
+	}, func() error {
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return newInvalidPodPhaseError(client, pod)
 	})
 }
 
@@ -318,7 +413,10 @@ func getServicePort(client *clusterClient, srvName string) (int32, error) {
 }
 
 func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
-	merged := meta.Labels
+	merged := make(map[string]string, len(meta.Labels)+len(meta.Annotations))
+	for k, v := range meta.Labels {
+		merged[k] = v
+	}
 	for k, v := range meta.Annotations {
 		merged[k] = v
 	}
@@ -362,23 +460,10 @@ func execCommand(opts execOpts) error {
 			return errors.WithStack(err)
 		}
 	} else {
-		var l *provision.LabelSet
-		l, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
-			App: opts.app,
-			ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-				Prefix:      tsuruLabelPrefix,
-				Provisioner: provisionerName,
-			},
-		})
-		if err != nil {
-			return errors.WithStack(err)
-		}
 		var pods *apiv1.PodList
-		pods, err = client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
-		})
+		pods, err = podsForAppProcess(client, opts.app, "")
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		if len(pods.Items) == 0 {
 			return provision.ErrEmptyApp
@@ -446,7 +531,8 @@ type runSinglePodArgs struct {
 
 func runPod(args runSinglePodArgs) error {
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool: args.pool,
+		Pool:   args.pool,
+		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -530,6 +616,13 @@ func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*
 			}
 		}
 		return false, nil
+	}, func() error {
+		var err error
+		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return errors.Errorf("invalid node conditions for %q: %#v", addr, node.Status.Conditions)
 	})
 	return node, waitErr
 }

@@ -325,7 +325,7 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "json-file")
 	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))

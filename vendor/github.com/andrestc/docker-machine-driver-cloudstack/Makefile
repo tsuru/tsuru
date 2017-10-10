@@ -35,7 +35,7 @@ build test release:
 		make $@
 else
 build:
-	glide up
+	dep ensure
 	GOGC=off gox -os "$(TARGET_OS)" -arch "$(TARGET_ARCH)" \
 	-output "dist/$(EXECUTABLE_NAME)_{{.OS}}_{{.Arch}}" ./bin
 

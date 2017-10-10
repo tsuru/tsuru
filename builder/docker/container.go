@@ -72,7 +72,7 @@ type CreateContainerArgs struct {
 	ImageID          string
 	Commands         []string
 	App              provision.App
-	Client           *docker.Client
+	Client           provision.BuilderDockerClient
 	DestinationHosts []string
 	ProcessName      string
 	Deploy           bool
@@ -84,7 +84,7 @@ func (c *Container) Create(args *CreateContainerArgs) error {
 	var exposedPorts map[docker.Port]struct{}
 	var user string
 	if args.Building {
-		user = c.user()
+		user, _ = dockercommon.UserForContainer()
 	}
 	hostConf, err := c.hostConfig(args.App, args.Deploy)
 	if err != nil {
@@ -124,6 +124,14 @@ func (c *Container) Create(args *CreateContainerArgs) error {
 	return nil
 }
 
+type StartArgs struct {
+	Client provision.BuilderDockerClient
+}
+
+func (c *Container) Start(args *StartArgs) error {
+	return args.Client.StartContainer(c.ID, nil)
+}
+
 func (c *Container) addEnvsToConfig(args *CreateContainerArgs, port string, cfg *docker.Config) {
 	envs := provision.EnvsForApp(args.App, c.ProcessName, args.Deploy)
 	for _, envData := range envs {
@@ -137,14 +145,6 @@ func (c *Container) addEnvsToConfig(args *CreateContainerArgs, port string, cfg 
 		}
 		cfg.Env = append(cfg.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
 	}
-}
-
-func (c *Container) user() string {
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	return user
 }
 
 func (c *Container) SetStatus(status provision.Status, updateDB bool) error {
@@ -167,7 +167,7 @@ func (c *Container) SetStatus(status provision.Status, updateDB bool) error {
 	return nil
 }
 
-func (c *Container) Remove(client *docker.Client) error {
+func (c *Container) Remove(client provision.BuilderDockerClient) error {
 	log.Debugf("Removing container %s from docker", c.ID)
 	err := c.Stop(client)
 	if err != nil {
@@ -188,7 +188,7 @@ type Pty struct {
 
 // Commits commits the container, creating an image in Docker. It then returns
 // the image identifier for usage in future container creation.
-func (c *Container) Commit(client *docker.Client, writer io.Writer) (string, error) {
+func (c *Container) Commit(client provision.BuilderDockerClient, writer io.Writer) (string, error) {
 	log.Debugf("committing container %s", c.ID)
 	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
@@ -232,7 +232,7 @@ func (c *Container) Commit(client *docker.Client, writer io.Writer) (string, err
 	return c.BuildingImage, nil
 }
 
-func (c *Container) Stop(client *docker.Client) error {
+func (c *Container) Stop(client provision.BuilderDockerClient) error {
 	if c.Status == provision.StatusStopped.String() {
 		return nil
 	}
@@ -242,6 +242,24 @@ func (c *Container) Stop(client *docker.Client) error {
 	}
 	c.SetStatus(provision.StatusStopped, true)
 	return nil
+}
+
+func (c *Container) Logs(client provision.BuilderDockerClient, w io.Writer) (int, error) {
+	container, err := client.InspectContainer(c.ID)
+	if err != nil {
+		return 0, err
+	}
+	opts := docker.AttachToContainerOptions{
+		Container:    c.ID,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		OutputStream: w,
+		ErrorStream:  w,
+		RawTerminal:  container.Config.Tty,
+		Stream:       true,
+	}
+	return SafeAttachWaitContainer(client, opts)
 }
 
 func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostConfig, error) {
@@ -254,6 +272,9 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 	}
 	hostConfig.OomScoreAdj = 1000
 	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
+	hostConfig.LogConfig = docker.LogConfig{
+		Type: dockercommon.JsonFileLogDriver,
+	}
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
 			var appHostDir string
@@ -283,7 +304,7 @@ type waitResult struct {
 
 var safeAttachInspectTimeout = 20 * time.Second
 
-func SafeAttachWaitContainer(client *docker.Client, opts docker.AttachToContainerOptions) (int, error) {
+func SafeAttachWaitContainer(client provision.BuilderDockerClient, opts docker.AttachToContainerOptions) (int, error) {
 	resultCh := make(chan waitResult, 1)
 	go func() {
 		err := client.AttachToContainer(opts)

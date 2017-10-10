@@ -9,15 +9,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
 )
+
+type S struct{}
+
+var _ = check.Suite(&S{})
+
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:registry", "my.registry")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+}
 
 func (s *S) TestPrepareImageForDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -46,7 +60,7 @@ func (s *S) TestPrepareImageForDeploy(c *check.C) {
 Pushing...
 Pushed
 `)
-	imd, err := image.GetImageCustomData(newImg)
+	imd, err := image.GetImageMetaData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
 		Name:            "my.registry/tsuru/app-myapp:v1",
@@ -95,7 +109,7 @@ func (s *S) TestPrepareImageForDeployNoProcfile(c *check.C) {
 Pushing...
 Pushed
 `)
-	imd, err := image.GetImageCustomData(newImg)
+	imd, err := image.GetImageMetaData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
 		Name:            "my.registry/tsuru/app-myapp:v1",
@@ -104,32 +118,6 @@ Pushed
 		LegacyProcesses: map[string]string{},
 		ExposedPort:     "3000/tcp",
 	})
-}
-
-func (s *S) TestUploadToContainer(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	baseImgName := "baseImg"
-	err = cli.PullImage(docker.PullImageOptions{Repository: baseImgName}, docker.AuthConfiguration{})
-	c.Assert(err, check.IsNil)
-	cont, err := cli.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image: baseImgName,
-		},
-		HostConfig: &docker.HostConfig{},
-	})
-	c.Assert(err, check.IsNil)
-	err = cli.StartContainer(cont.ID, nil)
-	c.Assert(err, check.IsNil)
-	buf := strings.NewReader("my data")
-	tarFile := AddDeployTarFile(buf, int64(buf.Len()), "archive.tar.gz")
-	imgId, path, err := UploadToContainer(cli, cont.ID, tarFile)
-	c.Assert(err, check.IsNil)
-	c.Assert(imgId, check.Matches, "^img-.{32}$")
-	c.Assert(path, check.Equals, "file:///home/application/archive.tar.gz")
 }
 
 func (s *S) TestWaitDocker(c *check.C) {

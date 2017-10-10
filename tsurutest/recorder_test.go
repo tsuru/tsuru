@@ -27,7 +27,8 @@ func (s *S) TestSafeResponseRecorderWriteHeader(c *check.C) {
 }
 
 func (s *S) TestSafeResponseRecorderWriteIsSafe(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
+	originalMaxProcs := runtime.GOMAXPROCS(8)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
 	recorder := NewSafeResponseRecorder()
 	var wg sync.WaitGroup
 	for i := 0; i < 1000; i++ {

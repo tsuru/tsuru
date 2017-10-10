@@ -14,11 +14,12 @@ import (
 	"net/url"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const defaultDockerProvisioner = "docker"
@@ -215,12 +216,13 @@ type App interface {
 	GetSwap() int64
 	GetCpuShare() int
 
-	SetUpdatePlatform(bool) error
 	GetUpdatePlatform() bool
 
-	GetRouterName() (string, error)
+	GetRouters() []appTypes.AppRouter
 
 	GetPool() string
+
+	GetTeamOwner() string
 
 	SetQuotaInUse(int) error
 }
@@ -277,10 +279,34 @@ type RebuildableDeployer interface {
 	Rebuild(App, *event.Event) (string, error)
 }
 
+type BuilderDockerClient interface {
+	CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error)
+	RemoveContainer(opts docker.RemoveContainerOptions) error
+	StartContainer(id string, hostConfig *docker.HostConfig) error
+	StopContainer(id string, timeout uint) error
+	InspectContainer(id string) (*docker.Container, error)
+	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
+	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
+	UploadToContainer(string, docker.UploadToContainerOptions) error
+	AttachToContainerNonBlocking(opts docker.AttachToContainerOptions) (docker.CloseWaiter, error)
+	AttachToContainer(opts docker.AttachToContainerOptions) error
+	WaitContainer(id string) (int, error)
+
+	BuildImage(opts docker.BuildImageOptions) error
+	PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error
+	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
+	InspectImage(string) (*docker.Image, error)
+	TagImage(string, docker.TagImageOptions) error
+	RemoveImage(name string) error
+	ImageHistory(name string) ([]docker.ImageHistory, error)
+
+	SetTimeout(timeout time.Duration)
+}
+
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(App, string, *event.Event) (string, error)
-	GetDockerClient(App) (*docker.Client, error)
+	GetDockerClient(App) (BuilderDockerClient, error)
 	CleanImage(appName string, image string)
 }
 
@@ -389,7 +415,9 @@ type UnitStatusProvisioner interface {
 }
 
 type AddNodeOptions struct {
+	IaaSID     string
 	Address    string
+	Pool       string
 	Metadata   map[string]string
 	Register   bool
 	CaCert     []byte
@@ -406,12 +434,15 @@ type RemoveNodeOptions struct {
 
 type UpdateNodeOptions struct {
 	Address  string
+	Pool     string
 	Metadata map[string]string
 	Enable   bool
 	Disable  bool
 }
 
 type NodeProvisioner interface {
+	Named
+
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
 
@@ -433,6 +464,7 @@ type NodeProvisioner interface {
 
 type RebalanceNodesOptions struct {
 	Writer         io.Writer
+	Pool           string
 	MetadataFilter map[string]string
 	AppFilter      []string
 	Dry            bool
@@ -469,6 +501,7 @@ type VolumeProvisioner interface {
 
 type Node interface {
 	Pool() string
+	IaaSID() string
 	Address() string
 	Status() string
 	Metadata() map[string]string
@@ -489,10 +522,12 @@ type NodeHealthChecker interface {
 
 type NodeSpec struct {
 	// BSON tag for bson serialized compatibility with cluster.Node
-	Address  string `bson:"_id"`
-	Metadata map[string]string
-	Status   string
-	Pool     string
+	Address     string `bson:"_id"`
+	IaaSID      string
+	Metadata    map[string]string
+	Status      string
+	Pool        string
+	Provisioner string
 }
 
 func NodeToSpec(n Node) NodeSpec {
@@ -505,11 +540,18 @@ func NodeToSpec(n Node) NodeSpec {
 	for k, v := range n.Metadata() {
 		metadata[k] = v
 	}
+	var provName string
+	prov := n.Provisioner()
+	if prov != nil {
+		provName = prov.GetName()
+	}
 	return NodeSpec{
-		Address:  n.Address(),
-		Metadata: metadata,
-		Status:   n.Status(),
-		Pool:     n.Pool(),
+		Address:     n.Address(),
+		IaaSID:      n.IaaSID(),
+		Metadata:    metadata,
+		Status:      n.Status(),
+		Pool:        n.Pool(),
+		Provisioner: provName,
 	}
 }
 

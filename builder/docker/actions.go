@@ -7,6 +7,7 @@ package docker
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -29,9 +30,10 @@ type runContainerActionsArgs struct {
 	isDeploy         bool
 	buildingImage    string
 	provisioner      provision.BuilderDeploy
-	client           *docker.Client
+	client           provision.BuilderDockerClient
 	exposedPort      string
 	event            *event.Event
+	tarFile          io.Reader
 }
 
 func checkCanceled(evt *event.Event) error {
@@ -56,14 +58,12 @@ var createContainer = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		initialStatus := provision.StatusBuilding
 		contName := args.app.GetName() + "-" + randomString()
 		cont := Container{
 			AppName:       args.app.GetName(),
 			ProcessName:   args.processName,
 			Type:          args.app.GetPlatform(),
 			Name:          contName,
-			Status:        initialStatus.String(),
 			Image:         args.imageID,
 			BuildingImage: args.buildingImage,
 			ExposedPort:   args.exposedPort,
@@ -95,8 +95,60 @@ var createContainer = action.Action{
 	},
 }
 
-var commitContainer = action.Action{
-	Name: "commit-container",
+var uploadToContainer = action.Action{
+	Name: "upload-to-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		c := ctx.Previous.(Container)
+		log.Debugf("uploading tarfile to container %s", c.ID)
+		uploadOpts := docker.UploadToContainerOptions{
+			InputStream: args.tarFile,
+			Path:        archiveDirPath,
+		}
+		err := args.client.UploadToContainer(c.ID, uploadOpts)
+		if err != nil {
+			log.Errorf("error on upload tarfile to container %s - %s", c.ID, err)
+			return nil, err
+		}
+		return c, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
+var startContainer = action.Action{
+	Name: "start-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		c := ctx.Previous.(Container)
+		log.Debugf("starting container %s", c.ID)
+		err := c.Start(&StartArgs{
+			Client: args.client,
+		})
+		if err != nil {
+			log.Errorf("error on start container %s - %s", c.ID, err)
+			return nil, err
+		}
+		return c, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		c := ctx.FWResult.(Container)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		err := args.client.StopContainer(c.ID, 10)
+		if err != nil {
+			log.Errorf("Failed to stop the container %q: %s", c.ID, err)
+		}
+	},
+}
+
+var followLogsAndCommit = action.Action{
+	Name: "follow-logs-and-commit",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
 		if err := checkCanceled(args.event); err != nil {
@@ -104,7 +156,54 @@ var commitContainer = action.Action{
 		}
 		c, ok := ctx.Previous.(Container)
 		if !ok {
-			return nil, errors.New("previous result must be a container")
+			return nil, errors.New("Previous result must be a container.")
+		}
+		type logsResult struct {
+			status int
+			err    error
+		}
+		doneCh := make(chan bool)
+		canceledCh := make(chan error)
+		resultCh := make(chan logsResult)
+		go func() {
+			for {
+				err := checkCanceled(args.event)
+				if err != nil {
+					select {
+					case <-doneCh:
+					case canceledCh <- err:
+					}
+					return
+				}
+				select {
+				case <-doneCh:
+					return
+				case <-time.After(time.Second):
+				}
+			}
+		}()
+		go func() {
+			status, err := c.Logs(args.client, args.writer)
+			select {
+			case resultCh <- logsResult{status: status, err: err}:
+			default:
+			}
+		}()
+		select {
+		case err := <-canceledCh:
+			return nil, err
+		case result := <-resultCh:
+			doneCh <- true
+			if result.err != nil {
+				log.Errorf("error on get logs for container %s - %s", c.ID, result.err)
+				return nil, result.err
+			}
+			if result.status != 0 {
+				return nil, errors.Errorf("Exit status %d", result.status)
+			}
+		}
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
 		}
 		fmt.Fprintf(args.writer, "\n---- Building image ----\n")
 		imageID, err := c.Commit(args.client, args.writer)
@@ -118,6 +217,7 @@ var commitContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
+	MinParams: 1,
 }
 
 var updateAppBuilderImage = action.Action{

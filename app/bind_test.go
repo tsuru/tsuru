@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 
@@ -23,14 +24,12 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
+	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": srvc.Name})
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
 		Name:      "whichapp",
 		Platform:  "python",
@@ -40,7 +39,10 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	Delete(app, nil)
+	buf := bytes.NewBuffer(nil)
+	err = Delete(app, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)

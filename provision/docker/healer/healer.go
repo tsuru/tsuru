@@ -82,8 +82,8 @@ func toHealingEvt(evt *event.Event) (types.HealingEvent, error) {
 
 func ListHealingHistory(filter string) ([]types.HealingEvent, error) {
 	evtFilter := event.Filter{
-		KindName: "healer",
-		KindType: event.KindTypeInternal,
+		KindNames: []string{"healer"},
+		KindType:  event.KindTypeInternal,
 	}
 	if filter != "" {
 		t, err := event.GetTargetType(filter)
@@ -137,7 +137,7 @@ func healingEventToEvent(data *types.HealingEvent) error {
 			LastCheck: lastCheck,
 		}
 		endOpts = data.CreatedNode
-		poolName := data.FailingNode.Metadata["pool"]
+		poolName := data.FailingNode.Metadata[provision.PoolMetadataName]
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName))
 	case "container-healing":
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}

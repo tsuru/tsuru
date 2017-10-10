@@ -20,14 +20,13 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
-	apiv1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -143,7 +142,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	data, err := image.GetImageCustomData(imgID)
+	data, err := image.GetImageMetaData(imgID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -349,8 +348,12 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector()
 	nodes, err := client.Core().Nodes().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("pool=%s", a.GetPool()),
+		LabelSelector: labels.SelectorFromSet(nodeSelector).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -373,6 +376,9 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	}
 	pod, err := client.Core().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
 	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return &provision.UnitNotFoundError{ID: unitID}
+		}
 		return errors.WithStack(err)
 	}
 	units, err := p.podsToUnits(client, []apiv1.Pod{*pod}, a, nil)
@@ -448,8 +454,7 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 	return node, nil
 }
 
-func setNodeMetadata(node *apiv1.Node, meta map[string]string) {
-	asLabelSet := map[string]struct{}{provision.PoolMetadataName: {}}
+func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]string) {
 	if node.Labels == nil {
 		node.Labels = map[string]string{}
 	}
@@ -457,20 +462,29 @@ func setNodeMetadata(node *apiv1.Node, meta map[string]string) {
 		node.Annotations = map[string]string{}
 	}
 	for k, v := range meta {
-		mapToSet := node.Annotations
-		if _, isLabel := asLabelSet[k]; isLabel {
-			mapToSet = node.Labels
-		}
+		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
 		if v == "" {
-			delete(mapToSet, k)
+			delete(node.Annotations, k)
 		} else {
-			mapToSet[k] = v
+			node.Annotations[k] = v
 		}
+	}
+	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
+		IaaSID: iaasID,
+		Pool:   pool,
+		Prefix: tsuruLabelPrefix,
+	})
+	for k, v := range baseNodeLabels.ToLabels() {
+		if v == "" {
+			continue
+		}
+		delete(node.Annotations, k)
+		node.Labels[k] = v
 	}
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	client, err := clusterForPool(opts.Metadata[provision.PoolMetadataName])
+	client, err := clusterForPool(opts.Pool)
 	if err != nil {
 		return err
 	}
@@ -480,12 +494,13 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 			Name: hostAddr,
 		},
 	}
-	setNodeMetadata(node, opts.Metadata)
+	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
 	_, err = client.Core().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
 		return p.UpdateNode(provision.UpdateNodeOptions{
 			Address:  hostAddr,
 			Metadata: opts.Metadata,
+			Pool:     opts.Pool,
 		})
 	}
 	if err == nil {
@@ -585,7 +600,16 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	} else if opts.Enable {
 		node.Spec.Unschedulable = false
 	}
-	setNodeMetadata(node, opts.Metadata)
+	taints := node.Spec.Taints
+	for i := 0; i < len(taints); i++ {
+		if taints[i].Key == tsuruInProgressTaint {
+			taints[i] = taints[len(taints)-1]
+			taints = taints[:len(taints)-1]
+			i--
+		}
+	}
+	node.Spec.Taints = taints
+	setNodeMetadata(node, opts.Pool, "", opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)
@@ -640,7 +664,6 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt
 	if err != nil {
 		return "", err
 	}
-	a.SetUpdatePlatform(true)
 	manager := &serviceManager{
 		client: client,
 		writer: evt,
@@ -671,15 +694,9 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		return "", err
 	}
 	defer cleanupPod(client, deployPodName)
-	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
-	if len(cmds) != 3 {
-		return "", errors.Errorf("unexpected cmds list: %#v", cmds)
-	}
-	cmds[2] = fmt.Sprintf("cat >/home/application/archive.tar.gz && %s", cmds[2])
 	params := buildPodParams{
 		app:              a,
 		client:           client,
-		buildCmd:         cmds,
 		sourceImage:      baseImage,
 		destinationImage: buildingImage,
 		attachInput:      archiveFile,

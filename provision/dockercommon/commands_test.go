@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package dockercommon
+package dockercommon_test
 
 import (
 	"fmt"
@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -30,6 +31,7 @@ func Test(t *testing.T) {
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_dockercommon_tests_s")
 	config.Set("docker:registry", "my.registry")
@@ -47,6 +49,23 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestArchiveBuildCmds(c *check.C) {
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
+	config.Set("host", "tsuru_host")
+	defer config.Unset("host")
+	tokenEnv := bind.EnvVar{
+		Name:   "TSURU_APP_TOKEN",
+		Value:  "app_token",
+		Public: true,
+	}
+	app.SetEnv(tokenEnv)
+	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
+	expectedPart1 := fmt.Sprintf("/var/lib/tsuru/deploy archive %s", archiveURL)
+	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" build`, expectedPart1)
+	cmds := dockercommon.ArchiveBuildCmds(app, archiveURL)
+	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
+}
+
 func (s *S) TestArchiveDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
@@ -60,11 +79,11 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
 	expectedPart1 := fmt.Sprintf("/var/lib/tsuru/deploy archive %s", archiveURL)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
-	cmds := ArchiveDeployCmds(app, archiveURL)
+	cmds := dockercommon.ArchiveDeployCmds(app, archiveURL)
 	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
 }
 
-func (s *S) TestRunWithAgentCmds(c *check.C) {
+func (s *S) TestDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
@@ -74,9 +93,9 @@ func (s *S) TestRunWithAgentCmds(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	cmds, err := runWithAgentCmds(app)
-	c.Assert(err, check.IsNil)
-	c.Assert(cmds, check.DeepEquals, []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"})
+	expectedAgent := "tsuru_unit_agent tsuru_host app_token app-name deploy-only"
+	cmds := dockercommon.DeployCmds(app)
+	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
 }
 
 func (s *S) TestRunLeanContainersCmd(c *check.C) {
@@ -88,7 +107,7 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("web", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("web", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -109,7 +128,7 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("web", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("web", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
@@ -130,7 +149,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	cmds, process, err := LeanContainerCmds("", imageID, app)
+	cmds, process, err := dockercommon.LeanContainerCmds("", imageID, app)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "")
 	expected := []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"}
@@ -146,7 +165,7 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -163,7 +182,7 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -181,7 +200,7 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("worker", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("worker", imageID, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -191,7 +210,7 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
-	cmds, process, err := LeanContainerCmds("web", "tsuru/app-myapp", nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("web", "tsuru/app-myapp", nil)
 	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
 	c.Assert(err, check.ErrorMatches, `.*no command declared in Procfile for process "web"`)
 	c.Assert(process, check.Equals, "")
@@ -207,7 +226,7 @@ func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageID, nil)
+	cmds, process, err := dockercommon.LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec $0 \"$@\"", "python", "web.py"}

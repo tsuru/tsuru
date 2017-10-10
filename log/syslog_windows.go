@@ -4,6 +4,8 @@
 
 package log
 
-func NewSyslogLogger(tag string, debug bool) Logger {
-	panic("syslog doesn't work on Windows")
+import "github.com/pkg/errors"
+
+func NewSyslogLogger(tag string, debug bool) (Logger, error) {
+	return nil, errors.New("syslog doesn't work on Windows")
 }

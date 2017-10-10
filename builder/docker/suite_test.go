@@ -7,7 +7,9 @@ package docker
 import (
 	"math/rand"
 	"testing"
+	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -21,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -34,6 +37,7 @@ type S struct {
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
 	server      *dtesting.DockerServer
+	port        string
 }
 
 var _ = check.Suite(&S{})
@@ -43,12 +47,14 @@ func Test(t *testing.T) {
 }
 
 func (s *S) SetUpSuite(c *check.C) {
+	s.port = "8888"
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "builder_docker_tests_s")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
+	config.Set("docker:run-cmd:port", s.port)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -75,12 +81,12 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	p := app.Plan{
+	p := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	err = p.Save()
+	err = app.SavePlan(p)
 	c.Assert(err, check.IsNil)
 	s.b = &dockerBuilder{}
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
@@ -99,4 +105,32 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
+}
+
+func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		client, err := docker.NewClient(endpoint)
+		if err != nil {
+			return
+		}
+		for n > 0 {
+			opts := docker.ListContainersOptions{All: false}
+			containers, err := client.ListContainers(opts)
+			if err != nil {
+				return
+			}
+			if len(containers) > 0 {
+				for _, cont := range containers {
+					if cont.ID != "" {
+						client.StopContainer(cont.ID, 1)
+						n--
+					}
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+	return ch
 }

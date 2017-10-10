@@ -34,7 +34,7 @@ type segregatedScheduler struct {
 	ignoredContainers []string
 }
 
-func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
+func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
 	schedOpts, ok := schedulerOpts.(*container.SchedulerOpts)
 	if !ok {
 		return cluster.Node{}, &container.SchedulerError{
@@ -57,7 +57,28 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if schedOpts.ActionLimiter != nil {
 		schedOpts.LimiterDone = schedOpts.ActionLimiter.Start(net.URLToHost(node))
 	}
+	if schedOpts.UpdateName {
+		err = s.updateContainerName(opts, schedOpts.AppName)
+		if err != nil {
+			return cluster.Node{}, &container.SchedulerError{Base: err}
+		}
+	}
 	return cluster.Node{Address: node}, nil
+}
+
+func (s *segregatedScheduler) updateContainerName(opts *docker.CreateContainerOptions, appName string) error {
+	if opts.Name == "" {
+		return nil
+	}
+	newName := generateContainerName(appName)
+	coll := s.provisioner.Collection()
+	defer coll.Close()
+	err := coll.Update(bson.M{"name": opts.Name}, bson.M{"$set": bson.M{"name": newName}})
+	if err != nil {
+		return err
+	}
+	opts.Name = newName
+	return nil
 }
 
 func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, TotalMemoryMetadata string) ([]cluster.Node, error) {

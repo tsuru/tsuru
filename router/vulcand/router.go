@@ -54,6 +54,10 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return vRouter, nil
 }
 
+func (r *vulcandRouter) GetName() string {
+	return r.routerName
+}
+
 func (r *vulcandRouter) frontendHostname(app string) string {
 	return fmt.Sprintf("%s.%s", app, r.domain)
 }
