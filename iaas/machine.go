@@ -45,6 +45,8 @@ var (
 		Name: "tsuru_iaas_destroy_errors_total",
 		Help: "The total number of machine destroy errors.",
 	}, []string{"iaas"})
+
+	ErrMachineNotFound = errors.New("machine not found")
 )
 
 func init() {
@@ -133,6 +135,9 @@ func FindMachineByIdOrAddress(id string, address string) (Machine, error) {
 		query["address"] = address
 	}
 	err = coll.Find(query).One(&result)
+	if err == mgo.ErrNotFound {
+		err = ErrMachineNotFound
+	}
 	return result, err
 }
 
@@ -144,6 +149,9 @@ func FindMachineByAddress(address string) (Machine, error) {
 	defer coll.Close()
 	var result Machine
 	err = coll.Find(bson.M{"address": address}).One(&result)
+	if err == mgo.ErrNotFound {
+		err = ErrMachineNotFound
+	}
 	return result, err
 }
 
@@ -155,6 +163,9 @@ func FindMachineById(id string) (Machine, error) {
 	defer coll.Close()
 	var result Machine
 	err = coll.FindId(id).One(&result)
+	if err == mgo.ErrNotFound {
+		err = ErrMachineNotFound
+	}
 	return result, err
 }
 

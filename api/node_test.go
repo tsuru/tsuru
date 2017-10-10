@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 func (s *S) TestValidateNodeAddress(c *check.C) {
@@ -366,7 +365,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	_, err = iaas.FindMachineById(machine.Id)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, iaas.ErrMachineNotFound)
 }
 
 func (s *S) TestListNodeHandlerNoContent(c *check.C) {

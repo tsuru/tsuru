@@ -160,12 +160,13 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		log.Errorf("Unable to remove node %s status from healer: %s", node.Address(), err)
 	}
 	failingMachine, err := iaas.FindMachineByIdOrAddress(node.IaaSID(), failingHost)
-	if err != nil {
+	if err == nil {
+		err = failingMachine.Destroy()
+		if err != nil {
+			return &nodeSpec, errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost)
+		}
+	} else if err != iaas.ErrMachineNotFound {
 		return &nodeSpec, errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost)
-	}
-	err = failingMachine.Destroy()
-	if err != nil {
-		return &nodeSpec, errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost)
 	}
 	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
 		Address: failingAddr,
