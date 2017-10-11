@@ -473,7 +473,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	canRead := permission.Check(t, permission.PermTeamRead)
 	if !canRead {

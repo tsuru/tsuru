@@ -618,6 +618,30 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
+func (s *AuthSuite) TestTeamInfoReturns404TeamNotFound(c *check.C) {
+	teamName := "team-test"
+	request, err := http.NewRequest("GET", fmt.Sprintf("/teams/%v", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	mux := RunServer(true)
+	mux.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
+	teamName := "team-test"
+	err := auth.CreateTeam(teamName, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/teams/%v", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	mux := RunServer(true)
+	mux.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
 func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	b := strings.NewReader("name=the-key&key=my-key")
 	request, err := http.NewRequest("POST", "/users/keys", b)
