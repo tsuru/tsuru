@@ -504,8 +504,14 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				canInclude := permission.Check(t, permission.PermTeam)
 				if canInclude {
 					roleMap := make(map[string]*permission.Role)
-					perms, _ := t.Permissions()
-					userData, _ := createAPIUser(perms, &user, roleMap, canInclude)
+					perms, err := t.Permissions()
+					if err != nil {
+						break
+					}
+					userData, err := createAPIUser(perms, &user, roleMap, canInclude)
+					if err != nil {
+						break
+					}
 					includedUsers = append(includedUsers, userData)
 					break
 				}
