@@ -190,3 +190,32 @@ func (s *S) TestCreateClusterWithNonexistentPool(c *check.C) {
 	c.Assert(err, check.Equals, cluster.ErrNoCluster)
 	c.Assert(clusters, check.HasLen, 0)
 }
+
+func (s *S) TestAddClusterToNonexistentPool(c *check.C) {
+	kubeCluster := cluster.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+	}
+	err := kubeCluster.Save()
+	c.Assert(err, check.IsNil)
+	kubeCluster.Pools = []string{"fakePool"}
+	encoded, err := form.EncodeToString(kubeCluster)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(encoded)
+	request, err := http.NewRequest("POST", "/1.4/provisioner/clusters/c1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %q", recorder.Body.String()))
+	clusters, err := cluster.AllClusters()
+	c.Assert(err, check.IsNil)
+	c.Assert(clusters, check.HasLen, 1)
+	c.Assert(clusters[0].Name, check.Equals, "c1")
+	c.Assert(clusters[0].Addresses, check.DeepEquals, []string{"addr1"})
+	c.Assert(clusters[0].Pools, check.IsNil)
+	c.Assert(clusters[0].Default, check.Equals, true)
+}
