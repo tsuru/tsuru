@@ -22,6 +22,7 @@ To get started, first read :ref:`understanding tsuru <understanding>`.
     using/index
     services/index
     advanced_topics/index
+    plugins/index
     contributing/index
     reference/index
     faq
