@@ -199,10 +199,8 @@ type tsuruServiceOpts struct {
 	process       string
 	image         string
 	buildImage    string
-	baseSpec      *swarm.ServiceSpec
 	isDeploy      bool
 	isIsolatedRun bool
-	constraints   []string
 	labels        *provision.LabelSet
 	replicas      int
 }
@@ -288,8 +286,6 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		srvName = fmt.Sprintf("%sisolated-run", srvName)
 	}
 	uReplicas := uint64(opts.replicas)
-	user, _ := dockercommon.UserForContainer()
-	opts.constraints = append(opts.constraints, toNodePoolConstraint(opts.app.GetPool(), true))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -297,7 +293,6 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				Env:         envs,
 				Labels:      opts.labels.ToLabels(),
 				Command:     cmds,
-				User:        user,
 				Healthcheck: healthConfig,
 				Mounts:      mounts,
 			},
@@ -306,11 +301,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				Condition: swarm.RestartPolicyConditionAny,
 			},
 			Placement: &swarm.Placement{
-				Constraints: opts.constraints,
+				Constraints: []string{
+					toNodePoolConstraint(opts.app.GetPool(), true),
+				},
 			},
 			LogDriver: logDriver,
 		},
-		Networks:     networks,
 		EndpointSpec: endpointSpec,
 		Annotations: swarm.Annotations{
 			Name:   srvName,

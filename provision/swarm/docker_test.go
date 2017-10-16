@@ -17,7 +17,11 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	"github.com/kr/pretty"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
@@ -179,6 +183,199 @@ func (s *S) TestNewClientTLSConfig(c *check.C) {
 	c.Assert(cli.TLSConfig.RootCAs, check.NotNil)
 	err = cli.Ping()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestServiceSpecForApp(c *check.C) {
+	intPtr := func(i uint64) *uint64 {
+		return &i
+	}
+	s.addCluster(c)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myapp:v1", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	base := func() swarm.ServiceSpec {
+		return swarm.ServiceSpec{
+			TaskTemplate: swarm.TaskSpec{
+				ContainerSpec: swarm.ContainerSpec{
+					Image: "myapp:v1",
+					Env: []string{
+						"TSURU_SERVICES={}",
+						"TSURU_PROCESSNAME=web",
+						"TSURU_HOST=http://tsuruhost",
+						"port=8888",
+						"PORT=8888",
+					},
+					Labels: map[string]string{
+						"tsuru.provisioner":          "swarm",
+						"tsuru.builder":              "",
+						"tsuru.app-process":          "web",
+						"tsuru.app-pool":             "bonehunters",
+						"tsuru.is-stopped":           "false",
+						"tsuru.router-type":          "fake",
+						"tsuru.is-isolated-run":      "false",
+						"tsuru.app-process-replicas": "0",
+						"tsuru.app-name":             "myapp",
+						"tsuru.is-deploy":            "false",
+						"tsuru.is-tsuru":             "true",
+						"tsuru.is-service":           "true",
+						"tsuru.is-build":             "false",
+						"tsuru.app-platform":         "",
+						"tsuru.router-name":          "fake",
+					},
+					Command: []string{
+						"/bin/sh",
+						"-lc",
+						"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://tsuruhost/apps/myapp/units/register || true && exec python myapp.py",
+					},
+				},
+				Networks: []swarm.NetworkAttachmentConfig{
+					{Target: "app-myapp-overlay"},
+				},
+				RestartPolicy: &swarm.RestartPolicy{
+					Condition: swarm.RestartPolicyConditionAny,
+				},
+				Placement: &swarm.Placement{
+					Constraints: []string{
+						"node.labels.tsuru.pool == bonehunters",
+					},
+				},
+			},
+			EndpointSpec: &swarm.EndpointSpec{
+				Mode: swarm.ResolutionModeVIP,
+				Ports: []swarm.PortConfig{
+					{TargetPort: 8888, PublishedPort: 0},
+				},
+			},
+			Annotations: swarm.Annotations{
+				Name: "myapp-web",
+				Labels: map[string]string{
+					"tsuru.provisioner":          "swarm",
+					"tsuru.builder":              "",
+					"tsuru.app-process":          "web",
+					"tsuru.app-pool":             "bonehunters",
+					"tsuru.is-stopped":           "false",
+					"tsuru.router-type":          "fake",
+					"tsuru.is-isolated-run":      "false",
+					"tsuru.app-process-replicas": "0",
+					"tsuru.app-name":             "myapp",
+					"tsuru.is-deploy":            "false",
+					"tsuru.is-tsuru":             "true",
+					"tsuru.is-service":           "true",
+					"tsuru.is-build":             "false",
+					"tsuru.app-platform":         "",
+					"tsuru.router-name":          "fake",
+				},
+			},
+			Mode: swarm.ServiceMode{
+				Replicated: &swarm.ReplicatedService{
+					Replicas: intPtr(0),
+				},
+			},
+		}
+	}
+	tests := []struct {
+		opts     tsuruServiceOpts
+		expected swarm.ServiceSpec
+	}{
+		{
+			opts: tsuruServiceOpts{
+				app:     a,
+				image:   "myapp:v1",
+				process: "web",
+			},
+			expected: base(),
+		},
+		{
+			opts: tsuruServiceOpts{
+				app:        a,
+				image:      "myapp:v1",
+				isDeploy:   true,
+				buildImage: "myapp:v2",
+			},
+			expected: func() swarm.ServiceSpec {
+				tt := base()
+				tt.Annotations.Name = "myapp--build"
+				tt.Annotations.Labels["tsuru.is-deploy"] = "true"
+				tt.Annotations.Labels["tsuru.app-process"] = ""
+				tt.Annotations.Labels["tsuru.build-image"] = "myapp:v2"
+				tt.TaskTemplate.ContainerSpec.Labels = tt.Annotations.Labels
+				tt.TaskTemplate.ContainerSpec.Command = nil
+				tt.TaskTemplate.ContainerSpec.Env = []string{"TSURU_HOST=http://tsuruhost"}
+				tt.TaskTemplate.Networks = nil
+				tt.TaskTemplate.LogDriver = &swarm.Driver{Name: "json-file"}
+				tt.Mode.Replicated.Replicas = intPtr(1)
+				tt.EndpointSpec = nil
+				return tt
+			}(),
+		},
+		{
+			opts: tsuruServiceOpts{
+				app:           a,
+				image:         "myapp:v1",
+				isIsolatedRun: true,
+			},
+			expected: func() swarm.ServiceSpec {
+				tt := base()
+				tt.Annotations.Name = "myapp-isolated-run"
+				tt.Annotations.Labels["tsuru.is-isolated-run"] = "true"
+				tt.Annotations.Labels["tsuru.app-process"] = ""
+				tt.TaskTemplate.ContainerSpec.Labels = tt.Annotations.Labels
+				tt.TaskTemplate.ContainerSpec.Command = nil
+				tt.TaskTemplate.ContainerSpec.Env[1] = "TSURU_PROCESSNAME="
+				tt.TaskTemplate.Networks = nil
+				tt.Mode.Replicated.Replicas = intPtr(1)
+				tt.EndpointSpec = nil
+				return tt
+			}(),
+		},
+		{
+			opts: tsuruServiceOpts{
+				app:      a,
+				image:    "myapp:v1",
+				process:  "web",
+				replicas: 9,
+			},
+			expected: func() swarm.ServiceSpec {
+				tt := base()
+				tt.Mode.Replicated.Replicas = intPtr(9)
+				return tt
+			}(),
+		},
+		{
+			opts: tsuruServiceOpts{
+				app:     a,
+				image:   "myapp:v1",
+				process: "web",
+				labels: func() *provision.LabelSet {
+					b := base()
+					b.Annotations.Labels["tsuru.other"] = "val"
+					return &provision.LabelSet{
+						Prefix: tsuruLabelPrefix,
+						Labels: b.Annotations.Labels,
+					}
+				}(),
+				replicas: 8,
+			},
+			expected: func() swarm.ServiceSpec {
+				tt := base()
+				tt.Annotations.Labels["tsuru.other"] = "val"
+				tt.TaskTemplate.ContainerSpec.Labels = tt.Annotations.Labels
+				tt.Mode.Replicated.Replicas = intPtr(8)
+				return tt
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		var spec *swarm.ServiceSpec
+		spec, err = serviceSpecForApp(tt.opts)
+		c.Assert(spec, check.DeepEquals, &tt.expected, check.Commentf("Diff %#v\n", pretty.Diff(spec, &tt.expected)))
+	}
 }
 
 func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
