@@ -892,15 +892,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			return errors.WithStack(err)
 		}
 	}
-	var baseSpec *swarm.ServiceSpec
-	if srv != nil {
-		baseSpec = &srv.Spec
-	}
 	spec, err := serviceSpecForApp(tsuruServiceOpts{
 		app:      a,
 		process:  process,
 		image:    imgID,
-		baseSpec: baseSpec,
 		labels:   labels,
 		replicas: replicas,
 	})
