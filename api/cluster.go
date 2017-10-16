@@ -164,6 +164,18 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 		return err
 	}
+	for _, poolName := range provCluster.Pools {
+		_, err = pool.GetPoolByName(poolName)
+		if err != nil {
+			if err == pool.ErrPoolNotFound {
+				return &tsuruErrors.HTTP{
+					Code:    http.StatusBadRequest,
+					Message: err.Error(),
+				}
+			}
+			return err
+		}
+	}
 	err = provCluster.Save()
 	if err != nil {
 		return errors.WithStack(err)
