@@ -312,6 +312,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/kr/pretty"
+  packages = ["."]
+  revision = "cfb55aafdaf3ec08f0db22699ab822c50091b1c4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/kr/text"
+  packages = ["."]
+  revision = "7cafcd837844e784b526369c9bce262804aebc60"
+
+[[projects]]
+  branch = "master"
   name = "github.com/mailgun/minheap"
   packages = ["."]
   revision = "3dbe6c6bf55f94c5efcf460dc7f86830c21a90b2"
@@ -612,6 +624,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3349ac4a87687980d82784a50d66a696caae979a963e834044077cdee2a4d84e"
+  inputs-digest = "f122b1bfa14d3fc0be089370c4c9643fdd39f73c8663090467a8f52bc796fc09"
   solver-name = "gps-cdcl"
   solver-version = 1
