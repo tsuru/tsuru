@@ -248,6 +248,13 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	constraints := sort.StringSlice(serviceSpec.TaskTemplate.Placement.Constraints)
 	constraints.Sort()
 	c.Assert([]string(constraints), check.DeepEquals, []string{"node.labels.tsuru.pool != p1", "node.labels.tsuru.pool != p2"})
+	loadedC1.HostConfig.NetworkMode = "host"
+	serviceSpec, err = serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceSpec.TaskTemplate.Networks, check.DeepEquals, []swarm.NetworkAttachmentConfig{
+		{Target: "host"},
+	})
+
 }
 
 func tmpFileWith(c *check.C, contents []byte) string {
