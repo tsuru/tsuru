@@ -168,3 +168,25 @@ func (s *S) TestDeleteCluster(c *check.C) {
 	c.Assert(err, check.Equals, cluster.ErrNoCluster)
 	c.Assert(clusters, check.HasLen, 0)
 }
+
+func (s *S) TestAddClusterToNonexistentPool(c *check.C) {
+	kubeCluster := cluster.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Pools:       []string{"fakePool"},
+	}
+	encoded, err := form.EncodeToString(kubeCluster)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(encoded)
+	request, err := http.NewRequest("POST", "/1.3/provisioner/clusters", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound, check.Commentf("body: %q", recorder.Body.String()))
+	clusters, err := cluster.AllClusters()
+	c.Assert(err, check.Equals, cluster.ErrNoCluster)
+	c.Assert(clusters, check.HasLen, 0)
+}
