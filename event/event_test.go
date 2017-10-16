@@ -1250,3 +1250,27 @@ func (s *S) TestEventCancelableContext(c *check.C) {
 		Canceled: true,
 	})
 }
+
+func (s *S) TestEventCancelableContextNotCancelable(c *check.C) {
+	evt, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	nGoroutines := runtime.NumGoroutine()
+	ctx, cancel := evt.CancelableContext(context.Background())
+	c.Assert(runtime.NumGoroutine(), check.Equals, nGoroutines)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		c.Fatal("context should not be done")
+	default:
+	}
+	c.Assert(ctx.Err(), check.IsNil)
+
+}
