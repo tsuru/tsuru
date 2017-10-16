@@ -572,10 +572,11 @@ func (p *FakeProvisioner) rebalanceNodesLocked(opts provision.RebalanceNodesOpti
 	if err := p.getError("RebalanceNodes"); err != nil {
 		return true, err
 	}
-	w := opts.Writer
-	opts.Writer = nil
-	if w == nil {
+	var w io.Writer
+	if opts.Event == nil {
 		w = ioutil.Discard
+	} else {
+		w = opts.Event
 	}
 	fmt.Fprintf(w, "rebalancing - dry: %v, force: %v\n", opts.Dry, opts.Force)
 	if len(opts.AppFilter) != 0 {

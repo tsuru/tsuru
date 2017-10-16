@@ -194,7 +194,18 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: c.ExpectedStatus()}}
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageID, destHosts...)
+	var oldWriter io.Writer
+	var pipeWriter io.Writer
+	evt, _ := writer.(*event.Event)
+	if evt != nil {
+		oldWriter = evt.GetLogWriter()
+		evt.SetLogWriter(ioutil.Discard)
+		pipeWriter = evt
+	}
+	addedContainers, err := p.runReplaceUnitsPipeline(pipeWriter, a, toAdd, []container.Container{c}, imageID, destHosts...)
+	if evt != nil {
+		evt.SetLogWriter(oldWriter)
+	}
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
@@ -299,11 +310,6 @@ func (p *dockerProvisioner) rebalanceContainersByHost(address string, w io.Write
 		return err
 	}
 	return p.moveContainerList(containers, "", w)
-}
-
-func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) error {
-	_, err := p.rebalanceContainersByFilter(writer, nil, nil, dryRun)
-	return err
 }
 
 func (p *dockerProvisioner) runCommandInContainer(image string, command string, app provision.App, stdout, stderr io.Writer) error {

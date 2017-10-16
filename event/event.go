@@ -5,6 +5,7 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -911,6 +912,10 @@ func (e *Event) SetLogWriter(w io.Writer) {
 	e.logWriter = w
 }
 
+func (e *Event) GetLogWriter() io.Writer {
+	return e.logWriter
+}
+
 func (e *Event) SetOtherCustomData(data interface{}) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -937,6 +942,32 @@ func (e *Event) Write(data []byte) (int, error) {
 		e.logWriter.Write(data)
 	}
 	return e.logBuffer.Write(data)
+}
+
+func (e *Event) CancelableContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+	if !e.Cancelable {
+		return ctx, cancel
+	}
+	go func() {
+		for {
+			canceled, err := e.AckCancel()
+			if err != nil {
+				log.Errorf("unable to check if event was canceled: %v", err)
+				continue
+			}
+			if canceled {
+				cancel()
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second):
+			}
+		}
+	}()
+	return ctx, cancel
 }
 
 func (e *Event) TryCancel(reason, owner string) error {

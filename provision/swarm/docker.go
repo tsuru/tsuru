@@ -487,6 +487,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 			Placement: &swarm.Placement{Constraints: constraints},
 		},
 	}
+	if config.HostConfig.NetworkMode != "" {
+		service.TaskTemplate.Networks = []swarm.NetworkAttachmentConfig{
+			{Target: config.HostConfig.NetworkMode},
+		}
+	}
 	return service, nil
 }
 

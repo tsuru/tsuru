@@ -41,6 +41,13 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 	useScheduler := len(nodes) == 0
 	maxTries := 5
 	for ; maxTries > 0; maxTries-- {
+		if opts.Context != nil {
+			select {
+			case <-opts.Context.Done():
+				return "", nil, opts.Context.Err()
+			default:
+			}
+		}
 		if useScheduler {
 			node, scheduleErr := c.scheduler.Schedule(c, &opts, schedulerOpts)
 			if scheduleErr != nil {
@@ -100,6 +107,7 @@ func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, inac
 		err := c.PullImage(docker.PullImageOptions{
 			Repository:        opts.Config.Image,
 			InactivityTimeout: inactivityTimeout,
+			Context:           opts.Context,
 		}, docker.AuthConfiguration{}, nodeAddress)
 		if err != nil {
 			return nil, err

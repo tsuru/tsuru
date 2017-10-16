@@ -5,6 +5,7 @@
 package container
 
 import (
+	"context"
 	"crypto"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -86,6 +88,7 @@ type CreateArgs struct {
 	ProcessName      string
 	Deploy           bool
 	Building         bool
+	Event            *event.Event
 }
 
 func (c *Container) Create(args *CreateArgs) error {
@@ -145,6 +148,11 @@ func (c *Container) Create(args *CreateArgs) error {
 		ProcessName:   args.ProcessName,
 		UpdateName:    true,
 		ActionLimiter: args.Provisioner.ActionLimiter(),
+	}
+	if args.Event != nil {
+		ctx, cancel := args.Event.CancelableContext(context.Background())
+		opts.Context = ctx
+		defer cancel()
 	}
 	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
 	hostAddr := net.URLToHost(addr)
