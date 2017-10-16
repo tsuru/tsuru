@@ -946,13 +946,13 @@ func (e *Event) Write(data []byte) (int, error) {
 
 func (e *Event) CancelableContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
+	if !e.Cancelable {
+		return ctx, cancel
+	}
 	go func() {
 		for {
 			canceled, err := e.AckCancel()
 			if err != nil {
-				if err == ErrNotCancelable {
-					return
-				}
 				log.Errorf("unable to check if event was canceled: %v", err)
 				continue
 			}
