@@ -169,7 +169,7 @@ func (s *S) TestDeleteCluster(c *check.C) {
 	c.Assert(clusters, check.HasLen, 0)
 }
 
-func (s *S) TestAddClusterToNonexistentPool(c *check.C) {
+func (s *S) TestCreateClusterWithNonexistentPool(c *check.C) {
 	kubeCluster := cluster.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
