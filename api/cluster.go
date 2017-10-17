@@ -50,7 +50,7 @@ func createClusterMachine(c *cluster.Cluster) error {
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-//   404: Pool not does not exist
+//   404: Pool does not exist
 //   409: Cluster already exists
 func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowed := permission.Check(t, permission.PermClusterCreate)
