@@ -4021,13 +4021,16 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool2", []string{"test"})
 	c.Assert(err, check.IsNil)
+	opts = pool.AddPoolOptions{Name: "pool3", Public: true}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
 		TeamOwner: "test",
 	}
 	err = app.SetPool()
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "you have access to \"test\",\"pool2\" pools. Please choose one in app creation")
+	c.Assert(err.Error(), check.Equals, "you have access to \"test\",\"pool2\",\"pool1\",\"pool3\" pools. Please choose one in app creation")
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {

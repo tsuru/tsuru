@@ -1001,8 +1001,12 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 			return "", err
 		}
 		if len(pools) > 1 {
+			publicPools, err := pool.ListPublicPools()
+			if err != nil {
+				return "", err
+			}
 			var names []string
-			for _, p := range pools {
+			for _, p := range append(pools, publicPools...) {
 				names = append(names, fmt.Sprintf("%q", p.Name))
 			}
 			return "", errors.Errorf("you have access to %s pools. Please choose one in app creation", strings.Join(names, ","))
