@@ -27,14 +27,20 @@ jobs:
       script:
         - while true; do echo .; sleep 30; done &
         - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
+      env: JOB=gometalinter
     - script: ./misc/check-handlers.sh
+      env: JOB=check handlers
     - script: ./misc/check-events.sh
+      env: JOB=check events
     - script: make check-api-doc
+      env: JOB=check api docs
     - stage: deploy
       script:
         - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
         - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
+      env: JOB=docker hub
     - script: if [ -n "$TRAVIS_TAG" ]; then curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash; fi
+      env: JOB=package cloud
     - stage: integration-check
       script: ./misc/trigger-integration.sh
 notifications:
