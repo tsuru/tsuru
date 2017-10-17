@@ -145,11 +145,11 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://test1.somewhere.com:2375")
 	c.Assert(nodes[0].Pool(), check.Equals, "pool1")
-	c.Assert(nodes[0].IaaSID(), check.Equals, "test1")
+	c.Assert(nodes[0].IaaSID(), check.Equals, "test1-pool1")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
 		"id":      "test1",
 		"iaas":    "test-iaas",
-		"iaas-id": "test1",
+		"iaas-id": "test1-pool1",
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeNode, Value: "http://test1.somewhere.com:2375"},
