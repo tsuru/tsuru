@@ -45,16 +45,16 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestListFilterMany(c *check.C) {
-	var allEvts []event.Event
+	var allEvts []*event.Event
 	var create = func(opts *event.Opts) {
 		evt, err := event.New(opts)
 		c.Assert(err, check.IsNil)
-		allEvts = append(allEvts, *evt)
+		allEvts = append(allEvts, evt)
 	}
 	var createi = func(opts *event.Opts) {
 		evt, err := event.NewInternal(opts)
 		c.Assert(err, check.IsNil)
-		allEvts = append(allEvts, *evt)
+		allEvts = append(allEvts, evt)
 	}
 	var checkFilters = func(f *event.Filter, expected interface{}) {
 		evts, err := event.List(f)
@@ -108,7 +108,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{Running: boolPtr(false), Sort: "_id"}, allEvts[len(allEvts)-3:len(allEvts)-1])
 	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-3])
 	checkFilters(&event.Filter{ErrorOnly: true, Sort: "_id"}, allEvts[len(allEvts)-3])
-	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[1]})
+	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []*event.Event{allEvts[0], allEvts[1]})
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "myapp"}}, allEvts[0])
 	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, Sort: "_id"}, allEvts[:3])
@@ -137,7 +137,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
 		{Type: "app", Values: []string{"myapp"}},
 		{Type: "node", Values: []string{"http://10.0.1.2"}},
-	}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[4]})
+	}, Sort: "_id"}, []*event.Event{allEvts[0], allEvts[4]})
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
 		{Scheme: permission.PermAll, Context: permission.Context(permission.CtxGlobal, "")},
 	}, Sort: "_id"}, allEvts[:len(allEvts)-1])
