@@ -187,8 +187,8 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	go func() {
 		for {
-			evts, err := event.All()
-			c.Assert(err, check.IsNil)
+			evts, evtErr := event.All()
+			c.Assert(evtErr, check.IsNil)
 			if len(evts) == 2 {
 				callCh <- struct{}{}
 				return
