@@ -493,12 +493,17 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	cachedRoles := make(map[string]permission.Role)
 	includedUsers := make([]*apiUser, 0)
 	for _, user := range users {
 		for _, roleInstance := range user.Roles {
-			role, err := permission.FindRole(roleInstance.Name)
-			if err != nil {
-				break
+			role, ok := cachedRoles[roleInstance.Name]
+			if !ok {
+				role, err := permission.FindRole(roleInstance.Name)
+				if err != nil {
+					break
+				}
+				cachedRoles[roleInstance.Name] = role
 			}
 			if role.ContextType == permission.CtxGlobal || (role.ContextType == permission.CtxTeam && roleInstance.ContextValue == team.Name) {
 				canInclude := permission.Check(t, permission.PermTeam)
