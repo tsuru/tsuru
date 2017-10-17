@@ -64,6 +64,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		params.ClientKey = m.ClientKey
 		params.IaaSID = m.Id
 	}
+	delete(params.Metadata, provision.PoolMetadataName)
 	prov, _, err := provision.FindNode(address)
 	if err != provision.ErrNodeNotFound {
 		if err == nil {
@@ -109,7 +110,6 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		}
 	}
 	params.Pool = params.Metadata[provision.PoolMetadataName]
-	delete(params.Metadata, provision.PoolMetadataName)
 	params.IaaSID = params.Metadata[provision.IaaSIDMetadataName]
 	delete(params.Metadata, provision.IaaSIDMetadataName)
 	if params.Pool == "" {

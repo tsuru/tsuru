@@ -31,6 +31,9 @@ func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 		Status:  "running",
 		Address: params["id"] + ".somewhere.com",
 	}
+	if params["pool"] != "" {
+		m.Id += "-" + params["pool"]
+	}
 	return &m, nil
 }
 
