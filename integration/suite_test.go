@@ -31,6 +31,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
 	err = os.Setenv("HOME", s.tmpDir)
 	c.Assert(err, check.IsNil)
+	err = os.Setenv("TSURU_DISABLE_COLORS", "1")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

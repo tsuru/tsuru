@@ -258,7 +258,7 @@ func nodeHealer() ExecFlow {
 		table = resultTable{raw: res.Stdout.String()}
 		table.parse()
 		c.Assert(table.rows, check.HasLen, 1)
-		c.Assert(table.rows[0][2], check.Equals, "true", check.Commentf("expected success, got: %v", res))
+		c.Assert(table.rows[0][2], check.Equals, "true", check.Commentf("expected success, got: %v - event info: %v", res, T("event-info", table.rows[0][0]).Run(env)))
 		eventId := table.rows[0][0]
 		res = T("event-info", eventId).Run(env)
 		c.Assert(res, ResultOk)
