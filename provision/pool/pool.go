@@ -385,6 +385,10 @@ func ListAllPools() ([]Pool, error) {
 	return listPools(nil)
 }
 
+func ListPublicPools() ([]Pool, error) {
+	return getPoolsSatisfyConstraints(true, "team", "*")
+}
+
 func ListPossiblePools(teams []string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(false, "team", teams...)
 }
