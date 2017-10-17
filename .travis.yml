@@ -7,9 +7,12 @@ addons:
       - rsyslog
       - xmlsec1
       - rpm
+# test stage automatically added for each go version
 go:
   - 1.9
   - master
+# script used in the automatically added test stage
+script: make test
 env:
   global:
     - GOARCH=amd64
@@ -20,8 +23,6 @@ jobs:
   allow_failures:
     - go: master
   include:
-    - stage: test
-      script: make test
     - stage: lint
       script:
         - while true; do echo .; sleep 30; done &
