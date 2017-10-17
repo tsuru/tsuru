@@ -374,6 +374,7 @@ func (s *S) TestServiceSpecForApp(c *check.C) {
 	for _, tt := range tests {
 		var spec *swarm.ServiceSpec
 		spec, err = serviceSpecForApp(tt.opts)
+		c.Assert(err, check.IsNil)
 		c.Assert(spec, check.DeepEquals, &tt.expected, check.Commentf("Diff %#v\n", pretty.Diff(spec, &tt.expected)))
 	}
 }
