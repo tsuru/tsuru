@@ -52,7 +52,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		address = params.Metadata["address"]
 		delete(params.Metadata, "address")
 	} else {
-		desc, _ := iaas.Describe(params.Metadata["iaas"])
+		desc, _ := iaas.Describe(params.Metadata[provision.IaaSMetadataName])
 		response["description"] = desc
 		m, err := iaas.CreateMachine(params.Metadata)
 		if err != nil {

@@ -15,6 +15,7 @@ import (
 const (
 	PoolMetadataName   = "pool"
 	IaaSIDMetadataName = "iaas-id"
+	IaaSMetadataName   = "iaas"
 )
 
 type MetaWithFrequency struct {

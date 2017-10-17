@@ -107,7 +107,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	if isHealthNode {
 		failures = healthNode.FailureCount()
 	}
-	machine, err := iaas.CreateMachineForIaaS(newNodeMetadata["iaas"], newNodeMetadata)
+	machine, err := iaas.CreateMachineForIaaS(newNodeMetadata[provision.IaaSMetadataName], newNodeMetadata)
 	if err != nil {
 		if isHealthNode {
 			healthNode.ResetFailures()
@@ -179,7 +179,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 }
 
 func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *NodeChecks) error {
-	_, hasIaas := node.MetadataNoPrefix()["iaas"]
+	_, hasIaas := node.MetadataNoPrefix()[provision.IaaSMetadataName]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address(), reason)
 		return nil
