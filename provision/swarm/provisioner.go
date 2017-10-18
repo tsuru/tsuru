@@ -636,7 +636,11 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, a)
+	nodeClient, err := clientForNode(client, task.NodeID)
+	if err != nil {
+		return "", err
+	}
+	_, err = commitPushBuildImage(nodeClient, deployImage, task.Status.ContainerStatus.ContainerID, a)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -946,7 +950,7 @@ func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, st
 		return "", nil, errors.WithStack(err)
 	}
 	createdID := srv.ID
-	tasks, err := waitForTasks(client, createdID, swarm.TaskStateShutdown)
+	tasks, err := waitForTasks(client, createdID, swarm.TaskStateShutdown, swarm.TaskStateComplete)
 	if err != nil {
 		return createdID, nil, err
 	}
