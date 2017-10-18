@@ -247,12 +247,12 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		ok = retry(15*time.Minute, func() bool {
+		ok = retry(30*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
 			c.Assert(res, ResultOk)
 			return res.Stdout.String() == ""
 		})
-		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not finish after 15 minutes: %v", res))
+		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not finish after 30 minutes: %v", res))
 		res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
 		c.Assert(res, ResultOk)
 		table = resultTable{raw: res.Stdout.String()}
