@@ -136,7 +136,7 @@ func taskStatusMsg(status swarm.TaskStatus) string {
 	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %d", status.State, status.Err, status.Message, status.ContainerStatus.ExitCode)
 }
 
-func waitForTasks(client *clusterClient, serviceID string, wantedState swarm.TaskState) ([]swarm.Task, error) {
+func waitForTasks(client *clusterClient, serviceID string, wantedStates ...swarm.TaskState) ([]swarm.Task, error) {
 	timeout := time.After(waitForTaskTimeout)
 	for {
 		tasks, err := client.ListTasks(docker.ListTasksOptions{
@@ -148,8 +148,15 @@ func waitForTasks(client *clusterClient, serviceID string, wantedState swarm.Tas
 			return nil, errors.WithStack(err)
 		}
 		var inStateCount int
+	eachTask:
 		for _, t := range tasks {
-			if t.Status.State == wantedState || t.Status.State == t.DesiredState {
+			for _, wanted := range wantedStates {
+				if t.Status.State == wanted {
+					inStateCount++
+					continue eachTask
+				}
+			}
+			if t.Status.State == t.DesiredState {
 				inStateCount++
 			}
 			if t.Status.State == swarm.TaskStateFailed || t.Status.State == swarm.TaskStateRejected {
@@ -167,7 +174,7 @@ func waitForTasks(client *clusterClient, serviceID string, wantedState swarm.Tas
 	}
 }
 
-func commitPushBuildImage(client *clusterClient, img, contID string, app provision.App) (string, error) {
+func commitPushBuildImage(client *docker.Client, img, contID string, app provision.App) (string, error) {
 	parts := strings.Split(img, ":")
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
