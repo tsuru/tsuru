@@ -483,15 +483,15 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Extra:     map[string][]string{"teams": {team.Name}},
 		TeamOwner: team.Name})
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	pools, err := pool.ListPoolsForTeam(team.Name)
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	users, err := auth.ListUsers()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	cachedRoles := make(map[string]permission.Role)
 	includedUsers := make([]*apiUser, 0)
@@ -501,7 +501,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			if !ok {
 				role, err := permission.FindRole(roleInstance.Name)
 				if err != nil {
-					break
+					return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 				}
 				cachedRoles[roleInstance.Name] = role
 			}
@@ -511,11 +511,11 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 					roleMap := make(map[string]*permission.Role)
 					perms, err := t.Permissions()
 					if err != nil {
-						break
+						return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 					}
 					userData, err := createAPIUser(perms, &user, roleMap, canInclude)
 					if err != nil {
-						break
+						return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
 					}
 					includedUsers = append(includedUsers, userData)
 					break
