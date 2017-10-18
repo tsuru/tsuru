@@ -499,11 +499,12 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		for _, roleInstance := range user.Roles {
 			role, ok := cachedRoles[roleInstance.Name]
 			if !ok {
-				role, err := permission.FindRole(roleInstance.Name)
+				roleFound, err := permission.FindRole(roleInstance.Name)
 				if err != nil {
 					return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 				}
-				cachedRoles[roleInstance.Name] = role
+				cachedRoles[roleInstance.Name] = roleFound
+				role = cachedRoles[roleInstance.Name]
 			}
 			if role.ContextType == permission.CtxGlobal || (role.ContextType == permission.CtxTeam && roleInstance.ContextValue == team.Name) {
 				canInclude := permission.Check(t, permission.PermTeam)
