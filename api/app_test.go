@@ -1649,6 +1649,25 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Matches, "^App not found.\n$")
 }
 
+func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fakeprovisioner"}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = pool.AddTeamsToPool("fakepool", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("pool=fakepool&provisioner=fakeprovisioner")
+	request, err := http.NewRequest("PUT", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	config.Set("docker:router", "fake")
 	defer config.Unset("docker:router")

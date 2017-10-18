@@ -392,6 +392,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // produce: application/x-json-stream
 // responses:
 //   200: App updated
+//   400: Invalid new pool
 //   401: Unauthorized
 //   404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
@@ -457,6 +458,20 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		)
 		if !allowed {
 			return permission.ErrUnauthorized
+		}
+	}
+	if updateData.Pool != "" {
+		var currentPool, newPool *pool.Pool
+		currentPool, err = pool.GetPoolByName(a.GetPool())
+		if err != nil {
+			return err
+		}
+		newPool, err = pool.GetPoolByName(updateData.Pool)
+		if err != nil {
+			return err
+		}
+		if currentPool.Provisioner != newPool.Provisioner {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Moving apps between pools belonging to different provisioners is not allowed"}
 		}
 	}
 	evt, err := event.New(&event.Opts{
