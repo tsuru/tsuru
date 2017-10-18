@@ -200,6 +200,36 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 	})
 }
 
+func (s *S) TestAddNodeIaaSID(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		IaaSID:  "id-1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p1")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool":    "p1",
+		"tsuru.io/iaas-id": "id-1",
+		"tsuru.io/m1":      "v1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"tsuru.io/pool":    "p1",
+		"tsuru.io/iaas-id": "id-1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"tsuru.io/m1": "v1",
+	})
+}
+
 func (s *S) TestUpdateNode(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
@@ -233,6 +263,61 @@ func (s *S) TestUpdateNode(c *check.C) {
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
 		"tsuru.io/m2": "v2",
 	})
+}
+
+func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		IaaSID:  "id-1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p2",
+		Metadata: map[string]string{
+			"m1": "",
+			"m2": "v2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p2")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool":    "p2",
+		"tsuru.io/iaas-id": "id-1",
+		"tsuru.io/m2":      "v2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"tsuru.io/pool":    "p2",
+		"tsuru.io/iaas-id": "id-1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"tsuru.io/m2": "v2",
+	})
+	// Try updating by adding the same node with other IaasID, should be ignored.
+	err = s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p2",
+		IaaSID:  "bogus",
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool":    "p2",
+		"tsuru.io/iaas-id": "id-1",
+		"tsuru.io/m2":      "v2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
 }
 
 func (s *S) TestUpdateNodeNoPool(c *check.C) {

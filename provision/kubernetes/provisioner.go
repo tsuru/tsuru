@@ -481,7 +481,9 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 		delete(node.Annotations, k)
 		node.Labels[k] = v
 	}
-	node.Spec.ProviderID = iaasID
+	if node.Spec.ProviderID == "" {
+		node.Spec.ProviderID = iaasID
+	}
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
