@@ -1665,7 +1665,7 @@ func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {
