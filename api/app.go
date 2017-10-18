@@ -461,11 +461,12 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 	if updateData.Pool != "" {
-		currentPool, err := pool.GetPoolByName(a.GetPool())
+		var currentPool, newPool *pool.Pool
+		currentPool, err = pool.GetPoolByName(a.GetPool())
 		if err != nil {
 			return err
 		}
-		newPool, err := pool.GetPoolByName(updateData.Pool)
+		newPool, err = pool.GetPoolByName(updateData.Pool)
 		if err != nil {
 			return err
 		}
