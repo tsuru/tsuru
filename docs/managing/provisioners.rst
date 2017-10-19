@@ -31,12 +31,12 @@ built-in the ``docker`` provisioner.
 The provisioner uses MongoDB to store metadata on existing nodes and containers
 on each node, and also to track images as they are created on each node. To
 accomplish this tsuru talks directly to the Docker API on each node, which must
-be allowed to received connections from the tsuru API using HTTP or HTTPS.
+be allowed to receive connections from the tsuru API using HTTP or HTTPS.
 
 Tsuru relies on the default ``big-sibling`` node-container to monitor
 containers on each node and report back containers that are unavailable or that
 had its address changed by docker restarting it. The ``docker`` provisioner will
-them be responsible for rescheduling such containers on new nodes.
+then be responsible for rescheduling such containers on new nodes.
 
 There's no need to register a :doc:`cluster </managing/clusters>` to use the
 ``docker`` provisioner, simply :doc:`adding new nodes
