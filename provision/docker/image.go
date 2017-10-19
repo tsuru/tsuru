@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/registry"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -76,7 +77,7 @@ func (p *dockerProvisioner) CleanImage(appName, imgName string) {
 		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
 			imgName, err.Error())
 	}
-	err = p.Cluster().RemoveFromRegistry(imgName)
+	err = registry.RemoveImage(imgName)
 	if err != nil {
 		shouldRemove = false
 		log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
