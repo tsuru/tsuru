@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
@@ -94,6 +95,28 @@ func newNodeHealer(args nodeHealerArgs) *NodeHealer {
 	return healer
 }
 
+func removeNodeTryRebalance(node provision.Node, newAddr string) error {
+	var buf bytes.Buffer
+	addr := node.Address()
+	err := node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
+		Address:   addr,
+		Rebalance: true,
+		Writer:    &buf,
+	})
+	if err != nil {
+		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", addr, newAddr, err, buf.String())
+	}
+	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
+		Address: addr,
+	})
+	if err != nil && err != provision.ErrNodeNotFound {
+		err = errors.Wrapf(err, "Unable to remove node %s from provisioner", addr)
+		log.Errorf("%v", err)
+		return err
+	}
+	return nil
+}
+
 func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) {
 	failingAddr := node.Address()
 	// Copy metadata to ensure underlying data structure is not modified.
@@ -123,6 +146,10 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		return nil, errors.Wrapf(err, "Can't auto-heal after %d failures for node %s: error unregistering old node", failures, failingHost)
 	}
 	newAddr := machine.FormatNodeAddress()
+	removeBefore := newAddr == failingAddr
+	if removeBefore {
+		removeNodeTryRebalance(node, newAddr)
+	}
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
 		IaaSID:     machine.Id,
@@ -146,36 +173,29 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	nodeSpec := provision.NodeToSpec(node)
 	nodeSpec.Address = newAddr
 	nodeSpec.Metadata = newNodeMetadata
-	var buf bytes.Buffer
-	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
-		Address:   failingAddr,
-		Rebalance: true,
-		Writer:    &buf,
-	})
-	if err != nil {
-		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err, buf.String())
+	nodeSpec.IaaSID = machine.Id
+	multiErr := tsuruErrors.NewMultiError()
+	if !removeBefore {
+		err = removeNodeTryRebalance(node, newAddr)
+		if err != nil {
+			multiErr.Add(err)
+		}
 	}
 	err = h.RemoveNode(node)
 	if err != nil {
 		log.Errorf("Unable to remove node %s status from healer: %s", node.Address(), err)
 	}
-	failingMachine, err := iaas.FindMachineByIdOrAddress(node.IaaSID(), failingHost)
+	failingMachine, err := iaas.FindMachineById(node.IaaSID())
 	if err == nil {
 		err = failingMachine.Destroy()
 		if err != nil {
-			return &nodeSpec, errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost)
+			multiErr.Add(errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost))
 		}
 	} else if err != iaas.ErrMachineNotFound {
-		return &nodeSpec, errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost)
-	}
-	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
-		Address: failingAddr,
-	})
-	if err != nil && err != provision.ErrNodeNotFound {
-		return &nodeSpec, errors.Wrapf(err, "Unable to remove node %s from provisioner", failingHost)
+		multiErr.Add(errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost))
 	}
 	log.Debugf("Done auto-healing node %q, node %q created in its place.", failingHost, machine.Address)
-	return &nodeSpec, nil
+	return &nodeSpec, multiErr.ToError()
 }
 
 func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *NodeChecks) error {

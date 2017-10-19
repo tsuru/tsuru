@@ -28,9 +28,10 @@ import (
 func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *provisiontest.FakeProvisioner) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInst.Addr = "addr2"
+	s.iaasInst = iaasInst
+	s.iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 2)
 
@@ -38,6 +39,7 @@ func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *p
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -50,6 +52,7 @@ func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *p
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
+	c.Assert(nodes[0].IaaSID(), check.Equals, "m-1")
 
 	err = healer.UpdateNodeData(nodes[0], []provision.NodeCheckResult{
 		{
@@ -92,6 +95,70 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(n, check.Equals, 0)
 }
 
+func (s *S) TestHealerHealNodeSameAddr(c *check.C) {
+	healer, nodes, p := s.createBasicTestHealer(c)
+	s.iaasInst.Addr = "addr1"
+	config.Set("iaas:node-port", 1)
+
+	created, err := healer.healNode(nodes[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(created.Address, check.Equals, "http://addr1:1")
+	c.Assert(created.IaaSID, check.Equals, "m-2")
+
+	nodes, err = p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
+	c.Assert(nodes[0].IaaSID(), check.Equals, "m-2")
+
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr1")
+	c.Assert(machines[0].Id, check.Equals, "m-2")
+
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	n, err := coll.FindId("http://addr1:1").Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+}
+
+func (s *S) TestHealerHealNodeSameAddrMachineDestroyed(c *check.C) {
+	healer, nodes, p := s.createBasicTestHealer(c)
+	s.iaasInst.Addr = "addr1"
+	config.Set("iaas:node-port", 1)
+	m, err := iaas.FindMachineById(nodes[0].IaaSID())
+	c.Assert(err, check.IsNil)
+	err = m.Destroy()
+	c.Assert(err, check.IsNil)
+
+	created, err := healer.healNode(nodes[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(created.Address, check.Equals, "http://addr1:1")
+	c.Assert(created.IaaSID, check.Equals, "m-2")
+
+	nodes, err = p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
+	c.Assert(nodes[0].IaaSID(), check.Equals, "m-2")
+
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr1")
+	c.Assert(machines[0].Id, check.Equals, "m-2")
+
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	n, err := coll.FindId("http://addr1:1").Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+}
+
 func (s *S) TestHealerHealNodeRebalanceError(c *check.C) {
 	healer, nodes, p := s.createBasicTestHealer(c)
 	var err error
@@ -125,7 +192,7 @@ func (s *S) TestHealerHealNodeRemoveError(c *check.C) {
 	p.PrepareFailure("RemoveNode", fmt.Errorf("remove node error 2"))
 
 	created, err := healer.healNode(nodes[0])
-	c.Assert(err, check.ErrorMatches, `Unable to remove node addr1 from provisioner: remove node error.*`)
+	c.Assert(err, check.ErrorMatches, `(?s).*remove node error.*Unable to remove node http://addr1:1 from provisioner.*`)
 	c.Assert(created.Address, check.Equals, "http://addr2:2")
 	nodes, err = p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -172,7 +239,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	iaasInst.Err = fmt.Errorf("my create machine error")
@@ -181,6 +248,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -209,7 +277,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 
 func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	iaas.RegisterIaasProvider("my-healer-iaas", iaasTesting.NewHealerIaaSConstructor("addr1", nil))
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaas.RegisterIaasProvider("my-healer-iaas", iaasTesting.NewHealerIaaSConstructor("addr2", nil))
 	config.Set("iaas:node-protocol", "http")
@@ -220,6 +288,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	p.PrepareFailure("AddNode", fmt.Errorf("add node error"))
@@ -245,7 +314,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaasInst.DelErr = fmt.Errorf("my destroy error")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -256,6 +325,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -306,6 +376,7 @@ func (s *S) TestHealerHealNodeDestroyNotFound(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   machine.Id,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -348,7 +419,7 @@ func (s *S) TestHealerHealNodeDestroyNotFound(c *check.C) {
 func (s *S) TestHealerHandleError(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -359,6 +430,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -416,7 +488,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -427,6 +499,7 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -526,7 +599,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -537,6 +610,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -763,7 +837,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err = iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -775,6 +849,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -831,7 +906,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	defer runtime.GOMAXPROCS(originalMaxProcs)
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -842,6 +917,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -899,7 +975,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	m, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -910,6 +986,7 @@ func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
+		IaaSID:   m.Id,
 	})
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{
