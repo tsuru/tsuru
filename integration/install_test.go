@@ -219,7 +219,7 @@ func nodeHealer() ExecFlow {
 		res := T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
 		c.Assert(res, ResultOk)
 		nodeAddr := waitNewNode(c, env)
-		env.Add("healnodeaddrs", nodeAddr)
+		env.Set("newnode-"+poolName, nodeAddr)
 		res = T("node-healing-update", "--enable", "--max-unresponsive", "130").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
@@ -265,20 +265,12 @@ func nodeHealer() ExecFlow {
 		newAddrRegexp := regexp.MustCompile(`(?s)End Custom Data:.*?_id: (.*?)\s`)
 		newAddrParts := newAddrRegexp.FindStringSubmatch(res.Stdout.String())
 		newAddr := newAddrParts[1]
-		var newAddrs []string
-		for _, addr := range env.All("healnodeaddrs") {
-			if addr == nodeAddr {
-				addr = newAddr
-			}
-			newAddrs = append(newAddrs, addr)
-		}
-		env.Set("healnodeaddrs", newAddrs...)
+		env.Set("newnode-"+poolName, newAddr)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		for _, node := range env.All("healnodeaddrs") {
-			res := T("node-remove", "-y", "--destroy", "--no-rebalance", node).Run(env)
-			c.Check(res, ResultOk)
-		}
+		nodeAddr := env.Get("newnode-" + env.Get("pool"))
+		res := T("node-remove", "-y", "--destroy", "--no-rebalance", nodeAddr).Run(env)
+		c.Check(res, ResultOk)
 	}
 	return flow
 }
