@@ -55,14 +55,11 @@ type UserDataIaaS struct {
 
 func (i *UserDataIaaS) ReadUserData(params map[string]string) (string, error) {
 	if userData, ok := params["user-data"]; ok {
-		delete(params, "user-data")
 		return userData, nil
 	}
 	userDataURL, ok := params["user-data-url"]
 	var err error
-	if ok {
-		delete(params, "user-data-url")
-	} else {
+	if !ok {
 		userDataURL, err = i.NamedIaaS.GetConfigString("user-data")
 		if err != nil {
 			return defaultUserData, nil
