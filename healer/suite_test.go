@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
+	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -22,7 +23,9 @@ func Test(t *testing.T) {
 
 var _ = check.Suite(&S{})
 
-type S struct{}
+type S struct {
+	iaasInst *iaasTesting.TestHealerIaaS
+}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
