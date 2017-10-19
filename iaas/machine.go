@@ -100,7 +100,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	params[provision.IaaSIDMetadataName] = m.Id
 	m.Iaas = iaasName
 	m.CreationParams = params
-	err = m.saveToDB()
+	err = m.saveToDB(true)
 	if err != nil {
 		m.Destroy()
 		return nil, err
@@ -202,13 +202,17 @@ func (m *Machine) FormatNodeAddress() string {
 	return fmt.Sprintf("%s://%s:%d", protocol, m.Address, port)
 }
 
-func (m *Machine) saveToDB() error {
+func (m *Machine) saveToDB(forceOverwrite bool) error {
 	coll, err := collectionEnsureIdx()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
 	_, err = coll.UpsertId(m.Id, m)
+	if forceOverwrite && err != nil && mgo.IsDup(err) {
+		coll.Remove(bson.M{"address": m.Address, "iaas": m.Iaas})
+		_, err = coll.UpsertId(m.Id, m)
+	}
 	return err
 }
 
