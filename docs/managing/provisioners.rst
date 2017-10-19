@@ -45,7 +45,7 @@ to use them.
 
 Scheduling of units on nodes prioritizes high availability of application
 containers. To accomplish this tsuru tries to create each new container on the
-node with fewer containers from such application. If there are multiple nodes
+node with fewest containers from such application. If there are multiple nodes
 with no containers from the application being scheduled tsuru will try to
 create new containers on nodes that have different metadata from the ones
 containers already exist.
