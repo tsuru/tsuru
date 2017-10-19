@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/net"
@@ -25,7 +26,33 @@ func (e *StorageDeleteDisabledError) Error() string {
 	return fmt.Sprintf("storage delete is disabled (%d)", e.StatusCode)
 }
 
-// RemoveAppImages removes an image manifest from a remote registry v2 server, returning an error
+// RemoveImage removes an image manifest from a remote registry v2 server, returning an error
+// in case of failure.
+func RemoveImage(imageName string) error {
+	registry, image, tag := parseImage(imageName)
+	if registry == "" {
+		var err error
+		registry, err = config.GetString("docker:registry")
+		if err != nil {
+			return err
+		}
+	}
+	r := &dockerRegistry{server: registry}
+	digest, err := r.getDigest(image, tag)
+	if err != nil {
+		return fmt.Errorf("failed to get digest for image %s/%s:%s on registry: %v\n", r.server, image, tag, err)
+	}
+	err = r.removeImage(image, digest)
+	if err != nil {
+		if err, ok := err.(*StorageDeleteDisabledError); ok {
+			return err
+		}
+		return fmt.Errorf("failed to remove image %s/%s:%s/%s on registry: %v\n", r.server, image, tag, digest, err)
+	}
+	return nil
+}
+
+// RemoveAppImages removes all app images from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveAppImages(appName string) error {
 	registry, err := config.GetString("docker:registry")
@@ -120,4 +147,18 @@ func (r *dockerRegistry) doRequest(method, path string, headers map[string]strin
 		return nil, err
 	}
 	return resp, nil
+}
+
+func parseImage(imageName string) (registry string, image string, tag string) {
+	parts := strings.SplitN(imageName, "/", 3)
+	if len(parts) < 3 {
+		image = strings.Join(parts, "/")
+	} else {
+		registry = parts[0]
+		image = strings.Join(parts[1:], "/")
+	}
+	parts = strings.SplitN(image, ":", 2)
+	image = parts[0]
+	tag = parts[1]
+	return
 }
