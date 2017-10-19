@@ -123,7 +123,6 @@ func (s *S) TestReadUserDataParamsOverride(c *check.C) {
 	userData, err := iaasInst.ReadUserData(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(userData, check.Equals, "myvalue")
-	c.Assert(params, check.DeepEquals, map[string]string{})
 }
 
 func (s *S) TestReadUserDataParamsURL(c *check.C) {
@@ -136,7 +135,6 @@ func (s *S) TestReadUserDataParamsURL(c *check.C) {
 	userData, err := iaasInst.ReadUserData(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(userData, check.Equals, "myurlvalue")
-	c.Assert(params, check.DeepEquals, map[string]string{})
 }
 
 func (s *S) TestGetConfigString(c *check.C) {
