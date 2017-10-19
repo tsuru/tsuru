@@ -5,6 +5,7 @@
 package testing
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/tsuru/tsuru/iaas"
@@ -12,12 +13,13 @@ import (
 
 type TestHealerIaaS struct {
 	sync.Mutex
-	Addr   string
-	Err    error
-	DelErr error
-	Addrs  []string
-	Ports  []int
-	AddrId int
+	Addr     string
+	Err      error
+	DelErr   error
+	Addrs    []string
+	Ports    []int
+	AddrId   int
+	UniqueID int
 }
 
 func NewHealerIaaSConstructor(addr string, err error) func(string) iaas.IaaS {
@@ -61,8 +63,9 @@ func (t *TestHealerIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		}
 		t.AddrId = (t.AddrId + 1) % len(t.Addrs)
 	}
+	t.UniqueID++
 	m := iaas.Machine{
-		Id:      "m-" + addr,
+		Id:      fmt.Sprintf("m-%d", t.UniqueID),
 		Status:  "running",
 		Address: addr,
 		Port:    port,

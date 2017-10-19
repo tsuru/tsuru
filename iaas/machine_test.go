@@ -45,14 +45,29 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(testIaas.cmds, check.DeepEquals, []string{"create"})
 }
 
-func (s *S) TestCreateMachineDupAddr(c *check.C) {
+func (s *S) TestCreateMachineDupAddrSameIaaS(c *check.C) {
 	config.Set("iaas:default", "test-iaas")
 	m, err := CreateMachine(map[string]string{"id": "myid", "address": "addr1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.Equals, "myid")
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
 	c.Assert(m.Address, check.Equals, "addr1.somewhere.com")
-	_, err = CreateMachine(map[string]string{"id": "myid2", "address": "addr1"})
+	m, err = CreateMachine(map[string]string{"id": "myid2", "address": "addr1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Id, check.Equals, "myid2")
+	c.Assert(m.Iaas, check.Equals, "test-iaas")
+	c.Assert(m.Address, check.Equals, "addr1.somewhere.com")
+}
+
+func (s *S) TestCreateMachineDupAddrOtherIaaS(c *check.C) {
+	RegisterIaasProvider("other", newTestIaaS)
+	config.Set("iaas:default", "test-iaas")
+	m, err := CreateMachine(map[string]string{"id": "myid", "address": "addr1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Id, check.Equals, "myid")
+	c.Assert(m.Iaas, check.Equals, "test-iaas")
+	c.Assert(m.Address, check.Equals, "addr1.somewhere.com")
+	_, err = CreateMachineForIaaS("other", map[string]string{"id": "myid2", "address": "addr1"})
 	c.Assert(err, check.ErrorMatches, ".*duplicate key error.*")
 }
 
