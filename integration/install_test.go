@@ -269,6 +269,9 @@ func nodeHealer() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		nodeAddr := env.Get("newnode-" + env.Get("pool"))
+		if nodeAddr == "" {
+			return
+		}
 		res := T("node-remove", "-y", "--destroy", "--no-rebalance", nodeAddr).Run(env)
 		c.Check(res, ResultOk)
 	}
