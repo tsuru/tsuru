@@ -2186,7 +2186,7 @@ func (s *S) TestSleep(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddBackend(a.Name)
+	routertest.FakeRouter.AddBackend(&a)
 	var b bytes.Buffer
 	err = a.Start(&b, "")
 	c.Assert(err, check.IsNil)
@@ -2433,7 +2433,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
 	}
-	err = routertest.FakeRouter.AddBackend(app.Name)
+	err = routertest.FakeRouter.AddBackend(&app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2490,7 +2490,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
 		Tags:        []string{},
 	}
-	err := routertest.FakeRouter.AddBackend(app.Name)
+	err := routertest.FakeRouter.AddBackend(&app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2538,7 +2538,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		Name:    "name",
 		Routers: []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
 	}
-	err := routertest.FakeRouter.AddBackend(app.Name)
+	err := routertest.FakeRouter.AddBackend(&app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -3045,7 +3045,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddBackend(a.Name)
+	err = routertest.FakeRouter.AddBackend(&a)
 	c.Assert(err, check.IsNil)
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)

@@ -1908,9 +1908,9 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(app.Name, appRouter.Opts)
+		err = optsRouter.AddBackendOpts(app, appRouter.Opts)
 	} else {
-		err = r.AddBackend(app.Name)
+		err = r.AddBackend(app)
 	}
 	if err != nil {
 		return err
@@ -1953,7 +1953,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
-	err = optsRouter.UpdateBackendOpts(app.Name, appRouter.Opts)
+	err = optsRouter.UpdateBackendOpts(app, appRouter.Opts)
 	if err != nil {
 		existing.Opts = oldOpts
 		rollbackErr := app.updateRoutersDB(routers)

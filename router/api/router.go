@@ -144,20 +144,20 @@ func (r *apiRouter) GetName() string {
 	return r.routerName
 }
 
-func (r *apiRouter) AddBackend(name string) (err error) {
-	return r.AddBackendOpts(name, nil)
+func (r *apiRouter) AddBackend(app router.App) (err error) {
+	return r.AddBackendOpts(app, nil)
 }
 
-func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
-	err := r.doBackendOpts(name, http.MethodPost, opts)
+func (r *apiRouter) AddBackendOpts(app router.App, opts map[string]string) error {
+	err := r.doBackendOpts(app.GetName(), http.MethodPost, opts)
 	if err != nil {
 		return err
 	}
-	return router.Store(name, name, routerType)
+	return router.Store(app.GetName(), app.GetName(), routerType)
 }
 
-func (r *apiRouter) UpdateBackendOpts(name string, opts map[string]string) error {
-	return r.doBackendOpts(name, http.MethodPut, opts)
+func (r *apiRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
+	return r.doBackendOpts(app.GetName(), http.MethodPut, opts)
 }
 
 func (r *apiRouter) doBackendOpts(name, method string, opts map[string]string) error {

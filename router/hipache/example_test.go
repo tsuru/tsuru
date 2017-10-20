@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
+	"github.com/tsuru/tsuru/router/routertest"
 )
 
 func Example() {
@@ -17,7 +18,7 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddBackend("myapp")
+	err = router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	if err != nil {
 		panic(err)
 	}

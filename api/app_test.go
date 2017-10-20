@@ -556,7 +556,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddBackend(app1.Name)
+	routertest.FakeRouter.AddBackend(&app1)
 	request, err := http.NewRequest("GET", "/apps/app1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")

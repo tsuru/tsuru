@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
-	_ "github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -55,14 +55,14 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cnameRouter, ok := r.(router.CNameRouter)
 	c.Assert(ok, check.Equals, true)
-	err = r.AddBackend(backend1)
+	err = r.AddBackend(routertest.FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://127.0.0.1")
 	c.Assert(err, check.IsNil)
 	r.AddRoutes(backend1, []*url.URL{addr1})
 	err = cnameRouter.SetCName("cname.com", backend1)
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend(backend2)
+	err = r.AddBackend(routertest.FakeApp{Name: backend2})
 	c.Assert(err, check.IsNil)
 	addr2, err := url.Parse("http://10.10.10.10")
 	c.Assert(err, check.IsNil)
@@ -103,10 +103,10 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 	backend2 := "b2"
 	r, err := router.Get("fake")
 	c.Assert(err, check.IsNil)
-	r.AddBackend(backend1)
+	r.AddBackend(routertest.FakeApp{Name: backend1})
 	addr1, _ := url.Parse("http://127.0.0.1")
 	r.AddRoutes(backend1, []*url.URL{addr1})
-	r.AddBackend(backend2)
+	r.AddBackend(routertest.FakeApp{Name: backend2})
 	addr2, _ := url.Parse("http://10.10.10.10")
 	r.AddRoutes(backend2, []*url.URL{addr2})
 	err = router.Swap(r, backend1, backend2, false)
@@ -134,14 +134,14 @@ func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	r2, err := router.Get("hipache")
 	c.Assert(err, check.IsNil)
-	err = r1.AddBackend(backend1)
+	err = r1.AddBackend(routertest.FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
 	defer r1.RemoveBackend(backend1)
 	addr1, _ := url.Parse("http://127.0.0.1")
 	err = r1.AddRoutes(backend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
 	defer r1.RemoveRoutes(backend1, []*url.URL{addr1})
-	err = r2.AddBackend(backend2)
+	err = r2.AddBackend(routertest.FakeApp{Name: backend2})
 	c.Assert(err, check.IsNil)
 	defer r2.RemoveBackend(backend2)
 	addr2, _ := url.Parse("http://10.10.10.10")

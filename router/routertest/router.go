@@ -152,7 +152,8 @@ func (r *fakeRouter) HasRoute(name, address string) bool {
 	return false
 }
 
-func (r *fakeRouter) AddBackend(name string) error {
+func (r *fakeRouter) AddBackend(app router.App) error {
+	name := app.GetName()
 	if r.HasBackend(name) {
 		return router.ErrBackendExists
 	}
@@ -415,12 +416,12 @@ type optsRouter struct {
 	Opts map[string]map[string]string
 }
 
-func (r *optsRouter) AddBackendOpts(name string, opts map[string]string) error {
-	r.Opts[name] = opts
-	return r.fakeRouter.AddBackend(name)
+func (r *optsRouter) AddBackendOpts(app router.App, opts map[string]string) error {
+	r.Opts[app.GetName()] = opts
+	return r.fakeRouter.AddBackend(app)
 }
 
-func (r *optsRouter) UpdateBackendOpts(name string, opts map[string]string) error {
-	r.Opts[name] = opts
+func (r *optsRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
+	r.Opts[app.GetName()] = opts
 	return nil
 }

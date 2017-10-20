@@ -115,7 +115,8 @@ func (r *galebRouter) virtualHostName(base string) string {
 	return fmt.Sprintf("%s.%s", base, r.domain)
 }
 
-func (r *galebRouter) AddBackend(name string) (err error) {
+func (r *galebRouter) AddBackend(app router.App) (err error) {
+	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

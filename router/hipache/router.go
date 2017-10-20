@@ -91,7 +91,8 @@ func (r *hipacheRouter) GetName() string {
 	return r.routerName
 }
 
-func (r *hipacheRouter) AddBackend(name string) (err error) {
+func (r *hipacheRouter) AddBackend(app router.App) (err error) {
+	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

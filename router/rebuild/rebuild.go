@@ -19,7 +19,7 @@ type RebuildRoutesResult struct {
 }
 
 type RebuildApp interface {
-	GetName() string
+	router.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
 	RoutableAddresses() ([]url.URL, error)
@@ -46,9 +46,9 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		return nil, err
 	}
 	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(app.GetName(), appRouter.Opts)
+		err = optsRouter.AddBackendOpts(app, appRouter.Opts)
 	} else {
-		err = r.AddBackend(app.GetName())
+		err = r.AddBackend(app)
 	}
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err

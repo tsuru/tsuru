@@ -243,9 +243,9 @@ var addRouterBackend = action.Action{
 				return nil, err
 			}
 			if optsRouter, ok := r.(router.OptsRouter); ok {
-				err = optsRouter.AddBackendOpts(app.GetName(), appRouter.Opts)
+				err = optsRouter.AddBackendOpts(app, appRouter.Opts)
 			} else {
-				err = r.AddBackend(app.GetName())
+				err = r.AddBackend(app)
 			}
 			if err != nil {
 				return nil, err

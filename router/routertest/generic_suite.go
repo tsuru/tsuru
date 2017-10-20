@@ -15,6 +15,26 @@ import (
 	"gopkg.in/check.v1"
 )
 
+type FakeApp struct {
+	Name string
+}
+
+func (r FakeApp) GetName() string {
+	return r.Name
+}
+
+func (r FakeApp) GetPool() string {
+	return ""
+}
+
+func (r FakeApp) GetTeamOwner() string {
+	return ""
+}
+
+func (r FakeApp) GetTeamsName() []string {
+	return nil
+}
+
 const (
 	testBackend1 = "backend1"
 	testBackend2 = "backend2"
@@ -89,7 +109,7 @@ func (s *RouterSuite) TearDownTest(c *check.C) {
 }
 
 func (s *RouterSuite) TestRouteAddBackendAndRoute(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -107,24 +127,23 @@ func (s *RouterSuite) TestRouteAddBackendOptsAndRoute(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement OptsRouter", s.Router))
 	}
-	name := "backend1"
-	err := optsRouter.AddBackendOpts(name, map[string]string{})
+	err := optsRouter.AddBackendOpts(FakeApp{Name: testBackend1}, map[string]string{})
 	c.Assert(err, check.IsNil)
-	err = optsRouter.AddBackendOpts(name, nil)
+	err = optsRouter.AddBackendOpts(FakeApp{Name: testBackend1}, nil)
 	c.Assert(err, check.Equals, router.ErrBackendExists)
 	addr, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddRoutes(name, []*url.URL{addr})
+	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr})
 	c.Assert(err, check.IsNil)
-	routes, err := s.Router.Routes(name)
+	routes, err := s.Router.Routes(testBackend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, HostEquals, []*url.URL{addr})
-	err = s.Router.RemoveBackend(name)
+	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -153,9 +172,9 @@ func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
 }
 
 func (s *RouterSuite) TestRouteAddDupBackend(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddBackend(testBackend1)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.Equals, router.ErrBackendExists)
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
@@ -175,7 +194,7 @@ func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l URLList) Less(i, j int) bool { return l[i].Host < l[j].Host }
 
 func (s *RouterSuite) TestRouteAddRoutes(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -192,7 +211,7 @@ func (s *RouterSuite) TestRouteAddRoutes(c *check.C) {
 }
 
 func (s *RouterSuite) TestRouteAddRoutesIgnoreRepeated(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -213,7 +232,7 @@ func (s *RouterSuite) TestRouteAddRoutesIgnoreRepeated(c *check.C) {
 }
 
 func (s *RouterSuite) TestRouteRemoveRoutes(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -235,7 +254,7 @@ func (s *RouterSuite) TestRouteRemoveRoutes(c *check.C) {
 }
 
 func (s *RouterSuite) TestRouteRemoveRoutesIgnoreNonExisting(c *check.C) {
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -263,13 +282,13 @@ func (s *RouterSuite) TestRouteRemoveRoutesIgnoreNonExisting(c *check.C) {
 func (s *RouterSuite) TestSwap(c *check.C) {
 	addr1, _ := url.Parse("http://127.0.0.1:8080")
 	addr2, _ := url.Parse("http://10.10.10.10:8080")
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	backend1OrigAddr, err := s.Router.Addr(testBackend1)
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddBackend(testBackend2)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend2})
 	c.Assert(err, check.IsNil)
 	backend2OrigAddr, err := s.Router.Addr(testBackend2)
 	c.Assert(err, check.IsNil)
@@ -318,13 +337,13 @@ func (s *RouterSuite) TestSwap(c *check.C) {
 func (s *RouterSuite) TestSwapTwice(c *check.C) {
 	addr1, _ := url.Parse("http://127.0.0.1:8080")
 	addr2, _ := url.Parse("http://10.10.10.10:8080")
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	backend1OrigAddr, err := s.Router.Addr(testBackend1)
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddBackend(testBackend2)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend2})
 	c.Assert(err, check.IsNil)
 	backend2OrigAddr, err := s.Router.Addr(testBackend2)
 	c.Assert(err, check.IsNil)
@@ -388,7 +407,7 @@ func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
 	}
-	err := cnameRouter.AddBackend(testBackend1)
+	err := cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -407,7 +426,7 @@ func (s *RouterSuite) TestCNames(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
 	}
-	err := cnameRouter.AddBackend(testBackend1)
+	err := cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -439,7 +458,7 @@ func (s *RouterSuite) TestSetUnsetCName(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
 	}
-	err := cnameRouter.AddBackend(testBackend1)
+	err := cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -469,7 +488,7 @@ func (s *RouterSuite) TestSetCNameSubdomainError(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
 	}
-	err := cnameRouter.AddBackend(testBackend1)
+	err := cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -490,7 +509,7 @@ func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
 	}
-	err := cnameRouter.AddBackend(testBackend1)
+	err := cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
@@ -500,7 +519,7 @@ func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cnameRouter.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
-	err = cnameRouter.AddBackend(testBackend1)
+	err = cnameRouter.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	err = cnameRouter.SetCName("my.host.com", testBackend1)
 	c.Assert(err, check.IsNil)
@@ -511,11 +530,11 @@ func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
 func (s *RouterSuite) TestRemoveBackendAfterSwap(c *check.C) {
 	addr1, _ := url.Parse("http://127.0.0.1")
 	addr2, _ := url.Parse("http://10.10.10.10")
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddBackend(testBackend2)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend2})
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoutes(testBackend2, []*url.URL{addr2})
 	c.Assert(err, check.IsNil)
@@ -534,7 +553,7 @@ func (s *RouterSuite) TestRemoveBackendAfterSwap(c *check.C) {
 func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
 	addr1, _ := url.Parse("http://127.0.0.1")
 	addr2, _ := url.Parse("http://10.10.10.10")
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
@@ -542,7 +561,7 @@ func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddBackend(testBackend1)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	routes, err := s.Router.Routes(testBackend1)
 	c.Assert(err, check.IsNil)
@@ -554,7 +573,7 @@ func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
 func (s *RouterSuite) TestRemoveBackendKeepsInRouter(c *check.C) {
 	_, err := router.Retrieve(testBackend1)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-	err = s.Router.AddBackend(testBackend1)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	name, err := router.Retrieve(testBackend1)
 	c.Assert(err, check.IsNil)
@@ -571,7 +590,7 @@ func (s *RouterSuite) TestSetHealthcheck(c *check.C) {
 	if !ok {
 		c.Skip(fmt.Sprintf("%T does not implement CustomHealthcheckRouter", s.Router))
 	}
-	err := s.Router.AddBackend(testBackend1)
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
 	hcData := router.HealthcheckData{
 		Path:   "/",

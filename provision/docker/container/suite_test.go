@@ -104,7 +104,7 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 	if container.Image == "" {
 		container.Image = "tsuru/python:latest"
 	}
-	routertest.FakeRouter.AddBackend(container.AppName)
+	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(provision.WebProcessDefaultPort() + "/tcp"): {},
