@@ -22,7 +22,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	registrytest "github.com/tsuru/tsuru/registry/testing"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -1285,4 +1287,57 @@ func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 	c.Assert(fakeApp.HasBind(&u1), check.Equals, false)
 	u2 := containers[1].AsUnit(fakeApp)
 	c.Assert(fakeApp.HasBind(&u2), check.Equals, false)
+}
+
+func (s *S) TestUpdateAppImageName(c *check.C) {
+	c.Assert(updateAppImage.Name, check.Equals, "update-app-image")
+}
+
+func (s *S) TestUpdateAppImageForward(c *check.C) {
+	config.Set("docker:image-history-size", 1)
+	defer config.Unset("docker:image-history-size")
+	registry, err := registrytest.NewServer("127.0.0.1:0")
+	c.Assert(err, check.IsNil)
+	defer registry.Stop()
+	config.Set("registry", "docker")
+	defer config.Unset("registry")
+	config.Set("docker:registry", registry.Addr())
+	defer config.Unset("docker:registry")
+	err = newFakeImage(s.p, "tsuru/python", nil)
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
+	nextImgName, err := image.AppNewImageName(app.GetName())
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(app.GetName(), nextImgName)
+	c.Assert(err, check.IsNil)
+	nextImgName, err = image.AppNewImageName(app.GetName())
+	c.Assert(err, check.IsNil)
+	registry.AddRepo(registrytest.Repository{Name: "tsuru/app-mightyapp", Tags: map[string]string{"v1": "abcdefg"}})
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	err = cont.Create(&container.CreateArgs{
+		App:         app,
+		ImageID:     "tsuru/python",
+		Commands:    []string{"foo"},
+		Provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	imgID, err := cont.Commit(s.p, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, registry.Addr()+"/tsuru/app-mightyapp:v2")
+	c.Assert(buf.String(), check.Not(check.Equals), "")
+	pullOpts := docker.PullImageOptions{
+		Repository: registry.Addr() + "/tsuru/app-mightyapp",
+		Tag:        "v1",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	args := changeUnitsPipelineArgs{app: app, writer: buf, provisioner: s.p, imageID: nextImgName}
+	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
+	_, err = updateAppImage.Forward(context)
+	c.Assert(err, check.IsNil)
+	allImages, err := image.ListAppImages(app.GetName())
+	c.Assert(err, check.IsNil)
+	c.Assert(len(allImages), check.Equals, 1)
+	c.Assert(allImages[0], check.Equals, registry.Addr()+"/tsuru/app-mightyapp:v2")
 }
