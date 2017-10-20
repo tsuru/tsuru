@@ -246,7 +246,7 @@ var removeOldImages = &action.Action{
 			return nil, nil
 		}
 		for i, imgName := range allImages {
-			if i < len(allImages)-imgHistorySize-1 {
+			if i < len(allImages)-imgHistorySize {
 				if err := registry.RemoveImage(imgName); err != nil {
 					log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
 						imgName, err.Error())
