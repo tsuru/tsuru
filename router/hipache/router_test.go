@@ -672,7 +672,7 @@ func (s *S) TestSwap(c *check.C) {
 	defer router.RemoveBackend(backend1)
 	router.AddRoutes(backend1, []*url.URL{addr1})
 	defer router.RemoveRoutes(backend1, []*url.URL{addr1})
-	router.AddBackend(routertest.FakeApp{backend2})
+	router.AddBackend(routertest.FakeApp{Name: backend2})
 	defer router.RemoveBackend(backend2)
 	router.AddRoutes(backend2, []*url.URL{addr2})
 	defer router.RemoveRoutes(backend2, []*url.URL{addr2})
@@ -691,7 +691,7 @@ func (s *S) TestSwap(c *check.C) {
 func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
 	backend1 := "b1"
 	r := hipacheRouter{prefix: "hipache"}
-	err := r.AddBackend(routertest.FakeApp{backend1})
+	err := r.AddBackend(routertest.FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
 	redisConn, err := r.connect()
 	c.Assert(err, check.IsNil)

@@ -16,7 +16,10 @@ import (
 )
 
 type FakeApp struct {
-	Name string
+	Name      string
+	Pool      string
+	Teams     []string
+	TeamOwner string
 }
 
 func (r FakeApp) GetName() string {
@@ -24,15 +27,15 @@ func (r FakeApp) GetName() string {
 }
 
 func (r FakeApp) GetPool() string {
-	return ""
+	return r.Pool
 }
 
 func (r FakeApp) GetTeamOwner() string {
-	return ""
+	return r.TeamOwner
 }
 
 func (r FakeApp) GetTeamsName() []string {
-	return nil
+	return r.Teams
 }
 
 const (

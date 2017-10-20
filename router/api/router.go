@@ -149,7 +149,7 @@ func (r *apiRouter) AddBackend(app router.App) (err error) {
 }
 
 func (r *apiRouter) AddBackendOpts(app router.App, opts map[string]string) error {
-	err := r.doBackendOpts(app.GetName(), http.MethodPost, opts)
+	err := r.doBackendOpts(app, http.MethodPost, opts)
 	if err != nil {
 		return err
 	}
@@ -157,12 +157,12 @@ func (r *apiRouter) AddBackendOpts(app router.App, opts map[string]string) error
 }
 
 func (r *apiRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
-	return r.doBackendOpts(app.GetName(), http.MethodPut, opts)
+	return r.doBackendOpts(app, http.MethodPut, opts)
 }
 
-func (r *apiRouter) doBackendOpts(name, method string, opts map[string]string) error {
-	path := fmt.Sprintf("backend/%s", name)
-	b, err := json.Marshal(opts)
+func (r *apiRouter) doBackendOpts(app router.App, method string, opts map[string]string) error {
+	path := fmt.Sprintf("backend/%s", app.GetName())
+	b, err := json.Marshal(addDefaultOpts(app, opts))
 	if err != nil {
 		return err
 	}
@@ -451,4 +451,16 @@ func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data route
 		return router.ErrBackendNotFound
 	}
 	return err
+}
+
+func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {
+	mergedOpts := make(map[string]interface{})
+	for k, v := range opts {
+		mergedOpts[k] = v
+	}
+	prefix := "tsuru.io/"
+	mergedOpts[prefix+"app-pool"] = app.GetPool()
+	mergedOpts[prefix+"app-teamowner"] = app.GetTeamOwner()
+	mergedOpts[prefix+"app-teams"] = app.GetTeamsName()
+	return mergedOpts
 }
