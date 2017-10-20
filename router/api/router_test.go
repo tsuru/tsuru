@@ -74,7 +74,7 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
 	config.Set("database:name", "router_api_tests")
 	s.apiRouter.backends = make(map[string]*backend)
-	s.testRouter.AddBackend("mybackend")
+	s.testRouter.AddBackend(routertest.FakeApp{Name: "mybackend"})
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": {addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
@@ -102,27 +102,27 @@ func (s *S) TestAddrNotFound(c *check.C) {
 }
 
 func (s *S) TestAddBackend(c *check.C) {
-	err := s.testRouter.AddBackend("new-backend")
+	err := s.testRouter.AddBackend(routertest.FakeApp{Name: "new-backend"})
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["new-backend"], check.NotNil)
 }
 
 func (s *S) TestAddBackendOpts(c *check.C) {
-	err := s.testRouter.AddBackendOpts("new-backend", map[string]string{"opt1": "val1"})
+	err := s.testRouter.AddBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val1"})
 }
 
 func (s *S) TestUpdateBackendOpts(c *check.C) {
-	err := s.testRouter.AddBackendOpts("new-backend", map[string]string{"opt1": "val1"})
+	err := s.testRouter.AddBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
-	err = s.testRouter.UpdateBackendOpts("new-backend", map[string]string{"opt1": "val2"})
+	err = s.testRouter.UpdateBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val2"})
 }
 
 func (s *S) TestAddBackendExists(c *check.C) {
-	err := s.testRouter.AddBackend("mybackend")
+	err := s.testRouter.AddBackend(routertest.FakeApp{Name: "mybackend"})
 	c.Assert(err, check.DeepEquals, router.ErrBackendExists)
 }
 
@@ -138,7 +138,7 @@ func (s *S) TestRemoveBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveBackendSwapped(c *check.C) {
-	err := s.testRouter.AddBackend("backend2")
+	err := s.testRouter.AddBackend(routertest.FakeApp{Name: "backend2"})
 	c.Assert(err, check.IsNil)
 	err = s.testRouter.Swap("mybackend", "backend2", false)
 	c.Assert(err, check.IsNil)
@@ -206,7 +206,7 @@ func (s *S) TestGetRoutesBackendNotFound(c *check.C) {
 }
 
 func (s *S) TestSwap(c *check.C) {
-	err := s.testRouter.AddBackend("backend2")
+	err := s.testRouter.AddBackend(routertest.FakeApp{Name: "backend2"})
 	c.Assert(err, check.IsNil)
 	err = s.testRouter.Swap("mybackend", "backend2", true)
 	c.Assert(err, check.IsNil)

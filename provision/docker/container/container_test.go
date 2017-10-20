@@ -85,7 +85,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	app.CpuShare = 50
 	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
 	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -218,7 +218,7 @@ func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -260,7 +260,7 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -298,7 +298,7 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -347,7 +347,7 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
 	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -392,7 +392,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	img := "tsuru/python:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := Container{Container: types.Container{
 		Name:    "myName",

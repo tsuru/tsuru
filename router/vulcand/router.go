@@ -74,7 +74,8 @@ func (r *vulcandRouter) serverName(address string) string {
 	return fmt.Sprintf("tsuru_%x", md5.Sum([]byte(address)))
 }
 
-func (r *vulcandRouter) AddBackend(name string) (err error) {
+func (r *vulcandRouter) AddBackend(app router.App) (err error) {
+	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

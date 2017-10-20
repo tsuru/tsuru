@@ -103,12 +103,20 @@ func Default() (string, error) {
 	return "", ErrDefaultRouterNotFound
 }
 
+// App is the interface implemented by routable applications.
+type App interface {
+	GetName() string
+	GetPool() string
+	GetTeamOwner() string
+	GetTeamsName() []string
+}
+
 // Router is the basic interface of this package. It provides methods for
 // managing backends and routes. Each backend can have multiple routes.
 type Router interface {
 	GetName() string
 
-	AddBackend(name string) error
+	AddBackend(app App) error
 	RemoveBackend(name string) error
 	AddRoutes(name string, address []*url.URL) error
 	RemoveRoutes(name string, addresses []*url.URL) error
@@ -141,8 +149,8 @@ type HealthChecker interface {
 }
 
 type OptsRouter interface {
-	AddBackendOpts(name string, opts map[string]string) error
-	UpdateBackendOpts(name string, opts map[string]string) error
+	AddBackendOpts(app App, opts map[string]string) error
+	UpdateBackendOpts(app App, opts map[string]string) error
 }
 
 // TLSRouter is a router that supports adding and removing

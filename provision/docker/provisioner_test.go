@@ -499,7 +499,7 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: "app", Value: "myapp"},
@@ -575,7 +575,7 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 			defer wg.Done()
 			name := fmt.Sprintf("myapp-%d", i)
 			app := provisiontest.NewFakeApp(name, "python", 1)
-			routertest.FakeRouter.AddBackend(app.GetName())
+			routertest.FakeRouter.AddBackend(app)
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
 			img, err := p.deployPipeline(app, image.GetBuildImage(app), []string{"/bin/test"}, nil)
 			c.Assert(err, check.IsNil)

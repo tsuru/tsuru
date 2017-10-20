@@ -83,7 +83,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		Quota:    quota.Unlimited,
 		Pool:     "test-default",
 	}
-	routertest.FakeRouter.AddBackend(name)
+	routertest.FakeRouter.AddBackend(&app)
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
@@ -110,6 +110,10 @@ func (a *FakeApp) GetSwap() int64 {
 
 func (a *FakeApp) GetCpuShare() int {
 	return a.CpuShare
+}
+
+func (a *FakeApp) GetTeamsName() []string {
+	return a.Teams
 }
 
 func (a *FakeApp) HasBind(unit *provision.Unit) bool {

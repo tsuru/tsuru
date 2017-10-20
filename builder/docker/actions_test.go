@@ -287,7 +287,7 @@ func (s *S) newContainer(client *docker.Client) (*Container, error) {
 	if container.AppName == "" {
 		container.AppName = "container"
 	}
-	routertest.FakeRouter.AddBackend(container.AppName)
+	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},

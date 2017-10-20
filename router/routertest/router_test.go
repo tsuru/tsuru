@@ -70,7 +70,7 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 
 func (s *S) TestAddBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("foo")
+	err := r.AddBackend(FakeApp{Name: "foo"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("foo")
 	c.Assert(r.HasBackend("foo"), check.Equals, true)
@@ -78,16 +78,16 @@ func (s *S) TestAddBackend(c *check.C) {
 
 func (s *S) TestAddDuplicateBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("foo")
+	err := r.AddBackend(FakeApp{Name: "foo"})
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend("foo")
+	err = r.AddBackend(FakeApp{Name: "foo"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Backend already exists")
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("bar")
+	err := r.AddBackend(FakeApp{Name: "bar"})
 	c.Assert(err, check.IsNil)
 	err = r.RemoveBackend("bar")
 	c.Assert(err, check.IsNil)
@@ -102,7 +102,7 @@ func (s *S) TestRemoveUnknownBackend(c *check.C) {
 
 func (s *S) TestAddRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -117,7 +117,7 @@ func (s *S) TestAddRouteBackendNotFound(c *check.C) {
 
 func (s *S) TestRemoveRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -134,7 +134,7 @@ func (s *S) TestRemoveRouteBackendNotFound(c *check.C) {
 
 func (s *S) TestSetCName(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -146,7 +146,7 @@ func (s *S) TestSetCName(c *check.C) {
 
 func (s *S) TestUnsetCName(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -159,7 +159,7 @@ func (s *S) TestUnsetCName(c *check.C) {
 
 func (s *S) TestAddr(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -174,7 +174,7 @@ func (s *S) TestAddr(c *check.C) {
 func (s *S) TestAddrHCRouter(c *check.C) {
 	r := newFakeRouter()
 	hcr := hcRouter{fakeRouter: r}
-	err := hcr.AddBackend("name")
+	err := hcr.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = hcr.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -188,7 +188,7 @@ func (s *S) TestAddrHCRouter(c *check.C) {
 
 func (s *S) TestReset(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -198,7 +198,7 @@ func (s *S) TestReset(c *check.C) {
 
 func (s *S) TestRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend("name")
+	err := r.AddBackend(FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
@@ -213,11 +213,11 @@ func (s *S) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"
 	r := newFakeRouter()
-	err := r.AddBackend(backend1)
+	err := r.AddBackend(FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes(backend1, []*url.URL{instance1})
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend(backend2)
+	err = r.AddBackend(FakeApp{Name: backend2})
 	c.Assert(err, check.IsNil)
 	err = r.AddRoutes(backend2, []*url.URL{instance2})
 	c.Assert(err, check.IsNil)
@@ -300,14 +300,14 @@ YRLI1QVj1Q==
 
 func (s *S) TestAddBackendOpts(c *check.C) {
 	r := OptsRouter
-	err := r.AddBackendOpts("myapp", map[string]string{"opt1": "val1"})
+	err := r.AddBackendOpts(FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }
 
 func (s *S) TestUpdateBackendOpts(c *check.C) {
 	r := OptsRouter
-	err := r.UpdateBackendOpts("myapp", map[string]string{"opt1": "val1"})
+	err := r.UpdateBackendOpts(FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }

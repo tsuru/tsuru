@@ -76,7 +76,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if container.AppName == "" {
 		container.AppName = "container"
 	}
-	routertest.FakeRouter.AddBackend(container.AppName)
+	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
@@ -220,7 +220,7 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	var buf bytes.Buffer
 	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
@@ -239,7 +239,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
-	routertest.FakeRouter.AddBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app)
 	var buf bytes.Buffer
 	cont, err = s.p.start(cont, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
