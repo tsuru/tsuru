@@ -108,17 +108,41 @@ func (s *S) TestAddBackend(c *check.C) {
 }
 
 func (s *S) TestAddBackendOpts(c *check.C) {
-	err := s.testRouter.AddBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val1"})
+	app := routertest.FakeApp{
+		Name:      "new-backend",
+		Pool:      "mypool",
+		TeamOwner: "owner",
+		Teams:     []string{"team1", "team2"},
+	}
+	err := s.testRouter.AddBackendOpts(app, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val1"})
+	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]interface{}{
+		"opt1":                   "val1",
+		"tsuru.io/app-pool":      "mypool",
+		"tsuru.io/app-teamowner": "owner",
+		"tsuru.io/app-teams":     []interface{}{"team1", "team2"},
+	})
 }
 
 func (s *S) TestUpdateBackendOpts(c *check.C) {
-	err := s.testRouter.AddBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val1"})
+	app := routertest.FakeApp{
+		Name:      "new-backend",
+		Pool:      "pool",
+		TeamOwner: "owner",
+		Teams:     []string{"team1", "team2"},
+	}
+	err := s.testRouter.AddBackendOpts(app, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
-	err = s.testRouter.UpdateBackendOpts(routertest.FakeApp{Name: "new-backend"}, map[string]string{"opt1": "val2"})
+	app.Pool = "newpool"
+	app.Teams = []string{"team1"}
+	err = s.testRouter.UpdateBackendOpts(app, map[string]string{"opt1": "val2"})
 	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val2"})
+	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]interface{}{
+		"opt1":                   "val2",
+		"tsuru.io/app-pool":      "newpool",
+		"tsuru.io/app-teamowner": "owner",
+		"tsuru.io/app-teams":     []interface{}{"team1"},
+	})
 }
 
 func (s *S) TestAddBackendExists(c *check.C) {
@@ -420,7 +444,7 @@ type backend struct {
 	swapWith    string
 	cnameOnly   bool
 	healthcheck router.HealthcheckData
-	opts        map[string]string
+	opts        map[string]interface{}
 }
 
 type fakeRouterAPI struct {
@@ -451,7 +475,7 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	var req map[string]string
+	var req map[string]interface{}
 	json.NewDecoder(r.Body).Decode(&req)
 	f.backends[name] = &backend{opts: req, addr: name + ".apirouter.com"}
 }
@@ -464,7 +488,7 @@ func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	var req map[string]string
+	var req map[string]interface{}
 	json.NewDecoder(r.Body).Decode(&req)
 	backend.opts = req
 }
