@@ -1,21 +1,16 @@
 # tsuru
 
-[![Build Status](https://travis-ci.org/tsuru/tsuru.png?branch=master)](https://travis-ci.org/tsuru/tsuru)
+[![Build Status](https://travis-ci.org/tsuru/tsuru.svg?branch=master)](https://travis-ci.org/tsuru/tsuru)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tsuru/tsuru)](https://goreportcard.com/report/github.com/tsuru/tsuru)
 
 ## What is tsuru?
 
-tsuru is an extensible and open source Platform as a Service (PaaS) that makes
-application deployments faster and easier.
-tsuru is an open source polyglot cloud application platform (PaaS).
-With tsuru, you don’t need to think about servers at all.
-As an application developer, you can:
-
+tsuru is an extensible and open source Platform as a Service (PaaS) that makes application deployments faster and easier.
+With tsuru, you don’t need to think about servers at all. As an application developer, you can:
 - Write apps in the programming language of your choice
-- Back apps with add-on resources such as SQL and NoSQL databases, including memcached, redis, and many
-others.
-- Manage apps using the ``tsuru`` command-line tool
-- Deploy apps using the Git revision control system
+- Back apps with add-on resources such as SQL and NoSQL databases, including memcached, Redis, and many others
+- Manage apps using the `tsuru` command-line tool
+- Deploy apps using the Git version control system
 
 Links:
 
@@ -26,7 +21,7 @@ Links:
 
 ## Quick Start
 
-With the purpose of test tsuru and/or for development, you can use [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. Installer is an experimental feature.
+With the purpose of testing tsuru and/or for development, you can use the [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. The installer is an experimental feature.
 
 ### From Binary
 
@@ -37,8 +32,7 @@ Download the latest release for your platform at: https://github.com/tsuru/tsuru
 Example for release 1.1.1 and OS X.
 
 ```
-$ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz \
-  | tar xz
+$ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz | tar xz
 ```
 
 #### Call tsuru installer
@@ -51,7 +45,7 @@ $ tsuru install create
 
 #### Getting tsuru-client
 
-You need to have [Go](https://golang.org/doc/install) properly installed in your machine.
+You need to have [Go](https://golang.org/doc/install) properly installed on your machine.
 
 ```
 $ git clone github.com/tsuru/tsuru-client $GOPATH/src/github.com/tsuru/tsuru-client
@@ -67,7 +61,7 @@ Create the tsuru installer config files with:
 $ tsuru install config init
 ```
 
-Replace tsuru api image tag with the latest tag on the install-compose.yml:
+Replace the tsuru API image tag with the latest tag in `install-compose.yml`:
 
 ```
 $ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
@@ -81,8 +75,8 @@ $ $GOPATH/bin/tsuru install create -c install-config.yml -e install-compose.yml
 
 ### Testing
 
-If everything's gone well you have the tsuru running on a virtualbox.
-Call app-list to see tsuru working, this command needs to return one app called tsuru-dashboard.
+If everything's gone well you have the tsuru running in a VirtualBox VM.
+Call `app-list` to see tsuru working, this command needs to return one app called tsuru-dashboard.
 
 ```
 $ tsuru app-list
