@@ -30,6 +30,8 @@ import (
 
 const (
 	provisionerName = "swarm"
+
+	waitContainerIDTimeout = 10 * time.Second
 )
 
 var swarmConfig swarmProvisionerConfig
@@ -342,13 +344,28 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	return addrs, nil
 }
 
-func findTaskByContainerId(tasks []swarm.Task, unitId string) (*swarm.Task, error) {
-	for i, t := range tasks {
-		if strings.HasPrefix(t.Status.ContainerStatus.ContainerID, unitId) {
-			return &tasks[i], nil
+func findTaskByContainerId(tasks []swarm.Task, unitId string, timeout time.Duration) (*swarm.Task, error) {
+	timeoutCh := time.After(timeout)
+	for {
+		hasEmpty := false
+		for i, t := range tasks {
+			contID := t.Status.ContainerStatus.ContainerID
+			if contID == "" {
+				hasEmpty = true
+			}
+			if strings.HasPrefix(contID, unitId) {
+				return &tasks[i], nil
+			}
+		}
+		if !hasEmpty {
+			return nil, &provision.UnitNotFoundError{ID: unitId}
+		}
+		select {
+		case <-timeoutCh:
+			return nil, &provision.UnitNotFoundError{ID: unitId}
+		case <-time.After(500 * time.Millisecond):
 		}
 	}
-	return nil, &provision.UnitNotFoundError{ID: unitId}
 }
 
 func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
@@ -368,9 +385,9 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
-	task, err := findTaskByContainerId(tasks, unitId)
+	task, err := findTaskByContainerId(tasks, unitId, waitContainerIDTimeout)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "task not found for container %q, existing tasks: %#v", unitId, tasks)
 	}
 	if customData == nil {
 		return nil
@@ -446,7 +463,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 		}
 		var task *swarm.Task
 		for _, unitData := range nodeData.Units {
-			task, err = findTaskByContainerId(tasks, unitData.ID)
+			task, err = findTaskByContainerId(tasks, unitData.ID, waitContainerIDTimeout)
 			if err == nil {
 				break
 			}
