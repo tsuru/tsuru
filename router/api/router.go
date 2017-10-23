@@ -53,8 +53,8 @@ type routesReq struct {
 }
 
 type swapReq struct {
-	Target    string
-	CnameOnly bool
+	Target    string `json:"target"`
+	CnameOnly bool   `json:"cnameOnly"`
 }
 
 type cnamesResp struct {
