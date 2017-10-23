@@ -156,9 +156,9 @@ type OptsRouter interface {
 // TLSRouter is a router that supports adding and removing
 // certificates for a given cname
 type TLSRouter interface {
-	AddCertificate(cname, certificate, key string) error
-	RemoveCertificate(cname string) error
-	GetCertificate(cname string) (string, error)
+	AddCertificate(app App, cname, certificate, key string) error
+	RemoveCertificate(app App, cname string) error
+	GetCertificate(app App, cname string) (string, error)
 }
 
 type HealthcheckData struct {

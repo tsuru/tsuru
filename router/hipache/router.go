@@ -570,7 +570,9 @@ type planbRouter struct {
 	hipacheRouter
 }
 
-func (r *planbRouter) AddCertificate(cname, cert, key string) (err error) {
+var _ router.TLSRouter = &planbRouter{}
+
+func (r *planbRouter) AddCertificate(_ router.App, cname, cert, key string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -589,7 +591,7 @@ func (r *planbRouter) AddCertificate(cname, cert, key string) (err error) {
 	return nil
 }
 
-func (r *planbRouter) RemoveCertificate(cname string) (err error) {
+func (r *planbRouter) RemoveCertificate(_ router.App, cname string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -605,7 +607,7 @@ func (r *planbRouter) RemoveCertificate(cname string) (err error) {
 	return nil
 }
 
-func (r *planbRouter) GetCertificate(cname string) (cert string, err error) {
+func (r *planbRouter) GetCertificate(_ router.App, cname string) (cert string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

@@ -2102,7 +2102,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 			continue
 		}
 		addedAny = true
-		err = tlsRouter.AddCertificate(name, certificate, key)
+		err = tlsRouter.AddCertificate(app, name, certificate, key)
 		if err != nil {
 			return err
 		}
@@ -2129,7 +2129,7 @@ func (app *App) RemoveCertificate(name string) error {
 			continue
 		}
 		removedAny = true
-		err = tlsRouter.RemoveCertificate(name)
+		err = tlsRouter.RemoveCertificate(app, name)
 		if err != nil {
 			return err
 		}
@@ -2176,7 +2176,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 			continue
 		}
 		for _, n := range names {
-			cert, err := tlsRouter.GetCertificate(n)
+			cert, err := tlsRouter.GetCertificate(app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}

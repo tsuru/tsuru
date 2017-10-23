@@ -67,6 +67,8 @@ type fakeRouter struct {
 	mutex        *sync.Mutex
 }
 
+var _ router.Router = &fakeRouter{}
+
 func (r *fakeRouter) GetName() string {
 	return "fake"
 }
@@ -350,6 +352,8 @@ type hcRouter struct {
 	err error
 }
 
+var _ router.CustomHealthcheckRouter = &hcRouter{}
+
 func (r *hcRouter) SetErr(err error) {
 	r.err = err
 }
@@ -383,19 +387,21 @@ type tlsRouter struct {
 	Keys  map[string]string
 }
 
-func (r *tlsRouter) AddCertificate(cname, certificate, key string) error {
+var _ router.TLSRouter = &tlsRouter{}
+
+func (r *tlsRouter) AddCertificate(app router.App, cname, certificate, key string) error {
 	r.Certs[cname] = certificate
 	r.Keys[cname] = key
 	return nil
 }
 
-func (r *tlsRouter) RemoveCertificate(cname string) error {
+func (r *tlsRouter) RemoveCertificate(app router.App, cname string) error {
 	delete(r.Certs, cname)
 	delete(r.Keys, cname)
 	return nil
 }
 
-func (r *tlsRouter) GetCertificate(cname string) (string, error) {
+func (r *tlsRouter) GetCertificate(app router.App, cname string) (string, error) {
 	data, ok := r.Certs[cname]
 	if !ok {
 		return "", router.ErrCertificateNotFound
@@ -415,6 +421,8 @@ type optsRouter struct {
 	fakeRouter
 	Opts map[string]map[string]string
 }
+
+var _ router.OptsRouter = &optsRouter{}
 
 func (r *optsRouter) AddBackendOpts(app router.App, opts map[string]string) error {
 	r.Opts[app.GetName()] = opts
