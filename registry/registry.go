@@ -152,7 +152,7 @@ func (r *dockerRegistry) doRequest(method, path string, headers map[string]strin
 func parseImage(imageName string) (registry string, image string, tag string) {
 	parts := strings.SplitN(imageName, "/", 3)
 	if len(parts) < 3 {
-		image = strings.Join(parts, "/")
+		image = imageName
 	} else {
 		registry = parts[0]
 		image = strings.Join(parts[1:], "/")

@@ -564,7 +564,7 @@ func (s *S) TestRemoveOldImagesForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allImages, err := image.ListAppImages(app.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(len(allImages), check.Equals, 2)
+	c.Assert(allImages, check.HasLen, 2)
 	registry.AddRepo(registrytest.Repository{Name: "tsuru/app-myapp", Tags: map[string]string{"v1": "abcdefg"}})
 	args := &pipelineArgs{
 		app:      app,
@@ -575,6 +575,6 @@ func (s *S) TestRemoveOldImagesForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allImages, err = image.ListAppImages(app.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(len(allImages), check.Equals, 1)
+	c.Assert(allImages, check.HasLen, 1)
 	c.Assert(allImages[0], check.Equals, registry.Addr()+"/tsuru/app-myapp:v2")
 }
