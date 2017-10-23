@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -587,26 +586,30 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	targetName := r.FormValue("target")
-	cnameOnly := r.FormValue("cnameOnly")
+	req := swapReq{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	backend, ok := f.backends[name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	target, ok := f.backends[targetName]
+	target, ok := f.backends[req.Target]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if backend.swapWith == targetName {
+	if backend.swapWith == req.Target {
 		backend.swapWith = ""
 		target.swapWith = ""
 	} else {
-		backend.swapWith = targetName
+		backend.swapWith = req.Target
 		target.swapWith = name
 	}
-	backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
+	backend.cnameOnly = req.CnameOnly
 	target.cnameOnly = backend.cnameOnly
 }
 

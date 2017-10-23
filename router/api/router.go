@@ -13,8 +13,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"strconv"
-
 	"strings"
 
 	"github.com/pkg/errors"
@@ -52,6 +50,11 @@ type apiRouterWithHealthcheckSupport struct{ *apiRouter }
 
 type routesReq struct {
 	Addresses []string `json:"addresses"`
+}
+
+type swapReq struct {
+	Target    string
+	CnameOnly bool
 }
 
 type cnamesResp struct {
@@ -270,8 +273,13 @@ func (r *apiRouter) Addr(name string) (addr string, err error) {
 }
 
 func (r *apiRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err error) {
-	path := fmt.Sprintf("backend/%s/swap?target=%s&cnameOnly=%s", backend1, backend2, strconv.FormatBool(cnameOnly))
-	_, code, err := r.do(http.MethodPost, path, nil)
+	path := fmt.Sprintf("backend/%s/swap", backend1)
+	data, err := json.Marshal(swapReq{Target: backend2, CnameOnly: cnameOnly})
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(data)
+	_, code, err := r.do(http.MethodPost, path, body)
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
