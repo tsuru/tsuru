@@ -9,7 +9,6 @@ addons:
       - rpm
 go:
   - 1.9
-  - master
 env:
   global:
     - GOARCH=amd64
@@ -17,8 +16,6 @@ env:
     - IMAGE_NAME=tsuru/api
 jobs:
   fast_finish: true
-  allow_failures:
-    - go: master
   include:
     - stage: test
       before_script:
@@ -34,7 +31,7 @@ jobs:
         - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
         - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
         - sudo apt-get -qq update
-        - sudo apt-get install -y mongodb-org
+        - sudo apt-get install -y mongodb-org --allow-unauthenticated
         - sudo service mongod start || true
         - service mongod status
         - go env && pwd
