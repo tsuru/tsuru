@@ -88,13 +88,24 @@ func (s *S) TestRegistryRemoveImageNoRegistry(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
 }
 
-func (s *S) TestRegistryRemoveImageUnknowRegistry(c *check.C) {
+func (s *S) TestRegistryRemoveImageUnknownRegistry(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage("fake-registry:5000/tsuru/app-teste:v1")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Matches, "*fake-registry: no such host\n")
+	c.Assert(err.Error(), check.Matches, "*no such host\n")
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+}
+
+func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v0")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "failed to remove image "+s.server.Addr()+"/tsuru/app-teste:v0/ on registry: repository not found (404)\n")
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
