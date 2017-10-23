@@ -703,7 +703,7 @@ func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
 
 func (s *S) TestAddCertificate(c *check.C) {
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
-	r.AddCertificate("www.example.com", "cert-content", "key-content")
+	r.AddCertificate(routertest.FakeApp{}, "www.example.com", "cert-content", "key-content")
 	redisConn, err := r.connect()
 	c.Assert(err, check.IsNil)
 	data, err := redisConn.HMGet("tls:www.example.com", "certificate", "key").Result()
@@ -715,13 +715,13 @@ func (s *S) TestAddCertificate(c *check.C) {
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
-	r.AddCertificate("www.example.com", "cert-content", "key-content")
+	r.AddCertificate(routertest.FakeApp{}, "www.example.com", "cert-content", "key-content")
 	redisConn, err := r.connect()
 	c.Assert(err, check.IsNil)
 	data, err := redisConn.HMGet("tls:www.example.com", "certificate", "key").Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.NotNil)
-	r.RemoveCertificate("www.example.com")
+	r.RemoveCertificate(routertest.FakeApp{}, "www.example.com")
 	exists, err := redisConn.Exists("tls:www.example.com").Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, false)
@@ -751,16 +751,16 @@ Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
-	err := r.AddCertificate("myapp.io", testCert, "key-content")
+	err := r.AddCertificate(routertest.FakeApp{}, "myapp.io", testCert, "key-content")
 	c.Assert(err, check.IsNil)
-	cert, err := r.GetCertificate("myapp.io")
+	cert, err := r.GetCertificate(routertest.FakeApp{}, "myapp.io")
 	c.Assert(err, check.IsNil)
 	c.Assert(cert, check.DeepEquals, testCert)
 }
 
 func (s *S) TestGetCertificateNotFound(c *check.C) {
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
-	cert, err := r.GetCertificate("otherapp")
+	cert, err := r.GetCertificate(routertest.FakeApp{}, "otherapp")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
 	c.Assert(cert, check.Equals, "")
 }

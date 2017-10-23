@@ -411,26 +411,26 @@ func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
 	return urls, nil
 }
 
-func (r *apiRouterWithTLSSupport) AddCertificate(cname, certificate, key string) error {
+func (r *apiRouterWithTLSSupport) AddCertificate(app router.App, cname, certificate, key string) error {
 	cert := certData{Certificate: certificate, Key: key}
 	b, err := json.Marshal(&cert)
 	if err != nil {
 		return err
 	}
-	_, _, err = r.do(http.MethodPut, fmt.Sprintf("certificate/%s", cname), bytes.NewReader(b))
+	_, _, err = r.do(http.MethodPut, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), bytes.NewReader(b))
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) RemoveCertificate(cname string) error {
-	_, code, err := r.do(http.MethodDelete, fmt.Sprintf("certificate/%s", cname), nil)
+func (r *apiRouterWithTLSSupport) RemoveCertificate(app router.App, cname string) error {
+	_, code, err := r.do(http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
 	if code == http.StatusNotFound {
 		return router.ErrCertificateNotFound
 	}
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) GetCertificate(cname string) (string, error) {
-	data, code, err := r.do(http.MethodGet, fmt.Sprintf("certificate/%s", cname), nil)
+func (r *apiRouterWithTLSSupport) GetCertificate(app router.App, cname string) (string, error) {
+	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
 	switch code {
 	case http.StatusNotFound:
 		return "", router.ErrCertificateNotFound

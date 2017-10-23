@@ -251,7 +251,7 @@ func (s *S) TestSwap(c *check.C) {
 
 func (s *S) TestAddCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate("example.com", "cert", "key")
+	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.DeepEquals, "cert")
 	c.Assert(r.Keys["example.com"], check.DeepEquals, "key")
@@ -259,9 +259,9 @@ func (s *S) TestAddCertificate(c *check.C) {
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate("example.com", "cert", "key")
+	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	err = r.RemoveCertificate("example.com")
+	err = r.RemoveCertificate(FakeApp{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.Equals, "")
 	c.Assert(r.Keys["example.com"], check.Equals, "")
@@ -291,9 +291,9 @@ Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
 	r := TLSRouter
-	err := r.AddCertificate("example.com", testCert, "key")
+	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", testCert, "key")
 	c.Assert(err, check.IsNil)
-	cert, err := r.GetCertificate("example.com")
+	cert, err := r.GetCertificate(FakeApp{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(cert, check.DeepEquals, testCert)
 }

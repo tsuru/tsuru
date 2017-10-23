@@ -300,37 +300,37 @@ func (s *S) TestCNamesBackendNotFound(c *check.C) {
 
 func (s *S) TestAddCertificate(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
-	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	err := tlsRouter.AddCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.certificates["cname.com"], check.DeepEquals, certData{Certificate: "cert", Key: "key"})
+	c.Assert(s.apiRouter.certificates["myapp/cname.com"], check.DeepEquals, certData{Certificate: "cert", Key: "key"})
 }
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
-	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	err := tlsRouter.AddCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	err = tlsRouter.RemoveCertificate("cname.com")
+	err = tlsRouter.RemoveCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRemoveCertificateNotFound(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
-	err := tlsRouter.RemoveCertificate("cname.com")
+	err := tlsRouter.RemoveCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
 }
 
 func (s *S) TestGetCertificate(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
-	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	err := tlsRouter.AddCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	cert, err := tlsRouter.GetCertificate("cname.com")
+	cert, err := tlsRouter.GetCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(cert, check.DeepEquals, "cert")
 }
 
 func (s *S) TestGetCertificateNotFound(c *check.C) {
 	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
-	cert, err := tlsRouter.GetCertificate("cname.com")
+	cert, err := tlsRouter.GetCertificate(routertest.FakeApp{Name: "myapp"}, "cname.com")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
 	c.Assert(cert, check.DeepEquals, "")
 }
@@ -424,9 +424,10 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.unsetCname).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/healthcheck", api.setHealthcheck).Methods(http.MethodPut)
-	r.HandleFunc("/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
-	r.HandleFunc("/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
-	r.HandleFunc("/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, check.IsNil)
 	api.listener = listener
@@ -682,7 +683,8 @@ func (f *fakeRouterAPI) getCnames(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cname := vars["cname"]
-	cert, ok := f.certificates[cname]
+	name := vars["name"]
+	cert, ok := f.certificates[name+"/"+cname]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(router.ErrCertificateNotFound.Error()))
@@ -694,16 +696,18 @@ func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cname := vars["cname"]
+	name := vars["name"]
 	var cert certData
 	json.NewDecoder(r.Body).Decode(&cert)
-	f.certificates[cname] = cert
+	f.certificates[name+"/"+cname] = cert
 	w.WriteHeader(http.StatusOK)
 }
 
 func (f *fakeRouterAPI) removeCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cname := vars["cname"]
-	if _, ok := f.certificates[cname]; !ok {
+	name := vars["name"]
+	if _, ok := f.certificates[name+"/"+cname]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(router.ErrCertificateNotFound.Error()))
 		return
