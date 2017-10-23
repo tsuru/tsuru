@@ -40,10 +40,7 @@ jobs:
         - go env && pwd
       script: make test
     - stage: lint
-      script:
-        - while true; do echo .; sleep 30; done &
-        - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
-    - script: ./misc/check-handlers.sh
+      script: ./misc/check-handlers.sh
     - script: ./misc/check-events.sh
     - script: make check-api-doc
     - stage: deploy
