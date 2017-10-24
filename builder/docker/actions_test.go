@@ -11,6 +11,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -34,6 +35,11 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cmds := []string{"ps", "-ef"}
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.SetEnv(bind.EnvVar{
+		Name:  "env1",
+		Value: "val1",
+	})
+	c.Assert(err, check.IsNil)
 	cont := Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	args := runContainerActionsArgs{
 		app:           app,
@@ -54,6 +60,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
 	c.Assert(cc.Config.User, check.Equals, "ubuntu")
+	c.Assert(cc.Config.Env, check.DeepEquals, []string{"TSURU_HOST=tsuru.io"})
 }
 
 func (s *S) TestCreateContainerBackward(c *check.C) {

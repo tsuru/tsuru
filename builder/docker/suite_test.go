@@ -55,6 +55,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	config.Set("docker:run-cmd:port", s.port)
+	config.Set("host", "tsuru.io")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
