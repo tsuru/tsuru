@@ -300,6 +300,8 @@ func (r *fakeRouter) SetBackendAddr(name, addr string) {
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	if r.failuresByIp[r.GetName()+name] || r.failuresByIp[name] {
 		return "", ErrForcedFailure
 	}
@@ -307,8 +309,6 @@ func (r *fakeRouter) Addr(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
 	if _, ok := r.backends[backendName]; ok {
 		if r.backendAddrs != nil && r.backendAddrs[backendName] != "" {
 			return r.backendAddrs[backendName], nil
