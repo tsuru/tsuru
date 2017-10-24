@@ -133,7 +133,7 @@ func (c *Container) Start(args *StartArgs) error {
 }
 
 func (c *Container) addEnvsToConfig(args *CreateContainerArgs, port string, cfg *docker.Config) {
-	envs := provision.EnvsForApp(args.App, c.ProcessName, args.Deploy)
+	envs := provision.EnvsForApp(args.App, c.ProcessName, true)
 	for _, envData := range envs {
 		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
 	}
