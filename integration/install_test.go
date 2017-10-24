@@ -253,6 +253,8 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() == ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not finish after 30 minutes: %v", res))
+		res = T("node-healing-update", "--disable").Run(env)
+		c.Assert(res, ResultOk)
 		res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
 		c.Assert(res, ResultOk)
 		table = resultTable{raw: res.Stdout.String()}
