@@ -1816,8 +1816,12 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 	if err != nil {
 		return err
 	}
-	defer rebuild.RoutesRebuildOrEnqueue(app1.Name)
-	defer rebuild.RoutesRebuildOrEnqueue(app2.Name)
+	defer func(app1, app2 *App) {
+		rebuild.RoutesRebuildOrEnqueue(app1.Name)
+		rebuild.RoutesRebuildOrEnqueue(app2.Name)
+		app1.GetRoutersWithAddr()
+		app2.GetRoutersWithAddr()
+	}(app1, app2)
 	err = r1.Swap(app1.Name, app2.Name, cnameOnly)
 	if err != nil {
 		return err
