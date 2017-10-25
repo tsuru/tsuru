@@ -342,6 +342,7 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
+	Name           string
 	cmds           []Cmd
 	cmdMut         sync.Mutex
 	outputs        chan []byte
@@ -355,7 +356,7 @@ type FakeProvisioner struct {
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
-	p := FakeProvisioner{}
+	p := FakeProvisioner{Name: "fake"}
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
@@ -1406,7 +1407,7 @@ func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []
 }
 
 func (p *FakeProvisioner) GetName() string {
-	return "fake"
+	return p.Name
 }
 
 func (p *FakeProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {

@@ -459,17 +459,26 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	teamOwner := updateData.TeamOwner
 	platform := updateData.Platform
 	tags := processTags(updateData.Tags)
+	oldApp := *app
 	if description != "" {
 		app.Description = description
 	}
 	if poolName != "" {
 		app.Pool = poolName
+		app.provisioner = nil
 		_, err = app.getPoolForApp(app.Pool)
 		if err != nil {
 			return err
 		}
 	}
-	oldPlan := app.Plan
+	newProv, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	oldProv, err := oldApp.getProvisioner()
+	if err != nil {
+		return err
+	}
 	if planName != "" {
 		plan, errFind := findPlanByName(planName)
 		if errFind != nil {
@@ -509,22 +518,18 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if app.Plan != oldPlan {
-		actions := []*action.Action{
-			&saveApp,
-			&restartApp,
-		}
-		err = action.NewPipeline(actions...).Execute(app, &oldPlan, w)
-		if err != nil {
-			return err
-		}
+	actions := []*action.Action{
+		&saveApp,
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
+	if newProv.GetName() != oldProv.GetName() {
+		actions = append(actions,
+			&provisionAppNewProvisioner,
+			&provisionAppAddUnits,
+			&destroyAppOldProvisioner)
+	} else if app.Plan != oldApp.Plan {
+		actions = append(actions, &restartApp)
 	}
-	defer conn.Close()
-	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+	return action.NewPipeline(actions...).Execute(app, &oldApp, w)
 }
 
 func processTags(tags []string) []string {

@@ -1650,22 +1650,27 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fakeprovisioner"}
+	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fake1"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("fakepool", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader("pool=fakepool&provisioner=fakeprovisioner")
+	body := strings.NewReader("pool=fakepool")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestUpdateAppPlanOnly(c *check.C) {
