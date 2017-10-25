@@ -435,12 +435,12 @@ func (r *apiRouterWithTLSSupport) GetCertificate(app router.App, cname string) (
 	case http.StatusNotFound:
 		return "", router.ErrCertificateNotFound
 	case http.StatusOK:
-		var cert string
+		var cert certData
 		errJSON := json.Unmarshal(data, &cert)
 		if errJSON != nil {
 			return "", errJSON
 		}
-		return cert, nil
+		return cert.Certificate, nil
 	}
 	return "", err
 }

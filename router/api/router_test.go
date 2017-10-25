@@ -690,7 +690,7 @@ func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(router.ErrCertificateNotFound.Error()))
 		return
 	}
-	json.NewEncoder(w).Encode(&cert.Certificate)
+	json.NewEncoder(w).Encode(&cert)
 }
 
 func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
