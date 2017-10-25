@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -376,18 +375,17 @@ var saveApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		return nil, conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"plan": app.Plan}})
+		return nil, conn.Apps().Update(bson.M{"name": app.Name}, app)
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
-		oldPlan := ctx.Params[1].(*appTypes.Plan)
+		oldApp := ctx.Params[1].(*App)
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
 			return
 		}
 		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"plan": *oldPlan}})
+		err = conn.Apps().Update(bson.M{"name": oldApp.Name}, oldApp)
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to update app: %s", err)
 		}
@@ -403,6 +401,87 @@ var restartApp = action.Action{
 		}
 		w, _ := ctx.Params[2].(io.Writer)
 		return nil, app.Restart("", w)
+	},
+	Backward: func(ctx action.BWContext) {
+		oldApp := ctx.Params[1].(*App)
+		w, _ := ctx.Params[2].(io.Writer)
+		err := oldApp.Restart("", w)
+		if err != nil {
+			log.Errorf("BACKWARD update app - failed to restart app: %s", err)
+		}
+	},
+}
+
+var provisionAppNewProvisioner = action.Action{
+	Name: "provision-app-new-provisioner",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as first arg")
+		}
+		prov, err := app.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		return nil, prov.Provision(app)
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		prov, err := app.getProvisioner()
+		if err != nil {
+			log.Errorf("BACKWARD provision app - failed to get provisioner: %s", err)
+		}
+		err = prov.Destroy(app)
+		if err != nil {
+			log.Errorf("BACKWARD provision app - failed to destroy app in prov: %s", err)
+		}
+	},
+}
+
+var provisionAppAddUnits = action.Action{
+	Name: "provision-app-add-unit",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as first arg")
+		}
+		oldApp, ok := ctx.Params[1].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as first arg")
+		}
+		w, _ := ctx.Params[2].(io.Writer)
+		units, err := oldApp.Units()
+		if err != nil {
+			return nil, err
+		}
+		unitCount := make(map[string]uint)
+		for _, u := range units {
+			unitCount[u.ProcessName]++
+		}
+		for process, count := range unitCount {
+			err = app.AddUnits(count, process, w)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nil, err
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
+var destroyAppOldProvisioner = action.Action{
+	Name: "destroy-app-old-provisioner",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		oldApp, ok := ctx.Params[1].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as second arg")
+		}
+		oldProv, err := oldApp.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		return nil, oldProv.Destroy(oldApp)
 	},
 }
 

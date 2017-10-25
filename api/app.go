@@ -460,20 +460,6 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return permission.ErrUnauthorized
 		}
 	}
-	if updateData.Pool != "" {
-		var currentPool, newPool *pool.Pool
-		currentPool, err = pool.GetPoolByName(a.GetPool())
-		if err != nil {
-			return err
-		}
-		newPool, err = pool.GetPoolByName(updateData.Pool)
-		if err != nil {
-			return err
-		}
-		if currentPool.Provisioner != newPool.Provisioner {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Moving apps between pools belonging to different provisioners is not allowed"}
-		}
-	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdate,

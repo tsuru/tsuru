@@ -4349,6 +4349,50 @@ func (s *S) TestUpdatePool(c *check.C) {
 	c.Assert(dbApp.Pool, check.Equals, "test2")
 }
 
+func (s *S) TestUpdatePoolOtherProv(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p2 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	p2.Name = "fake2"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	provision.Register("fake2", func() (provision.Provisioner, error) {
+		return p2, nil
+	})
+	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake2", Public: true}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(1, "", nil)
+	c.Assert(err, check.IsNil)
+	prov, err := app.getProvisioner()
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake1")
+	c.Assert(p1.GetUnits(&app), check.HasLen, 1)
+	c.Assert(p2.GetUnits(&app), check.HasLen, 0)
+	c.Assert(p1.Provisioned(&app), check.Equals, true)
+	c.Assert(p2.Provisioned(&app), check.Equals, false)
+	updateData := App{Name: "test", Pool: "test2"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Pool, check.Equals, "test2")
+	prov, err = dbApp.getProvisioner()
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake2")
+	c.Assert(p1.GetUnits(&app), check.HasLen, 0)
+	c.Assert(p2.GetUnits(&app), check.HasLen, 1)
+	c.Assert(p1.Provisioned(&app), check.Equals, false)
+	c.Assert(p2.Provisioned(&app), check.Equals, true)
+}
+
 func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(opts)
