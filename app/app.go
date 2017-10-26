@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -1866,6 +1867,9 @@ func (app *App) Start(w io.Writer, process string) error {
 	err = prov.Start(app, process)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
+		if _, ok := err.(*docker.ContainerAlreadyRunning); !ok {
+			return fmt.Errorf("this application is already started and running")
+		}
 		return err
 	}
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
