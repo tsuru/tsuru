@@ -312,6 +312,9 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
+		if c.Status == provision.StatusStarted.String() {
+			return &docker.ContainerAlreadyRunning{ID: c.Name}
+		}
 		startErr := c.Start(&container.StartArgs{
 			Provisioner: p,
 			App:         app,
