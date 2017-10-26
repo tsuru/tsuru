@@ -35,6 +35,7 @@ var (
 		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
+		updateAppPools(),
 		serviceImageSetup(),
 		serviceCreate(),
 		serviceBind(),
@@ -468,6 +469,47 @@ func exampleApps() ExecFlow {
 		appName := "iapp-{{.plat}}-{{.pool}}"
 		res := T("app-remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
+	}
+	return flow
+}
+
+func updateAppPools() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"poolnames", "installedplatforms"},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		poolNames := env.All("poolnames")
+		platforms := env.All("installedplatforms")
+		chosenPlatform := platforms[0]
+		var combinations [][]string
+		for i := range poolNames {
+			for j := range poolNames {
+				if i == j {
+					continue
+				}
+				combinations = append(combinations, []string{
+					fmt.Sprintf("iapp-%s-%s", chosenPlatform, poolNames[i]),
+					poolNames[j],
+				})
+			}
+		}
+		for _, combination := range combinations {
+			appName := combination[0]
+			destPool := combination[1]
+			res := T("app-update", "-a", appName, "-o", destPool).Run(env)
+			c.Assert(res, ResultOk)
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
+			parts := addrRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(parts, check.HasLen, 2)
+			cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
+			ok := retry(15*time.Minute, func() bool {
+				res = cmd.Run(env)
+				return res.ExitCode == 0
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+		}
 	}
 	return flow
 }
