@@ -202,7 +202,7 @@ func (s *S) TestServiceSpecForApp(c *check.C) {
 	base := func() swarm.ServiceSpec {
 		return swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
-				ContainerSpec: swarm.ContainerSpec{
+				ContainerSpec: &swarm.ContainerSpec{
 					Image: "myapp:v1",
 					Env: []string{
 						"TSURU_SERVICES={}",
@@ -417,7 +417,7 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 		},
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
 		TaskTemplate: swarm.TaskSpec{
-			ContainerSpec: swarm.ContainerSpec{
+			ContainerSpec: &swarm.ContainerSpec{
 				Image:  "bsimg",
 				Env:    []string{"A=1", "B=2"},
 				Labels: expectedLabels,

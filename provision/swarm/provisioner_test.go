@@ -63,7 +63,7 @@ func (s *S) TestProvision(c *check.C) {
 	nets, err := cli.ListNetworks()
 	c.Assert(err, check.IsNil)
 	c.Assert(nets, check.HasLen, 1)
-	expected := docker.Network{ID: nets[0].ID, Name: "app-myapp-overlay", Driver: "overlay"}
+	expected := docker.Network{ID: nets[0].ID, Name: "app-myapp-overlay", Driver: "overlay", Containers: map[string]docker.Endpoint{}}
 	c.Assert(nets, check.DeepEquals, []docker.Network{expected})
 }
 
@@ -924,7 +924,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
-				ContainerSpec: swarm.ContainerSpec{
+				ContainerSpec: &swarm.ContainerSpec{
 					Labels: set.ToLabels(),
 				},
 			},
@@ -968,7 +968,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
-				ContainerSpec: swarm.ContainerSpec{
+				ContainerSpec: &swarm.ContainerSpec{
 					Labels: set.ToLabels(),
 				},
 			},
@@ -1012,7 +1012,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
-				ContainerSpec: swarm.ContainerSpec{
+				ContainerSpec: &swarm.ContainerSpec{
 					Labels: set.ToLabels(),
 				},
 			},
