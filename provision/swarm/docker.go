@@ -295,7 +295,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	uReplicas := uint64(opts.replicas)
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
-			ContainerSpec: swarm.ContainerSpec{
+			ContainerSpec: &swarm.ContainerSpec{
 				Image:       opts.image,
 				Env:         envs,
 				Labels:      opts.labels.ToLabels(),
@@ -475,7 +475,7 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 		},
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
 		TaskTemplate: swarm.TaskSpec{
-			ContainerSpec: swarm.ContainerSpec{
+			ContainerSpec: &swarm.ContainerSpec{
 				Image:       config.Image(),
 				Labels:      labels,
 				Command:     config.Config.Entrypoint,

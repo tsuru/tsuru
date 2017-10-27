@@ -5,6 +5,7 @@
 package servicecommon
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -186,6 +187,7 @@ var updateServices = &action.Action{
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("%v", toDeployProcesses)
 		for _, processName := range toDeployProcesses {
 			labels := labelsMap[processName]
 			err = args.manager.DeployService(args.app, processName, labels.labels, labels.realReplicas, args.newImage)
