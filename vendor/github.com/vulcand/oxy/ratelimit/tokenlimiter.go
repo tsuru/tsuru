@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/mailgun/timetools"
 	"github.com/mailgun/ttlmap"
 	"github.com/vulcand/oxy/utils"

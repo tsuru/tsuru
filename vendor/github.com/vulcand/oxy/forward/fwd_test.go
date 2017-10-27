@@ -259,7 +259,7 @@ func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
-		fmt.Fprintf(conn, "HTTP/1.0 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 		conn.Close()
 	})
 	defer srv.Close()

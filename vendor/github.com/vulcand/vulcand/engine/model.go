@@ -170,9 +170,41 @@ func (o *OCSPSettings) Equals(other *OCSPSettings) bool {
 }
 
 type HostSettings struct {
-	Default bool
-	KeyPair *KeyPair
-	OCSP    OCSPSettings
+	Default  bool
+	KeyPair  *KeyPair
+	AutoCert *AutoCertSettings
+	OCSP     OCSPSettings
+}
+
+type AutoCertSettings struct {
+	Email        string
+	RenewBefore  time.Duration
+	DirectoryURL string
+	Key          string
+}
+
+func (ac *AutoCertSettings) Equals(ac2 *AutoCertSettings) bool {
+	if ac == nil {
+		if ac2 != nil {
+			return false
+		} else {
+			return true
+		}
+	}
+
+	if ac.Email != ac2.Email {
+		return false
+	}
+	if ac.RenewBefore != ac2.RenewBefore {
+		return false
+	}
+	if ac.DirectoryURL != ac2.DirectoryURL {
+		return false
+	}
+	if ac.Key != ac2.Key {
+		return false
+	}
+	return true
 }
 
 type HostKey struct {

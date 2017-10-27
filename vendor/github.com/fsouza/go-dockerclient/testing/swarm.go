@@ -457,6 +457,7 @@ func (s *DockerServer) serviceDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	s.swarmMut.Lock()
 	defer s.swarmMut.Unlock()
 	s.cMut.Lock()
@@ -484,6 +485,12 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	toUpdate.Spec = newSpec
+	end := time.Now()
+	toUpdate.UpdateStatus = &swarm.UpdateStatus{
+		State:       swarm.UpdateStateCompleted,
+		CompletedAt: &end,
+		StartedAt:   &start,
+	}
 	s.setServiceEndpoint(toUpdate)
 	for i := 0; i < len(s.tasks); i++ {
 		if s.tasks[i].ServiceID != toUpdate.ID {

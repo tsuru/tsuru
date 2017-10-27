@@ -2168,6 +2168,25 @@ func TestRemoveNetwork(t *testing.T) {
 	}
 }
 
+func TestNetworkConnect(t *testing.T) {
+	t.Parallel()
+	server := DockerServer{}
+	server.buildMuxer()
+	addNetworks(&server, 1)
+	server.networks[0].ID = fmt.Sprintf("%x", rand.Int()%10000)
+	server.imgIDs = map[string]string{"base": "a1234"}
+	addContainers(&server, 1)
+	server.containers[0].ID = fmt.Sprintf("%x", rand.Int()%10000)
+
+	recorder := httptest.NewRecorder()
+	body := fmt.Sprintf(`{"Container": "%s" }`, server.containers[0].ID)
+	request, _ := http.NewRequest("POST", fmt.Sprintf("/networks/%s/connect", server.networks[0].ID), strings.NewReader(body))
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("NetworkConnect: wrong status. Want %d. Got %d.", http.StatusOK, recorder.Code)
+	}
+}
+
 func TestListVolumes(t *testing.T) {
 	t.Parallel()
 	server := DockerServer{}

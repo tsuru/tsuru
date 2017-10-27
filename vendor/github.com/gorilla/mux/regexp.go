@@ -35,7 +35,7 @@ func newRouteRegexp(tpl string, matchHost, matchPrefix, matchQuery, strictSlash,
 	// Now let's parse it.
 	defaultPattern := "[^/]+"
 	if matchQuery {
-		defaultPattern = "[^?&]*"
+		defaultPattern = ".*"
 	} else if matchHost {
 		defaultPattern = "[^.]+"
 		matchPrefix = false
@@ -109,6 +109,13 @@ func newRouteRegexp(tpl string, matchHost, matchPrefix, matchQuery, strictSlash,
 	if errCompile != nil {
 		return nil, errCompile
 	}
+
+	// Check for capturing groups which used to work in older versions
+	if reg.NumSubexp() != len(idxs)/2 {
+		panic(fmt.Sprintf("route %s contains capture groups in its regexp. ", template) +
+			"Only non-capturing groups are accepted: e.g. (?:pattern) instead of (pattern)")
+	}
+
 	// Done!
 	return &routeRegexp{
 		template:       template,
@@ -170,6 +177,9 @@ func (r *routeRegexp) url(values map[string]string) (string, error) {
 		value, ok := values[v]
 		if !ok {
 			return "", fmt.Errorf("mux: missing route variable %q", v)
+		}
+		if r.matchQuery {
+			value = url.QueryEscape(value)
 		}
 		urlValues[k] = value
 	}

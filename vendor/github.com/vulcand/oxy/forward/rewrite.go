@@ -14,8 +14,14 @@ type HeaderRewriter struct {
 	Hostname           string
 }
 
+// clean up IP in case if it is ipv6 address and it has {zone} infromation in it, like "[fe80::d806:a55d:eb1b:49cc%vEthernet (vmxnet3 Ethernet Adapter - Virtual Switch)]:64692"
+func ipv6fix(clientIP string) string {
+	return strings.Split(clientIP, "%")[0]
+}
+
 func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		clientIP = ipv6fix(clientIP)
 		if rw.TrustForwardHeader {
 			if prior, ok := req.Header[XForwardedFor]; ok {
 				clientIP = strings.Join(prior, ", ") + ", " + clientIP

@@ -42,11 +42,12 @@ import (
 	"net/http"
 
 	"bufio"
-	log "github.com/Sirupsen/logrus"
-	"github.com/mailgun/multibuf"
-	"github.com/vulcand/oxy/utils"
 	"net"
 	"reflect"
+
+	"github.com/mailgun/multibuf"
+	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/utils"
 )
 
 const (
@@ -209,7 +210,11 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Set request body to buffered reader that can replay the read and execute Seek
 	// Note that we don't change the original request body as it's handled by the http server
 	// and we don'w want to mess with standard library
-	defer body.Close()
+	defer func() {
+		if body != nil {
+			body.Close()
+		}
+	}()
 
 	// We need to set ContentLength based on known request size. The incoming request may have been
 	// set without content length or using chunked TransferEncoding
@@ -218,6 +223,10 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Errorf("vulcand/oxy/buffer: failed to get request size, err: %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
+	}
+
+	if totalSize == 0 {
+		body = nil
 	}
 
 	outreq := s.copyRequest(req, body, totalSize)
@@ -269,11 +278,14 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		attempt += 1
-		if _, err := body.Seek(0, 0); err != nil {
-			log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
-			s.errHandler.ServeHTTP(w, req, err)
-			return
+		if body != nil {
+			if _, err := body.Seek(0, 0); err != nil {
+				log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
+				s.errHandler.ServeHTTP(w, req, err)
+				return
+			}
 		}
+
 		outreq = s.copyRequest(req, body, totalSize)
 		log.Infof("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
@@ -288,7 +300,11 @@ func (s *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 	// remove TransferEncoding that could have been previously set because we have transformed the request from chunked encoding
 	o.TransferEncoding = []string{}
 	// http.Transport will close the request body on any error, we are controlling the close process ourselves, so we override the closer here
-	o.Body = ioutil.NopCloser(body)
+	if body == nil {
+		o.Body = nil
+	} else {
+		o.Body = ioutil.NopCloser(body)
+	}
 	return &o
 }
 
