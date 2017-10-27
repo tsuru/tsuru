@@ -939,6 +939,21 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		timeoutc := time.After(time.Minute)
+		for {
+			srvUpdated, err := m.client.InspectService(srvName)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if srvUpdated.UpdateStatus.State == swarm.UpdateStateCompleted {
+				break
+			}
+			select {
+			case <-timeoutc:
+				return errors.Errorf("timeout waiting for service update")
+			case <-time.After(time.Second):
+			}
+		}
 	}
 	return nil
 }
