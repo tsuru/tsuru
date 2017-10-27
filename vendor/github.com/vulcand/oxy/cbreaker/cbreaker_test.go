@@ -32,6 +32,7 @@ const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
 var fallbackResponse http.Handler
 var fallbackRedirect http.Handler
+var fallbackRedirectPath http.Handler
 
 func (s CBSuite) SetUpSuite(c *C) {
 	f, err := NewResponseFallback(Response{StatusCode: 400, Body: []byte("Come back later")})
@@ -41,6 +42,14 @@ func (s CBSuite) SetUpSuite(c *C) {
 	rdr, err := NewRedirectFallback(Redirect{URL: "http://localhost:5000"})
 	c.Assert(err, IsNil)
 	fallbackRedirect = rdr
+
+	fmt.Printf("Setting up")
+	rdp, err := NewRedirectFallback(Redirect{
+		URL:          "http://localhost:6000",
+		PreservePath: true,
+	})
+	c.Assert(err, IsNil)
+	fallbackRedirectPath = rdp
 }
 
 func (s *CBSuite) advanceTime(d time.Duration) {
@@ -118,6 +127,33 @@ func (s *CBSuite) TestFullCycle(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
+func (s *CBSuite) TestRedirectWithPath(c *C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+
+	cb, err := New(handler, triggerNetRatio, Clock(s.clock), Fallback(fallbackRedirectPath))
+	c.Assert(err, IsNil)
+
+	srv := httptest.NewServer(cb)
+	defer srv.Close()
+
+	cb.metrics = statsNetErrors(0.6)
+	re, _, err := testutils.Get(srv.URL)
+	c.Assert(err, IsNil)
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return fmt.Errorf("no redirects")
+		},
+	}
+
+	re, err = client.Get(srv.URL + "/somePath")
+	c.Assert(err, NotNil)
+	c.Assert(re.StatusCode, Equals, http.StatusFound)
+	c.Assert(re.Header.Get("Location"), Equals, "http://localhost:6000/somePath")
+}
+
 func (s *CBSuite) TestRedirect(c *C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
@@ -139,7 +175,7 @@ func (s *CBSuite) TestRedirect(c *C) {
 		},
 	}
 
-	re, err = client.Get(srv.URL)
+	re, err = client.Get(srv.URL + "/somePath")
 	c.Assert(err, NotNil)
 	c.Assert(re.StatusCode, Equals, http.StatusFound)
 	c.Assert(re.Header.Get("Location"), Equals, "http://localhost:5000")

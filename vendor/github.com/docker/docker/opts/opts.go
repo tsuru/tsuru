@@ -2,12 +2,12 @@ package opts
 
 import (
 	"fmt"
-	"math/big"
 	"net"
+	"path"
 	"regexp"
 	"strings"
 
-	"github.com/docker/docker/api/types/filters"
+	units "github.com/docker/go-units"
 )
 
 var (
@@ -36,7 +36,10 @@ func NewListOptsRef(values *[]string, validator ValidatorFctType) *ListOpts {
 }
 
 func (opts *ListOpts) String() string {
-	return fmt.Sprintf("%v", []string((*opts.values)))
+	if len(*opts.values) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%v", *opts.values)
 }
 
 // Set validates if needed the input value and adds it to the
@@ -108,6 +111,12 @@ func (opts *ListOpts) Type() string {
 	return "list"
 }
 
+// WithValidator returns the ListOpts with validator set.
+func (opts *ListOpts) WithValidator(validator ValidatorFctType) *ListOpts {
+	opts.validator = validator
+	return opts
+}
+
 // NamedOption is an interface that list and map options
 // with names implement.
 type NamedOption interface {
@@ -168,7 +177,7 @@ func (opts *MapOpts) GetAll() map[string]string {
 }
 
 func (opts *MapOpts) String() string {
-	return fmt.Sprintf("%v", map[string]string((opts.values)))
+	return fmt.Sprintf("%v", opts.values)
 }
 
 // Type returns a string name for this Option type
@@ -254,107 +263,65 @@ func ValidateLabel(val string) (string, error) {
 	return val, nil
 }
 
-// ValidateSysctl validates a sysctl and returns it.
-func ValidateSysctl(val string) (string, error) {
-	validSysctlMap := map[string]bool{
-		"kernel.msgmax":          true,
-		"kernel.msgmnb":          true,
-		"kernel.msgmni":          true,
-		"kernel.sem":             true,
-		"kernel.shmall":          true,
-		"kernel.shmmax":          true,
-		"kernel.shmmni":          true,
-		"kernel.shm_rmid_forced": true,
+// ParseLink parses and validates the specified string as a link format (name:alias)
+func ParseLink(val string) (string, string, error) {
+	if val == "" {
+		return "", "", fmt.Errorf("empty string specified for links")
 	}
-	validSysctlPrefixes := []string{
-		"net.",
-		"fs.mqueue.",
+	arr := strings.Split(val, ":")
+	if len(arr) > 2 {
+		return "", "", fmt.Errorf("bad format for links: %s", val)
 	}
-	arr := strings.Split(val, "=")
-	if len(arr) < 2 {
-		return "", fmt.Errorf("sysctl '%s' is not whitelisted", val)
+	if len(arr) == 1 {
+		return val, val, nil
 	}
-	if validSysctlMap[arr[0]] {
-		return val, nil
+	// This is kept because we can actually get a HostConfig with links
+	// from an already created container and the format is not `foo:bar`
+	// but `/foo:/c1/bar`
+	if strings.HasPrefix(arr[0], "/") {
+		_, alias := path.Split(arr[1])
+		return arr[0][1:], alias, nil
 	}
+	return arr[0], arr[1], nil
+}
 
-	for _, vp := range validSysctlPrefixes {
-		if strings.HasPrefix(arr[0], vp) {
-			return val, nil
-		}
+// MemBytes is a type for human readable memory bytes (like 128M, 2g, etc)
+type MemBytes int64
+
+// String returns the string format of the human readable memory bytes
+func (m *MemBytes) String() string {
+	// NOTE: In spf13/pflag/flag.go, "0" is considered as "zero value" while "0 B" is not.
+	// We return "0" in case value is 0 here so that the default value is hidden.
+	// (Sometimes "default 0 B" is actually misleading)
+	if m.Value() != 0 {
+		return units.BytesSize(float64(m.Value()))
 	}
-	return "", fmt.Errorf("sysctl '%s' is not whitelisted", val)
+	return "0"
 }
 
-// FilterOpt is a flag type for validating filters
-type FilterOpt struct {
-	filter filters.Args
-}
-
-// NewFilterOpt returns a new FilterOpt
-func NewFilterOpt() FilterOpt {
-	return FilterOpt{filter: filters.NewArgs()}
-}
-
-func (o *FilterOpt) String() string {
-	repr, err := filters.ToParam(o.filter)
-	if err != nil {
-		return "invalid filters"
-	}
-	return repr
-}
-
-// Set sets the value of the opt by parsing the command line value
-func (o *FilterOpt) Set(value string) error {
-	var err error
-	o.filter, err = filters.ParseFlag(value, o.filter)
-	return err
-}
-
-// Type returns the option type
-func (o *FilterOpt) Type() string {
-	return "filter"
-}
-
-// Value returns the value of this option
-func (o *FilterOpt) Value() filters.Args {
-	return o.filter
-}
-
-// NanoCPUs is a type for fixed point fractional number.
-type NanoCPUs int64
-
-// String returns the string format of the number
-func (c *NanoCPUs) String() string {
-	return big.NewRat(c.Value(), 1e9).FloatString(3)
-}
-
-// Set sets the value of the NanoCPU by passing a string
-func (c *NanoCPUs) Set(value string) error {
-	cpus, err := ParseCPUs(value)
-	*c = NanoCPUs(cpus)
+// Set sets the value of the MemBytes by passing a string
+func (m *MemBytes) Set(value string) error {
+	val, err := units.RAMInBytes(value)
+	*m = MemBytes(val)
 	return err
 }
 
 // Type returns the type
-func (c *NanoCPUs) Type() string {
-	return "decimal"
+func (m *MemBytes) Type() string {
+	return "bytes"
 }
 
 // Value returns the value in int64
-func (c *NanoCPUs) Value() int64 {
-	return int64(*c)
+func (m *MemBytes) Value() int64 {
+	return int64(*m)
 }
 
-// ParseCPUs takes a string ratio and returns an integer value of nano cpus
-func ParseCPUs(value string) (int64, error) {
-	cpu, ok := new(big.Rat).SetString(value)
-	if !ok {
-		return 0, fmt.Errorf("failed to parse %v as a rational number", value)
+// UnmarshalJSON is the customized unmarshaler for MemBytes
+func (m *MemBytes) UnmarshalJSON(s []byte) error {
+	if len(s) <= 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return fmt.Errorf("invalid size: %q", s)
 	}
-	nano := cpu.Mul(cpu, big.NewRat(1e9, 1))
-	if !nano.IsInt() {
-		return 0, fmt.Errorf("value is too precise")
-	}
-	return nano.Num().Int64(), nil
+	val, err := units.RAMInBytes(string(s[1 : len(s)-1]))
+	*m = MemBytes(val)
+	return err
 }

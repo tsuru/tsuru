@@ -14,7 +14,7 @@ import (
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/utils/json"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 const CurrentVersion = "v2"

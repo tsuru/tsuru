@@ -1050,7 +1050,12 @@ func TestServiceUpdate(t *testing.T) {
 			Spec:  *updateOpts.EndpointSpec,
 			Ports: []swarm.PortConfig{{Protocol: "tcp", TargetPort: 80, PublishedPort: 80}},
 		},
+		UpdateStatus: &swarm.UpdateStatus{
+			State: swarm.UpdateStateCompleted,
+		},
 	}
+	srv.UpdateStatus.CompletedAt = nil
+	srv.UpdateStatus.StartedAt = nil
 	if !reflect.DeepEqual(srv, expectedService) {
 		t.Fatalf("ServiceUpdate: wrong service. Want\n%#v\nGot\n%#v", expectedService, srv)
 	}

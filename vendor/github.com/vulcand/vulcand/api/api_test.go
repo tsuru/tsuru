@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	oxytest "github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/memng"

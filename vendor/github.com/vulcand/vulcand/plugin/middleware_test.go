@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	. "gopkg.in/check.v1"
 	"testing"
+
+	. "gopkg.in/check.v1"
 )
 
 func TestMdw(t *testing.T) { TestingT(t) }

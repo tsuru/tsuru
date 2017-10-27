@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -43,11 +43,13 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 type Redirect struct {
-	URL string
+	URL          string
+	PreservePath bool
 }
 
 type RedirectFallback struct {
 	u *url.URL
+	r Redirect
 }
 
 func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
@@ -55,7 +57,7 @@ func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RedirectFallback{u: u}, nil
+	return &RedirectFallback{u: u, r: r}, nil
 }
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -65,7 +67,12 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer logEntry.Debug("vulcand/oxy/fallback/redirect: competed ServeHttp on request")
 	}
 
-	w.Header().Set("Location", f.u.String())
+	location := f.u.String()
+	if f.r.PreservePath {
+		location += req.URL.Path
+	}
+
+	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusFound)
 	w.Write([]byte(http.StatusText(http.StatusFound)))
 }

@@ -102,6 +102,15 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 	return
 }
 
+//sys   poll(fds *PollFd, nfds int, timeout int) (n int, err error)
+
+func Poll(fds []PollFd, timeout int) (n int, err error) {
+	if len(fds) == 0 {
+		return poll(nil, 0, timeout)
+	}
+	return poll(&fds[0], len(fds), timeout)
+}
+
 /*
  * Exposed directly
  */
@@ -149,11 +158,6 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 //sys	Mkdir(path string, mode uint32) (err error)
 //sys	Mkfifo(path string, mode uint32) (err error)
 //sys	Mknod(path string, mode uint32, dev int) (err error)
-//sys	Mlock(b []byte) (err error)
-//sys	Mlockall(flags int) (err error)
-//sys	Mprotect(b []byte, prot int) (err error)
-//sys	Munlock(b []byte) (err error)
-//sys	Munlockall() (err error)
 //sys	Nanosleep(time *Timespec, leftover *Timespec) (err error)
 //sys	Open(path string, mode int, perm uint32) (fd int, err error)
 //sys	Pathconf(path string, name int) (val int, err error)
@@ -193,6 +197,7 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 //sys	munmap(addr uintptr, length uintptr) (err error)
 //sys	readlen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_READ
 //sys	writelen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_WRITE
+//sys	utimensat(dirfd int, path string, times *[2]Timespec, flags int) (err error)
 
 /*
  * Unimplemented
@@ -247,7 +252,6 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 // nfssvc
 // nnpfspioctl
 // openat
-// poll
 // preadv
 // profil
 // pwritev
@@ -282,6 +286,5 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 // thrsleep
 // thrwakeup
 // unlinkat
-// utimensat
 // vfork
 // writev

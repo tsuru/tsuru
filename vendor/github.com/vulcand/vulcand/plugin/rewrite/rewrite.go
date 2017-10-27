@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 	"github.com/vulcand/vulcand/plugin"
 )

@@ -14,9 +14,10 @@
   version = "v5.0.0-beta"
 
 [[projects]]
+  branch = "master"
   name = "github.com/Azure/go-ansiterm"
   packages = [".","winterm"]
-  revision = "fa152c58bc15761d0200cb75fe958b89a9d4888e"
+  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
   name = "github.com/Azure/go-autorest"
@@ -28,6 +29,12 @@
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   revision = "d8f60f2dd117cd64c2825143a89ecb6f158ad743"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/Nvveen/Gotty"
+  packages = ["."]
+  revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
 
 [[projects]]
   name = "github.com/PuerkitoBio/purell"
@@ -45,11 +52,6 @@
   name = "github.com/RobotsAndPencils/go-saml"
   packages = ["util"]
   revision = "aa127de49a0111329d9dbd2e19ddf21da90eb931"
-
-[[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  revision = "55eb11d21d2a31a3cc93838241d04800f52e823d"
 
 [[projects]]
   name = "github.com/ajg/form"
@@ -107,6 +109,24 @@
   revision = "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/containerd/continuity"
+  packages = ["pathdriver"]
+  revision = "1bed1ecb1dc42d8f4d2ac8c23e5cac64749e82c9"
+
+[[projects]]
+  name = "github.com/coreos/etcd"
+  packages = ["auth/authpb","client","clientv3","etcdserver/api/v3rpc/rpctypes","etcdserver/etcdserverpb","mvcc/mvccpb","pkg/pathutil","pkg/srv","pkg/types","version"]
+  revision = "f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b"
+  version = "v3.2.9"
+
+[[projects]]
+  name = "github.com/coreos/go-semver"
+  packages = ["semver"]
+  revision = "8ab6407b697782a06568d4b7f1db25550ec2e4c6"
+  version = "v0.2.0"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -134,10 +154,10 @@
   version = "v2.6.2"
 
 [[projects]]
+  branch = "master"
   name = "github.com/docker/docker"
-  packages = ["api/types","api/types/blkiodev","api/types/container","api/types/filters","api/types/mount","api/types/network","api/types/registry","api/types/strslice","api/types/swarm","api/types/versions","opts","pkg/archive","pkg/fileutils","pkg/homedir","pkg/idtools","pkg/ioutils","pkg/jsonlog","pkg/jsonmessage","pkg/longpath","pkg/pools","pkg/promise","pkg/stdcopy","pkg/system","pkg/term","pkg/term/windows"]
-  revision = "eef6495eddab52828327aade186443681ed71a4e"
-  version = "v17.03.2-ce-rc1"
+  packages = ["api/types","api/types/blkiodev","api/types/container","api/types/filters","api/types/mount","api/types/network","api/types/registry","api/types/strslice","api/types/swarm","api/types/swarm/runtime","api/types/versions","opts","pkg/archive","pkg/fileutils","pkg/homedir","pkg/idtools","pkg/ioutils","pkg/jsonmessage","pkg/longpath","pkg/mount","pkg/pools","pkg/stdcopy","pkg/system","pkg/term","pkg/term/windows"]
+  revision = "ecf4125b85e0faa57d2739348e0d453c1d24d10c"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -175,7 +195,7 @@
   branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = [".","testing"]
-  revision = "a939d380adff2bdea1f17780be15789d144f313d"
+  revision = "de3ca5806469df077d946342784e525cc7d078ed"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -277,7 +297,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "757bef944d0f21880861c2dd9c871ca543023cba"
+  revision = "24fca303ac6da784b9e8269f724ddeb0b2eea5e7"
+  version = "v1.5.0"
 
 [[projects]]
   name = "github.com/gorilla/pat"
@@ -373,6 +394,18 @@
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 
 [[projects]]
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
+
+[[projects]]
+  name = "github.com/opencontainers/image-spec"
+  packages = ["specs-go","specs-go/v1"]
+  revision = "ab7389ef9f50030c9b245bc16b981c7ddf192882"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/opencontainers/runc"
   packages = ["libcontainer/system","libcontainer/user"]
   revision = "419d5be191c18eff75a3d0b2a16e20c7a9eb71db"
@@ -421,6 +454,12 @@
   name = "github.com/samalba/dockerclient"
   packages = ["."]
   revision = "a3036261847103270e9f732509f43b5f98710ace"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
+  version = "v1.0.3"
 
 [[projects]]
   branch = "master"
@@ -494,7 +533,7 @@
   branch = "master"
   name = "github.com/vulcand/oxy"
   packages = ["buffer","cbreaker","connlimit","forward","memmetrics","ratelimit","roundrobin","trace","utils"]
-  revision = "77cbabd3c3e8d8f236b5327281eda4a0533251d3"
+  revision = "d04b87a836cff74fd8e9d2ae8cf4cda09910d000"
 
 [[projects]]
   name = "github.com/vulcand/predicate"
@@ -509,8 +548,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/vulcand/vulcand"
-  packages = ["anomaly","api","conntracker","engine","engine/memng","plugin","plugin/cbreaker","plugin/connlimit","plugin/ratelimit","plugin/registry","plugin/rewrite","plugin/trace","router","utils/json"]
-  revision = "ae1193ce520e408342779b3a2b8cbc5153b0b0fd"
+  packages = ["anomaly","api","conntracker","engine","engine/memng","plugin","plugin/cacheprovider","plugin/cbreaker","plugin/connlimit","plugin/ratelimit","plugin/registry","plugin/rewrite","plugin/trace","router","utils/json"]
+  revision = "13d5f779f148deec8cbd455f83a0d46352e2305f"
 
 [[projects]]
   name = "github.com/xanzy/go-cloudstack"
@@ -519,7 +558,7 @@
 
 [[projects]]
   name = "golang.org/x/crypto"
-  packages = ["bcrypt","blowfish","curve25519","ed25519","ed25519/internal/edwards25519","ssh","ssh/terminal"]
+  packages = ["acme","acme/autocert","bcrypt","blowfish","curve25519","ed25519","ed25519/internal/edwards25519","ssh","ssh/terminal"]
   revision = "5ef0053f77724838734b6945dd364d3847e5de1d"
 
 [[projects]]
@@ -537,7 +576,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows","windows/registry"]
-  revision = "4ed4d404df456f81e878683a0363ed3013a59003"
+  revision = "b98136db334ff9cb24f28a68e3be3cb6608f7630"
 
 [[projects]]
   branch = "master"
@@ -624,6 +663,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f122b1bfa14d3fc0be089370c4c9643fdd39f73c8663090467a8f52bc796fc09"
+  inputs-digest = "293179b58474bf88f4d5c619b2627e60de85424a5a61c3afbdb4fa97b880d7bf"
   solver-name = "gps-cdcl"
   solver-version = 1

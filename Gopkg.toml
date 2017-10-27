@@ -6,7 +6,7 @@
   revision = "1fd2e63a9a370677308a42f24fd40c86438afddf"
 [[constraint]]
   name = "github.com/docker/docker"
-  version = "v17.03.2-ce"
+  branch = "master"
 [[constraint]]
   name = "github.com/vulcand/vulcand"
   branch = "master"
@@ -15,7 +15,7 @@
   branch = "master"
 [[constraint]]
   name = "github.com/gorilla/mux"
-  revision = "757bef944d0f21880861c2dd9c871ca543023cba"
+  version = "v1.5.0"
 [[constraint]]
   name = "github.com/nu7hatch/gouuid"
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
@@ -107,9 +107,6 @@
   name = "github.com/docker/go-units"
   revision = "5d2041e26a699eaca682e2ea41c8f891e1060444"
 [[override]]
-  name = "github.com/Azure/go-ansiterm"
-  revision = "fa152c58bc15761d0200cb75fe958b89a9d4888e"
-[[override]]
   name = "github.com/Azure/go-autorest"
   version = "v7.2.3"
 [[override]]
@@ -172,9 +169,6 @@
 [[override]]
   name = "github.com/beorn7/perks"
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
-[[override]]
-  name = "github.com/Sirupsen/logrus"
-  revision = "55eb11d21d2a31a3cc93838241d04800f52e823d"
 [[override]]
   name = "github.com/docker/go-connections"
   revision = "f549a9393d05688dff0992ef3efd8bbe6c628aeb"
