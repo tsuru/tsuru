@@ -1868,7 +1868,7 @@ func (app *App) Start(w io.Writer, process string) error {
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		if _, ok := err.(*docker.ContainerAlreadyRunning); !ok {
-			return fmt.Errorf("this application is already started and running")
+			log.Errorf("this application is already started and running")
 		}
 		return err
 	}
