@@ -946,7 +946,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 				return errors.WithStack(err)
 			}
 			if srvUpdated.UpdateStatus.State == swarm.UpdateStateCompleted {
-				break
+				return nil
+			}
+			if srvUpdated.UpdateStatus.State == swarm.UpdateStateRollbackCompleted {
+				return errors.Errorf("rollbacked service update: %s", srvUpdated.UpdateStatus.Message)
 			}
 			select {
 			case <-timeoutc:
