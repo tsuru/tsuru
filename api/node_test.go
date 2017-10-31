@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
@@ -80,6 +81,44 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestAddNodeHandlerExistingInDifferentProvisioner(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake-other"
+	provision.Register("fake-other", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	defer provision.Unregister("fake-other")
+	serverAddr := "http://mysrv1"
+	err := p1.AddNode(provision.AddNodeOptions{
+		Address: serverAddr,
+	})
+	c.Assert(err, check.IsNil)
+	opts := pool.AddPoolOptions{Name: "pool1"}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer pool.RemovePool("pool1")
+	params := provision.AddNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"address": serverAddr,
+			"pool":    "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("POST", "/1.2/node", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", s.token.GetValue())
+	rec := httptest.NewRecorder()
+	s.testServer.ServeHTTP(rec, req)
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result["Error"], check.Equals, "node with address \"http://mysrv1\" already exists in provisioner \"fake-other\"")
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
+}
+
 func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
 	err := pool.AddPool(opts)
@@ -111,7 +150,7 @@ func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result["Error"], check.Equals, "node with address \"http://mysrv1\" already exists in provisioner \"fake\"")
+	c.Assert(result["Error"], check.Equals, "fake node already exists")
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 }
 

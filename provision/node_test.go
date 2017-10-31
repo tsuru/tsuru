@@ -73,6 +73,37 @@ func (s *S) TestFindNode(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
+func (s *S) TestFindNodeSkipProvisioner(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	p2 := provisiontest.NewFakeProvisioner()
+	p2.Name = "fake2"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	provision.Register("fake2", func() (provision.Provisioner, error) {
+		return p2, nil
+	})
+	defer provision.Unregister("fake1")
+	defer provision.Unregister("fake2")
+	err := p1.AddNode(provision.AddNodeOptions{
+		Address: "http://addr1",
+	})
+	c.Assert(err, check.IsNil)
+	err = p2.AddNode(provision.AddNodeOptions{
+		Address: "http://addr2",
+	})
+	c.Assert(err, check.IsNil)
+	prov, n, err := provision.FindNodeSkipProvisioner("http://addr1", "fake1")
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+	c.Assert(n, check.IsNil)
+	c.Assert(prov, check.IsNil)
+	prov, n, err = provision.FindNodeSkipProvisioner("http://addr1", "fake2")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "http://addr1")
+	c.Assert(prov, check.Equals, p1)
+}
+
 func (s *S) TestFindNodeIgnoreErrorIfFound(c *check.C) {
 	p1 := provisiontest.NewFakeProvisioner()
 	p2 := provisiontest.NewFakeProvisioner()
