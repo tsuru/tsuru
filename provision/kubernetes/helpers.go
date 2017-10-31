@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -602,11 +603,40 @@ func runPod(args runSinglePodArgs) error {
 	return multiErr.ToError()
 }
 
+func getNodeByAddr(client *clusterClient, address string) (*apiv1.Node, error) {
+	address = tsuruNet.URLToHost(address)
+	node, err := client.Core().Nodes().Get(address, metav1.GetOptions{})
+	if err == nil {
+		return node, nil
+	}
+	if !k8sErrors.IsNotFound(err) {
+		return nil, err
+	}
+	node = nil
+	nodeList, err := client.Core().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+nodesloop:
+	for i, n := range nodeList.Items {
+		for _, addr := range n.Status.Addresses {
+			if addr.Type == apiv1.NodeInternalIP && addr.Address == address {
+				node = &nodeList.Items[i]
+				break nodesloop
+			}
+		}
+	}
+	if node != nil {
+		return node, nil
+	}
+	return nil, provision.ErrNodeNotFound
+}
+
 func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*apiv1.Node, error) {
 	var node *apiv1.Node
 	waitErr := waitFor(timeout, func() (bool, error) {
 		var err error
-		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
+		node, err = getNodeByAddr(client, addr)
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -618,7 +648,7 @@ func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*
 		return false, nil
 	}, func() error {
 		var err error
-		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
+		node, err = getNodeByAddr(client, addr)
 		if err != nil {
 			return errors.WithStack(err)
 		}
