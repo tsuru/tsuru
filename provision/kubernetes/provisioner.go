@@ -561,22 +561,18 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClien
 		if foundNode != nil {
 			return nil
 		}
-		nodeList, err := c.Core().Nodes().List(metav1.ListOptions{})
-		if err != nil {
-			return err
-		}
-		for i := range nodeList.Items {
-			nodeWrapper := &kubernetesNodeWrapper{
-				node:    &nodeList.Items[i],
+		node, err := getNodeByAddr(c, address)
+		if err == nil {
+			foundNode = &kubernetesNodeWrapper{
+				node:    node,
 				prov:    p,
 				cluster: c,
 			}
-			if address == nodeWrapper.node.Name ||
-				address == nodeWrapper.Address() {
-				foundNode = nodeWrapper
-				foundCluster = c
-				break
-			}
+			foundCluster = c
+			return nil
+		}
+		if err != provision.ErrNodeNotFound {
+			return err
 		}
 		return nil
 	})
