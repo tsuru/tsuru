@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ajg/form"
@@ -1658,6 +1659,12 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	return nil
 }
 
+func isDeployAgentUA(r *http.Request) bool {
+	ua := strings.ToLower(r.UserAgent())
+	return strings.HasPrefix(ua, "go-http-client") ||
+		strings.HasPrefix(ua, "tsuru-deploy-agent")
+}
+
 // title: register unit
 // path: /apps/{app}/units/register
 // method: POST
@@ -1679,7 +1686,11 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	if r.Header.Get("X-Agent-Version") == "" {
+	if isDeployAgentUA(r) && r.Header.Get("X-Agent-Version") == "" {
+		// Filtering the user-agent is not pretty, but it's safer than doing
+		// the header check for every request, otherwise calling directly the
+		// API would always fail without this header that only makes sense to
+		// the agent.
 		msgError := fmt.Sprintf("Please contact admin. %s platform is using outdated deploy-agent version, minimum required version is 0.2.4", a.GetPlatform())
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msgError}
 	}

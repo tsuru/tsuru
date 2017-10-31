@@ -5501,12 +5501,48 @@ func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
 	body := strings.NewReader("hostname=invalid-unit-host")
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("User-Agent", "Go-http-client/1.1")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
+
+	body = strings.NewReader("hostname=invalid-unit-host")
+	request, err = http.NewRequest("POST", "/apps/myappx/units/register", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("User-Agent", "tsuru-deploy-agent/1.1")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
+}
+
+func (s *S) TestRegisterUnitOtherUA(c *check.C) {
+	a := app.App{
+		Name:     "myappx",
+		Platform: "python",
+		Env: map[string]bind.EnvVar{
+			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
+		},
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("hostname=" + units[0].ID)
+	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("User-Agent", "curl/1.1")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
