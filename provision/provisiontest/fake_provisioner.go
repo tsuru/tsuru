@@ -465,6 +465,9 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if metadata == nil {
 		metadata = map[string]string{}
 	}
+	if _, ok := p.nodes[opts.Address]; ok {
+		return errors.New("fake node already exists")
+	}
 	p.nodes[opts.Address] = FakeNode{
 		ID:       opts.IaaSID,
 		Addr:     opts.Address,

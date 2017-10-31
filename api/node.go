@@ -65,7 +65,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		params.IaaSID = m.Id
 	}
 	delete(params.Metadata, provision.PoolMetadataName)
-	prov, _, err := provision.FindNode(address)
+	prov, _, err := provision.FindNodeSkipProvisioner(address, p.GetName())
 	if err != provision.ErrNodeNotFound {
 		if err == nil {
 			return "", nil, errors.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
