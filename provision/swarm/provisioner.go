@@ -797,7 +797,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		return err
 	}
 	err = forEachCluster(func(client *clusterClient) error {
-		_, upsertErr := upsertService(serviceSpec, client, placementOnly)
+		_, upsertErr := upsertService(*serviceSpec, client, placementOnly)
 		return upsertErr
 	})
 	if err == cluster.ErrNoCluster {

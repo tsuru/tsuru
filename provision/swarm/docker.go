@@ -498,13 +498,13 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	return service, nil
 }
 
-func upsertService(spec *swarm.ServiceSpec, client *clusterClient, placementOnly bool) (bool, error) {
+func upsertService(spec swarm.ServiceSpec, client *clusterClient, placementOnly bool) (bool, error) {
 	currService, err := client.InspectService(spec.Name)
 	if err != nil {
 		if _, ok := err.(*docker.NoSuchService); !ok {
 			return false, errors.WithStack(err)
 		}
-		opts := docker.CreateServiceOptions{ServiceSpec: *spec}
+		opts := docker.CreateServiceOptions{ServiceSpec: spec}
 		_, errCreate := client.CreateService(opts)
 		if errCreate != nil {
 			return false, errors.WithStack(errCreate)
@@ -513,10 +513,10 @@ func upsertService(spec *swarm.ServiceSpec, client *clusterClient, placementOnly
 	}
 	if placementOnly {
 		currService.Spec.TaskTemplate.Placement = spec.TaskTemplate.Placement
-		spec = &currService.Spec
+		spec = currService.Spec
 	}
 	opts := docker.UpdateServiceOptions{
-		ServiceSpec: *spec,
+		ServiceSpec: spec,
 		Version:     currService.Version.Index,
 	}
 	return false, errors.WithStack(client.UpdateService(currService.ID, opts))
