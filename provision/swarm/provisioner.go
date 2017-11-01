@@ -941,20 +941,23 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		timeoutc := time.After(time.Minute)
 		for {
+			select {
+			case <-timeoutc:
+				return errors.Errorf("timeout waiting for service update")
+			case <-time.After(time.Second):
+			}
 			srvUpdated, err := m.client.InspectService(srvName)
 			if err != nil {
 				return errors.WithStack(err)
+			}
+			if srvUpdated.UpdateStatus == nil {
+				continue
 			}
 			if srvUpdated.UpdateStatus.State == swarm.UpdateStateCompleted {
 				return nil
 			}
 			if srvUpdated.UpdateStatus.State == swarm.UpdateStateRollbackCompleted {
 				return errors.Errorf("rollbacked service update: %s", srvUpdated.UpdateStatus.Message)
-			}
-			select {
-			case <-timeoutc:
-				return errors.Errorf("timeout waiting for service update")
-			case <-time.After(time.Second):
 			}
 		}
 	}
