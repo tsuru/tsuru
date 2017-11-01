@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/kr/pretty"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
@@ -260,6 +262,70 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
 		{Name: "volume-2", MountPath: "/mnt/sda1/var/lib/docker/containers", ReadOnly: true},
 	})
+}
+
+func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
+	s.mockfakeNodes(c)
+	cluster2 := &cluster.Cluster{
+		Name:        "cluster2",
+		Addresses:   []string{"https://clusteraddr"},
+		Default:     true,
+		Provisioner: provisionerName,
+	}
+	err := cluster2.Save()
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: nodecontainer.BsDefaultName,
+		Config: docker.Config{
+			Image: "img1",
+		},
+		HostConfig: docker.HostConfig{},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedVolumes := []apiv1.Volume{
+		{
+			Name: "volume-0",
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: "/var/log",
+				},
+			},
+		},
+		{
+			Name: "volume-1",
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: "/var/lib/docker/containers",
+				},
+			},
+		},
+		{
+			Name: "volume-2",
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: "/mnt/sda1/var/lib/docker/containers",
+				},
+			},
+		},
+	}
+	expectedMounts := []apiv1.VolumeMount{
+		{Name: "volume-0", MountPath: "/var/log", ReadOnly: false},
+		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
+		{Name: "volume-2", MountPath: "/mnt/sda1/var/lib/docker/containers", ReadOnly: true},
+	}
+	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, expectedVolumes,
+		check.Commentf("Diff: %v", pretty.Diff(daemon.Spec.Template.Spec.Volumes, expectedVolumes)))
+	c.Assert(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, check.DeepEquals, expectedMounts,
+		check.Commentf("Diff: %v", pretty.Diff(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, expectedMounts)))
 }
 
 func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {

@@ -30,7 +30,7 @@ type nodeContainerManager struct{}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	err := forEachCluster(func(cluster *clusterClient) error {
-		return m.deployNodeContainerForCluster(cluster, config, pool, filter, placementOnly)
+		return m.deployNodeContainerForCluster(cluster, *config, pool, filter, placementOnly)
 	})
 	if err == cluster.ErrNoCluster {
 		return nil
@@ -38,7 +38,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	return err
 }
 
-func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClient, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	dsName := daemonSetName(config.Name, pool)
 	oldDs, err := client.Extensions().DaemonSets(client.Namespace()).Get(dsName, metav1.GetOptions{})
 	if err != nil {
