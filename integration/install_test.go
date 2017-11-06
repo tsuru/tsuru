@@ -407,8 +407,8 @@ func platformAdd() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		img := env.Get("platimg")
-		suffix := img[strings.LastIndex(img, "/")+1:]
-		platName := "iplat-" + suffix
+		prefix := img[strings.LastIndex(img, "/")+1:]
+		platName := prefix + "-iplat"
 		res := T("platform-add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		env.Add("installedplatforms", platName)
@@ -418,8 +418,8 @@ func platformAdd() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		img := env.Get("platimg")
-		suffix := img[strings.LastIndex(img, "/")+1:]
-		platName := "iplat-" + suffix
+		prefix := img[strings.LastIndex(img, "/")+1:]
+		platName := prefix + "-iplat"
 		res := T("platform-remove", "-y", platName).Run(env)
 		c.Check(res, ResultOk)
 	}
@@ -444,7 +444,7 @@ func exampleApps() ExecFlow {
 		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		lang := strings.Replace(parts[1], "iplat-", "", -1)
+		lang := strings.Replace(parts[1], "-iplat", "", -1)
 		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started")
