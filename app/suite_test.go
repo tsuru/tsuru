@@ -134,6 +134,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
+	pool.ResetCache()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
 		if err == ErrAppNotFound {

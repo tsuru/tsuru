@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -46,6 +47,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	provisiontest.ProvisionerInstance.Reset()
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
 	err = auth.CreateTeam("ateam", &auth.User{})
@@ -631,4 +633,21 @@ func (s *S) TestRenamePoolTeam(c *check.C) {
 		{PoolExpr: "e2", Field: "team", Values: []string{"t1", "t9000"}},
 		{PoolExpr: "e3", Field: "team", Values: []string{"t3", "t9000"}},
 	})
+}
+
+func (s *S) TestGetProvisionerForPool(c *check.C) {
+	coll := s.storage.Pools()
+	pool := Pool{Name: "pool1", Default: true, Provisioner: "fake"}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	prov, err := GetProvisionerForPool(pool.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake")
+	c.Assert(poolCache.Get("pool1"), check.Equals, provisiontest.ProvisionerInstance)
+	prov, err = GetProvisionerForPool(pool.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake")
+	prov, err = GetProvisionerForPool("not found")
+	c.Assert(prov, check.IsNil)
+	c.Assert(err, check.Equals, ErrPoolNotFound)
 }
