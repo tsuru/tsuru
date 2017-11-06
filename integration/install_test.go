@@ -436,7 +436,7 @@ func exampleApps() ExecFlow {
 		provides: []string{"appnames"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		appName := fmt.Sprintf("iapp-%s-%s", env.Get("plat"), env.Get("pool"))
+		appName := fmt.Sprintf("%s-%s-iapp", env.Get("plat"), env.Get("pool"))
 		res := T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("app-info", "-a", appName).Run(env)
@@ -466,7 +466,7 @@ func exampleApps() ExecFlow {
 		env.Add("appnames", appName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		appName := "iapp-{{.plat}}-{{.pool}}"
+		appName := "{{.plat}}-{{.pool}}-iapp"
 		res := T("app-remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
@@ -488,7 +488,7 @@ func updateAppPools() ExecFlow {
 					continue
 				}
 				combinations = append(combinations, []string{
-					fmt.Sprintf("iapp-%s-%s", chosenPlatform, poolNames[i]),
+					fmt.Sprintf("%s-%s-iapp", chosenPlatform, poolNames[i]),
 					poolNames[j],
 				})
 			}
