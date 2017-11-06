@@ -950,10 +950,6 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			return errors.WithStack(err)
 		}
 	}
-	var labelFilters []string
-	for k, v := range spec.Labels {
-		labelFilters = append(labelFilters, k+"="+v)
-	}
 	timeoutc := time.After(waitForTaskTimeout)
 loop:
 	for {
