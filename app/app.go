@@ -170,20 +170,14 @@ func (app *App) getBuilder() (builder.Builder, error) {
 }
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
+	var err error
 	if app.provisioner == nil {
 		if app.Pool == "" {
 			return provision.GetDefault()
 		}
-		p, err := pool.GetPoolByName(app.Pool)
-		if err != nil {
-			return nil, err
-		}
-		app.provisioner, err = p.GetProvisioner()
-		if err != nil {
-			return nil, err
-		}
+		app.provisioner, err = pool.GetProvisionerForPool(app.Pool)
 	}
-	return app.provisioner, nil
+	return app.provisioner, err
 }
 
 // Units returns the list of units.

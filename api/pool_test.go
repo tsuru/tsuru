@@ -630,36 +630,6 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, pool.ErrDefaultPoolAlreadyExists.Error()+"\n")
 }
 
-func (s *S) TestPoolUpdateProvisioner(c *check.C) {
-	pool.RemovePool("test1")
-	opts := pool.AddPoolOptions{Name: "pool1", Public: true, Default: true}
-	err := pool.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString("provisioner=myprov&default=false")
-	req, err := http.NewRequest("PUT", "/pools/pool1", b)
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	rec := httptest.NewRecorder()
-	s.testServer.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	c.Assert(err, check.IsNil)
-	p, err := pool.GetPoolByName("pool1")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Provisioner, check.Equals, "myprov")
-	c.Assert(p.Default, check.Equals, false)
-	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
-		Owner:  s.token.GetUserName(),
-		Kind:   "pool.update",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":name", "value": "pool1"},
-			{"name": "default", "value": "false"},
-			{"name": "provisioner", "value": "myprov"},
-		},
-	}, eventtest.HasEvent)
-}
-
 func (s *S) TestPoolUpdateNotFound(c *check.C) {
 	b := bytes.NewBufferString("public=true")
 	request, err := http.NewRequest("PUT", "/pools/not-found", b)
