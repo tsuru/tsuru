@@ -942,6 +942,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			existingTasks[t.ID] = struct{}{}
 		}
 		srv.Spec = *spec
+		srv.Spec.TaskTemplate.ForceUpdate++
 		err = m.client.UpdateService(srv.ID, docker.UpdateServiceOptions{
 			Version:     srv.Version.Index,
 			ServiceSpec: srv.Spec,
