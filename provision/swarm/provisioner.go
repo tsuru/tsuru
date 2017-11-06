@@ -923,6 +923,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	if err != nil {
 		return err
 	}
+	existingTasks := make(map[string]struct{})
 	if srv == nil {
 		_, err = m.client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,
@@ -931,6 +932,15 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			return errors.WithStack(err)
 		}
 	} else {
+		tasks, err := m.client.ListTasks(docker.ListTasksOptions{
+			Filters: map[string][]string{"service": []string{srvName}},
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for _, t := range tasks {
+			existingTasks[t.ID] = struct{}{}
+		}
 		srv.Spec = *spec
 		err = m.client.UpdateService(srv.ID, docker.UpdateServiceOptions{
 			Version:     srv.Version.Index,
@@ -939,29 +949,46 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		timeoutc := time.After(time.Minute)
-		for {
-			select {
-			case <-timeoutc:
-				return errors.Errorf("timeout waiting for service update")
-			case <-time.After(time.Second):
+	}
+	var labelFilters []string
+	for k, v := range spec.Labels {
+		labelFilters = append(labelFilters, k+"="+v)
+	}
+	timeoutc := time.After(waitForTaskTimeout)
+loop:
+	for {
+		select {
+		case <-timeoutc:
+			return errors.Errorf("timeout waiting for service update")
+		case <-time.After(time.Second):
+		}
+		tasks, err := m.client.ListTasks(docker.ListTasksOptions{
+			Filters: map[string][]string{"service": []string{srvName}},
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for _, t := range tasks {
+			if _, ok := existingTasks[t.ID]; ok {
+				if taskInTermState(t) {
+					continue
+				}
+				log.Debugf("Waiting old task %s in state %q to reach terminal state.", t.ID, t.Status.State)
+				continue loop
 			}
-			srvUpdated, err := m.client.InspectService(srvName)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			if srvUpdated.UpdateStatus == nil {
+			if t.DesiredState == t.Status.State {
+				log.Debugf("Waiting new task %s in state %q to reach desired state %q", t.ID, t.Status.State, t.DesiredState)
 				continue
 			}
-			if srvUpdated.UpdateStatus.State == swarm.UpdateStateCompleted {
-				return nil
-			}
-			if srvUpdated.UpdateStatus.State == swarm.UpdateStateRollbackCompleted {
-				return errors.Errorf("rollbacked service update: %s", srvUpdated.UpdateStatus.Message)
-			}
+			continue loop
 		}
+		return nil
 	}
-	return nil
+}
+
+func taskInTermState(t swarm.Task) bool {
+	return t.Status.State == swarm.TaskStateComplete || t.Status.State == swarm.TaskStateFailed ||
+		t.Status.State == swarm.TaskStateRejected || t.Status.State == swarm.TaskStateShutdown
 }
 
 func runOnceBuildCmds(client *clusterClient, a provision.App, cmds []string, imgID, buildingImage string, w io.Writer) (string, *swarm.Task, error) {
