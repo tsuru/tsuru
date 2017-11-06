@@ -933,7 +933,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 	} else {
 		tasks, err := m.client.ListTasks(docker.ListTasksOptions{
-			Filters: map[string][]string{"service": []string{srvName}},
+			Filters: map[string][]string{"service": {srvName}},
 		})
 		if err != nil {
 			return errors.WithStack(err)
@@ -963,7 +963,7 @@ loop:
 		case <-time.After(time.Second):
 		}
 		tasks, err := m.client.ListTasks(docker.ListTasksOptions{
-			Filters: map[string][]string{"service": []string{srvName}},
+			Filters: map[string][]string{"service": {srvName}},
 		})
 		if err != nil {
 			return errors.WithStack(err)
@@ -977,9 +977,9 @@ loop:
 				continue loop
 			}
 			if t.DesiredState == t.Status.State {
-				log.Debugf("Waiting new task %s in state %q to reach desired state %q", t.ID, t.Status.State, t.DesiredState)
 				continue
 			}
+			log.Debugf("Waiting new task %s in state %q to reach desired state %q", t.ID, t.Status.State, t.DesiredState)
 			continue loop
 		}
 		return nil
