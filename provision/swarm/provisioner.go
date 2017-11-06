@@ -970,13 +970,13 @@ loop:
 				if taskInTermState(t) {
 					continue
 				}
-				log.Debugf("Waiting old task %s in state %q to reach terminal state.", t.ID, t.Status.State)
+				log.Debugf("Waiting old task %s [%s] to reach terminal state.", t.ID, taskStatusMsg(t.Status))
 				continue loop
 			}
 			if t.DesiredState == t.Status.State {
 				continue
 			}
-			log.Debugf("Waiting new task %s in state %q to reach desired state %q", t.ID, t.Status.State, t.DesiredState)
+			log.Debugf("Waiting new task %s [%s] to reach desired state %q", t.ID, taskStatusMsg(t.Status), t.DesiredState)
 			continue loop
 		}
 		return nil
