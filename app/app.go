@@ -1708,26 +1708,54 @@ type AppUnitsResponse struct {
 }
 
 func Units(apps []App) (map[string]AppUnitsResponse, error) {
+	poolProvMap := map[string]provision.Provisioner{}
 	provMap := map[provision.Provisioner][]provision.App{}
 	for i, a := range apps {
-		prov, err := a.getProvisioner()
-		if err != nil {
-			return nil, err
+		prov, ok := poolProvMap[a.Pool]
+		if !ok {
+			var err error
+			prov, err = a.getProvisioner()
+			if err != nil {
+				return nil, err
+			}
+			poolProvMap[a.Pool] = prov
 		}
 		provMap[prov] = append(provMap[prov], &apps[i])
 	}
-	appUnits := map[string]AppUnitsResponse{}
+	type parallelRsp struct {
+		provApps []provision.App
+		units    []provision.Unit
+		err      error
+	}
+	rspCh := make(chan parallelRsp, len(provMap))
+	wg := sync.WaitGroup{}
 	for prov, provApps := range provMap {
-		units, err := prov.Units(provApps...)
-		if err != nil {
-			for _, a := range provApps {
+		wg.Add(1)
+		prov := prov
+		provApps := provApps
+		go func() {
+			defer wg.Done()
+			units, err := prov.Units(provApps...)
+			rspCh <- parallelRsp{
+				units:    units,
+				err:      err,
+				provApps: provApps,
+			}
+		}()
+	}
+	wg.Wait()
+	close(rspCh)
+	appUnits := map[string]AppUnitsResponse{}
+	for pRsp := range rspCh {
+		if pRsp.err != nil {
+			for _, a := range pRsp.provApps {
 				rsp := appUnits[a.GetName()]
-				rsp.Err = errors.Wrap(err, "unable to list app units")
+				rsp.Err = errors.Wrap(pRsp.err, "unable to list app units")
 				appUnits[a.GetName()] = rsp
 			}
 			continue
 		}
-		for _, u := range units {
+		for _, u := range pRsp.units {
 			rsp := appUnits[u.AppName]
 			rsp.Units = append(rsp.Units, u)
 			appUnits[u.AppName] = rsp
