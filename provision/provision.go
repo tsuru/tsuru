@@ -350,7 +350,7 @@ type Provisioner interface {
 	Stop(App, string) error
 
 	// Units returns information about units by App.
-	Units(App) ([]Unit, error)
+	Units(...App) ([]Unit, error)
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(App) ([]url.URL, error)

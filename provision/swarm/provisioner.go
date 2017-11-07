@@ -257,7 +257,19 @@ func tasksToUnits(client *clusterClient, tasks []swarm.Task) ([]provision.Unit, 
 	return units, nil
 }
 
-func (p *swarmProvisioner) Units(a provision.App) ([]provision.Unit, error) {
+func (p *swarmProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
+	var units []provision.Unit
+	for _, a := range apps {
+		appUnits, err := p.units(a)
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, appUnits...)
+	}
+	return units, nil
+}
+
+func (p *swarmProvisioner) units(a provision.App) ([]provision.Unit, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		if errors.Cause(err) == cluster.ErrNoCluster {
