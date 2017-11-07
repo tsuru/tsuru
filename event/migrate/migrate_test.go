@@ -67,6 +67,7 @@ func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0)
 	id := bson.NewObjectId()
 	var expected event.Event
+	expected.Init()
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: event.TargetTypeApp, Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}
@@ -86,6 +87,7 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0)
 	id := bson.NewObjectId()
 	var expected event.Event
+	expected.Init()
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: event.TargetTypeApp, Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}
@@ -107,6 +109,7 @@ func (s *S) TestMigrateRCEventsInvalidTarget(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0)
 	id := bson.NewObjectId()
 	var expected event.Event
+	expected.Init()
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: "some-invalid-target", Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}

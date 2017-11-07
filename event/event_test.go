@@ -80,6 +80,7 @@ func (s *S) TestNewDone(c *check.C) {
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed:        Allowed(permission.PermAppReadEvents),
 	}}
+	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -133,6 +134,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 		StartCustomData: evt.StartCustomData,
 		Allowed:         Allowed(permission.PermAppReadEvents),
 	}}
+	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
 	customData = struct{ A string }{A: "other"}
 	err = evt.DoneCustomData(nil, customData)
@@ -197,6 +199,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed:        Allowed(permission.PermAppReadEvents),
 	}}
+	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -358,6 +361,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 		Error:          "myerr",
 		Allowed:        Allowed(permission.PermAppReadEvents),
 	}}
+	expected.Init()
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
@@ -1001,6 +1005,7 @@ func (s *S) TestEventRawInsert(c *check.C) {
 		Error:     "err x",
 		Log:       "my log",
 	}}
+	evt.Init()
 	err := evt.RawInsert(nil, nil, nil)
 	c.Assert(err, check.IsNil)
 	evts, err := All()
@@ -1033,6 +1038,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 			Contexts: []permission.PermissionContext{permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")},
 		},
 	}}
+	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -1101,6 +1107,7 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 		StartCustomData: evt.StartCustomData,
 		Allowed:         Allowed(permission.PermAppReadEvents),
 	}}
+	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
 }
 

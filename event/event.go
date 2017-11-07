@@ -332,7 +332,7 @@ func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
 
 type Event struct {
 	eventData
-	logBuffer safe.Buffer
+	logBuffer *safe.Buffer
 	logWriter io.Writer
 }
 
@@ -544,6 +544,7 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	defer conn.Close()
 	coll := conn.Events()
 	var evt Event
+	evt.Init()
 	err = coll.Find(bson.M{
 		"_id":       eventID{Target: target},
 		"kind.name": kind,
@@ -566,6 +567,7 @@ func GetByID(id bson.ObjectId) (*Event, error) {
 	defer conn.Close()
 	coll := conn.Events()
 	var evt Event
+	evt.Init()
 	err = coll.Find(bson.M{
 		"uniqueid": id,
 	}).One(&evt.eventData)
@@ -627,6 +629,7 @@ func List(filter *Filter) ([]Event, error) {
 	}
 	evts := make([]Event, len(allData))
 	for i := range evts {
+		evts[i].Init()
 		evts[i].eventData = allData[i]
 	}
 	return evts, nil
@@ -840,6 +843,7 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 		Allowed:         opts.Allowed,
 		AllowedCancel:   opts.AllowedCancel,
 	}}
+	evt.Init()
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
@@ -934,14 +938,19 @@ func (e *Event) Logf(format string, params ...interface{}) {
 	if e.logWriter != nil {
 		fmt.Fprintf(e.logWriter, format, params...)
 	}
-	fmt.Fprintf(&e.logBuffer, format, params...)
+	if e.logBuffer != nil {
+		fmt.Fprintf(e.logBuffer, format, params...)
+	}
 }
 
 func (e *Event) Write(data []byte) (int, error) {
 	if e.logWriter != nil {
 		e.logWriter.Write(data)
 	}
-	return e.logBuffer.Write(data)
+	if e.logBuffer != nil {
+		e.logBuffer.Write(data)
+	}
+	return len(data), nil
 }
 
 func (e *Event) CancelableContext(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -1077,7 +1086,9 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		return err
 	}
 	e.Running = false
-	e.Log = e.logBuffer.String()
+	if e.logBuffer != nil {
+		e.Log = e.logBuffer.String()
+	}
 	var dbEvt Event
 	err = coll.FindId(e.ID).One(&dbEvt.eventData)
 	if err == nil {
@@ -1089,6 +1100,12 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	defer coll.RemoveId(e.ID)
 	e.ID = eventID{ObjId: e.UniqueID}
 	return coll.Insert(e.eventData)
+}
+
+func (e *Event) Init() {
+	if e.logBuffer == nil {
+		e.logBuffer = &safe.Buffer{}
+	}
 }
 
 type lockUpdater struct {
@@ -1183,6 +1200,7 @@ func Migrate(query bson.M, cb func(*Event) error) error {
 	var evtData eventData
 	for iter.Next(&evtData) {
 		evt := &Event{eventData: evtData}
+		evt.Init()
 		err = cb(evt)
 		if err != nil {
 			return errors.Wrapf(err, "unable to migrate %#v", evt)
