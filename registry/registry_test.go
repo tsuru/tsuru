@@ -94,7 +94,6 @@ func (s *S) TestRegistryRemoveImageUnknownRegistry(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage("fake-registry:5000/tsuru/app-teste:v1")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Matches, "*no such host\n")
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
