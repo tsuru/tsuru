@@ -116,18 +116,20 @@ type miniApp struct {
 	Error     string               `json:"error,omitempty"`
 }
 
-func minifyApp(app app.App) (miniApp, error) {
+func minifyApp(app app.App, unitData app.AppUnitsResponse) (miniApp, error) {
 	var errorStr string
-	units, err := app.Units()
-	if err != nil {
-		errorStr = fmt.Sprintf("unable to list app units: %+v", err)
+	if unitData.Err != nil {
+		errorStr = unitData.Err.Error()
+	}
+	if unitData.Units == nil {
+		unitData.Units = []provision.Unit{}
 	}
 	ma := miniApp{
 		Name:      app.Name,
 		Pool:      app.Pool,
 		Plan:      app.Plan,
 		TeamOwner: app.TeamOwner,
-		Units:     units,
+		Units:     unitData.Units,
 		CName:     app.CName,
 		Routers:   app.Routers,
 		Lock:      &app.Lock,
@@ -209,10 +211,14 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	appUnits, err := app.Units(apps)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
-		miniApps[i], err = minifyApp(app)
+		miniApps[i], err = minifyApp(app, appUnits[app.Name])
 		if err != nil {
 			return err
 		}

@@ -1702,6 +1702,40 @@ func (f *Filter) Query() bson.M {
 	return query
 }
 
+type AppUnitsResponse struct {
+	Units []provision.Unit
+	Err   error
+}
+
+func Units(apps []App) (map[string]AppUnitsResponse, error) {
+	provMap := map[provision.Provisioner][]provision.App{}
+	for i, a := range apps {
+		prov, err := a.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		provMap[prov] = append(provMap[prov], &apps[i])
+	}
+	appUnits := map[string]AppUnitsResponse{}
+	for prov, provApps := range provMap {
+		units, err := prov.Units(provApps...)
+		if err != nil {
+			for _, a := range provApps {
+				rsp := appUnits[a.GetName()]
+				rsp.Err = errors.Wrap(err, "unable to list app units")
+				appUnits[a.GetName()] = rsp
+			}
+			continue
+		}
+		for _, u := range units {
+			rsp := appUnits[u.AppName]
+			rsp.Units = append(rsp.Units, u)
+			appUnits[u.AppName] = rsp
+		}
+	}
+	return appUnits, nil
+}
+
 // List returns the list of apps filtered through the filter parameter.
 func List(filter *Filter) ([]App, error) {
 	apps := []App{}

@@ -295,7 +295,19 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.
 	return units, nil
 }
 
-func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
+	var units []provision.Unit
+	for _, a := range apps {
+		appUnits, err := p.units(a)
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, appUnits...)
+	}
+	return units, nil
+}
+
+func (p *kubernetesProvisioner) units(a provision.App) ([]provision.Unit, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err

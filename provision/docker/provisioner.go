@@ -773,14 +773,20 @@ func (p *dockerProvisioner) GetAppFromUnitID(unitID string) (provision.App, erro
 	return a, nil
 }
 
-func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
-	containers, err := p.listContainersByApp(app.GetName())
+func (p *dockerProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
+	appNames := make([]string, len(apps))
+	appNameMap := map[string]provision.App{}
+	for i, a := range apps {
+		appNames[i] = a.GetName()
+		appNameMap[a.GetName()] = a
+	}
+	containers, err := p.listContainersByAppAndHost(appNames, nil)
 	if err != nil {
 		return nil, err
 	}
 	units := make([]provision.Unit, len(containers))
 	for i, container := range containers {
-		units[i] = container.AsUnit(app)
+		units[i] = container.AsUnit(appNameMap[container.AppName])
 	}
 	return units, nil
 }
