@@ -9,6 +9,7 @@ import (
 	"net/smtp"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/check.v1"
 )
@@ -57,7 +58,18 @@ func (s *S) TestSMTPServerStop(c *check.C) {
 	server, err := NewSMTPServer()
 	c.Assert(err, check.IsNil)
 	server.Stop()
-	_, err = net.Dial("tcp", server.Addr())
+	timeout := time.After(5 * time.Second)
+	for {
+		_, err = net.Dial("tcp", server.Addr())
+		if err != nil {
+			break
+		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-timeout:
+			c.Fatal("timeout waiting for listener to close")
+		}
+	}
 	c.Assert(err, check.NotNil)
 }
 
