@@ -12,7 +12,7 @@ go:
   - 1.9
   - master
 # script used in the automatically added test stage
-script: make test
+script: make race
 env:
   global:
     - GOARCH=amd64
