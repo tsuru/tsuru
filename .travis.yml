@@ -12,28 +12,37 @@ go:
   - 1.9
   - master
 # script used in the automatically added test stage
-script: make race
+script:
+  - 'if [ "${JOB}" = "test" ]; then make race; fi'
+  - 'if [ "${JOB}" = "gometalinter" ]; then while true; do echo .; sleep 30; done & if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi; fi'
+  - 'if [ "${JOB}" = "checkhandlers" ]; then ./misc/check-handlers.sh; fi'
+  - 'if [ "${JOB}" = "checkevents" ]; then ./misc/check-events.sh; fi'
+  - 'if [ "${JOB}" = "checkapidocs" ]; then make check-api-doc; fi'
 env:
   global:
     - GOARCH=amd64
     - GO_FOR_RELEASE=1.9
     - IMAGE_NAME=tsuru/api
+  matrix:
+    - JOB=test
+    - JOB=gometalinter
+    - JOB=checkhandlers
+    - JOB=checkevents
+    - JOB=checkapidocs
 jobs:
   fast_finish: true
   allow_failures:
     - go: master
-  include:
-    - stage: lint
-      script:
-        - while true; do echo .; sleep 30; done &
-        - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
+  exclude:
+    - go: master
       env: JOB=gometalinter
-    - script: ./misc/check-handlers.sh
-      env: JOB=check handlers
-    - script: ./misc/check-events.sh
-      env: JOB=check events
-    - script: make check-api-doc
-      env: JOB=check api docs
+    - go: master
+      env: JOB=checkhandlers
+    - go: master
+      env: JOB=checkevents
+    - go: master
+      env: JOB=checkapidocs
+  include:
     - stage: deploy
       script:
         - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
