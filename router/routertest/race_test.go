@@ -25,7 +25,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 		name := fmt.Sprintf("route-%d", i)
 		addr, _ := url.Parse(fmt.Sprintf("http://10.10.10.%d", i))
 		go func() {
-			fake.AddBackend(name)
+			fake.AddBackend(FakeApp{Name: name})
 			wg.Done()
 		}()
 		go func() {
