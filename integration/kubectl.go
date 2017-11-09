@@ -6,11 +6,10 @@ package integration
 
 // KubectlClusterManager represents a kubectl cluster
 // Requires two test environments:
-// kubectlctx with the context name
+// kubectlcluster with the cluster name
 // kubectluser with the cluster user name
 type KubectlClusterManager struct {
-	env       *Environment
-	ipAddress string
+	env *Environment
 }
 
 func (m *KubectlClusterManager) Name() string {
@@ -35,7 +34,7 @@ func (m *KubectlClusterManager) certificateFiles() map[string]string {
 	clientCert := res.Stdout.String()
 	res = kubectl("jsonpath='{.users[?(@.name == \"{{.kubectluser}}\")].user.client-key}'").Run(m.env)
 	clientKey := res.Stdout.String()
-	res = kubectl("jsonpath='{.clusters[?(@.name == \"{{.kubectlctx}}\")].cluster.certificate-authority}'").Run(m.env)
+	res = kubectl("jsonpath='{.clusters[?(@.name == \"{{.kubectlcluster}}\")].cluster.certificate-authority}'").Run(m.env)
 	caCert := res.Stdout.String()
 	return map[string]string{
 		"cacert":     caCert,
@@ -46,7 +45,7 @@ func (m *KubectlClusterManager) certificateFiles() map[string]string {
 
 func (m *KubectlClusterManager) UpdateParams() ([]string, bool) {
 	kubectl := NewCommand("kubectl").WithArgs
-	res := kubectl("config", "view", "-o", "jsonpath='{.clusters[?(@.name == \"{{.kubectlctx}}\")].cluster.server}'").Run(m.env)
+	res := kubectl("config", "view", "-o", "jsonpath='{.clusters[?(@.name == \"{{.kubectlcluster}}\")].cluster.server}'").Run(m.env)
 	if res.Error != nil || res.ExitCode != 0 {
 		return nil, false
 	}
