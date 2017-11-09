@@ -273,13 +273,13 @@ func (s *S) TestBuildClusterStorage(c *check.C) {
 	config.Set("docker:cluster:storage", "xxxx")
 }
 
-func (s *S) TestGetDockerClient(c *check.C) {
+func (s *S) TestGetClient(c *check.C) {
 	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, p.storage, "")
 	c.Assert(err, check.IsNil)
-	client, err := p.GetDockerClient(nil)
+	client, err := p.GetClient(nil)
 	c.Assert(err, check.IsNil)
 	clusterClient := client.(*clusterclient.ClusterClient)
 	c.Assert(clusterClient.Cluster, check.Equals, p.Cluster())

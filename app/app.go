@@ -162,16 +162,20 @@ var (
 )
 
 func (app *App) getBuilder() (builder.Builder, error) {
+	p, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
 	if app.builder == nil {
 		if app.Pool == "" {
-			return builder.GetDefault()
+			return builder.GetDefault(p)
 		}
 		pool, err := pool.GetPoolByName(app.Pool)
 		if err != nil {
 			return nil, err
 		}
 		if pool.Builder == "" {
-			return builder.GetDefault()
+			return builder.GetDefault(p)
 		}
 		app.builder, err = builder.Get(pool.Builder)
 		if err != nil {

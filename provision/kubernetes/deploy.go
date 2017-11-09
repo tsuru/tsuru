@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
@@ -94,24 +95,67 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 	return nil
 }
 
-type buildPodParams struct {
+type createPodParams struct {
 	client           *clusterClient
 	app              provision.App
+	podName          string
+	cmds             []string
 	sourceImage      string
 	destinationImage string
 	attachInput      io.Reader
 	attachOutput     io.Writer
 }
 
-func createBuildPod(params buildPodParams) error {
+func createBuildPod(params createPodParams) error {
+	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
+	if len(cmds) != 3 {
+		return errors.Errorf("unexpected cmds list: %#v", cmds)
+	}
+	if params.podName == "" {
+		var err error
+		if params.podName, err = buildPodNameForApp(params.app); err != nil {
+			return err
+		}
+	}
+	cmds[2] = fmt.Sprintf(`
+		cat >/home/application/archive.tar.gz && %[1]s
+		exit_code=$?
+		echo "${exit_code}" >%[2]s
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f %[3]s ]; do sleep 1; done
+	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
+	params.cmds = cmds
+	return createPod(params)
+}
+
+func createDeployPod(params createPodParams) error {
+	cmds := dockercommon.DeployCmds(params.app)
+	if len(cmds) != 3 {
+		return errors.Errorf("unexpected cmds list: %#v", cmds)
+	}
+	if params.podName == "" {
+		var err error
+		if params.podName, err = deployPodNameForApp(params.app); err != nil {
+			return err
+		}
+	}
+	cmds[2] = fmt.Sprintf(`
+		%[1]s
+		exit_code=$?
+		echo "${exit_code}" >%[2]s
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f %[3]s ]; do sleep 1; done
+	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
+	params.cmds = cmds
+	return createPod(params)
+}
+
+func createPod(params createPodParams) error {
 	err := ensureServiceAccountForApp(params.client, params.app)
 	if err != nil {
 		return err
 	}
-	baseName, err := deployPodNameForApp(params.app)
-	if err != nil {
-		return err
-	}
+	baseName := params.podName
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: params.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -141,17 +185,6 @@ func createBuildPod(params buildPodParams) error {
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	kubeConf := getKubeConfig()
-	cmds := dockercommon.ArchiveDeployCmds(params.app, "file:///home/application/archive.tar.gz")
-	if len(cmds) != 3 {
-		return errors.Errorf("unexpected cmds list: %#v", cmds)
-	}
-	cmds[2] = fmt.Sprintf(`
-		cat >/home/application/archive.tar.gz && %[1]s
-		exit_code=$?
-		echo "${exit_code}" >%[2]s
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f %[3]s ]; do sleep 1; done
-	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -183,7 +216,7 @@ func createBuildPod(params buildPodParams) error {
 				{
 					Name:      baseName,
 					Image:     params.sourceImage,
-					Command:   cmds,
+					Command:   params.cmds,
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       envs,
@@ -249,6 +282,7 @@ func createBuildPod(params buildPodParams) error {
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
+
 }
 
 func extraRegisterCmds(a provision.App) string {
@@ -693,15 +727,7 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 	return stdout.String(), nil
 }
 
-type dockerImageSpec struct {
-	Config struct {
-		ExposedPorts map[string]interface{}
-		Entrypoint   []string
-		Cmd          []string
-	}
-}
-
-func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage string) (*dockerImageSpec, error) {
+func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage string) (*docker.Image, error) {
 	deployPodName, err := deployPodNameForApp(a)
 	if err != nil {
 		return nil, err
@@ -739,7 +765,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
-	var imgs []dockerImageSpec
+	var imgs []docker.Image
 	bufData := stdout.String()
 	err = json.NewDecoder(stdout).Decode(&imgs)
 	if err != nil {

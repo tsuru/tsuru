@@ -39,17 +39,18 @@ var swarmConfig swarmProvisionerConfig
 type swarmProvisioner struct{}
 
 var (
-	_ provision.Provisioner              = &swarmProvisioner{}
-	_ provision.ShellProvisioner         = &swarmProvisioner{}
-	_ provision.ExecutableProvisioner    = &swarmProvisioner{}
-	_ provision.MessageProvisioner       = &swarmProvisioner{}
-	_ provision.InitializableProvisioner = &swarmProvisioner{}
-	_ provision.NodeProvisioner          = &swarmProvisioner{}
-	_ provision.NodeContainerProvisioner = &swarmProvisioner{}
-	_ provision.SleepableProvisioner     = &swarmProvisioner{}
-	_ provision.BuilderDeploy            = &swarmProvisioner{}
-	_ provision.VolumeProvisioner        = &swarmProvisioner{}
-	_ cluster.InitClusterProvisioner     = &swarmProvisioner{}
+	_ provision.Provisioner               = &swarmProvisioner{}
+	_ provision.ShellProvisioner          = &swarmProvisioner{}
+	_ provision.ExecutableProvisioner     = &swarmProvisioner{}
+	_ provision.MessageProvisioner        = &swarmProvisioner{}
+	_ provision.InitializableProvisioner  = &swarmProvisioner{}
+	_ provision.NodeProvisioner           = &swarmProvisioner{}
+	_ provision.NodeContainerProvisioner  = &swarmProvisioner{}
+	_ provision.SleepableProvisioner      = &swarmProvisioner{}
+	_ provision.BuilderDeploy             = &swarmProvisioner{}
+	_ provision.BuilderDeployDockerClient = &swarmProvisioner{}
+	_ provision.VolumeProvisioner         = &swarmProvisioner{}
+	_ cluster.InitClusterProvisioner      = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
@@ -636,7 +637,7 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) GetDockerClient(a provision.App) (provision.BuilderDockerClient, error) {
+func (p *swarmProvisioner) GetClient(a provision.App) (provision.BuilderDockerClient, error) {
 	if a == nil {
 		clusters, err := allClusters()
 		if err != nil {

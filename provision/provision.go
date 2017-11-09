@@ -309,11 +309,25 @@ type ExecDockerClient interface {
 	InspectExec(execId string) (*docker.ExecInspect, error)
 }
 
+type BuilderKubeClient interface {
+	BuildPod(App, *event.Event, io.Reader, string) (string, error)
+	ImageInspect(App, string, string) (*docker.Image, string, error)
+}
+
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(App, string, *event.Event) (string, error)
-	GetDockerClient(App) (BuilderDockerClient, error)
-	CleanImage(appName string, image string) error
+}
+
+type BuilderDeployDockerClient interface {
+	BuilderDeploy
+	GetClient(App) (BuilderDockerClient, error)
+	CleanImage(appName string, image string)
+}
+
+type BuilderDeployKubeClient interface {
+	BuilderDeploy
+	GetClient(App) (BuilderKubeClient, error)
 }
 
 // Provisioner is the basic interface of this package.

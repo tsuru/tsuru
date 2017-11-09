@@ -657,7 +657,74 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
-	err := createBuildPod(buildPodParams{
+	err := createBuildPod(createPodParams{
+		client:           s.client.clusterClient,
+		app:              a,
+		sourceImage:      "myimg",
+		destinationImage: "destimg",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	runAsUser := int64(1000)
+	c.Assert(containers, check.DeepEquals, []apiv1.Container{
+		{
+			Name:  "committer-cont",
+			Image: "docker:1.11.2",
+			VolumeMounts: []apiv1.VolumeMount{
+				{Name: "dockersock", MountPath: dockerSockPath},
+				{Name: "intercontainer", MountPath: buildIntercontainerPath},
+			},
+			TTY: true,
+			Command: []string{
+				"sh", "-ec",
+				`
+							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
+							exit_code=$(cat /tmp/intercontainer/status)
+							[ "${exit_code}" != "0" ] && exit "${exit_code}"
+							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-build" -f "label=io.kubernetes.pod.name=$(hostname)")
+							img="destimg"
+							echo
+							echo '---- Building application image ----'
+							docker commit "${id}" "${img}" >/dev/null
+							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
+							echo " ---> Sending image to repository (${sz})"
+							docker push "${img}"
+							touch /tmp/intercontainer/done
+						`,
+			},
+		},
+		{
+			Name:  "myapp-v1-build",
+			Image: "myimg",
+			Command: []string{"/bin/sh", "-lc", `
+		cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
+		exit_code=$?
+		echo "${exit_code}" >/tmp/intercontainer/status
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
+	`},
+			Stdin:     true,
+			StdinOnce: true,
+			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			SecurityContext: &apiv1.SecurityContext{
+				RunAsUser: &runAsUser,
+			},
+			VolumeMounts: []apiv1.VolumeMount{
+				{Name: "intercontainer", MountPath: buildIntercontainerPath},
+			},
+		},
+	})
+}
+
+func (s *S) TestCreateDeployPodContainers(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	err := createDeployPod(createPodParams{
 		client:           s.client.clusterClient,
 		app:              a,
 		sourceImage:      "myimg",
@@ -751,7 +818,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 			Name:  "myapp-v1-deploy",
 			Image: "myimg",
 			Command: []string{"/bin/sh", "-lc", `
-		cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" deploy
+		tsuru_unit_agent   myapp deploy-only
 		exit_code=$?
 		echo "${exit_code}" >/tmp/intercontainer/status
 		[ "${exit_code}" != "0" ] && exit "${exit_code}"
