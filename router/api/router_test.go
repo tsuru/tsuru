@@ -427,6 +427,8 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
 	r.HandleFunc("/backend/{name}/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/status", api.getStatusBackend).Methods(http.MethodGet)
+	r.HandleFunc("/info", api.getInfo).Methods(http.MethodGet)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, check.IsNil)
@@ -453,6 +455,15 @@ type fakeRouterAPI struct {
 	certificates map[string]certData
 	endpoint     string
 	router       *mux.Router
+}
+
+func (f *fakeRouterAPI) getInfo(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Mianaai"))
+}
+
+func (f *fakeRouterAPI) getStatusBackend(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status": "ready", "detail": "anaander"}`))
 }
 
 func (f *fakeRouterAPI) getBackend(w http.ResponseWriter, r *http.Request) {
