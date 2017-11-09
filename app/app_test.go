@@ -2462,6 +2462,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			map[string]interface{}{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
+				"type":    "fake",
 				"opts":    map[string]interface{}{"opt1": "val1"},
 			},
 		},
@@ -2519,6 +2520,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 			map[string]interface{}{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
+				"type":    "fake",
 				"opts":    map[string]interface{}{},
 			},
 		},
@@ -2568,6 +2570,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			map[string]interface{}{
 				"name":    "fake",
 				"address": "name.fakerouter.com",
+				"type":    "fake",
 				"opts":    map[string]interface{}{},
 			},
 		},
@@ -4735,8 +4738,8 @@ func (s *S) TestAppAddRouter(c *check.C) {
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Address: "myapp.fakerouter.com"},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
 	addrs, err := app.GetAddresses()
 	c.Assert(err, check.IsNil)
@@ -4756,7 +4759,7 @@ func (s *S) TestAppRemoveRouter(c *check.C) {
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
 	addrs, err := app.GetAddresses()
 	c.Assert(err, check.IsNil)
@@ -4778,8 +4781,8 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Address: "myapp.fakerouter.com"},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
 	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.IsNil)
@@ -4801,12 +4804,43 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.ErrorMatches, `(?s)Forced failure.*`)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Address: ""},
-		{Name: "fake-tls", Address: "myapp.faketlsrouter.com"},
+		{Name: "fake", Address: "", Type: ""},
+		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
 	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
 	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.faketlsrouter.com")
+}
+
+func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
+	config.Set("routers:mystatus:type", "fake-status")
+	defer config.Unset("routers:mystatus")
+	routertest.StatusRouter.Status = router.BackendStatusNotReady
+	routertest.StatusRouter.StatusDetail = "burn"
+	defer routertest.StatusRouter.Reset()
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "mystatus",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
+		{Name: "mystatus", Address: "myapp.fakerouter.com", Type: "fake-status", Status: "not ready", StatusDetail: "burn"},
+	})
+	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
+	entry, err = cacheService().Get(appRouterAddrKey("myapp", "mystatus"))
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
 }

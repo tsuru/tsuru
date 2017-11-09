@@ -28,6 +28,11 @@ var InfoRouter = infoRouter{
 	Info:       make(map[string]string),
 }
 
+var StatusRouter = statusRouter{
+	fakeRouter: newFakeRouter(),
+	Status:     router.BackendStatusReady,
+}
+
 var TLSRouter = tlsRouter{
 	fakeRouter: newFakeRouter(),
 	Certs:      make(map[string]string),
@@ -42,6 +47,7 @@ func init() {
 	router.Register("fake-tls", createTLSRouter)
 	router.Register("fake-opts", createOptsRouter)
 	router.Register("fake-info", createInfoRouter)
+	router.Register("fake-status", createStatusRouter)
 }
 
 func createRouter(name, prefix string) (router.Router, error) {
@@ -62,6 +68,10 @@ func createOptsRouter(name, prefix string) (router.Router, error) {
 
 func createInfoRouter(name, prefix string) (router.Router, error) {
 	return &InfoRouter, nil
+}
+
+func createStatusRouter(name, prefix string) (router.Router, error) {
+	return &StatusRouter, nil
 }
 
 func newFakeRouter() fakeRouter {
@@ -458,4 +468,22 @@ func (r *infoRouter) GetInfo() (map[string]string, error) {
 func (r *infoRouter) Reset() {
 	r.fakeRouter.Reset()
 	r.Info = make(map[string]string)
+}
+
+type statusRouter struct {
+	fakeRouter
+	Status       router.BackendStatus
+	StatusDetail string
+}
+
+var _ router.StatusRouter = &statusRouter{}
+
+func (r *statusRouter) GetBackendStatus(name string) (router.BackendStatus, string, error) {
+	return r.Status, r.StatusDetail, nil
+}
+
+func (r *statusRouter) Reset() {
+	r.fakeRouter.Reset()
+	r.Status = router.BackendStatusReady
+	r.StatusDetail = ""
 }

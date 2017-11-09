@@ -2103,11 +2103,22 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			multi.Add(err)
 			continue
 		}
+		if statusRouter, ok := r.(router.StatusRouter); ok {
+			status, detail, stErr := statusRouter.GetBackendStatus(app.Name)
+			if stErr != nil {
+				multi.Add(err)
+				continue
+			}
+			routers[i].Status = string(status)
+			routers[i].StatusDetail = detail
+		}
 		cacheService().Put(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})
 		routers[i].Address = addr
+		rType, _, _ := router.Type(routerName)
+		routers[i].Type = rType
 	}
 	return routers, multi.ToError()
 }
