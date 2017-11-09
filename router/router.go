@@ -52,6 +52,10 @@ func Register(name string, r routerFactory) {
 	routers[name] = r
 }
 
+func Unregister(name string) {
+	delete(routers, name)
+}
+
 func Type(name string) (string, string, error) {
 	prefix := "routers:" + name
 	routerType, err := config.GetString(prefix + ":type")

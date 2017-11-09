@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -36,6 +37,10 @@ func (s *S) TestRoutersList(c *check.C) {
 	config.Set("routers:router2:type", "bar")
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
+	router.Register("foo", func(_, _ string) (router.Router, error) { return nil, nil })
+	router.Register("bar", func(_, _ string) (router.Router, error) { return nil, nil })
+	defer router.Unregister("foo")
+	defer router.Unregister("bar")
 	recorder := httptest.NewRecorder()
 	expected := []router.PlanRouter{
 		{Name: "fake", Type: "fake", Default: true},
@@ -60,6 +65,10 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	config.Set("routers:router2:type", "bar")
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
+	router.Register("foo", func(_, _ string) (router.Router, error) { return nil, nil })
+	router.Register("bar", func(_, _ string) (router.Router, error) { return nil, nil })
+	defer router.Unregister("foo")
+	defer router.Unregister("bar")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
@@ -78,6 +87,33 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []router.PlanRouter{
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
+	})
+}
+
+func (s *S) TestListRoutersWithInfo(c *check.C) {
+	config.Set("routers:my-fake-info:type", "fake-info")
+	defer config.Unset("routers:my-fake-info")
+	routertest.InfoRouter.Reset()
+	routertest.InfoRouter.Info = map[string]string{
+		"info1": "val1",
+		"info2": "val2",
+	}
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	var routers []router.PlanRouter
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []router.PlanRouter{
+		{Name: "fake", Type: "fake", Default: true},
+		{Name: "fake-tls", Type: "fake-tls"},
+		{Name: "my-fake-info", Type: "fake-info", Info: map[string]string{
+			"info1": "val1",
+			"info2": "val2",
+		}},
 	})
 }
 
