@@ -22,7 +22,7 @@ func (m *MinikubeClusterManager) Name() string {
 }
 
 func (m *MinikubeClusterManager) Provisioner() string {
-	return "kubernetes"
+	return kubernetesProvisioner
 }
 
 func (m *MinikubeClusterManager) IP() string {

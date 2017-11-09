@@ -17,7 +17,7 @@ func (m *KubectlClusterManager) Name() string {
 }
 
 func (m *KubectlClusterManager) Provisioner() string {
-	return "kubernetes"
+	return kubernetesProvisioner
 }
 
 func (m *KubectlClusterManager) Start() *Result {
