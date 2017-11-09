@@ -613,7 +613,7 @@ func (s *RouterSuite) TestGetInfo(c *check.C) {
 	}
 	msg, err := infoRouter.GetInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Not(check.HasLen), 0)
+	c.Assert(msg, check.NotNil)
 }
 
 func (s *RouterSuite) TestGetStatus(c *check.C) {

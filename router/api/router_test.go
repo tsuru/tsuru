@@ -458,7 +458,8 @@ type fakeRouterAPI struct {
 }
 
 func (f *fakeRouterAPI) getInfo(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Mianaai"))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"just": "proper"}`))
 }
 
 func (f *fakeRouterAPI) getStatusBackend(w http.ResponseWriter, r *http.Request) {
