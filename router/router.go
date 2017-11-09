@@ -130,7 +130,6 @@ type Router interface {
 }
 
 type CNameRouter interface {
-	Router
 	SetCName(cname, name string) error
 	UnsetCName(cname, name string) error
 	CNames(name string) ([]*url.URL, error)
