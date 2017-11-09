@@ -34,6 +34,8 @@ var (
 	_ router.TLSRouter               = &apiRouterWithTLSSupport{}
 	_ router.CNameRouter             = &apiRouterWithCnameSupport{}
 	_ router.CustomHealthcheckRouter = &apiRouterWithHealthcheckSupport{}
+	_ router.InfoRouter              = &apiRouterWithInfo{}
+	_ router.StatusRouter            = &apiRouterWithStatus{}
 )
 
 type apiRouter struct {
@@ -49,6 +51,10 @@ type apiRouterWithCnameSupport struct{ *apiRouter }
 type apiRouterWithTLSSupport struct{ *apiRouter }
 
 type apiRouterWithHealthcheckSupport struct{ *apiRouter }
+
+type apiRouterWithInfo struct{ *apiRouter }
+
+type apiRouterWithStatus struct{ *apiRouter }
 
 type routesReq struct {
 	Addresses []string `json:"addresses"`
@@ -72,14 +78,21 @@ type backendResp struct {
 	Address string `json:"address"`
 }
 
+type statusResp struct {
+	Status router.BackendStatus `json:"status"`
+	Detail string               `json:"detail"`
+}
+
 type capability string
 
 var (
 	capCName       = capability("cname")
 	capTLS         = capability("tls")
 	capHealthcheck = capability("healthcheck")
+	capInfo        = capability("info")
+	capStatus      = capability("status")
 
-	allCaps = []capability{capCName, capTLS, capHealthcheck}
+	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus}
 )
 
 func init() {
@@ -442,6 +455,31 @@ func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data route
 		return router.ErrBackendNotFound
 	}
 	return err
+}
+
+func (r *apiRouterWithInfo) GetInfo() (string, error) {
+	data, _, err := r.do(http.MethodGet, "info", nil)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (r *apiRouterWithStatus) GetBackendStatus(name string) (router.BackendStatus, string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", "", err
+	}
+	data, _, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/status", backendName), nil)
+	if err != nil {
+		return "", "", err
+	}
+	var status statusResp
+	err = json.Unmarshal(data, &status)
+	if err != nil {
+		return "", "", err
+	}
+	return status.Status, status.Detail, nil
 }
 
 func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {

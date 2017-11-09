@@ -19,6 +19,8 @@ var capMap = map[string][]string{
 	"cname":       {"router.CNameRouter", "apiRouterWithCnameSupport"},
 	"tls":         {"router.TLSRouter", "apiRouterWithTLSSupport"},
 	"healthcheck": {"router.CustomHealthcheckRouter", "apiRouterWithHealthcheckSupport"},
+	"info":        {"router.InfoRouter", "apiRouterWithInfo"},
+	"status":      {"router.StatusRouter", "apiRouterWithStatus"},
 }
 
 var fileTpl = `// AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
