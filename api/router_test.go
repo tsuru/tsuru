@@ -135,7 +135,39 @@ func (s *S) TestListAppRouters(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}, Address: "myapp.fakerouter.com"},
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
+	})
+}
+
+func (s *S) TestListAppRoutersWithStatus(c *check.C) {
+	config.Set("routers:mystatus:type", "fake-status")
+	defer config.Unset("routers:mystatus")
+	routertest.StatusRouter.Status = router.BackendStatusNotReady
+	routertest.StatusRouter.StatusDetail = "burn"
+	defer routertest.StatusRouter.Reset()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadRouter,
+		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+	})
+	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := app.CreateApp(&myapp, s.user)
+	c.Assert(err, check.IsNil)
+	err = myapp.AddRouter(appTypes.AppRouter{
+		Name: "mystatus",
+	})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/1.5/apps/myapp/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	var routers []appTypes.AppRouter
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
+		{Name: "mystatus", Opts: map[string]string{}, Type: "fake-status", Status: "not ready", StatusDetail: "burn", Address: "myapp.fakerouter.com"},
 	})
 }
 
@@ -178,8 +210,8 @@ func (s *S) TestAddAppRouter(c *check.C) {
 	routers, err := dbApp.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}, Address: "myapp.fakerouter.com"},
-		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Address: "myapp.faketlsrouter.com"},
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
+		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Type: "fake-tls", Address: "myapp.faketlsrouter.com"},
 	})
 }
 
