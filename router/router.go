@@ -160,6 +160,21 @@ type TLSRouter interface {
 	GetCertificate(app App, cname string) (string, error)
 }
 
+type InfoRouter interface {
+	GetInfo() (string, error)
+}
+
+type BackendStatus string
+
+var (
+	BackendStatusReady    = BackendStatus("ready")
+	BackendStatusNotReady = BackendStatus("not ready")
+)
+
+type StatusRouter interface {
+	GetBackendStatus(name string) (status BackendStatus, detail string, err error)
+}
+
 type HealthcheckData struct {
 	Path   string
 	Status int
@@ -358,7 +373,28 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 type PlanRouter struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
+	Info    string `json:"info"`
 	Default bool   `json:"default"`
+}
+
+func ListWithInfo() ([]PlanRouter, error) {
+	routers, err := List()
+	if err != nil {
+		return nil, err
+	}
+	for i, planRouter := range routers {
+		r, err := Get(planRouter.Name)
+		if err != nil {
+			return nil, err
+		}
+		if infoR, ok := r.(InfoRouter); ok {
+			routers[i].Info, err = infoR.GetInfo()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return routers, nil
 }
 
 func List() ([]PlanRouter, error) {
@@ -392,7 +428,11 @@ func List() ([]PlanRouter, error) {
 		if !defaultFlag {
 			defaultFlag = value == dockerRouter
 		}
-		routersList = append(routersList, PlanRouter{Name: value, Type: routerType, Default: defaultFlag})
+		routersList = append(routersList, PlanRouter{
+			Name:    value,
+			Type:    routerType,
+			Default: defaultFlag,
+		})
 	}
 	return routersList, nil
 }

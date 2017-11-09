@@ -256,6 +256,32 @@ func (s *S) TestListDefaultDockerRouter(c *check.C) {
 	c.Assert(routers, check.DeepEquals, expected)
 }
 
+type testInfoRouter struct{ Router }
+
+func (r *testInfoRouter) GetInfo() (string, error) {
+	return "her", nil
+}
+
+func (s *S) TestListWithInfo(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:default", true)
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
+	fooCreator := func(name, prefix string) (Router, error) {
+		return &testInfoRouter{}, nil
+	}
+	Register("foo", fooCreator)
+	Register("bar", fooCreator)
+	expected := []PlanRouter{
+		{Name: "router1", Type: "foo", Info: "her", Default: false},
+		{Name: "router2", Type: "bar", Info: "her", Default: true},
+	}
+	routers, err := ListWithInfo()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
 func (s *S) TestRouteError(c *check.C) {
 	err := &RouterError{Op: "add", Err: errors.New("Fatal error.")}
 	c.Assert(err.Error(), check.Equals, "[router add] Fatal error.")
