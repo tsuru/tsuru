@@ -106,8 +106,8 @@ func getDockerClient() (provision.BuilderDockerClient, error) {
 	var client provision.BuilderDockerClient
 	multiErr := tsuruErrors.NewMultiError()
 	for _, p := range provisioners {
-		if provisioner, ok := p.(provision.BuilderDeploy); ok {
-			client, err = provisioner.GetDockerClient(nil)
+		if provisioner, ok := p.(provision.BuilderDeployDockerClient); ok {
+			client, err = provisioner.GetClient(nil)
 			if err != nil {
 				multiErr.Add(err)
 			} else if client != nil {

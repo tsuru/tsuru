@@ -53,6 +53,8 @@ var (
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	_ provision.ImageDeployer            = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
@@ -646,6 +648,46 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	return err
 }
 
+func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return "", err
+	}
+	newImage := buildImageID
+	if strings.HasSuffix(buildImageID, "-builder") {
+		newImage, err = image.AppNewImageName(a.GetName())
+		if err != nil {
+			return "", err
+		}
+		deployPodName, err := deployPodNameForApp(a)
+		if err != nil {
+			return "", err
+		}
+		defer cleanupPod(client, deployPodName)
+		params := createPodParams{
+			app:              a,
+			client:           client,
+			podName:          deployPodName,
+			sourceImage:      buildImageID,
+			destinationImage: newImage,
+			attachOutput:     evt,
+		}
+		err = createDeployPod(params)
+		if err != nil {
+			return "", err
+		}
+	}
+	manager := &serviceManager{
+		client: client,
+		writer: evt,
+	}
+	err = servicecommon.RunServicePipeline(manager, a, newImage, nil)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return newImage, nil
+}
+
 func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt *event.Event) (string, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
@@ -687,7 +729,7 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt
 		Processes: procfile,
 	}
 	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = k
+		imageData.ExposedPort = string(k)
 	}
 	err = imageData.Save()
 	if err != nil {
@@ -723,9 +765,10 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		return "", err
 	}
 	defer cleanupPod(client, deployPodName)
-	params := buildPodParams{
+	params := createPodParams{
 		app:              a,
 		client:           client,
+		podName:          deployPodName,
 		sourceImage:      baseImage,
 		destinationImage: buildingImage,
 		attachInput:      archiveFile,
@@ -735,15 +778,7 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if err != nil {
 		return "", err
 	}
-	manager := &serviceManager{
-		client: client,
-		writer: evt,
-	}
-	err = servicecommon.RunServicePipeline(manager, a, buildingImage, nil)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return buildingImage, nil
+	return p.Deploy(a, buildingImage, evt)
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
