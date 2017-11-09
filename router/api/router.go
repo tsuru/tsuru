@@ -22,6 +22,8 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
+//go:generate bash -c "rm -f routeriface.go && go run ./generator/combinations.go -o routeriface.go"
+
 const routerType = "api"
 
 var (
@@ -70,6 +72,16 @@ type backendResp struct {
 	Address string `json:"address"`
 }
 
+type capability string
+
+var (
+	capCName       = capability("cname")
+	capTLS         = capability("tls")
+	capHealthcheck = capability("healthcheck")
+
+	allCaps = []capability{capCName, capTLS, capHealthcheck}
+)
+
 func init() {
 	router.Register(routerType, createRouter)
 }
@@ -103,44 +115,15 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 		debug:      debug,
 		headers:    headerMap,
 	}
-	cnameAPI := &apiRouterWithCnameSupport{baseRouter}
-	tlsAPI := &apiRouterWithTLSSupport{baseRouter}
-	hcAPI := &apiRouterWithHealthcheckSupport{baseRouter}
-	ifMap := map[[3]bool]router.Router{
-		{true, false, false}: cnameAPI,
-		{false, true, false}: tlsAPI,
-		{false, false, true}: hcAPI,
-		{true, true, false}: &struct {
-			router.CNameRouter
-			router.TLSRouter
-		}{cnameAPI, tlsAPI},
-		{true, false, true}: &struct {
-			router.CNameRouter
-			router.CustomHealthcheckRouter
-		}{cnameAPI, hcAPI},
-		{false, true, true}: &struct {
-			*apiRouter
-			router.TLSRouter
-			router.CustomHealthcheckRouter
-		}{baseRouter, tlsAPI, hcAPI},
-		{true, true, true}: &struct {
-			router.CNameRouter
-			router.TLSRouter
-			router.CustomHealthcheckRouter
-		}{cnameAPI, tlsAPI, hcAPI},
-	}
-	var supports [3]bool
-	for i, s := range []string{"cname", "tls", "healthcheck"} {
+	supports := map[capability]bool{}
+	for _, cap := range allCaps {
 		var err error
-		supports[i], err = baseRouter.checkSupports(s)
+		supports[cap], err = baseRouter.checkSupports(string(cap))
 		if err != nil {
-			log.Errorf("failed to fetch %q support from router %q: %s", s, routerName, err)
+			log.Errorf("failed to fetch %q support from router %q: %s", cap, routerName, err)
 		}
 	}
-	if r, ok := ifMap[supports]; ok {
-		return r, nil
-	}
-	return baseRouter, nil
+	return toSupportedInterface(baseRouter, supports), nil
 }
 
 func (r *apiRouter) GetName() string {
