@@ -23,6 +23,11 @@ var OptsRouter = optsRouter{
 	Opts:       make(map[string]map[string]string),
 }
 
+var InfoRouter = infoRouter{
+	fakeRouter: newFakeRouter(),
+	Info:       make(map[string]string),
+}
+
 var TLSRouter = tlsRouter{
 	fakeRouter: newFakeRouter(),
 	Certs:      make(map[string]string),
@@ -36,6 +41,7 @@ func init() {
 	router.Register("fake-hc", createHCRouter)
 	router.Register("fake-tls", createTLSRouter)
 	router.Register("fake-opts", createOptsRouter)
+	router.Register("fake-info", createInfoRouter)
 }
 
 func createRouter(name, prefix string) (router.Router, error) {
@@ -52,6 +58,10 @@ func createTLSRouter(name, prefix string) (router.Router, error) {
 
 func createOptsRouter(name, prefix string) (router.Router, error) {
 	return &OptsRouter, nil
+}
+
+func createInfoRouter(name, prefix string) (router.Router, error) {
+	return &InfoRouter, nil
 }
 
 func newFakeRouter() fakeRouter {
@@ -432,4 +442,20 @@ func (r *optsRouter) AddBackendOpts(app router.App, opts map[string]string) erro
 func (r *optsRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
 	r.Opts[app.GetName()] = opts
 	return nil
+}
+
+type infoRouter struct {
+	fakeRouter
+	Info map[string]string
+}
+
+var _ router.InfoRouter = &infoRouter{}
+
+func (r *infoRouter) GetInfo() (map[string]string, error) {
+	return r.Info, nil
+}
+
+func (r *infoRouter) Reset() {
+	r.fakeRouter.Reset()
+	r.Info = make(map[string]string)
 }

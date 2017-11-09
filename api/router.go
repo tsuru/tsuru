@@ -39,7 +39,7 @@ contexts:
 			teams = append(teams, c.Value)
 		}
 	}
-	routers, err := router.List()
+	routers, err := router.ListWithInfo()
 	if err != nil {
 		return err
 	}
