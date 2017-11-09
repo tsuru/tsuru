@@ -4,12 +4,12 @@
 
 package integration
 
-// KubectlClusterManager represents a kubectl cluster
-// Requires two test environments:
-// kubectlcluster with the cluster name
-// kubectluser with the cluster user name
+import "fmt"
+
+// KubectlClusterManager represents a kubectl context
 type KubectlClusterManager struct {
-	env *Environment
+	context string
+	binary  string
 }
 
 func (m *KubectlClusterManager) Name() string {
@@ -29,34 +29,40 @@ func (m *KubectlClusterManager) Delete() *Result {
 }
 
 func (m *KubectlClusterManager) certificateFiles() map[string]string {
-	kubectl := NewCommand(m.binary(), "config", "view", "-o").WithArgs
-	res := kubectl("jsonpath='{.users[?(@.name == \"{{.kubectluser}}\")].user.client-certificate}'").Run(m.env)
-	clientCert := res.Stdout.String()
-	res = kubectl("jsonpath='{.users[?(@.name == \"{{.kubectluser}}\")].user.client-key}'").Run(m.env)
-	clientKey := res.Stdout.String()
-	res = kubectl("jsonpath='{.clusters[?(@.name == \"{{.kubectlcluster}}\")].cluster.certificate-authority}'").Run(m.env)
-	caCert := res.Stdout.String()
 	return map[string]string{
-		"cacert":     caCert,
-		"clientcert": clientCert,
-		"clientkey":  clientKey,
+		"cacert":     m.getConfig(fmt.Sprintf("{.clusters[?(@.name == \"%s\")].cluster.certificate-authority}", m.getUser())),
+		"clientcert": m.getConfig(fmt.Sprintf("{.users[?(@.name == \"%s\")].user.client-certificate}", m.getUser())),
+		"clientkey":  m.getConfig(fmt.Sprintf("{.users[?(@.name == \"%s\")].user.client-key}", m.getCluster())),
 	}
 }
 
 func (m *KubectlClusterManager) UpdateParams() ([]string, bool) {
-	kubectl := NewCommand(m.binary()).WithArgs
-	res := kubectl("config", "view", "-o", "jsonpath='{.clusters[?(@.name == \"{{.kubectlcluster}}\")].cluster.server}'").Run(m.env)
-	if res.Error != nil || res.ExitCode != 0 {
-		return nil, false
-	}
+	cluster := m.getCluster()
+	addr := m.getConfig(fmt.Sprintf("{.clusters[?(@.name == \"%s\")].cluster.server}", cluster))
 	certfiles := m.certificateFiles()
-	return []string{"--addr", res.Stdout.String(), "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}, false
+	return []string{"--addr", addr, "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}, false
 }
 
-func (m *KubectlClusterManager) binary() string {
-	binary := m.env.Get("kubectlbinary")
-	if binary == "" {
-		binary = "kubectl"
+func (m *KubectlClusterManager) getBinary() string {
+	if m.binary == "" {
+		return "kubectl"
 	}
-	return binary
+	return m.binary
+}
+
+func (m *KubectlClusterManager) getUser() string {
+	return m.getConfig(fmt.Sprintf("{.contexts[?(@.name == \"%s\")].context.user}", m.context))
+}
+
+func (m *KubectlClusterManager) getCluster() string {
+	return m.getConfig(fmt.Sprintf("{.contexts[?(@.name == \"%s\")].context.cluster}", m.context))
+}
+
+func (m *KubectlClusterManager) getConfig(jsonpath string) string {
+	kubectl := NewCommand(m.getBinary(), "config", "view", "-o").WithArgs
+	res := kubectl(fmt.Sprintf("jsonpath='%s'", jsonpath)).Run(nil)
+	if res.Error != nil || res.ExitCode != 0 {
+		return ""
+	}
+	return res.Stdout.String()
 }
