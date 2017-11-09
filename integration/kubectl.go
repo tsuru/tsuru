@@ -29,7 +29,7 @@ func (m *KubectlClusterManager) Delete() *Result {
 }
 
 func (m *KubectlClusterManager) certificateFiles() map[string]string {
-	kubectl := NewCommand("kubectl", "config", "view", "-o").WithArgs
+	kubectl := NewCommand(m.binary(), "config", "view", "-o").WithArgs
 	res := kubectl("jsonpath='{.users[?(@.name == \"{{.kubectluser}}\")].user.client-certificate}'").Run(m.env)
 	clientCert := res.Stdout.String()
 	res = kubectl("jsonpath='{.users[?(@.name == \"{{.kubectluser}}\")].user.client-key}'").Run(m.env)
@@ -44,11 +44,19 @@ func (m *KubectlClusterManager) certificateFiles() map[string]string {
 }
 
 func (m *KubectlClusterManager) UpdateParams() ([]string, bool) {
-	kubectl := NewCommand("kubectl").WithArgs
+	kubectl := NewCommand(m.binary()).WithArgs
 	res := kubectl("config", "view", "-o", "jsonpath='{.clusters[?(@.name == \"{{.kubectlcluster}}\")].cluster.server}'").Run(m.env)
 	if res.Error != nil || res.ExitCode != 0 {
 		return nil, false
 	}
 	certfiles := m.certificateFiles()
 	return []string{"--addr", res.Stdout.String(), "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}, false
+}
+
+func (m *KubectlClusterManager) binary() string {
+	binary := m.env.Get("kubectlbinary")
+	if binary == "" {
+		binary = "kubectl"
+	}
+	return binary
 }
