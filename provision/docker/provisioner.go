@@ -76,21 +76,22 @@ type dockerProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner              = &dockerProvisioner{}
-	_ provision.RollbackableDeployer     = &dockerProvisioner{}
-	_ provision.ShellProvisioner         = &dockerProvisioner{}
-	_ provision.ExecutableProvisioner    = &dockerProvisioner{}
-	_ provision.SleepableProvisioner     = &dockerProvisioner{}
-	_ provision.MessageProvisioner       = &dockerProvisioner{}
-	_ provision.InitializableProvisioner = &dockerProvisioner{}
-	_ provision.OptionalLogsProvisioner  = &dockerProvisioner{}
-	_ provision.UnitStatusProvisioner    = &dockerProvisioner{}
-	_ provision.NodeProvisioner          = &dockerProvisioner{}
-	_ provision.NodeRebalanceProvisioner = &dockerProvisioner{}
-	_ provision.NodeContainerProvisioner = &dockerProvisioner{}
-	_ provision.UnitFinderProvisioner    = &dockerProvisioner{}
-	_ provision.AppFilterProvisioner     = &dockerProvisioner{}
-	_ provision.BuilderDeploy            = &dockerProvisioner{}
+	_ provision.Provisioner               = &dockerProvisioner{}
+	_ provision.RollbackableDeployer      = &dockerProvisioner{}
+	_ provision.ShellProvisioner          = &dockerProvisioner{}
+	_ provision.ExecutableProvisioner     = &dockerProvisioner{}
+	_ provision.SleepableProvisioner      = &dockerProvisioner{}
+	_ provision.MessageProvisioner        = &dockerProvisioner{}
+	_ provision.InitializableProvisioner  = &dockerProvisioner{}
+	_ provision.OptionalLogsProvisioner   = &dockerProvisioner{}
+	_ provision.UnitStatusProvisioner     = &dockerProvisioner{}
+	_ provision.NodeProvisioner           = &dockerProvisioner{}
+	_ provision.NodeRebalanceProvisioner  = &dockerProvisioner{}
+	_ provision.NodeContainerProvisioner  = &dockerProvisioner{}
+	_ provision.UnitFinderProvisioner     = &dockerProvisioner{}
+	_ provision.AppFilterProvisioner      = &dockerProvisioner{}
+	_ provision.BuilderDeploy             = &dockerProvisioner{}
+	_ provision.BuilderDeployDockerClient = &dockerProvisioner{}
 )
 
 type hookHealer struct {

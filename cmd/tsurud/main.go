@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	_ "github.com/tsuru/tsuru/builder/docker"
+	_ "github.com/tsuru/tsuru/builder/kubernetes"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/iaas/dockermachine"
 	_ "github.com/tsuru/tsuru/provision/docker"

@@ -810,7 +810,7 @@ func (p *FakeProvisioner) Deploy(app provision.App, img string, evt *event.Event
 	return fakeAppImage, nil
 }
 
-func (p *FakeProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
+func (p *FakeProvisioner) GetClient(app provision.App) (provision.BuilderDockerClient, error) {
 	for _, node := range p.nodes {
 		client, err := docker.NewClient(node.Addr)
 		if err != nil {

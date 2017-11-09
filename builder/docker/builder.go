@@ -59,12 +59,16 @@ func limiter() provision.ActionLimiter {
 	return globalLimiter
 }
 
-func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
+	p, ok := prov.(provision.BuilderDeployDockerClient)
+	if !ok {
+		return "", errors.New("provisioner not supported: not implements docker builder")
+	}
 	archiveFullPath := fmt.Sprintf("%s/%s", defaultArchivePath, defaultArchiveName)
 	if opts.BuildFromFile {
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
-	client, err := p.GetDockerClient(app)
+	client, err := p.GetClient(app)
 	if err != nil {
 		return "", err
 	}

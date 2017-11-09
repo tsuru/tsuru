@@ -13,9 +13,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-const defaultDockerBuilder = "docker"
-
-var DefaultBuilder = defaultDockerBuilder
+var DefaultBuilder = "docker"
 
 type BuildOpts struct {
 	BuildFromFile       bool
@@ -68,8 +66,11 @@ func Get(name string) (Builder, error) {
 	return b, nil
 }
 
-func GetDefault() (Builder, error) {
-	return Get(DefaultBuilder)
+func GetDefault(p provision.Provisioner) (Builder, error) {
+	if p == nil {
+		return Get(DefaultBuilder)
+	}
+	return Get(p.GetName())
 }
 
 // Registry returns the list of registered builders.

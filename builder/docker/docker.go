@@ -27,7 +27,7 @@ const (
 	archiveFileName = "archive.tar.gz"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&uploadToContainer,

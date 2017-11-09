@@ -30,7 +30,7 @@ type runContainerActionsArgs struct {
 	writer        io.Writer
 	isDeploy      bool
 	buildingImage string
-	provisioner   provision.BuilderDeploy
+	provisioner   provision.BuilderDeployDockerClient
 	client        provision.BuilderDockerClient
 	exposedPort   string
 	event         *event.Event

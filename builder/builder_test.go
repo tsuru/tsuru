@@ -48,7 +48,7 @@ func (s S) TestGetDefaultBuilder(c *check.C) {
 	DefaultBuilder = "default-builder"
 	Register("default-builder", b1)
 	Register("other-builder", b2)
-	got, err := GetDefault()
+	got, err := GetDefault(nil)
 	c.Check(err, check.IsNil)
 	c.Check(got, check.DeepEquals, b1)
 }

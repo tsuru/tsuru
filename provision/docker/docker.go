@@ -138,12 +138,8 @@ func (p *dockerProvisioner) ClusterClient() provision.BuilderDockerClient {
 	}
 }
 
-func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
-	cli := &clusterclient.ClusterClient{
-		Cluster:    p.Cluster(),
-		Collection: p.Collection,
-		Limiter:    p.ActionLimiter(),
-	}
+func (p *dockerProvisioner) GetClient(app provision.App) (provision.BuilderDockerClient, error) {
+	cli := p.ClusterClient()
 	if app != nil {
 		appNodes, err := p.Nodes(app)
 		if err != nil {

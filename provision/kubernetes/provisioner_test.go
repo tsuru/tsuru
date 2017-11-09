@@ -596,7 +596,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
-	err := createBuildPod(buildPodParams{
+	err := createDeployPod(createPodParams{
 		client:           s.client.clusterClient,
 		app:              a,
 		sourceImage:      "myimg",
