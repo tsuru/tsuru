@@ -605,3 +605,27 @@ func (s *RouterSuite) TestSetHealthcheck(c *check.C) {
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *RouterSuite) TestGetInfo(c *check.C) {
+	infoRouter, ok := s.Router.(router.InfoRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement InfoRouter", s.Router))
+	}
+	msg, err := infoRouter.GetInfo()
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.Not(check.HasLen), 0)
+}
+
+func (s *RouterSuite) TestGetStatus(c *check.C) {
+	statusRouter, ok := s.Router.(router.StatusRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement CustomHealthcheckRouter", s.Router))
+	}
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
+	c.Assert(err, check.IsNil)
+	status, _, err := statusRouter.GetBackendStatus(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(status, check.Equals, router.BackendStatusReady)
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+}
