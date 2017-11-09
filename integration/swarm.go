@@ -22,7 +22,7 @@ func (m *SwarmClusterManager) Name() string {
 }
 
 func (m *SwarmClusterManager) Provisioner() string {
-	return "swarm"
+	return swarmProvisioner
 }
 
 func (m *SwarmClusterManager) Start() *Result {
