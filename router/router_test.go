@@ -258,8 +258,8 @@ func (s *S) TestListDefaultDockerRouter(c *check.C) {
 
 type testInfoRouter struct{ Router }
 
-func (r *testInfoRouter) GetInfo() (string, error) {
-	return "her", nil
+func (r *testInfoRouter) GetInfo() (map[string]string, error) {
+	return map[string]string{"her": "amaat"}, nil
 }
 
 func (s *S) TestListWithInfo(c *check.C) {
@@ -274,8 +274,8 @@ func (s *S) TestListWithInfo(c *check.C) {
 	Register("foo", fooCreator)
 	Register("bar", fooCreator)
 	expected := []PlanRouter{
-		{Name: "router1", Type: "foo", Info: "her", Default: false},
-		{Name: "router2", Type: "bar", Info: "her", Default: true},
+		{Name: "router1", Type: "foo", Info: map[string]string{"her": "amaat"}, Default: false},
+		{Name: "router2", Type: "bar", Info: map[string]string{"her": "amaat"}, Default: true},
 	}
 	routers, err := ListWithInfo()
 	c.Assert(err, check.IsNil)

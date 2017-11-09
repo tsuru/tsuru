@@ -457,12 +457,17 @@ func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data route
 	return err
 }
 
-func (r *apiRouterWithInfo) GetInfo() (string, error) {
+func (r *apiRouterWithInfo) GetInfo() (map[string]string, error) {
 	data, _, err := r.do(http.MethodGet, "info", nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(data), nil
+	var result map[string]string
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (r *apiRouterWithStatus) GetBackendStatus(name string) (router.BackendStatus, string, error) {

@@ -161,7 +161,7 @@ type TLSRouter interface {
 }
 
 type InfoRouter interface {
-	GetInfo() (string, error)
+	GetInfo() (map[string]string, error)
 }
 
 type BackendStatus string
@@ -371,10 +371,10 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 }
 
 type PlanRouter struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Info    string `json:"info"`
-	Default bool   `json:"default"`
+	Name    string            `json:"name"`
+	Type    string            `json:"type"`
+	Info    map[string]string `json:"info"`
+	Default bool              `json:"default"`
 }
 
 func ListWithInfo() ([]PlanRouter, error) {
