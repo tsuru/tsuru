@@ -387,8 +387,9 @@ func cleanupPod(client *clusterClient, podName string) error {
 	return nil
 }
 
-func podsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error) {
+func podsFromNode(client *clusterClient, nodeName string, labelFilter string) ([]apiv1.Pod, error) {
 	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+		LabelSelector: labelFilter,
 		FieldSelector: fields.SelectorFromSet(fields.Set{
 			"spec.nodeName": nodeName,
 		}).String(),
@@ -397,6 +398,12 @@ func podsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error) {
 		return nil, errors.WithStack(err)
 	}
 	return podList.Items, nil
+}
+
+func appPodsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error) {
+	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
+	l.SetIsService()
+	return podsFromNode(client, nodeName, fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String())
 }
 
 func getServicePort(client *clusterClient, srvName string) (int32, error) {
