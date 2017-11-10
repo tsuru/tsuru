@@ -217,7 +217,11 @@ func nodeHealer() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		poolName := env.Get("pool")
-		res := T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
+		nodeOpts := env.Get("nodeopts-" + poolName)
+		if nodeOpts == "" {
+			nodeOpts = env.Get("nodeopts")
+		}
+		res := T("node-add", nodeOpts, "pool="+poolName).Run(env)
 		c.Assert(res, ResultOk)
 		nodeAddr := waitNewNode(c, env)
 		env.Set("newnode-"+poolName, nodeAddr)
