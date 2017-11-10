@@ -187,3 +187,61 @@ func (s *S) TestNodeUnits(c *check.C) {
 		},
 	})
 }
+
+func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
+	_, err := s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pod-not-tsuru",
+			Namespace: s.client.Namespace(),
+		},
+		Spec: apiv1.PodSpec{
+			NodeName: "n1",
+		},
+	})
+	fakeApp, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.Reset()
+	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	node, err := s.p.GetNode("192.168.99.1")
+	c.Assert(err, check.IsNil)
+	units, err := node.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{
+			ID:          "myapp-web-pod-1-1",
+			Name:        "myapp-web-pod-1-1",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+		},
+		{
+			ID:          "myapp-worker-pod-2-1",
+			Name:        "myapp-worker-pod-2-1",
+			AppName:     "myapp",
+			ProcessName: "worker",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+		},
+	})
+}

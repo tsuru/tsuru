@@ -537,7 +537,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			return errors.WithStack(err)
 		}
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name)
+		pods, err = podsFromNode(client, node.Name, "")
 		if err != nil {
 			return err
 		}
