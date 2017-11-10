@@ -63,6 +63,9 @@ func (m *KubectlClusterManager) getConfig(jsonpath string) string {
 	kubectl := NewCommand(m.getBinary(), "config", "view", "-o").WithArgs
 	res := kubectl(fmt.Sprintf("jsonpath='%s'", jsonpath)).Run(m.env)
 	if res.Error != nil || res.ExitCode != 0 {
+		if m.env.VerboseLevel() > 1 {
+			fmt.Printf("failed to get config %s: %v (exit %d)\n", res.Command.Args, res.Error, res.ExitCode)
+		}
 		return ""
 	}
 	return res.Stdout.String()
