@@ -512,11 +512,11 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
 	_, err = client.Core().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
-		return p.UpdateNode(provision.UpdateNodeOptions{
+		return p.internalNodeUpdate(provision.UpdateNodeOptions{
 			Address:  hostAddr,
 			Metadata: opts.Metadata,
 			Pool:     opts.Pool,
-		})
+		}, opts.IaaSID)
 	}
 	if err == nil {
 		go refreshNodeTaints(client, hostAddr)
@@ -601,9 +601,16 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClien
 }
 
 func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	return p.internalNodeUpdate(opts, "")
+}
+
+func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOptions, iaasID string) error {
 	client, nodeWrapper, err := p.findNodeByAddress(opts.Address)
 	if err != nil {
 		return err
+	}
+	if nodeWrapper.IaaSID() != "" {
+		iaasID = ""
 	}
 	node := nodeWrapper.node
 	if opts.Disable {
@@ -620,7 +627,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 		}
 	}
 	node.Spec.Taints = taints
-	setNodeMetadata(node, opts.Pool, "", opts.Metadata)
+	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
 	_, err = client.Core().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)
