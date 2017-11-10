@@ -10,6 +10,7 @@ import "fmt"
 type KubectlClusterManager struct {
 	env     *Environment
 	context string
+	config  string
 	binary  string
 }
 
@@ -60,7 +61,7 @@ func (m *KubectlClusterManager) getCluster() string {
 }
 
 func (m *KubectlClusterManager) getConfig(jsonpath string) string {
-	kubectl := NewCommand(m.getBinary(), "config", "view", "-o").WithArgs
+	kubectl := NewCommand(m.getBinary(), "--kubeconfig", m.config, "config", "view", "-o").WithArgs
 	res := kubectl(fmt.Sprintf("jsonpath='%s'", jsonpath)).Run(m.env)
 	if res.Error != nil || res.ExitCode != 0 {
 		if m.env.VerboseLevel() > 1 {

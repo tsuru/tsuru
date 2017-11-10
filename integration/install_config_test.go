@@ -100,6 +100,7 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 		"minikube": &MinikubeClusterManager{env: s.env},
 		"kubectl": &KubectlClusterManager{
 			env:     s.env,
+			config:  s.env.Get("kubectlconfig"),
 			context: s.env.Get("kubectlctx"),
 			binary:  s.env.Get("kubectlbinary"),
 		},
