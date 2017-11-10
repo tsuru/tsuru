@@ -8,6 +8,7 @@ import "fmt"
 
 // KubectlClusterManager represents a kubectl context
 type KubectlClusterManager struct {
+	env     *Environment
 	context string
 	binary  string
 }
@@ -60,7 +61,7 @@ func (m *KubectlClusterManager) getCluster() string {
 
 func (m *KubectlClusterManager) getConfig(jsonpath string) string {
 	kubectl := NewCommand(m.getBinary(), "config", "view", "-o").WithArgs
-	res := kubectl(fmt.Sprintf("jsonpath='%s'", jsonpath)).Run(nil)
+	res := kubectl(fmt.Sprintf("jsonpath='%s'", jsonpath)).Run(m.env)
 	if res.Error != nil || res.ExitCode != 0 {
 		return ""
 	}
