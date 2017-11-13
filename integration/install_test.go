@@ -217,7 +217,7 @@ func nodeHealer() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		poolName := env.Get("pool")
-		nodeOpts := strings.Join(env.All("nodeopts_"+strings.Replace(poolName, "-", "_", -1)), "")
+		nodeOpts := strings.Join(env.All("nodeopts_"+strings.Replace(poolName, "-", "_", -1)), ",")
 		if nodeOpts == "" {
 			nodeOpts = strings.Join(env.All("nodeopts"), ",")
 		}
