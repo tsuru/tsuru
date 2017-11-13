@@ -236,7 +236,7 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.
 		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
 		if !ok {
-			node, err = client.Core().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
+			node, err = client.CoreV1().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -327,7 +327,7 @@ func (p *kubernetesProvisioner) units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
@@ -364,7 +364,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		Pool:   a.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
-	nodes, err := client.Core().Nodes().List(metav1.ListOptions{
+	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(nodeSelector).String(),
 	})
 	if err != nil {
@@ -386,7 +386,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.Core().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -441,7 +441,7 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *clusterClient, addr
 	if len(addressFilter) > 0 {
 		addressSet = set.FromSlice(addressFilter)
 	}
-	nodeList, err := cluster.Core().Nodes().List(metav1.ListOptions{})
+	nodeList, err := cluster.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +510,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		},
 	}
 	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
-	_, err = client.Core().Nodes().Create(node)
+	_, err = client.CoreV1().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
 		return p.internalNodeUpdate(provision.UpdateNodeOptions{
 			Address:  hostAddr,
@@ -533,7 +533,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 	node := nodeWrapper.node
 	if opts.Rebalance {
 		node.Spec.Unschedulable = true
-		_, err = client.Core().Nodes().Update(node)
+		_, err = client.CoreV1().Nodes().Update(node)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -543,7 +543,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			return err
 		}
 		for _, pod := range pods {
-			err = client.Core().Pods(client.Namespace()).Evict(&policy.Eviction{
+			err = client.CoreV1().Pods(client.Namespace()).Evict(&policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
 					Namespace: client.Namespace(),
@@ -554,7 +554,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			}
 		}
 	}
-	err = client.Core().Nodes().Delete(node.Name, &metav1.DeleteOptions{})
+	err = client.CoreV1().Nodes().Delete(node.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -630,7 +630,7 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	}
 	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
-	_, err = client.Core().Nodes().Update(node)
+	_, err = client.CoreV1().Nodes().Update(node)
 	if err == nil {
 		go refreshNodeTaints(client, opts.Address)
 	}
@@ -783,7 +783,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provi
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {

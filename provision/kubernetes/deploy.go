@@ -198,7 +198,7 @@ func createBuildPod(params buildPodParams) error {
 			},
 		},
 	}
-	_, err = params.client.Core().Pods(params.client.Namespace()).Create(pod)
+	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -357,9 +357,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 	}
 	var newDep *v1beta2.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.Apps().Deployments(client.Namespace()).Create(&deployment)
+		newDep, err = client.AppsV1beta2().Deployments(client.Namespace()).Create(&deployment)
 	} else {
-		newDep, err = client.Apps().Deployments(client.Namespace()).Update(&deployment)
+		newDep, err = client.AppsV1beta2().Deployments(client.Namespace()).Update(&deployment)
 	}
 	return newDep, labels, errors.WithStack(err)
 }
@@ -378,7 +378,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.Core().Services(m.client.Namespace()).Delete(depName, &metav1.DeleteOptions{
+	err = m.client.CoreV1().Services(m.client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -392,7 +392,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Apps().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -424,7 +424,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta2.Deployment, a provisi
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.Apps().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -488,7 +488,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta2.Deployment, a provisi
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		}
-		dep, err = client.Apps().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -503,7 +503,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		return err
 	}
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Apps().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -520,7 +520,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	err = monitorDeployment(m.client, dep, a, process, m.writer)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -530,7 +530,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	}
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	_, err = m.client.Core().Services(m.client.Namespace()).Create(&apiv1.Service{
+	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: m.client.Namespace(),

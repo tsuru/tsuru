@@ -189,7 +189,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 }
 
 func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
-	_, err := s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pod-not-tsuru",
 			Namespace: s.client.Namespace(),

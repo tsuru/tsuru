@@ -35,6 +35,8 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	"k8s.io/api/apps/v1beta2"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,8 +46,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -100,8 +100,8 @@ type clientWrapper struct {
 	*clusterClient
 }
 
-func (c *clientWrapper) Core() v1core.CoreV1Interface {
-	core := c.Clientset.Core()
+func (c *clientWrapper) CoreV1() v1core.CoreV1Interface {
+	core := c.Clientset.CoreV1()
 	return &clientCoreWrapper{core, c.clusterClient}
 }
 
@@ -182,7 +182,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 		c.Assert(err, check.IsNil)
 	}
 	for i := 1; i <= 2; i++ {
-		_, err := s.client.Core().Nodes().Create(&apiv1.Node{
+		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
@@ -348,7 +348,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
 				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
-				_, err = s.client.Core().Pods(dep.Namespace).Create(pod)
+				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(pod)
 				c.Assert(err, check.IsNil)
 			}
 		}()
@@ -408,7 +408,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.Core().Pods(s.client.Namespace()).Update(pod)
+				_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}

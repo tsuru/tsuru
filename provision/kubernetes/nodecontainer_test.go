@@ -43,10 +43,10 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Apps().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	trueVar := true
 	maxUnavailable := intstr.FromString("20%")
@@ -154,7 +154,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}}, false)
 	c.Assert(err, check.IsNil)
-	daemon, err := s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -183,7 +183,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Include: []string{"p1"}}, false)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity = &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -226,10 +226,10 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Apps().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -286,10 +286,10 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Apps().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedVolumes := []apiv1.Volume{
 		{
@@ -356,7 +356,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, true)
 	c.Assert(err, check.IsNil)
-	daemon, err := s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -380,7 +380,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity = &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -410,7 +410,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	beforeCreation := daemon.CreationTimestamp
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.Apps().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.CreationTimestamp, check.DeepEquals, beforeCreation)
 }
