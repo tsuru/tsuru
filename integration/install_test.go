@@ -217,7 +217,7 @@ func nodeHealer() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		poolName := env.Get("pool")
-		nodeOpts := env.Get("nodeopts-" + poolName)
+		nodeOpts := env.Get("nodeopts_" + strings.Replace(poolName, "-", "_", -1))
 		if nodeOpts == "" {
 			nodeOpts = env.Get("nodeopts")
 		}
@@ -332,7 +332,7 @@ func poolAdd() ExecFlow {
 			clusterName := "icluster-" + cluster.Name()
 			params := []string{"cluster-add", clusterName, cluster.Provisioner(), "--pool", poolName}
 			clusterParams, nodeCreate := cluster.UpdateParams()
-			if nodeCreate || env.Get("nodeopts-"+poolName) != "" {
+			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
 				env.Add("multinodepools", poolName)
 			}
 			res = T(append(params, clusterParams...)...).Run(env)
