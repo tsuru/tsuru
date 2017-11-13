@@ -5644,6 +5644,10 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
+	err = routertest.FakeRouter.AddRoutes(a.Name, []*url.URL{
+		{Host: "h1"},
+	})
+	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("dry", "true")
 	body := strings.NewReader(v.Encode())
@@ -5654,9 +5658,13 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var parsed rebuild.RebuildRoutesResult
+	var parsed map[string]rebuild.RebuildRoutesResult
 	json.Unmarshal(recorder.Body.Bytes(), &parsed)
-	c.Assert(parsed, check.DeepEquals, rebuild.RebuildRoutesResult{})
+	c.Assert(parsed, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
+		"fake": {
+			Removed: []string{"http://h1"},
+		},
+	})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -5667,7 +5675,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		},
 		EndCustomData: map[string]interface{}{
 			"fake.added":   []string(nil),
-			"fake.removed": []string(nil),
+			"fake.removed": []string{"http://h1"},
 		},
 	}, eventtest.HasEvent)
 }
