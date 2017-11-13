@@ -332,7 +332,7 @@ func poolAdd() ExecFlow {
 			clusterName := "icluster-" + cluster.Name()
 			params := []string{"cluster-add", clusterName, cluster.Provisioner(), "--pool", poolName}
 			clusterParams, nodeCreate := cluster.UpdateParams()
-			if nodeCreate {
+			if nodeCreate || env.Get("nodeopts-"+poolName) != "" {
 				env.Add("multinodepools", poolName)
 			}
 			res = T(append(params, clusterParams...)...).Run(env)
