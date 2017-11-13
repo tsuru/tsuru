@@ -44,8 +44,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -324,7 +324,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 			return false, nil, nil
 		}
 		wg.Add(1)
-		dep := action.(ktesting.CreateAction).GetObject().(*v1beta1.Deployment)
+		dep := action.(ktesting.CreateAction).GetObject().(*v1beta2.Deployment)
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
 			specReplicas = *dep.Spec.Replicas

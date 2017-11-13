@@ -21,14 +21,14 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"k8s.io/api/apps/v1beta2"
+	apiv1 "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -57,17 +57,16 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName,
 		Stderr:    true,
 		TTY:       false,
 	}, scheme.ParameterCodec)
-	exec, err := remotecommand.NewExecutor(client.restConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: remotecommandutil.SupportedStreamingProtocols,
-		Stdin:              stdin,
-		Stdout:             stdout,
-		Stderr:             stdout,
-		Tty:                false,
-		TerminalSizeQueue:  nil,
+		Stdin:             stdin,
+		Stdout:            stdout,
+		Stderr:            stdout,
+		Tty:               false,
+		TerminalSizeQueue: nil,
 	})
 	if err != nil {
 		return errors.WithStack(err)
@@ -256,7 +255,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 	}, nil
 }
 
-func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -306,15 +305,16 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	if err != nil {
 		return nil, nil, err
 	}
-	deployment := v1beta1.Deployment{
+	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: client.Namespace(),
+			Labels:    labels.ToLabels(),
 		},
-		Spec: v1beta1.DeploymentSpec{
-			Strategy: v1beta1.DeploymentStrategy{
-				Type: v1beta1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &v1beta1.RollingUpdateDeployment{
+		Spec: v1beta2.DeploymentSpec{
+			Strategy: v1beta2.DeploymentStrategy{
+				Type: v1beta2.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &v1beta2.RollingUpdateDeployment{
 					MaxSurge:       &maxSurge,
 					MaxUnavailable: &maxUnavailable,
 				},
@@ -355,11 +355,11 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 			},
 		},
 	}
-	var newDep *v1beta1.Deployment
+	var newDep *v1beta2.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.Extensions().Deployments(client.Namespace()).Create(&deployment)
+		newDep, err = client.Apps().Deployments(client.Namespace()).Create(&deployment)
 	} else {
-		newDep, err = client.Extensions().Deployments(client.Namespace()).Update(&deployment)
+		newDep, err = client.Apps().Deployments(client.Namespace()).Update(&deployment)
 	}
 	return newDep, labels, errors.WithStack(err)
 }
@@ -392,7 +392,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.Apps().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -418,13 +418,13 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
-func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provision.App, processName string, w io.Writer) error {
+func monitorDeployment(client *clusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.Apps().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 	for {
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
-			if c.Type == v1beta1.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
+			if c.Type == v1beta2.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
 				return errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
 			}
 		}
@@ -488,7 +488,7 @@ func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provisi
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		}
-		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.Apps().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -503,7 +503,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		return err
 	}
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.Apps().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -520,7 +520,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	err = monitorDeployment(m.client, dep, a, process, m.writer)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&v1beta1.DeploymentRollback{
+		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {

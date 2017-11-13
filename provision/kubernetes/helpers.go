@@ -19,14 +19,13 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"k8s.io/api/apps/v1beta2"
+	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -141,14 +140,14 @@ func allNewPodsRunning(client *clusterClient, a provision.App, process string, g
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	replicaSets, err := client.Extensions().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
+	replicaSets, err := client.Apps().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 	generationStr := strconv.Itoa(int(generation))
-	var replica *v1beta1.ReplicaSet
+	var replica *v1beta2.ReplicaSet
 	for i, rs := range replicaSets.Items {
 		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == generationStr {
 			replica = &replicaSets.Items[i]
@@ -318,12 +317,12 @@ func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
 }
 
 func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
-	replicas, err := client.Extensions().ReplicaSets(client.Namespace()).List(opts)
+	replicas, err := client.Apps().ReplicaSets(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, replica := range replicas.Items {
-		err = client.Extensions().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
+		err = client.Apps().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
@@ -335,7 +334,7 @@ func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 
 func cleanupDeployment(client *clusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
-	err := client.Extensions().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
+	err := client.Apps().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -359,7 +358,7 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 
 func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
-	err := client.Extensions().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
+	err := client.Apps().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -501,7 +500,7 @@ func execCommand(opts execOpts) error {
 		Stderr:    true,
 		TTY:       opts.tty,
 	}, scheme.ParameterCodec)
-	exec, err := remotecommand.NewExecutor(client.restConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -512,12 +511,11 @@ func execCommand(opts execOpts) error {
 		}
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: remotecommandutil.SupportedStreamingProtocols,
-		Stdin:              opts.stdin,
-		Stdout:             opts.stdout,
-		Stderr:             opts.stderr,
-		Tty:                opts.tty,
-		TerminalSizeQueue:  sizeQueue,
+		Stdin:             opts.stdin,
+		Stdout:            opts.stdout,
+		Stderr:            opts.stderr,
+		Tty:               opts.tty,
+		TerminalSizeQueue: sizeQueue,
 	})
 	if err != nil {
 		return errors.WithStack(err)
