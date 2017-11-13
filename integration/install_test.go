@@ -217,9 +217,9 @@ func nodeHealer() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		poolName := env.Get("pool")
-		nodeOpts := env.Get("nodeopts_" + strings.Replace(poolName, "-", "_", -1))
+		nodeOpts := strings.Join(env.All("nodeopts_"+strings.Replace(poolName, "-", "_", -1)), "")
 		if nodeOpts == "" {
-			nodeOpts = env.Get("nodeopts")
+			nodeOpts = strings.Join(env.All("nodeopts"), ",")
 		}
 		res := T("node-add", nodeOpts, "pool="+poolName).Run(env)
 		c.Assert(res, ResultOk)
