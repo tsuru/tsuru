@@ -112,13 +112,13 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 }
 
 func deleteVolume(client *clusterClient, name string) error {
-	err := client.Core().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
+	err := client.CoreV1().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	err = client.Core().PersistentVolumeClaims(client.Namespace()).Delete(volumeClaimName(name), &metav1.DeleteOptions{
+	err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Delete(volumeClaimName(name), &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -162,7 +162,7 @@ func createVolumeForApp(client *clusterClient, app provision.App, v *volume.Volu
 	var volName string
 	var selector *metav1.LabelSelector
 	if opts.Plugin != "" {
-		_, err = client.Core().PersistentVolumes().Create(&apiv1.PersistentVolume{
+		_, err = client.CoreV1().PersistentVolumes().Create(&apiv1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   volumeName(v.Name),
 				Labels: labelSet.ToLabels(),
@@ -180,7 +180,7 @@ func createVolumeForApp(client *clusterClient, app provision.App, v *volume.Volu
 	if opts.StorageClass != "" {
 		storageClass = &opts.StorageClass
 	}
-	_, err = client.Core().PersistentVolumeClaims(client.Namespace()).Create(&apiv1.PersistentVolumeClaim{
+	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(&apiv1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   volumeClaimName(v.Name),
 			Labels: labelSet.ToLabels(),

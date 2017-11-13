@@ -118,7 +118,7 @@ func podsForAppProcess(client *clusterClient, a provision.App, process string) (
 	} else {
 		selector = l.ToSelector()
 	}
-	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+	podList, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
 	if err != nil {
@@ -140,7 +140,7 @@ func allNewPodsRunning(client *clusterClient, a provision.App, process string, g
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	replicaSets, err := client.Apps().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
+	replicaSets, err := client.AppsV1beta2().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
@@ -210,7 +210,7 @@ func waitForPodContainersRunning(client *clusterClient, podName string, timeout 
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
-		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -229,7 +229,7 @@ func waitForPodContainersRunning(client *clusterClient, podName string, timeout 
 		}
 		return false, nil
 	}, func() error {
-		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -243,7 +243,7 @@ func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
 		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
 	}
 	retErr := errors.Errorf("invalid pod phase %s", phaseWithMsg)
-	eventsInterface := client.Core().Events(client.Namespace())
+	eventsInterface := client.CoreV1().Events(client.Namespace())
 	ns := client.Namespace()
 	selector := eventsInterface.GetFieldSelector(&pod.Name, &ns, nil, nil)
 	options := metav1.ListOptions{FieldSelector: selector.String()}
@@ -254,7 +254,7 @@ func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
 	}
 	if len(pod.Spec.Containers) > 0 {
 		lastLog := int64(100)
-		req := client.Core().Pods(client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
+		req := client.CoreV1().Pods(client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
 			Container: pod.Spec.Containers[0].Name,
 			TailLines: &lastLog,
 		})
@@ -271,7 +271,7 @@ func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
 
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
-		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -290,7 +290,7 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 		}
 		return true, nil
 	}, func() error {
-		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -299,12 +299,12 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 }
 
 func cleanupPods(client *clusterClient, opts metav1.ListOptions) error {
-	pods, err := client.Core().Pods(client.Namespace()).List(opts)
+	pods, err := client.CoreV1().Pods(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.Core().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
+		err = client.CoreV1().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
@@ -317,12 +317,12 @@ func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
 }
 
 func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
-	replicas, err := client.Apps().ReplicaSets(client.Namespace()).List(opts)
+	replicas, err := client.AppsV1beta2().ReplicaSets(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, replica := range replicas.Items {
-		err = client.Apps().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
+		err = client.AppsV1beta2().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
@@ -334,7 +334,7 @@ func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 
 func cleanupDeployment(client *clusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
-	err := client.Apps().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
+	err := client.AppsV1beta2().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -358,7 +358,7 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 
 func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
-	err := client.Apps().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
+	err := client.AppsV1beta2().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -377,7 +377,7 @@ func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 
 func cleanupPod(client *clusterClient, podName string) error {
 	noWait := int64(0)
-	err := client.Core().Pods(client.Namespace()).Delete(podName, &metav1.DeleteOptions{
+	err := client.CoreV1().Pods(client.Namespace()).Delete(podName, &metav1.DeleteOptions{
 		GracePeriodSeconds: &noWait,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -387,7 +387,7 @@ func cleanupPod(client *clusterClient, podName string) error {
 }
 
 func podsFromNode(client *clusterClient, nodeName string, labelFilter string) ([]apiv1.Pod, error) {
-	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
+	podList, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labelFilter,
 		FieldSelector: fields.SelectorFromSet(fields.Set{
 			"spec.nodeName": nodeName,
@@ -406,7 +406,7 @@ func appPodsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error
 }
 
 func getServicePort(client *clusterClient, srvName string) (int32, error) {
-	srv, err := client.Core().Services(client.Namespace()).Get(srvName, metav1.GetOptions{})
+	srv, err := client.CoreV1().Services(client.Namespace()).Get(srvName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return 0, nil
@@ -459,7 +459,7 @@ func execCommand(opts execOpts) error {
 	}
 	var chosenPod *apiv1.Pod
 	if opts.unit != "" {
-		chosenPod, err = client.Core().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
+		chosenPod, err = client.CoreV1().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(errors.Cause(err)) {
 				return &provision.UnitNotFoundError{ID: opts.unit}
@@ -574,7 +574,7 @@ func runPod(args runSinglePodArgs) error {
 			{Name: "dockersock", MountPath: dockerSockPath},
 		}
 	}
-	_, err := args.client.Core().Pods(args.client.Namespace()).Create(pod)
+	_, err := args.client.CoreV1().Pods(args.client.Namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -590,7 +590,7 @@ func runPod(args runSinglePodArgs) error {
 		multiErr.Add(errors.WithStack(err))
 		return multiErr
 	}
-	req := args.client.Core().Pods(args.client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
+	req := args.client.CoreV1().Pods(args.client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
 		Follow:    true,
 		Container: args.name,
 	})
@@ -610,7 +610,7 @@ func runPod(args runSinglePodArgs) error {
 
 func getNodeByAddr(client *clusterClient, address string) (*apiv1.Node, error) {
 	address = tsuruNet.URLToHost(address)
-	node, err := client.Core().Nodes().Get(address, metav1.GetOptions{})
+	node, err := client.CoreV1().Nodes().Get(address, metav1.GetOptions{})
 	if err == nil {
 		return node, nil
 	}
@@ -618,7 +618,7 @@ func getNodeByAddr(client *clusterClient, address string) (*apiv1.Node, error) {
 		return nil, err
 	}
 	node = nil
-	nodeList, err := client.Core().Nodes().List(metav1.ListOptions{})
+	nodeList, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +677,7 @@ func refreshNodeTaints(client *clusterClient, addr string) {
 		Effect: apiv1.TaintEffectNoSchedule,
 	}
 	node.Spec.Taints = append(node.Spec.Taints, tsuruTempTaint)
-	node, err = client.Core().Nodes().Update(node)
+	node, err = client.CoreV1().Nodes().Update(node)
 	if err != nil {
 		log.Errorf("unable to add node taint %q: %v", tsuruTaintKey, err)
 		return
@@ -689,7 +689,7 @@ func refreshNodeTaints(client *clusterClient, addr string) {
 			i--
 		}
 	}
-	_, err = client.Core().Nodes().Update(node)
+	_, err = client.CoreV1().Nodes().Update(node)
 	if err != nil {
 		log.Errorf("unable to remove node taint %q: %v", tsuruTaintKey, err)
 	}
