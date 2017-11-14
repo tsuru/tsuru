@@ -8,7 +8,7 @@ TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS_SLOW = \
-	-j 4 --enable-gc -s vendor -e '.*/vendor/.*' -e 'SA1019' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
+	-j 4 --enable-gc -s vendor -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
 	--disable=structcheck --disable=gotype --disable=gotypex --deadline=60m --tests
 
