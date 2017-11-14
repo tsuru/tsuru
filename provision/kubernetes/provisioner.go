@@ -519,6 +519,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		})
 	}
 	if err == nil {
+		servicecommon.RebuildRoutesPoolApps(opts.Pool)
 		go refreshNodeTaints(client, hostAddr)
 	}
 	return err
@@ -557,6 +558,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	servicecommon.RebuildRoutesPoolApps(nodeWrapper.Pool())
 	return nil
 }
 

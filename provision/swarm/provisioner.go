@@ -537,6 +537,9 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
 	})
+	if err == nil {
+		servicecommon.RebuildRoutesPoolApps(opts.Pool)
+	}
 	return errors.WithStack(err)
 }
 
@@ -571,6 +574,9 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 		ID:    swarmNode.ID,
 		Force: true,
 	})
+	if err == nil {
+		servicecommon.RebuildRoutesPoolApps(node.Pool())
+	}
 	return errors.WithStack(err)
 }
 
