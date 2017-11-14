@@ -670,6 +670,7 @@ func refreshNodeTaints(client *clusterClient, addr string) {
 	node, err := waitNodeReady(client, addr, 30*time.Minute)
 	if err != nil {
 		log.Errorf("error waiting for node ready: %v", err)
+		return
 	}
 	tsuruTaintKey := "tsuru-refresh-node-container"
 	tsuruTempTaint := apiv1.Taint{
@@ -681,6 +682,7 @@ func refreshNodeTaints(client *clusterClient, addr string) {
 	node, err = client.Core().Nodes().Update(node)
 	if err != nil {
 		log.Errorf("unable to add node taint %q: %v", tsuruTaintKey, err)
+		return
 	}
 	for i := 0; i < len(node.Spec.Taints); i++ {
 		if node.Spec.Taints[i].Key == tsuruTaintKey {
