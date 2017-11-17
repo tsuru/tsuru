@@ -508,6 +508,34 @@ func TestServiceCreateMultipleServers(t *testing.T) {
 	}
 }
 
+func TestServiceCreateNoContainers(t *testing.T) {
+	server, unused := setUpSwarm(t)
+	defer server.Stop()
+	defer unused.Stop()
+	recorder := httptest.NewRecorder()
+	serviceCreateOpts := docker.CreateServiceOptions{
+		ServiceSpec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "test",
+			},
+		},
+	}
+	buf, err := json.Marshal(serviceCreateOpts)
+	if err != nil {
+		t.Fatalf("ServiceCreate error: %s", err.Error())
+	}
+	var params io.Reader
+	params = bytes.NewBuffer(buf)
+	request, _ := http.NewRequest("POST", "/services/create", params)
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("ServiceCreate: wrong status code. Want %d. Got %d.", http.StatusOK, recorder.Code)
+	}
+	if len(server.services) != 1 || len(server.tasks) != 0 || len(server.containers) != 0 {
+		t.Fatalf("ServiceCreate: wrong item count. Want 1 service and 0 tasks. Got services: %d, tasks: %d, containers: %d.", len(server.services), len(server.tasks), len(server.containers))
+	}
+}
+
 func compareServices(srv1 *swarm.Service, srv2 *swarm.Service) bool {
 	srv1.CreatedAt = srv2.CreatedAt
 	srv1.UpdatedAt = srv2.UpdatedAt
