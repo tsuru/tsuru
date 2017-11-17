@@ -817,7 +817,7 @@ func (p *FakeProvisioner) GetDockerClient(app provision.App) (provision.BuilderD
 		if err != nil {
 			return nil, err
 		}
-		return &dockercommon.ClientWithTimeout{Client: client}, nil
+		return &dockercommon.PullAndCreateClient{Client: client}, nil
 	}
 	return nil, errors.New("No node found")
 

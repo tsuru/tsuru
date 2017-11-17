@@ -634,13 +634,13 @@ func (p *swarmProvisioner) GetDockerClient(a provision.App) (provision.BuilderDo
 			}
 			return nil, err
 		}
-		return clusters[0].Client, nil
+		return &dockercommon.PullAndCreateClient{Client: clusters[0].Client}, nil
 	}
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
-	return &dockercommon.ClientWithTimeout{Client: client.Client}, nil
+	return &dockercommon.PullAndCreateClient{Client: client.Client}, nil
 }
 
 func (p *swarmProvisioner) CleanImage(appName, imgName string) {

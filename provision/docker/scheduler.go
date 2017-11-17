@@ -35,6 +35,9 @@ type segregatedScheduler struct {
 }
 
 func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
+	if schedulerOpts == nil {
+		return s.scheduleAnyNode(c)
+	}
 	schedOpts, ok := schedulerOpts.(*container.SchedulerOpts)
 	if !ok {
 		return cluster.Node{}, &container.SchedulerError{
@@ -64,6 +67,21 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateCo
 		}
 	}
 	return cluster.Node{Address: node}, nil
+}
+
+func (s *segregatedScheduler) scheduleAnyNode(c *cluster.Cluster) (cluster.Node, error) {
+	nodes, err := c.Nodes()
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	if len(nodes) < 1 {
+		return cluster.Node{}, errors.New("There is no Docker node. Add one with `tsuru node-add`")
+	}
+	nodeAddr, _, err := s.minMaxNodes(nodes, "", "")
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	return cluster.Node{Address: nodeAddr}, nil
 }
 
 func (s *segregatedScheduler) updateContainerName(opts *docker.CreateContainerOptions, appName string) error {

@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
-	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -397,133 +396,26 @@ func (s *S) TestGetNodeByHost(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `node with host "h6" not found`)
 }
 
-func (s *S) TestGetDockerClientNoSuchNode(c *check.C) {
+func (s *S) TestGetDockerClient(c *check.C) {
 	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, p.storage, "")
-	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "test-docker-client"}
-	err = pool.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "myapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-		Router:    "fake",
-		Pool:      "test-docker-client",
-	}
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = p.GetDockerClient(&a)
-	c.Assert(err, check.ErrorMatches, "No such node in storage")
-}
-
-func (s *S) TestGetDockerClientWithApp(c *check.C) {
-	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err := p.Initialize()
-	c.Assert(err, check.IsNil)
-	nodes := []cluster.Node{
-		{
-			Address:  "http://h1:80",
-			Metadata: map[string]string{"pool": "test-docker-client"},
-		},
-	}
-	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
-	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "test-docker-client"}
-	err = pool.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "myapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-		Router:    "fake",
-		Pool:      "test-docker-client",
-	}
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	client, err := p.GetDockerClient(&a)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.(*dbAwareClient).Endpoint(), check.Equals, nodes[0].Address)
-}
-
-func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
-	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	err := s.conn.Apps().Insert(a1)
-	c.Assert(err, check.IsNil)
-	cont1 := container.Container{Container: types.Container{ID: "1", Name: "cont1", AppName: a1.Name, ProcessName: "web"}}
-	cont2 := container.Container{Container: types.Container{ID: "2", Name: "cont2", AppName: a1.Name, ProcessName: "web"}}
-	coll := s.p.Collection()
-	defer coll.Close()
-	err = coll.Insert(cont1, cont2)
-	c.Assert(err, check.IsNil)
-	p := pool.Pool{Name: "pool1"}
-	err = pool.AddPool(pool.AddPoolOptions{Name: p.Name})
-	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{
-		"tsuruteam",
-		"nodockerforme",
-	})
-	c.Assert(err, check.IsNil)
-	nodes := []cluster.Node{
-		{Address: "http://h1:80"},
-		{Address: "http://h2:80"},
-		{Address: "http://h3:80"},
-	}
-	scheduler := segregatedScheduler{provisioner: s.p}
-	s.p.cluster, err = cluster.New(&scheduler, s.p.storage, "")
-	c.Assert(err, check.IsNil)
-	n, err := s.p.cluster.Nodes()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.HasLen, 1)
-	err = s.p.cluster.Unregister(n[0].Address)
-	c.Assert(err, check.IsNil)
-	for _, node := range nodes {
-		err = s.p.cluster.Register(cluster.Node{
-			Address:  node.Address,
-			Metadata: map[string]string{"pool": p.Name},
-		})
-		c.Assert(err, check.IsNil)
-	}
-	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(s.p.cluster, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
-	c.Assert(err, check.IsNil)
-	client, err := s.p.GetDockerClient(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.(*dbAwareClient).Endpoint(), check.Equals, nodes[1].Address)
-	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	_, err = scheduler.Schedule(s.p.cluster, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
-	c.Assert(err, check.IsNil)
-	client, err = s.p.GetDockerClient(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.(*dbAwareClient).Endpoint(), check.Equals, nodes[2].Address)
-}
-
-func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {
-	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err := p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, p.storage, "")
-	c.Assert(err, check.IsNil)
-	opts := pool.AddPoolOptions{Name: "test-docker-client"}
-	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	client, err := p.GetDockerClient(nil)
-	c.Assert(client, check.IsNil)
-	c.Assert(err, check.ErrorMatches, "There is no Docker node. Add one with `tsuru node-add`")
+	c.Assert(err, check.IsNil)
+	c.Assert(client, check.DeepEquals, &schedulerClient{
+		Cluster: p.cluster,
+		p:       p,
+	})
 }
 
-func (s *S) TestDbAwareClientCreateContainer(c *check.C) {
+func (s *S) TestSchedulerClientCreateContainer(c *check.C) {
 	err := newFakeImage(s.p, "localhost:5000/myimg", nil)
 	c.Assert(err, check.IsNil)
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	cont, err := client.CreateContainer(docker.CreateContainerOptions{
+	cont, err := client.PullAndCreateContainer(docker.CreateContainerOptions{
 		Name: "mycont",
 		Config: &docker.Config{
 			Image: "localhost:5000/myimg",
@@ -531,7 +423,7 @@ func (s *S) TestDbAwareClientCreateContainer(c *check.C) {
 				"app-name": "myapp",
 			},
 		},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
@@ -548,41 +440,41 @@ func (s *S) TestDbAwareClientCreateContainer(c *check.C) {
 	})
 }
 
-func (s *S) TestDbAwareClientCreateContainerNoAppNoName(c *check.C) {
+func (s *S) TestSchedulerClientCreateContainerNoAppNoName(c *check.C) {
 	err := newFakeImage(s.p, "localhost:5000/myimg", nil)
 	c.Assert(err, check.IsNil)
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	cont, err := client.CreateContainer(docker.CreateContainerOptions{
+	cont, err := client.PullAndCreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
 			Image: "localhost:5000/myimg",
 			Labels: map[string]string{
 				"app-name": "myapp",
 			},
 		},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.GetContainer(cont.ID)
 	c.Assert(err, check.FitsTypeOf, &provision.UnitNotFoundError{})
-	cont, err = client.CreateContainer(docker.CreateContainerOptions{
+	cont, err = client.PullAndCreateContainer(docker.CreateContainerOptions{
 		Name: "mycont",
 		Config: &docker.Config{
 			Image:  "localhost:5000/myimg",
 			Labels: map[string]string{},
 		},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.GetContainer(cont.ID)
 	c.Assert(err, check.FitsTypeOf, &provision.UnitNotFoundError{})
 }
 
-func (s *S) TestDbAwareClientCreateContainerFailure(c *check.C) {
+func (s *S) TestSchedulerClientCreateContainerFailure(c *check.C) {
 	err := newFakeImage(s.p, "localhost:5000/myimg", nil)
 	c.Assert(err, check.IsNil)
 	s.server.PrepareFailure("myerr", "/containers/create")
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	_, err = client.CreateContainer(docker.CreateContainerOptions{
+	_, err = client.PullAndCreateContainer(docker.CreateContainerOptions{
 		Name: "mycont",
 		Config: &docker.Config{
 			Image: "localhost:5000/myimg",
@@ -590,18 +482,18 @@ func (s *S) TestDbAwareClientCreateContainerFailure(c *check.C) {
 				"app-name": "myapp",
 			},
 		},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, `(?s).*myerr.*`)
 	_, err = s.p.GetContainerByName("mycont")
 	c.Assert(err, check.FitsTypeOf, &provision.UnitNotFoundError{})
 }
 
-func (s *S) TestDbAwareClientRemoveContainer(c *check.C) {
+func (s *S) TestSchedulerClientRemoveContainer(c *check.C) {
 	err := newFakeImage(s.p, "localhost:5000/myimg", nil)
 	c.Assert(err, check.IsNil)
 	client, err := s.p.GetDockerClient(nil)
 	c.Assert(err, check.IsNil)
-	cont, err := client.CreateContainer(docker.CreateContainerOptions{
+	cont, err := client.PullAndCreateContainer(docker.CreateContainerOptions{
 		Name: "mycont",
 		Config: &docker.Config{
 			Image: "localhost:5000/myimg",
@@ -609,7 +501,7 @@ func (s *S) TestDbAwareClientRemoveContainer(c *check.C) {
 				"app-name": "myapp",
 			},
 		},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	err = client.RemoveContainer(docker.RemoveContainerOptions{
 		ID: cont.ID,

@@ -280,7 +280,7 @@ type RebuildableDeployer interface {
 }
 
 type BuilderDockerClient interface {
-	CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error)
+	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, error)
 	RemoveContainer(opts docker.RemoveContainerOptions) error
 	StartContainer(id string, hostConfig *docker.HostConfig) error
 	StopContainer(id string, timeout uint) error
@@ -293,7 +293,6 @@ type BuilderDockerClient interface {
 	WaitContainer(id string) (int, error)
 
 	BuildImage(opts docker.BuildImageOptions) error
-	PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error
 	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
 	InspectImage(string) (*docker.Image, error)
 	TagImage(string, docker.TagImageOptions) error

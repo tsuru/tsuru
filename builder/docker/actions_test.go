@@ -13,6 +13,8 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -22,6 +24,10 @@ import (
 
 func (s *S) TestCreateContainerName(c *check.C) {
 	c.Assert(createContainer.Name, check.Equals, "create-container")
+}
+
+func builderClient(c *docker.Client) provision.BuilderDockerClient {
+	return &dockercommon.PullAndCreateClient{Client: c}
 }
 
 func (s *S) TestCreateContainerForward(c *check.C) {
@@ -45,7 +51,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		app:           app,
 		imageID:       images[0].ID,
 		commands:      cmds,
-		client:        client,
+		client:        builderClient(client),
 		provisioner:   s.provisioner,
 		buildingImage: images[0].ID,
 	}
@@ -53,7 +59,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	r, err := createContainer.Forward(context)
 	c.Assert(err, check.IsNil)
 	cont = r.(Container)
-	defer cont.Remove(client)
+	defer cont.Remove(builderClient(client))
 	c.Assert(cont, check.FitsTypeOf, Container{})
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cc, err := client.InspectContainer(cont.ID)
@@ -75,7 +81,7 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	cont := *conta
 	args := runContainerActionsArgs{
 		provisioner: s.provisioner,
-		client:      client,
+		client:      builderClient(client),
 	}
 	context := action.BWContext{FWResult: cont, Params: []interface{}{args}}
 	createContainer.Backward(context)
@@ -99,7 +105,7 @@ func (s *S) TestUploadToContainerForward(c *check.C) {
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
 		app:         provisiontest.NewFakeApp("myapp", "python", 1),
-		client:      client,
+		client:      builderClient(client),
 		tarFile:     imgFile,
 	}}}
 	r, err := uploadToContainer.Forward(context)
@@ -122,7 +128,7 @@ func (s *S) TestStartContainerForward(c *check.C) {
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
 		app:         provisiontest.NewFakeApp("myapp", "python", 1),
-		client:      client,
+		client:      builderClient(client),
 	}}}
 	r, err := startContainer.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -144,7 +150,7 @@ func (s *S) TestStartContainerBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	context := action.BWContext{FWResult: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
-		client:      client,
+		client:      builderClient(client),
 	}}}
 	startContainer.Backward(context)
 	cc, err := client.InspectContainer(cont.ID)
@@ -169,11 +175,11 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
-		Client:   client,
+		Client:   builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: client}
+	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: builderClient(client)}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -197,13 +203,13 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
-		Client:   client,
+		Client:   builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
 	err = s.server.MutateContainer(cont.ID, docker.State{ExitCode: 1})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: client}
+	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: builderClient(client)}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.NotNil)
@@ -224,17 +230,17 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
-		Client:   client,
+		Client:   builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
 	err = cont.Start(&StartArgs{
-		Client: client,
+		Client: builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
-	err = cont.Stop(client)
+	err = cont.Stop(builderClient(client))
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: client}
+	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: builderClient(client)}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.ErrorMatches, `.*failed to wait for the container\n$`)
@@ -258,15 +264,15 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
-		Client:   client,
+		Client:   builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	imgID, err := cont.Commit(client, buf)
+	imgID, err := cont.Commit(builderClient(client), buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
-	args := runContainerActionsArgs{app: app, writer: buf, provisioner: s.provisioner, client: client, buildingImage: nextImgName}
+	args := runContainerActionsArgs{app: app, writer: buf, provisioner: s.provisioner, client: builderClient(client), buildingImage: nextImgName}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	_, err = updateAppBuilderImage.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -326,7 +332,7 @@ func (s *S) newContainer(client *docker.Client) (*Container, error) {
 
 func (s *S) removeTestContainer(c *Container, client *docker.Client) error {
 	routertest.FakeRouter.RemoveBackend(c.AppName)
-	return c.Remove(client)
+	return c.Remove(builderClient(client))
 }
 
 func (s *S) newFakeImage(client *docker.Client, repo string, customData map[string]interface{}) error {

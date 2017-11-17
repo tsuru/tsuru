@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -169,55 +170,30 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 }
 
 func (p *dockerProvisioner) GetDockerClient(app provision.App) (provision.BuilderDockerClient, error) {
-	cluster := p.Cluster()
-	var nodeAddr string
-	if app == nil {
-		nodes, err := cluster.Nodes()
-		if err != nil {
-			return nil, err
-		}
-		if len(nodes) < 1 {
-			return nil, errors.New("There is no Docker node. Add one with `tsuru node-add`")
-		}
-		nodeAddr, _, err = p.scheduler.minMaxNodes(nodes, "", "")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		nodes, err := cluster.NodesForMetadata(map[string]string{provision.PoolMetadataName: app.GetPool()})
-		if err != nil {
-			return nil, err
-		}
-		nodeAddr, _, err = p.scheduler.minMaxNodes(nodes, app.GetName(), "")
-		if err != nil {
-			return nil, err
-		}
-	}
-	node, err := cluster.GetNode(nodeAddr)
-	if err != nil {
-		return nil, err
-	}
-	client, err := node.Client()
-	if err != nil {
-		return nil, err
-	}
-	return &dbAwareClient{
-		p:                 p,
-		ClientWithTimeout: &dockercommon.ClientWithTimeout{Client: client},
+	return &schedulerClient{
+		Cluster: p.Cluster(),
+		p:       p,
 	}, nil
 }
 
-type dbAwareClient struct {
+type schedulerClient struct {
+	*cluster.Cluster
 	p *dockerProvisioner
-	*dockercommon.ClientWithTimeout
 }
 
-func (c *dbAwareClient) CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error) {
+var _ provision.BuilderDockerClient = &schedulerClient{}
+
+func (c *schedulerClient) SetTimeout(time.Duration) {
+	// noop, cluster already handles timeouts per operation correctly
+}
+
+func (c *schedulerClient) PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (cont *docker.Container, err error) {
 	ls := &provision.LabelSet{Labels: opts.Config.Labels}
 	if ls.AppName() == "" || opts.Name == "" {
 		// No need to register in db as BS won't associate this container with
 		// tsuru.
-		return c.ClientWithTimeout.CreateContainer(opts)
+		_, cont, err = c.Cluster.CreateContainer(opts, net.StreamInactivityTimeout)
+		return cont, err
 	}
 	dbCont := types.Container{
 		AppName:       ls.AppName(),
@@ -227,47 +203,74 @@ func (c *dbAwareClient) CreateContainer(opts docker.CreateContainerOptions) (*do
 		Name:          opts.Name,
 		Status:        provision.StatusBuilding.String(),
 		Image:         opts.Config.Image,
-		HostAddr:      net.URLToHost(c.ClientWithTimeout.Endpoint()),
 	}
 	coll := c.p.Collection()
 	defer coll.Close()
-	var cont *docker.Container
-	createErr := func() {
+	defer func() {
+		if err == nil {
+			return
+		}
 		dbErr := coll.Remove(bson.M{"name": dbCont.Name})
-		if dbErr != nil {
+		if dbErr != nil && dbErr != mgo.ErrNotFound {
 			log.Errorf("error trying to remove container in db after failure %#v: %v", cont, dbErr)
 		}
-	}
-	updateErr := func() {
-		createErr()
-		removeErr := c.ClientWithTimeout.RemoveContainer(docker.RemoveContainerOptions{
-			ID:            cont.ID,
-			RemoveVolumes: true,
-			Force:         true,
-		})
-		if removeErr != nil {
-			log.Errorf("error trying to remove container in docker after update failure %#v: %v", cont, removeErr)
+		if cont != nil {
+			removeErr := c.Cluster.RemoveContainer(docker.RemoveContainerOptions{
+				ID:            cont.ID,
+				RemoveVolumes: true,
+				Force:         true,
+			})
+			if removeErr != nil {
+				log.Errorf("error trying to remove container in docker after update failure %#v: %v", cont, removeErr)
+			}
 		}
-	}
-	err := coll.Insert(dbCont)
+	}()
+	err = coll.Insert(dbCont)
 	if err != nil {
 		return nil, err
 	}
-	cont, err = c.ClientWithTimeout.CreateContainer(opts)
+	schedulerOpts := &container.SchedulerOpts{
+		AppName:       ls.AppName(),
+		ProcessName:   ls.AppProcess(),
+		UpdateName:    true,
+		ActionLimiter: c.p.ActionLimiter(),
+	}
+	var addr string
+	pullOpts := docker.PullImageOptions{
+		Repository:        opts.Config.Image,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	if w != nil {
+		pullOpts.OutputStream = &tsuruIo.DockerErrorCheckWriter{W: w}
+		pullOpts.RawJSONStream = true
+	}
+	addr, cont, err = c.Cluster.CreateContainerPullOptsSchedulerOpts(
+		opts,
+		pullOpts,
+		dockercommon.RegistryAuthConfig(),
+		schedulerOpts,
+	)
+	if schedulerOpts.LimiterDone != nil {
+		schedulerOpts.LimiterDone()
+	}
 	if err != nil {
-		createErr()
 		return nil, err
 	}
-	err = coll.Update(bson.M{"name": dbCont.Name}, bson.M{"$set": bson.M{"id": cont.ID}})
+	err = coll.Update(bson.M{"name": cont.Name}, bson.M{"$set": bson.M{
+		"id":       cont.ID,
+		"hostaddr": net.URLToHost(addr),
+	}})
 	if err != nil {
-		updateErr()
 		return nil, errors.Wrap(err, "unable to update container ID in db")
 	}
 	return cont, nil
 }
 
-func (c *dbAwareClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
-	err := c.ClientWithTimeout.RemoveContainer(opts)
+func (c *schedulerClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
+	err := c.Cluster.RemoveContainer(opts)
+	if err != nil {
+		log.Errorf("error trying to remove container %q: %v", opts.ID, err)
+	}
 	coll := c.p.Collection()
 	defer coll.Close()
 	dbErr := coll.Remove(bson.M{"id": opts.ID})

@@ -154,7 +154,17 @@ func (c *Container) Create(args *CreateArgs) error {
 		opts.Context = ctx
 		defer cancel()
 	}
-	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
+	addr, cont, err := args.Provisioner.Cluster().CreateContainerPullOptsSchedulerOpts(
+		opts,
+		docker.PullImageOptions{
+			Repository:        opts.Config.Image,
+			InactivityTimeout: net.StreamInactivityTimeout,
+			Context:           opts.Context,
+		},
+		dockercommon.RegistryAuthConfig(),
+		schedulerOpts,
+		nodeList...,
+	)
 	hostAddr := net.URLToHost(addr)
 	if schedulerOpts.LimiterDone != nil {
 		schedulerOpts.LimiterDone()
