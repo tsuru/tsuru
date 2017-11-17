@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/fsouza/go-dockerclient"
@@ -839,75 +838,5 @@ func TestImageHistory(t *testing.T) {
 	}
 	if historyData[0].ID != "id1" {
 		t.Fatalf("Expected image id to be 'id1', got: %s", historyData[0].ID)
-	}
-}
-
-func TestRemoveImageFromRegistry(t *testing.T) {
-	var called bool
-	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/repositories/test/test/" {
-			called = true
-		}
-	}))
-	defer server1.Close()
-	hostPort := strings.TrimPrefix(server1.URL, "http://")
-	name := hostPort + "/test/test"
-	stor := &MapStorage{}
-	err := stor.StoreImage(name, "id1", server1.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cluster, err := New(nil, stor, "",
-		Node{Address: server1.URL},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = cluster.RemoveFromRegistry(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !called {
-		t.Fatal("Should call registry v1, but don't")
-	}
-}
-
-func TestRemoveImageFromRegistryV2(t *testing.T) {
-	var called bool
-	server1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer server1.Stop()
-	server1.CustomHandler("/v2/test/test/manifests/sha256:digest", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-	}))
-	server1.CustomHandler("/v1/repositories/test/test/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		called = false
-	}))
-	hostPort := strings.TrimPrefix(server1.URL(), "http://")
-	name := hostPort + "test/test"
-	stor := &MapStorage{}
-	err = stor.StoreImage(name, "id1", server1.URL())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = stor.SetImageDigest(name, "sha256:digest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cluster, err := New(nil, stor, "",
-		Node{Address: server1.URL()},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = cluster.RemoveFromRegistry(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !called {
-		t.Fatal("Should call registry v2, but don't")
 	}
 }

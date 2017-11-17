@@ -1,4 +1,4 @@
-#docker-cluster
+# docker-cluster
 
 [![Build Status](https://travis-ci.org/tsuru/docker-cluster.png)](https://travis-ci.org/tsuru/docker-cluster)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tsuru/docker-cluster)](https://goreportcard.com/report/github.com/tsuru/docker-cluster)

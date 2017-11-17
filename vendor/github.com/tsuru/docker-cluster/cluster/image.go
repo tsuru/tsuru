@@ -10,7 +10,6 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -89,44 +88,6 @@ func parseImageRegistry(imageId string) (string, string) {
 		return "", strings.Join(parts, "/")
 	}
 	return parts[0], strings.Join(parts[1:], "/")
-}
-
-func (c *Cluster) RemoveFromRegistry(imageId string) error {
-	registryServer, imageTag := parseImageRegistry(imageId)
-	if registryServer == "" {
-		return nil
-	}
-	url := fmt.Sprintf("http://%s/v1/repositories/%s/", registryServer, imageTag)
-	resp, err := deleteImage(url)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode == 404 {
-		var imageTagName string
-		imageData := strings.SplitN(imageTag, ":", 2)
-		imageTagName = imageData[0]
-		img, err := c.storage().RetrieveImage(imageId)
-		if err != nil && img.LastDigest == "" {
-			return err
-		}
-		url := fmt.Sprintf("http://%s/v2/%s/manifests/%s", registryServer, imageTagName, img.LastDigest)
-		_, err = deleteImage(url)
-		return err
-	}
-	return nil
-}
-
-func deleteImage(url string) (*http.Response, error) {
-	request, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Close = true
-	rsp, err := clientWithTimeout(defaultDialTimeout, defaultTimeout, nil).Do(request)
-	if err == nil {
-		rsp.Body.Close()
-	}
-	return rsp, err
 }
 
 // PullImage pulls an image from a remote registry server, returning an error

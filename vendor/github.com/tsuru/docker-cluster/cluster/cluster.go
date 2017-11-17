@@ -62,6 +62,13 @@ type ContainerStorage interface {
 	RetrieveContainers() ([]Container, error)
 }
 
+// ExecStorage works like ContainerStorage, but stores information about
+// execID and containerID.
+type ExecStorage interface {
+	StoreExec(execID, containerID string) error
+	RetrieveExec(execID string) (host string, err error)
+}
+
 // ImageStorage works like ContainerStorage, but stores information about
 // images and hosts.
 type ImageStorage interface {
@@ -89,6 +96,7 @@ type Storage interface {
 	ContainerStorage
 	ImageStorage
 	NodeStorage
+	ExecStorage
 }
 
 type HookEvent int

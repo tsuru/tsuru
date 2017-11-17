@@ -44,7 +44,14 @@ func (s *mongodbStorage) RetrieveContainer(container string) (string, error) {
 func (s *mongodbStorage) RemoveContainer(container string) error {
 	coll := s.getColl("containers")
 	defer coll.Database.Session.Close()
-	return coll.Remove(bson.M{"_id": container})
+	err1 := coll.Remove(bson.M{"_id": container})
+	coll = s.getColl("execs")
+	defer coll.Database.Session.Close()
+	_, err2 := coll.RemoveAll(bson.M{"container": container})
+	if err1 != nil {
+		return err1
+	}
+	return err2
 }
 
 func (s *mongodbStorage) RetrieveContainers() ([]cluster.Container, error) {
@@ -227,6 +234,25 @@ func (s *mongodbStorage) RemoveNodes(addresses []string) error {
 		return storage.ErrNoSuchNode
 	}
 	return nil
+}
+
+func (s *mongodbStorage) StoreExec(execID, containerID string) error {
+	coll := s.getColl("execs")
+	defer coll.Database.Session.Close()
+	return coll.Insert(bson.M{"_id": execID, "container": containerID})
+}
+
+func (s *mongodbStorage) RetrieveExec(execID string) (string, error) {
+	coll := s.getColl("execs")
+	defer coll.Database.Session.Close()
+	dbExec := struct {
+		Container string
+	}{}
+	err := coll.FindId(execID).One(&dbExec)
+	if err == mgo.ErrNotFound {
+		return "", storage.ErrNoSuchExec
+	}
+	return dbExec.Container, err
 }
 
 func (s *mongodbStorage) getColl(name string) *mgo.Collection {

@@ -33,6 +33,16 @@ func (c *Cluster) CreateContainer(opts docker.CreateContainerOptions, inactivity
 // Similar to CreateContainer but allows arbritary options to be passed to
 // the scheduler.
 func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions, inactivityTimeout time.Duration, nodes ...string) (string, *docker.Container, error) {
+	return c.CreateContainerPullOptsSchedulerOpts(opts, docker.PullImageOptions{
+		Repository:        opts.Config.Image,
+		InactivityTimeout: inactivityTimeout,
+		Context:           opts.Context,
+	}, docker.AuthConfiguration{}, schedulerOpts, nodes...)
+}
+
+// Similar to CreateContainer but allows arbritary options to be passed to
+// the scheduler and to the pull image call.
+func (c *Cluster) CreateContainerPullOptsSchedulerOpts(opts docker.CreateContainerOptions, pullOpts docker.PullImageOptions, pullAuth docker.AuthConfiguration, schedulerOpts SchedulerOptions, nodes ...string) (string, *docker.Container, error) {
 	var (
 		addr      string
 		container *docker.Container
@@ -68,7 +78,7 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 			log.Errorf("Error in before create container hook in node %q: %s. Trying again in another node...", addr, err)
 		}
 		if err == nil {
-			container, err = c.createContainerInNode(opts, inactivityTimeout, addr)
+			container, err = c.createContainerInNode(opts, pullOpts, pullAuth, addr)
 			if err == nil {
 				c.handleNodeSuccess(addr)
 				break
@@ -101,14 +111,10 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 	return addr, container, err
 }
 
-func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, inactivityTimeout time.Duration, nodeAddress string) (*docker.Container, error) {
+func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, pullOpts docker.PullImageOptions, pullAuth docker.AuthConfiguration, nodeAddress string) (*docker.Container, error) {
 	registryServer, _ := parseImageRegistry(opts.Config.Image)
 	if registryServer != "" {
-		err := c.PullImage(docker.PullImageOptions{
-			Repository:        opts.Config.Image,
-			InactivityTimeout: inactivityTimeout,
-			Context:           opts.Context,
-		}, docker.AuthConfiguration{}, nodeAddress)
+		err := c.PullImage(pullOpts, pullAuth, nodeAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +207,16 @@ func (c *Cluster) StartContainer(id string, hostConfig *docker.HostConfig) error
 	if err != nil {
 		return err
 	}
-	return wrapError(node, node.StartContainer(id, hostConfig))
+	err = node.StartContainer(id, hostConfig)
+	if err != nil {
+		switch err.(type) {
+		case *docker.NoSuchContainer:
+		case *docker.ContainerAlreadyRunning:
+		default:
+			c.handleNodeError(node.addr, err, false)
+		}
+	}
+	return wrapError(node, err)
 }
 
 // StopContainer stops a container, killing it after the given timeout, if it
@@ -333,17 +348,29 @@ func (c *Cluster) getNodeForContainer(container string) (node, error) {
 	return c.getNodeByAddr(addr)
 }
 
+func (c *Cluster) getNodeForExec(execID string) (node, error) {
+	containerID, err := c.storage().RetrieveExec(execID)
+	if err != nil {
+		return node{}, err
+	}
+	return c.getNodeForContainer(containerID)
+}
+
 func (c *Cluster) CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error) {
 	node, err := c.getNodeForContainer(opts.Container)
 	if err != nil {
 		return nil, err
 	}
 	exec, err := node.CreateExec(opts)
-	return exec, wrapError(node, err)
+	if err != nil {
+		return nil, wrapError(node, err)
+	}
+	err = c.storage().StoreExec(exec.ID, opts.Container)
+	return exec, err
 }
 
-func (c *Cluster) StartExec(execId, containerId string, opts docker.StartExecOptions) error {
-	node, err := c.getNodeForContainer(containerId)
+func (c *Cluster) StartExec(execId string, opts docker.StartExecOptions) error {
+	node, err := c.getNodeForExec(execId)
 	if err != nil {
 		return err
 	}
@@ -351,16 +378,16 @@ func (c *Cluster) StartExec(execId, containerId string, opts docker.StartExecOpt
 	return wrapError(node, node.StartExec(execId, opts))
 }
 
-func (c *Cluster) ResizeExecTTY(execId, containerId string, height, width int) error {
-	node, err := c.getNodeForContainer(containerId)
+func (c *Cluster) ResizeExecTTY(execId string, height, width int) error {
+	node, err := c.getNodeForExec(execId)
 	if err != nil {
 		return err
 	}
 	return wrapError(node, node.ResizeExecTTY(execId, height, width))
 }
 
-func (c *Cluster) InspectExec(execId, containerId string) (*docker.ExecInspect, error) {
-	node, err := c.getNodeForContainer(containerId)
+func (c *Cluster) InspectExec(execId string) (*docker.ExecInspect, error) {
+	node, err := c.getNodeForExec(execId)
 	if err != nil {
 		return nil, err
 	}

@@ -85,6 +85,12 @@ func (failingStorage) ExtendNodeLock(address string, timeout time.Duration) erro
 func (failingStorage) UnlockNode(address string) error {
 	return errors.New("storage error")
 }
+func (failingStorage) StoreExec(execID, containerID string) error {
+	return errors.New("storage error")
+}
+func (failingStorage) RetrieveExec(execID string) (string, error) {
+	return "", errors.New("storage error")
+}
 
 type fakeScheduler struct{}
 
