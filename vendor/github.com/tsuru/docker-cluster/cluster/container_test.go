@@ -1146,6 +1146,136 @@ func TestStartContainer(t *testing.T) {
 	if !called {
 		t.Errorf("StartContainer(%q): Did not call node HTTP server", id)
 	}
+	nodes, err := cluster.UnfilteredNodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes[0].FailureCount() != 0 {
+		t.Fatalf("Expected failure count to be 0, got: %d", nodes[0].FailureCount())
+	}
+	if nodes[1].FailureCount() != 0 {
+		t.Fatalf("Expected failure count to be 0, got: %d", nodes[1].FailureCount())
+	}
+	if !nodes[0].isEnabled() {
+		t.Fatalf("Expected to be enabled, got: %v", nodes[0].isEnabled())
+	}
+	if !nodes[1].isEnabled() {
+		t.Fatalf("Expected to be enabled, got: %v", nodes[1].isEnabled())
+	}
+}
+
+func TestStartContainerErrorNotFound(t *testing.T) {
+	var called bool
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		http.Error(w, "No such container", http.StatusNotFound)
+	}))
+	defer server1.Close()
+	id := "abc123"
+	storage := &MapStorage{}
+	err := storage.StoreContainer(id, server1.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cluster, err := New(nil, storage, "",
+		Node{Address: server1.URL},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = cluster.StartContainer(id, nil)
+	if err == nil || !strings.Contains(err.Error(), "No such container") {
+		t.Fatalf("StartContainer(%q): expected not found error, got: %v", id, err)
+	}
+	if !called {
+		t.Errorf("StartContainer(%q): Did not call node HTTP server", id)
+	}
+	nodes, err := cluster.UnfilteredNodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes[0].FailureCount() != 0 {
+		t.Fatalf("Expected failure count to be 0, got: %d", nodes[0].FailureCount())
+	}
+	if !nodes[0].isEnabled() {
+		t.Fatalf("Expected to be enabled, got: %v", nodes[0].isEnabled())
+	}
+}
+
+func TestStartContainerErrorAlreadyRunning(t *testing.T) {
+	var called bool
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		http.Error(w, "running", http.StatusNotModified)
+	}))
+	defer server1.Close()
+	id := "abc123"
+	storage := &MapStorage{}
+	err := storage.StoreContainer(id, server1.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cluster, err := New(nil, storage, "",
+		Node{Address: server1.URL},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = cluster.StartContainer(id, nil)
+	if err == nil || !strings.Contains(err.Error(), "Container already running") {
+		t.Fatalf("StartContainer(%q): expected conflict error, got: %v", id, err)
+	}
+	if !called {
+		t.Errorf("StartContainer(%q): Did not call node HTTP server", id)
+	}
+	nodes, err := cluster.UnfilteredNodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes[0].FailureCount() != 0 {
+		t.Fatalf("Expected failure count to be 0, got: %d", nodes[0].FailureCount())
+	}
+	if !nodes[0].isEnabled() {
+		t.Fatalf("Expected to be enabled, got: %v", nodes[0].isEnabled())
+	}
+}
+
+func TestStartContainerErrorOther(t *testing.T) {
+	var called bool
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		http.Error(w, "weird error", http.StatusInternalServerError)
+	}))
+	defer server1.Close()
+	id := "abc123"
+	storage := &MapStorage{}
+	err := storage.StoreContainer(id, server1.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cluster, err := New(nil, storage, "",
+		Node{Address: server1.URL},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = cluster.StartContainer(id, nil)
+	if err == nil || !strings.Contains(err.Error(), "weird error") {
+		t.Fatalf("StartContainer(%q): expected weird error, got: %v", id, err)
+	}
+	if !called {
+		t.Errorf("StartContainer(%q): Did not call node HTTP server", id)
+	}
+	nodes, err := cluster.UnfilteredNodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes[0].FailureCount() != 0 {
+		t.Fatalf("Expected failure count to be 0, got: %d", nodes[0].FailureCount())
+	}
+	if nodes[0].isEnabled() {
+		t.Fatalf("Expected to be disabled, got: %v", nodes[0].isEnabled())
+	}
 }
 
 func TestStartContainerWithStorage(t *testing.T) {
@@ -2264,11 +2394,11 @@ func TestExecContainer(t *testing.T) {
 		ErrorStream:  nil,
 		RawTerminal:  true,
 	}
-	err = cluster.StartExec(exec.ID, container.ID, startExecOptions)
+	err = cluster.StartExec(exec.ID, startExecOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = cluster.ResizeExecTTY(exec.ID, container.ID, 10, 10)
+	err = cluster.ResizeExecTTY(exec.ID, 10, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2299,19 +2429,30 @@ func TestInspectExec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	execId := "d34db33f"
-	exec, err := cluster.InspectExec(execId, contId)
+	createExecOpts := docker.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          false,
+		Cmd:          []string{"ls"},
+		Container:    contId,
+	}
+	exec, err := cluster.CreateExec(createExecOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exec.ID != execId {
-		t.Errorf("InspectExec: Wrong ID. Want %q. Got %q.", execId, exec.ID)
+	execInspect, err := cluster.InspectExec(exec.ID)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if exec.Running {
+	if execInspect.ID != exec.ID {
+		t.Errorf("InspectExec: Wrong ID. Want %q. Got %q.", exec.ID, execInspect.ID)
+	}
+	if execInspect.Running {
 		t.Errorf("InspectExec: Wrong Running. Want false. Got true.")
 	}
-	if exec.ExitCode != 1 {
-		t.Errorf("InspectExec: Wrong Running. Want %d. Got %d.", 1, exec.ExitCode)
+	if execInspect.ExitCode != 1 {
+		t.Errorf("InspectExec: Wrong Running. Want %d. Got %d.", 1, execInspect.ExitCode)
 	}
 	if count > 0 {
 		t.Errorf("InspectExec: should not send request to all servers, but did.")

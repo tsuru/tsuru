@@ -13,13 +13,17 @@ import (
 
 type MapStorage struct {
 	cMap    map[string]string
+	eMap    map[string]string
 	iMap    map[string]*Image
 	nodes   []Node
 	nodeMap map[string]*Node
 	cMut    sync.Mutex
 	iMut    sync.Mutex
 	nMut    sync.Mutex
+	eMut    sync.Mutex
 }
+
+var _ Storage = &MapStorage{}
 
 func (s *MapStorage) StoreContainer(containerID, hostID string) error {
 	s.cMut.Lock()
@@ -45,6 +49,13 @@ func (s *MapStorage) RemoveContainer(containerID string) error {
 	s.cMut.Lock()
 	defer s.cMut.Unlock()
 	delete(s.cMap, containerID)
+	s.eMut.Lock()
+	defer s.eMut.Unlock()
+	for k, v := range s.eMap {
+		if v == containerID {
+			delete(s.eMap, k)
+		}
+	}
 	return nil
 }
 
@@ -297,4 +308,24 @@ func (s *MapStorage) UnlockNode(address string) error {
 	}
 	n.Healing = HealingData{}
 	return nil
+}
+
+func (s *MapStorage) StoreExec(execID, containerID string) error {
+	s.eMut.Lock()
+	defer s.eMut.Unlock()
+	if s.eMap == nil {
+		s.eMap = make(map[string]string)
+	}
+	s.eMap[execID] = containerID
+	return nil
+}
+
+func (s *MapStorage) RetrieveExec(execID string) (containerID string, err error) {
+	s.eMut.Lock()
+	defer s.eMut.Unlock()
+	containerID, ok := s.eMap[execID]
+	if !ok {
+		return "", storage.ErrNoSuchExec
+	}
+	return containerID, nil
 }
