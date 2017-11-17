@@ -16,6 +16,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -77,6 +78,7 @@ type CreateContainerArgs struct {
 	ProcessName      string
 	Deploy           bool
 	Building         bool
+	Event            *event.Event
 }
 
 func (c *Container) Create(args *CreateContainerArgs) error {
@@ -115,7 +117,7 @@ func (c *Container) Create(args *CreateContainerArgs) error {
 	}
 	c.addEnvsToConfig(args, strings.TrimSuffix(c.ExposedPort, "/tcp"), &conf)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &conf, HostConfig: hostConf}
-	cont, err := args.Client.CreateContainer(opts)
+	cont, err := args.Client.PullAndCreateContainer(opts, args.Event)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err

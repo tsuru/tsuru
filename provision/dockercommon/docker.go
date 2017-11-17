@@ -17,6 +17,7 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"golang.org/x/net/context"
@@ -26,12 +27,31 @@ const (
 	JsonFileLogDriver = "json-file"
 )
 
-type ClientWithTimeout struct {
+type PullAndCreateClient struct {
 	*docker.Client
 }
 
-func (c *ClientWithTimeout) SetTimeout(timeout time.Duration) {
+var _ provision.BuilderDockerClient = &PullAndCreateClient{}
+
+func (c *PullAndCreateClient) SetTimeout(timeout time.Duration) {
 	c.Client.HTTPClient.Timeout = timeout
+}
+
+func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, error) {
+	if w != nil {
+		w = &tsuruIo.DockerErrorCheckWriter{W: w}
+	}
+	pullOpts := docker.PullImageOptions{
+		Repository:        opts.Config.Image,
+		OutputStream:      w,
+		InactivityTimeout: tsuruNet.StreamInactivityTimeout,
+		RawJSONStream:     true,
+	}
+	err := c.Client.PullImage(pullOpts, RegistryAuthConfig())
+	if err != nil {
+		return nil, err
+	}
+	return c.Client.CreateContainer(opts)
 }
 
 type Client interface {

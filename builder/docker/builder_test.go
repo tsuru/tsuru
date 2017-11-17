@@ -456,10 +456,10 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgs, err = dclient.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 3)
+	c.Assert(imgs, check.HasLen, 2)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
-	got = []string{imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	expected = []string{s.team.Name + "/app-myapp:v2-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)

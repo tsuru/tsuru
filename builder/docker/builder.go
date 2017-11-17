@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -65,18 +64,6 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	imageName := image.GetBuildImage(app)
-	w := evt
-	fmt.Fprintln(w, "---- Pulling image to node ----")
-	pullOpts := docker.PullImageOptions{
-		Repository:        imageName,
-		OutputStream:      w,
-		InactivityTimeout: net.StreamInactivityTimeout,
-	}
-	err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
-	if err != nil {
-		return "", err
-	}
 	imageID, err := b.buildPipeline(p, client, app, tarFile, evt, opts.Tag)
 	if err != nil {
 		return "", err
@@ -88,22 +75,10 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
-	w := evt
-	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
-	pullOpts := docker.PullImageOptions{
-		Repository:        imageID,
-		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
-		InactivityTimeout: net.StreamInactivityTimeout,
-		RawJSONStream:     true,
-	}
-	err := client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintln(w, "---- Getting process from image ----")
+	fmt.Fprintln(evt, "---- Getting process from image ----")
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
 	var buf bytes.Buffer
-	err = runCommandInContainer(client, imageID, cmd, app, &buf, nil)
+	err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
 	if err != nil {
 		return "", err
 	}
@@ -112,7 +87,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 		App:         app,
 		ProcfileRaw: buf.String(),
 		ImageID:     imageID,
-		Out:         w,
+		Out:         evt,
 	})
 	if err != nil {
 		return "", err
@@ -120,7 +95,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	return newImage, nil
 }
 
-func runCommandInContainer(client provision.BuilderDockerClient, image string, command string, app provision.App, stdout, stderr io.Writer) error {
+func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Event, image string, command string, app provision.App, stdout, stderr io.Writer) error {
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -130,7 +105,7 @@ func runCommandInContainer(client provision.BuilderDockerClient, image string, c
 			Cmd:          []string{command},
 		},
 	}
-	cont, err := client.CreateContainer(createOptions)
+	cont, err := client.PullAndCreateContainer(createOptions, evt)
 	if err != nil {
 		return err
 	}
@@ -169,7 +144,7 @@ func downloadFromContainer(client provision.BuilderDockerClient, app provision.A
 			Image:        imageName,
 		},
 	}
-	cont, err := client.CreateContainer(options)
+	cont, err := client.PullAndCreateContainer(options, nil)
 	if err != nil {
 		return nil, nil, err
 	}
