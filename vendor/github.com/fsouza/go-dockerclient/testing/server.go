@@ -979,12 +979,6 @@ func (s *DockerServer) buildImage(w http.ResponseWriter, r *http.Request) {
 func (s *DockerServer) pullImage(w http.ResponseWriter, r *http.Request) {
 	fromImageName := r.URL.Query().Get("fromImage")
 	tag := r.URL.Query().Get("tag")
-	image := docker.Image{
-		ID:     s.generateID(),
-		Config: &docker.Config{},
-	}
-	s.iMut.Lock()
-	s.images = append(s.images, image)
 	if fromImageName != "" {
 		if tag != "" {
 			separator := ":"
@@ -993,7 +987,17 @@ func (s *DockerServer) pullImage(w http.ResponseWriter, r *http.Request) {
 			}
 			fromImageName = fmt.Sprintf("%s%s%s", fromImageName, separator, tag)
 		}
-		s.imgIDs[fromImageName] = image.ID
+	}
+	image := docker.Image{
+		ID:     s.generateID(),
+		Config: &docker.Config{},
+	}
+	s.iMut.Lock()
+	if _, exists := s.imgIDs[fromImageName]; fromImageName == "" || !exists {
+		s.images = append(s.images, image)
+		if fromImageName != "" {
+			s.imgIDs[fromImageName] = image.ID
+		}
 	}
 	s.iMut.Unlock()
 }

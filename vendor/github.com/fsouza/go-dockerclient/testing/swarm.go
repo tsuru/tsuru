@@ -255,6 +255,9 @@ func (s *DockerServer) setServiceEndpoint(service *swarm.Service) {
 }
 
 func (s *DockerServer) addTasks(service *swarm.Service, update bool) {
+	if service.Spec.TaskTemplate.ContainerSpec == nil {
+		return
+	}
 	containerCount := 1
 	if service.Spec.Mode.Global != nil {
 		containerCount = len(s.nodes)
