@@ -78,7 +78,14 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 	}
 	params.Address = address
 	err = p.AddNode(params)
-	return address, response, err
+	if err != nil {
+		return "", nil, err
+	}
+	node, err := p.GetNode(address)
+	if err != nil {
+		return "", nil, err
+	}
+	return node.Address(), response, err
 }
 
 // title: add node
