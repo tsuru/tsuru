@@ -313,14 +313,15 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 	}
 	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
 		startErr := c.Start(&container.StartArgs{
-			Provisioner: p,
-			App:         app,
+			Client:  p.ClusterClient(),
+			Limiter: p.ActionLimiter(),
+			App:     app,
 		})
 		if startErr != nil {
 			return startErr
 		}
-		c.SetStatus(p, provision.StatusStarting, true)
-		if info, infoErr := c.NetworkInfo(p); infoErr == nil {
+		c.SetStatus(p.ClusterClient(), provision.StatusStarting, true)
+		if info, infoErr := c.NetworkInfo(p.ClusterClient()); infoErr == nil {
 			p.fixContainer(c, info)
 		}
 		return nil
@@ -335,7 +336,7 @@ func (p *dockerProvisioner) Stop(app provision.App, process string) error {
 		return nil
 	}
 	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		err := c.Stop(p)
+		err := c.Stop(p.ClusterClient(), p.ActionLimiter())
 		if err != nil {
 			log.Errorf("Failed to stop %q: %s", app.GetName(), err)
 		}
@@ -350,7 +351,7 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 		return nil
 	}
 	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		err := c.Sleep(p)
+		err := c.Sleep(p.ClusterClient(), p.ActionLimiter())
 		if err != nil {
 			log.Errorf("Failed to sleep %q: %s", app.GetName(), err)
 		}
@@ -520,7 +521,7 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io
 	}
 	cmds := yamlData.Hooks.Restart.After
 	for _, cmd := range cmds {
-		err := cont.Exec(p, w, w, cmd)
+		err := cont.Exec(p.ClusterClient(), w, w, cmd)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't execute restart:after hook %q(%s)", cmd, cont.ShortID())
 		}
@@ -562,7 +563,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	}
 	rollbackCallback := func(c *container.Container) {
 		log.Errorf("Removing container %q due failed add units.", c.ID)
-		errRem := c.Remove(args.provisioner)
+		errRem := c.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 		if errRem != nil {
 			log.Errorf("Unable to destroy container %q: %s", c.ID, errRem)
 		}
@@ -709,7 +710,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if unit.AppName != "" && cont.AppName != unit.AppName {
 		return errors.New("wrong app name")
 	}
-	err = cont.SetStatus(p, status, true)
+	err = cont.SetStatus(p.ClusterClient(), status, true)
 	if err != nil {
 		return err
 	}
@@ -724,7 +725,7 @@ func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app pro
 	if len(containers) == 0 {
 		return provision.ErrEmptyApp
 	}
-	return containers[0].Exec(p, stdout, stderr, cmd, args...)
+	return containers[0].Exec(p.ClusterClient(), stdout, stderr, cmd, args...)
 }
 
 func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
@@ -736,7 +737,7 @@ func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provisi
 		return provision.ErrEmptyApp
 	}
 	for _, c := range containers {
-		err = c.Exec(p, stdout, stderr, cmd, args...)
+		err = c.Exec(p.ClusterClient(), stdout, stderr, cmd, args...)
 		if err != nil {
 			return err
 		}
@@ -824,7 +825,7 @@ func (p *dockerProvisioner) RegisterUnit(a provision.App, unitId string, customD
 		}
 		return nil
 	}
-	err = cont.SetStatus(p, provision.StatusStarted, true)
+	err = cont.SetStatus(p.ClusterClient(), provision.StatusStarted, true)
 	if err != nil {
 		return err
 	}
@@ -844,7 +845,7 @@ func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 	if err != nil {
 		return err
 	}
-	return c.Shell(p, opts.Conn, opts.Conn, opts.Conn, container.Pty{Width: opts.Width, Height: opts.Height, Term: opts.Term})
+	return c.Shell(p.ClusterClient(), opts.Conn, opts.Conn, opts.Conn, container.Pty{Width: opts.Width, Height: opts.Height, Term: opts.Term})
 }
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {

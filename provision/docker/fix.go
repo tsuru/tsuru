@@ -13,7 +13,7 @@ import (
 
 func (p *dockerProvisioner) checkContainer(container *container.Container) error {
 	if container.Available() {
-		info, err := container.NetworkInfo(p)
+		info, err := container.NetworkInfo(p.ClusterClient())
 		if err != nil {
 			return err
 		}

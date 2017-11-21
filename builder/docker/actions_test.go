@@ -14,6 +14,8 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -46,7 +48,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		Value: "val1",
 	})
 	c.Assert(err, check.IsNil)
-	cont := Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	cont := container.Container{Container: types.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
 	args := runContainerActionsArgs{
 		app:           app,
 		imageID:       images[0].ID,
@@ -54,13 +56,14 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		client:        builderClient(client),
 		provisioner:   s.provisioner,
 		buildingImage: images[0].ID,
+		isDeploy:      true,
 	}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err := createContainer.Forward(context)
 	c.Assert(err, check.IsNil)
-	cont = r.(Container)
-	defer cont.Remove(builderClient(client))
-	c.Assert(cont, check.FitsTypeOf, Container{})
+	cont = r.(container.Container)
+	defer cont.Remove(builderClient(client), limiter())
+	c.Assert(cont, check.FitsTypeOf, container.Container{})
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cc, err := client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
@@ -110,8 +113,8 @@ func (s *S) TestUploadToContainerForward(c *check.C) {
 	}}}
 	r, err := uploadToContainer.Forward(context)
 	c.Assert(err, check.IsNil)
-	cont = r.(Container)
-	c.Assert(cont, check.FitsTypeOf, Container{})
+	cont = r.(container.Container)
+	c.Assert(cont, check.FitsTypeOf, container.Container{})
 }
 
 func (s *S) TestStartContainerName(c *check.C) {
@@ -132,8 +135,8 @@ func (s *S) TestStartContainerForward(c *check.C) {
 	}}}
 	r, err := startContainer.Forward(context)
 	c.Assert(err, check.IsNil)
-	cont = r.(Container)
-	c.Assert(cont, check.FitsTypeOf, Container{})
+	cont = r.(container.Container)
+	c.Assert(cont, check.FitsTypeOf, container.Container{})
 }
 
 func (s *S) TestStartContainerBackward(c *check.C) {
@@ -170,8 +173,8 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	cont := Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
-	err = cont.Create(&CreateContainerArgs{
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
@@ -198,8 +201,8 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	cont := Container{AppName: "mightyapp"}
-	err = cont.Create(&CreateContainerArgs{
+	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
+	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
@@ -225,19 +228,20 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	cont := Container{AppName: "mightyapp"}
-	err = cont.Create(&CreateContainerArgs{
+	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
+	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
 		Client:   builderClient(client),
 	})
 	c.Assert(err, check.IsNil)
-	err = cont.Start(&StartArgs{
-		Client: builderClient(client),
+	err = cont.Start(&container.StartArgs{
+		Client:  builderClient(client),
+		Limiter: limiter(),
 	})
 	c.Assert(err, check.IsNil)
-	err = cont.Stop(builderClient(client))
+	err = cont.Stop(builderClient(client), limiter())
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	args := runContainerActionsArgs{writer: buf, provisioner: s.provisioner, client: builderClient(client)}
@@ -259,8 +263,8 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	cont := Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
-	err = cont.Create(&CreateContainerArgs{
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
 		Commands: []string{"foo"},
@@ -268,7 +272,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	imgID, err := cont.Commit(builderClient(client), buf)
+	imgID, err := cont.Commit(builderClient(client), limiter(), buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
@@ -282,15 +286,15 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	c.Assert(allImages[0], check.Equals, "tsuru/app-mightyapp:v1")
 }
 
-func (s *S) newContainer(client *docker.Client) (*Container, error) {
-	container := Container{
+func (s *S) newContainer(client *docker.Client) (*container.Container, error) {
+	container := container.Container{Container: types.Container{
 		ID:          "id",
 		IP:          "10.10.10.10",
 		HostPort:    "3333",
 		HostAddr:    "127.0.0.1",
 		ProcessName: "web",
 		ExposedPort: "8888/tcp",
-	}
+	}}
 	imageName := "tsuru/python:latest"
 	var customData map[string]interface{}
 	err := s.newFakeImage(client, imageName, customData)
@@ -330,9 +334,9 @@ func (s *S) newContainer(client *docker.Client) (*Container, error) {
 	return &container, nil
 }
 
-func (s *S) removeTestContainer(c *Container, client *docker.Client) error {
+func (s *S) removeTestContainer(c *container.Container, client *docker.Client) error {
 	routertest.FakeRouter.RemoveBackend(c.AppName)
-	return c.Remove(builderClient(client))
+	return c.Remove(builderClient(client), limiter())
 }
 
 func (s *S) newFakeImage(client *docker.Client, repo string, customData map[string]interface{}) error {

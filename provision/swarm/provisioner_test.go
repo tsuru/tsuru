@@ -1064,7 +1064,7 @@ func (s *S) TestDeploy(c *check.C) {
 	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	imgID, err := s.p.Deploy(a, builderImgID, evt)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(<-attached, check.Equals, true)
 	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	dbImg, err := image.AppCurrentImageName(a.GetName())

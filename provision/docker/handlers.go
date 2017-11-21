@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 )
 
 func init() {
@@ -161,11 +162,11 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 func moveContainersPermissionContexts(from, to string) ([]permission.PermissionContext, error) {
-	originHost, err := mainDockerProvisioner.GetNodeByHost(from)
+	originHost, err := dockercommon.GetNodeByHost(mainDockerProvisioner.Cluster(), from)
 	if err != nil {
 		return nil, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	destinationHost, err := mainDockerProvisioner.GetNodeByHost(to)
+	destinationHost, err := dockercommon.GetNodeByHost(mainDockerProvisioner.Cluster(), to)
 	if err != nil {
 		return nil, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

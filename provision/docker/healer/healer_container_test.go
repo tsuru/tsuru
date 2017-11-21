@@ -202,7 +202,7 @@ func (s *S) TestRunContainerHealerStoppedContainer(c *check.C) {
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Dead: true})
 	toMoveCont := containers[1]
-	err = toMoveCont.SetStatus(p, provision.StatusStopped, false)
+	err = toMoveCont.SetStatus(p.ClusterClient(), provision.StatusStopped, false)
 	c.Assert(err, check.IsNil)
 	toMoveCont.LastSuccessStatusUpdate = time.Now().UTC().Add(-5 * time.Minute)
 	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)
@@ -253,7 +253,7 @@ func (s *S) TestRunContainerHealerStoppedContainerAlreadyStopped(c *check.C) {
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
-	err = toMoveCont.SetStatus(p, provision.StatusStopped, false)
+	err = toMoveCont.SetStatus(p.ClusterClient(), provision.StatusStopped, false)
 	c.Assert(err, check.IsNil)
 	toMoveCont.LastSuccessStatusUpdate = time.Now().UTC().Add(-5 * time.Minute)
 	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)

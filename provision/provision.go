@@ -280,7 +280,7 @@ type RebuildableDeployer interface {
 }
 
 type BuilderDockerClient interface {
-	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, error)
+	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error)
 	RemoveContainer(opts docker.RemoveContainerOptions) error
 	StartContainer(id string, hostConfig *docker.HostConfig) error
 	StopContainer(id string, timeout uint) error
@@ -300,6 +300,13 @@ type BuilderDockerClient interface {
 	ImageHistory(name string) ([]docker.ImageHistory, error)
 
 	SetTimeout(timeout time.Duration)
+}
+
+type ExecDockerClient interface {
+	CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error)
+	StartExec(execId string, opts docker.StartExecOptions) error
+	ResizeExecTTY(execId string, height, width int) error
+	InspectExec(execId string) (*docker.ExecInspect, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.

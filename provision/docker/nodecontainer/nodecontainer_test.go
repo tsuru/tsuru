@@ -227,7 +227,7 @@ func (s *S) TestEnsureContainersStartedMaxWorkers(c *check.C) {
 	c.Assert(calls, check.Equals, 1)
 	done <- struct{}{}
 	select {
-	case <-time.After(1 * time.Second):
+	case <-time.After(5 * time.Second):
 		c.Fatal("second call should been triggered")
 	case <-begin:
 	}

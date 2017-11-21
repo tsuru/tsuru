@@ -13,6 +13,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
@@ -32,12 +33,13 @@ type PullAndCreateClient struct {
 }
 
 var _ provision.BuilderDockerClient = &PullAndCreateClient{}
+var _ provision.ExecDockerClient = &PullAndCreateClient{}
 
 func (c *PullAndCreateClient) SetTimeout(timeout time.Duration) {
 	c.Client.HTTPClient.Timeout = timeout
 }
 
-func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, error) {
+func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error) {
 	if w != nil {
 		w = &tsuruIo.DockerErrorCheckWriter{W: w}
 	}
@@ -49,9 +51,10 @@ func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainer
 	}
 	err := c.Client.PullImage(pullOpts, RegistryAuthConfig())
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return c.Client.CreateContainer(opts)
+	cont, err := c.Client.CreateContainer(opts)
+	return cont, net.URLToHost(c.Client.Endpoint()), err
 }
 
 type Client interface {
@@ -191,6 +194,9 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 			OutputStream:      &buf,
 			InactivityTimeout: net.StreamInactivityTimeout,
 		}
+		if authconfig == (docker.AuthConfiguration{}) {
+			authconfig = RegistryAuthConfig()
+		}
 		err = client.PushImage(pushOpts, authconfig)
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
@@ -207,4 +213,17 @@ func RegistryAuthConfig() docker.AuthConfiguration {
 	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
 	authConfig.ServerAddress, _ = config.GetString("docker:registry")
 	return authConfig
+}
+
+func GetNodeByHost(c *cluster.Cluster, host string) (cluster.Node, error) {
+	nodes, err := c.UnfilteredNodes()
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	for _, node := range nodes {
+		if net.URLToHost(node.Address) == host {
+			return node, nil
+		}
+	}
+	return cluster.Node{}, errors.Errorf("node with host %q not found", host)
 }

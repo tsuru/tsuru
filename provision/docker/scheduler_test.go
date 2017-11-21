@@ -848,7 +848,7 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	cont, err := scheduler.GetRemovableContainer(a1.Name, "web")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont, check.Equals, cont1.ID)
-	err = cont1.Remove(s.p)
+	err = cont1.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	c.Assert(err, check.IsNil)
 	_, err = scheduler.GetRemovableContainer(a1.Name, "web")
 	c.Assert(err, check.NotNil)

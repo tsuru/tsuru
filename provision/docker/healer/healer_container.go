@@ -100,7 +100,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		log.Errorf("Containers healing: couldn't verify running processes in container %q: %s", cont.ID, err)
 	}
 	if isAsExpected {
-		cont.SetStatus(h.provisioner, cont.ExpectedStatus(), true)
+		cont.SetStatus(h.provisioner.ClusterClient(), cont.ExpectedStatus(), true)
 		return nil
 	}
 	locked := h.locker.Lock(cont.AppName)

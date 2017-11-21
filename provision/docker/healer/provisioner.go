@@ -8,12 +8,16 @@ import (
 	"io"
 	"sync"
 
+	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type DockerProvisioner interface {
-	container.DockerProvisioner
+	ClusterClient() provision.BuilderDockerClient
+	Cluster() *cluster.Cluster
+	ActionLimiter() provision.ActionLimiter
 	MoveOneContainer(container.Container, string, chan error, *sync.WaitGroup, io.Writer, container.AppLocker) container.Container
 	MoveContainers(fromHost, toHost string, w io.Writer) error
 	HandleMoveErrors(errors chan error, w io.Writer) error

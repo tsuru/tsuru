@@ -56,6 +56,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provisio
 		event:         evt,
 		provisioner:   p,
 		tarFile:       tarFile,
+		isDeploy:      true,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
