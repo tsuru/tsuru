@@ -58,6 +58,7 @@ func (s *S) TestProcessLabels(c *check.C) {
 		Labels: map[string]string{
 			"is-tsuru":     "true",
 			"is-stopped":   "false",
+			"is-deploy":    "false",
 			"app-name":     "myapp",
 			"app-process":  "p1",
 			"app-platform": "cobol",

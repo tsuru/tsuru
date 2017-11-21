@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -149,7 +148,6 @@ var insertEmptyContainerInDB = action.Action{
 		}
 		cont := container.Container{
 			Container: types.Container{
-				MongoID:       bson.NewObjectId(),
 				AppName:       args.app.GetName(),
 				ProcessName:   args.processName,
 				Type:          args.app.GetPlatform(),
@@ -160,20 +158,7 @@ var insertEmptyContainerInDB = action.Action{
 				ExposedPort:   args.exposedPort,
 			},
 		}
-		coll := args.provisioner.Collection()
-		defer coll.Close()
-		if err := coll.Insert(cont); err != nil {
-			log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
-			return nil, err
-		}
-		return cont, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container.Container)
-		args := ctx.Params[0].(runContainerActionsArgs)
-		coll := args.provisioner.Collection()
-		defer coll.Close()
-		coll.RemoveId(c.MongoID)
+		return &cont, nil
 	},
 }
 
@@ -186,7 +171,7 @@ var updateContainerInDB = action.Action{
 		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()
-		cont := ctx.Previous.(container.Container)
+		cont := ctx.Previous.(*container.Container)
 		err := coll.Update(bson.M{"name": cont.Name}, cont)
 		if err != nil {
 			log.Errorf("error on updating container into database %s - %s", cont.ID, err)
@@ -205,21 +190,17 @@ var createContainer = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		cont := ctx.Previous.(container.Container)
+		cont := ctx.Previous.(*container.Container)
 		log.Debugf("create container for app %s, based on image %s", args.app.GetName(), args.imageID)
-		var building bool
-		if args.buildingImage != "" {
-			building = true
-		}
 		err := cont.Create(&container.CreateArgs{
 			ImageID:          args.imageID,
 			Commands:         args.commands,
 			App:              args.app,
 			Deploy:           args.isDeploy,
-			Provisioner:      args.provisioner,
+			Client:           args.provisioner.ClusterClient(),
 			DestinationHosts: args.destinationHosts,
 			ProcessName:      args.processName,
-			Building:         building,
+			Building:         args.buildingImage != "",
 			Event:            args.event,
 		})
 		if err != nil {
@@ -229,9 +210,9 @@ var createContainer = action.Action{
 		return cont, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container.Container)
+		c := ctx.FWResult.(*container.Container)
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := args.provisioner.Cluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+		err := c.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 		if err != nil {
 			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
 		}
@@ -247,7 +228,7 @@ var setContainerID = action.Action{
 		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()
-		cont := ctx.Previous.(container.Container)
+		cont := ctx.Previous.(*container.Container)
 		err := coll.Update(bson.M{"name": cont.Name}, bson.M{"$set": bson.M{"id": cont.ID}})
 		if err != nil {
 			log.Errorf("error on setting container ID %s - %s", cont.Name, err)
@@ -263,8 +244,8 @@ var stopContainer = action.Action{
 	Name: "stop-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
-		cont := ctx.Previous.(container.Container)
-		err := cont.SetStatus(args.provisioner, provision.StatusStopped, false)
+		cont := ctx.Previous.(*container.Container)
+		err := cont.SetStatus(args.provisioner.ClusterClient(), provision.StatusStopped, false)
 		if err != nil {
 			return nil, err
 		}
@@ -272,17 +253,17 @@ var stopContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(runContainerActionsArgs)
-		c := ctx.FWResult.(container.Container)
-		c.SetStatus(args.provisioner, provision.StatusCreated, false)
+		c := ctx.FWResult.(*container.Container)
+		c.SetStatus(args.provisioner.ClusterClient(), provision.StatusCreated, false)
 	},
 }
 
 var setNetworkInfo = action.Action{
 	Name: "set-network-info",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Previous.(container.Container)
+		c := ctx.Previous.(*container.Container)
 		args := ctx.Params[0].(runContainerActionsArgs)
-		info, err := c.NetworkInfo(args.provisioner)
+		info, err := c.NetworkInfo(args.provisioner.ClusterClient())
 		if err != nil {
 			return nil, err
 		}
@@ -299,12 +280,13 @@ var startContainer = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		c := ctx.Previous.(container.Container)
+		c := ctx.Previous.(*container.Container)
 		log.Debugf("starting container %s", c.ID)
 		err := c.Start(&container.StartArgs{
-			Provisioner: args.provisioner,
-			App:         args.app,
-			Deploy:      args.isDeploy,
+			Client:  args.provisioner.ClusterClient(),
+			Limiter: args.provisioner.ActionLimiter(),
+			App:     args.app,
+			Deploy:  args.isDeploy,
 		})
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
@@ -313,7 +295,7 @@ var startContainer = action.Action{
 		return c, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container.Container)
+		c := ctx.FWResult.(*container.Container)
 		args := ctx.Params[0].(runContainerActionsArgs)
 		err := args.provisioner.Cluster().StopContainer(c.ID, 10)
 		if err != nil {
@@ -352,7 +334,7 @@ var provisionAddUnitsToHost = action.Action{
 		units := len(containers)
 		fmt.Fprintf(w, "\n---- Destroying %d created %s ----\n", units, pluralize("unit", units))
 		runInContainers(containers, func(cont *container.Container, _ chan *container.Container) error {
-			err := cont.Remove(args.provisioner)
+			err := cont.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 			if err != nil {
 				log.Errorf("Error removing added container %s: %s", cont.ID, err)
 				return nil
@@ -725,7 +707,7 @@ var provisionRemoveOldUnits = action.Action{
 		total := len(args.toRemove)
 		fmt.Fprintf(writer, "\n---- Removing %d old %s ----\n", total, pluralize("unit", total))
 		runInContainers(args.toRemove, func(c *container.Container, toRollback chan *container.Container) error {
-			err := c.Remove(args.provisioner)
+			err := c.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 			if err != nil {
 				log.Errorf("Ignored error trying to remove old container %q: %s", c.ID, err)
 			}
@@ -773,7 +755,7 @@ var followLogsAndCommit = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		c, ok := ctx.Previous.(container.Container)
+		c, ok := ctx.Previous.(*container.Container)
 		if !ok {
 			return nil, errors.New("Previous result must be a container.")
 		}
@@ -802,7 +784,7 @@ var followLogsAndCommit = action.Action{
 			}
 		}()
 		go func() {
-			status, err := c.Logs(args.provisioner, args.writer)
+			status, err := c.Logs(args.provisioner.ClusterClient(), args.writer)
 			select {
 			case resultCh <- logsResult{status: status, err: err}:
 			default:
@@ -822,13 +804,13 @@ var followLogsAndCommit = action.Action{
 			}
 		}
 		fmt.Fprintf(args.writer, "\n---- Deploying application image ----\n")
-		imageID, err := c.Commit(args.provisioner, args.writer)
+		imageID, err := c.Commit(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter(), args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err
 		}
 		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
-		c.Remove(args.provisioner)
+		c.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 		return imageID, nil
 	},
 	Backward: func(ctx action.BWContext) {

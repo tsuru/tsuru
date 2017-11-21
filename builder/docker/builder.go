@@ -10,9 +10,11 @@ import (
 	"io"
 	"io/ioutil"
 	"strings"
+	"sync"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
@@ -28,10 +30,31 @@ const (
 	defaultArchivePath = "/home/application"
 )
 
+var (
+	globalLimiter provision.ActionLimiter
+	onceLimiter   sync.Once
+)
+
 type dockerBuilder struct{}
 
 func init() {
 	builder.Register("docker", &dockerBuilder{})
+}
+
+func limiter() provision.ActionLimiter {
+	onceLimiter.Do(func() {
+		limitMode, _ := config.GetString("docker:limit:mode")
+		if limitMode == "global" {
+			globalLimiter = &provision.MongodbLimiter{}
+		} else {
+			globalLimiter = &provision.LocalLimiter{}
+		}
+		actionLimit, _ := config.GetUint("docker:limit:actions-per-host")
+		if actionLimit > 0 {
+			globalLimiter.Initialize(actionLimit)
+		}
+	})
+	return globalLimiter
 }
 
 func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
@@ -105,7 +128,7 @@ func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Even
 			Cmd:          []string{command},
 		},
 	}
-	cont, err := client.PullAndCreateContainer(createOptions, evt)
+	cont, _, err := client.PullAndCreateContainer(createOptions, evt)
 	if err != nil {
 		return err
 	}
@@ -144,7 +167,7 @@ func downloadFromContainer(client provision.BuilderDockerClient, app provision.A
 			Image:        imageName,
 		},
 	}
-	cont, err := client.PullAndCreateContainer(options, nil)
+	cont, _, err := client.PullAndCreateContainer(options, nil)
 	if err != nil {
 		return nil, nil, err
 	}

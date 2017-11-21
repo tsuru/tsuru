@@ -34,7 +34,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_dockercommon_tests_s")
-	config.Set("docker:registry", "my.registry")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tsuru/tsuru/provision/docker/clusterclient"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
@@ -114,17 +116,12 @@ func (p *FakeDockerProvisioner) Cluster() *cluster.Cluster {
 	return p.cluster
 }
 
-func (p *FakeDockerProvisioner) GetNodeByHost(host string) (cluster.Node, error) {
-	nodes, err := p.cluster.UnfilteredNodes()
-	if err != nil {
-		return cluster.Node{}, err
+func (p *FakeDockerProvisioner) ClusterClient() provision.BuilderDockerClient {
+	return &clusterclient.ClusterClient{
+		Cluster:    p.Cluster(),
+		Limiter:    p.ActionLimiter(),
+		Collection: p.Collection,
 	}
-	for _, node := range nodes {
-		if net.URLToHost(node.Address) == host {
-			return node, nil
-		}
-	}
-	return cluster.Node{}, errors.Errorf("node with host %q not found", host)
 }
 
 func (p *FakeDockerProvisioner) Collection() *storage.Collection {

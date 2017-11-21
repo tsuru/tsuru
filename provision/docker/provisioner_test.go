@@ -550,6 +550,8 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 				registerErr := p.RegisterUnit(nil, parts[2], nil)
 				if registerErr == nil {
 					atomic.AddInt64(&registerCount, 1)
+				} else {
+					c.Fatal(registerErr)
 				}
 			}
 		}(r.URL.Path)
@@ -1447,7 +1449,7 @@ func (s *S) TestProvisionerSetUnitStatusAsleep(c *check.C) {
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	err = container.Sleep(s.p)
+	err = container.Sleep(s.p.ClusterClient(), s.p.ActionLimiter())
 	c.Assert(err, check.IsNil)
 	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName}, provision.StatusStopped)
 	c.Assert(err, check.IsNil)
@@ -1625,9 +1627,9 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	container4, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	container2.SetStatus(s.p, provision.StatusCreated, true)
-	container3.SetStatus(s.p, provision.StatusBuilding, true)
-	container4.SetStatus(s.p, provision.StatusStopped, true)
+	container2.SetStatus(s.p.ClusterClient(), provision.StatusCreated, true)
+	container3.SetStatus(s.p.ClusterClient(), provision.StatusBuilding, true)
+	container4.SetStatus(s.p.ClusterClient(), provision.StatusStopped, true)
 	containers := []*container.Container{
 		container1,
 		container2,
@@ -2021,7 +2023,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	defer s.removeTestContainer(cont1)
 	err = dcli.StartContainer(cont1.ID, nil)
 	c.Assert(err, check.IsNil)
-	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
+	err = cont1.SetStatus(s.p.ClusterClient(), provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
 		AppName:         a.GetName(),
@@ -2032,7 +2034,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = dcli.StartContainer(cont2.ID, nil)
 	c.Assert(err, check.IsNil)
-	err = cont2.SetStatus(s.p, provision.StatusStarted, true)
+	err = cont2.SetStatus(s.p.ClusterClient(), provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
 	dockerContainer, err := dcli.InspectContainer(cont1.ID)
@@ -2076,7 +2078,7 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
-	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
+	err = cont1.SetStatus(s.p.ClusterClient(), provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
 		AppName:         a.GetName(),
@@ -2086,7 +2088,7 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
-	err = cont2.SetStatus(s.p, provision.StatusStarted, true)
+	err = cont2.SetStatus(s.p.ClusterClient(), provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	err = dcli.StartContainer(cont1.ID, nil)
 	c.Assert(err, check.IsNil)
@@ -2442,7 +2444,7 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 		reqBodies = append(reqBodies, data)
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
-	defer container.Remove(s.p)
+	defer container.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	var buf bytes.Buffer
 	err = s.p.runRestartAfterHooks(container, &buf)
 	c.Assert(err, check.IsNil)

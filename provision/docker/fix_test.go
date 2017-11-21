@@ -98,7 +98,7 @@ func (s *S) TestFixContainer(c *check.C) {
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
-	info, err := cont.NetworkInfo(p)
+	info, err := cont.NetworkInfo(p.ClusterClient())
 	c.Assert(err, check.IsNil)
 	err = p.fixContainer(&cont, info)
 	c.Assert(err, check.IsNil)

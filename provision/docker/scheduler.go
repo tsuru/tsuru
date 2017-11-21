@@ -35,14 +35,14 @@ type segregatedScheduler struct {
 }
 
 func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
-	if schedulerOpts == nil {
-		return s.scheduleAnyNode(c)
-	}
 	schedOpts, ok := schedulerOpts.(*container.SchedulerOpts)
 	if !ok {
 		return cluster.Node{}, &container.SchedulerError{
 			Base: errors.Errorf("invalid scheduler opts: %#v", schedulerOpts),
 		}
+	}
+	if schedOpts == nil {
+		return s.scheduleAnyNode(c)
 	}
 	a, _ := app.GetByName(schedOpts.AppName)
 	nodes, err := s.provisioner.Nodes(a)

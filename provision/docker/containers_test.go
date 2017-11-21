@@ -230,7 +230,7 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	err = addedConts[0].SetStatus(p, provision.StatusError, true)
+	err = addedConts[0].SetStatus(p.ClusterClient(), provision.StatusError, true)
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	err = s.conn.Apps().Insert(appStruct)
@@ -264,7 +264,7 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	err = addedConts[0].SetStatus(p, provision.StatusError, true)
+	err = addedConts[0].SetStatus(p.ClusterClient(), provision.StatusError, true)
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	err = s.conn.Apps().Insert(appStruct)
