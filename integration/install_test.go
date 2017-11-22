@@ -227,7 +227,7 @@ func nodeHealer() ExecFlow {
 		env.Set("newnode-"+poolName, nodeAddr)
 		res = T("node-healing-update", "--enable", "--max-unresponsive", "60").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("node-container-update", "big-sibling", "-o", poolName, "-e", "STATUS_INTERVAL", "600").Run(env)
+		res = T("node-container-update", "big-sibling", "-o", poolName, "-e", "STATUS_INTERVAL=600").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("node-container-upgrade", "big-sibling", "-p", poolName, "-y").Run(env)
 		c.Assert(res, ResultOk)
