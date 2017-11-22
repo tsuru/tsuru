@@ -292,7 +292,7 @@ func waitNewNode(c *check.C, env *Environment) string {
 	parts := regex.FindStringSubmatch(res.Stdout.String())
 	c.Assert(parts, check.HasLen, 2)
 	nodeAddr := parts[1]
-	regex = regexp.MustCompile("(?i)" + nodeAddr + `.*?ready`)
+	regex = regexp.MustCompile("(?i)" + nodeAddr + `.*?\|\s+ready`)
 	ok := retry(5*time.Minute, func() bool {
 		res = T("node-list").Run(env)
 		return regex.MatchString(res.Stdout.String())
