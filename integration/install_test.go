@@ -225,9 +225,11 @@ func nodeHealer() ExecFlow {
 		c.Assert(res, ResultOk)
 		nodeAddr := waitNewNode(c, env)
 		env.Set("newnode-"+poolName, nodeAddr)
-		res = T("node-healing-update", "--enable", "--max-unresponsive", "130").Run(env)
+		res = T("node-healing-update", "--enable", "--max-unresponsive", "60").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
+		res = T("node-container-update", "big-sibling", "-o", poolName, "-e", "STATUS_INTERVAL", "600").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("node-container-upgrade", "big-sibling", "-p", poolName, "-y").Run(env)
 		c.Assert(res, ResultOk)
 		// Wait BS node status upgrade
 		time.Sleep(time.Minute)
@@ -244,8 +246,6 @@ func nodeHealer() ExecFlow {
 			}
 		}
 		c.Assert(machineID, check.Not(check.Equals), "")
-		res = T("machine-destroy", machineID).Run(env)
-		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
 			c.Assert(res, ResultOk)
