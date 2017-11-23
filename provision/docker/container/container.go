@@ -17,6 +17,8 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -44,6 +46,14 @@ func (e *SchedulerError) Error() string {
 	return fmt.Sprintf("error in scheduler: %s", e.Base)
 }
 
+type StartError struct {
+	Base error
+}
+
+func (e *StartError) Error() string {
+	return fmt.Sprintf("error in start container: %v", e.Base)
+}
+
 type Container struct {
 	types.Container `bson:",inline"`
 }
@@ -60,6 +70,31 @@ var (
 
 type ContainerStateClient interface {
 	SetContainerState(*Container, ContainerState) error
+}
+
+const (
+	maxStartRetries = 4
+)
+
+func RunPipelineWithRetry(pipe *action.Pipeline, args interface{}) error {
+	retryCount := maxStartRetries
+	multi := tsuruErrors.NewMultiError()
+	var err error
+	for ; retryCount >= 0; retryCount-- {
+		err = pipe.Execute(args)
+		if err == nil {
+			break
+		}
+		multi.Add(err)
+		_, isStartError := errors.Cause(err).(*StartError)
+		if !isStartError {
+			break
+		}
+	}
+	if err != nil {
+		return multi.ToError()
+	}
+	return nil
 }
 
 func (c *Container) ShortID() string {
@@ -487,7 +522,7 @@ func (c *Container) Start(args *StartArgs) error {
 	err := args.Client.StartContainer(c.ID, nil)
 	done()
 	if err != nil {
-		return err
+		return &StartError{Base: err}
 	}
 	initialStatus := provision.StatusStarting
 	if args.Deploy {

@@ -75,7 +75,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageID string, co
 		provisioner:   p,
 		event:         evt,
 	}
-	err = pipeline.Execute(args)
+	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
@@ -118,7 +118,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		provisioner:      p,
 		exposedPort:      exposedPort,
 	}
-	err = pipeline.Execute(args)
+	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		return nil, err
 	}

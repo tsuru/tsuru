@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 )
 
@@ -58,7 +59,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client provisio
 		tarFile:       tarFile,
 		isDeploy:      true,
 	}
-	err = pipeline.Execute(args)
+	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute build pipeline for app %s - %s", app.GetName(), err)
 		return "", err
