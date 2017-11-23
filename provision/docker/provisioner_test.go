@@ -1141,7 +1141,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 		imageID:     imageID,
 		provisioner: s.p,
 	})
-	c.Assert(err, check.ErrorMatches, "error in docker node.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*error in docker node.*")
 	c.Assert(units, check.HasLen, 0)
 	coll := s.p.Collection()
 	defer coll.Close()

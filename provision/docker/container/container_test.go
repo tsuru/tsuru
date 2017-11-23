@@ -19,7 +19,9 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
@@ -973,4 +975,69 @@ func (s *S) TestContainerValidAddr(c *check.C) {
 	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1"}}).ValidAddr(), check.Equals, false)
 	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1", HostPort: "0"}}).ValidAddr(), check.Equals, false)
 	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1", HostPort: "123"}}).ValidAddr(), check.Equals, true)
+}
+
+func (s *S) TestRunPipelineWithRetry(c *check.C) {
+	var params []interface{}
+	var calls int
+	var testAction = &action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			params = ctx.Params
+			calls++
+			return nil, nil
+		},
+	}
+	pipe := action.NewPipeline(testAction)
+	expectedArgs := "test"
+	err := RunPipelineWithRetry(pipe, expectedArgs)
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.Equals, 1)
+	c.Assert(params, check.DeepEquals, []interface{}{
+		expectedArgs,
+	})
+}
+
+func (s *S) TestRunPipelineWithRetryUnknownError(c *check.C) {
+	var calls int
+	var testAction = &action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls++
+			return nil, errors.New("my err")
+		},
+	}
+	pipe := action.NewPipeline(testAction)
+	err := RunPipelineWithRetry(pipe, nil)
+	c.Assert(err, check.ErrorMatches, "my err")
+	c.Assert(calls, check.Equals, 1)
+}
+
+func (s *S) TestRunPipelineWithRetryStartError(c *check.C) {
+	var calls int
+	var testAction = &action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls++
+			return nil, &StartError{Base: errors.New("my err")}
+		},
+	}
+	pipe := action.NewPipeline(testAction)
+	err := RunPipelineWithRetry(pipe, nil)
+	c.Assert(err, check.ErrorMatches, `(?s)multiple errors reported \(5\):.*my err.*`)
+	c.Assert(calls, check.Equals, maxStartRetries+1)
+}
+
+func (s *S) TestRunPipelineWithRetryStartErrorWithSuccess(c *check.C) {
+	var calls int
+	var testAction = &action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls++
+			if calls < 3 {
+				return nil, &StartError{Base: errors.New("my err")}
+			}
+			return nil, nil
+		},
+	}
+	pipe := action.NewPipeline(testAction)
+	err := RunPipelineWithRetry(pipe, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.Equals, 3)
 }
