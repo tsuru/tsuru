@@ -186,9 +186,12 @@ func (r *fakeRouter) AddBackend(app router.App) error {
 }
 
 func (r *fakeRouter) RemoveBackend(name string) error {
+	r.mutex.Lock()
 	if r.failuresByIp[name] {
+		r.mutex.Unlock()
 		return ErrForcedFailure
 	}
+	r.mutex.Unlock()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -268,9 +271,12 @@ func (r *fakeRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 }
 
 func (r *fakeRouter) SetCName(cname, name string) error {
+	r.mutex.Lock()
 	if r.failuresByIp[cname] {
+		r.mutex.Unlock()
 		return ErrForcedFailure
 	}
+	r.mutex.Unlock()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -291,9 +297,12 @@ func (r *fakeRouter) SetCName(cname, name string) error {
 }
 
 func (r *fakeRouter) UnsetCName(cname, name string) error {
+	r.mutex.Lock()
 	if r.failuresByIp[cname] {
+		r.mutex.Unlock()
 		return ErrForcedFailure
 	}
+	r.mutex.Unlock()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
