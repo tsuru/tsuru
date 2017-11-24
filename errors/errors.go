@@ -64,8 +64,11 @@ func (m *MultiError) Len() int {
 }
 
 func (m *MultiError) ToError() error {
-	if len(m.errors) == 0 {
+	if m.Len() == 0 {
 		return nil
+	}
+	if m.Len() == 1 {
+		return m.errors[0]
 	}
 	return m
 }

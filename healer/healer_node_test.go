@@ -192,7 +192,7 @@ func (s *S) TestHealerHealNodeRemoveError(c *check.C) {
 	p.PrepareFailure("RemoveNode", fmt.Errorf("remove node error 2"))
 
 	created, err := healer.healNode(nodes[0])
-	c.Assert(err, check.ErrorMatches, `(?s).*remove node error.*Unable to remove node http://addr1:1 from provisioner.*`)
+	c.Assert(err, check.ErrorMatches, `(?s)Unable to remove node http://addr1:1 from provisioner.*remove node error.*`)
 	c.Assert(created.Address, check.Equals, "http://addr2:2")
 	nodes, err = p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
