@@ -230,7 +230,7 @@ func nodeHealer() ExecFlow {
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
 		// Wait BS node status upgrade
-		time.Sleep(time.Minute)
+		time.Sleep(time.Minute * 3)
 		res = T("machine-list").Run(env)
 		c.Assert(res, ResultOk)
 		table := resultTable{raw: res.Stdout.String()}
