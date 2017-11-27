@@ -698,14 +698,25 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
+	baseImgName := "tsuru/app-" + a.Name + ":v1"
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = image.SaveImageCustomData(baseImgName, customData)
+	c.Assert(err, check.IsNil)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		var result docker.Config
 		jsonErr := json.Unmarshal(data, &result)
 		if jsonErr == nil {
-			if result.Image == "tsuru/python:latest" {
+			if result.Image == baseImgName {
 				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("my awesome error"))
 				return
 			}
 		}
@@ -718,13 +729,17 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(&a, "tsuru/app-"+a.Name+":v1-builder", evt)
-	c.Assert(err, check.NotNil)
+	_, err = s.p.Deploy(&a, baseImgName+"-builder", evt)
+	c.Assert(err, check.ErrorMatches, ".*my awesome error.*")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 1)
+	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert("tsuru/python:latest", check.Equals, imgs[0].RepoTags[0])
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
+	sort.Strings(got)
+	expected := []string{"tsuru/app-appdeployimagetest:v1-builder", "tsuru/python:latest"}
+	c.Assert(got, check.DeepEquals, expected)
 }
 
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
@@ -1720,6 +1735,10 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
+	s.server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// no actual pull executed
+		w.WriteHeader(http.StatusOK)
+	}))
 	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := s.p.ExecuteCommandIsolated(&buf, &buf, a, "ls", "-lh")

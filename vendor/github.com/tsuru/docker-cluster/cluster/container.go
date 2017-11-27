@@ -113,9 +113,9 @@ func (c *Cluster) CreateContainerPullOptsSchedulerOpts(opts docker.CreateContain
 
 func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, pullOpts docker.PullImageOptions, pullAuth docker.AuthConfiguration, nodeAddress string) (*docker.Container, error) {
 	registryServer, _ := parseImageRegistry(opts.Config.Image)
-	if registryServer != "" {
-		err := c.PullImage(pullOpts, pullAuth, nodeAddress)
-		if err != nil {
+	err := c.PullImage(pullOpts, pullAuth, nodeAddress)
+	if err != nil {
+		if registryServer != "" {
 			return nil, err
 		}
 	}
