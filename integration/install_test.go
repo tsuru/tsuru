@@ -102,13 +102,17 @@ func installerComposeTest() ExecFlow {
 
 func installerTest() ExecFlow {
 	flow := ExecFlow{
-		provides: []string{"targetaddr"},
+		provides: []string{"targetaddr", "installerhostname"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		res := T("install-create", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
+		regex := regexp.MustCompile(`(?si)^New target (.\S+)`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		env.Set("installerhostname", parts[1])
+		regex = regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
+		parts = regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		targetHost := parts[1]
 		regex = regexp.MustCompile(`(?si).*tsuru_tsuru.*?\|\s(\d+)`)
@@ -210,7 +214,7 @@ func teamTest() ExecFlow {
 
 func nodeHealer() ExecFlow {
 	flow := ExecFlow{
-		requires: []string{"nodeopts"},
+		requires: []string{"nodeopts", "installerhostname"},
 		matrix: map[string]string{
 			"pool": "multinodepools",
 		},
@@ -230,7 +234,7 @@ func nodeHealer() ExecFlow {
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
 		// Wait BS node status upgrade
-		time.Sleep(time.Minute * 3)
+		time.Sleep(time.Minute * 1)
 		res = T("machine-list").Run(env)
 		c.Assert(res, ResultOk)
 		table := resultTable{raw: res.Stdout.String()}
@@ -244,7 +248,11 @@ func nodeHealer() ExecFlow {
 			}
 		}
 		c.Assert(machineID, check.Not(check.Equals), "")
-		res = T("machine-destroy", machineID).Run(env)
+		regex := regexp.MustCompile(`(?:https?:\/\/)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?`)
+		parts := regex.FindStringSubmatch(nodeAddr)
+		c.Assert(parts, check.HasLen, 2)
+		nodeIP := parts[1]
+		res = T("install", "ssh", "{{.installerhostname}}", "--", "iptables", "-A", "INPUT", "-s", nodeIP, "-j", "DROP").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
@@ -252,6 +260,8 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
+		res = T("install", "ssh", "{{.installerhostname}}", "--", "iptables", "-D", "INPUT", "-s", nodeIP, "-j", "DROP").Run(env)
+		c.Assert(res, ResultOk)
 		ok = retry(30*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
 			c.Assert(res, ResultOk)
