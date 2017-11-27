@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	tsuruNet "github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/net"
 	"gopkg.in/check.v1"
 )
 
@@ -242,16 +242,13 @@ func nodeHealer() ExecFlow {
 		var machineID string
 		for _, row := range table.rows {
 			c.Assert(row, check.HasLen, 4)
-			if tsuruNet.URLToHost(nodeAddr) == row[2] {
+			if net.URLToHost(nodeAddr) == row[2] {
 				machineID = row[0]
 				break
 			}
 		}
 		c.Assert(machineID, check.Not(check.Equals), "")
-		regex := regexp.MustCompile(`(?:https?:\/\/)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?`)
-		parts := regex.FindStringSubmatch(nodeAddr)
-		c.Assert(parts, check.HasLen, 2)
-		nodeIP := parts[1]
+		nodeIP := net.URLToHost(nodeAddr)
 		res = T("install", "ssh", "{{.installerhostname}}", "--", "iptables", "-A", "INPUT", "-s", nodeIP, "-j", "DROP").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
