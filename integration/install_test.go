@@ -107,7 +107,7 @@ func installerTest() ExecFlow {
 	flow.forward = func(c *check.C, env *Environment) {
 		res := T("install-create", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile(`(?si)^New target (.\S+)`)
+		regex := regexp.MustCompile(`(?si).*New target (.\S+)`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		env.Set("installerhostname", parts[1])
