@@ -110,7 +110,7 @@ func installerTest() ExecFlow {
 		regex := regexp.MustCompile(`(?si).*New target (.\S+)`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		env.Set("installerhostname", parts[1])
+		env.Set("installerhostname", parts[1]+"-1")
 		regex = regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
