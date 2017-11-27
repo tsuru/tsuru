@@ -132,6 +132,35 @@ func TestCreateContainerErrorImageInRepo(t *testing.T) {
 	}
 }
 
+func TestCreateContainerErrorImagePullIgnored(t *testing.T) {
+	server1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server1.Stop()
+	cluster, err := New(nil, &MapStorage{}, "",
+		Node{Address: server1.URL()},
+	)
+	err = cluster.PullImage(docker.PullImageOptions{
+		Repository: "user/myimg",
+	}, docker.AuthConfiguration{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server1.PrepareFailure("createImgErr", "/images/create")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := docker.Config{Memory: 67108864, Image: "user/myimg"}
+	addr, _, err := cluster.CreateContainer(docker.CreateContainerOptions{Config: &config}, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addr != server1.URL() {
+		t.Errorf("CreateContainer: wrong node addr. Want %q. Got %q.", server1.URL(), addr)
+	}
+}
+
 func registerErrorWait() func() {
 	wg := sync.WaitGroup{}
 	wg.Add(1)

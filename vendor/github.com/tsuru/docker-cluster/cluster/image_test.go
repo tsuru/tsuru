@@ -840,3 +840,29 @@ func TestImageHistory(t *testing.T) {
 		t.Fatalf("Expected image id to be 'id1', got: %s", historyData[0].ID)
 	}
 }
+
+func TestParseImageRegistry(t *testing.T) {
+	tests := []struct {
+		image    string
+		registry string
+		name     string
+	}{
+		{"tsuru/python", "", "tsuru/python"},
+		{"img", "", "img"},
+		{"localhost/tsuru/python", "localhost", "tsuru/python"},
+		{"localhost/img", "localhost", "img"},
+		{"othername:5000/img", "othername:5000", "img"},
+		{"my.long.host/img", "my.long.host", "img"},
+		{"my.long.host:5000/img", "my.long.host:5000", "img"},
+		{"my.long.host:5000/img/img", "my.long.host:5000", "img/img"},
+	}
+	for i, tt := range tests {
+		reg, name := parseImageRegistry(tt.image)
+		if reg != tt.registry {
+			t.Fatalf("[test %d] expected registry %q, got: %q", i, tt.registry, reg)
+		}
+		if name != tt.name {
+			t.Fatalf("[test %d] expected name %q, got: %q", i, tt.name, name)
+		}
+	}
+}

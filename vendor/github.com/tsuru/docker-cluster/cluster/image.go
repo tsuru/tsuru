@@ -85,6 +85,9 @@ func (c *Cluster) removeImage(name string, ignoreLast bool) error {
 func parseImageRegistry(imageId string) (string, string) {
 	parts := strings.SplitN(imageId, "/", 3)
 	if len(parts) < 3 {
+		if len(parts) == 2 && (strings.ContainsAny(parts[0], ":.") || parts[0] == "localhost") {
+			return parts[0], parts[1]
+		}
 		return "", strings.Join(parts, "/")
 	}
 	return parts[0], strings.Join(parts[1:], "/")
