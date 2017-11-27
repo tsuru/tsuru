@@ -249,7 +249,7 @@ func nodeHealer() ExecFlow {
 		}
 		c.Assert(machineID, check.Not(check.Equals), "")
 		nodeIP := net.URLToHost(nodeAddr)
-		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-A", "INPUT", "-s", nodeIP, "-j", "DROP").Run(env)
+		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-I", "FORWARD", "-s", nodeIP, "-j", "DROP").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
@@ -257,7 +257,7 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-D", "INPUT", "-s", nodeIP, "-j", "DROP").Run(env)
+		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-D", "FORWARD", "-s", nodeIP, "-j", "DROP").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(30*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
