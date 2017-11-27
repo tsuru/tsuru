@@ -14,14 +14,15 @@ import (
 )
 
 var (
-	labelIsTsuru         = "is-tsuru"
-	labelIsStopped       = "is-stopped"
-	labelIsAsleep        = "is-asleep"
-	labelIsBuild         = "is-build"
-	labelIsDeploy        = "is-deploy"
-	labelIsIsolatedRun   = "is-isolated-run"
-	labelIsNodeContainer = "is-node-container"
-	labelIsService       = "is-service"
+	labelIsTsuru           = "is-tsuru"
+	labelIsStopped         = "is-stopped"
+	labelIsAsleep          = "is-asleep"
+	labelIsBuild           = "is-build"
+	labelIsDeploy          = "is-deploy"
+	labelIsIsolatedRun     = "is-isolated-run"
+	labelIsNodeContainer   = "is-node-container"
+	labelIsService         = "is-service"
+	labelIsHeadlessService = "is-headless-service"
 
 	labelAppName            = "app-name"
 	labelAppProcess         = "app-process"
@@ -209,6 +210,10 @@ func (s *LabelSet) SetAsleep() {
 
 func (s *LabelSet) SetIsService() {
 	s.addLabel(labelIsService, strconv.FormatBool(true))
+}
+
+func (s *LabelSet) SetIsHeadlessService() {
+	s.addLabel(labelIsHeadlessService, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) SetBuildImage(image string) {

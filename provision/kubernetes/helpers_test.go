@@ -34,6 +34,20 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 	}
 }
 
+func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
+	var tests = []struct {
+		name, process, expected string
+	}{
+		{"myapp", "p1", "myapp-p1-units"},
+		{"MYAPP", "p-1", "myapp-p-1-units"},
+		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
+	}
+	for i, tt := range tests {
+		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		c.Assert(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
+}
+
 func (s *S) TestDeployPodNameForApp(c *check.C) {
 	var tests = []struct {
 		name, expected string

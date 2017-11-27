@@ -335,6 +335,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
 					Volumes:       volumes,
+					Subdomain:     headlessServiceNameForApp(a, process),
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
@@ -384,10 +385,14 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
-	if multiErrors.Len() > 0 {
-		return multiErrors
+	headlessSvcName := headlessServiceNameForApp(a, process)
+	err = m.client.CoreV1().Services(m.client.Namespace()).Delete(headlessSvcName, &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		multiErrors.Add(errors.WithStack(err))
 	}
-	return nil
+	return multiErrors.ToError()
 }
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
@@ -548,10 +553,33 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			Type: apiv1.ServiceTypeNodePort,
 		},
 	})
-	if k8sErrors.IsAlreadyExists(err) {
-		return nil
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return err
 	}
-	return err
+	labels.SetIsHeadlessService()
+	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      headlessServiceNameForApp(a, process),
+			Namespace: m.client.Namespace(),
+			Labels:    labels.ToLabels(),
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: labels.ToSelector(),
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(port),
+					TargetPort: intstr.FromInt(targetPort),
+				},
+			},
+			ClusterIP: "None",
+			Type:      apiv1.ServiceTypeClusterIP,
+		},
+	})
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
 
 func getTargetPortForImage(imgName string) int {

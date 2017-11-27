@@ -45,6 +45,12 @@ func deploymentNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-%s", name, process)
 }
 
+func headlessServiceNameForApp(a provision.App, process string) string {
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	process = strings.ToLower(kubeNameRegex.ReplaceAllString(process, "-"))
+	return fmt.Sprintf("%s-%s-units", name, process)
+}
+
 func deployPodNameForApp(a provision.App) (string, error) {
 	version, err := image.AppCurrentImageVersion(a.GetName())
 	if err != nil {

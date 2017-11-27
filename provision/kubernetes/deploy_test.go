@@ -112,6 +112,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/pool": "test-default",
 					},
 					RestartPolicy: "Always",
+					Subdomain:     "myapp-p1-units",
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
@@ -179,6 +180,49 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				},
 			},
 			Type: apiv1.ServiceTypeNodePort,
+		},
+	})
+	srvHeadless, err := s.client.CoreV1().Services(s.client.Namespace()).Get("myapp-p1-units", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srvHeadless, check.DeepEquals, &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1-units",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/is-service":           "true",
+				"tsuru.io/is-build":             "false",
+				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/is-headless-service":  "true",
+				"tsuru.io/app-name":             "myapp",
+				"tsuru.io/app-process":          "p1",
+				"tsuru.io/app-process-replicas": "1",
+				"tsuru.io/app-platform":         "",
+				"tsuru.io/app-pool":             "test-default",
+				"tsuru.io/router-type":          "fake",
+				"tsuru.io/router-name":          "fake",
+				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/builder":              "",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-process":     "p1",
+				"tsuru.io/is-build":        "false",
+				"tsuru.io/is-isolated-run": "false",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+				},
+			},
+			ClusterIP: "None",
+			Type:      apiv1.ServiceTypeClusterIP,
 		},
 	})
 }
