@@ -1034,6 +1034,60 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `invalid build image label for build task: .*`)
 }
 
+func (s *S) TestRegisterUnitWaitsContainerID(c *check.C) {
+	s.addCluster(c)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	cli, err := clusterForPool(a.GetPool())
+	c.Assert(err, check.IsNil)
+	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsDeploy:    true,
+			BuildImage:  "app:v1",
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = cli.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: swarm.ServiceSpec{
+			TaskTemplate: swarm.TaskSpec{
+				ContainerSpec: &swarm.ContainerSpec{
+					Labels: set.ToLabels(),
+				},
+			},
+			Annotations: swarm.Annotations{
+				Name:   "myapp-web",
+				Labels: set.ToLabels(),
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(tasks, check.HasLen, 1)
+	task := tasks[0]
+	contID := task.Status.ContainerStatus.ContainerID
+	task.Status.ContainerStatus.ContainerID = ""
+	s.clusterSrv.MutateTask(task.ID, task)
+	go func() {
+		time.Sleep(time.Second)
+		task.Status.ContainerStatus.ContainerID = contID
+		s.clusterSrv.MutateTask(task.ID, task)
+	}()
+	err = s.p.RegisterUnit(a, contID, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	data, err := image.GetImageMetaData("app:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(data.Processes, check.DeepEquals, map[string][]string{"web": {"python myapp.py"}})
+}
+
 func (s *S) TestDeploy(c *check.C) {
 	s.addCluster(c)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}

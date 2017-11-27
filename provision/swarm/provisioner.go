@@ -356,9 +356,23 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	return addrs, nil
 }
 
-func findTaskByContainerId(tasks []swarm.Task, unitId string, timeout time.Duration) (*swarm.Task, error) {
+func findTaskByContainerIdNoWait(tasks []swarm.Task, unitId string) (*swarm.Task, error) {
+	for i, t := range tasks {
+		contID := t.Status.ContainerStatus.ContainerID
+		if strings.HasPrefix(contID, unitId) {
+			return &tasks[i], nil
+		}
+	}
+	return nil, &provision.UnitNotFoundError{ID: unitId}
+}
+
+func findTaskByContainerId(client *clusterClient, taskListOpts docker.ListTasksOptions, unitId string, timeout time.Duration) (*swarm.Task, []swarm.Task, error) {
 	timeoutCh := time.After(timeout)
 	for {
+		tasks, err := client.ListTasks(taskListOpts)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
 		hasEmpty := false
 		for i, t := range tasks {
 			contID := t.Status.ContainerStatus.ContainerID
@@ -366,15 +380,15 @@ func findTaskByContainerId(tasks []swarm.Task, unitId string, timeout time.Durat
 				hasEmpty = true
 			}
 			if strings.HasPrefix(contID, unitId) {
-				return &tasks[i], nil
+				return &tasks[i], tasks, nil
 			}
 		}
 		if !hasEmpty {
-			return nil, &provision.UnitNotFoundError{ID: unitId}
+			return nil, tasks, &provision.UnitNotFoundError{ID: unitId}
 		}
 		select {
 		case <-timeoutCh:
-			return nil, &provision.UnitNotFoundError{ID: unitId}
+			return nil, tasks, &provision.UnitNotFoundError{ID: unitId}
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
@@ -389,15 +403,12 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err := client.ListTasks(docker.ListTasksOptions{
+	taskOpts := docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"label": toLabelSelectors(l.ToAppSelector()),
 		},
-	})
-	if err != nil {
-		return err
 	}
-	task, err := findTaskByContainerId(tasks, unitId, waitContainerIDTimeout)
+	task, tasks, err := findTaskByContainerId(client, taskOpts, unitId, waitContainerIDTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "task not found for container %q, existing tasks: %#v", unitId, tasks)
 	}
@@ -475,7 +486,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 		}
 		var task *swarm.Task
 		for _, unitData := range nodeData.Units {
-			task, err = findTaskByContainerId(tasks, unitData.ID, waitContainerIDTimeout)
+			task, err = findTaskByContainerIdNoWait(tasks, unitData.ID)
 			if err == nil {
 				break
 			}
