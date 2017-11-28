@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -81,7 +80,7 @@ func (b *bindSyncer) start() error {
 	b.shutdown = make(chan struct{}, 1)
 	b.done = make(chan struct{})
 	b.started = true
-	fmt.Printf("[bind-syncer] starting. Running every %s.\n", b.interval)
+	log.Debugf("[bind-syncer] starting. Running every %s.\n", b.interval)
 	go func(d time.Duration) {
 		for {
 			select {

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 )
 
@@ -68,7 +69,7 @@ func RemoveAppImages(appName string) error {
 	for _, tag := range tags {
 		digest, err := r.getDigest(image, tag)
 		if err != nil {
-			fmt.Printf("failed to get digest for image %s/%s:%s on registry: %v\n", r.server, image, tag, err)
+			log.Errorf("failed to get digest for image %s/%s:%s on registry: %v\n", r.server, image, tag, err)
 			continue
 		}
 		err = r.removeImage(image, digest)
@@ -76,7 +77,7 @@ func RemoveAppImages(appName string) error {
 			if err, ok := err.(*StorageDeleteDisabledError); ok {
 				return err
 			}
-			fmt.Printf("failed to remove image %s/%s:%s/%s on registry: %v\n", r.server, image, tag, digest, err)
+			log.Errorf("failed to remove image %s/%s:%s/%s on registry: %v\n", r.server, image, tag, digest, err)
 		}
 	}
 	return nil
