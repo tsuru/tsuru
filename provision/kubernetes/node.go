@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 )
@@ -28,6 +29,9 @@ func (n *kubernetesNodeWrapper) Pool() string {
 }
 
 func (n *kubernetesNodeWrapper) Address() string {
+	if n.node == nil {
+		return ""
+	}
 	for _, addr := range n.node.Status.Addresses {
 		if addr.Type == apiv1.NodeInternalIP {
 			return addr.Address
@@ -74,4 +78,11 @@ func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
 
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {
 	return n.prov
+}
+
+func (n *kubernetesNodeWrapper) ip() string {
+	if n.node == nil {
+		return ""
+	}
+	return tsuruNet.URLToHost(n.Address())
 }

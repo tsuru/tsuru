@@ -17,7 +17,9 @@ import (
 )
 
 func (s *S) TestNodeAddress(c *check.C) {
-	node := kubernetesNodeWrapper{
+	var node kubernetesNodeWrapper
+	c.Assert(node.Address(), check.Equals, "")
+	node = kubernetesNodeWrapper{
 		node: &apiv1.Node{
 			Status: apiv1.NodeStatus{
 				Addresses: []apiv1.NodeAddress{
