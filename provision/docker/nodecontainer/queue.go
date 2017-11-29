@@ -7,6 +7,7 @@ package nodecontainer
 import (
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -50,15 +51,21 @@ func (t *runBs) Run(job monsterqueue.Job) {
 		job.Error(err)
 		return
 	}
-	node.CreationStatus = cluster.NodeCreationStatusCreated
-	err = recreateContainers(t.provisioner, nil, node)
-	if err != nil {
-		t.provisioner.Cluster().UpdateNode(node)
-		job.Error(err)
-		return
+	var recreateErr error
+	node, err = t.provisioner.Cluster().AtomicUpdateNode(dockerEndpoint, func(node cluster.Node) (cluster.Node, error) {
+		if node.CreationStatus != cluster.NodeCreationStatusPending {
+			return cluster.Node{}, errors.Errorf("invalid node creation status: %q", node.CreationStatus)
+		}
+		node.CreationStatus = cluster.NodeCreationStatusCreated
+		recreateErr = recreateContainers(t.provisioner, nil, node)
+		if recreateErr == nil {
+			node.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
+		}
+		return node, nil
+	})
+	if err == nil {
+		err = recreateErr
 	}
-	node.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
-	_, err = t.provisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
 		return
