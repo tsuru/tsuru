@@ -40,6 +40,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -2786,6 +2787,62 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool":        "pool1",
 		"m1":          "x1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
+	})
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
+}
+
+func (s *S) TestAddRemoveAddNodeRace(c *check.C) {
+	pong := make(chan struct{}, 2)
+	var callCount int32
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		if strings.Contains(r.URL.Path, "ping") {
+			pong <- struct{}{}
+			if atomic.AddInt32(&callCount, 1) == 1 {
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
+	mainDockerProvisioner = &p
+	opts := provision.AddNodeOptions{
+		Address: server.URL(),
+		Pool:    "pool1",
+		Metadata: map[string]string{
+			"m1": "x1",
+		},
+	}
+	err = p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	<-pong
+	err = p.RemoveNode(provision.RemoveNodeOptions{
+		Address: server.URL(),
+	})
+	c.Assert(err, check.IsNil)
+	opts = provision.AddNodeOptions{
+		Address: server.URL(),
+		Pool:    "pool2",
+		Metadata: map[string]string{
+			"m2": "x2",
+		},
+	}
+	err = p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	<-pong
+	queue.ResetQueue()
+	c.Assert(atomic.LoadInt32(&callCount), check.Equals, int32(2))
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, server.URL())
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"pool":        "pool2",
+		"m2":          "x2",
 		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
