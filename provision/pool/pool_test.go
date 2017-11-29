@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -56,6 +57,24 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = auth.CreateTeam("pteam", &auth.User{})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestValidateRouters(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	defer config.Unset("routers")
+	pool := Pool{Name: "pool1"}
+	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: "router", Values: []string{"router2"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+
+	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router1"}})
+	c.Assert(err, check.IsNil)
+	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router2"}})
+	c.Assert(err, check.NotNil)
+	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "unknown-router"}})
+	c.Assert(err, check.NotNil)
+	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router1"}, {Name: "router2"}})
+	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestAddPool(c *check.C) {

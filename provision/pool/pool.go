@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -129,6 +130,25 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 		}
 	}
 	return router.Default()
+}
+
+func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
+	availableRouters, err := p.GetRouters()
+	if err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
+	}
+	possibleMap := make(map[string]struct{}, len(availableRouters))
+	for _, r := range availableRouters {
+		possibleMap[r] = struct{}{}
+	}
+	for _, appRouter := range routers {
+		_, ok := possibleMap[appRouter.Name]
+		if !ok {
+			msg := fmt.Sprintf("router %q is not available for pool %q. Available routers are: %q", appRouter.Name, p.Name, strings.Join(availableRouters, ", "))
+			return &tsuruErrors.ValidationError{Message: msg}
+		}
+	}
+	return nil
 }
 
 func (p *Pool) allowedValues() (map[string][]string, error) {
