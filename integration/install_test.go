@@ -261,7 +261,7 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		res = T("node-container-delete", "big-sibling", "-o", poolName).Run(env)
+		res = T("node-container-delete", "big-sibling", "-p", poolName).Run(env)
 		c.Assert(res, ResultOk)
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
