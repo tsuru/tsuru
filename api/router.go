@@ -100,12 +100,32 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
+	_, err = router.Get(appRouter.Name)
+	if err != nil {
+		if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
 	allowed := permission.Check(t, permission.PermAppUpdateRouterAdd,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+
+	p, err := pool.GetPoolByName(a.Pool)
+	if err != nil {
+		return err
+	}
+	err = p.ValidateRouters([]appTypes.AppRouter{appRouter})
+	if err != nil {
+		if err == pool.ErrPoolHasNoRouter {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterAdd,
@@ -117,11 +137,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.AddRouter(appRouter)
-	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return err
+	return a.AddRouter(appRouter)
 }
 
 // title: update app router
