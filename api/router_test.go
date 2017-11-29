@@ -300,6 +300,30 @@ func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
+func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
+	config.Set("routers:fake-opts:type", "fake-opts")
+	defer config.Unset("routers:fake-opts:type")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateRouterUpdate,
+		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+	})
+	myapp := app.App{Name: "apptest", Platform: "go", TeamOwner: s.team.Name}
+	err := app.CreateApp(&myapp, s.user)
+	c.Assert(err, check.IsNil)
+	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake-opts"})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"fake-opts"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader(`opts.x=y&opts.z=w`)
+	request, err := http.NewRequest("PUT", "/1.5/apps/apptest/routers/fake-opts", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %q", recorder.Body.String()))
+}
+
 func (s *S) TestRemoveAppRouter(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
