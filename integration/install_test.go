@@ -249,7 +249,11 @@ func nodeHealer() ExecFlow {
 		}
 		c.Assert(machineID, check.Not(check.Equals), "")
 		nodeIP := net.URLToHost(nodeAddr)
-		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-I", "FORWARD", "-m", "string", "--string", nodeIP, "--algo", "bm", "-j", "DROP").Run(env)
+		res = T("node-container-add", "big-sibling", "-o", poolName, "--raw", "Config.Entrypoint.0=\"/bin/sh\"",
+			"--raw", "Config.Entrypoint.1=\"-c\"", "--raw", fmt.Sprintf("Config.Cmd.0=\"ifconfig | grep %s && sleep 3600 || /bin/bs\"", nodeIP),
+		).Run(env)
+		c.Assert(res, ResultOk)
+		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
@@ -257,7 +261,9 @@ func nodeHealer() ExecFlow {
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		res = T("install", "ssh", "{{.installerhostname}}", "--", "sudo", "iptables", "-D", "FORWARD", "-m", "string", "--string", nodeIP, "--algo", "bm", "-j", "DROP").Run(env)
+		res = T("node-container-delete", "big-sibling", "-o", poolName).Run(env)
+		c.Assert(res, ResultOk)
+		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(30*time.Minute, func() bool {
 			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
