@@ -233,16 +233,26 @@ func (c *Cluster) Register(node Node) error {
 }
 
 func (c *Cluster) UpdateNode(node Node) (Node, error) {
-	_, err := c.storage().RetrieveNode(node.Address)
+	return c.AtomicUpdateNode(node.Address, func(_ Node) (Node, error) {
+		return node, nil
+	})
+}
+
+func (c *Cluster) AtomicUpdateNode(address string, updateFunc func(Node) (Node, error)) (Node, error) {
+	_, err := c.storage().RetrieveNode(address)
 	if err != nil {
 		return Node{}, err
 	}
-	unlock, err := c.lockWithTimeout(node.Address, false)
+	unlock, err := c.lockWithTimeout(address, false)
 	if err != nil {
 		return Node{}, err
 	}
 	defer unlock()
-	dbNode, err := c.storage().RetrieveNode(node.Address)
+	dbNode, err := c.storage().RetrieveNode(address)
+	if err != nil {
+		return Node{}, err
+	}
+	node, err := updateFunc(dbNode)
 	if err != nil {
 		return Node{}, err
 	}
