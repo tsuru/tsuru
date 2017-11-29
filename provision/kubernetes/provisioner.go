@@ -235,7 +235,7 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.
 	for i, pod := range pods {
 		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
-		if !ok {
+		if !ok && pod.Spec.NodeName != "" {
 			node, err = client.CoreV1().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
 			if err != nil {
 				return nil, errors.WithStack(err)
@@ -287,7 +287,7 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.
 			AppName:     l.AppName(),
 			ProcessName: appProcess,
 			Type:        l.AppPlatform(),
-			IP:          tsuruNet.URLToHost(wrapper.Address()),
+			IP:          wrapper.ip(),
 			Status:      stateMap[pod.Status.Phase],
 			Address:     url,
 		}
