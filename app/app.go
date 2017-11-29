@@ -1062,7 +1062,7 @@ func (app *App) validatePool() error {
 	if err != nil {
 		return err
 	}
-	return app.validateRouter(pool)
+	return pool.ValidateRouters(app.GetRouters())
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {
@@ -1085,25 +1085,6 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 	if !poolTeam {
 		msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
-	}
-	return nil
-}
-
-func (app *App) validateRouter(pool *pool.Pool) error {
-	routers, err := pool.GetRouters()
-	if err != nil {
-		return &tsuruErrors.ValidationError{Message: err.Error()}
-	}
-	possibleMap := make(map[string]struct{}, len(routers))
-	for _, r := range routers {
-		possibleMap[r] = struct{}{}
-	}
-	for _, appRouter := range app.GetRouters() {
-		_, ok := possibleMap[appRouter.Name]
-		if !ok {
-			msg := fmt.Sprintf("router %q is not available for pool %q. Available routers are: %q", appRouter.Name, app.Pool, strings.Join(routers, ", "))
-			return &tsuruErrors.ValidationError{Message: msg}
-		}
 	}
 	return nil
 }
