@@ -5,7 +5,6 @@
 package registry
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -116,19 +115,21 @@ func (s *S) TestParseImage(c *check.C) {
 		expectedRegistry string
 		expectedImage    string
 		expectedTag      string
-		expectedErr      error
 	}{
-		{"registry.io/tsuru/app-img:v1", "registry.io", "tsuru/app-img", "v1", nil},
-		{"tsuru/app-img:v1", "", "tsuru/app-img", "v1", nil},
-		{"f064bf4", "", "", "", fmt.Errorf("unable to parse image f064bf4")},
-		{"f064bf4:v1", "", "f064bf4", "v1", nil},
-		{"", "", "", "", fmt.Errorf("unable to parse image ")},
+		{"f064bf4", "", "f064bf4", ""},
+		{"", "", "", ""},
+		{"registry.io/tsuru/app-img:v1", "registry.io", "tsuru/app-img", "v1"},
+		{"tsuru/app-img:v1", "", "tsuru/app-img", "v1"},
+		{"tsuru/app-img", "", "tsuru/app-img", ""},
+		{"f064bf4:v1", "", "f064bf4", "v1"},
+		{"registry:5000/app-img:v1", "registry:5000", "app-img", "v1"},
+		{"registry.io/app-img:v1", "registry.io", "app-img", "v1"},
+		{"localhost/app-img:v1", "localhost", "app-img", "v1"},
 	}
 	for _, t := range tt {
-		registry, image, tag, err := parseImage(t.imageURI)
-		c.Assert(registry, check.Equals, t.expectedRegistry, check.Commentf("Invalid registry for image: %v", t.imageURI))
-		c.Assert(image, check.Equals, t.expectedImage, check.Commentf("Invalid image for image: %v", t.imageURI))
-		c.Assert(tag, check.Equals, t.expectedTag, check.Commentf("Invalid tag for image: %v", t.imageURI))
-		c.Assert(err, check.DeepEquals, t.expectedErr)
+		registry, image, tag := parseImage(t.imageURI)
+		c.Check(registry, check.Equals, t.expectedRegistry, check.Commentf("Invalid registry for image: %v", t.imageURI))
+		c.Check(image, check.Equals, t.expectedImage, check.Commentf("Invalid image for image: %v", t.imageURI))
+		c.Check(tag, check.Equals, t.expectedTag, check.Commentf("Invalid tag for image: %v", t.imageURI))
 	}
 }

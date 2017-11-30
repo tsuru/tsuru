@@ -30,10 +30,7 @@ func (e *StorageDeleteDisabledError) Error() string {
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveImage(imageName string) error {
-	registry, image, tag, err := parseImage(imageName)
-	if err != nil {
-		return err
-	}
+	registry, image, tag := parseImage(imageName)
 	if registry == "" {
 		var err error
 		registry, err = config.GetString("docker:registry")
@@ -153,19 +150,25 @@ func (r *dockerRegistry) doRequest(method, path string, headers map[string]strin
 	return resp, nil
 }
 
-func parseImage(imageName string) (registry string, image string, tag string, err error) {
+func parseImage(imageName string) (registry string, image string, tag string) {
 	parts := strings.SplitN(imageName, "/", 3)
-	if len(parts) < 3 {
+	switch len(parts) {
+	case 1:
 		image = imageName
-	} else {
+	case 2:
+		if strings.ContainsAny(parts[0], ":.") || parts[0] == "localhost" {
+			registry = parts[0]
+			image = parts[1]
+			break
+		}
+		image = imageName
+	case 3:
 		registry = parts[0]
 		image = strings.Join(parts[1:], "/")
 	}
 	parts = strings.SplitN(image, ":", 2)
 	if len(parts) < 2 {
-		return "", "", "", fmt.Errorf("unable to parse image %v", imageName)
+		return registry, parts[0], ""
 	}
-	image = parts[0]
-	tag = parts[1]
-	return registry, image, tag, nil
+	return registry, parts[0], parts[1]
 }
