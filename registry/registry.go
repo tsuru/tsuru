@@ -38,6 +38,9 @@ func RemoveImage(imageName string) error {
 			return err
 		}
 	}
+	if image == "" {
+		return fmt.Errorf("empty image after parsing %q", imageName)
+	}
 	r := &dockerRegistry{server: registry}
 	digest, err := r.getDigest(image, tag)
 	if err != nil {

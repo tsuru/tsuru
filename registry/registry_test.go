@@ -109,6 +109,11 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
+func (s *S) TestRegistryRemoveImageEmpty(c *check.C) {
+	err := RemoveImage("")
+	c.Assert(err, check.ErrorMatches, `empty image.*`)
+}
+
 func (s *S) TestParseImage(c *check.C) {
 	tt := []struct {
 		imageURI         string
