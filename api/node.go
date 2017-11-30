@@ -676,7 +676,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-type infoNodeResponse struct {
+type InfoNodeResponse struct {
 	Node   provision.NodeSpec    `json:"node"`
 	Status healer.NodeStatusData `json:"status"`
 	Units  []provision.Unit      `json:"units"`
@@ -688,18 +688,11 @@ type infoNodeResponse struct {
 // produce: application/json
 // responses:
 //   200: Ok
-//   400: Invalid data
 //   404: Not found
 func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return errors.Errorf("Node address is required.")
-	}
-	if err := validateNodeAddress(address); err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
 	}
 	_, node, err := provision.FindNode(address)
 	if err != nil {
@@ -713,8 +706,13 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	spec := provision.NodeToSpec(node)
 	if spec.IaaSID == "" {
-		machine, err := iaas.FindMachineByAddress(address)
+		var machine iaas.Machine
+		machine, err = iaas.FindMachineByAddress(address)
 		if err != nil {
+			if err != iaas.ErrMachineNotFound {
+				return err
+			}
+		} else {
 			spec.IaaSID = machine.Iaas
 		}
 	}
@@ -732,7 +730,7 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Message: err.Error(),
 		}
 	}
-	response := infoNodeResponse{
+	response := InfoNodeResponse{
 		Node:   spec,
 		Status: nodeStatus,
 		Units:  units,
