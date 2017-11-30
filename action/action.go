@@ -5,6 +5,7 @@
 package action
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -132,16 +133,27 @@ func (p *Pipeline) Result() Result {
 //
 // After rolling back all completed actions, it returns the original error
 // returned by the action that failed.
-func (p *Pipeline) Execute(params ...interface{}) error {
+func (p *Pipeline) Execute(params ...interface{}) (err error) {
 	var (
-		r   Result
-		err error
+		r Result
 	)
 	if len(p.actions) == 0 {
 		return ErrPipelineNoActions
 	}
 	fwCtx := FWContext{Params: params}
-	for i, a := range p.actions {
+	var i int
+	var a *Action
+	defer func() {
+		if r := recover(); r != nil {
+			log.Debugf("[pipeline] PANIC running the Forward for the %s action - %v", a.Name, r)
+			err = fmt.Errorf("panic running the Forward for the %s action: %v", a.Name, r)
+			if a.OnError != nil {
+				a.OnError(fwCtx, err)
+			}
+			p.rollback(i-1, params)
+		}
+	}()
+	for i, a = range p.actions {
 		log.Debugf("[pipeline] running the Forward for the %s action", a.Name)
 		if a.Forward == nil {
 			err = ErrPipelineForwardMissing

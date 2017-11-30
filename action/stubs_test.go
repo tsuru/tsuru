@@ -23,6 +23,14 @@ var errorAction = Action{
 	Backward: func(ctx BWContext) {},
 }
 
+var panicAction = Action{
+	Name: "panic",
+	Forward: func(ctx FWContext) (Result, error) {
+		panic("action panicked")
+	},
+	Backward: func(ctx BWContext) {},
+}
+
 var unrollbackableAction = Action{
 	Name: "unrollbackable",
 	Forward: func(ctx FWContext) (Result, error) {
