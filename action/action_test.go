@@ -34,6 +34,7 @@ func (s *S) TestSuccessAndParameters(c *check.C) {
 }
 
 func (s *S) TestRollback(c *check.C) {
+	var backwardCalled bool
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {
@@ -42,6 +43,7 @@ func (s *S) TestRollback(c *check.C) {
 			Backward: func(ctx BWContext) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
+				backwardCalled = true
 			},
 		},
 		&errorAction,
@@ -50,6 +52,29 @@ func (s *S) TestRollback(c *check.C) {
 	err := pipeline.Execute("hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
+	c.Assert(backwardCalled, check.Equals, true)
+}
+
+func (s *S) TestRollbackOnPanic(c *check.C) {
+	var backwardCalled bool
+	actions := []*Action{
+		{
+			Forward: func(ctx FWContext) (Result, error) {
+				return "ok", nil
+			},
+			Backward: func(ctx BWContext) {
+				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
+				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
+				backwardCalled = true
+			},
+		},
+		&panicAction,
+	}
+	pipeline := NewPipeline(actions...)
+	err := pipeline.Execute("hello", "world")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `panic running.*`)
+	c.Assert(backwardCalled, check.Equals, true)
 }
 
 func (s *S) TestRollbackUnrollbackableAction(c *check.C) {
