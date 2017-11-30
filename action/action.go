@@ -145,7 +145,7 @@ func (p *Pipeline) Execute(params ...interface{}) (err error) {
 	var a *Action
 	defer func() {
 		if r := recover(); r != nil {
-			log.Debugf("[pipeline] PANIC running the Forward for the %s action - %v", a.Name, r)
+			log.Errorf("[pipeline] PANIC running the Forward for the %s action - %v", a.Name, r)
 			err = fmt.Errorf("panic running the Forward for the %s action: %v", a.Name, r)
 			if a.OnError != nil {
 				a.OnError(fwCtx, err)
@@ -167,7 +167,7 @@ func (p *Pipeline) Execute(params ...interface{}) (err error) {
 			fwCtx.Previous = r
 		}
 		if err != nil {
-			log.Debugf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
+			log.Errorf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
 			if a.OnError != nil {
 				a.OnError(fwCtx, err)
 			}
