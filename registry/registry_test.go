@@ -5,6 +5,7 @@
 package registry
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -107,4 +108,27 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "failed to remove image "+s.server.Addr()+"/tsuru/app-teste:v0/ on registry: repository not found (404)\n")
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+}
+
+func (s *S) TestParseImage(c *check.C) {
+	tt := []struct {
+		imageURI         string
+		expectedRegistry string
+		expectedImage    string
+		expectedTag      string
+		expectedErr      error
+	}{
+		{"registry.io/tsuru/app-img:v1", "registry.io", "tsuru/app-img", "v1", nil},
+		{"tsuru/app-img:v1", "", "tsuru/app-img", "v1", nil},
+		{"f064bf4", "", "", "", fmt.Errorf("unable to parse image f064bf4")},
+		{"f064bf4:v1", "", "f064bf4", "v1", nil},
+		{"", "", "", "", fmt.Errorf("unable to parse image ")},
+	}
+	for _, t := range tt {
+		registry, image, tag, err := parseImage(t.imageURI)
+		c.Assert(registry, check.Equals, t.expectedRegistry, check.Commentf("Invalid registry for image: %v", t.imageURI))
+		c.Assert(image, check.Equals, t.expectedImage, check.Commentf("Invalid image for image: %v", t.imageURI))
+		c.Assert(tag, check.Equals, t.expectedTag, check.Commentf("Invalid tag for image: %v", t.imageURI))
+		c.Assert(err, check.DeepEquals, t.expectedErr)
+	}
 }
