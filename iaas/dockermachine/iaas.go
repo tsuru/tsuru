@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,6 +24,7 @@ import (
 )
 
 var errDriverNotSet = errors.Errorf("driver is mandatory")
+var invalidHostnameChars = regexp.MustCompile(`[^a-z0-9-]`)
 
 func init() {
 	iaas.RegisterIaasProvider("dockermachine", newDockerMachineIaaS)
@@ -189,6 +191,7 @@ func generateMachineName(prefix string) (string, error) {
 	r := strings.NewReplacer("_", "-", " ", "-")
 	prefix = r.Replace(prefix)
 	prefix = strings.TrimPrefix(prefix, "-")
+	prefix = invalidHostnameChars.ReplaceAllString(prefix, "")
 	name, err := generateRandomID()
 	if err != nil {
 		return "", err

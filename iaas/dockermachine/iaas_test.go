@@ -172,11 +172,12 @@ func (s *S) TestGenerateMachineName(c *check.C) {
 		expectedPrefix string
 		expectedLength int
 	}{
-		{"-abc", "abc", 29},
-		{"a b c", "a-b-c", 31},
-		{"a_b_c", "a-b-c", 31},
-		{"a_b c", "a-b-c", 31},
-		{"-a b_c", "a-b-c", 31},
+		{"-abc", "^abc", 29},
+		{"a b c", "^a-b-c", 31},
+		{"a_b_c", "^a-b-c", 31},
+		{"a_b c", "^a-b-c", 31},
+		{"-a b_c", "^a-b-c", 31},
+		{"-a b_c@d e_f", "^a-b-cd-e-f", 36},
 		{strings.Repeat("a", 80), strings.Repeat("a", 63), 63},
 		{"", "[a-z][a-z0-9]{24}", 25},
 	}
