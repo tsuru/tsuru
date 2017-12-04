@@ -808,16 +808,20 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 5)
+	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[3].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0], imgs[3].RepoTags[0], imgs[4].RepoTags[0]}
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v1-builder", "tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/python:latest"}
+	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
+	imgsInDB, err := image.ListAppImages(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgsInDB, check.DeepEquals, []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2"})
+	imgsInDB, err = image.ListAppBuilderImages(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgsInDB, check.DeepEquals, []string{"tsuru/app-appdeployimagetest:v1-builder", "tsuru/app-appdeployimagetest:v2-builder"})
 	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts = docker.PullImageOptions{
@@ -830,16 +834,20 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 5)
+	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[3].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0], imgs[3].RepoTags[0], imgs[4].RepoTags[0]}
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/app-appdeployimagetest:v3", "tsuru/app-appdeployimagetest:v3-builder", "tsuru/python:latest"}
+	expected = []string{"tsuru/app-appdeployimagetest:v3", "tsuru/app-appdeployimagetest:v3-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
+	imgsInDB, err = image.ListAppImages(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgsInDB, check.DeepEquals, []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v3"})
+	imgsInDB, err = image.ListAppBuilderImages(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgsInDB, check.DeepEquals, []string{"tsuru/app-appdeployimagetest:v2-builder", "tsuru/app-appdeployimagetest:v3-builder"})
 }
 
 func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {

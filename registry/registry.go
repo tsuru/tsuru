@@ -7,24 +7,40 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/net"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 type dockerRegistry struct {
 	server string
+	client *http.Client
 }
 
-type StorageDeleteDisabledError struct {
-	StatusCode int
-}
+var (
+	ErrImageNotFound  = errors.New("image not found")
+	ErrDigestNotFound = errors.New("digest not found")
+	ErrDeleteDisabled = errors.New("delete disabled")
+)
 
-func (e *StorageDeleteDisabledError) Error() string {
-	return fmt.Sprintf("storage delete is disabled (%d)", e.StatusCode)
+func RemoveImageIgnoreNotFound(imageName string) error {
+	err := RemoveImage(imageName)
+	if err != nil {
+		cause := errors.Cause(err)
+		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
+			return err
+		}
+		log.Debugf("ignored error removing image from registry: %v", err.Error())
+	}
+	return nil
 }
 
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
@@ -32,26 +48,23 @@ func (e *StorageDeleteDisabledError) Error() string {
 func RemoveImage(imageName string) error {
 	registry, image, tag := parseImage(imageName)
 	if registry == "" {
-		var err error
-		registry, err = config.GetString("docker:registry")
-		if err != nil {
-			return err
-		}
+		registry, _ = config.GetString("docker:registry")
+	}
+	if registry == "" {
+		// Nothing to do if no registry is set
+		return nil
 	}
 	if image == "" {
-		return fmt.Errorf("empty image after parsing %q", imageName)
+		return errors.Errorf("empty image after parsing %q", imageName)
 	}
 	r := &dockerRegistry{server: registry}
 	digest, err := r.getDigest(image, tag)
 	if err != nil {
-		return fmt.Errorf("failed to get digest for image %s/%s:%s on registry: %v\n", r.server, image, tag, err)
+		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag)
 	}
 	err = r.removeImage(image, digest)
 	if err != nil {
-		if err, ok := err.(*StorageDeleteDisabledError); ok {
-			return err
-		}
-		return fmt.Errorf("failed to remove image %s/%s:%s/%s on registry: %v\n", r.server, image, tag, digest, err)
+		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest)
 	}
 	return nil
 }
@@ -59,9 +72,10 @@ func RemoveImage(imageName string) error {
 // RemoveAppImages removes all app images from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveAppImages(appName string) error {
-	registry, err := config.GetString("docker:registry")
-	if err != nil {
-		return err
+	registry, _ := config.GetString("docker:registry")
+	if registry == "" {
+		// Nothing to do if no registry is set
+		return nil
 	}
 	r := &dockerRegistry{server: registry}
 	image := fmt.Sprintf("tsuru/app-%s", appName)
@@ -69,21 +83,22 @@ func RemoveAppImages(appName string) error {
 	if err != nil {
 		return err
 	}
+	multi := tsuruErrors.NewMultiError()
 	for _, tag := range tags {
 		digest, err := r.getDigest(image, tag)
 		if err != nil {
-			log.Errorf("failed to get digest for image %s/%s:%s on registry: %v\n", r.server, image, tag, err)
+			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag))
 			continue
 		}
 		err = r.removeImage(image, digest)
 		if err != nil {
-			if err, ok := err.(*StorageDeleteDisabledError); ok {
-				return err
+			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest))
+			if errors.Cause(err) == ErrDeleteDisabled {
+				break
 			}
-			log.Errorf("failed to remove image %s/%s:%s/%s on registry: %v\n", r.server, image, tag, digest, err)
 		}
 	}
-	return nil
+	return multi.ToError()
 }
 
 func (r dockerRegistry) getDigest(image, tag string) (string, error) {
@@ -94,7 +109,7 @@ func (r dockerRegistry) getDigest(image, tag string) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusBadRequest {
-		return "", fmt.Errorf("manifest not found (%d)", resp.StatusCode)
+		return "", ErrDigestNotFound
 	}
 	return resp.Header.Get("Docker-Content-Digest"), nil
 }
@@ -112,7 +127,7 @@ func (r dockerRegistry) getImageTags(image string) ([]string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusBadRequest {
-		return nil, fmt.Errorf("image not found (%d)", resp.StatusCode)
+		return nil, errors.Errorf("image not found (%d)", resp.StatusCode)
 	}
 	var it imageTags
 	if err := json.NewDecoder(resp.Body).Decode(&it); err != nil {
@@ -129,28 +144,47 @@ func (r dockerRegistry) removeImage(image, digest string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("repository not found (%d)", resp.StatusCode)
+		return ErrImageNotFound
 	}
 	if resp.StatusCode == http.StatusMethodNotAllowed {
-		return &StorageDeleteDisabledError{resp.StatusCode}
+		return ErrDeleteDisabled
+	}
+	if resp.StatusCode != http.StatusOK {
+		data, _ := ioutil.ReadAll(resp.Body)
+		return errors.Errorf("invalid status code trying to remove image (%d): %s", resp.StatusCode, string(data))
 	}
 	return nil
 }
 
-func (r *dockerRegistry) doRequest(method, path string, headers map[string]string) (*http.Response, error) {
-	endpoint := fmt.Sprintf("http://%s%s", r.server, path)
-	req, err := http.NewRequest(method, endpoint, nil)
-	if err != nil {
-		return nil, err
+func (r *dockerRegistry) doRequest(method, path string, headers map[string]string) (resp *http.Response, err error) {
+	u, _ := url.Parse(r.server)
+	server := r.server
+	if u != nil && u.Host != "" {
+		server = u.Host
 	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
+	if r.client == nil {
+		r.client = tsuruNet.Dial5Full300ClientNoKeepAlive
 	}
-	resp, err := net.Dial5Full300ClientNoKeepAlive.Do(req)
-	if err != nil {
-		return nil, err
+	for _, scheme := range []string{"https", "http"} {
+		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
+		var req *http.Request
+		req, err = http.NewRequest(method, endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err = r.client.Do(req)
+		if err != nil {
+			if _, ok := err.(net.Error); ok {
+				continue
+			}
+			return nil, err
+		}
+		return resp, nil
 	}
-	return resp, nil
+	return nil, err
 }
 
 func parseImage(imageName string) (registry string, image string, tag string) {

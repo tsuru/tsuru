@@ -328,7 +328,20 @@ func DeleteAllAppImageNames(appName string) error {
 		return err
 	}
 	defer coll.Close()
-	return coll.RemoveId(appName)
+	err = coll.RemoveId(appName)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	coll, err = appBuilderImagesColl()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.RemoveId(appName)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	return nil
 }
 
 func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
@@ -355,7 +368,20 @@ func PullAppImageNames(appName string, images []string) error {
 		return err
 	}
 	defer coll.Close()
-	return coll.UpdateId(appName, bson.M{"$pullAll": bson.M{"images": images}})
+	err = coll.UpdateId(appName, bson.M{"$pullAll": bson.M{"images": images}})
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	coll, err = appBuilderImagesColl()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.UpdateId(appName, bson.M{"$pullAll": bson.M{"images": images}})
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	return nil
 }
 
 func PlatformImageName(platformName string) string {

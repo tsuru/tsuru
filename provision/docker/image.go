@@ -69,24 +69,26 @@ func MigrateImages() error {
 	return nil
 }
 
-func (p *dockerProvisioner) CleanImage(appName, imgName string) {
+func (p *dockerProvisioner) CleanImage(appName, imgName string, removeFromRegistry bool) {
 	shouldRemove := true
 	err := p.Cluster().RemoveImage(imgName)
-	if err != nil && err != docker.ErrNoSuchImage {
+	if err != nil && err != docker.ErrNoSuchImage && err != storage.ErrNoSuchImage {
 		shouldRemove = false
 		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
 			imgName, err.Error())
 	}
-	err = registry.RemoveImage(imgName)
-	if err != nil {
-		shouldRemove = false
-		log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
-			imgName, err.Error())
-	}
-	if shouldRemove {
-		err = image.PullAppImageNames(appName, []string{imgName})
+	if removeFromRegistry {
+		err = registry.RemoveImageIgnoreNotFound(imgName)
 		if err != nil {
-			log.Errorf("Ignored error pulling old images from database: %s", err)
+			shouldRemove = false
+			log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
+				imgName, err.Error())
+		}
+		if shouldRemove {
+			err = image.PullAppImageNames(appName, []string{imgName})
+			if err != nil {
+				log.Errorf("Ignored error pulling old images from database: %s", err)
+			}
 		}
 	}
 }

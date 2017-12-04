@@ -838,15 +838,12 @@ var updateAppImage = action.Action{
 			log.Errorf("Couldn't list images for cleaning: %s", err)
 			return ctx.Previous, nil
 		}
+		limit := len(allImages) - imgHistorySize
 		for i, imgName := range allImages {
-			if i > len(allImages)-imgHistorySize-1 {
-				err := args.provisioner.Cluster().RemoveImageIgnoreLast(imgName)
-				if err != nil {
-					log.Debugf("Ignored error removing old image %q: %s", imgName, err.Error())
-				}
+			if i == len(allImages)-1 {
 				continue
 			}
-			args.provisioner.CleanImage(args.app.GetName(), imgName)
+			args.provisioner.CleanImage(args.app.GetName(), imgName, i < limit)
 		}
 		return ctx.Previous, nil
 	},
