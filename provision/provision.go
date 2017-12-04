@@ -688,10 +688,10 @@ type TsuruYamlHealthcheck struct {
 	Path            string
 	Method          string
 	Status          int
-	Match           string
-	RouterBody      string
-	UseInRouter     bool `json:"use_in_router" bson:"use_in_router"`
-	AllowedFailures int  `json:"allowed_failures" bson:"allowed_failures"`
+	Match           string `bson:",omitempty"`
+	RouterBody      string `bson:",omitempty"`
+	UseInRouter     bool   `json:"use_in_router" bson:"use_in_router,omitempty"`
+	AllowedFailures int    `json:"allowed_failures" bson:"allowed_failures,omitempty"`
 }
 
 func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {

@@ -164,7 +164,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 }
 
 func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
+	stopCh := s.stopContainers(s.server.URL(), 2)
 	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
@@ -232,6 +232,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
+	attachCounter := 0
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -246,7 +247,12 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 			return
 		}
 		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		fmt.Fprintf(outStream, "web: test.sh\n")
+		attachCounter++
+		if attachCounter == 1 {
+			fmt.Fprintf(outStream, "web: test.sh\n")
+		} else {
+			fmt.Fprintf(outStream, "")
+		}
 		conn.Close()
 	}))
 	evt, err := event.New(&event.Opts{
@@ -268,7 +274,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
-func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
+func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -323,6 +329,77 @@ func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+}
+
+func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	attachCounter := 0
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		attachCounter++
+		if attachCounter == 2 {
+			yamlData := `healthcheck:
+  path: /status
+  method: GET
+  status: 200`
+			fmt.Fprintf(outStream, yamlData)
+		} else {
+			fmt.Fprintf(outStream, "")
+		}
+		conn.Close()
+	}))
+	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	imd, err := image.GetImageMetaData(imgID)
+	c.Assert(err, check.IsNil)
+	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/status",
+			"method": "GET",
+			"status": 200,
+		},
+	})
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {
