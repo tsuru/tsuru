@@ -31,20 +31,10 @@ type Image struct {
 	History    []ImageHistory
 }
 
-// RemoveImageIgnoreLast works similarly to RemoveImage except it won't
-// remove the last built/pulled/commited image.
-func (c *Cluster) RemoveImageIgnoreLast(name string) error {
-	return c.removeImage(name, true)
-}
-
 // RemoveImage removes an image from the nodes where this images exists,
 // returning an error in case of failure. Will wait for the image to be
 // removed on all nodes.
 func (c *Cluster) RemoveImage(name string) error {
-	return c.removeImage(name, false)
-}
-
-func (c *Cluster) removeImage(name string, ignoreLast bool) error {
 	stor := c.storage()
 	image, err := stor.RetrieveImage(name)
 	if err != nil {
@@ -61,23 +51,19 @@ func (c *Cluster) removeImage(name string, ignoreLast bool) error {
 	}
 	_, err = c.runOnNodes(func(n node) (interface{}, error) {
 		imgIds, _ := idMap[n.addr]
-		var lastErr error
-		for _, imgId := range imgIds {
-			if ignoreLast && imgId == image.LastId {
-				continue
-			}
-			removeErr := n.RemoveImage(imgId)
-			_, isNetErr := removeErr.(net.Error)
-			if removeErr == nil || removeErr == docker.ErrNoSuchImage || isNetErr {
-				removeErr = stor.RemoveImage(name, imgId, n.addr)
-				if removeErr != nil {
-					lastErr = removeErr
-				}
-			} else {
-				lastErr = removeErr
-			}
+		err = n.RemoveImage(name)
+		_, isNetErr := err.(net.Error)
+		if err != nil && err != docker.ErrNoSuchImage && !isNetErr {
+			return nil, err
 		}
-		return nil, lastErr
+		for _, imgId := range imgIds {
+			// Errors are ignored here because we're just ensuring any
+			// remaining data that wasn't removed when calling remove with the
+			// image name is removed now, no big deal if there're errors here.
+			n.RemoveImage(imgId)
+			stor.RemoveImage(name, imgId, n.addr)
+		}
+		return nil, nil
 	}, docker.ErrNoSuchImage, true, hosts...)
 	return err
 }
