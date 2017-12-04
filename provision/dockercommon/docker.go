@@ -88,6 +88,7 @@ type PrepareImageArgs struct {
 	ProcfileRaw string
 	ImageID     string
 	Out         io.Writer
+	CustomData  map[string]interface{}
 }
 
 func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
@@ -135,8 +136,9 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 		return "", err
 	}
 	imageData := image.ImageMetadata{
-		Name:      newImage,
-		Processes: procfile,
+		Name:       newImage,
+		Processes:  procfile,
+		CustomData: args.CustomData,
 	}
 	for k := range imageInspect.Config.ExposedPorts {
 		imageData.ExposedPort = string(k)

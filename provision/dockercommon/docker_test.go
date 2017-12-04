@@ -52,6 +52,12 @@ func (s *S) TestPrepareImageForDeploy(c *check.C) {
 		ProcfileRaw: "web: myapp run",
 		ImageID:     baseImgName,
 		Out:         &buf,
+		CustomData: map[string]interface{}{
+			"healthcheck": map[string]interface{}{
+				"path":   "/",
+				"method": "GET",
+			},
+		},
 	}
 	newImg, err := PrepareImageForDeploy(args)
 	c.Assert(err, check.IsNil)
@@ -65,9 +71,14 @@ Pushed
 	imd, err := image.GetImageMetaData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
-		Name:            "my.registry/tsuru/app-myapp:v1",
-		Processes:       map[string][]string{"web": {"myapp run"}},
-		CustomData:      map[string]interface{}{},
+		Name:      "my.registry/tsuru/app-myapp:v1",
+		Processes: map[string][]string{"web": {"myapp run"}},
+		CustomData: map[string]interface{}{
+			"healthcheck": map[string]interface{}{
+				"path":   "/",
+				"method": "GET",
+			},
+		},
 		LegacyProcesses: map[string]string{},
 	})
 }
