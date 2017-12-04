@@ -896,8 +896,15 @@ func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
 		{ID: units[2].ID, Status: provision.Status("error")},
 		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
 	}
-	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+	result, err := UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
+	c.Assert(err, check.IsNil)
+	expected := []UpdateUnitsResult{
+		{ID: units[0].ID, Found: false},
+		{ID: units[1].ID, Found: false},
+		{ID: units[2].ID, Found: false},
+		{ID: units[2].ID + "-not-found", Found: false},
+	}
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func (s *S) TestGrantAccess(c *check.C) {

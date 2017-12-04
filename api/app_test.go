@@ -2255,7 +2255,20 @@ func (s *S) TestSetNodeStatusNotFound(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var got updateList
+	expected := updateList([]app.UpdateUnitsResult{
+		{ID: units[0].ID, Found: false},
+		{ID: units[1].ID, Found: false},
+		{ID: units[2].ID, Found: false},
+		{ID: "not-found1", Found: false},
+		{ID: "not-found2", Found: false},
+	})
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	sort.Sort(&got)
+	sort.Sort(&expected)
+	c.Assert(got, check.DeepEquals, expected)
 }
 
 func (s *S) TestSetNodeStatusNonInternalToken(c *check.C) {
