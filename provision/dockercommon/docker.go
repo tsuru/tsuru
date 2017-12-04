@@ -97,6 +97,9 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(imageInspect.Config.ExposedPorts) > 1 {
+		return "", errors.New("Too many ports. You should especify which one you want to.")
+	}
 	if len(procfile) == 0 {
 		fmt.Fprintln(args.Out, "  ---> Procfile not found, using entrypoint and cmd")
 		procfile["web"] = append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
@@ -134,9 +137,6 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 	imageData := image.ImageMetadata{
 		Name:      newImage,
 		Processes: procfile,
-	}
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.New("Too many ports. You should especify which one you want to.")
 	}
 	for k := range imageInspect.Config.ExposedPorts {
 		imageData.ExposedPort = string(k)
