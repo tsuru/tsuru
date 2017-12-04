@@ -823,7 +823,7 @@ func (p *FakeProvisioner) GetDockerClient(app provision.App) (provision.BuilderD
 
 }
 
-func (p *FakeProvisioner) CleanImage(appName, imgName string) {
+func (p *FakeProvisioner) CleanImage(appName, imgName string, removeFromRegistry bool) {
 	for _, node := range p.nodes {
 		c, err := docker.NewClient(node.Addr)
 		if err != nil {

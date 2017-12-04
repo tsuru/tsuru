@@ -630,6 +630,21 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
+	if builderProv, ok := prov.(provision.BuilderDeploy); ok {
+		var imgs []string
+		imgs, err = image.ListAppImages(appName)
+		if err != nil {
+			log.Errorf("failed to list images for app %s: %s", appName, err)
+		}
+		var imgsBuild []string
+		imgsBuild, err = image.ListAppBuilderImages(appName)
+		if err != nil {
+			log.Errorf("failed to list build images for app %s: %s", appName, err)
+		}
+		for _, img := range append(imgs, imgsBuild...) {
+			builderProv.CleanImage(appName, img, true)
+		}
+	}
 	err = image.DeleteAllAppImageNames(appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)

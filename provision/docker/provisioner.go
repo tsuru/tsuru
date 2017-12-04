@@ -397,7 +397,7 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageID string, evt *event.Event) error {
 	err := p.deploy(a, imageID, evt)
 	if err != nil {
-		p.CleanImage(a.GetName(), imageID)
+		p.CleanImage(a.GetName(), imageID, true)
 	}
 	return err
 }
@@ -507,7 +507,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	cluster := p.Cluster()
 	for _, imageID := range images {
 		err = cluster.RemoveImage(imageID)
-		if err != nil && err != docker.ErrNoSuchImage {
+		if err != nil && err != docker.ErrNoSuchImage && err != clusterStorage.ErrNoSuchImage {
 			log.Errorf("Failed to remove image %s: %s", imageID, err)
 		}
 	}

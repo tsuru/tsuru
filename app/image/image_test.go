@@ -8,9 +8,9 @@ import (
 	"sort"
 
 	"github.com/tsuru/config"
-
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2"
 )
 
 func (s *S) TestAppNewImageName(c *check.C) {
@@ -124,10 +124,14 @@ func (s *S) TestDeleteAllAppImageNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
+	err = AppendAppBuilderImageName("myapp", "tsuru/app-myapp:v1-builder")
+	c.Assert(err, check.IsNil)
 	err = DeleteAllAppImageNames("myapp")
 	c.Assert(err, check.IsNil)
 	_, err = ListAppImages("myapp")
-	c.Assert(err, check.ErrorMatches, "not found")
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	_, err = ListAppBuilderImages("myapp")
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
 func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *check.C) {
@@ -152,7 +156,7 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomDataWithoutImages(c *check.C)
 	err := SaveImageCustomData(imgName, data)
 	c.Assert(err, check.IsNil)
 	err = DeleteAllAppImageNames("myapp")
-	c.Assert(err, check.ErrorMatches, "not found")
+	c.Assert(err, check.IsNil)
 	yamlData, err := GetImageTsuruYamlData(imgName)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
@@ -191,11 +195,18 @@ func (s *S) TestPullAppImageNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AppendAppImageName("myapp", "tsuru/app-myapp:v3")
 	c.Assert(err, check.IsNil)
+	err = AppendAppBuilderImageName("myapp", "tsuru/app-myapp:v1-builder")
+	c.Assert(err, check.IsNil)
 	err = PullAppImageNames("myapp", []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v3"})
 	c.Assert(err, check.IsNil)
 	images, err := ListAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2"})
+	err = PullAppImageNames("myapp", []string{"tsuru/app-myapp:v1-builder"})
+	c.Assert(err, check.IsNil)
+	images, err = ListAppBuilderImages("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(images, check.DeepEquals, []string{})
 }
 
 func (s *S) TestPullAppImageNamesRemovesCustomData(c *check.C) {

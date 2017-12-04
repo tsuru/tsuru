@@ -6,11 +6,12 @@ package registry
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
-
 	check "gopkg.in/check.v1"
 )
 
@@ -33,6 +34,10 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:registry", s.server.Addr())
 }
 
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:registry", s.server.Addr())
+}
+
 func (s *S) TearDownSuite(c *check.C) {
 	s.server.Stop()
 }
@@ -46,16 +51,13 @@ func (s *S) TestRegistryRemoveAppImagesErrorImageNotFound(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestRegistryRemoveAppImagesErrorStorageDeleteDisabled(c *check.C) {
+func (s *S) TestRegistryRemoveAppImagesErrorErrDeleteDisabled(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	s.server.SetStorageDelete(false)
 	err := RemoveAppImages("teste")
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*StorageDeleteDisabledError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.StatusCode, check.Equals, http.StatusMethodNotAllowed)
+	c.Assert(errors.Cause(err), check.Equals, ErrDeleteDisabled)
 }
 
 func (s *S) TestRegistryRemoveAppImages(c *check.C) {
@@ -104,7 +106,7 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v0")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "failed to remove image "+s.server.Addr()+"/tsuru/app-teste:v0/ on registry: repository not found (404)\n")
+	c.Assert(err.Error(), check.Equals, "failed to remove image "+s.server.Addr()+"/tsuru/app-teste:v0/ on registry: image not found")
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
@@ -137,4 +139,32 @@ func (s *S) TestParseImage(c *check.C) {
 		c.Check(image, check.Equals, t.expectedImage, check.Commentf("Invalid image for image: %v", t.imageURI))
 		c.Check(tag, check.Equals, t.expectedTag, check.Commentf("Invalid tag for image: %v", t.imageURI))
 	}
+}
+
+func (s *S) TestDockerRegistryDoRequest(c *check.C) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	r := dockerRegistry{
+		server: srv.URL,
+		client: srv.Client(),
+	}
+	rsp, err := r.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestDockerRegistryDoRequestTLS(c *check.C) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	r := dockerRegistry{
+		server: srv.URL,
+		client: srv.Client(),
+	}
+	rsp, err := r.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 }

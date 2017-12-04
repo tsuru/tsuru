@@ -73,10 +73,11 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		return "", nil
 	}
 	limit := len(allImages) - imgHistorySize
-	if limit > 0 {
-		for _, imgName := range allImages[:limit] {
-			p.CleanImage(app.GetName(), imgName)
+	for i, imgName := range allImages {
+		if i == len(allImages)-1 {
+			continue
 		}
+		p.CleanImage(app.GetName(), imgName, i < limit)
 	}
 	return buildingImage, nil
 }
