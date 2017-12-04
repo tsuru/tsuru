@@ -487,7 +487,7 @@
   branch = "master"
   name = "github.com/tsuru/docker-cluster"
   packages = ["cluster","log","storage","storage/mongodb"]
-  revision = "9ff8a48c7af77a1d6fbbe49c07a1c9a658ea73ca"
+  revision = "3d7ffe0959977552dae89c42bf0e567eb312b7b6"
 
 [[projects]]
   name = "github.com/tsuru/gandalf"
