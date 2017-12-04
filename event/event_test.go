@@ -844,6 +844,44 @@ func (s *S) TestNewThrottledExpirationWaitFinish(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestNewThrottledExpirationWaitFinishExpired(c *check.C) {
+	oldLockExpire := lockExpireTimeout
+	lockExpireTimeout = 200 * time.Millisecond
+	defer func() {
+		lockExpireTimeout = oldLockExpire
+	}()
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       300 * time.Millisecond,
+		Max:        1,
+		AllTargets: true,
+		WaitFinish: true,
+	})
+	baseOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	_, err := New(baseOpts)
+	c.Assert(err, check.IsNil)
+	updater.stop()
+	otherOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp2"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	_, err = New(otherOpts)
+	c.Assert(err, check.NotNil)
+	updater.stop()
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 300ms")
+	time.Sleep(500 * time.Millisecond)
+	_, err = New(otherOpts)
+	c.Check(err, check.IsNil)
+}
+
 func (s *S) TestListFilterEmpty(c *check.C) {
 	evts, err := List(nil)
 	c.Assert(err, check.IsNil)

@@ -720,11 +720,15 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 	query := bson.M{
 		"target.type": target.Type,
 	}
-	startTimeQuery := bson.M{"$gt": time.Now().UTC().Add(-tSpec.Time)}
+	now := time.Now().UTC()
+	startTimeQuery := bson.M{"$gt": now.Add(-tSpec.Time)}
 	if tSpec.WaitFinish {
 		query["$or"] = []bson.M{
 			{"starttime": startTimeQuery},
-			{"running": true},
+			{
+				"running":        true,
+				"lockupdatetime": bson.M{"$gt": now.Add(-lockExpireTimeout)},
+			},
 		}
 	} else {
 		query["starttime"] = startTimeQuery
