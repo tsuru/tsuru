@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
@@ -55,6 +56,17 @@ var (
 	ErrCannotOrphanApp   = errors.New("cannot revoke access from this team, as it's the unique team with access to the app")
 	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
 )
+
+var (
+	counterNodesNotFound = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_node_status_not_found",
+		Help: "The number of not found nodes received in tsuru node status.",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(counterNodesNotFound)
+}
 
 const (
 	// InternalAppName is a reserved name used for token generation. For
@@ -845,12 +857,18 @@ func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, e
 		}
 	}
 	if node == nil {
-		return nil, provision.ErrNodeNotFound
+		counterNodesNotFound.Inc()
+		log.Errorf("[update node status] node not found with nodedata: %#v", nodeData)
+		result := make([]UpdateUnitsResult, len(nodeData.Units))
+		for i, unitData := range nodeData.Units {
+			result[i] = UpdateUnitsResult{ID: unitData.ID, Found: false}
+		}
+		return result, nil
 	}
 	if healer.HealerInstance != nil {
 		err = healer.HealerInstance.UpdateNodeData(node, nodeData.Checks)
 		if err != nil {
-			log.Errorf("unable to set node status in healer: %s", err)
+			log.Errorf("[update node status] unable to set node status in healer: %s", err)
 		}
 	}
 	unitProv, ok := node.Provisioner().(provision.UnitStatusProvisioner)
