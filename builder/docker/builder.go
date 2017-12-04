@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var _ builder.Builder = &dockerBuilder{}
@@ -98,24 +99,52 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
+
 	fmt.Fprintln(evt, "---- Getting process from image ----")
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
-	var buf bytes.Buffer
-	err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
+	var procfileBuf bytes.Buffer
+	err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
 	if err != nil {
 		return "", err
 	}
+
+	fmt.Fprintln(evt, "---- Getting tsuru.yaml from image ----")
+	customData, err := loadTsuruYaml(client, app, imageID, evt)
+	if err != nil {
+		return "", err
+	}
+
 	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
 		Client:      client,
 		App:         app,
-		ProcfileRaw: buf.String(),
+		ProcfileRaw: procfileBuf.String(),
 		ImageID:     imageID,
 		Out:         evt,
+		CustomData:  customData,
 	})
 	if err != nil {
 		return "", err
 	}
 	return newImage, nil
+}
+
+func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (map[string]interface{}, error) {
+	path := defaultArchivePath + "/current"
+	cmd := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
+	var buf bytes.Buffer
+	err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
+	if err != nil {
+		return nil, err
+	}
+	var tsuruYamlData provision.TsuruYamlData
+	err = yaml.Unmarshal(buf.Bytes(), &tsuruYamlData)
+	if err != nil {
+		return nil, err
+	}
+	customData := map[string]interface{}{
+		"healthcheck": tsuruYamlData.Healthcheck,
+	}
+	return customData, err
 }
 
 func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Event, image string, command string, app provision.App, stdout, stderr io.Writer) error {
