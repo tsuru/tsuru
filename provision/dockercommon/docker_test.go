@@ -122,6 +122,39 @@ Pushed
 	})
 }
 
+func (s *S) TestPrepareImageForDeployMoreThanOnePortFromImage(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	a := &app.App{Name: "myapp"}
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	baseImgName := "baseImg"
+	err = cli.PullImage(docker.PullImageOptions{Repository: baseImgName}, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	srv.CustomHandler(fmt.Sprintf("/images/%s/json", baseImgName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint:   []string{"/bin/sh"},
+				Cmd:          []string{"python", "test file.py"},
+				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}, "8080/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	buf := bytes.Buffer{}
+	args := PrepareImageArgs{
+		Client:      cli,
+		App:         a,
+		ProcfileRaw: "web: myapp run",
+		ImageID:     baseImgName,
+		Out:         &buf,
+	}
+	_, err = PrepareImageForDeploy(args)
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestWaitDocker(c *check.C) {
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

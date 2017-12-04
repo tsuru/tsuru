@@ -221,59 +221,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
 }
 
-func (s *S) TestBuilderImageIDMoreThanOnePortFromImage(c *check.C) {
-	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	u, _ := url.Parse(s.server.URL())
-	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
-	config.Set("docker:registry", u.Host)
-	defer config.Unset("docker:registry")
-	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hijacker, ok := w.(http.Hijacker)
-		if !ok {
-			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
-		w.WriteHeader(http.StatusOK)
-		conn, _, cErr := hijacker.Hijack()
-		if cErr != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		fmt.Fprintf(outStream, "")
-		conn.Close()
-	}))
-	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := docker.Image{
-			Config: &docker.Config{
-				Entrypoint:   []string{"/bin/sh", "-c", "python test.py"},
-				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}, "80/tcp": {}},
-			},
-		}
-		j, _ := json.Marshal(response)
-		w.Write(j)
-	}))
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	bopts := builder.BuildOpts{
-		ImageID: imageName,
-	}
-	_, err = s.b.Build(s.provisioner, a, evt, bopts)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestBuilderImageIDMWithProcfile(c *check.C) {
+func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
 	err := s.provisioner.AddNode(opts)
 	c.Assert(err, check.IsNil)
