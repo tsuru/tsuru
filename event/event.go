@@ -44,6 +44,11 @@ var (
 		Name: "tsuru_events_rejected_total",
 		Help: "The total number of events rejected",
 	}, []string{"kind", "reason"})
+
+	eventsExpired = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_events_expired_total",
+		Help: "The total number of events expired",
+	}, []string{"kind"})
 )
 
 const (

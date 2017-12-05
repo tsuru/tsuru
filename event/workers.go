@@ -72,6 +72,8 @@ func (l *eventCleaner) tryCleaning() error {
 		err = evt.Done(errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
 		if err != nil {
 			log.Errorf("[events] [event cleaner] error marking evt as done: %v", err)
+		} else {
+			eventsExpired.WithLabelValues(evt.Kind.Name).Inc()
 		}
 	}
 	return nil
