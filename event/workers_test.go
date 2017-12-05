@@ -1,0 +1,90 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package event
+
+import (
+	"time"
+
+	"github.com/tsuru/tsuru/permission"
+	"gopkg.in/check.v1"
+)
+
+func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
+	updater.stop()
+	oldUpdateInterval := lockUpdateInterval
+	lockUpdateInterval = time.Millisecond
+	defer func() {
+		updater.stop()
+		lockUpdateInterval = oldUpdateInterval
+	}()
+	evt, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t0 := evts[0].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t1 := evts[0].LockUpdateTime
+	c.Assert(t0.Before(t1), check.Equals, true)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t0 = evts[0].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t1 = evts[0].LockUpdateTime
+	c.Assert(t0, check.DeepEquals, t1)
+}
+
+func (s *S) TestEventCleaner(c *check.C) {
+	cleaner.stop()
+	oldEventCleanerInterval := eventCleanerInterval
+	eventCleanerInterval = time.Millisecond
+	oldLockExpire := lockExpireTimeout
+	lockExpireTimeout = 100 * time.Millisecond
+	defer func() {
+		eventCleanerInterval = oldEventCleanerInterval
+		lockExpireTimeout = oldLockExpire
+	}()
+	_, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	updater.stop()
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Running, check.Equals, true)
+	cleaner.start()
+	cleaner.stop()
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Running, check.Equals, true)
+	time.Sleep(120 * time.Millisecond)
+	cleaner.start()
+	cleaner.stop()
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Running, check.Equals, false)
+	c.Assert(evts[0].Error, check.Matches, `event expired, no update for .*ms`)
+}

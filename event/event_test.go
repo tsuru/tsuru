@@ -278,46 +278,6 @@ func (s *S) TestNewEventBlocked(c *check.C) {
 	c.Assert(evts[0].Error, check.Matches, `.*block app.deploy by all users on all targets: you shall not pass$`)
 }
 
-func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
-	updater.stop()
-	oldUpdateInterval := lockUpdateInterval
-	lockUpdateInterval = time.Millisecond
-	defer func() {
-		updater.stop()
-		lockUpdateInterval = oldUpdateInterval
-	}()
-	evt, err := New(&Opts{
-		Target:  Target{Type: "app", Value: "myapp"},
-		Kind:    permission.PermAppUpdateEnvSet,
-		Owner:   s.token,
-		Allowed: Allowed(permission.PermAppReadEvents),
-	})
-	c.Assert(err, check.IsNil)
-	evts, err := All()
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	t0 := evts[0].LockUpdateTime
-	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	t1 := evts[0].LockUpdateTime
-	c.Assert(t0.Before(t1), check.Equals, true)
-	err = evt.Done(nil)
-	c.Assert(err, check.IsNil)
-	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	t0 = evts[0].LockUpdateTime
-	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	t1 = evts[0].LockUpdateTime
-	c.Assert(t0, check.DeepEquals, t1)
-}
-
 func (s *S) TestEventAbort(c *check.C) {
 	evt, err := New(&Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -1151,7 +1111,7 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 
 func (s *S) TestLoadThrottling(c *check.C) {
 	defer config.Unset("event:throttling")
-	err := LoadThrottling()
+	err := loadThrottling()
 	c.Assert(err, check.IsNil)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 	err = config.ReadConfigBytes([]byte(`
@@ -1160,7 +1120,7 @@ event:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()
-	err = LoadThrottling()
+	err = loadThrottling()
 	c.Assert(err, check.IsNil)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 	err = config.ReadConfigBytes([]byte(`
@@ -1181,7 +1141,7 @@ event:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()
-	err = LoadThrottling()
+	err = loadThrottling()
 	c.Assert(err, check.IsNil)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{
 		"app_app.update.env.set_global": {
@@ -1205,7 +1165,7 @@ event:
 
 func (s *S) TestLoadThrottlingInvalid(c *check.C) {
 	defer config.Unset("event:throttling")
-	err := LoadThrottling()
+	err := loadThrottling()
 	c.Assert(err, check.IsNil)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 	err = config.ReadConfigBytes([]byte(`
@@ -1215,7 +1175,7 @@ event:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()
-	err = LoadThrottling()
+	err = loadThrottling()
 	c.Assert(err, check.ErrorMatches, `json: cannot unmarshal object into Go value of type \[\]event.ThrottlingSpec`)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 	err = config.ReadConfigBytes([]byte(`
@@ -1230,7 +1190,7 @@ event:
 `))
 	c.Assert(err, check.IsNil)
 	setBaseConfig()
-	err = LoadThrottling()
+	err = loadThrottling()
 	c.Assert(err, check.ErrorMatches, `json: cannot unmarshal string into Go struct field throttlingSpecAlias.limit of type int`)
 	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 }

@@ -529,7 +529,7 @@ func startServer(handler http.Handler) {
 	if err != nil {
 		fatal(err)
 	}
-	err = event.LoadThrottling()
+	err = event.Initialize()
 	if err != nil {
 		fatal(errors.Wrap(err, "unable to load events throttling config"))
 	}
