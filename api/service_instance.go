@@ -585,7 +585,8 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	path := r.URL.Query().Get("callback")
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err := event.New(&event.Opts{
+		var evt *event.Event
+		evt, err = event.New(&event.Opts{
 			Target: serviceInstanceTarget(serviceName, instanceName),
 			Kind:   permission.PermServiceInstanceUpdateProxy,
 			Owner:  t,
@@ -601,7 +602,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 		defer func() { evt.Done(err) }()
 	}
-	return service.Proxy(serviceInstance.Service(), path, w, r)
+	return service.ProxyInstance(serviceInstance, path, w, r)
 }
 
 // title: grant access to service instance

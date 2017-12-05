@@ -35,6 +35,12 @@ var (
 		Name: "tsuru_service_request_errors_total",
 		Help: "The total number of service request errors.",
 	}, []string{"service"})
+
+	reservedProxyPaths = []string{
+		"",
+		"bind-app",
+		"bind",
+	}
 )
 
 func init() {

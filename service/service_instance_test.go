@@ -1067,3 +1067,54 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}},
 	})
 }
+
+func (s *S) TestProxyInstance(c *check.C) {
+	var remoteReq *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		remoteReq = r
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	service := Service{
+		Name:     "tensorflow",
+		Endpoint: map[string]string{"production": ts.URL},
+		Password: "abcde",
+	}
+	err := s.conn.Services().Insert(service)
+	c.Assert(err, check.IsNil)
+	sInstance := ServiceInstance{Name: "noflow", ServiceName: "tensorflow", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+	tests := []struct {
+		method       string
+		path         string
+		expectedPath string
+		err          string
+	}{
+		{method: "GET", path: "", expectedPath: "/resources/noflow"},
+		{method: "GET", path: "/", expectedPath: "/resources/noflow"},
+		{method: "GET", path: "/resources/noflow", expectedPath: "/resources/noflow"},
+		{method: "GET", path: "/resources/noflow/", expectedPath: "/resources/noflow"},
+		{method: "GET", path: "/resources/noflowxxx", expectedPath: "/resources/noflow/resources/noflowxxx"},
+		{method: "POST", path: "", err: "proxy request POST \"\" is forbidden"},
+		{method: "POST", path: "bind-app", err: "proxy request POST \"bind-app\" is forbidden"},
+		{method: "POST", path: "/bind-app", err: "proxy request POST \"bind-app\" is forbidden"},
+		{method: "GET", path: "/bind-app", expectedPath: "/resources/noflow/bind-app"},
+		{method: "GET", path: "/resources/noflow/bind-app", expectedPath: "/resources/noflow/bind-app"},
+		{method: "POST", path: "/resources/noflow/otherpath", expectedPath: "/resources/noflow/otherpath"},
+		{method: "POST", path: "/resources/otherinstance/otherpath", expectedPath: "/resources/noflow/resources/otherinstance/otherpath"},
+	}
+	for _, tt := range tests {
+		request, err := http.NewRequest(tt.method, "", nil)
+		c.Assert(err, check.IsNil)
+		recorder := httptest.NewRecorder()
+		err = ProxyInstance(&sInstance, tt.path, recorder, request)
+		if tt.err == "" {
+			c.Assert(err, check.IsNil)
+			c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+			c.Assert(remoteReq.URL.Path, check.Equals, tt.expectedPath)
+		} else {
+			c.Assert(err, check.ErrorMatches, tt.err)
+		}
+	}
+}
