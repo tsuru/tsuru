@@ -143,6 +143,13 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	}
 	customData := map[string]interface{}{
 		"healthcheck": tsuruYamlData.Healthcheck,
+		"hooks": map[string]interface{}{
+			"build": tsuruYamlData.Hooks.Build,
+			"restart": map[string]interface{}{
+				"before": tsuruYamlData.Hooks.Restart.Before,
+				"after":  tsuruYamlData.Hooks.Restart.After,
+			},
+		},
 	}
 	return customData, err
 }

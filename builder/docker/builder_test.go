@@ -361,7 +361,16 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 			yamlData := `healthcheck:
   path: /status
   method: GET
-  status: 200`
+  status: 200
+hooks:
+  build:
+    - ./build1
+    - ./build2
+  restart:
+    before:
+      - ./before.sh
+    after:
+      - ./after.sh`
 			fmt.Fprintf(outStream, yamlData)
 		} else {
 			fmt.Fprintf(outStream, "")
@@ -397,6 +406,13 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 			"path":   "/status",
 			"method": "GET",
 			"status": 200,
+		},
+		"hooks": map[string]interface{}{
+			"build": []interface{}{"./build1", "./build2"},
+			"restart": map[string]interface{}{
+				"before": []interface{}{"./before.sh"},
+				"after":  []interface{}{"./after.sh"},
+			},
 		},
 	})
 }
