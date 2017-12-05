@@ -12,12 +12,10 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	internalConfig "github.com/tsuru/tsuru/config"
@@ -55,13 +53,6 @@ const (
 )
 
 var (
-	lockUpdateInterval = 30 * time.Second
-	lockExpireTimeout  = 5 * time.Minute
-	updater            = lockUpdater{
-		addCh:    make(chan *Target),
-		removeCh: make(chan *Target),
-		once:     &sync.Once{},
-	}
 	throttlingInfo  = map[string]ThrottlingSpec{}
 	errInvalidQuery = errors.New("invalid query")
 
@@ -297,7 +288,16 @@ func throttlingKey(targetType TargetType, kindName string, allTargets bool) stri
 	return key
 }
 
-func LoadThrottling() error {
+func Initialize() error {
+	err := loadThrottling()
+	if err != nil {
+		return errors.Wrap(err, "unable to load event throttling")
+	}
+	cleaner.start()
+	return nil
+}
+
+func loadThrottling() error {
 	var specs []ThrottlingSpec
 	err := internalConfig.UnmarshalConfig("event:throttling", &specs)
 	if err != nil {
@@ -1105,61 +1105,6 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 func (e *Event) Init() {
 	if e.logBuffer == nil {
 		e.logBuffer = &safe.Buffer{}
-	}
-}
-
-type lockUpdater struct {
-	addCh    chan *Target
-	removeCh chan *Target
-	stopCh   chan struct{}
-	once     *sync.Once
-}
-
-func (l *lockUpdater) start() {
-	l.once.Do(func() {
-		l.stopCh = make(chan struct{})
-		go l.spin()
-	})
-}
-
-func (l *lockUpdater) stop() {
-	if l.stopCh == nil {
-		return
-	}
-	l.stopCh <- struct{}{}
-	l.stopCh = nil
-	l.once = &sync.Once{}
-}
-
-func (l *lockUpdater) spin() {
-	set := map[Target]struct{}{}
-	for {
-		select {
-		case added := <-l.addCh:
-			set[*added] = struct{}{}
-		case removed := <-l.removeCh:
-			delete(set, *removed)
-		case <-l.stopCh:
-			return
-		case <-time.After(lockUpdateInterval):
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("[events] [lock update] error getting db conn: %s", err)
-			continue
-		}
-		coll := conn.Events()
-		slice := make([]interface{}, len(set))
-		i := 0
-		for id := range set {
-			slice[i], _ = id.GetBSON()
-			i++
-		}
-		err = coll.Update(bson.M{"_id": bson.M{"$in": slice}}, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
-		if err != nil && err != mgo.ErrNotFound {
-			log.Errorf("[events] [lock update] error updating: %s", err)
-		}
-		conn.Close()
 	}
 }
 
