@@ -5,15 +5,11 @@
 package api
 
 import (
+	stdcontext "context"
 	"net/http"
 	"testing"
 
-	"golang.org/x/crypto/bcrypt"
-
-	stdcontext "context"
-
 	"github.com/tsuru/config"
-
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -32,6 +28,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 

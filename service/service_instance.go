@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/mgo.v2"
@@ -495,4 +497,24 @@ func RenameServiceInstanceTeam(oldName, newName string) error {
 	bulk.UpdateAll(bson.M{"teams": oldName}, bson.M{"$pull": bson.M{"teams": oldName}})
 	_, err = bulk.Run()
 	return err
+}
+
+// ProxyInstance is a proxy between tsuru and the service instance.
+// This method allow customized service instance methods.
+func ProxyInstance(instance *ServiceInstance, path string, w http.ResponseWriter, r *http.Request) error {
+	service := instance.Service()
+	endpoint, err := service.getClient("production")
+	if err != nil {
+		return err
+	}
+	prefix := fmt.Sprintf("/resources/%s/", instance.GetIdentifier())
+	path = strings.Trim(strings.TrimPrefix(path+"/", prefix), "/")
+	for _, reserved := range reservedProxyPaths {
+		if path == reserved && r.Method != "GET" {
+			return &tsuruErrors.ValidationError{
+				Message: fmt.Sprintf("proxy request %s %q is forbidden", r.Method, path),
+			}
+		}
+	}
+	return endpoint.Proxy(fmt.Sprintf("%s%s", prefix, path), w, r)
 }
