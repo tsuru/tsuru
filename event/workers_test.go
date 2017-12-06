@@ -51,6 +51,98 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	c.Assert(t0, check.DeepEquals, t1)
 }
 
+func (s *S) TestUpdaterUpdatesMultipleEvents(c *check.C) {
+	updater.stop()
+	oldUpdateInterval := lockUpdateInterval
+	lockUpdateInterval = time.Millisecond
+	defer func() {
+		updater.stop()
+		lockUpdateInterval = oldUpdateInterval
+	}()
+	evt0, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp0"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evt1, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp1"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	t0 := evts[0].LockUpdateTime
+	t1 := evts[0].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	c.Assert(t0.Before(evts[0].LockUpdateTime), check.Equals, true)
+	c.Assert(t1.Before(evts[1].LockUpdateTime), check.Equals, true)
+	err = evt0.Done(nil)
+	c.Assert(err, check.IsNil)
+	err = evt1.Done(nil)
+	c.Assert(err, check.IsNil)
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	t0 = evts[0].LockUpdateTime
+	t1 = evts[1].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	c.Assert(t0, check.DeepEquals, evts[0].LockUpdateTime)
+	c.Assert(t1, check.DeepEquals, evts[1].LockUpdateTime)
+}
+
+func (s *S) TestUpdaterUpdatesNonBlockingEvents(c *check.C) {
+	updater.stop()
+	oldUpdateInterval := lockUpdateInterval
+	lockUpdateInterval = time.Millisecond
+	defer func() {
+		updater.stop()
+		lockUpdateInterval = oldUpdateInterval
+	}()
+	evt, err := New(&Opts{
+		Target:      Target{Type: "app", Value: "myapp"},
+		Kind:        permission.PermAppUpdateEnvSet,
+		Owner:       s.token,
+		Allowed:     Allowed(permission.PermAppReadEvents),
+		DisableLock: true,
+	})
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t0 := evts[0].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t1 := evts[0].LockUpdateTime
+	c.Assert(t0.Before(t1), check.Equals, true)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t0 = evts[0].LockUpdateTime
+	time.Sleep(100 * time.Millisecond)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	t1 = evts[0].LockUpdateTime
+	c.Assert(t0, check.DeepEquals, t1)
+}
+
 func (s *S) TestEventCleaner(c *check.C) {
 	cleaner.stop()
 	oldEventCleanerInterval := eventCleanerInterval
