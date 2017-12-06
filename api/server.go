@@ -201,7 +201,7 @@ func RunServer(dry bool) http.Handler {
 
 	// Shell also doesn't use {app} on purpose. Middlewares don't play well
 	// with websocket.
-	m.Add("1.0", "Get", "/apps/{appname}/shell", websocket.Handler(remoteShellHandler))
+	m.Add("1.0", "Get", "/apps/{appname}/shell", http.HandlerFunc(remoteShellHandler))
 
 	m.Add("1.0", "Get", "/users", AuthorizationRequiredHandler(listUsers))
 	m.Add("1.0", "Post", "/users", Handler(createUser))
