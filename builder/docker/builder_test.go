@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/docker/docker/pkg/stdcopy"
 	docker "github.com/fsouza/go-dockerclient"
@@ -232,7 +233,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	attachCounter := 0
+	var attachCounter int32
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -247,8 +248,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 			return
 		}
 		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		attachCounter++
-		if attachCounter == 1 {
+		if atomic.AddInt32(&attachCounter, 1) == 1 {
 			fmt.Fprintf(outStream, "web: test.sh\n")
 		} else {
 			fmt.Fprintf(outStream, "")
@@ -342,7 +342,7 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	attachCounter := 0
+	var attachCounter int32
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -357,8 +357,7 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 			return
 		}
 		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		attachCounter++
-		if attachCounter == 2 {
+		if atomic.AddInt32(&attachCounter, 1) == 2 {
 			yamlData := `healthcheck:
   path: /status
   method: GET
