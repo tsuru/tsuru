@@ -11,15 +11,16 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 	"unicode"
 
+	"github.com/gorilla/websocket"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"golang.org/x/crypto/ssh/terminal"
-	"golang.org/x/net/websocket"
 )
 
 var _ io.ReadWriteCloser = &cmdLogger{}
@@ -84,10 +85,31 @@ func (l *optionalWriterCloser) Close() error {
 	return nil
 }
 
-func remoteShellHandler(ws *websocket.Conn) {
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+var (
+	pongWait     = 60 * time.Second
+	pingInterval = 20 * time.Second
+)
+
+// title: app shell
+// path: /apps/{name}/shell
+// method: GET
+// produce: Websocket connection upgrade
+// responses:
+//   101: Switch Protocol to websocket
+func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Fprintf(w, "unable to upgrade ws connection: %v", err)
+		return
+	}
 	var httpErr *errors.HTTP
 	defer func() {
-		defer ws.Close()
 		if httpErr != nil {
 			var msg string
 			switch httpErr.Code {
@@ -96,10 +118,11 @@ func remoteShellHandler(ws *websocket.Conn) {
 			default:
 				msg = httpErr.Message + "\n"
 			}
-			ws.Write([]byte("Error: " + msg))
+			ws.WriteMessage(websocket.TextMessage, []byte("Error: "+msg))
 		}
+		ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		ws.Close()
 	}()
-	r := ws.Request()
 	token := context.GetAuthToken(r)
 	if token == nil {
 		httpErr = &errors.HTTP{
@@ -164,8 +187,25 @@ func remoteShellHandler(ws *websocket.Conn) {
 		evt.Done(finalErr)
 	}()
 	term = terminal.NewTerminal(buf, "")
+	ws.SetReadDeadline(time.Now().Add(pongWait))
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+	quit := make(chan struct{})
+	defer close(quit)
+	go func() {
+		for {
+			select {
+			case <-quit:
+				return
+			case <-time.After(pingInterval):
+			}
+			ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(2*time.Second))
+		}
+	}()
 	opts := provision.ShellOptions{
-		Conn:   &cmdLogger{base: ws, term: term},
+		Conn:   &cmdLogger{base: &wsReadWriteCloser{ws}, term: term},
 		Width:  width,
 		Height: height,
 		Unit:   unitID,
@@ -178,4 +218,23 @@ func remoteShellHandler(ws *websocket.Conn) {
 			Message: err.Error(),
 		}
 	}
+}
+
+type wsReadWriteCloser struct {
+	*websocket.Conn
+}
+
+func (c *wsReadWriteCloser) Read(p []byte) (n int, err error) {
+	messageType, r, err := c.NextReader()
+	if err != nil {
+		return 0, err
+	}
+	if messageType != websocket.TextMessage {
+		return 0, nil
+	}
+	return r.Read(p)
+}
+
+func (c *wsReadWriteCloser) Write(p []byte) (n int, err error) {
+	return len(p), c.Conn.WriteMessage(websocket.TextMessage, p)
 }
