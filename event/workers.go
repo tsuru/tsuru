@@ -20,8 +20,8 @@ var (
 	lockExpireTimeout    = 5 * time.Minute
 	eventCleanerInterval = 5 * time.Minute
 	updater              = lockUpdater{
-		addCh:    make(chan *Target, 10),
-		removeCh: make(chan *Target, 10),
+		addCh:    make(chan eventID, 10),
+		removeCh: make(chan eventID, 10),
 		once:     &sync.Once{},
 	}
 	cleaner = eventCleaner{
@@ -94,8 +94,8 @@ func (l *eventCleaner) spin() {
 }
 
 type lockUpdater struct {
-	addCh    chan *Target
-	removeCh chan *Target
+	addCh    chan eventID
+	removeCh chan eventID
 	stopCh   chan struct{}
 	once     *sync.Once
 }
@@ -117,16 +117,19 @@ func (l *lockUpdater) stop() {
 }
 
 func (l *lockUpdater) spin() {
-	set := map[Target]struct{}{}
+	set := map[eventID]struct{}{}
 	for {
 		select {
 		case added := <-l.addCh:
-			set[*added] = struct{}{}
+			set[added] = struct{}{}
 		case removed := <-l.removeCh:
-			delete(set, *removed)
+			delete(set, removed)
 		case <-l.stopCh:
 			return
 		case <-time.After(lockUpdateInterval):
+		}
+		if len(set) == 0 {
+			continue
 		}
 		conn, err := db.Conn()
 		if err != nil {
@@ -140,7 +143,7 @@ func (l *lockUpdater) spin() {
 			slice[i], _ = id.GetBSON()
 			i++
 		}
-		err = coll.Update(bson.M{"_id": bson.M{"$in": slice}}, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
+		_, err = coll.UpdateAll(bson.M{"_id": bson.M{"$in": slice}}, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
 		if err != nil && err != mgo.ErrNotFound {
 			log.Errorf("[events] [lock update] error updating: %s", err)
 		}
