@@ -661,7 +661,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	node, err := p.GetNode("http://addr1:1")
+	node, err := p.GetNode(nodeAddr)
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown(context.Background())
@@ -731,6 +731,40 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	c.Assert(result, check.DeepEquals, NodeStatusData{
 		Address: nodeAddr,
 		Checks:  expectedChecks,
+	})
+}
+
+func (s *S) TestHealerGetNodeStatusData(c *check.C) {
+	p := provisiontest.ProvisionerInstance
+	nodeAddr := "http://addr1:1"
+	err := p.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+	})
+	c.Assert(err, check.IsNil)
+	node, err := p.GetNode(nodeAddr)
+	c.Assert(err, check.IsNil)
+	healer := newNodeHealer(nodeHealerArgs{})
+	healer.Shutdown(context.Background())
+	status, err := healer.GetNodeStatusData(node)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
+	}
+	err = healer.UpdateNodeData(node, checks)
+	c.Assert(err, check.IsNil)
+	status, err = healer.GetNodeStatusData(node)
+	c.Assert(err, check.IsNil)
+	c.Assert(status.LastSuccess.IsZero(), check.Equals, false)
+	c.Assert(status.LastUpdate.IsZero(), check.Equals, false)
+	c.Assert(status.Checks[0].Time.IsZero(), check.Equals, false)
+	status.LastUpdate = time.Time{}
+	status.LastSuccess = time.Time{}
+	status.Checks[0].Time = time.Time{}
+	c.Assert(status, check.DeepEquals, NodeStatusData{
+		Address: nodeAddr,
+		Checks:  []NodeChecks{{Checks: checks}},
 	})
 }
 

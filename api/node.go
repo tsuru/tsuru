@@ -675,3 +675,66 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	fmt.Fprintf(writer, "Units successfully rebalanced!\n")
 	return nil
 }
+
+type InfoNodeResponse struct {
+	Node   provision.NodeSpec    `json:"node"`
+	Status healer.NodeStatusData `json:"status"`
+	Units  []provision.Unit      `json:"units"`
+}
+
+// title: node info
+// path: /node/{address}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   404: Not found
+func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	address := r.URL.Query().Get(":address")
+	if address == "" {
+		return errors.Errorf("Node address is required.")
+	}
+	_, node, err := provision.FindNode(address)
+	if err != nil {
+		if err == provision.ErrNodeNotFound {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
+	spec := provision.NodeToSpec(node)
+	if spec.IaaSID == "" {
+		var machine iaas.Machine
+		machine, err = iaas.FindMachineByAddress(address)
+		if err != nil {
+			if err != iaas.ErrMachineNotFound {
+				return err
+			}
+		} else {
+			spec.IaaSID = machine.Iaas
+		}
+	}
+	nodeStatus, err := healer.HealerInstance.GetNodeStatusData(node)
+	if err != nil && err != provision.ErrNodeNotFound {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	units, err := node.Units()
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	response := InfoNodeResponse{
+		Node:   spec,
+		Status: nodeStatus,
+		Units:  units,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(response)
+}

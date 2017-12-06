@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
+	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -1060,4 +1062,87 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 			{"name": "Event", "value": ""},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestInfoNodeHandlerNotFound(c *check.C) {
+	nodeAddr := "http://host1.com:2375"
+	req, err := http.NewRequest("GET", "/node/"+nodeAddr, nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	s.testServer.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestInfoNodeHandlerNodeOnly(c *check.C) {
+	nodeAddr := "http://host1.com:2375"
+	err := s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+		Pool:    "pool1",
+		IaaSID:  "teste123",
+	})
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("GET", "/node/"+nodeAddr, nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	s.testServer.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
+	var result InfoNodeResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Node, check.DeepEquals, provision.NodeSpec{
+		Address: nodeAddr, Provisioner: "fake", Pool: "pool1", Status: "enabled", IaaSID: "teste123", Metadata: map[string]string{},
+	})
+}
+
+func (s *S) TestInfoNodeHandler(c *check.C) {
+	nodeAddr := "host1.com:2375"
+	err := s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+		Pool:    "pool1",
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.provisioner.GetNode(nodeAddr)
+	c.Assert(err, check.IsNil)
+	nodeHealer := &healer.NodeHealer{}
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
+	}
+	err = nodeHealer.UpdateNodeData(node, checks)
+	c.Assert(err, check.IsNil)
+	factory, _ := iaasTesting.NewHealerIaaSConstructorWithInst(nodeAddr)
+	iaas.RegisterIaasProvider("test123", factory)
+	_, err = iaas.CreateMachineForIaaS("test123", map[string]string{"id": "teste123", "host": "host1.com", "port": "2375"})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "fake", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{
+		ID:      "a834h983j498j",
+		AppName: "fake",
+		Address: &url.URL{
+			Host: "host1.com:2375",
+		},
+	}
+	s.provisioner.AddUnit(&a, unit)
+	req, err := http.NewRequest("GET", "/node/"+nodeAddr, nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	s.testServer.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
+	var result InfoNodeResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Node, check.DeepEquals, provision.NodeSpec{
+		Address: nodeAddr, Provisioner: "fake", Pool: "pool1", Status: "enabled", IaaSID: "test123", Metadata: map[string]string{},
+	})
+	c.Assert(result.Status.Address, check.Equals, nodeAddr)
+	c.Assert(result.Status.Checks, check.HasLen, 1)
+	c.Assert(result.Status.Checks[0].Checks, check.DeepEquals, checks)
+	c.Assert(result.Units, check.DeepEquals, []provision.Unit{unit})
 }
