@@ -7,7 +7,6 @@ package pool
 import (
 	"reflect"
 
-	"github.com/tsuru/tsuru/provision/pool"
 	check "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,13 +30,13 @@ func (s *S) TestSetPoolConstraintsWithServices(c *check.C) {
 	coll := s.storage.PoolsConstraints()
 	err := SetPoolConstraint(&PoolConstraint{
 		PoolExpr: "prod",
-		Field:    pool.ConstraintTypeService,
+		Field:    ConstraintTypeService,
 		Values:   []string{"lux"},
 	})
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{
 		PoolExpr: "dev",
-		Field:    pool.ConstraintTypeService,
+		Field:    ConstraintTypeService,
 		Values:   []string{"demacia"},
 	})
 	c.Assert(err, check.IsNil)
