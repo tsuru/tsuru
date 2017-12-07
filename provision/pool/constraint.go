@@ -30,7 +30,7 @@ const (
 
 type PoolConstraint struct {
 	PoolExpr  string
-	Field     poolConstraintType
+	Type      poolConstraintType `bson:"field",json:"field"`
 	Values    []string
 	Blacklist bool
 }
@@ -85,27 +85,27 @@ func SetPoolConstraint(c *PoolConstraint) error {
 		return err
 	}
 	defer conn.Close()
-	isValid := validateConstraintType(c.Field)
+	isValid := validateConstraintType(c.Type)
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
 	if len(c.Values) == 0 || (len(c.Values) == 1 && c.Values[0] == "") {
-		errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": c.PoolExpr, "field": c.Field})
+		errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": c.PoolExpr, "field": c.Type})
 		if errRem != mgo.ErrNotFound {
 			return errRem
 		}
 		return nil
 	}
-	_, err = conn.PoolsConstraints().Upsert(bson.M{"poolexpr": c.PoolExpr, "field": c.Field}, c)
+	_, err = conn.PoolsConstraints().Upsert(bson.M{"poolexpr": c.PoolExpr, "field": c.Type}, c)
 	return err
 }
 
 func AppendPoolConstraint(c *PoolConstraint) error {
-	isValid := validateConstraintType(c.Field)
+	isValid := validateConstraintType(c.Type)
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
-	return appendPoolConstraint(c.PoolExpr, string(c.Field), c.Values...)
+	return appendPoolConstraint(c.PoolExpr, string(c.Type), c.Values...)
 }
 
 func validateConstraintType(c poolConstraintType) bool {
@@ -191,8 +191,8 @@ func getConstraintsForPool(pool string, fields ...string) (map[poolConstraintTyp
 	sort.Sort(constraintList(matches))
 	merged := make(map[poolConstraintType]*PoolConstraint)
 	for i := range matches {
-		if _, ok := merged[matches[i].Field]; !ok {
-			merged[matches[i].Field] = matches[i]
+		if _, ok := merged[matches[i].Type]; !ok {
+			merged[matches[i].Type] = matches[i]
 		}
 	}
 	return merged, nil

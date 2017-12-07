@@ -64,7 +64,7 @@ func (s *S) TestValidateRouters(c *check.C) {
 	config.Set("routers:router2:type", "hipache")
 	defer config.Unset("routers")
 	pool := Pool{Name: "pool1"}
-	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 
 	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router1"}})
@@ -288,7 +288,7 @@ func (s *S) TestAddTeamsToPoolWithBlacklistShouldFail(c *check.C) {
 	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Type: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool("pool1", []string{"otherteam"})
 	c.Assert(err, check.NotNil)
@@ -326,7 +326,7 @@ func (s *S) TestRemoveTeamsFromPoolWithBlacklistShouldFail(c *check.C) {
 	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Type: ConstraintTypeTeam, Values: []string{"myteam"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	err = RemoveTeamsFromPool("pool1", []string{"myteam"})
 	c.Assert(err, check.NotNil)
@@ -430,13 +430,13 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{
 		PoolExpr: "pool1",
-		Field:    "team",
+		Type:     ConstraintTypeTeam,
 		Values:   []string{"team1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{
 		PoolExpr: "pool2",
-		Field:    "team",
+		Type:     ConstraintTypeTeam,
 		Values:   []string{"team2"},
 	})
 	c.Assert(err, check.IsNil)
@@ -492,7 +492,7 @@ func (s *S) TestGetRouters(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -524,7 +524,7 @@ func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: false})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -539,7 +539,7 @@ func (s *S) TestGetDefaultRouterNoDefault(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"*"}, Blacklist: false})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"*"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -567,7 +567,7 @@ func (s *S) TestGetDefaultAllowAllSingleAllowedValue(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router*"}, Blacklist: false})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router*"}, Blacklist: false})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -582,7 +582,7 @@ func (s *S) TestGetDefaultBlacklistSingleAllowedValue(c *check.C) {
 	defer config.Unset("routers")
 	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -604,11 +604,11 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	pool := Pool{Name: "pool1"}
 	err = coll.Insert(pool)
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"pubteam"}})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeTeam, Values: []string{"pubteam"}})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router"}, Blacklist: true})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Type: ConstraintTypeRouter, Values: []string{"router"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}})
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Type: ConstraintTypeTeam, Values: []string{"team1"}})
 	c.Assert(err, check.IsNil)
 	constraints, err := pool.allowedValues()
 	c.Assert(err, check.IsNil)
@@ -634,9 +634,9 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 func (s *S) TestRenamePoolTeam(c *check.C) {
 	coll := s.storage.PoolsConstraints()
 	constraints := []PoolConstraint{
-		{PoolExpr: "e1", Field: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
-		{PoolExpr: "e2", Field: ConstraintTypeTeam, Values: []string{"t1", "t2"}},
-		{PoolExpr: "e3", Field: ConstraintTypeTeam, Values: []string{"t2", "t3"}},
+		{PoolExpr: "e1", Type: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
+		{PoolExpr: "e2", Type: ConstraintTypeTeam, Values: []string{"t1", "t2"}},
+		{PoolExpr: "e3", Type: ConstraintTypeTeam, Values: []string{"t2", "t3"}},
 	}
 	for _, constraint := range constraints {
 		err := SetPoolConstraint(&constraint)
@@ -648,9 +648,9 @@ func (s *S) TestRenamePoolTeam(c *check.C) {
 	err = coll.Find(nil).Sort("poolexpr").All(&cs)
 	c.Assert(err, check.IsNil)
 	c.Assert(cs, check.DeepEquals, []PoolConstraint{
-		{PoolExpr: "e1", Field: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
-		{PoolExpr: "e2", Field: ConstraintTypeTeam, Values: []string{"t1", "t9000"}},
-		{PoolExpr: "e3", Field: ConstraintTypeTeam, Values: []string{"t3", "t9000"}},
+		{PoolExpr: "e1", Type: ConstraintTypeRouter, Values: []string{"t1", "t2"}},
+		{PoolExpr: "e2", Type: ConstraintTypeTeam, Values: []string{"t1", "t9000"}},
+		{PoolExpr: "e3", Type: ConstraintTypeTeam, Values: []string{"t3", "t9000"}},
 	})
 }
 
