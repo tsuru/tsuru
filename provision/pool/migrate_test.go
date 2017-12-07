@@ -23,13 +23,13 @@ func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {
 	c.Assert(constraint, check.DeepEquals, &PoolConstraint{
 		PoolExpr: "pool1",
 		Values:   []string{"team1", "team2"},
-		Type:     ConstraintTypeTeam,
+		Field:    ConstraintTypeTeam,
 	})
 	constraint, err = getExactConstraintForPool("publicPool", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint, check.DeepEquals, &PoolConstraint{
 		PoolExpr: "publicPool",
 		Values:   []string{"*"},
-		Type:     ConstraintTypeTeam,
+		Field:    ConstraintTypeTeam,
 	})
 }
