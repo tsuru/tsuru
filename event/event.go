@@ -186,11 +186,12 @@ type eventData struct {
 	ID              eventID `bson:"_id"`
 	UniqueID        bson.ObjectId
 	StartTime       time.Time
-	EndTime         time.Time `bson:",omitempty"`
-	Target          Target    `bson:",omitempty"`
-	StartCustomData bson.Raw  `bson:",omitempty"`
-	EndCustomData   bson.Raw  `bson:",omitempty"`
-	OtherCustomData bson.Raw  `bson:",omitempty"`
+	EndTime         time.Time     `bson:",omitempty"`
+	Target          Target        `bson:",omitempty"`
+	ExtraTargets    []ExtraTarget `bson:",omitempty"`
+	StartCustomData bson.Raw      `bson:",omitempty"`
+	EndCustomData   bson.Raw      `bson:",omitempty"`
+	OtherCustomData bson.Raw      `bson:",omitempty"`
 	Kind            Kind
 	Owner           Owner
 	LockUpdateTime  time.Time
@@ -341,8 +342,14 @@ type Event struct {
 	logWriter io.Writer
 }
 
+type ExtraTarget struct {
+	Target Target
+	Lock   bool
+}
+
 type Opts struct {
 	Target        Target
+	ExtraTargets  []ExtraTarget
 	Kind          *permission.PermissionScheme
 	InternalKind  string
 	Owner         auth.Token
@@ -841,6 +848,7 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 	evt = &Event{eventData: eventData{
 		ID:              id,
 		UniqueID:        uniqID,
+		ExtraTargets:    opts.ExtraTargets,
 		Target:          opts.Target,
 		StartTime:       now,
 		Kind:            k,
@@ -857,6 +865,11 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
 		if err == nil {
+			err = checkLocked(evt, opts.DisableLock)
+			if err != nil {
+				evt.Abort()
+				return nil, err
+			}
 			err = checkIsBlocked(evt)
 			if err != nil {
 				evt.Done(err)
@@ -881,6 +894,47 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 		}
 	}
 	return nil, err
+}
+
+func checkLocked(evt *Event, disableLock bool) error {
+	var targets []Target
+	if !disableLock {
+		targets = append(targets, evt.Target)
+	}
+	for _, et := range evt.ExtraTargets {
+		if et.Lock {
+			targets = append(targets, et.Target)
+		}
+	}
+	if len(targets) == 0 {
+		return nil
+	}
+	var orBlock []bson.M
+	for _, t := range targets {
+		tBson, _ := t.GetBSON()
+		orBlock = append(orBlock, bson.M{"_id": tBson}, bson.M{
+			"extratargets": bson.M{"$elemMatch": bson.M{"target": tBson, "lock": true}},
+		})
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	var existing Event
+	err = coll.Find(bson.M{
+		"running":  true,
+		"uniqueid": bson.M{"$ne": evt.UniqueID},
+		"$or":      orBlock,
+	}).One(&existing.eventData)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil
+		}
+		return err
+	}
+	return ErrEventLocked{event: &existing}
 }
 
 func (e *Event) RawInsert(start, other, end interface{}) error {

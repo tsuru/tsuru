@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 	"sort"
@@ -175,6 +176,116 @@ func (s *S) TestNewLocks(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.ErrorMatches, `event locked: app\(myapp\) running "app.update.env.set" start by user me@me.com at .+`)
+}
+
+func (s *S) TestNewExtraTargetLocks(c *check.C) {
+	tests := []struct {
+		target1      Target
+		extras1      []ExtraTarget
+		disableLock1 bool
+		target2      Target
+		extras2      []ExtraTarget
+		disableLock2 bool
+		err          string
+	}{
+		{
+			target1: Target{Type: "app", Value: "myapp"},
+			target2: Target{Type: "container", Value: "x"},
+			extras2: []ExtraTarget{{Target: Target{Type: "app", Value: "myapp"}, Lock: true}},
+			err:     `event locked: app\(myapp\) running "app.update.env.set" start by user me@me.com at .+`,
+		},
+		{
+			target1: Target{Type: "app", Value: "myapp"},
+			extras1: []ExtraTarget{{Target: Target{Type: "app", Value: "myapp2"}, Lock: true}},
+			target2: Target{Type: "app", Value: "myapp2"},
+			err:     `event locked: app\(myapp\) running "app.update.env.set" start by user me@me.com at .+`,
+		},
+		{
+			target1: Target{Type: "app", Value: "myapp"},
+			target2: Target{Type: "container", Value: "x"},
+			extras2: []ExtraTarget{{Target: Target{Type: "app", Value: "myapp"}, Lock: false}},
+			err:     "",
+		},
+		{
+			target1: Target{Type: "app", Value: "myapp"},
+			extras1: []ExtraTarget{{Target: Target{Type: "app", Value: "myapp2"}, Lock: false}},
+			target2: Target{Type: "app", Value: "myapp2"},
+			err:     "",
+		},
+		{
+			target1:      Target{Type: "app", Value: "myapp"},
+			extras1:      []ExtraTarget{{Target: Target{Type: "app", Value: "myapp2"}, Lock: true}},
+			target2:      Target{Type: "app", Value: "myapp2"},
+			disableLock2: true,
+			err:          "",
+		},
+		{
+			target1:      Target{Type: "app", Value: "myapp"},
+			extras1:      []ExtraTarget{{Target: Target{Type: "app", Value: "myapp2"}, Lock: true}},
+			target2:      Target{Type: "app", Value: "myapp2"},
+			disableLock2: true,
+			err:          "",
+		},
+	}
+	for i, tt := range tests {
+		evt1, err := New(&Opts{
+			Target:       tt.target1,
+			ExtraTargets: tt.extras1,
+			Kind:         permission.PermAppUpdateEnvSet,
+			Owner:        s.token,
+			Allowed:      Allowed(permission.PermAppReadEvents),
+			DisableLock:  tt.disableLock1,
+		})
+		c.Assert(err, check.IsNil)
+		evt2, err := New(&Opts{
+			Target:       tt.target2,
+			ExtraTargets: tt.extras2,
+			Kind:         permission.PermAppUpdateEnvUnset,
+			Owner:        s.token,
+			Allowed:      Allowed(permission.PermAppReadEvents),
+			DisableLock:  tt.disableLock2,
+		})
+		if tt.err != "" {
+			c.Assert(err, check.ErrorMatches, tt.err, check.Commentf("failed test case %d - %#v", i, tt))
+		} else {
+			c.Assert(err, check.IsNil, check.Commentf("failed test case %d - %#v", i, tt))
+		}
+		err = evt1.Done(nil)
+		c.Assert(err, check.IsNil)
+		if evt2 != nil {
+			err = evt2.Done(nil)
+			c.Assert(err, check.IsNil)
+		}
+	}
+}
+
+func (s *S) TestNewLockExtraTargetRace(c *check.C) {
+	originalMaxProcs := runtime.GOMAXPROCS(10)
+	defer runtime.GOMAXPROCS(originalMaxProcs)
+	wg := sync.WaitGroup{}
+	var countOK int32
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, err := New(&Opts{
+				Target: Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
+				ExtraTargets: []ExtraTarget{
+					{Target: Target{Type: "app", Value: "myapp"}, Lock: true},
+				},
+				Kind:    permission.PermAppUpdateEnvSet,
+				Owner:   s.token,
+				Allowed: Allowed(permission.PermAppReadEvents),
+			})
+			if _, ok := err.(ErrEventLocked); ok {
+				return
+			}
+			c.Assert(err, check.IsNil)
+			atomic.AddInt32(&countOK, 1)
+		}(i)
+	}
+	wg.Wait()
+	c.Assert(countOK <= 1, check.Equals, true)
 }
 
 func (s *S) TestNewDoneDisableLock(c *check.C) {
