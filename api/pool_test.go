@@ -542,7 +542,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
 	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: "team", Values: []string{"*"}, Blacklist: true})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	p, err := pool.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -642,14 +642,14 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolConstraint(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}})
 	c.Assert(err, check.IsNil)
 	expected := []pool.PoolConstraint{
-		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
-		{PoolExpr: "*", Field: "router", Values: []string{"*"}},
-		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}},
+		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
+		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}},
+		{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}},
 	}
 	request, err := http.NewRequest("GET", "/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -664,7 +664,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, Blacklist: true})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{""}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.3/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -691,8 +691,8 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*pool.PoolConstraint{
-		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
-		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true},
+		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
+		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA"}, Blacklist: true},
 	}
 	constraints, err := pool.ListPoolsConstraints(nil)
 	c.Assert(err, check.IsNil)
@@ -712,7 +712,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintSetAppend(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	params := pool.PoolConstraint{
 		PoolExpr: "*",
@@ -729,8 +729,8 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*pool.PoolConstraint{
-		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
-		{PoolExpr: "*", Field: "router", Values: []string{"routerA", "routerB"}, Blacklist: true},
+		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
+		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA", "routerB"}, Blacklist: true},
 	}
 	constraints, err := pool.ListPoolsConstraints(nil)
 	c.Assert(err, check.IsNil)

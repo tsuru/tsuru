@@ -283,7 +283,7 @@ func AddPool(opts AddPoolOptions) error {
 		return err
 	}
 	if opts.Public || opts.Default {
-		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: "team", Values: []string{"*"}})
+		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 	}
 	return nil
 }
@@ -500,7 +500,7 @@ func PoolUpdate(name string, opts UpdatePoolOptions) error {
 		query["default"] = *opts.Default
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
-		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: "team", Values: []string{"*"}})
+		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 		if errConstraint != nil {
 			return err
 		}
