@@ -32,9 +32,6 @@ var (
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
 	ErrPoolHasNoService               = errors.New("no service found for pool")
-
-	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", strings.Join(validConstraintTypes, ","))
-	validConstraintTypes     = []string{"team", "router", "service"}
 )
 
 type Pool struct {
@@ -189,7 +186,7 @@ func (p *Pool) allowedValues() (map[string][]string, error) {
 				validNames = append(validNames, n)
 			}
 		}
-		resolved[k] = validNames
+		resolved[string(k)] = validNames
 	}
 	return resolved, nil
 }
