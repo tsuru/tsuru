@@ -2736,11 +2736,11 @@ func TestStartContainerWhenContextTimesOut(t *testing.T) {
 
 func TestStopContainerWhenContextTimesOut(t *testing.T) {
 	t.Parallel()
-	rt := sleepyRoudTripper{sleepDuration: 200 * time.Millisecond}
+	rt := sleepyRoudTripper{sleepDuration: 300 * time.Millisecond}
 
 	client := newTestClient(&rt)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.TODO(), 50*time.Millisecond)
 	defer cancel()
 
 	err := client.StopContainerWithContext("id", 10, ctx)

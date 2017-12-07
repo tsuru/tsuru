@@ -1021,13 +1021,11 @@ func (s *DockerServer) pushImage(w http.ResponseWriter, r *http.Request) {
 
 func (s *DockerServer) tagImage(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
-	s.iMut.RLock()
-	if _, ok := s.imgIDs[name]; !ok {
-		s.iMut.RUnlock()
+	id, err := s.findImage(name)
+	if err != nil {
 		http.Error(w, "No such image", http.StatusNotFound)
 		return
 	}
-	s.iMut.RUnlock()
 	s.iMut.Lock()
 	defer s.iMut.Unlock()
 	newRepo := r.URL.Query().Get("repo")
@@ -1035,7 +1033,7 @@ func (s *DockerServer) tagImage(w http.ResponseWriter, r *http.Request) {
 	if newTag != "" {
 		newRepo += ":" + newTag
 	}
-	s.imgIDs[newRepo] = s.imgIDs[name]
+	s.imgIDs[newRepo] = id
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -1075,13 +1073,14 @@ func (s *DockerServer) inspectImage(w http.ResponseWriter, r *http.Request) {
 	s.iMut.RLock()
 	defer s.iMut.RUnlock()
 	if id, ok := s.imgIDs[name]; ok {
-		for _, img := range s.images {
-			if img.ID == id {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(img)
-				return
-			}
+		name = id
+	}
+	for _, img := range s.images {
+		if img.ID == name {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(img)
+			return
 		}
 	}
 	http.Error(w, "not found", http.StatusNotFound)

@@ -1408,6 +1408,21 @@ func TestTagImageWithRepoAndTag(t *testing.T) {
 	}
 }
 
+func TestTagImageWithID(t *testing.T) {
+	t.Parallel()
+	server := DockerServer{images: []docker.Image{{ID: "myimgid"}}, imgIDs: make(map[string]string)}
+	server.buildMuxer()
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("POST", "/images/myimgid/tag?repo=tsuru/new-python", nil)
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated {
+		t.Errorf("TagImage: wrong status. Want %d. Got %d.", http.StatusCreated, recorder.Code)
+	}
+	if server.imgIDs["tsuru/new-python"] != "myimgid" {
+		t.Errorf("TagImage: did not tag the image")
+	}
+}
+
 func TestTagImageNotFound(t *testing.T) {
 	t.Parallel()
 	server := DockerServer{}
@@ -1417,6 +1432,69 @@ func TestTagImageNotFound(t *testing.T) {
 	server.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
 		t.Errorf("TagImage: wrong status. Want %d. Got %d.", http.StatusNotFound, recorder.Code)
+	}
+}
+
+func TestInspectImage(t *testing.T) {
+	t.Parallel()
+	server := DockerServer{
+		imgIDs: map[string]string{"tsuru/python": "a123"},
+		images: []docker.Image{{ID: "a123", Author: "me"}},
+	}
+	server.buildMuxer()
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/images/tsuru/python/json", nil)
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("InspectImage: wrong status. Want %d. Got %d.", http.StatusOK, recorder.Code)
+	}
+	var img docker.Image
+	err := json.NewDecoder(recorder.Body).Decode(&img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := docker.Image{
+		ID:     "a123",
+		Author: "me",
+	}
+	if !reflect.DeepEqual(img, expected) {
+		t.Errorf("InspectImage: wrong image returned, expected %#v, got: %#v", expected, img)
+	}
+}
+
+func TestInspectImageWithID(t *testing.T) {
+	t.Parallel()
+	server := DockerServer{images: []docker.Image{{ID: "myimgid", Author: "me"}}, imgIDs: make(map[string]string)}
+	server.buildMuxer()
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/images/myimgid/json", nil)
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("InspectImage: wrong status. Want %d. Got %d.", http.StatusOK, recorder.Code)
+	}
+	var img docker.Image
+	err := json.NewDecoder(recorder.Body).Decode(&img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := docker.Image{
+		ID:     "myimgid",
+		Author: "me",
+	}
+	if !reflect.DeepEqual(img, expected) {
+		t.Errorf("InspectImage: wrong image returned, expected %#v, got: %#v", expected, img)
+	}
+}
+
+func TestInspectImageNotFound(t *testing.T) {
+	t.Parallel()
+	server := DockerServer{}
+	server.buildMuxer()
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/images/tsuru/python/json", nil)
+	server.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNotFound {
+		t.Errorf("InspectImage: wrong status. Want %d. Got %d.", http.StatusNotFound, recorder.Code)
 	}
 }
 
