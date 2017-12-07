@@ -3934,7 +3934,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
 	c.Assert(err, check.IsNil)
-	poolConstraint := pool.PoolConstraint{PoolExpr: s.Pool, Field: "service", Values: []string{serv.Name}, Blacklist: true}
+	poolConstraint := pool.PoolConstraint{PoolExpr: s.Pool, Field: pool.ConstraintTypeService, Values: []string{serv.Name}, Blacklist: true}
 	err = pool.SetPoolConstraint(&poolConstraint)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
