@@ -4219,7 +4219,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
-		Field:     "service",
+		Type:      pool.ConstraintTypeService,
 		Values:    []string{"mysql"},
 		Blacklist: true,
 	})
@@ -4251,7 +4251,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvaila
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  s.Pool,
-		Field:     "service",
+		Type:      pool.ConstraintTypeService,
 		Values:    []string{"mysql"},
 		Blacklist: true,
 	})

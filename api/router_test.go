@@ -73,7 +73,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
 	})
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeRouter, Values: []string{"router1", "router2"}})
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Type: pool.ConstraintTypeRouter, Values: []string{"router1", "router2"}})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/routers", nil)
@@ -241,7 +241,7 @@ func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake-tls"}, Blacklist: true})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Type: pool.ConstraintTypeRouter, Values: []string{"fake-tls"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=fake-tls&opts.x=y&opts.z=w`)
 	recorder := httptest.NewRecorder()
@@ -312,7 +312,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake-opts"})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake-opts"}, Blacklist: true})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Type: pool.ConstraintTypeRouter, Values: []string{"fake-opts"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)
