@@ -105,7 +105,7 @@ func AppendPoolConstraint(c *PoolConstraint) error {
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
-	return appendPoolConstraint(c.PoolExpr, string(c.Field), c.Values...)
+	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
 }
 
 func validateConstraintType(c poolConstraintType) bool {
@@ -117,7 +117,7 @@ func validateConstraintType(c poolConstraintType) bool {
 	return false
 }
 
-func appendPoolConstraint(poolExpr string, field string, values ...string) error {
+func appendPoolConstraint(poolExpr string, field poolConstraintType, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func appendPoolConstraint(poolExpr string, field string, values ...string) error
 	return err
 }
 
-func removePoolConstraint(poolExpr string, field string, values ...string) error {
+func removePoolConstraint(poolExpr string, field poolConstraintType, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func getPoolsSatisfyConstraints(exactCheck bool, field poolConstraintType, value
 	var satisfying []Pool
 loop:
 	for _, p := range pools {
-		constraints, err := getConstraintsForPool(p.Name, string(field))
+		constraints, err := getConstraintsForPool(p.Name, field)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +168,7 @@ loop:
 	return satisfying, nil
 }
 
-func getConstraintsForPool(pool string, fields ...string) (map[poolConstraintType]*PoolConstraint, error) {
+func getConstraintsForPool(pool string, fields ...poolConstraintType) (map[poolConstraintType]*PoolConstraint, error) {
 	var query bson.M
 	if len(fields) > 0 {
 		query = bson.M{"field": bson.M{"$in": fields}}
@@ -198,7 +198,7 @@ func getConstraintsForPool(pool string, fields ...string) (map[poolConstraintTyp
 	return merged, nil
 }
 
-func getExactConstraintForPool(pool, field string) (*PoolConstraint, error) {
+func getExactConstraintForPool(pool string, field poolConstraintType) (*PoolConstraint, error) {
 	constraints, err := ListPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
 	if err != nil {
 		return nil, err
