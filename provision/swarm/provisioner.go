@@ -92,7 +92,7 @@ func (p *swarmProvisioner) Provision(a provision.App) error {
 		Name:           networkNameForApp(a),
 		Driver:         "overlay",
 		CheckDuplicate: true,
-		IPAM: docker.IPAMOptions{
+		IPAM: &docker.IPAMOptions{
 			Driver: "default",
 		},
 	})
