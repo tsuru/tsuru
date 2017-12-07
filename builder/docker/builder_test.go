@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -415,6 +416,70 @@ hooks:
 			},
 		},
 	})
+}
+
+func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	attachCounter := 0
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		attachCounter++
+		if attachCounter == 2 {
+			yamlData := `hooks:
+  build:
+    - echo "running build hook"`
+			fmt.Fprintf(outStream, yamlData)
+		} else {
+			fmt.Fprintf(outStream, "")
+		}
+		conn.Close()
+	}))
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	var logBuffer bytes.Buffer
+	evt.SetLogWriter(&logBuffer)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	c.Assert(logBuffer.String(), check.Matches, ".*running build hook.*")
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {

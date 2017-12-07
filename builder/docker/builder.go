@@ -103,7 +103,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	fmt.Fprintln(evt, "---- Getting process from image ----")
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
 	var procfileBuf bytes.Buffer
-	err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
+	_, err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
 	if err != nil {
 		return "", err
 	}
@@ -114,11 +114,19 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 		return "", err
 	}
 
+	updatedImageID, err := runBuildHooks(client, app, imageID, evt, customData)
+	if err != nil {
+		return "", err
+	}
+	if updatedImageID == "" {
+		updatedImageID = imageID
+	}
+
 	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
 		Client:      client,
 		App:         app,
 		ProcfileRaw: procfileBuf.String(),
-		ImageID:     imageID,
+		ImageID:     updatedImageID,
 		Out:         evt,
 		CustomData:  customData,
 	})
@@ -132,7 +140,7 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	path := defaultArchivePath + "/current"
 	cmd := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
 	var buf bytes.Buffer
-	err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
+	_, err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -154,19 +162,44 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	return customData, err
 }
 
-func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Event, image string, command string, app provision.App, stdout, stderr io.Writer) error {
+func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData map[string]interface{}) (string, error) {
+	hooks := tsuruYamlData["hooks"].(map[string]interface{})
+	buildHooks := hooks["build"].([]string)
+	if len(buildHooks) == 0 {
+		return "", nil
+	}
+
+	cmd := strings.Join(buildHooks, " && ")
+	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, nil)
+	if err != nil {
+		return "", err
+	}
+
+	opts := docker.CommitContainerOptions{
+		Container:  containerID,
+		Repository: imageID,
+	}
+	newImage, err := client.CommitContainer(opts)
+	if err != nil {
+		return "", err
+	}
+
+	return newImage.ID, nil
+}
+
+func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Event, imageID string, command string, app provision.App, stdout, stderr io.Writer) (string, error) {
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
 			AttachStderr: true,
-			Image:        image,
+			Image:        imageID,
 			Entrypoint:   []string{"/bin/sh", "-c"},
 			Cmd:          []string{command},
 		},
 	}
 	cont, _, err := client.PullAndCreateContainer(createOptions, evt)
 	if err != nil {
-		return err
+		return "", err
 	}
 	attachOptions := docker.AttachToContainerOptions{
 		Container:    cont.ID,
@@ -179,16 +212,16 @@ func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Even
 	}
 	waiter, err := client.AttachToContainerNonBlocking(attachOptions)
 	if err != nil {
-		return err
+		return "", err
 	}
 	<-attachOptions.Success
 	close(attachOptions.Success)
 	err = client.StartContainer(cont.ID, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	waiter.Wait()
-	return nil
+	return cont.ID, nil
 }
 
 func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
