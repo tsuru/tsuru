@@ -30,7 +30,7 @@ func MigratePoolTeamsToPoolConstraints() error {
 		if !p.Public {
 			values = p.Teams
 		}
-		err := SetPoolConstraint(&PoolConstraint{PoolExpr: p.Name, Type: ConstraintTypeTeam, Values: values})
+		err := SetPoolConstraint(&PoolConstraint{PoolExpr: p.Name, Field: ConstraintTypeTeam, Values: values})
 		if err != nil {
 			return err
 		}
