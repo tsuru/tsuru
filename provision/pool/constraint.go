@@ -87,6 +87,10 @@ func SetPoolConstraint(c *PoolConstraint) error {
 }
 
 func AppendPoolConstraint(c *PoolConstraint) error {
+	isValid := validateConstraintType(c.Field)
+	if !isValid {
+		return ErrInvalidConstraintType
+	}
 	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
 }
 

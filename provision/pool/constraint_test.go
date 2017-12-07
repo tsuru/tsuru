@@ -136,6 +136,8 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AppendPoolConstraint(&PoolConstraint{PoolExpr: "*", Field: "service", Values: []string{"autoscale"}})
 	c.Assert(err, check.IsNil)
+	err = AppendPoolConstraint(&PoolConstraint{PoolExpr: "*", Field: "invalid", Values: []string{"val"}})
+	c.Assert(err, check.Equals, ErrInvalidConstraintType)
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
