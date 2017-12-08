@@ -55,6 +55,7 @@ func (l *eventCleaner) tryCleaning() error {
 	if err != nil {
 		return errors.Wrap(err, "[events] [event cleaner] error getting db conn")
 	}
+	defer conn.Close()
 	now := time.Now().UTC()
 	coll := conn.Events()
 	var allData []eventData
