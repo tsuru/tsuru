@@ -674,14 +674,19 @@ func (e *Error) Error() string {
 	return err
 }
 
-type TsuruYamlRestartHooks struct {
-	Before []string
-	After  []string
+type TsuruYamlData struct {
+	Hooks       TsuruYamlHooks       `bson:",omitempty"`
+	Healthcheck TsuruYamlHealthcheck `bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {
-	Restart TsuruYamlRestartHooks
-	Build   []string
+	Restart TsuruYamlRestartHooks `bson:",omitempty"`
+	Build   []string              `bson:",omitempty"`
+}
+
+type TsuruYamlRestartHooks struct {
+	Before []string `bson:",omitempty"`
+	After  []string `bson:",omitempty"`
 }
 
 type TsuruYamlHealthcheck struct {
@@ -689,7 +694,7 @@ type TsuruYamlHealthcheck struct {
 	Method          string
 	Status          int
 	Match           string `bson:",omitempty"`
-	RouterBody      string `bson:",omitempty"`
+	RouterBody      string `json:"router_body" yaml:"router_body" bson:"router_body,omitempty"`
 	UseInRouter     bool   `json:"use_in_router" yaml:"use_in_router" bson:"use_in_router,omitempty"`
 	AllowedFailures int    `json:"allowed_failures" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
 }
@@ -705,9 +710,4 @@ func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {
 	return router.HealthcheckData{
 		Path: "/",
 	}
-}
-
-type TsuruYamlData struct {
-	Hooks       TsuruYamlHooks
-	Healthcheck TsuruYamlHealthcheck
 }

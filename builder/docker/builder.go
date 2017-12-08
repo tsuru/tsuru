@@ -109,12 +109,12 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	}
 
 	fmt.Fprintln(evt, "---- Getting tsuru.yaml from image ----")
-	customData, err := loadTsuruYaml(client, app, imageID, evt)
+	yaml, err := loadTsuruYaml(client, app, imageID, evt)
 	if err != nil {
 		return "", err
 	}
 
-	updatedImageID, err := runBuildHooks(client, app, imageID, evt, customData)
+	updatedImageID, err := runBuildHooks(client, app, imageID, evt, yaml)
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 		ProcfileRaw: procfileBuf.String(),
 		ImageID:     updatedImageID,
 		Out:         evt,
-		CustomData:  customData,
+		CustomData:  tsuruYamlToCustomData(yaml),
 	})
 	if err != nil {
 		return "", err
@@ -136,7 +136,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	return newImage, nil
 }
 
-func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (map[string]interface{}, error) {
+func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provision.TsuruYamlData, error) {
 	path := defaultArchivePath + "/current"
 	cmd := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
 	var buf bytes.Buffer
@@ -149,27 +149,35 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	if err != nil {
 		return nil, err
 	}
-	customData := map[string]interface{}{
-		"healthcheck": tsuruYamlData.Healthcheck,
+	return &tsuruYamlData, err
+}
+
+func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{} {
+	if yaml == nil {
+		return nil
+	}
+
+	return map[string]interface{}{
+		"healthcheck": yaml.Healthcheck,
 		"hooks": map[string]interface{}{
-			"build": tsuruYamlData.Hooks.Build,
+			"build": yaml.Hooks.Build,
 			"restart": map[string]interface{}{
-				"before": tsuruYamlData.Hooks.Restart.Before,
-				"after":  tsuruYamlData.Hooks.Restart.After,
+				"before": yaml.Hooks.Restart.Before,
+				"after":  yaml.Hooks.Restart.After,
 			},
 		},
 	}
-	return customData, err
 }
 
-func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData map[string]interface{}) (string, error) {
-	hooks := tsuruYamlData["hooks"].(map[string]interface{})
-	buildHooks := hooks["build"].([]string)
-	if len(buildHooks) == 0 {
+func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provision.TsuruYamlData) (string, error) {
+	if tsuruYamlData == nil {
+		return imageID, nil
+	}
+	if len(tsuruYamlData.Hooks.Build) == 0 {
 		return "", nil
 	}
 
-	cmd := strings.Join(buildHooks, " && ")
+	cmd := strings.Join(tsuruYamlData.Hooks.Build, " && ")
 	fmt.Fprintln(evt, "---- Running build hooks ----")
 	fmt.Fprintf(evt, " ---> Running %q\n", cmd)
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, nil)
