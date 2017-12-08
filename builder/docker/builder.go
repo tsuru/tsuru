@@ -170,6 +170,8 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 	}
 
 	cmd := strings.Join(buildHooks, " && ")
+	fmt.Fprintln(evt, "---- Running build hooks ----")
+	fmt.Fprintf(evt, " ---> Running %q\n", cmd)
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, nil)
 	if err != nil {
 		return "", err

@@ -429,7 +429,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	attachCounter := 0
+	var attachCounter int32
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -444,14 +444,19 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 			return
 		}
 		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		attachCounter++
-		if attachCounter == 2 {
+		switch atomic.AddInt32(&attachCounter, 1) {
+		case 1:
+			// cat Procfile call
+			fmt.Fprintf(outStream, "")
+		case 2:
+			// cat tsuru.yaml call
 			yamlData := `hooks:
   build:
     - echo "running build hook"`
 			fmt.Fprintf(outStream, yamlData)
-		} else {
-			fmt.Fprintf(outStream, "")
+		case 3:
+			// Run hook
+			fmt.Fprintf(outStream, "running build hook\n")
 		}
 		conn.Close()
 	}))
@@ -479,7 +484,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	c.Assert(logBuffer.String(), check.Matches, ".*running build hook.*")
+	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\""\s+running build hook.*`)
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {
