@@ -9,7 +9,7 @@ addons:
       - rpm
 # test stage automatically added for each go version
 go:
-  - 1.9
+  - 1.9.x
   - master
 # script used in the automatically added test stage
 script:
