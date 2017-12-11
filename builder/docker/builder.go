@@ -103,13 +103,15 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	fmt.Fprintln(evt, "---- Getting process from image ----")
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
 	var procfileBuf bytes.Buffer
-	_, err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
+	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
+	defer removeContainer(client, containerID)
 	if err != nil {
 		return "", err
 	}
 
 	fmt.Fprintln(evt, "---- Getting tsuru.yaml from image ----")
-	yaml, err := loadTsuruYaml(client, app, imageID, evt)
+	yaml, containerID, err := loadTsuruYaml(client, app, imageID, evt)
+	defer removeContainer(client, containerID)
 	if err != nil {
 		return "", err
 	}
@@ -133,20 +135,20 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 	return newImage, nil
 }
 
-func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provision.TsuruYamlData, error) {
+func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provision.TsuruYamlData, string, error) {
 	path := defaultArchivePath + "/current"
 	cmd := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
 	var buf bytes.Buffer
-	_, err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
+	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
 	if err != nil {
-		return nil, err
+		return nil, containerID, err
 	}
 	var tsuruYamlData provision.TsuruYamlData
 	err = yaml.Unmarshal(buf.Bytes(), &tsuruYamlData)
 	if err != nil {
-		return nil, err
+		return nil, containerID, err
 	}
-	return &tsuruYamlData, err
+	return &tsuruYamlData, containerID, err
 }
 
 func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{} {
@@ -253,6 +255,18 @@ func splitImageName(imageName string) (repo, tag string) {
 	}
 
 	return
+}
+
+func removeContainer(client provision.BuilderDockerClient, containerID string) error {
+	if containerID == "" {
+		return nil
+	}
+
+	opts := docker.RemoveContainerOptions{
+		ID:    containerID,
+		Force: false,
+	}
+	return client.RemoveContainer(opts)
 }
 
 func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
