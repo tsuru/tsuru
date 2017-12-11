@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app/image"
@@ -83,18 +82,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
-	parts := strings.Split(imageName, ":")
-	var tag string
-	if len(parts) > 2 {
-		imageName = strings.Join(parts[:len(parts)-1], ":")
-		tag = parts[len(parts)-1]
-	} else if len(parts) > 1 {
-		imageName = parts[0]
-		tag = parts[1]
-	} else {
-		imageName = parts[0]
-		tag = "latest"
-	}
+	imageName, tag := splitImageName(imageName)
 	var buf safe.Buffer
 	pushOpts := docker.PushImageOptions{
 		Name:              imageName,
