@@ -462,6 +462,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		conn.Close()
 	}))
 	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Path, check.Equals, "/images/"+imageName+"/json")
 		response := docker.Image{
 			Config: &docker.Config{
 				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},

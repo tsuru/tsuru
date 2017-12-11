@@ -114,19 +114,16 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 		return "", err
 	}
 
-	updatedImageID, err := runBuildHooks(client, app, imageID, evt, yaml)
+	_, err = runBuildHooks(client, app, imageID, evt, yaml)
 	if err != nil {
 		return "", err
-	}
-	if updatedImageID == "" {
-		updatedImageID = imageID
 	}
 
 	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
 		Client:      client,
 		App:         app,
 		ProcfileRaw: procfileBuf.String(),
-		ImageID:     updatedImageID,
+		ImageID:     imageID,
 		Out:         evt,
 		CustomData:  tsuruYamlToCustomData(yaml),
 	})
