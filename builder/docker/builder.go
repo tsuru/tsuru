@@ -185,9 +185,11 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 		return "", err
 	}
 
+	repo, tag := splitImageName(imageID)
 	opts := docker.CommitContainerOptions{
 		Container:  containerID,
-		Repository: imageID,
+		Repository: repo,
+		Tag:        tag,
 	}
 	newImage, err := client.CommitContainer(opts)
 	if err != nil {
@@ -232,6 +234,28 @@ func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Even
 	}
 	waiter.Wait()
 	return cont.ID, nil
+}
+
+func splitImageName(imageName string) (repo, tag string) {
+	imgNameSplit := strings.Split(imageName, ":")
+	switch len(imgNameSplit) {
+	case 1:
+		repo = imgNameSplit[0]
+		tag = "latest"
+	case 2:
+		if strings.Contains(imgNameSplit[1], "/") {
+			repo = imageName
+			tag = "latest"
+		} else {
+			repo = imgNameSplit[0]
+			tag = imgNameSplit[1]
+		}
+	case 3:
+		repo = strings.Join(imgNameSplit[:2], ":")
+		tag = imgNameSplit[2]
+	}
+
+	return repo, tag
 }
 
 func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {

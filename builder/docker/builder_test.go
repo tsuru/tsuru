@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -426,7 +427,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
-	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	imageName := fmt.Sprintf("%s/%s:v1", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	var attachCounter int32
@@ -468,6 +469,15 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		}
 		j, _ := json.Marshal(response)
 		w.Write(j)
+	}))
+	s.server.CustomHandler("/commit", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reg, err := regexp.Compile("https?://(.*$)")
+		c.Assert(err, check.IsNil)
+		m := reg.FindStringSubmatch(s.server.URL())
+		c.Assert(m, check.HasLen, 2)
+		c.Assert(r.URL.Query().Get("repo"), check.Equals, m[1]+"customimage")
+		c.Assert(r.URL.Query().Get("tag"), check.Equals, "v1")
+		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
