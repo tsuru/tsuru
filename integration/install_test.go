@@ -256,12 +256,12 @@ func nodeHealer() ExecFlow {
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
-			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
+			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
 			c.Assert(res, ResultOk)
 			return res.Stdout.String() != ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		res = T("node-container-delete", "big-sibling", "-p", poolName).Run(env)
+		res = T("node-container-delete", "big-sibling", "-p", poolName, "-y").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
 		c.Assert(res, ResultOk)
@@ -277,7 +277,7 @@ func nodeHealer() ExecFlow {
 		c.Assert(res, ResultOk)
 		table = resultTable{raw: res.Stdout.String()}
 		table.parse()
-		c.Assert(table.rows, check.HasLen, 1)
+		c.Assert(len(table.rows) > 0, check.Equals, true)
 		c.Assert(table.rows[0][2], check.Equals, "true", check.Commentf("expected success, got: %v - event info: %v", res, T("event-info", table.rows[0][0]).Run(env)))
 		eventId := table.rows[0][0]
 		res = T("event-info", eventId).Run(env)
