@@ -147,6 +147,13 @@ func (s *S) TestBuilderImageID(c *check.C) {
 		j, _ := json.Marshal(response)
 		w.Write(j)
 	}))
+	var containerDeleteCount int32
+	s.server.CustomHandler("/containers/.*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			atomic.AddInt32(&containerDeleteCount, 1)
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -164,6 +171,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(2))
 }
 
 func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
