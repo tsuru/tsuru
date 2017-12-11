@@ -480,7 +480,8 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		w.Write(j)
 	}))
 	s.server.CustomHandler("/commit", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reg, err := regexp.Compile("https?://(.*$)")
+		var reg *regexp.Regexp
+		reg, err = regexp.Compile("https?://(.*$)")
 		c.Assert(err, check.IsNil)
 		m := reg.FindStringSubmatch(s.server.URL())
 		c.Assert(m, check.HasLen, 2)
