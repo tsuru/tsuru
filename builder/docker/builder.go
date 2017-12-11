@@ -247,12 +247,12 @@ func splitImageName(imageName string) (repo, tag string) {
 			repo = imgNameSplit[0]
 			tag = imgNameSplit[1]
 		}
-	case 3:
-		repo = strings.Join(imgNameSplit[:2], ":")
-		tag = imgNameSplit[2]
+	default:
+		repo = strings.Join(imgNameSplit[:len(imgNameSplit)-1], ":")
+		tag = imgNameSplit[len(imgNameSplit)-1]
 	}
 
-	return repo, tag
+	return
 }
 
 func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
