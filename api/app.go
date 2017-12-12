@@ -16,7 +16,6 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/api/context"
-	"github.com/tsuru/tsuru/api/types"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -33,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -885,7 +885,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	var e types.Envs
+	var e apiTypes.Envs
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&e, r.Form)
