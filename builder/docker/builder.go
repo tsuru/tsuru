@@ -171,7 +171,7 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 	cmd := strings.Join(tsuruYamlData.Hooks.Build, " && ")
 	fmt.Fprintln(evt, "---- Running build hooks ----")
 	fmt.Fprintf(evt, " ---> Running %q\n", cmd)
-	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, nil)
+	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, evt)
 	if err != nil {
 		return "", err
 	}
