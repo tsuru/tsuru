@@ -158,13 +158,7 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 
 	return map[string]interface{}{
 		"healthcheck": yaml.Healthcheck,
-		"hooks": map[string]interface{}{
-			"build": yaml.Hooks.Build,
-			"restart": map[string]interface{}{
-				"before": yaml.Hooks.Restart.Before,
-				"after":  yaml.Hooks.Restart.After,
-			},
-		},
+		"hooks":       yaml.Hooks,
 	}
 }
 
@@ -223,13 +217,13 @@ func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Even
 	}
 	waiter, err := client.AttachToContainerNonBlocking(attachOptions)
 	if err != nil {
-		return "", err
+		return cont.ID, err
 	}
 	<-attachOptions.Success
 	close(attachOptions.Success)
 	err = client.StartContainer(cont.ID, nil)
 	if err != nil {
-		return "", err
+		return cont.ID, err
 	}
 	waiter.Wait()
 	return cont.ID, nil
