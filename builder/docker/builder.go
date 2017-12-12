@@ -116,7 +116,8 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, imageID
 		return "", err
 	}
 
-	_, err = runBuildHooks(client, app, imageID, evt, yaml)
+	containerID, err = runBuildHooks(client, app, imageID, evt, yaml)
+	defer removeContainer(client, containerID)
 	if err != nil {
 		return "", err
 	}
@@ -163,10 +164,7 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 }
 
 func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provision.TsuruYamlData) (string, error) {
-	if tsuruYamlData == nil {
-		return imageID, nil
-	}
-	if len(tsuruYamlData.Hooks.Build) == 0 {
+	if tsuruYamlData == nil || len(tsuruYamlData.Hooks.Build) == 0 {
 		return "", nil
 	}
 

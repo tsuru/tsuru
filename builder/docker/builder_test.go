@@ -148,7 +148,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 		w.Write(j)
 	}))
 	var containerDeleteCount int32
-	s.server.CustomHandler("/containers/.*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server.CustomHandler("/containers/[^/]+$", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
 			atomic.AddInt32(&containerDeleteCount, 1)
 		}
@@ -489,6 +489,13 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		c.Assert(r.URL.Query().Get("tag"), check.Equals, "v1")
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
+	var containerDeleteCount int32
+	s.server.CustomHandler("/containers/[^/]+$", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			atomic.AddInt32(&containerDeleteCount, 1)
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -505,6 +512,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\""\s+running build hook.*`)
+	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(3))
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {
