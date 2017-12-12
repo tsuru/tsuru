@@ -640,6 +640,8 @@ func (s *DockerServer) topContainer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	s.cMut.RLock()
+	defer s.cMut.RUnlock()
 	if !container.State.Running {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Container %s is not running", id)
@@ -787,11 +789,13 @@ func (s *DockerServer) attachContainer(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+	s.cMut.RLock()
 	if container.State.Running {
 		fmt.Fprintf(outStream, "Container is running\n")
 	} else {
 		fmt.Fprintf(outStream, "Container is not running\n")
 	}
+	s.cMut.RUnlock()
 	fmt.Fprintln(outStream, "What happened?")
 	fmt.Fprintln(outStream, "Something happened")
 	wg.Wait()
@@ -919,11 +923,13 @@ func (s *DockerServer) logContainer(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
 	w.WriteHeader(http.StatusOK)
+	s.cMut.RLock()
 	if container.State.Running {
 		fmt.Fprintf(w, "Container is running\n")
 	} else {
 		fmt.Fprintf(w, "Container is not running\n")
 	}
+	s.cMut.RUnlock()
 	fmt.Fprintln(w, "What happened?")
 	fmt.Fprintln(w, "Something happened")
 	if r.URL.Query().Get("follow") == "1" {
