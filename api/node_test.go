@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	apiTypes "github.com/tsuru/tsuru/types/api"
 	"gopkg.in/check.v1"
 )
 
@@ -437,7 +438,7 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result listNodeResponse
+	var result apiTypes.ListNodeResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	sort.Slice(result.Nodes, func(i, j int) bool {
@@ -1089,7 +1090,7 @@ func (s *S) TestInfoNodeHandlerNodeOnly(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result InfoNodeResponse
+	var result apiTypes.InfoNodeResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Node, check.DeepEquals, provision.NodeSpec{
@@ -1135,7 +1136,7 @@ func (s *S) TestInfoNodeHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result InfoNodeResponse
+	var result apiTypes.InfoNodeResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Node, check.DeepEquals, provision.NodeSpec{

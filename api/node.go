@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
+	apiTypes "github.com/tsuru/tsuru/types/api"
 )
 
 func validateNodeAddress(address string) error {
@@ -227,11 +228,6 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	return nil
 }
 
-type listNodeResponse struct {
-	Nodes    []provision.NodeSpec `json:"nodes"`
-	Machines []iaas.Machine       `json:"machines"`
-}
-
 // title: list nodes
 // path: /{provisioner}/node
 // method: GET
@@ -305,7 +301,7 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	result := listNodeResponse{
+	result := apiTypes.ListNodeResponse{
 		Nodes:    allNodes,
 		Machines: machines,
 	}
@@ -676,12 +672,6 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-type InfoNodeResponse struct {
-	Node   provision.NodeSpec    `json:"node"`
-	Status healer.NodeStatusData `json:"status"`
-	Units  []provision.Unit      `json:"units"`
-}
-
 // title: node info
 // path: /node/{address}
 // method: GET
@@ -730,7 +720,7 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Message: err.Error(),
 		}
 	}
-	response := InfoNodeResponse{
+	response := apiTypes.InfoNodeResponse{
 		Node:   spec,
 		Status: nodeStatus,
 		Units:  units,
