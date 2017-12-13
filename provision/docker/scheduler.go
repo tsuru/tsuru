@@ -41,14 +41,23 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateCo
 			Base: errors.Errorf("invalid scheduler opts: %#v", schedulerOpts),
 		}
 	}
-	if schedOpts == nil {
-		return s.scheduleAnyNode(c)
+	var appName string
+	filterNodesMap := map[string]struct{}{}
+	if schedOpts != nil {
+		appName = schedOpts.AppName
+		for _, n := range schedOpts.FilterNodes {
+			filterNodesMap[n] = struct{}{}
+		}
+	}
+	if appName == "" {
+		return s.scheduleAnyNode(c, filterNodesMap)
 	}
 	a, _ := app.GetByName(schedOpts.AppName)
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
 		return cluster.Node{}, &container.SchedulerError{Base: err}
 	}
+	nodes = filterNodes(nodes, filterNodesMap)
 	nodes, err = s.filterByMemoryUsage(a, nodes, s.maxMemoryRatio, s.TotalMemoryMetadata)
 	if err != nil {
 		return cluster.Node{}, &container.SchedulerError{Base: err}
@@ -69,11 +78,12 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateCo
 	return cluster.Node{Address: node}, nil
 }
 
-func (s *segregatedScheduler) scheduleAnyNode(c *cluster.Cluster) (cluster.Node, error) {
+func (s *segregatedScheduler) scheduleAnyNode(c *cluster.Cluster, filter map[string]struct{}) (cluster.Node, error) {
 	nodes, err := c.Nodes()
 	if err != nil {
 		return cluster.Node{}, err
 	}
+	nodes = filterNodes(nodes, filter)
 	if len(nodes) < 1 {
 		return cluster.Node{}, errors.New("There is no Docker node. Add one with `tsuru node-add`")
 	}
@@ -358,4 +368,17 @@ func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process
 		}
 	}
 	return hostsMap[minHost], hostsMap[maxHost], nil
+}
+
+func filterNodes(nodes []cluster.Node, filter map[string]struct{}) []cluster.Node {
+	if len(filter) == 0 {
+		return nodes
+	}
+	for i := 0; i < len(nodes); i++ {
+		if _, ok := filter[nodes[i].Address]; !ok {
+			nodes[i] = nodes[len(nodes)-1]
+			nodes = nodes[:len(nodes)-1]
+		}
+	}
+	return nodes
 }
