@@ -173,7 +173,7 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 	fmt.Fprintf(evt, " ---> Running %q\n", cmd)
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, evt, evt)
 	if err != nil {
-		return "", err
+		return containerID, err
 	}
 
 	repo, tag := splitImageName(imageID)
@@ -184,7 +184,7 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 	}
 	newImage, err := client.CommitContainer(opts)
 	if err != nil {
-		return "", err
+		return containerID, err
 	}
 
 	return newImage.ID, nil
