@@ -34,6 +34,7 @@ type SchedulerOpts struct {
 	AppName       string
 	ProcessName   string
 	UpdateName    bool
+	FilterNodes   []string
 	ActionLimiter provision.ActionLimiter
 	LimiterDone   func()
 }

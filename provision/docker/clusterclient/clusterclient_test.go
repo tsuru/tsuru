@@ -10,6 +10,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	dTesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
@@ -30,8 +31,9 @@ func Test(t *testing.T) {
 var _ = check.Suite(&S{})
 
 type S struct {
-	server *dTesting.DockerServer
-	client *docker.Client
+	server    *dTesting.DockerServer
+	client    *docker.Client
+	scheduler *scheduler
 }
 
 func (s *S) SetUpSuite(c *check.C) {
@@ -51,6 +53,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.client, err = docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
+	s.scheduler = &scheduler{}
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -73,8 +76,26 @@ func (s *S) getContainer(id string) (*container.Container, error) {
 	return &ret, err
 }
 
+type scheduler struct {
+	called        bool
+	schedulerOpts cluster.SchedulerOptions
+}
+
+func (s *scheduler) Schedule(c *cluster.Cluster, opts *docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
+	s.called = true
+	s.schedulerOpts = schedulerOpts
+	nodes, err := c.Nodes()
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	if len(nodes) == 0 {
+		return cluster.Node{}, errors.New("No nodes available")
+	}
+	return nodes[0], nil
+}
+
 func (s *S) newClusterClient(c *check.C) *ClusterClient {
-	cluster, err := cluster.New(nil, &cluster.MapStorage{}, "",
+	cluster, err := cluster.New(s.scheduler, &cluster.MapStorage{}, "",
 		cluster.Node{Address: s.server.URL()})
 	c.Assert(err, check.IsNil)
 	return &ClusterClient{
@@ -118,6 +139,44 @@ func (s *S) TestSchedulerClientCreateContainerWithContainerCtx(c *check.C) {
 			Status:   "building",
 		},
 	})
+	c.Assert(s.scheduler.called, check.Equals, true)
+}
+
+func (s *S) TestSchedulerClientCreateContainerWithContainerCtxWithPossibleNodes(c *check.C) {
+	clusterClient := s.newClusterClient(c)
+	clusterClient.PossibleNodes = []string{s.server.URL()}
+	ctx := context.WithValue(context.Background(), container.ContainerCtxKey{}, &container.Container{
+		Container: types.Container{
+			Name:    "mycont",
+			AppName: "myapp",
+		},
+	})
+	cont, _, err := clusterClient.PullAndCreateContainer(docker.CreateContainerOptions{
+		Name: "mycont",
+		Config: &docker.Config{
+			Image: "localhost:5000/my/img",
+			Labels: map[string]string{
+				"app-name": "myapp",
+			},
+		},
+		Context: ctx,
+	}, nil)
+	c.Assert(err, check.IsNil)
+	dbCont, err := s.getContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	dbCont.MongoID = ""
+	c.Assert(dbCont, check.DeepEquals, &container.Container{
+		Container: types.Container{
+			ID:       cont.ID,
+			Name:     "mycont",
+			AppName:  "myapp",
+			HostAddr: "127.0.0.1",
+		},
+	})
+	c.Assert(s.scheduler.called, check.Equals, true)
+	schedOpts, _ := s.scheduler.schedulerOpts.(*container.SchedulerOpts)
+	c.Assert(schedOpts, check.NotNil)
+	c.Assert(schedOpts.FilterNodes, check.DeepEquals, clusterClient.PossibleNodes)
 }
 
 func (s *S) TestSchedulerClientCreateContainerNoContainerCtx(c *check.C) {
@@ -143,6 +202,37 @@ func (s *S) TestSchedulerClientCreateContainerNoContainerCtx(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.getContainer(cont.ID)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(s.scheduler.called, check.Equals, true)
+}
+
+func (s *S) TestSchedulerClientCreateContainerNoContainerCtxWithPossibleNodes(c *check.C) {
+	client := s.newClusterClient(c)
+	client.PossibleNodes = []string{s.server.URL()}
+	cont, _, err := client.PullAndCreateContainer(docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image: "localhost:5000/my/img",
+			Labels: map[string]string{
+				"app-name": "myapp",
+			},
+		},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.getContainer(cont.ID)
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	cont, _, err = client.PullAndCreateContainer(docker.CreateContainerOptions{
+		Name: "mycont",
+		Config: &docker.Config{
+			Image:  "localhost:5000/my/img",
+			Labels: map[string]string{},
+		},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.getContainer(cont.ID)
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(s.scheduler.called, check.Equals, true)
+	schedOpts, _ := s.scheduler.schedulerOpts.(*container.SchedulerOpts)
+	c.Assert(schedOpts, check.NotNil)
+	c.Assert(schedOpts.FilterNodes, check.DeepEquals, client.PossibleNodes)
 }
 
 func (s *S) TestSchedulerClientCreateContainerFailure(c *check.C) {

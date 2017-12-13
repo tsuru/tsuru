@@ -47,7 +47,10 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 	if dbCont == nil {
 		// No need to register in db as BS won't associate this container with
 		// tsuru.
-		hostAddr, cont, err = c.Cluster.CreateContainerSchedulerOpts(opts, nil, net.StreamInactivityTimeout, c.PossibleNodes...)
+		schedulerOpts := &container.SchedulerOpts{
+			FilterNodes: c.PossibleNodes,
+		}
+		hostAddr, cont, err = c.Cluster.CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout)
 		hostAddr = net.URLToHost(hostAddr)
 		return cont, hostAddr, err
 	}
@@ -81,6 +84,7 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 		ProcessName:   dbCont.ProcessName,
 		UpdateName:    true,
 		ActionLimiter: c.Limiter,
+		FilterNodes:   c.PossibleNodes,
 	}
 	var addr string
 	pullOpts := docker.PullImageOptions{
@@ -91,7 +95,7 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 		pullOpts.OutputStream = &tsuruIo.DockerErrorCheckWriter{W: w}
 		pullOpts.RawJSONStream = true
 	}
-	nodes := c.PossibleNodes
+	var nodes []string
 	if dbCont.HostAddr != "" {
 		var node cluster.Node
 		node, err = dockercommon.GetNodeByHost(c.Cluster, dbCont.HostAddr)
