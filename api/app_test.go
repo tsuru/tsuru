@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -5139,18 +5140,11 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(app1.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
 		},
-	}, eventtest.HasEvent)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app2.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.swap",
+		Owner: s.token.GetUserName(),
+		Kind:  "app.update.swap",
 		StartCustomData: []map[string]interface{}{
 			{"name": "app1", "value": app1.Name},
 			{"name": "app2", "value": app2.Name},
@@ -5183,18 +5177,11 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(app1.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "true"},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
 		},
-	}, eventtest.HasEvent)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app2.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.swap",
+		Owner: s.token.GetUserName(),
+		Kind:  "app.update.swap",
 		StartCustomData: []map[string]interface{}{
 			{"name": "app1", "value": app1.Name},
 			{"name": "app2", "value": app2.Name},
@@ -5264,18 +5251,10 @@ func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
 	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
 	c.Assert(eventtest.EventDesc{
-		Target:       appTarget(app1.Name),
-		Owner:        s.token.GetUserName(),
-		Kind:         "app.update.swap",
-		ErrorMatches: "platforms don't match",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
+		Target: appTarget(app1.Name),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
 		},
-	}, eventtest.HasEvent)
-	c.Assert(eventtest.EventDesc{
-		Target:       appTarget(app2.Name),
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.swap",
 		ErrorMatches: "platforms don't match",

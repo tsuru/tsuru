@@ -124,7 +124,11 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	}})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -173,7 +177,11 @@ func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
 	c.Assert(movings, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -224,7 +232,11 @@ func (s *S) TestRunContainerHealerStoppedContainer(c *check.C) {
 	c.Assert(movings, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -359,7 +371,11 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -421,7 +437,11 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -472,7 +492,11 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+			{Target: event.Target{Type: "container", Value: toMoveCont.ID + "-recreated"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,
@@ -620,7 +644,10 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "container", Value: toMoveCont.ID},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "myapp"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
 			"id":       toMoveCont.ID,

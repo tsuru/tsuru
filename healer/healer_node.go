@@ -206,7 +206,10 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 	}
 	poolName := node.Pool()
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeNode, Value: node.Address()},
+		Target: event.Target{Type: event.TargetTypeNode, Value: node.Address()},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: event.TargetTypePool, Value: poolName}},
+		},
 		InternalKind: "healer",
 		CustomData: NodeHealerCustomData{
 			Node:      provision.NodeToSpec(node),
@@ -225,6 +228,10 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 	var createdNode *provision.NodeSpec
 	var evtErr error
 	defer func() {
+		if createdNode != nil {
+			evt.ExtraTargets = append(evt.ExtraTargets,
+				event.ExtraTarget{Target: event.Target{Type: event.TargetTypeNode, Value: createdNode.Address}})
+		}
 		var updateErr error
 		if evtErr == nil && createdNode == nil {
 			updateErr = evt.Abort()
