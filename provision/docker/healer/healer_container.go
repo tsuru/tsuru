@@ -122,7 +122,10 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	}
 	log.Errorf("Initiating healing process for container %q, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeContainer, Value: cont.ID},
+		Target: event.Target{Type: event.TargetTypeContainer, Value: cont.ID},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: event.TargetTypeApp, Value: cont.AppName}},
+		},
 		InternalKind: "healer",
 		CustomData:   cont,
 		Allowed: event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
@@ -136,6 +139,9 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	newCont, healErr := h.healContainer(cont)
 	if healErr != nil {
 		healErr = errors.Errorf("Error healing container %q: %s", cont.ID, healErr.Error())
+	}
+	if newCont.ID != "" {
+		evt.ExtraTargets = append(evt.ExtraTargets, event.ExtraTarget{Target: event.Target{Type: event.TargetTypeContainer, Value: newCont.ID}})
 	}
 	err = evt.DoneCustomData(healErr, newCont)
 	if err != nil {

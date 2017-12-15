@@ -1501,8 +1501,11 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed1 || !allowed2 {
 		return permission.ErrUnauthorized
 	}
-	evt1, err := event.New(&event.Opts{
-		Target:     appTarget(app1Name),
+	evt, err := event.New(&event.Opts{
+		Target: appTarget(app1Name),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: appTarget(app2Name), Lock: true},
+		},
 		Kind:       permission.PermAppUpdateSwap,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -1511,18 +1514,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt1.Done(err) }()
-	evt2, err := event.New(&event.Opts{
-		Target:     appTarget(app2Name),
-		Kind:       permission.PermAppUpdateSwap,
-		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app2)...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt2.Done(err) }()
+	defer func() { evt.Done(err) }()
 	// compare apps by platform type and number of units
 	if forceSwap == "false" {
 		if app1.Platform != app2.Platform {

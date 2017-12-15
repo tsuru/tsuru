@@ -17,6 +17,7 @@ import (
 
 type EventDesc struct {
 	Target          event.Target
+	ExtraTargets    []event.ExtraTarget
 	Kind            string
 	Owner           string
 	StartCustomData interface{}
@@ -84,6 +85,15 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 		"kind.name":  evt.Kind,
 		"owner.name": evt.Owner,
 		"running":    false,
+	}
+	if len(evt.ExtraTargets) > 0 {
+		var andBlock []bson.M
+		for _, t := range evt.ExtraTargets {
+			andBlock = append(andBlock, bson.M{
+				"extratargets": t,
+			})
+		}
+		query["$and"] = andBlock
 	}
 	queryPartCustom(query, "startcustomdata", evt.StartCustomData)
 	queryPartCustom(query, "endcustomdata", evt.EndCustomData)

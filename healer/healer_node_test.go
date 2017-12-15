@@ -431,6 +431,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 		IaaSID:   m.Id,
+		Pool:     "p1",
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -474,7 +475,11 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(machines[0].Address, check.Equals, "addr2")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "node", Value: "http://addr2:2"}},
+			{Target: event.Target{Type: "pool", Value: "p1"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":   "2 consecutive failures",
 			"node._id": "http://addr1:1",
@@ -500,6 +505,7 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 		IaaSID:   m.Id,
+		Pool:     "p1",
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -545,7 +551,10 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "pool", Value: "p1"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":   "2 consecutive failures",
 			"node._id": "http://addr1:1",
@@ -884,6 +893,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 		IaaSID:   m.Id,
+		Pool:     "p1",
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -923,7 +933,11 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "node", Value: "http://addr2:2"}},
+			{Target: event.Target{Type: "pool", Value: "p1"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":         bson.M{"$regex": `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`},
 			"lastcheck.time": bson.M{"$exists": true},
@@ -952,6 +966,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 		IaaSID:   m.Id,
+		Pool:     "p1",
 	})
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
@@ -995,7 +1010,11 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	c.Assert(machines[0].Address, check.Equals, "addr2")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
-		Kind:   "healer",
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "node", Value: "http://addr2:2"}},
+			{Target: event.Target{Type: "pool", Value: "p1"}},
+		},
+		Kind: "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":   "something",
 			"node._id": "http://addr1:1",
