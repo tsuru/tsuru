@@ -447,6 +447,7 @@ func (f *Filter) LoadKindNames(form map[string][]string) {
 func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
 	permMap := map[string][]permission.PermissionContext{}
+	andBlock := []bson.M{}
 	if f.Permissions != nil {
 		for _, p := range f.Permissions {
 			permMap[p.Scheme.FullName()] = append(permMap[p.Scheme.FullName()], p.Context)
@@ -472,27 +473,40 @@ func (f *Filter) toQuery() (bson.M, error) {
 			}
 			permOrBlock = append(permOrBlock, toAppend)
 		}
-		query["$or"] = permOrBlock
+		andBlock = append(andBlock, bson.M{"$or": permOrBlock})
 	}
 	if f.AllowedTargets != nil {
 		var orBlock []bson.M
 		for _, at := range f.AllowedTargets {
 			f := bson.M{"target.type": at.Type}
+			extraF := bson.M{"extratargets.target.type": at.Type}
 			if at.Values != nil {
 				f["target.value"] = bson.M{"$in": at.Values}
+				extraF["extratargets.target.value"] = bson.M{"$in": at.Values}
 			}
-			orBlock = append(orBlock, f)
+			orBlock = append(orBlock, f, extraF)
 		}
 		if len(orBlock) == 0 {
 			return nil, errInvalidQuery
 		}
-		query["$or"] = orBlock
+		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
 	if f.Target.Type != "" {
-		query["target.type"] = f.Target.Type
+		orBlock := []bson.M{
+			{"target.type": f.Target.Type},
+			{"extratargets.target.type": f.Target.Type},
+		}
+		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
 	if f.Target.Value != "" {
-		query["target.value"] = f.Target.Value
+		orBlock := []bson.M{
+			{"target.value": f.Target.Value},
+			{"extratargets.target.value": f.Target.Value},
+		}
+		andBlock = append(andBlock, bson.M{"$or": orBlock})
+	}
+	if len(andBlock) > 0 {
+		query["$and"] = andBlock
 	}
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType

@@ -62,7 +62,11 @@ func (s *S) TestListFilterMany(c *check.C) {
 		c.Assert(evts, eventtest.EvtEquals, expected)
 	}
 	create(&event.Opts{
-		Target:  event.Target{Type: "app", Value: "myapp"},
+		Target: event.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "xapp1"}},
+			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
@@ -110,6 +114,8 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{ErrorOnly: true, Sort: "_id"}, allEvts[len(allEvts)-3])
 	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []*event.Event{allEvts[0], allEvts[1]})
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "myapp"}}, allEvts[0])
+	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "xapp1"}}, allEvts[0])
+	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "xapp2"}}, allEvts[0])
 	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, Sort: "_id"}, allEvts[:3])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, KindNames: []string{"kind"}}, nil)
@@ -138,6 +144,12 @@ func (s *S) TestListFilterMany(c *check.C) {
 		{Type: "app", Values: []string{"myapp"}},
 		{Type: "node", Values: []string{"http://10.0.1.2"}},
 	}, Sort: "_id"}, []*event.Event{allEvts[0], allEvts[4]})
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app", Values: []string{"xapp1", "myapp2"}},
+	}, Sort: "_id"}, allEvts[:2])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app", Values: []string{"xapp2"}},
+	}, Sort: "_id"}, allEvts[0])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
 		{Scheme: permission.PermAll, Context: permission.Context(permission.CtxGlobal, "")},
 	}, Sort: "_id"}, allEvts[:len(allEvts)-1])
