@@ -53,10 +53,12 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 	{{- end -}} {
 		return &struct {
 			router.Router
+			router.OptsRouter
 		{{ range $element -}}
 			{{ index (index $capMap (index $caps .)) 0 }}
 		{{ end -}}
 		}{
+			base,
 			base,
 			{{ range $element -}}
 				{{ index (index $capMap (index $caps .)) 1 }}Inst,
