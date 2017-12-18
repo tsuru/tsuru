@@ -6,9 +6,12 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"gopkg.in/check.v1"
 )
@@ -16,6 +19,18 @@ import (
 func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	fmt.Fprint(w, r.Method)
 	return nil
+}
+
+func waitForServer(addr string) error {
+	var err error
+	for i := 0; i < 100; i++ {
+		_, err = net.DialTimeout("tcp", addr, 1*time.Second)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	return err
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *check.C) {
@@ -76,4 +91,43 @@ func (s *S) TestIsNotAdmin(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert("POST", check.Equals, rec.Body.String())
+}
+
+func (s *S) TestRunHTTPServer(c *check.C) {
+	config.Set("listen", "0.0.0.0:8123")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queuedb")
+	go RunServer(false)
+
+	err := waitForServer("localhost:8123")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRunHTTPSServer(c *check.C) {
+	config.Set("listen", "0.0.0.0:8443")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queuedb")
+	config.Set("use-tls", true)
+	config.Set("tls:cert-file", "./testdata/cert.pem")
+	config.Set("tls:key-file", "./testdata/key.pem")
+	go RunServer(false)
+
+	err := waitForServer("localhost:8443")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
+	config.Set("listen", "0.0.0.0:8123")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queuedb")
+	config.Set("use-tls", true)
+	config.Set("tls:listen", "0.0.0.0:8443")
+	config.Set("tls:cert-file", "./testdata/cert.pem")
+	config.Set("tls:key-file", "./testdata/key.pem")
+	go RunServer(false)
+
+	err := waitForServer("localhost:8123")
+	c.Assert(err, check.IsNil)
+	err = waitForServer("localhost:8443")
+	c.Assert(err, check.IsNil)
 }
