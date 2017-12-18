@@ -404,7 +404,10 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 	defer config.Unset("router:apirouter:headers")
 	r, err := createRouter("apirouter", "routers:apirouter")
 	c.Assert(err, check.IsNil)
-	_, code, err := r.(*struct{ router.Router }).Router.(*apiRouter).do(http.MethodGet, "/custom", nil)
+	_, code, err := r.(*struct {
+		router.Router
+		router.OptsRouter
+	}).Router.(*apiRouter).do(http.MethodGet, "/custom", nil)
 	c.Assert(code, check.DeepEquals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 }
