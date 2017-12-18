@@ -418,7 +418,8 @@
 [[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
-  revision = "839d9e913e063e28dfd0e6c7b7512793e0a48be9"
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/prometheus/client_golang"
@@ -546,9 +547,10 @@
   revision = "cb0bff91a7ab7cf7571e661ff883fc997bc554a3"
 
 [[projects]]
+  branch = "master"
   name = "github.com/vulcand/route"
   packages = ["."]
-  revision = "cb89d787ddbb1c5849a7ac9f79004c1fd12a4a32"
+  revision = "61904570391bdf22252f8e376b49a57593d9124c"
 
 [[projects]]
   branch = "master"
@@ -679,6 +681,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "98e756d9e945138d4082f421f21115ece1c1f344a4ced6881d07f738c8e15471"
+  inputs-digest = "73add3440353a96c78556bd77f2d8c72d310a72277b7d395844b92d2822d49b8"
   solver-name = "gps-cdcl"
   solver-version = 1
