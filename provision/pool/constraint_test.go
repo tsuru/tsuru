@@ -155,3 +155,13 @@ func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
 		ConstraintTypeRouter: {Field: ConstraintTypeRouter, PoolExpr: "myPool", Values: []string{"galeb"}},
 	})
 }
+
+func (s *S) TestToConstraintType(c *check.C) {
+	_, err := ToConstraintType("")
+	c.Assert(err, check.Equals, ErrInvalidConstraintType)
+	_, err = ToConstraintType("x")
+	c.Assert(err, check.Equals, ErrInvalidConstraintType)
+	ct, err := ToConstraintType("team")
+	c.Assert(err, check.IsNil)
+	c.Assert(ct, check.Equals, ConstraintTypeTeam)
+}
