@@ -222,3 +222,10 @@ func ListPoolsConstraints(query bson.M) ([]*PoolConstraint, error) {
 	}
 	return constraints, nil
 }
+
+func ToConstraintType(value string) (poolConstraintType, error) {
+	if !validateConstraintType(poolConstraintType(value)) {
+		return "", ErrInvalidConstraintType
+	}
+	return poolConstraintType(value), nil
+}
