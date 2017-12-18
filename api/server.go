@@ -560,7 +560,22 @@ func startServer(handler http.Handler) {
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
+		tlsListen, _ := config.GetString("tls:listen")
+		if tlsListen != "" {
+			srv.Addr = tlsListen
+			tlsSrv := &http.Server{
+				ReadTimeout:  srv.ReadTimeout,
+				WriteTimeout: srv.WriteTimeout,
+				Addr:         listen,
+				Handler:      handler,
+			}
+			shutdown.Register(tlsSrv)
+			go func() {
+				fmt.Printf("tsuru HTTP server listening at %s...\n", tlsSrv.Addr)
+				tlsSrv.ListenAndServe()
+			}()
+		}
+		fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", srv.Addr)
 		err = srv.ListenAndServeTLS(certFile, keyFile)
 	} else {
 		fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
