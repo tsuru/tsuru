@@ -5,7 +5,9 @@
 package api
 
 import (
+	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -47,6 +49,19 @@ func waitForServer(addr string) error {
 		time.Sleep(200 * time.Millisecond)
 	}
 	return err
+}
+
+func (s *S) testRequest(url string, c *check.C) {
+	req, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "b "+s.token.GetValue())
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := client.Do(req)
+	c.Assert(err, check.IsNil)
+	bytes, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, check.IsNil)
+	defer resp.Body.Close()
+	c.Assert(string(bytes), check.Equals, "GET")
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *check.C) {
@@ -115,11 +130,14 @@ func (s *S) TestRunHTTPServer(c *check.C) {
 	config.Set("listen", "0.0.0.0:"+port)
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queuedb")
+	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 
 	go RunServer(false)
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
+	s.testRequest(fmt.Sprintf("http://localhost:%s/foo", port), c)
 }
 
 func (s *S) TestRunHTTPSServer(c *check.C) {
@@ -132,11 +150,14 @@ func (s *S) TestRunHTTPSServer(c *check.C) {
 	config.Set("tls:cert-file", "./testdata/cert.pem")
 	config.Set("tls:key-file", "./testdata/key.pem")
 	defer config.Unset("use-tls")
+	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 
 	go RunServer(false)
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
+	s.testRequest(fmt.Sprintf("https://localhost:%s/foo", port), c)
 }
 
 func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
@@ -152,11 +173,13 @@ func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
 	config.Set("tls:cert-file", "./testdata/cert.pem")
 	config.Set("tls:key-file", "./testdata/key.pem")
 	defer config.Unset("use-tls")
+	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 
 	go RunServer(false)
 
 	err = waitForServer("localhost:" + httpPort)
 	c.Assert(err, check.IsNil)
-	err = waitForServer("localhost:" + httpsPort)
-	c.Assert(err, check.IsNil)
+	s.testRequest(fmt.Sprintf("http://localhost:%s/foo", httpPort), c)
+	s.testRequest(fmt.Sprintf("https://localhost:%s/foo", httpsPort), c)
 }
