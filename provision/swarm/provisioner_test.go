@@ -1106,7 +1106,7 @@ func (s *S) TestDeploy(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1-builder")
 	pullOpts := docker.PullImageOptions{
@@ -1168,7 +1168,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ImageID: "myimg:v1",
 	}
-	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	pullOpts := docker.PullImageOptions{

@@ -53,7 +53,7 @@ func (b *customPlatformBuilder) PlatformRemove(name string) error {
 	return b.customBehavior(PlatformOptions{}, name)
 }
 
-func (b *customPlatformBuilder) Build(provision.BuilderDeploy, provision.App, *event.Event, BuildOpts) (string, error) {
+func (b *customPlatformBuilder) Build(provision.BuilderDeploy, provision.App, *event.Event, *BuildOpts) (string, error) {
 	return "", nil
 }
 

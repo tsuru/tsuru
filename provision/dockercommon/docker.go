@@ -5,16 +5,13 @@
 package dockercommon
 
 import (
-	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -80,74 +77,6 @@ func DownloadFromContainer(client Client, contID string, filePath string) (io.Re
 		}
 	}()
 	return reader, nil
-}
-
-type PrepareImageArgs struct {
-	Client      Client
-	App         provision.App
-	ProcfileRaw string
-	ImageID     string
-	Out         io.Writer
-	CustomData  map[string]interface{}
-}
-
-func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
-	fmt.Fprintf(args.Out, "---- Inspecting image %q ----\n", args.ImageID)
-	procfile := image.GetProcessesFromProcfile(args.ProcfileRaw)
-	imageInspect, err := args.Client.InspectImage(args.ImageID)
-	if err != nil {
-		return "", err
-	}
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.New("Too many ports. You should especify which one you want to.")
-	}
-	if len(procfile) == 0 {
-		fmt.Fprintln(args.Out, "  ---> Procfile not found, using entrypoint and cmd")
-		procfile["web"] = append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
-	}
-	for k, v := range procfile {
-		fmt.Fprintf(args.Out, "  ---> Process %q found with commands: %q\n", k, v)
-	}
-	newImage, err := image.AppNewImageName(args.App.GetName())
-	if err != nil {
-		return "", err
-	}
-	imageInfo := strings.Split(newImage, ":")
-	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
-	err = args.Client.TagImage(args.ImageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
-	if err != nil {
-		return "", err
-	}
-	registry, err := config.GetString("docker:registry")
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintf(args.Out, "---- Pushing image %q to tsuru ----\n", newImage)
-	pushOpts := docker.PushImageOptions{
-		Name:              repo,
-		Tag:               tag,
-		Registry:          registry,
-		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: args.Out},
-		InactivityTimeout: net.StreamInactivityTimeout,
-		RawJSONStream:     true,
-	}
-	err = args.Client.PushImage(pushOpts, RegistryAuthConfig())
-	if err != nil {
-		return "", err
-	}
-	imageData := image.ImageMetadata{
-		Name:       newImage,
-		Processes:  procfile,
-		CustomData: args.CustomData,
-	}
-	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = string(k)
-	}
-	err = imageData.Save()
-	if err != nil {
-		return "", err
-	}
-	return newImage, nil
 }
 
 func WaitDocker(client *docker.Client) error {

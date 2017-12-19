@@ -38,7 +38,7 @@ func NewFakeBuilder() *FakeBuilder {
 	return &b
 }
 
-func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
+func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
 	if opts.BuildFromFile {
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
