@@ -6,9 +6,11 @@ package api
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"time"
 
 	"github.com/tsuru/config"
@@ -19,6 +21,20 @@ import (
 func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	fmt.Fprint(w, r.Method)
 	return nil
+}
+
+func selectAvailablePort() (string, error) {
+	var err error
+	for i := 0; i < 20; i++ {
+		port := strconv.Itoa(rand.Intn(20000) + 8000)
+		var conn net.Listener
+		conn, err = net.Listen("tcp", "localhost:"+port)
+		if err == nil {
+			conn.Close()
+			return port, nil
+		}
+	}
+	return "", err
 }
 
 func waitForServer(addr string) error {
@@ -94,40 +110,53 @@ func (s *S) TestIsNotAdmin(c *check.C) {
 }
 
 func (s *S) TestRunHTTPServer(c *check.C) {
-	config.Set("listen", "0.0.0.0:8123")
+	port, err := selectAvailablePort()
+	c.Assert(err, check.IsNil)
+	config.Set("listen", "0.0.0.0:"+port)
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queuedb")
+
 	go RunServer(false)
 
-	err := waitForServer("localhost:8123")
+	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRunHTTPSServer(c *check.C) {
-	config.Set("listen", "0.0.0.0:8443")
+	port, err := selectAvailablePort()
+	c.Assert(err, check.IsNil)
+	config.Set("listen", "0.0.0.0:"+port)
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queuedb")
 	config.Set("use-tls", true)
 	config.Set("tls:cert-file", "./testdata/cert.pem")
 	config.Set("tls:key-file", "./testdata/key.pem")
+	defer config.Unset("use-tls")
+
 	go RunServer(false)
 
-	err := waitForServer("localhost:8443")
+	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
-	config.Set("listen", "0.0.0.0:8123")
+	httpPort, err := selectAvailablePort()
+	c.Assert(err, check.IsNil)
+	httpsPort, err := selectAvailablePort()
+	c.Assert(err, check.IsNil)
+	config.Set("listen", "0.0.0.0:"+httpPort)
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queuedb")
 	config.Set("use-tls", true)
-	config.Set("tls:listen", "0.0.0.0:8443")
+	config.Set("tls:listen", "0.0.0.0:"+httpsPort)
 	config.Set("tls:cert-file", "./testdata/cert.pem")
 	config.Set("tls:key-file", "./testdata/key.pem")
+	defer config.Unset("use-tls")
+
 	go RunServer(false)
 
-	err := waitForServer("localhost:8123")
+	err = waitForServer("localhost:" + httpPort)
 	c.Assert(err, check.IsNil)
-	err = waitForServer("localhost:8443")
+	err = waitForServer("localhost:" + httpsPort)
 	c.Assert(err, check.IsNil)
 }
