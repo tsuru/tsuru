@@ -7,16 +7,16 @@ package auth
 import (
 	"sort"
 
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetTeamsNames(c *check.C) {
-	team := authTypes.Team{Name: "cheese"}
-	team2 := authTypes.Team{Name: "eggs"}
-	teamNames := GetTeamsNames([]authTypes.Team{team, team2})
+	team := types.Team{Name: "cheese"}
+	team2 := types.Team{Name: "eggs"}
+	teamNames := GetTeamsNames([]types.Team{team, team2})
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
 }
 
@@ -34,7 +34,7 @@ func (s *S) TestCreateTeamDuplicate(c *check.C) {
 	err := CreateTeam("pos", &u)
 	c.Assert(err, check.IsNil)
 	err = CreateTeam("pos", &u)
-	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
+	c.Assert(err, check.Equals, types.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
@@ -51,18 +51,18 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		input string
 		err   error
 	}{
-		{"", authTypes.ErrInvalidTeamName},
-		{"    ", authTypes.ErrInvalidTeamName},
-		{"1abc", authTypes.ErrInvalidTeamName},
-		{"@abc", authTypes.ErrInvalidTeamName},
-		{"my team", authTypes.ErrInvalidTeamName},
-		{"Abacaxi", authTypes.ErrInvalidTeamName},
-		{"TEAM", authTypes.ErrInvalidTeamName},
-		{"TeaM", authTypes.ErrInvalidTeamName},
+		{"", types.ErrInvalidTeamName},
+		{"    ", types.ErrInvalidTeamName},
+		{"1abc", types.ErrInvalidTeamName},
+		{"@abc", types.ErrInvalidTeamName},
+		{"my team", types.ErrInvalidTeamName},
+		{"Abacaxi", types.ErrInvalidTeamName},
+		{"TEAM", types.ErrInvalidTeamName},
+		{"TeaM", types.ErrInvalidTeamName},
 		{"team_1", nil},
 		{"tsuru@corp.globo.com", nil},
 		{"team-1", nil},
-		{"a", authTypes.ErrInvalidTeamName},
+		{"a", types.ErrInvalidTeamName},
 		{"ab", nil},
 		{"team1", nil},
 	}
@@ -75,30 +75,30 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 }
 
 func (s *S) TestGetTeam(c *check.C) {
-	team := authTypes.Team{Name: "symfonia"}
+	team := types.Team{Name: "symfonia"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Name, check.Equals, team.Name)
 	t, err = GetTeam("wat")
-	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
+	c.Assert(err, check.Equals, types.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestRemoveTeam(c *check.C) {
-	team := authTypes.Team{Name: "atreides"}
+	team := types.Team{Name: "atreides"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam("atreides")
-	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
+	c.Assert(err, check.Equals, types.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestRemoveTeamWithApps(c *check.C) {
-	team := authTypes.Team{Name: "atreides"}
+	team := types.Team{Name: "atreides"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
@@ -108,7 +108,7 @@ func (s *S) TestRemoveTeamWithApps(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
-	team := authTypes.Team{Name: "harkonnen"}
+	team := types.Team{Name: "harkonnen"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
@@ -118,9 +118,9 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 }
 
 func (s *S) TestListTeams(c *check.C) {
-	err := TeamService().Insert(authTypes.Team{Name: "corrino"})
+	err := TeamService().Insert(types.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
-	err = TeamService().Insert(authTypes.Team{Name: "fenring"})
+	err = TeamService().Insert(types.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
 	teams, err := ListTeams()
 	c.Assert(err, check.IsNil)

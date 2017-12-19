@@ -18,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"gopkg.in/check.v1"
 )
 
@@ -400,7 +400,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 }
 
 func (s *S) TestPoolListHandler(c *check.C) {
-	team := authTypes.Team{Name: "angra"}
+	team := types.Team{Name: "angra"}
 	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
@@ -450,7 +450,7 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 }
 
 func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
-	team := authTypes.Team{Name: "angra"}
+	team := types.Team{Name: "angra"}
 	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	perms := []permission.Permission{

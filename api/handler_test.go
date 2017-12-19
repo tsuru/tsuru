@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -51,7 +51,7 @@ func (s *HandlerSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "tsuruteam"}
+	team := types.Team{Name: "tsuruteam"}
 	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme

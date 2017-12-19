@@ -11,7 +11,7 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/auth"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -245,7 +245,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	otherTeam := authTypes.Team{Name: "other-team"}
+	otherTeam := types.Team{Name: "other-team"}
 	err = auth.TeamService().Insert(otherTeam)
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{

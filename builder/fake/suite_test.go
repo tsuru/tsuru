@@ -19,8 +19,8 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	"github.com/tsuru/tsuru/types"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,7 +28,7 @@ type S struct {
 	b           *FakeBuilder
 	conn        *db.Storage
 	user        *auth.User
-	team        *authTypes.Team
+	team        *types.Team
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
 }
@@ -78,7 +78,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "admin"}
+	s.team = &types.Team{Name: "admin"}
 	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})

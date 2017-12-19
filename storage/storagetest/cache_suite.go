@@ -90,5 +90,4 @@ func (s *CacheSuite) TestCacheExpiration(c *check.C) {
 			c.Fatal("timeout waiting for key to expire")
 		}
 	}
-
 }

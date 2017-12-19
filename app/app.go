@@ -39,8 +39,8 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/types"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -902,7 +902,7 @@ func (app *App) available() bool {
 	return false
 }
 
-func (app *App) findTeam(team *authTypes.Team) (int, bool) {
+func (app *App) findTeam(team *types.Team) (int, bool) {
 	for i, teamName := range app.Teams {
 		if teamName == team.Name {
 			return i, true
@@ -913,7 +913,7 @@ func (app *App) findTeam(team *authTypes.Team) (int, bool) {
 
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
-func (app *App) Grant(team *authTypes.Team) error {
+func (app *App) Grant(team *types.Team) error {
 	if _, found := app.findTeam(team); found {
 		return ErrAlreadyHaveAccess
 	}
@@ -947,7 +947,7 @@ func (app *App) Grant(team *authTypes.Team) error {
 
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
-func (app *App) Revoke(team *authTypes.Team) error {
+func (app *App) Revoke(team *types.Team) error {
 	if len(app.Teams) == 1 {
 		return ErrCannotOrphanApp
 	}
@@ -1000,7 +1000,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 }
 
 // GetTeams returns a slice of teams that have access to the app.
-func (app *App) GetTeams() []authTypes.Team {
+func (app *App) GetTeams() []types.Team {
 	t, _ := auth.TeamService().FindByNames(app.Teams)
 	return t
 }

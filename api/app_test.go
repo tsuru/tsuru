@@ -22,6 +22,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	apiTypes "github.com/tsuru/tsuru/api/types"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -41,9 +42,9 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/types"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -139,7 +140,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	team2 := authTypes.Team{Name: "angra"}
+	team2 := types.Team{Name: "angra"}
 	err = auth.TeamService().Insert(team2)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name, Tags: []string{"tag 2"}}
@@ -615,7 +616,7 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 }
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
-	team := authTypes.Team{Name: "angra"}
+	team := types.Team{Name: "angra"}
 	err := auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
@@ -930,10 +931,10 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 }
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
-	t1 := authTypes.Team{Name: "team1"}
+	t1 := types.Team{Name: "team1"}
 	err := auth.TeamService().Insert(t1)
 	c.Assert(err, check.IsNil)
-	t2 := authTypes.Team{Name: "team2"}
+	t2 := types.Team{Name: "team2"}
 	err = auth.TeamService().Insert(t2)
 	c.Assert(err, check.IsNil)
 	permissions := []permission.Permission{
@@ -1280,7 +1281,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
-	team := authTypes.Team{Name: "tsurutwo"}
+	team := types.Team{Name: "tsurutwo"}
 	err := auth.TeamService().Insert(team)
 	c.Check(err, check.IsNil)
 	data := "name=someapp&platform=zend"
@@ -1765,7 +1766,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
+	team := types.Team{Name: "newowner"}
 	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("teamOwner=newowner")
@@ -1787,7 +1788,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
+	team := types.Team{Name: "newowner"}
 	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
@@ -1814,7 +1815,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
+	team := types.Team{Name: "newowner"}
 	err = auth.TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("teamOwner=newowner")
@@ -2298,7 +2299,7 @@ func (list updateList) Swap(i, j int) {
 }
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
-	t := authTypes.Team{Name: "itshardteam"}
+	t := types.Team{Name: "itshardteam"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: t.Name}
@@ -2396,7 +2397,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 }
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
-	t := authTypes.Team{Name: "anything"}
+	t := types.Team{Name: "anything"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -2420,7 +2421,7 @@ func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
-	t := authTypes.Team{Name: "abcd"}
+	t := types.Team{Name: "abcd"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{"abcd", s.team.Name}}
@@ -2494,10 +2495,10 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *check.C) {
-	t := authTypes.Team{Name: "blaaa"}
+	t := types.Team{Name: "blaaa"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
-	t2 := authTypes.Team{Name: "team2"}
+	t2 := types.Team{Name: "team2"}
 	err = auth.TeamService().Insert(t2)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name, t2.Name}}
@@ -2539,7 +2540,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 }
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
-	t := authTypes.Team{Name: "any-team"}
+	t := types.Team{Name: "any-team"}
 	err := auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	newToken := userWithPermission(c, permission.Permission{
@@ -2577,7 +2578,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	err := s.conn.Users().Insert(u)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(u.Email)
-	t := authTypes.Team{Name: "anything"}
+	t := types.Team{Name: "anything"}
 	err = auth.TeamService().Insert(t)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}

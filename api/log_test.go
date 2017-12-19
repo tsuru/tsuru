@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
@@ -34,7 +34,7 @@ type LogSuite struct {
 	conn       *db.Storage
 	logConn    *db.LogStorage
 	token      auth.Token
-	team       *authTypes.Team
+	team       *types.Team
 	testServer http.Handler
 }
 
@@ -44,7 +44,7 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "tsuruteam"}
+	s.team = &types.Team{Name: "tsuruteam"}
 	err = auth.TeamService().Insert(*s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
