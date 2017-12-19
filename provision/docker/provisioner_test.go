@@ -291,7 +291,7 @@ func (s *S) TestDeploy(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: "http://test.com/myfile.tgz",
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, s.team.Name+"/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
@@ -358,7 +358,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{
@@ -419,7 +419,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -477,7 +477,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -516,7 +516,7 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, app, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, app, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + app.GetName(),
@@ -649,7 +649,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -669,7 +669,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err = s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts = docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -776,7 +776,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -796,7 +796,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err = s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts = docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -822,7 +822,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	imgsInDB, err = image.ListAppBuilderImages(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgsInDB, check.DeepEquals, []string{"tsuru/app-appdeployimagetest:v1-builder", "tsuru/app-appdeployimagetest:v2-builder"})
-	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err = s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	pullOpts = docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
@@ -928,7 +928,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ImageID: "customimage",
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	pullOpts := docker.PullImageOptions{
@@ -1005,7 +1005,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	buildOpts := builder.BuildOpts{
 		ArchiveURL: fakeServer.URL,
 	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
 	c.Assert(err, check.IsNil)
 	c.Assert(builderImgID, check.Equals, u.Host+"/tsuru/app-"+a.Name+":v1-builder")
 	pullOpts := docker.PullImageOptions{

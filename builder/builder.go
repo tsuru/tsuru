@@ -18,20 +18,21 @@ const defaultDockerBuilder = "docker"
 var DefaultBuilder = defaultDockerBuilder
 
 type BuildOpts struct {
-	BuildFromFile  bool
-	Rebuild        bool
-	Redeploy       bool
-	ArchiveURL     string
-	ArchiveFile    io.Reader
-	ArchiveTarFile io.ReadCloser
-	ArchiveSize    int64
-	ImageID        string
-	Tag            string
+	BuildFromFile       bool
+	Rebuild             bool
+	Redeploy            bool
+	ArchiveURL          string
+	ArchiveFile         io.Reader
+	ArchiveTarFile      io.ReadCloser
+	ArchiveSize         int64
+	ImageID             string
+	IsTsuruBuilderImage bool
+	Tag                 string
 }
 
 // Builder is the basic interface of this package.
 type Builder interface {
-	Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts BuildOpts) (string, error)
+	Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (string, error)
 }
 
 var builders = make(map[string]Builder)

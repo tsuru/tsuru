@@ -378,6 +378,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
 }
+
 func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	a := App{
 		Name:           "some-app",
