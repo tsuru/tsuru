@@ -101,7 +101,7 @@ func (s *S) TestRemoveTag(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("DELETE", "/v2/app/image/manifests/abc", nil)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
 	c.Assert(server.Repos, check.HasLen, 1)
 	c.Assert(server.Repos[0].Tags, check.HasLen, 0)
 }

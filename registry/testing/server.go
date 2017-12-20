@@ -111,6 +111,7 @@ func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 	for t, d := range repo.Tags {
 		if digest == d {
 			delete(repo.Tags, t)
+			w.WriteHeader(http.StatusAccepted)
 			return
 		}
 	}
