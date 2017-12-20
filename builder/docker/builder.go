@@ -161,8 +161,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 	if err != nil {
 		return "", err
 	}
-	imageInfo := strings.Split(newImage, ":")
-	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
+	repo, tag := splitImageName(newImage)
 	err = client.TagImage(imageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
 		return "", err

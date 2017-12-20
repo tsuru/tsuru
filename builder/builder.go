@@ -21,12 +21,12 @@ type BuildOpts struct {
 	BuildFromFile       bool
 	Rebuild             bool
 	Redeploy            bool
+	IsTsuruBuilderImage bool
 	ArchiveURL          string
 	ArchiveFile         io.Reader
 	ArchiveTarFile      io.ReadCloser
 	ArchiveSize         int64
 	ImageID             string
-	IsTsuruBuilderImage bool
 	Tag                 string
 }
 
