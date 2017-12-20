@@ -149,7 +149,7 @@ func (r dockerRegistry) removeImage(image, digest string) error {
 	if resp.StatusCode == http.StatusMethodNotAllowed {
 		return ErrDeleteDisabled
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return errors.Errorf("invalid status code trying to remove image (%d): %s", resp.StatusCode, string(data))
 	}
