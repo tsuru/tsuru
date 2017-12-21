@@ -108,10 +108,14 @@ func (r dockerRegistry) getDigest(image, tag string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusBadRequest {
+	if resp.StatusCode == http.StatusNotFound {
 		return "", ErrDigestNotFound
 	}
-	return resp.Header.Get("Docker-Content-Digest"), nil
+	digest := resp.Header.Get("Docker-Content-Digest")
+	if digest == "" {
+		return "", errors.Errorf("empty digest returned for image %v:%v", image, tag)
+	}
+	return digest, nil
 }
 
 type imageTags struct {
