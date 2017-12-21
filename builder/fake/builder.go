@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -65,19 +64,6 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 	err = image.AppendAppBuilderImageName(app.GetName(), buildingImage)
 	if err != nil {
 		return "", fmt.Errorf("unable to save image name. (%s)", err.Error())
-	}
-	imgHistorySize := image.ImageHistorySize()
-	allImages, err := image.ListAppBuilderImages(app.GetName())
-	if err != nil {
-		log.Errorf("Couldn't list images for cleaning: %s", err)
-		return "", nil
-	}
-	limit := len(allImages) - imgHistorySize
-	for i, imgName := range allImages {
-		if i == len(allImages)-1 {
-			continue
-		}
-		p.CleanImage(app.GetName(), imgName, i < limit)
 	}
 	return buildingImage, nil
 }

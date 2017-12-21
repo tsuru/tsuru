@@ -13,7 +13,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 	"sync/atomic"
 
@@ -599,60 +598,6 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	imgID, err = s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:v2-builder")
-}
-
-func (s *S) TestBuilderErasesOldImages(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 2)
-	defer func() { <-stopCh }()
-	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
-	a := &app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	fakeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "fake image")
-	})
-	fakeServer := httptest.NewServer(fakeHandler)
-	defer fakeServer.Close()
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: fakeServer.URL,
-	}
-	_, err = s.b.Build(s.provisioner, a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
-	dclient, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	imgs, err := dclient.ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{s.team.Name + "/app-myapp:v1-builder", "tsuru/python:latest"}
-	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
-	sort.Strings(got)
-	c.Assert(got, check.DeepEquals, expected)
-	_, err = image.AppNewImageName(a.Name)
-	c.Assert(err, check.IsNil)
-	_, err = s.b.Build(s.provisioner, a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
-	imgs, err = dclient.ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
-	sort.Strings(got)
-	expected = []string{s.team.Name + "/app-myapp:v2-builder", "tsuru/python:latest"}
-	c.Assert(got, check.DeepEquals, expected)
 }
 
 func (s *S) TestBuilderImageBuilded(c *check.C) {

@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	registrytest "github.com/tsuru/tsuru/registry/testing"
 	"gopkg.in/check.v1"
 )
 
@@ -544,40 +543,4 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		m.reset()
 		m.lastLabels = nil
 	}
-}
-
-func (s *S) TestRemoveOldImagesForward(c *check.C) {
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
-	registry, err := registrytest.NewServer("127.0.0.1:0")
-	c.Assert(err, check.IsNil)
-	defer registry.Stop()
-	config.Set("registry", "docker")
-	defer config.Unset("registry")
-	config.Set("docker:registry", registry.Addr())
-	defer config.Unset("docker:registry")
-	app := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	nextImgName, err := image.AppNewImageName(app.GetName())
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(app.GetName(), nextImgName)
-	c.Assert(err, check.IsNil)
-	nextImgName, err = image.AppNewImageName(app.GetName())
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(app.GetName(), nextImgName)
-	c.Assert(err, check.IsNil)
-	allImages, err := image.ListAppImages(app.GetName())
-	c.Assert(err, check.IsNil)
-	c.Assert(allImages, check.HasLen, 2)
-	registry.AddRepo(registrytest.Repository{Name: "tsuru/app-myapp", Tags: map[string]string{"v1": "abcdefg"}})
-	args := &pipelineArgs{
-		app:      app,
-		newImage: nextImgName,
-	}
-	context := action.FWContext{Params: []interface{}{args}}
-	_, err = removeOldImages.Forward(context)
-	c.Assert(err, check.IsNil)
-	allImages, err = image.ListAppImages(app.GetName())
-	c.Assert(err, check.IsNil)
-	c.Assert(allImages, check.HasLen, 1)
-	c.Assert(allImages[0], check.Equals, registry.Addr()+"/tsuru/app-myapp:v2")
 }

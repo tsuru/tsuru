@@ -10,11 +10,8 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/registry"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -69,26 +66,10 @@ func MigrateImages() error {
 	return nil
 }
 
-func (p *dockerProvisioner) CleanImage(appName, imgName string, removeFromRegistry bool) {
-	shouldRemove := true
+func (p *dockerProvisioner) CleanImage(appName, imgName string) error {
 	err := p.Cluster().RemoveImage(imgName)
 	if err != nil && err != docker.ErrNoSuchImage && err != storage.ErrNoSuchImage {
-		shouldRemove = false
-		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
-			imgName, err.Error())
+		return err
 	}
-	if removeFromRegistry {
-		err = registry.RemoveImageIgnoreNotFound(imgName)
-		if err != nil {
-			shouldRemove = false
-			log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
-				imgName, err.Error())
-		}
-		if shouldRemove {
-			err = image.PullAppImageNames(appName, []string{imgName})
-			if err != nil {
-				log.Errorf("Ignored error pulling old images from database: %s", err)
-			}
-		}
-	}
+	return nil
 }

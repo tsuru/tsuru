@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/set"
 )
 
@@ -77,7 +76,6 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 		updateServices,
 		updateImageInDB,
 		removeOldServices,
-		removeOldImages,
 	)
 	return pipeline.Execute(&pipelineArgs{
 		manager:          manager,
@@ -229,32 +227,6 @@ var removeOldServices = &action.Action{
 			err := args.manager.RemoveService(args.app, processName)
 			if err != nil {
 				log.Errorf("ignored error removing unwanted service for %s[%s]: %+v", args.app.GetName(), processName, err)
-			}
-		}
-		return nil, nil
-	},
-}
-
-var removeOldImages = &action.Action{
-	Name: "remove-old-images",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args := ctx.Params[0].(*pipelineArgs)
-		imgHistorySize := image.ImageHistorySize()
-		allImages, err := image.ListAppImages(args.app.GetName())
-		if err != nil {
-			log.Errorf("Couldn't list images for cleaning: %s", err)
-			return nil, nil
-		}
-		for i, imgName := range allImages {
-			if i < len(allImages)-imgHistorySize {
-				if err := registry.RemoveImageIgnoreNotFound(imgName); err != nil {
-					log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
-						imgName, err.Error())
-					continue
-				}
-				if err := image.PullAppImageNames(args.app.GetName(), []string{imgName}); err != nil {
-					log.Errorf("Ignored error pulling old images from database: %s", err)
-				}
 			}
 		}
 		return nil, nil

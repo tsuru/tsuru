@@ -832,19 +832,6 @@ var updateAppImage = action.Action{
 				return nil, errors.Wrap(err, "unable to save image name")
 			}
 		}
-		imgHistorySize := image.ImageHistorySize()
-		allImages, err := image.ListAppImages(args.app.GetName())
-		if err != nil {
-			log.Errorf("Couldn't list images for cleaning: %s", err)
-			return ctx.Previous, nil
-		}
-		limit := len(allImages) - imgHistorySize
-		for i, imgName := range allImages {
-			if i == len(allImages)-1 {
-				continue
-			}
-			args.provisioner.CleanImage(args.app.GetName(), imgName, i < limit)
-		}
 		return ctx.Previous, nil
 	},
 	OnError: rollbackNotice,
