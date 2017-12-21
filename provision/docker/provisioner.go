@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -25,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -397,7 +397,7 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageID string, evt *event.Event) error {
 	err := p.deploy(a, imageID, evt)
 	if err != nil {
-		p.CleanImage(a.GetName(), imageID, true)
+		gc.CleanImage(a.GetName(), imageID, true)
 	}
 	return err
 }
@@ -496,22 +496,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		&provisionRemoveOldUnits,
 		&provisionUnbindOldUnits,
 	)
-	err = pipeline.Execute(args)
-	if err != nil {
-		return err
-	}
-	images, err := image.ListAppImages(app.GetName())
-	if err != nil {
-		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err)
-	}
-	cluster := p.Cluster()
-	for _, imageID := range images {
-		err = cluster.RemoveImage(imageID)
-		if err != nil && err != docker.ErrNoSuchImage && err != clusterStorage.ErrNoSuchImage {
-			log.Errorf("Failed to remove image %s: %s", imageID, err)
-		}
-	}
-	return nil
+	return pipeline.Execute(args)
 }
 
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io.Writer) error {

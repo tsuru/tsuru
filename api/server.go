@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
@@ -533,6 +534,10 @@ func startServer(handler http.Handler) {
 	err = event.Initialize()
 	if err != nil {
 		fatal(errors.Wrap(err, "unable to load events throttling config"))
+	}
+	err = gc.Initialize()
+	if err != nil {
+		fatal(errors.Wrap(err, "unable to initialize old image gc"))
 	}
 	err = service.InitializeSync(bindAppsLister)
 	if err != nil {

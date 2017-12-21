@@ -181,6 +181,18 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	return app.builder, nil
 }
 
+func (app *App) CleanImage(img string) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	builderProv, ok := prov.(provision.BuilderDeploy)
+	if !ok {
+		return nil
+	}
+	return builderProv.CleanImage(app.Name, img)
+}
+
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	var err error
 	if app.provisioner == nil {
@@ -654,7 +666,10 @@ func Delete(app *App, w io.Writer) error {
 			log.Errorf("failed to list build images for app %s: %s", appName, err)
 		}
 		for _, img := range append(imgs, imgsBuild...) {
-			builderProv.CleanImage(appName, img, true)
+			err = builderProv.CleanImage(appName, img)
+			if err != nil {
+				log.Errorf("failed to remove image from provisioner %s: %s", appName, err)
+			}
 		}
 	}
 	err = image.DeleteAllAppImageNames(appName)

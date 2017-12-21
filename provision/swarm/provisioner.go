@@ -654,8 +654,8 @@ func (p *swarmProvisioner) GetDockerClient(a provision.App) (provision.BuilderDo
 	return &dockercommon.PullAndCreateClient{Client: client.Client}, nil
 }
 
-func (p *swarmProvisioner) CleanImage(appName, imgName string, removeFromRegistry bool) {
-	p.cleanImageInNodes(imgName)
+func (p *swarmProvisioner) CleanImage(appName, imgName string) error {
+	return p.cleanImageInNodes(imgName)
 }
 
 func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {

@@ -260,12 +260,53 @@ func AppendAppImageName(appName, imageID string) error {
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageID}})
-	if err != nil {
-		return err
-	}
-	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageID}})
+	bulk := coll.Bulk()
+	bulk.Upsert(bson.M{"_id": appName}, bson.M{"$pull": bson.M{"images": imageID}})
+	bulk.Upsert(bson.M{"_id": appName}, bson.M{"$push": bson.M{"images": imageID}})
+	_, err = bulk.Run()
 	return err
+}
+
+type AllAppImages struct {
+	DeployImages  []string
+	BuilderImages []string
+}
+
+func ListAllAppImages() (map[string]AllAppImages, error) {
+	coll, err := appImagesColl()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var (
+		imgsDeploy []appImages
+		imgsBuild  []appImages
+	)
+	err = coll.Find(nil).All(&imgsDeploy)
+	if err != nil {
+		return nil, err
+	}
+	coll, err = appBuilderImagesColl()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	err = coll.Find(nil).All(&imgsBuild)
+	if err != nil {
+		return nil, err
+	}
+	ret := map[string]AllAppImages{}
+	for _, img := range imgsDeploy {
+		appData := ret[img.AppName]
+		appData.DeployImages = img.Images
+		ret[img.AppName] = appData
+	}
+	for _, img := range imgsBuild {
+		appData := ret[img.AppName]
+		appData.BuilderImages = img.Images
+		ret[img.AppName] = appData
+	}
+	return ret, nil
 }
 
 func ListAppImages(appName string) ([]string, error) {

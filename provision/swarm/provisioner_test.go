@@ -1782,7 +1782,8 @@ func (s *S) TestCleanImage(c *check.C) {
 		c.Assert(imgs, check.HasLen, 2)
 	}
 	imageName := "myimg:v1"
-	s.p.CleanImage("teste", imageName, true)
+	err := s.p.CleanImage("teste", imageName)
+	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(urls)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 5)

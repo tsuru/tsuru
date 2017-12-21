@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -823,20 +822,18 @@ func (p *FakeProvisioner) GetDockerClient(app provision.App) (provision.BuilderD
 
 }
 
-func (p *FakeProvisioner) CleanImage(appName, imgName string, removeFromRegistry bool) {
+func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
 	for _, node := range p.nodes {
 		c, err := docker.NewClient(node.Addr)
 		if err != nil {
-			log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
-				imgName, err.Error())
-			return
+			return err
 		}
 		err = c.RemoveImage(imgName)
 		if err != nil {
-			log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
-				imgName, err.Error())
+			return err
 		}
 	}
+	return nil
 }
 
 func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
