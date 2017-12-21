@@ -7,6 +7,7 @@ package registry
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -95,7 +96,7 @@ func (s *S) TestRegistryRemoveImageUnknownRegistry(c *check.C) {
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage("fake-registry:5000/tsuru/app-teste:v1")
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `.*failed to get digest for image.*`)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
@@ -106,7 +107,8 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v0")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "failed to remove image "+s.server.Addr()+"/tsuru/app-teste:v0/ on registry: image not found")
+	c.Assert(err.Error(), check.Equals, "failed to get digest for image "+s.server.Addr()+"/tsuru/app-teste:v0 on registry: digest not found")
+	c.Assert(errors.Cause(err), check.Equals, ErrDigestNotFound)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
@@ -114,6 +116,29 @@ func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
 func (s *S) TestRegistryRemoveImageEmpty(c *check.C) {
 	err := RemoveImage("")
 	c.Assert(err, check.ErrorMatches, `empty image.*`)
+}
+
+func (s *S) TestRegistryRemoveImageDigestNotFound(c *check.C) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Docker-Content-Digest", "xyz")
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	u, _ := url.Parse(srv.URL)
+	err := RemoveImage(u.Host + "/tsuru/app-teste:v1")
+	c.Assert(err, check.ErrorMatches, `failed to remove image .* on registry: image not found`)
+	c.Assert(errors.Cause(err), check.Equals, ErrImageNotFound)
+}
+
+func (s *S) TestRegistryRemoveImageEmptyDigest(c *check.C) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	u, _ := url.Parse(srv.URL)
+	err := RemoveImage(u.Host + "/tsuru/app-teste:v1")
+	c.Assert(err, check.ErrorMatches, `.*empty digest returned for image tsuru/app-teste:v1.*`)
 }
 
 func (s *S) TestParseImage(c *check.C) {
