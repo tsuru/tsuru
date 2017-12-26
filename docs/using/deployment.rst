@@ -31,13 +31,16 @@ Node.js has the package.json, and so on. Some of those dependencies also have
 operational system level dependencies, like the Nokogiri Ruby gem or
 MySQL-Python package, tsuru bootstraps units as clean as possible, so you also
 have to declare those operational system requirements you need on a file called
-requirements.apt. This files should have the packages declared one per-line and
-look like that:
+``requirements.apt``. This files should have the packages declared one per-line
+and look like that:
 
 ::
 
     python-dev
     libmysqlclient-dev
+
+If you need to add new repositories for installing system level dependencies,
+create a file called ``repositories.apt``, with a repository per line.
 
 2. Configuration With Environment Variables
 +++++++++++++++++++++++++++++++++++++++++++
