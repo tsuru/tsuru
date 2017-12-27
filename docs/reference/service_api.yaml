@@ -25,7 +25,7 @@ paths:
                   $ref: '#/components/schemas/Plan'
         default:
           $ref: '#/components/schemas/Error'
-  /resorces:
+  /resources:
     post:
       summary: Create a new service instance
       description: |
