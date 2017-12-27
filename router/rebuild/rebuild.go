@@ -63,13 +63,13 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		}
 	}
 	if hcRouter, ok := r.(router.CustomHealthcheckRouter); ok {
-		hcData, err := app.GetHealthcheckData()
-		if err != nil {
-			return nil, err
+		hcData, errHc := app.GetHealthcheckData()
+		if errHc != nil {
+			return nil, errHc
 		}
-		err = hcRouter.SetHealthcheck(app.GetName(), hcData)
-		if err != nil {
-			return nil, err
+		errHc = hcRouter.SetHealthcheck(app.GetName(), hcData)
+		if errHc != nil {
+			return nil, errHc
 		}
 	}
 	oldRoutes, err := r.Routes(app.GetName())
