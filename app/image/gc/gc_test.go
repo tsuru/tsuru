@@ -253,3 +253,72 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
 	})
 }
+
+func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
+	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
+	c.Assert(err, check.IsNil)
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+	err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:my-custom-tag", u.Host))
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 12; i++ {
+		err = image.AppendAppImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d", u.Host, i))
+		c.Assert(err, check.IsNil)
+		err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d-builder", u.Host, i))
+		c.Assert(err, check.IsNil)
+	}
+	nGoroutines := 10
+	wg := sync.WaitGroup{}
+	for i := 0; i < nGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			gc := &imgGC{once: &sync.Once{}}
+			gc.start()
+			shutDownErr := gc.Shutdown(context.Background())
+			c.Assert(shutDownErr, check.IsNil)
+		}()
+	}
+	wg.Wait()
+	appImgs, err := image.ListAppImages("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(appImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:v2",
+		u.Host + "/tsuru/app-myapp:v3",
+		u.Host + "/tsuru/app-myapp:v4",
+		u.Host + "/tsuru/app-myapp:v5",
+		u.Host + "/tsuru/app-myapp:v6",
+		u.Host + "/tsuru/app-myapp:v7",
+		u.Host + "/tsuru/app-myapp:v8",
+		u.Host + "/tsuru/app-myapp:v9",
+		u.Host + "/tsuru/app-myapp:v10",
+		u.Host + "/tsuru/app-myapp:v11",
+	})
+	builderImgs, err := image.ListAppBuilderImages("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:my-custom-tag",
+		u.Host + "/tsuru/app-myapp:v2-builder",
+		u.Host + "/tsuru/app-myapp:v3-builder",
+		u.Host + "/tsuru/app-myapp:v4-builder",
+		u.Host + "/tsuru/app-myapp:v5-builder",
+		u.Host + "/tsuru/app-myapp:v6-builder",
+		u.Host + "/tsuru/app-myapp:v7-builder",
+		u.Host + "/tsuru/app-myapp:v8-builder",
+		u.Host + "/tsuru/app-myapp:v9-builder",
+		u.Host + "/tsuru/app-myapp:v10-builder",
+		u.Host + "/tsuru/app-myapp:v11-builder",
+	})
+}
