@@ -829,7 +829,7 @@ func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
 			return err
 		}
 		err = c.RemoveImage(imgName)
-		if err != nil {
+		if err != nil && err != docker.ErrNoSuchImage {
 			return err
 		}
 	}
