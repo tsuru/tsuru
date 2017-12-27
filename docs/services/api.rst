@@ -17,6 +17,14 @@ tsuru sends requests to the service API to the following actions:
 * display additional info about a service, including instances and available
   plans (``tsuru service-info`` and ``tsuru service-instance-info``)
 
+API Specification
+=================
+
+The API specification is available as an OpenAPI v3 specification at 
+`SwaggerHub <https://app.swaggerhub.com/apis/tsuru/tsuru-service_api/1.0.0>`_ 
+and as a yaml file :download:`here <../reference/service_api.yaml>`.
+
+
 .. _service_api_flow_authentication:
 
 Authentication
