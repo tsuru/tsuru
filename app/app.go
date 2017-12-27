@@ -2353,3 +2353,15 @@ func RenameTeam(oldName, newName string) error {
 	_, err = bulk.Run()
 	return err
 }
+
+func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
+	imageName, err := image.AppCurrentImageName(app.Name)
+	if err != nil {
+		return router.HealthcheckData{}, err
+	}
+	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	if err != nil {
+		return router.HealthcheckData{}, err
+	}
+	return yamlData.Healthcheck.ToRouterHC(), nil
+}
