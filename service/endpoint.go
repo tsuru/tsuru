@@ -198,6 +198,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		return nil, err
 	}
 	params := map[string][]string{
+		"app-name":  []string{app.GetName()},
 		"app-hosts": appAddrs,
 	}
 	if len(appAddrs) > 0 {
@@ -240,6 +241,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		return err
 	}
 	params := map[string][]string{
+		"app-name":  []string{app.GetName()},
 		"app-hosts": appAddrs,
 		"unit-host": {unit.GetIp()},
 	}
