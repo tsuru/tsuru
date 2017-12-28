@@ -56,16 +56,8 @@ func createToken(c *check.C) auth.Token {
 }
 
 func (s *PlatformSuite) reset() {
-	s.builder.OnPlatformAdd = func(builder.PlatformOptions) error {
-		return nil
-	}
-	s.builder.OnPlatformUpdate = func(builder.PlatformOptions) error {
-		return nil
-	}
-	s.builder.OnPlatformRemove = func(string) error {
-		return nil
-	}
 	repositorytest.Reset()
+	s.builder.Reset()
 }
 
 func (s *PlatformSuite) SetUpSuite(c *check.C) {

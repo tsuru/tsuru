@@ -6,11 +6,10 @@ package app
 
 import (
 	"bytes"
-	"errors"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -19,7 +18,7 @@ import (
 )
 
 type PlatformSuite struct {
-	builder *fake.FakeBuilder
+	builder *builder.MockBuilder
 	conn    *db.Storage
 }
 
@@ -32,7 +31,7 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	s.conn = conn
-	s.builder = fake.NewFakeBuilder()
+	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 }
 
@@ -150,11 +149,13 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
+	s.builder.OnPlatformAdd = func(builder.PlatformOptions) error {
+		return errors.New("something wrong happened")
+	}
 	name := "test-platform-add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	opts := builder.PlatformOptions{Name: name, Args: args}
-	s.builder.PrepareFailure("PlatformAdd", errors.New("something wrong happened"))
 	err := PlatformAdd(opts)
 	c.Assert(err, check.NotNil)
 	p, err := PlatformService().FindByName(name)

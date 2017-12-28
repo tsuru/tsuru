@@ -15,10 +15,6 @@ type S struct{}
 
 var _ = check.Suite(S{})
 
-func callPlatform(PlatformOptions) error {
-	return nil
-}
-
 func callPlatformWithError(PlatformOptions) error {
 	return errors.New("something is wrong")
 }
@@ -68,9 +64,7 @@ func (s S) TestRegistry(c *check.C) {
 }
 
 func (s S) TestPlatformAdd(c *check.C) {
-	b1 := MockBuilder{
-		OnPlatformAdd: callPlatform,
-	}
+	b1 := MockBuilder{}
 	b2 := MockBuilder{
 		OnPlatformAdd: callPlatformWithError,
 	}
@@ -102,9 +96,7 @@ func (s S) TestPlatformUpdate(c *check.C) {
 	b1 := MockBuilder{
 		OnPlatformUpdate: callPlatformWithError,
 	}
-	b2 := MockBuilder{
-		OnPlatformUpdate: callPlatform,
-	}
+	b2 := MockBuilder{}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	err := PlatformUpdate(PlatformOptions{})
@@ -140,11 +132,7 @@ func (s S) TestPlatformRemove(c *check.C) {
 	b2 := MockBuilder{
 		OnPlatformRemove: callPlatformRemoveWithError,
 	}
-	b3 := MockBuilder{
-		OnPlatformRemove: func(string) error {
-			return nil
-		},
-	}
+	b3 := MockBuilder{}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
