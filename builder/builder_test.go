@@ -8,53 +8,23 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/provision"
-
 	check "gopkg.in/check.v1"
 )
 
 type S struct{}
 
-type customPlatformBuilder struct {
-	customBehavior func(PlatformOptions, string) error
-}
-
 var _ = check.Suite(S{})
-var _ PlatformBuilder = &customPlatformBuilder{}
-var _ Builder = &customPlatformBuilder{}
 
-func callCounter(PlatformOptions, string) error {
+func callPlatform(PlatformOptions) error {
 	return nil
 }
 
-func callCounterWithError(PlatformOptions, string) error {
+func callPlatformWithError(PlatformOptions) error {
 	return errors.New("something is wrong")
 }
 
-func (b *customPlatformBuilder) PlatformAdd(opts PlatformOptions) error {
-	if b.customBehavior == nil {
-		return nil
-	}
-	return b.customBehavior(opts, "")
-}
-
-func (b *customPlatformBuilder) PlatformUpdate(opts PlatformOptions) error {
-	if b.customBehavior == nil {
-		return nil
-	}
-	return b.customBehavior(opts, "")
-}
-
-func (b *customPlatformBuilder) PlatformRemove(name string) error {
-	if b.customBehavior == nil {
-		return nil
-	}
-	return b.customBehavior(PlatformOptions{}, name)
-}
-
-func (b *customPlatformBuilder) Build(provision.BuilderDeploy, provision.App, *event.Event, *BuildOpts) (string, error) {
-	return "", nil
+func callPlatformRemoveWithError(string) error {
+	return errors.New("something is wrong")
 }
 
 func Test(t *testing.T) {
@@ -98,11 +68,11 @@ func (s S) TestRegistry(c *check.C) {
 }
 
 func (s S) TestPlatformAdd(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounter,
+	b1 := MockBuilder{
+		OnPlatformAdd: callPlatform,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b2 := MockBuilder{
+		OnPlatformAdd: callPlatformWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
@@ -111,11 +81,11 @@ func (s S) TestPlatformAdd(c *check.C) {
 }
 
 func (s S) TestPlatformAddError(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b1 := MockBuilder{
+		OnPlatformAdd: callPlatformWithError,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b2 := MockBuilder{
+		OnPlatformAdd: callPlatformWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
@@ -129,11 +99,11 @@ func (s S) TestPlatformAddNoBuilder(c *check.C) {
 }
 
 func (s S) TestPlatformUpdate(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b1 := MockBuilder{
+		OnPlatformUpdate: callPlatformWithError,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounter,
+	b2 := MockBuilder{
+		OnPlatformUpdate: callPlatform,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
@@ -142,14 +112,14 @@ func (s S) TestPlatformUpdate(c *check.C) {
 }
 
 func (s S) TestPlatformUpdateError(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b1 := MockBuilder{
+		OnPlatformUpdate: callPlatformWithError,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b2 := MockBuilder{
+		OnPlatformUpdate: callPlatformWithError,
 	}
-	b3 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b3 := MockBuilder{
+		OnPlatformUpdate: callPlatformWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
@@ -164,14 +134,16 @@ func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
 }
 
 func (s S) TestPlatformRemove(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b1 := MockBuilder{
+		OnPlatformRemove: callPlatformRemoveWithError,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b2 := MockBuilder{
+		OnPlatformRemove: callPlatformRemoveWithError,
 	}
-	b3 := customPlatformBuilder{
-		customBehavior: callCounter,
+	b3 := MockBuilder{
+		OnPlatformRemove: func(string) error {
+			return nil
+		},
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
@@ -181,11 +153,11 @@ func (s S) TestPlatformRemove(c *check.C) {
 }
 
 func (s S) TestPlatformRemoveError(c *check.C) {
-	b1 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b1 := MockBuilder{
+		OnPlatformRemove: callPlatformRemoveWithError,
 	}
-	b2 := customPlatformBuilder{
-		customBehavior: callCounterWithError,
+	b2 := MockBuilder{
+		OnPlatformRemove: callPlatformRemoveWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
