@@ -441,62 +441,15 @@ func bindAppsLister() ([]bind.App, error) {
 }
 
 func startServer(handler http.Handler) {
-	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
-	if shutdownTimeout == 0 {
-		shutdownTimeout = 10 * 60
-	}
-	readTimeout, _ := config.GetInt("server:read-timeout")
-	writeTimeout, _ := config.GetInt("server:write-timeout")
-
-	var (
-		certFile          string
-		keyFile           string
-		httpSrv, httpsSrv *http.Server
-		err               error
-	)
-	useTls, _ := config.GetBool("use-tls")
-	tlsListen, _ := config.GetString("tls:listen")
-	listen, _ := config.GetString("listen")
-	if useTls {
-		if tlsListen == "" && listen != "" {
-			tlsListen = listen
-			listen = ""
-		}
-		certFile, err = config.GetString("tls:cert-file")
-		if err != nil {
-			fatal(err)
-		}
-		keyFile, err = config.GetString("tls:key-file")
-		if err != nil {
-			fatal(err)
-		}
-	} else if listen == "" {
-		fatal(err)
-	}
-
 	shutdown.Register(&logTracker)
-	if listen != "" {
-		httpSrv = &http.Server{
-			ReadTimeout:  time.Duration(readTimeout) * time.Second,
-			WriteTimeout: time.Duration(writeTimeout) * time.Second,
-			Addr:         listen,
-			Handler:      handler,
-		}
-		shutdown.Register(httpSrv)
-	}
-	if tlsListen != "" {
-		httpsSrv = &http.Server{
-			ReadTimeout:  time.Duration(readTimeout) * time.Second,
-			WriteTimeout: time.Duration(writeTimeout) * time.Second,
-			Addr:         tlsListen,
-			Handler:      handler,
-		}
-		shutdown.Register(httpsSrv)
-	}
 
 	shutdownChan := make(chan bool)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 10 * 60
+	}
 	go func() {
 		<-sigChan
 		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
@@ -506,7 +459,7 @@ func startServer(handler http.Handler) {
 		close(shutdownChan)
 	}()
 	var startupMessage string
-	err = router.Initialize()
+	err := router.Initialize()
 	if err != nil {
 		fatal(err)
 	}
@@ -586,14 +539,8 @@ func startServer(handler http.Handler) {
 		}
 	}
 	fmt.Println("    Components checked.")
-	if httpsSrv != nil {
-		if httpSrv != nil {
-			go startHttpServer(httpSrv, listen)
-		}
-		err = startHttpsServer(httpsSrv, tlsListen, certFile, keyFile)
-	} else if httpSrv != nil {
-		err = startHttpServer(httpSrv, listen)
-	}
+
+	err = createServers(handler)
 	if err != nil {
 		fmt.Printf("Listening stopped: %s\n", err)
 		if errOp, ok := err.(*net.OpError); ok {
@@ -603,6 +550,67 @@ func startServer(handler http.Handler) {
 		}
 	}
 	<-shutdownChan
+}
+
+func createServers(handler http.Handler) error {
+	var (
+		certFile, keyFile string
+		httpSrv, httpsSrv *http.Server
+		err               error
+	)
+	useTls, _ := config.GetBool("use-tls")
+	tlsListen, _ := config.GetString("tls:listen")
+	listen, _ := config.GetString("listen")
+	if useTls {
+		if tlsListen == "" && listen != "" {
+			tlsListen = listen
+			listen = ""
+		}
+		certFile, err = config.GetString("tls:cert-file")
+		if err != nil {
+			fatal(err)
+		}
+		keyFile, err = config.GetString("tls:key-file")
+		if err != nil {
+			fatal(err)
+		}
+	} else if listen == "" {
+		fatal(errors.New(`missing "listen" config key`))
+	}
+
+	readTimeout, _ := config.GetInt("server:read-timeout")
+	writeTimeout, _ := config.GetInt("server:write-timeout")
+	if listen != "" {
+		httpSrv = &http.Server{
+			ReadTimeout:  time.Duration(readTimeout) * time.Second,
+			WriteTimeout: time.Duration(writeTimeout) * time.Second,
+			Addr:         listen,
+			Handler:      handler,
+		}
+		shutdown.Register(httpSrv)
+	}
+	if tlsListen != "" {
+		httpsSrv = &http.Server{
+			ReadTimeout:  time.Duration(readTimeout) * time.Second,
+			WriteTimeout: time.Duration(writeTimeout) * time.Second,
+			Addr:         tlsListen,
+			Handler:      handler,
+		}
+		shutdown.Register(httpsSrv)
+	}
+
+	if httpsSrv != nil {
+		if httpSrv != nil {
+			go startHttpServer(httpSrv, listen)
+		}
+		return startHttpsServer(httpsSrv, tlsListen, certFile, keyFile)
+	} else if httpSrv != nil {
+		return startHttpServer(httpSrv, listen)
+	}
+
+	err = errors.New("no servers to run")
+	fatal(err)
+	return err
 }
 
 func startHttpServer(srv *http.Server, listen string) error {
