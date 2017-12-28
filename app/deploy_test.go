@@ -15,6 +15,7 @@ import (
 
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -249,6 +250,9 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 }
 
 func (s *S) TestBuildApp(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "registry.somewhere/" + s.team.Name + "/app-some-app:v1-builder", nil
+	}
 	a := App{
 		Name:      "some-app",
 		Platform:  "django",
