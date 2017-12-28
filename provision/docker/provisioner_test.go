@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
@@ -288,12 +287,7 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: "http://test.com/myfile.tgz",
-	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, s.team.Name+"/app-"+a.Name+":v1-builder")
+	builderImgID := s.team.Name + "/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: s.team.Name + "/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -355,12 +349,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: fakeServer.URL,
-	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
+	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -416,11 +405,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: fakeServer.URL,
-	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
+	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -474,11 +459,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: fakeServer.URL,
-	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
+	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
@@ -513,11 +494,7 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	buildOpts := builder.BuildOpts{
-		ArchiveURL: fakeServer.URL,
-	}
-	builderImgID, err := s.b.Build(s.p, app, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
+	builderImgID := "tsuru/app-" + app.GetName() + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + app.GetName(),
 		Tag:        "v1-builder",
@@ -736,7 +713,8 @@ func (s *S) TestDeployImageID(c *check.C) {
 			"web": []string{"/bin/sh", "-c", "python test.py"},
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	builderImgID := "tsuru/app-" + a.Name + ":v1"
+	err = image.SaveImageCustomData(builderImgID, customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -745,12 +723,6 @@ func (s *S) TestDeployImageID(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	buildOpts := builder.BuildOpts{
-		ImageID: "customimage",
-	}
-	builderImgID, err := s.b.Build(s.p, &a, evt, &buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1",
