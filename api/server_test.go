@@ -124,7 +124,7 @@ func (s *S) TestIsNotAdmin(c *check.C) {
 	c.Assert("POST", check.Equals, rec.Body.String())
 }
 
-func (s *S) TestRunHTTPServer(c *check.C) {
+func (s *S) TestCreateServersHTTPOnly(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Set("listen", "0.0.0.0:"+port)
@@ -133,14 +133,15 @@ func (s *S) TestRunHTTPServer(c *check.C) {
 	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 
-	go RunServer(false)
+	handler := RunServer(true)
+	go createServers(handler)
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
 	s.testRequest(fmt.Sprintf("http://localhost:%s/foo", port), c)
 }
 
-func (s *S) TestRunHTTPSServer(c *check.C) {
+func (s *S) TestCreateServersHTTPSOnly(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Set("listen", "0.0.0.0:"+port)
@@ -153,14 +154,15 @@ func (s *S) TestRunHTTPSServer(c *check.C) {
 	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 
-	go RunServer(false)
+	handler := RunServer(true)
+	go createServers(handler)
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
 	s.testRequest(fmt.Sprintf("https://localhost:%s/foo", port), c)
 }
 
-func (s *S) TestRunHTTPSServerWithTlsListenConfig(c *check.C) {
+func (s *S) TestCreateServersHTTPSOnlyWithTlsListenConfig(c *check.C) {
 	port, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	config.Unset("listen")
@@ -174,14 +176,15 @@ func (s *S) TestRunHTTPSServerWithTlsListenConfig(c *check.C) {
 	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 
-	go RunServer(false)
+	handler := RunServer(true)
+	go createServers(handler)
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
 	s.testRequest(fmt.Sprintf("https://localhost:%s/foo", port), c)
 }
 
-func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
+func (s *S) TestCreateServersHTTPAndHTTPS(c *check.C) {
 	httpPort, err := selectAvailablePort()
 	c.Assert(err, check.IsNil)
 	httpsPort, err := selectAvailablePort()
@@ -197,7 +200,8 @@ func (s *S) TestRunHTTPAndHTTPSServers(c *check.C) {
 	RegisterHandler("/foo", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 
-	go RunServer(false)
+	handler := RunServer(true)
+	go createServers(handler)
 
 	err = waitForServer("localhost:" + httpsPort)
 	c.Assert(err, check.IsNil)
