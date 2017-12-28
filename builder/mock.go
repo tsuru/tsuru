@@ -20,18 +20,30 @@ type MockBuilder struct {
 }
 
 func (b *MockBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (string, error) {
+	if b.OnBuild == nil {
+		return "", nil
+	}
 	return b.OnBuild(p, app, evt, opts)
 }
 
 func (b *MockBuilder) PlatformAdd(opts PlatformOptions) error {
+	if b.OnPlatformAdd == nil {
+		return nil
+	}
 	return b.OnPlatformAdd(opts)
 }
 
 func (b *MockBuilder) PlatformUpdate(opts PlatformOptions) error {
+	if b.OnPlatformUpdate == nil {
+		return nil
+	}
 	return b.OnPlatformUpdate(opts)
 }
 
 func (b *MockBuilder) PlatformRemove(name string) error {
+	if b.OnPlatformRemove == nil {
+		return nil
+	}
 	return b.OnPlatformRemove(name)
 }
 
