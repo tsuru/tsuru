@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -34,7 +33,7 @@ import (
 
 type PlatformSuite struct {
 	conn       *db.Storage
-	builder    *fake.FakeBuilder
+	builder    *builder.MockBuilder
 	testServer http.Handler
 }
 
@@ -57,12 +56,20 @@ func createToken(c *check.C) auth.Token {
 }
 
 func (s *PlatformSuite) reset() {
-	s.builder.Reset()
+	s.builder.OnPlatformAdd = func(builder.PlatformOptions) error {
+		return nil
+	}
+	s.builder.OnPlatformUpdate = func(builder.PlatformOptions) error {
+		return nil
+	}
+	s.builder.OnPlatformRemove = func(string) error {
+		return nil
+	}
 	repositorytest.Reset()
 }
 
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
-	s.builder = fake.NewFakeBuilder()
+	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	s.testServer = RunServer(true)
 }
@@ -283,6 +290,9 @@ func (s *PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
+	s.builder.OnPlatformRemove = func(string) error {
+		return errors.New("platform not found")
+	}
 	request, err := http.NewRequest("DELETE", "/platforms/not-found", nil)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
@@ -292,7 +302,7 @@ func (s *PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
-func (*PlatformSuite) TestPlatformRemove(c *check.C) {
+func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	err := app.PlatformAdd(builder.PlatformOptions{Name: "test", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)

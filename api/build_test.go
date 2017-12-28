@@ -16,9 +16,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -40,7 +40,7 @@ type BuildSuite struct {
 	token       auth.Token
 	team        *authTypes.Team
 	provisioner *provisiontest.FakeProvisioner
-	builder     *fake.FakeBuilder
+	builder     *builder.MockBuilder
 	testServer  http.Handler
 }
 
@@ -86,7 +86,7 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.builder = fake.NewFakeBuilder()
+	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	s.testServer = RunServer(true)
 }
@@ -120,6 +120,11 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildHandler(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		c.Assert(opts.ArchiveFile, check.NotNil)
+		c.Assert(opts.Tag, check.Equals, "mytag")
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -169,6 +174,10 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
