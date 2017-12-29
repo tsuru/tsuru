@@ -11,7 +11,6 @@ baseCurl="curl -o /dev/null -sS "$BENCH_FORM" -H 'content-type: application/x-ww
 commit=$(git log --pretty='format:%H' -1) 
 while read l; do
     cmd=$(echo $l | awk '{print "'$baseCurl' '\''entry.559666149="$1"&entry.319255563='$commit'&entry.1798633669="$2"&entry.2023870129="$3"&entry.328660811="$5"&entry.1525448807="$7"'\''"}')
-    echo "Running $cmd"
     bash -c "$cmd"
 done < <(echo $benchLines)
 
