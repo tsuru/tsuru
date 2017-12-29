@@ -31,8 +31,6 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	s.conn = conn
-	s.builder = &builder.MockBuilder{}
-	builder.Register("fake", s.builder)
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
@@ -41,8 +39,10 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
+	builder.DefaultBuilder = "fake"
 	repositorytest.Reset()
-	s.builder.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 

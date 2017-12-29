@@ -104,9 +104,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
 	s.provisioner = provisiontest.ProvisionerInstance
-	s.builder = &builder.MockBuilder{}
-	builder.DefaultBuilder = "fake"
-	builder.Register("fake", s.builder)
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
 	data, err := json.Marshal(AppLock{})
@@ -146,7 +143,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("docker:router", "fake")
 	s.provisioner.Reset()
-	s.builder.Reset()
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
@@ -167,4 +163,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
+	builder.DefaultBuilder = "fake"
 }
