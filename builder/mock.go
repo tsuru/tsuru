@@ -46,10 +46,3 @@ func (b *MockBuilder) PlatformRemove(name string) error {
 	}
 	return b.OnPlatformRemove(name)
 }
-
-func (b *MockBuilder) Reset() {
-	b.OnBuild = nil
-	b.OnPlatformAdd = nil
-	b.OnPlatformRemove = nil
-	b.OnPlatformUpdate = nil
-}

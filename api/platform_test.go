@@ -57,12 +57,9 @@ func createToken(c *check.C) auth.Token {
 
 func (s *PlatformSuite) reset() {
 	repositorytest.Reset()
-	s.builder.Reset()
 }
 
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
-	s.builder = &builder.MockBuilder{}
-	builder.Register("fake", s.builder)
 	s.testServer = RunServer(true)
 }
 
@@ -76,6 +73,8 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	provision.DefaultProvisioner = "fake-extensible"
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
 }

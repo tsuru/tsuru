@@ -68,7 +68,6 @@ func (s *BuildSuite) createUserAndTeam(c *check.C) {
 
 func (s *BuildSuite) reset() {
 	s.provisioner.Reset()
-	s.builder.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 }
@@ -86,8 +85,6 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.builder = &builder.MockBuilder{}
-	builder.Register("fake", s.builder)
 	s.testServer = RunServer(true)
 }
 
@@ -104,6 +101,8 @@ func (s *BuildSuite) TearDownSuite(c *check.C) {
 func (s *BuildSuite) SetUpTest(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
