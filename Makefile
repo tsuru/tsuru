@@ -47,6 +47,10 @@ _tsurud_dry:
 
 test: _go_test _tsurud_dry
 
+leakdetector:
+	go list ./... | xargs -I {} bash -c 'pushd $(GOPATH)/src/{}; go test --tags leakdetector; popd' | tee /tmp/leaktest.log
+	(cat /tmp/leaktest.log | grep LEAK) && exit 1 || exit 0
+
 lint: metalint
 	misc/check-contributors.sh
 
