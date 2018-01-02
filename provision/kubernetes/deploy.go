@@ -180,6 +180,8 @@ func createBuildPod(params buildPodParams) error {
 					Command: []string{
 						"sh", "-ec",
 						fmt.Sprintf(`
+							end() { touch %[4]s; }
+							trap end EXIT
 							while [ ! -f %[3]s ]; do sleep 1; done
 							exit_code=$(cat %[3]s)
 							[ "${exit_code}" != "0" ] && exit "${exit_code}"
@@ -191,7 +193,6 @@ func createBuildPod(params buildPodParams) error {
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
 							docker push "${img}"
-							touch %[4]s
 						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone),
 					},
 				},

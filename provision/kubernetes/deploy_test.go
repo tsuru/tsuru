@@ -598,6 +598,8 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 			Command: []string{
 				"sh", "-ec",
 				`
+							end() { touch /tmp/intercontainer/done; }
+							trap end EXIT
 							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
 							exit_code=$(cat /tmp/intercontainer/status)
 							[ "${exit_code}" != "0" ] && exit "${exit_code}"
@@ -609,7 +611,6 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
 							docker push "${img}"
-							touch /tmp/intercontainer/done
 						`,
 			},
 		},
