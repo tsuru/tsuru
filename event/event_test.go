@@ -953,10 +953,44 @@ func (s *S) TestNewThrottledExpirationWaitFinishExpired(c *check.C) {
 	c.Check(err, check.IsNil)
 }
 
-func (s *S) TestListFilterEmpty(c *check.C) {
+func (s *S) TestListWithFilters(c *check.C) {
+	e1, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermNode), Target: Target{Type: "node"}})
+	c.Assert(err, check.IsNil)
+	err = e1.Done(nil)
+	c.Assert(err, check.IsNil)
+	e2, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermNode), Target: Target{Type: "container"}})
+	c.Assert(err, check.IsNil)
+	err = e2.Done(nil)
+	c.Assert(err, check.IsNil)
+	e3, err := New(&Opts{Owner: s.token, Kind: permission.PermAppCreate, Allowed: Allowed(permission.PermNode), Target: Target{Type: "container", Value: "1234"}})
+	c.Assert(err, check.IsNil)
+	err = e3.Done(nil)
+	c.Assert(err, check.IsNil)
+
 	evts, err := List(nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 3)
+
+	evts, err = List(&Filter{Target: Target{Type: "container"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	c.Assert(evts[0].Target.Type, check.Equals, TargetType("container"))
+	c.Assert(evts[1].Target.Type, check.Equals, TargetType("container"))
+
+	evts, err = List(&Filter{Target: Target{Type: "container", Value: "1234"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Target.Type, check.Equals, TargetType("container"))
+	c.Assert(evts[0].Target.Value, check.Equals, "1234")
+
+	evts, err = List(&Filter{Target: Target{Type: "container", Value: "unknown"}})
+	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
+
+	evts, err = List(&Filter{Target: Target{Type: "node"}, Since: time.Now().Add(time.Duration(-1 * time.Hour))})
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Target.Type, check.Equals, TargetType("node"))
 }
 
 func (s *S) TestListFilterPruneUserValues(c *check.C) {
@@ -1388,5 +1422,4 @@ func (s *S) TestEventCancelableContextNotCancelable(c *check.C) {
 	default:
 	}
 	c.Assert(ctx.Err(), check.IsNil)
-
 }
