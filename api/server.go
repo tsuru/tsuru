@@ -540,24 +540,27 @@ func startServer(handler http.Handler) {
 	}
 	fmt.Println("    Components checked.")
 
-	err = createServers(handler)
-	if err != nil {
+	errChan := createServers(handler)
+	go func() {
+		err = <-errChan
 		fmt.Printf("Listening stopped: %s\n", err)
 		if errOp, ok := err.(*net.OpError); ok {
 			if errOp.Op == "listen" {
 				os.Exit(1)
 			}
 		}
-	}
+		fatal(err)
+	}()
 	<-shutdownChan
 }
 
-func createServers(handler http.Handler) error {
+func createServers(handler http.Handler) chan error {
 	var (
 		certFile, keyFile string
 		httpSrv, httpsSrv *http.Server
 		err               error
 	)
+	errChan := make(chan error, 2)
 	useTls, _ := config.GetBool("use-tls")
 	tlsListen, _ := config.GetString("tls:listen")
 	listen, _ := config.GetString("listen")
@@ -568,14 +571,17 @@ func createServers(handler http.Handler) error {
 		}
 		certFile, err = config.GetString("tls:cert-file")
 		if err != nil {
-			fatal(err)
+			errChan <- err
+			return errChan
 		}
 		keyFile, err = config.GetString("tls:key-file")
 		if err != nil {
-			fatal(err)
+			errChan <- err
+			return errChan
 		}
 	} else if listen == "" {
-		fatal(errors.New(`missing "listen" config key`))
+		errChan <- errors.New(`missing "listen" config key`)
+		return errChan
 	}
 
 	readTimeout, _ := config.GetInt("server:read-timeout")
@@ -600,25 +606,27 @@ func createServers(handler http.Handler) error {
 	}
 
 	if httpsSrv != nil {
-		if httpSrv != nil {
-			go startHttpServer(httpSrv, listen)
-		}
-		return startHttpsServer(httpsSrv, tlsListen, certFile, keyFile)
-	} else if httpSrv != nil {
-		return startHttpServer(httpSrv, listen)
+		go startHttpsServer(httpsSrv, errChan, tlsListen, certFile, keyFile)
+	}
+	if httpSrv != nil {
+		go startHttpServer(httpSrv, errChan, listen)
 	}
 
-	err = errors.New("no servers to run")
-	fatal(err)
-	return err
+	return errChan
 }
 
-func startHttpServer(srv *http.Server, listen string) error {
+func startHttpServer(srv *http.Server, errChan chan error, listen string) {
 	fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-	return srv.ListenAndServe()
+	err := srv.ListenAndServe()
+	if err != nil {
+		errChan <- err
+	}
 }
 
-func startHttpsServer(srv *http.Server, listen, certFile, keyFile string) error {
+func startHttpsServer(srv *http.Server, errChan chan error, listen, certFile, keyFile string) {
 	fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-	return srv.ListenAndServeTLS(certFile, keyFile)
+	err := srv.ListenAndServeTLS(certFile, keyFile)
+	if err != nil {
+		errChan <- err
+	}
 }
