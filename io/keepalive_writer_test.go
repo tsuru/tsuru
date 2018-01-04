@@ -7,6 +7,9 @@ package io
 import (
 	"bytes"
 	"errors"
+	"os"
+	"runtime/pprof"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,4 +103,38 @@ func (s *S) TestKeepAliveWriterAfterError(c *check.C) {
 	count, err = w.Write([]byte("222"))
 	c.Check(err, check.ErrorMatches, "Closed error.")
 	c.Check(count, check.Equals, 0)
+}
+
+func (s *S) TestKeepAliveWriterRace(c *check.C) {
+	var buf closableBuffer
+	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "...")
+	nWrites := 10
+	wg := sync.WaitGroup{}
+	for n := 0; n < 2; n++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < nWrites; i++ {
+				count, err := w.Write([]byte("xxx"))
+				c.Check(err, check.IsNil)
+				c.Check(count, check.Equals, 3)
+				time.Sleep(100 * time.Millisecond)
+			}
+		}()
+	}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		pprof.Lookup("goroutine").WriteTo(os.Stderr, 2)
+		c.Fatalf("timeout after 2s waiting for test to finish")
+	}
+	buf.Close()
+	c.Assert(strings.Count(buf.String(), "xxx"), check.Equals, nWrites*2)
+	c.Assert(strings.Contains(buf.String(), "..."), check.Equals, true)
+	c.Assert(strings.Contains(buf.String(), "......"), check.Equals, false)
 }
