@@ -21,6 +21,7 @@ type keepAliveWriter struct {
 	lastByte  byte
 	running   bool
 	writeLock sync.Mutex
+	limiter   chan struct{}
 	// testCh only used for testing
 	testCh chan struct{}
 }
@@ -29,12 +30,19 @@ func NewKeepAliveWriter(w io.Writer, interval time.Duration, msg string) *keepAl
 	writer := &keepAliveWriter{w: w, interval: interval, msg: append([]byte(msg), '\n')}
 	writer.ping = make(chan struct{})
 	writer.done = make(chan struct{})
+	writer.limiter = make(chan struct{}, 1)
 	writer.running = true
 	go writer.keepAlive()
 	return writer
 }
 
 func (w *keepAliveWriter) writeInterval() {
+	select {
+	case w.limiter <- struct{}{}:
+	default:
+		return
+	}
+	defer func() { <-w.limiter }()
 	w.writeLock.Lock()
 	defer w.writeLock.Unlock()
 	msg := []byte{}
@@ -71,7 +79,7 @@ func (w *keepAliveWriter) keepAlive() {
 		case <-w.done:
 			return
 		case <-time.After(w.interval):
-			w.writeInterval()
+			go w.writeInterval()
 		}
 	}
 }
