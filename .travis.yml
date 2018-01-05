@@ -15,7 +15,7 @@ go:
 script:
   - 'if [ "${JOB}" = "test" ]; then make race; fi'
   - 'if [ "${JOB}" = "leakdetector" ]; then make leakdetector; fi'
-  - 'if [[ "${JOB}" == "bench" && "${TRAVIS_PULL_REQUEST}" == "false" ]]; then ./misc/bench.sh; fi'
+  - 'if [[ "${JOB}" == "bench" && "${TRAVIS_PULL_REQUEST}" == "false" ]]; then while true; do echo .; sleep 30; done & ./misc/bench.sh; fi'
   - 'if [ "${JOB}" = "gometalinter" ]; then while true; do echo .; sleep 30; done & if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi; fi'
   - 'if [ "${JOB}" = "checkhandlers" ]; then ./misc/check-handlers.sh; fi'
   - 'if [ "${JOB}" = "checkevents" ]; then ./misc/check-events.sh; fi'
