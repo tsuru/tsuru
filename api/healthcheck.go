@@ -19,16 +19,21 @@ import (
 //   200: OK
 //   500: Internal server error
 func healthcheck(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("check") == "all" {
-		fullHealthcheck(w, r)
-		return
+	var checks []string
+	values := r.URL.Query()
+	if values != nil {
+		checks = values["check"]
 	}
-	w.Write([]byte(hc.HealthCheckOK))
+	fullHealthcheck(w, checks)
 }
 
-func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
+func fullHealthcheck(w http.ResponseWriter, checks []string) {
 	var buf bytes.Buffer
-	results := hc.Check()
+	results := hc.Check(checks...)
+	if len(results) == 0 {
+		w.Write([]byte(hc.HealthCheckOK))
+		return
+	}
 	status := http.StatusOK
 	for _, result := range results {
 		fmt.Fprintf(&buf, "%s: %s (%s)\n", result.Name, result.Status, result.Duration)
