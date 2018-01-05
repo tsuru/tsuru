@@ -283,11 +283,6 @@ func AcquireApplicationLock(appName string, owner string, reason string) (bool, 
 // until timeout is reached.
 func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
 	timeoutChan := time.After(timeout)
-	conn, err := db.Conn()
-	if err != nil {
-		return false, err
-	}
-	defer conn.Close()
 	for {
 		appLock := AppLock{
 			Locked:      true,
@@ -295,7 +290,12 @@ func AcquireApplicationLockWait(appName string, owner string, reason string, tim
 			Owner:       owner,
 			AcquireDate: time.Now().In(time.UTC),
 		}
+		conn, err := db.Conn()
+		if err != nil {
+			return false, err
+		}
 		err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": bson.M{"$in": []interface{}{false, nil}}}, bson.M{"$set": bson.M{"lock": appLock}})
+		conn.Close()
 		if err == nil {
 			return true, nil
 		}
@@ -1781,13 +1781,14 @@ func Units(apps []App) (map[string]AppUnitsResponse, error) {
 // List returns the list of apps filtered through the filter parameter.
 func List(filter *Filter) ([]App, error) {
 	apps := []App{}
+	query := filter.Query()
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	query := filter.Query()
-	if err = conn.Apps().Find(query).All(&apps); err != nil {
+	err = conn.Apps().Find(query).All(&apps)
+	conn.Close()
+	if err != nil {
 		return nil, err
 	}
 	if filter != nil && len(filter.Statuses) > 0 {

@@ -54,13 +54,13 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 		hostAddr = net.URLToHost(hostAddr)
 		return cont, hostAddr, err
 	}
-	coll := c.Collection()
-	defer coll.Close()
 	defer func() {
 		if err == nil {
 			return
 		}
+		coll := c.Collection()
 		dbErr := coll.Remove(bson.M{"name": dbCont.Name})
+		coll.Close()
 		if dbErr != nil && dbErr != mgo.ErrNotFound {
 			log.Errorf("error trying to remove container in db after failure %#v: %v", cont, dbErr)
 		}
@@ -75,7 +75,9 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 			}
 		}
 	}()
+	coll := c.Collection()
 	err = coll.Insert(dbCont)
+	coll.Close()
 	if err != nil {
 		return nil, "", err
 	}
@@ -118,10 +120,12 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 		return nil, "", err
 	}
 	hostAddr = net.URLToHost(addr)
+	coll = c.Collection()
 	err = coll.Update(bson.M{"name": cont.Name}, bson.M{"$set": bson.M{
 		"id":       cont.ID,
 		"hostaddr": hostAddr,
 	}})
+	coll.Close()
 	if err != nil {
 		return nil, "", errors.Wrap(err, "unable to update container ID in db")
 	}
