@@ -204,7 +204,6 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	updateOp := bson.M{
 		"$addToSet": bson.M{
 			"bound_units": bson.D([]bson.DocElem{
@@ -215,6 +214,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 		},
 	}
 	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "bound_units.id": bson.M{"$ne": unit.GetID()}}, updateOp)
+	conn.Close()
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil
