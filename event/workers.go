@@ -55,7 +55,6 @@ func (l *eventCleaner) tryCleaning() error {
 	if err != nil {
 		return errors.Wrap(err, "[events] [event cleaner] error getting db conn")
 	}
-	defer conn.Close()
 	now := time.Now().UTC()
 	coll := conn.Events()
 	var allData []eventData
@@ -63,6 +62,7 @@ func (l *eventCleaner) tryCleaning() error {
 		"running":        true,
 		"lockupdatetime": bson.M{"$lt": now.Add(-lockExpireTimeout)},
 	}).All(&allData)
+	conn.Close()
 	if err != nil {
 		return errors.Wrap(err, "[events] [event cleaner] error updating expired events")
 	}
