@@ -59,7 +59,7 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 			return
 		}
 		coll := c.Collection()
-		dbErr := coll.Remove(bson.M{"name": dbCont.Name})
+		dbErr := coll.RemoveId(dbCont.MongoID)
 		coll.Close()
 		if dbErr != nil && dbErr != mgo.ErrNotFound {
 			log.Errorf("error trying to remove container in db after failure %#v: %v", cont, dbErr)
@@ -75,6 +75,9 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 			}
 		}
 	}()
+	if len(dbCont.MongoID) == 0 {
+		dbCont.MongoID = bson.NewObjectId()
+	}
 	coll := c.Collection()
 	err = coll.Insert(dbCont)
 	coll.Close()
@@ -121,7 +124,7 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 	}
 	hostAddr = net.URLToHost(addr)
 	coll = c.Collection()
-	err = coll.Update(bson.M{"name": cont.Name}, bson.M{"$set": bson.M{
+	err = coll.UpdateId(dbCont.MongoID, bson.M{"$set": bson.M{
 		"id":       cont.ID,
 		"hostaddr": hostAddr,
 	}})
