@@ -190,11 +190,11 @@ func (app *App) CleanImage(img string) error {
 	if err != nil {
 		return err
 	}
-	builderProv, ok := prov.(provision.BuilderDeploy)
+	cleanProv, ok := prov.(provision.CleanImageProvisioner)
 	if !ok {
 		return nil
 	}
-	return builderProv.CleanImage(app.Name, img)
+	return cleanProv.CleanImage(app.Name, img)
 }
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
@@ -658,7 +658,7 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
-	if builderProv, ok := prov.(provision.BuilderDeploy); ok {
+	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
 		var imgs []string
 		imgs, err = image.ListAppImages(appName)
 		if err != nil {
@@ -670,7 +670,7 @@ func Delete(app *App, w io.Writer) error {
 			log.Errorf("failed to list build images for app %s: %s", appName, err)
 		}
 		for _, img := range append(imgs, imgsBuild...) {
-			err = builderProv.CleanImage(appName, img)
+			err = cleanProv.CleanImage(appName, img)
 			if err != nil {
 				log.Errorf("failed to remove image from provisioner %s: %s", appName, err)
 			}
