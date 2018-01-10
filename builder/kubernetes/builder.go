@@ -15,15 +15,15 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-var _ builder.Builder = &kubeBuilder{}
+var _ builder.Builder = &kubernetesBuilder{}
 
-type kubeBuilder struct{}
+type kubernetesBuilder struct{}
 
 func init() {
-	builder.Register("kubernetes", &kubeBuilder{})
+	builder.Register("kubernetes", &kubernetesBuilder{})
 }
 
-func (b *kubeBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
+func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
 	p, ok := prov.(provision.BuilderDeployKubeClient)
 	if !ok {
 		return "", errors.New("provisioner not supported")

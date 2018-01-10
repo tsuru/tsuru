@@ -59,7 +59,7 @@ func limiter() provision.ActionLimiter {
 	return globalLimiter
 }
 
-func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
+func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
 	p, ok := prov.(provision.BuilderDeployDockerClient)
 	if !ok {
 		return "", errors.New("provisioner not supported: not implements docker builder")
