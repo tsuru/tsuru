@@ -322,7 +322,6 @@ type BuilderDeploy interface {
 type BuilderDeployDockerClient interface {
 	BuilderDeploy
 	GetClient(App) (BuilderDockerClient, error)
-	CleanImage(appName string, image string)
 }
 
 type BuilderDeployKubeClient interface {
@@ -517,6 +516,10 @@ type AppFilterProvisioner interface {
 
 type VolumeProvisioner interface {
 	DeleteVolume(volumeName, pool string) error
+}
+
+type CleanImageProvisioner interface {
+	CleanImage(appName string, image string) error
 }
 
 type Node interface {
