@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/set"
 )
 
 // HealthCheckOK is the status returned when the healthcheck works.
@@ -41,11 +42,16 @@ func AddChecker(name string, check func() error) {
 	checkers = append(checkers, checker)
 }
 
-// Check check the status of all registered checkers and return a list of
-// results.
-func Check() []Result {
+// Check check the status of registered checkers matching names and return a
+// list of results.
+func Check(names ...string) []Result {
 	results := make([]Result, 0, len(checkers))
+	nameSet := set.FromSlice(names)
+	isAll := nameSet.Includes("all")
 	for _, checker := range checkers {
+		if !isAll && !nameSet.Includes(checker.name) {
+			continue
+		}
 		startTime := time.Now()
 		if err := checker.check(); err != nil && err != ErrDisabledComponent {
 			results = append(results, Result{

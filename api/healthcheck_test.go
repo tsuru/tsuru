@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/tsuru/tsuru/hc"
 	"gopkg.in/check.v1"
 )
 
@@ -18,6 +19,51 @@ var _ = check.Suite(&HealthCheckSuite{})
 func (s *HealthCheckSuite) TestHealthCheck(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healthcheck", nil)
+	c.Assert(err, check.IsNil)
+	healthcheck(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "WORKING")
+}
+
+func (s *HealthCheckSuite) TestHealthCheckWithChecks(c *check.C) {
+	hc.AddChecker("mychecker", func() error {
+		return nil
+	})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/healthcheck?check=all", nil)
+	c.Assert(err, check.IsNil)
+	healthcheck(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*MongoDB: WORKING.*mychecker: WORKING.*")
+}
+
+func (s *HealthCheckSuite) TestHealthCheckWithChecksSingleChecker(c *check.C) {
+	hc.AddChecker("mychecker", func() error {
+		return nil
+	})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/healthcheck?check=MongoDB", nil)
+	c.Assert(err, check.IsNil)
+	healthcheck(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*MongoDB: WORKING \([^\s]*\)`+"\n")
+}
+
+func (s *HealthCheckSuite) TestHealthCheckWithChecksMultipleChecker(c *check.C) {
+	hc.AddChecker("mychecker", func() error {
+		return nil
+	})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/healthcheck?check=MongoDB&check=mychecker", nil)
+	c.Assert(err, check.IsNil)
+	healthcheck(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*MongoDB: WORKING.*mychecker: WORKING.*")
+}
+
+func (s *HealthCheckSuite) TestHealthCheckWithChecksInvalidChecker(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/healthcheck?check=xxx", nil)
 	c.Assert(err, check.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

@@ -46,11 +46,6 @@ func (t *Token) Permissions() ([]permission.Permission, error) {
 }
 
 func getToken(header string) (*Token, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
 	var t Token
 	token, err := auth.ParseToken(header)
 	if err != nil {

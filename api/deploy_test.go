@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -48,7 +47,7 @@ type DeploySuite struct {
 	token       auth.Token
 	team        *authTypes.Team
 	provisioner *provisiontest.FakeProvisioner
-	builder     *fake.FakeBuilder
+	builder     *builder.MockBuilder
 	testServer  http.Handler
 }
 
@@ -73,7 +72,6 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 
 func (s *DeploySuite) reset() {
 	s.provisioner.Reset()
-	s.builder.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 }
@@ -91,8 +89,6 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.builder = fake.NewFakeBuilder()
-	builder.Register("fake", s.builder)
 	s.testServer = RunServer(true)
 }
 
@@ -109,6 +105,8 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 func (s *DeploySuite) SetUpTest(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	s.reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -125,6 +123,12 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
+	var builderCalled bool
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		builderCalled = true
+		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
@@ -141,6 +145,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
+	c.Assert(builderCalled, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -165,6 +170,10 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		c.Assert(opts.ArchiveFile, check.NotNil)
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
@@ -227,6 +236,9 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
@@ -265,6 +277,9 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -309,6 +324,9 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -361,6 +379,9 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -415,6 +436,9 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	user, _ := s.token.User()
@@ -463,6 +487,9 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -508,6 +535,9 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	user, _ := s.token.User()
@@ -555,6 +585,9 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	user, _ := s.token.User()
@@ -578,6 +611,9 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
@@ -616,6 +652,9 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
@@ -691,6 +730,9 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 }
 
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -1328,6 +1370,10 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+		c.Assert(opts.Rebuild, check.Equals, true)
+		return "tsuruteam/app-otherapp:mytag", nil
+	}
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)

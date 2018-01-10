@@ -313,7 +313,7 @@ type ExecDockerClient interface {
 type BuilderDeploy interface {
 	Deploy(App, string, *event.Event) (string, error)
 	GetDockerClient(App) (BuilderDockerClient, error)
-	CleanImage(appName string, image string, removeFromRegistry bool)
+	CleanImage(appName string, image string) error
 }
 
 // Provisioner is the basic interface of this package.

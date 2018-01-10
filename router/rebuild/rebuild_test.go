@@ -5,11 +5,14 @@
 package rebuild_test
 
 import (
+	"net/http"
 	"net/url"
 	"sort"
 
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -226,4 +229,31 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	c.Assert(routes, check.HasLen, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, true)
+}
+
+func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	imageName, err := image.AppCurrentImageName("my-test-app")
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":          "/healthcheck",
+			"status":        http.StatusFound,
+			"use_in_router": true,
+		},
+	}
+	err = image.SaveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = routertest.FakeRouter.RemoveHealthcheck("my-test-app")
+	c.Assert(err, check.IsNil)
+	changes, err := rebuild.RebuildRoutes(&a, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {}})
+	expected := router.HealthcheckData{
+		Path:   "/healthcheck",
+		Status: 302,
+	}
+	c.Assert(routertest.FakeRouter.GetHealthcheck("my-test-app"), check.DeepEquals, expected)
 }

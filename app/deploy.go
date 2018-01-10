@@ -28,13 +28,14 @@ import (
 type DeployKind string
 
 const (
-	DeployArchiveURL  DeployKind = "archive-url"
-	DeployGit         DeployKind = "git"
-	DeployImage       DeployKind = "image"
-	DeployRollback    DeployKind = "rollback"
-	DeployUpload      DeployKind = "upload"
-	DeployUploadBuild DeployKind = "uploadbuild"
-	DeployRebuild     DeployKind = "rebuild"
+	DeployArchiveURL   DeployKind = "archive-url"
+	DeployGit          DeployKind = "git"
+	DeployImage        DeployKind = "image"
+	DeployBuildedImage DeployKind = "imagebuild"
+	DeployRollback     DeployKind = "rollback"
+	DeployUpload       DeployKind = "upload"
+	DeployUploadBuild  DeployKind = "uploadbuild"
+	DeployRebuild      DeployKind = "rebuild"
 )
 
 var reImageVersion = regexp.MustCompile("v[0-9]+$")
@@ -222,9 +223,6 @@ func Build(opts DeployOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if opts.App.UpdatePlatform {
-		opts.App.SetUpdatePlatform(false)
-	}
 	return imageID, nil
 }
 
@@ -336,7 +334,11 @@ func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event
 	if err != nil {
 		return "", err
 	}
-	return builder.Build(prov, opts.App, evt, buildOpts)
+	img, err := builder.Build(prov, opts.App, evt, &buildOpts)
+	if buildOpts.IsTsuruBuilderImage {
+		opts.Kind = DeployBuildedImage
+	}
+	return img, err
 }
 
 func ValidateOrigin(origin string) bool {

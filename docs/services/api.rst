@@ -17,6 +17,14 @@ tsuru sends requests to the service API to the following actions:
 * display additional info about a service, including instances and available
   plans (``tsuru service-info`` and ``tsuru service-instance-info``)
 
+API Specification
+=================
+
+The API specification is available as an OpenAPI v3 specification at 
+`SwaggerHub <https://app.swaggerhub.com/apis/tsuru/tsuru-service_api/1.0.0>`_ 
+and as a yaml file :download:`here <../reference/service_api.yaml>`.
+
+
 .. _service_api_flow_authentication:
 
 Authentication
@@ -182,9 +190,13 @@ Now, tsuru services has two bind endpoints:
 ``/resources/<service-instance-name>/bind`` and
 ``/resources/<service-instance-name>/bind-app``.
 The first endpoint will be called every time an app adds an unit.
-This endpoint is a POST with app-host and unit-host, where app-host
-represents the host to which the app is accessible, and unit-host is the
-address of the unit. Example of request:
+This endpoint is a POST with:
+
+    * ``app-host`` the host to which the app is accessible
+    * ``app-name`` the name of the app
+    * ``unit-host`` the address of the unit
+
+ Example of request:
 
 ::
 
@@ -199,8 +211,11 @@ address of the unit. Example of request:
     app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
 
 The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
-called once when an app is bound to a service.  This endpoint is a POST with
-app-host, where app-host represents the host to which the app is accessible.
+called once when an app is bound to a service.  This endpoint is a POST with:
+    
+    * ``app-host`` the host to which the app is accessible
+    * ``app-name`` the name of the app
+
 Example of request:
 
 ::
@@ -213,7 +228,7 @@ Example of request:
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
 
-    app-host=myapp.cloud.tsuru.io
+    app-host=myapp.cloud.tsuru.io&app-name=myapp
 
 The service API should return the following HTTP response code with the
 respective response body:

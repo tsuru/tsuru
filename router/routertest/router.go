@@ -410,6 +410,17 @@ func (r *fakeRouter) SetHealthcheck(name string, data router.HealthcheckData) er
 	return nil
 }
 
+func (r *fakeRouter) RemoveHealthcheck(name string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	delete(r.healthcheck, backendName)
+	return nil
+}
+
 type tlsRouter struct {
 	fakeRouter
 	Certs map[string]string

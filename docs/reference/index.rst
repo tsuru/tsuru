@@ -16,3 +16,4 @@ Reference
     bs
     config
     api
+    router-api

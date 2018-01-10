@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
@@ -440,27 +441,15 @@ func bindAppsLister() ([]bind.App, error) {
 }
 
 func startServer(handler http.Handler) {
+	shutdown.Register(&logTracker)
+
+	shutdownChan := make(chan bool)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
 	if shutdownTimeout == 0 {
 		shutdownTimeout = 10 * 60
 	}
-	readTimeout, _ := config.GetInt("server:read-timeout")
-	writeTimeout, _ := config.GetInt("server:write-timeout")
-	listen, err := config.GetString("listen")
-	if err != nil {
-		fatal(err)
-	}
-	srv := &http.Server{
-		ReadTimeout:  time.Duration(readTimeout) * time.Second,
-		WriteTimeout: time.Duration(writeTimeout) * time.Second,
-		Addr:         listen,
-		Handler:      handler,
-	}
-	shutdown.Register(&logTracker)
-	shutdown.Register(srv)
-	shutdownChan := make(chan bool)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
 		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
@@ -470,7 +459,7 @@ func startServer(handler http.Handler) {
 		close(shutdownChan)
 	}()
 	var startupMessage string
-	err = router.Initialize()
+	err := router.Initialize()
 	if err != nil {
 		fatal(err)
 	}
@@ -534,45 +523,110 @@ func startServer(handler http.Handler) {
 	if err != nil {
 		fatal(errors.Wrap(err, "unable to load events throttling config"))
 	}
+	err = gc.Initialize()
+	if err != nil {
+		fatal(errors.Wrap(err, "unable to initialize old image gc"))
+	}
 	err = service.InitializeSync(bindAppsLister)
 	if err != nil {
 		fatal(err)
 	}
 	fmt.Println("Checking components status:")
-	results := hc.Check()
+	results := hc.Check("all")
 	for _, result := range results {
 		if result.Status != hc.HealthCheckOK {
 			fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)
 		}
 	}
 	fmt.Println("    Components checked.")
-	tls, _ := config.GetBool("use-tls")
-	if tls {
-		var (
-			certFile string
-			keyFile  string
-		)
-		certFile, err = config.GetString("tls:cert-file")
-		if err != nil {
-			fatal(err)
-		}
-		keyFile, err = config.GetString("tls:key-file")
-		if err != nil {
-			fatal(err)
-		}
-		fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-		err = srv.ListenAndServeTLS(certFile, keyFile)
-	} else {
-		fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-		err = srv.ListenAndServe()
-	}
-	if err != nil {
+
+	errChan := createServers(handler)
+	go func() {
+		err = <-errChan
 		fmt.Printf("Listening stopped: %s\n", err)
 		if errOp, ok := err.(*net.OpError); ok {
 			if errOp.Op == "listen" {
 				os.Exit(1)
 			}
 		}
-	}
+		fatal(err)
+	}()
 	<-shutdownChan
+}
+
+func createServers(handler http.Handler) chan error {
+	var (
+		certFile, keyFile string
+		httpSrv, httpsSrv *http.Server
+		err               error
+	)
+	errChan := make(chan error, 2)
+	useTls, _ := config.GetBool("use-tls")
+	tlsListen, _ := config.GetString("tls:listen")
+	listen, _ := config.GetString("listen")
+	if useTls {
+		if tlsListen == "" && listen != "" {
+			tlsListen = listen
+			listen = ""
+		}
+		certFile, err = config.GetString("tls:cert-file")
+		if err != nil {
+			errChan <- err
+			return errChan
+		}
+		keyFile, err = config.GetString("tls:key-file")
+		if err != nil {
+			errChan <- err
+			return errChan
+		}
+	} else if listen == "" {
+		errChan <- errors.New(`missing "listen" config key`)
+		return errChan
+	}
+
+	readTimeout, _ := config.GetInt("server:read-timeout")
+	writeTimeout, _ := config.GetInt("server:write-timeout")
+	if listen != "" {
+		httpSrv = &http.Server{
+			ReadTimeout:  time.Duration(readTimeout) * time.Second,
+			WriteTimeout: time.Duration(writeTimeout) * time.Second,
+			Addr:         listen,
+			Handler:      handler,
+		}
+		shutdown.Register(httpSrv)
+	}
+	if tlsListen != "" {
+		httpsSrv = &http.Server{
+			ReadTimeout:  time.Duration(readTimeout) * time.Second,
+			WriteTimeout: time.Duration(writeTimeout) * time.Second,
+			Addr:         tlsListen,
+			Handler:      handler,
+		}
+		shutdown.Register(httpsSrv)
+	}
+
+	if httpsSrv != nil {
+		go startHttpsServer(httpsSrv, errChan, tlsListen, certFile, keyFile)
+	}
+	if httpSrv != nil {
+		go startHttpServer(httpSrv, errChan, listen)
+	}
+
+	return errChan
+}
+
+func startHttpServer(srv *http.Server, errChan chan error, listen string) {
+	fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
+	err := srv.ListenAndServe()
+	if err != nil {
+		errChan <- err
+	}
+}
+
+func startHttpsServer(srv *http.Server, errChan chan error, listen, certFile, keyFile string) {
+	fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
+	err := srv.ListenAndServeTLS(certFile, keyFile)
+	if err != nil {
+		errChan <- err
+	}
 }

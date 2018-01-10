@@ -505,9 +505,6 @@ func (f *Filter) toQuery() (bson.M, error) {
 		}
 		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
-	if len(andBlock) > 0 {
-		query["$and"] = andBlock
-	}
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
@@ -528,7 +525,10 @@ func (f *Filter) toQuery() (bson.M, error) {
 		timeParts = append(timeParts, bson.M{"starttime": bson.M{"$lte": f.Until}})
 	}
 	if len(timeParts) != 0 {
-		query["$and"] = timeParts
+		andBlock = append(andBlock, timeParts...)
+	}
+	if len(andBlock) > 0 {
+		query["$and"] = andBlock
 	}
 	if f.Running != nil {
 		query["running"] = *f.Running

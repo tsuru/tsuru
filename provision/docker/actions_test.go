@@ -1259,8 +1259,6 @@ func (s *S) TestUpdateAppImageName(c *check.C) {
 }
 
 func (s *S) TestUpdateAppImageForward(c *check.C) {
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
 	registry, err := registrytest.NewServer("127.0.0.1:0")
 	c.Assert(err, check.IsNil)
 	defer registry.Stop()
@@ -1303,6 +1301,9 @@ func (s *S) TestUpdateAppImageForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allImages, err := image.ListAppImages(app.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(allImages, check.HasLen, 1)
-	c.Assert(allImages[0], check.Equals, registry.Addr()+"/tsuru/app-mightyapp:v2")
+	c.Assert(allImages, check.HasLen, 2)
+	c.Assert(allImages, check.DeepEquals, []string{
+		registry.Addr() + "/tsuru/app-mightyapp:v1",
+		registry.Addr() + "/tsuru/app-mightyapp:v2",
+	})
 }

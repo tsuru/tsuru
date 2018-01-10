@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -537,33 +538,30 @@ func toLabelSelectors(m map[string]string) []string {
 	return selectors
 }
 
-func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
+func (p *swarmProvisioner) cleanImageInNodes(imgName string) error {
 	nodes, err := p.ListNodes(nil)
 	if err != nil {
-		log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
-			imgName, errors.WithStack(err))
-		return
+		return err
 	}
+	multi := tsuruErrors.NewMultiError()
 	for _, n := range nodes {
 		nodeWrapper := n.(*swarmNodeWrapper)
 		tls, err := tlsConfigForCluster(nodeWrapper.client.Cluster)
 		if err != nil {
-			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
-				imgName, errors.WithStack(err))
+			multi.Add(err)
 			continue
 		}
 		client, err := newClient(n.Address(), tls)
 		if err != nil {
-			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
-				imgName, errors.WithStack(err))
+			multi.Add(err)
 			continue
 		}
 		err = client.RemoveImage(imgName)
 		if err != nil && err != docker.ErrNoSuchImage {
-			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
-				imgName, errors.WithStack(err))
+			multi.Add(errors.WithStack(err))
 		}
 	}
+	return multi.ToError()
 }
 
 func toNodePoolConstraint(pool string, equal bool) string {

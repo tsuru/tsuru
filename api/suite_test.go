@@ -6,8 +6,10 @@ package api
 
 import (
 	stdcontext "context"
+	"math/rand"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -16,11 +18,13 @@ import (
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -88,6 +92,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	rand.Seed(time.Now().UnixNano())
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
 	config.Set("log:disable-syslog", true)
@@ -134,6 +139,10 @@ func (s *S) TearDownTest(c *check.C) {
 	s.provisioner.Reset()
 	s.conn.Close()
 	s.logConn.Close()
+	healer.HealerInstance = nil
+	queue.ResetQueue()
+	config.Unset("listen")
+	config.Unset("tls:listen")
 }
 
 func (s *S) TearDownSuite(c *check.C) {

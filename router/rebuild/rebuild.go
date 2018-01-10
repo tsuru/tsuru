@@ -22,6 +22,7 @@ type RebuildApp interface {
 	router.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
+	GetHealthcheckData() (router.HealthcheckData, error)
 	RoutableAddresses() ([]url.URL, error)
 	InternalLock(string) (bool, error)
 	Unlock()
@@ -59,6 +60,16 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 			if err != nil && err != router.ErrCNameExists {
 				return nil, err
 			}
+		}
+	}
+	if hcRouter, ok := r.(router.CustomHealthcheckRouter); ok {
+		hcData, errHc := app.GetHealthcheckData()
+		if errHc != nil {
+			return nil, errHc
+		}
+		errHc = hcRouter.SetHealthcheck(app.GetName(), hcData)
+		if errHc != nil {
+			return nil, errHc
 		}
 	}
 	oldRoutes, err := r.Routes(app.GetName())

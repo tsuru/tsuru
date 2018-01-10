@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -1101,14 +1100,7 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	buf := strings.NewReader("my upload data")
-	buildOpts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
-		ArchiveSize: int64(buf.Len()),
-	}
-	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1-builder")
+	builderImgID := "registry.tsuru.io/tsuru/app-myapp:v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-myapp",
 		Tag:        "v1-builder",
@@ -1165,12 +1157,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	buildOpts := builder.BuildOpts{
-		ImageID: "myimg:v1",
-	}
-	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
+	builderImgID := "registry.tsuru.io/tsuru/app-myapp:v1"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-myapp",
 		Tag:        "v1",
@@ -1782,7 +1769,8 @@ func (s *S) TestCleanImage(c *check.C) {
 		c.Assert(imgs, check.HasLen, 2)
 	}
 	imageName := "myimg:v1"
-	s.p.CleanImage("teste", imageName, true)
+	err := s.p.CleanImage("teste", imageName)
+	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(urls)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 5)
