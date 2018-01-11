@@ -66,13 +66,6 @@ func Get(name string) (Builder, error) {
 	return b, nil
 }
 
-func GetDefault(p provision.Provisioner) (Builder, error) {
-	if p == nil {
-		return Get(DefaultBuilder)
-	}
-	return Get(p.GetName())
-}
-
 // Registry returns the list of registered builders.
 func Registry() ([]Builder, error) {
 	registry := make([]Builder, 0, len(builders))

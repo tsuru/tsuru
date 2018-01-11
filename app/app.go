@@ -168,14 +168,14 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	}
 	if app.builder == nil {
 		if app.Pool == "" {
-			return builder.GetDefault(p)
+			return builder.Get(p.GetName())
 		}
 		pool, err := pool.GetPoolByName(app.Pool)
 		if err != nil {
 			return nil, err
 		}
 		if pool.Builder == "" {
-			return builder.GetDefault(p)
+			return builder.Get(p.GetName())
 		}
 		app.builder, err = builder.Get(pool.Builder)
 		if err != nil {

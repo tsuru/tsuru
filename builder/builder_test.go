@@ -43,16 +43,6 @@ func (s S) TestRegisterAndGetBuilder(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expectedMessage)
 }
 
-func (s S) TestGetDefaultBuilder(c *check.C) {
-	var b1, b2 Builder
-	DefaultBuilder = "default-builder"
-	Register("default-builder", b1)
-	Register("other-builder", b2)
-	got, err := GetDefault(nil)
-	c.Check(err, check.IsNil)
-	c.Check(got, check.DeepEquals, b1)
-}
-
 func (s S) TestRegistry(c *check.C) {
 	var b1, b2, b3 Builder
 	Register("builder1", b1)
