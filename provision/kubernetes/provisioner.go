@@ -659,7 +659,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		deployPodName, err := deployPodNameForApp(a)
+		var deployPodName string
+		deployPodName, err = deployPodNameForApp(a)
 		if err != nil {
 			return "", err
 		}
