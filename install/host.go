@@ -7,9 +7,9 @@ package install
 import (
 	"fmt"
 
+	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type ErrHostNotFound struct {

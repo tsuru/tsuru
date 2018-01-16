@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 func (s *S) TestAppNewImageName(c *check.C) {

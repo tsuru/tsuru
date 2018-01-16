@@ -199,3 +199,7 @@
 [[override]]
   name = "gopkg.in/inf.v0"
   version = "v0.9.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"

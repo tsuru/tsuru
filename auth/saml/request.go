@@ -7,10 +7,10 @@ package saml
 import (
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (

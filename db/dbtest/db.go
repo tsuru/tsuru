@@ -9,8 +9,8 @@ package dbtest
 import (
 	"strings"
 
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/db/storage"
-	"gopkg.in/mgo.v2"
 )
 
 // ClearAllCollections removes all registers from all collections in the given

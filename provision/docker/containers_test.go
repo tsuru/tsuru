@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -25,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestMoveContainers(c *check.C) {

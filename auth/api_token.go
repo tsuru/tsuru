@@ -5,10 +5,10 @@
 package auth
 
 import (
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type APIToken struct {

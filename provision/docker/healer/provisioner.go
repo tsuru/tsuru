@@ -8,10 +8,10 @@ import (
 	"io"
 	"sync"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type DockerProvisioner interface {

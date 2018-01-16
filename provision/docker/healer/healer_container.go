@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
@@ -16,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type ContainerHealer struct {

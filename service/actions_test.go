@@ -12,11 +12,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestNotifyCreateServiceInstanceMinParams(c *check.C) {

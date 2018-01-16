@@ -7,17 +7,17 @@ package healer
 import (
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func mongoTime(t time.Time) time.Time {
-	return time.Unix(0, int64((time.Duration(t.UnixNano())/time.Millisecond)*time.Millisecond))
+	return time.Unix(0, int64((time.Duration(t.UnixNano())/time.Millisecond)*time.Millisecond)).UTC()
 }
 
 func (s *S) TestListHealingHistory(c *check.C) {

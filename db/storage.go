@@ -14,10 +14,10 @@ package db
 import (
 	"fmt"
 
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/hc"
-	"gopkg.in/mgo.v2"
 )
 
 const (

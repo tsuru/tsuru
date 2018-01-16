@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"sync"
 
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 var (

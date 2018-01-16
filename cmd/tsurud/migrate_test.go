@@ -6,10 +6,10 @@ package main
 
 import (
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestMigrateBSEnvs(c *check.C) {

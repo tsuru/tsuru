@@ -10,12 +10,12 @@ import (
 	"net/http"
 
 	"github.com/ajg/form"
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/mgo.v2"
 )
 
 // title: machine list

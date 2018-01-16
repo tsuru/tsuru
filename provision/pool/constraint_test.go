@@ -7,8 +7,8 @@ package pool
 import (
 	"reflect"
 
+	"github.com/globalsign/mgo/bson"
 	check "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestSetPoolConstraints(c *check.C) {
