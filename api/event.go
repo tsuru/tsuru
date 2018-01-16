@@ -11,11 +11,11 @@ import (
 	"strconv"
 
 	"github.com/ajg/form"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // title: event list

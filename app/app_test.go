@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
@@ -45,7 +46,6 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetAppByName(c *check.C) {

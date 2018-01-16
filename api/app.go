@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ajg/form"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -34,7 +35,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func appTarget(appName string) event.Target {

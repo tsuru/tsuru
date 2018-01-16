@@ -7,12 +7,12 @@ package docker
 import (
 	"fmt"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (p *dockerProvisioner) GetContainer(id string) (*container.Container, error) {

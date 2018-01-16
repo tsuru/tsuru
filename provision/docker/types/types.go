@@ -7,8 +7,8 @@ package types
 import (
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Container struct {

@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/action"
@@ -44,8 +46,6 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var AuthScheme auth.Scheme

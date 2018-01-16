@@ -7,6 +7,7 @@ package app
 import (
 	"strconv"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
@@ -15,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func PlatformService() appTypes.PlatformService {

@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/commandmocker"
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/db"
@@ -26,8 +28,6 @@ import (
 	"github.com/tsuru/gandalf/multipartzip"
 	"github.com/tsuru/tsuru/fs/fstest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

@@ -5,11 +5,11 @@
 package mongodb
 
 import (
+	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/types/app"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type PlatformService struct{}

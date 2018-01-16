@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db/storage"
@@ -18,8 +20,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type ClusterClient struct {

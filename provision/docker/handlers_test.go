@@ -18,6 +18,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient/testing"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
@@ -38,7 +39,6 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 type HandlersSuite struct {

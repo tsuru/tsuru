@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/fsouza/go-dockerclient"
+	mgo "github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -21,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
-	mgo "gopkg.in/mgo.v2"
 )
 
 func (s *S) TestCreateContainerName(c *check.C) {

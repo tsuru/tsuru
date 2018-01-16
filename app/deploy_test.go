@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
@@ -22,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {

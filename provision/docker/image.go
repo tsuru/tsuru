@@ -6,13 +6,13 @@ package docker
 
 import (
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func MigrateImages() error {

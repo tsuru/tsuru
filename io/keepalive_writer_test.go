@@ -49,6 +49,7 @@ func (b *closableBuffer) String() string {
 func (s *S) TestKeepAliveWriter(c *check.C) {
 	var buf closableBuffer
 	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "...")
+	defer w.Stop()
 	w.writeLock.Lock()
 	w.testCh = make(chan struct{})
 	w.writeLock.Unlock()
@@ -69,6 +70,7 @@ func (s *S) TestKeepAliveWriter(c *check.C) {
 func (s *S) TestKeepAliveWriterDoesntWriteMultipleNewlines(c *check.C) {
 	var buf closableBuffer
 	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "---")
+	defer w.Stop()
 	w.writeLock.Lock()
 	w.testCh = make(chan struct{})
 	w.writeLock.Unlock()
@@ -129,9 +131,9 @@ func (s *S) TestKeepAliveWriterRace(c *check.C) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(15 * time.Second):
 		pprof.Lookup("goroutine").WriteTo(os.Stderr, 2)
-		c.Fatalf("timeout after 2s waiting for test to finish")
+		c.Fatalf("timeout after 15s waiting for test to finish")
 	}
 	buf.Close()
 	c.Assert(strings.Count(buf.String(), "xxx"), check.Equals, nWrites*2)

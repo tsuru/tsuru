@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // ErrDuplicateMigration is the error returned by Register when the given name

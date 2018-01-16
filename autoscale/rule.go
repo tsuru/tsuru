@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"gopkg.in/mgo.v2"
 )
 
 type Rule struct {

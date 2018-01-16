@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Initialize() error {

@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -27,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -1137,7 +1137,7 @@ func (s *S) TestGetTargetType(c *check.C) {
 }
 
 func (s *S) TestEventRawInsert(c *check.C) {
-	now := time.Unix(time.Now().Unix(), 0)
+	now := time.Unix(time.Now().Unix(), 0).UTC()
 	evt := &Event{eventData: eventData{
 		UniqueID:  bson.NewObjectId(),
 		Target:    Target{Type: "app", Value: "myapp"},

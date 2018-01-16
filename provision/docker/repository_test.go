@@ -7,12 +7,12 @@ package docker
 import (
 	"sort"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) getContainerCollection(appName string, containerIds ...string) func() {
