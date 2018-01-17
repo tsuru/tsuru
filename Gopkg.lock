@@ -714,6 +714,7 @@
   revision = "3d7ffe0959977552dae89c42bf0e567eb312b7b6"
 
 [[projects]]
+  branch = "master"
   name = "github.com/tsuru/gandalf"
   packages = [
     "db",
@@ -723,7 +724,7 @@
     "repository",
     "user"
   ]
-  revision = "fb303857acdb4ceab3ded5a584384e4195138d97"
+  revision = "86866cf0af24258e267a4ab92ef978fe4ed8ce96"
 
 [[projects]]
   branch = "master"
@@ -1187,6 +1188,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "11738e2cbd7a3c7a114b96f84f563431a2223f861425e3dcca8081b22e4fa9d2"
+  inputs-digest = "ac50dc28a2117b7c631e7cee59d4e17a63e5638f0f96bf2f6a30ae604bcc459a"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -140,7 +140,7 @@ func New(name string, users, readOnlyUsers []string, isPublic bool) (*Repository
 		}
 		return nil, err
 	}
-	if err := newBare(name); err != nil {
+	if err = newBare(name); err != nil {
 		log.Errorf("repository.New: Error creating bare repository for %q: %s", name, err)
 		conn.Repository().Remove(bson.M{"_id": r.Name})
 		return r, err
@@ -328,7 +328,7 @@ func GrantAccess(rNames, uNames []string, readOnly bool) error {
 	if err != nil {
 		return err
 	}
-	if info.Updated < 1 {
+	if info.Matched == 0 {
 		return ErrRepositoryNotFound
 	}
 	return nil
@@ -351,7 +351,7 @@ func RevokeAccess(rNames, uNames []string, readOnly bool) error {
 	if err != nil {
 		return err
 	}
-	if info.Updated < 1 {
+	if info.Matched == 0 {
 		return ErrRepositoryNotFound
 	}
 	return nil
@@ -497,7 +497,7 @@ func (*GitContentRetriever) GetForEachRef(repo, pattern string) ([]Ref, error) {
 		return nil, fmt.Errorf("Error when trying to obtain the refs of repository %s (Repository does not exist).", repo)
 	}
 	format := "%(objectname)%09%(refname:short)%09%(committername)%09%(committeremail)%09%(committerdate)%09%(authorname)%09%(authoremail)%09%(authordate)%09%(taggername)%09%(taggeremail)%09%(taggerdate)%09%(contents:subject)"
-	cmd := exec.Command(gitPath, "for-each-ref", "--sort=-committerdate", "--format", format)
+	cmd := exec.Command(gitPath, "for-each-ref", "--sort=-committerdate", "--sort=refname", "--format", format)
 	if len(pattern) > 0 {
 		cmd.Args = append(cmd.Args, pattern)
 	}

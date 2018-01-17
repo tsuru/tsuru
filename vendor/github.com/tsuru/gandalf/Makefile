@@ -5,8 +5,7 @@ GANDALF_SSH_BIN = $(BUILD_DIR)/gandalf-ssh
 GANDALF_SSH_SRC = bin/gandalf.go
 
 test:
-	go clean $(GO_EXTRAFLAGS) ./...
-	go test $(GO_EXTRAFLAGS) ./...
+	./go.test.bash
 
 doc:
 	@cd docs && make html

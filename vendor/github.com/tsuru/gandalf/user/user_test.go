@@ -305,6 +305,7 @@ func (s *S) TestAddKeyShouldWriteKeyInAuthorizedKeys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var key Key
 	err = conn.Key().Find(bson.M{"name": "somekey"}).One(&key)
+	c.Assert(err, check.IsNil)
 	content := s.authKeysContent(c)
 	c.Assert(content, check.Equals, key.format())
 }

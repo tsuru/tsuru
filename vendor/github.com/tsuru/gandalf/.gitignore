@@ -4,3 +4,5 @@ docs/build
 dist-*
 build/
 main
+coverage.txt
+profile.out

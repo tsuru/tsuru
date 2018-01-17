@@ -1563,10 +1563,10 @@ func (s *S) TestGetTagsAnnotatedTag(c *check.C) {
 	tags, err := GetTags(repo)
 	c.Assert(err, check.IsNil)
 	c.Assert(tags, check.HasLen, 4)
-	c.Assert(tags[2].Tagger.Name, check.Equals, user.Name)
-	c.Assert(tags[2].Tagger.Email, check.Equals, "<"+user.Email+">")
-	c.Assert(tags[2].CreatedAt, check.Equals, tags[2].Tagger.Date)
-	c.Assert(tags[2].Subject, check.Equals, "much tag")
+	c.Assert(tags[1].Tagger.Name, check.Equals, user.Name)
+	c.Assert(tags[1].Tagger.Email, check.Equals, "<"+user.Email+">")
+	c.Assert(tags[1].Tagger.Date, check.Equals, tags[1].CreatedAt)
+	c.Assert(tags[1].Subject, check.Equals, "much tag")
 }
 
 func (s *S) TestGetArchiveUrl(c *check.C) {

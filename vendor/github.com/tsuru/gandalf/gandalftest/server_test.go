@@ -7,12 +7,13 @@ package gandalftest
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/gandalf/repository"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/tsuru/gandalf/repository"
 
 	"gopkg.in/check.v1"
 )
