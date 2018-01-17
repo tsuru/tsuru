@@ -275,6 +275,7 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
 	params := map[string][]string{
 		"app-hosts": appAddrs,
+		"app-name":  {app.GetName()},
 	}
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
