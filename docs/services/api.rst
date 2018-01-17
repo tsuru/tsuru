@@ -300,7 +300,7 @@ This endpoint is a DELETE with app-host. Example of request:
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
 
-    app-host=myapp.cloud.tsuru.io
+    app-host=myapp.cloud.tsuru.io&app-name=myapp
 
 The API should return the following HTTP response code with the respective
 response body:
