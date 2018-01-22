@@ -33,11 +33,11 @@ func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volu
 	var kubeVolumes []apiv1.Volume
 	var kubeMounts []apiv1.VolumeMount
 	for i := range volumes {
-		err = createVolumeForApp(client, app, &volumes[i])
+		err = createVolume(client, &volumes[i])
 		if err != nil {
 			return nil, nil, err
 		}
-		volumes, mounts, err := bindsForVolume(&volumes[i])
+		volumes, mounts, err := bindsForVolume(&volumes[i], app.GetName())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -47,10 +47,10 @@ func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volu
 	return kubeVolumes, kubeMounts, nil
 }
 
-func bindsForVolume(v *volume.Volume) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
+func bindsForVolume(v *volume.Volume, appName string) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	var kubeVolumes []apiv1.Volume
 	var kubeMounts []apiv1.VolumeMount
-	binds, err := v.LoadBinds()
+	binds, err := v.LoadBindsForApp(appName)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -63,7 +63,6 @@ func bindsForVolume(v *volume.Volume) ([]apiv1.Volume, []apiv1.VolumeMount, erro
 		})
 		if !b.ReadOnly {
 			allReadOnly = false
-			break
 		}
 	}
 	kubeVol := apiv1.Volume{
@@ -127,7 +126,7 @@ func deleteVolume(client *clusterClient, name string) error {
 	return nil
 }
 
-func createVolumeForApp(client *clusterClient, app provision.App, v *volume.Volume) error {
+func createVolume(client *clusterClient, v *volume.Volume) error {
 	opts, err := validateVolume(v)
 	if err != nil {
 		return err

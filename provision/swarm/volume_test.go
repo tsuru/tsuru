@@ -31,12 +31,39 @@ func (s *S) TestMountsForApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("otherapp", "/mnt", false)
+	c.Assert(err, check.IsNil)
 	mounts, err := mountsForApp(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(mounts, check.DeepEquals, []mount.Mount{
 		{
 			Source:   v.Name,
 			Target:   "/mnt",
+			ReadOnly: false,
+			Type:     mount.TypeVolume,
+			VolumeOptions: &mount.VolumeOptions{
+				Labels: map[string]string{
+					"tsuru.is-tsuru":    "true",
+					"tsuru.provisioner": "swarm",
+					"tsuru.volume-name": "v1",
+					"tsuru.volume-plan": "p1",
+					"tsuru.volume-pool": "bonehunters",
+				},
+				DriverConfig: &mount.Driver{
+					Name: "local",
+					Options: map[string]string{
+						"type":   "nfs",
+						"device": "/exports",
+						"o":      "addr=192.168.50.4,rw",
+					},
+				},
+			},
+		},
+		{
+			Source:   v.Name,
+			Target:   "/mnt2",
 			ReadOnly: false,
 			Type:     mount.TypeVolume,
 			VolumeOptions: &mount.VolumeOptions{
