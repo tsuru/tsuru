@@ -147,6 +147,20 @@ func (v *Volume) UnbindApp(appName, mountPoint string) error {
 	return errors.WithStack(err)
 }
 
+func (v *Volume) LoadBindsForApp(appName string) ([]VolumeBind, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer conn.Close()
+	var binds []VolumeBind
+	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name, "_id.app": appName}).All(&binds)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return binds, nil
+}
+
 func (v *Volume) LoadBinds() ([]VolumeBind, error) {
 	if v.Binds != nil {
 		return v.Binds, nil

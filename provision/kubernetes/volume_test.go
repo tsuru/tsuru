@@ -35,6 +35,10 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("otherapp", "/mnt", false)
+	c.Assert(err, check.IsNil)
 	volumes, mounts, err := createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	expectedVolume := []apiv1.Volume{{
@@ -46,11 +50,18 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 		},
 	}}
-	expectedMount := []apiv1.VolumeMount{{
-		Name:      volumeName(v.Name),
-		MountPath: "/mnt",
-		ReadOnly:  false,
-	}}
+	expectedMount := []apiv1.VolumeMount{
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt",
+			ReadOnly:  false,
+		},
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt2",
+			ReadOnly:  false,
+		},
+	}
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 	pv, err := s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
