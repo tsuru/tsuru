@@ -874,6 +874,41 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 	})
 }
 
+func (s *S) TestFindNodesForHealingRotateResults(c *check.C) {
+	conf := healerConfig()
+	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
+	c.Assert(err, check.IsNil)
+	p := provisiontest.ProvisionerInstance
+	err = p.AddNode(provision.AddNodeOptions{
+		Address: "http://addr1:1",
+	})
+	c.Assert(err, check.IsNil)
+	err = p.AddNode(provision.AddNodeOptions{
+		Address: "http://addr2:1",
+	})
+	c.Assert(err, check.IsNil)
+	node1, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
+	node2, err := p.GetNode("http://addr2:1")
+	c.Assert(err, check.IsNil)
+	healer := newNodeHealer(nodeHealerArgs{})
+	healer.Shutdown(context.Background())
+	healer.started = time.Now().Add(-3 * time.Second)
+	err = healer.UpdateNodeData(node1, []provision.NodeCheckResult{})
+	c.Assert(err, check.IsNil)
+	err = healer.UpdateNodeData(node2, []provision.NodeCheckResult{})
+	c.Assert(err, check.IsNil)
+	time.Sleep(1200 * time.Millisecond)
+	nodesResult1, _, err := healer.findNodesForHealing()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodesResult1, check.HasLen, 2)
+	nodesResult2, _, err := healer.findNodesForHealing()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodesResult2, check.HasLen, 2)
+	c.Assert(nodesResult1[0], check.DeepEquals, nodesResult2[1])
+	c.Assert(nodesResult1[1], check.DeepEquals, nodesResult2[0])
+}
+
 func (s *S) TestCheckActiveHealing(c *check.C) {
 	conf := healerConfig()
 	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})

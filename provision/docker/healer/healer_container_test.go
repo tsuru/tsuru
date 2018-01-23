@@ -779,3 +779,25 @@ func (s *S) TestListUnresponsiveContainersAsleep(c *check.C) {
 	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c2")
 }
+
+func (s *S) TestListUnresponsiveContainersRotateResults(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	coll := p.Collection()
+	defer coll.Close()
+	now := time.Now().UTC()
+	coll.Insert(
+		container.Container{Container: types.Container{ID: "c1", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"}},
+		container.Container{Container: types.Container{ID: "c2", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"}},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
+	result1, err := listUnresponsiveContainers(p, 3*time.Minute)
+	c.Assert(err, check.IsNil)
+	c.Assert(result1, check.HasLen, 2)
+	result2, err := listUnresponsiveContainers(p, 3*time.Minute)
+	c.Assert(err, check.IsNil)
+	c.Assert(result2, check.HasLen, 2)
+	c.Assert(result1[0], check.DeepEquals, result2[1])
+	c.Assert(result1[1], check.DeepEquals, result2[0])
+}
