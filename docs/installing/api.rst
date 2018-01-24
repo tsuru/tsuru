@@ -77,7 +77,6 @@ configuration is described below, please note that you should replace the values
         deploy-cmd: /var/lib/tsuru/deploy
         bs:
             image: tsuru/bs:v1
-            reporter-interval: 10
             socket: /var/run/docker.sock
         cluster:
             storage: mongodb
