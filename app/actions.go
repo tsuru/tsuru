@@ -113,6 +113,41 @@ var insertApp = action.Action{
 	MinParams: 1,
 }
 
+// createAppToken generates a token for the app and saves it in the database.
+// It requires a pointer to an App instance as the first parameter.
+var createAppToken = action.Action{
+	Name: "create-app-token",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("First parameter must be *App.")
+		}
+		app, err := GetByName(app.Name)
+		if err != nil {
+			return nil, err
+		}
+		t, err := AuthScheme.AppLogin(app.Name)
+		if err != nil {
+			return nil, err
+		}
+		return &t, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		var tokenValue string
+		if token, ok := ctx.FWResult.(*auth.Token); ok {
+			tokenValue = (*token).GetValue()
+		} else if app, ok := ctx.Params[0].(*App); ok {
+			if tokenVar, ok := app.Env["TSURU_APP_TOKEN"]; ok {
+				tokenValue = tokenVar.Value
+			}
+		}
+		if tokenValue != "" {
+			AuthScheme.Logout(tokenValue)
+		}
+	},
+	MinParams: 1,
+}
+
 // exportEnvironmentsAction exports tsuru's default environment variables in a
 // new app. It requires a pointer to an App instance as the first parameter.
 var exportEnvironmentsAction = action.Action{
@@ -123,14 +158,11 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t, err := AuthScheme.AppLogin(app.Name)
-		if err != nil {
-			return nil, err
-		}
+		t := ctx.Previous.(*auth.Token)
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
-			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
+			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
 		}
 		err = app.SetEnvs(bind.SetEnvArgs{
 			Envs:          envVars,
@@ -139,11 +171,10 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return ctx.Previous, nil
+		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		AuthScheme.Logout(app.Env["TSURU_APP_TOKEN"].Value)
 		app, err := GetByName(app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
