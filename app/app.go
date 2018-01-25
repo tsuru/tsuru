@@ -429,6 +429,7 @@ func CreateApp(app *App, user *auth.User) error {
 	actions := []*action.Action{
 		&reserveUserApp,
 		&insertApp,
+		&createAppToken,
 		&exportEnvironmentsAction,
 		&createRepository,
 		&addRouterBackend,

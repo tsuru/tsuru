@@ -27,6 +27,10 @@ func (s *S) TestInsertAppName(c *check.C) {
 	c.Assert(insertApp.Name, check.Equals, "insert-app")
 }
 
+func (s *S) TestCreateAppTokenName(c *check.C) {
+	c.Assert(createAppToken.Name, check.Equals, "create-app-token")
+}
+
 func (s *S) TestExportEnvironmentsName(c *check.C) {
 	c.Assert(exportEnvironmentsAction.Name, check.Equals, "export-environments")
 }
@@ -149,7 +153,7 @@ func (s *S) TestInsertAppMinimumParams(c *check.C) {
 	c.Assert(insertApp.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestExportEnvironmentsForward(c *check.C) {
+func (s *S) TestCreateAppTokenForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
@@ -157,22 +161,57 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app}}
+	result, err := createAppToken.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	var token *auth.Token
+	c.Assert(result, check.FitsTypeOf, token)
+	token = result.(*auth.Token)
+	c.Assert((*token).GetAppName(), check.Equals, app.Name)
+}
+
+func (s *S) TestCreateAppTokenBackward(c *check.C) {
+	app := App{
+		Name:      "moon",
+		Platform:  "opeth",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.BWContext{Params: []interface{}{&app}}
+	createAppToken.Backward(ctx)
+	t, err := nativeScheme.Auth(app.Envs()["TSURU_APP_TOKEN"].Value)
+	c.Assert(t, check.IsNil)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestCreateAppTokenMinimumParams(c *check.C) {
+	c.Assert(createAppToken.MinParams, check.Equals, 1)
+}
+
+func (s *S) TestExportEnvironmentsForward(c *check.C) {
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	token, err := nativeScheme.AppLogin(app.Name)
+	c.Assert(err, check.IsNil)
+	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &token}
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.Equals, nil)
+	c.Assert(result, check.FitsTypeOf, &app)
+	c.Assert(result.(*App).Name, check.Equals, app.Name)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	appEnv := gotApp.Envs()
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
-	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, check.Not(check.Equals), "")
+	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, check.Equals, token.GetValue())
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, check.Equals, false)
 	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")
 	c.Assert(appEnv["TSURU_APPDir"].Public, check.Equals, false)
-	t, err := nativeScheme.Auth(appEnv["TSURU_APP_TOKEN"].Value)
-	c.Assert(err, check.IsNil)
-	c.Assert(t.IsAppToken(), check.Equals, true)
-	c.Assert(t.GetAppName(), check.Equals, app.Name)
 }
 
 func (s *S) TestExportEnvironmentsBackward(c *check.C) {
@@ -204,8 +243,6 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
-	_, err = nativeScheme.Auth(token.GetValue())
-	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
