@@ -19,6 +19,7 @@ type DbDriver struct {
 	PlatformService app.PlatformService
 	PlanService     app.PlanService
 	CacheService    cache.CacheService
+	AppTokenService auth.AppTokenService
 }
 
 var (
