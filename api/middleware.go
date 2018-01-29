@@ -37,11 +37,15 @@ const (
 )
 
 func validate(token string, r *http.Request) (auth.Token, error) {
+	var t auth.Token
 	t, err := app.AuthScheme.Auth(token)
 	if err != nil {
 		t, err = auth.APIAuth(token)
 		if err != nil {
-			return nil, err
+			t, err = auth.AppTokenAuth(token)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	if t.IsAppToken() {
