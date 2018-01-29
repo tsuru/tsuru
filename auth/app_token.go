@@ -51,7 +51,11 @@ func AppTokenService() authTypes.AppTokenService {
 	return dbDriver.AppTokenService
 }
 
-func AppTokenAuth(token string) (Token, error) {
+func AppTokenAuth(header string) (Token, error) {
+	token, err := ParseToken(header)
+	if err != nil {
+		return nil, err
+	}
 	t, err := AppTokenService().FindByToken(token)
 	if err != nil {
 		if err == authTypes.ErrAppTokenNotFound {
