@@ -59,3 +59,21 @@ Volumes binds, like service binds, associate a given application to a previously
 the volume will be made available to the application by the provisioner. The bind/unbind actions can be triggered by the tsuru
 client.
 
+Example
+=======
+
+Supose an ``ebs`` volume plan is registered in tsuru configuration, one can create a volume using tsuru client:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru volume create myvol ebs -o capacity=1Gi
+
+To be able to use this volume from an app, bind to it:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru volume bind myvol /mnt/mountpoint -a my-app
