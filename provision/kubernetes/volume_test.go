@@ -126,6 +126,61 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 }
 
+func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "emptyDir")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"medium": "Memory",
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("otherapp", "/mnt", false)
+	c.Assert(err, check.IsNil)
+	volumes, mounts, err := createVolumesForApp(s.client.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	expectedVolume := []apiv1.Volume{{
+		Name: volumeName(v.Name),
+		VolumeSource: apiv1.VolumeSource{
+			EmptyDir: &apiv1.EmptyDirVolumeSource{
+				Medium: apiv1.StorageMediumMemory,
+			},
+		},
+	}}
+	expectedMount := []apiv1.VolumeMount{
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt",
+			ReadOnly:  false,
+		},
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt2",
+			ReadOnly:  false,
+		},
+	}
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
+	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace()).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	volumes, mounts, err = createVolumesForApp(s.client.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
+}
+
 func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:storage-class", "my-class")
 	config.Set("volume-plans:p1:kubernetes:capacity", "20Gi")

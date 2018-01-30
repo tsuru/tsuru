@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/set"
 	"github.com/tsuru/tsuru/volume"
 	"github.com/ugorji/go/codec"
 	apiv1 "k8s.io/api/core/v1"
@@ -25,6 +26,12 @@ type volumeOptions struct {
 	AccessModes  string `json:"access-modes"`
 }
 
+var allowedNonPersistentVolumes = set.FromValues("emptyDir")
+
+func (opts *volumeOptions) isPersistent() bool {
+	return !allowedNonPersistentVolumes.Includes(opts.Plugin)
+}
+
 func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	volumes, err := volume.ListByApp(app.GetName())
 	if err != nil {
@@ -33,22 +40,27 @@ func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volu
 	var kubeVolumes []apiv1.Volume
 	var kubeMounts []apiv1.VolumeMount
 	for i := range volumes {
-		err = createVolume(client, &volumes[i])
+		opts, err := validateVolume(&volumes[i])
 		if err != nil {
 			return nil, nil, err
 		}
-		volumes, mounts, err := bindsForVolume(&volumes[i], app.GetName())
+		if opts.isPersistent() {
+			err = createVolume(client, &volumes[i], opts)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		volume, mounts, err := bindsForVolume(&volumes[i], opts, app.GetName())
 		if err != nil {
 			return nil, nil, err
 		}
 		kubeMounts = append(kubeMounts, mounts...)
-		kubeVolumes = append(kubeVolumes, volumes...)
+		kubeVolumes = append(kubeVolumes, *volume)
 	}
 	return kubeVolumes, kubeMounts, nil
 }
 
-func bindsForVolume(v *volume.Volume, appName string) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
-	var kubeVolumes []apiv1.Volume
+func bindsForVolume(v *volume.Volume, opts *volumeOptions, appName string) (*apiv1.Volume, []apiv1.VolumeMount, error) {
 	var kubeMounts []apiv1.VolumeMount
 	binds, err := v.LoadBindsForApp(appName)
 	if err != nil {
@@ -67,15 +79,38 @@ func bindsForVolume(v *volume.Volume, appName string) ([]apiv1.Volume, []apiv1.V
 	}
 	kubeVol := apiv1.Volume{
 		Name: volumeName(v.Name),
-		VolumeSource: apiv1.VolumeSource{
+	}
+	if opts.isPersistent() {
+		kubeVol.VolumeSource = apiv1.VolumeSource{
 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
 				ClaimName: volumeClaimName(v.Name),
 				ReadOnly:  allReadOnly,
 			},
-		},
+		}
+	} else {
+		kubeVol.VolumeSource, err = nonPersistentVolume(v, opts)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
-	kubeVolumes = append(kubeVolumes, kubeVol)
-	return kubeVolumes, kubeMounts, nil
+	return &kubeVol, kubeMounts, nil
+}
+
+func nonPersistentVolume(v *volume.Volume, opts *volumeOptions) (apiv1.VolumeSource, error) {
+	var volumeSrc apiv1.VolumeSource
+	data, err := json.Marshal(map[string]interface{}{
+		opts.Plugin: v.Opts,
+	})
+	if err != nil {
+		return volumeSrc, errors.WithStack(err)
+	}
+	h := &codec.JsonHandle{}
+	dec := codec.NewDecoderBytes(data, h)
+	err = dec.Decode(&volumeSrc)
+	if err != nil {
+		return volumeSrc, errors.WithStack(err)
+	}
+	return volumeSrc, nil
 }
 
 func validateVolume(v *volume.Volume) (*volumeOptions, error) {
@@ -89,6 +124,9 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	}
 	if opts.Plugin == "" && opts.StorageClass == "" {
 		return nil, errors.New("both volume plan plugin and storage-class are empty")
+	}
+	if !opts.isPersistent() {
+		return &opts, nil
 	}
 	if capRaw, ok := v.Opts["capacity"]; ok {
 		delete(v.Opts, "capacity")
@@ -126,11 +164,7 @@ func deleteVolume(client *clusterClient, name string) error {
 	return nil
 }
 
-func createVolume(client *clusterClient, v *volume.Volume) error {
-	opts, err := validateVolume(v)
-	if err != nil {
-		return err
-	}
+func createVolume(client *clusterClient, v *volume.Volume, opts *volumeOptions) error {
 	labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
 		Name:        v.Name,
 		Provisioner: provisionerName,
