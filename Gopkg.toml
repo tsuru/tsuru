@@ -1,3 +1,8 @@
+[prune]
+  non-go = true
+  unused-packages = true
+  go-tests = true
+
 [[constraint]]
   name = "k8s.io/client-go"
   version = "kubernetes-1.8.2"
