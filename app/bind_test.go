@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestAppIsABinderApp(c *check.C) {

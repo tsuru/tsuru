@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type AppWithPlanRouter struct {

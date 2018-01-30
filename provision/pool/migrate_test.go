@@ -5,8 +5,8 @@
 package pool
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {

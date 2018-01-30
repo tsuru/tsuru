@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
@@ -26,7 +27,6 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

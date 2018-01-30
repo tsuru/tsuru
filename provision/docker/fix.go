@@ -5,10 +5,10 @@
 package docker
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/router/rebuild"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (p *dockerProvisioner) checkContainer(container *container.Container) error {

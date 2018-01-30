@@ -292,6 +292,35 @@ func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt1", false)
 	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp2", "/mnt1", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp", "/mnt2", true)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp", "/mnt2", false)
+	c.Assert(err, check.Equals, ErrVolumeAlreadyBound)
+	expected := []VolumeBind{
+		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "myapp2", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
+	}
+	binds, err := v.LoadBinds()
+	c.Assert(err, check.IsNil)
+	c.Assert(binds, check.DeepEquals, expected)
+}
+
+func (s *S) TestLoadBindsForApp(c *check.C) {
+	v := Volume{
+		Name:      "v1",
+		Plan:      VolumePlan{Name: "p1"},
+		Pool:      "mypool",
+		TeamOwner: "myteam",
+	}
+	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp", "/mnt1", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp2", "/mnt1", false)
+	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt2", true)
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt2", false)
@@ -300,7 +329,7 @@ func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
 		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
 		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
-	binds, err := v.LoadBinds()
+	binds, err := v.LoadBindsForApp("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(binds, check.DeepEquals, expected)
 }

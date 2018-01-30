@@ -9,7 +9,7 @@ package storage
 import (
 	"runtime"
 
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 // Open dials to the MongoDB database, and return the connection (represented

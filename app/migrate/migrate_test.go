@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -17,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type S struct {

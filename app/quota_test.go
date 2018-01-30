@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestReserveUnits(c *check.C) {

@@ -465,7 +465,7 @@ func (s *S) TestUnbindApp(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}}
+	expected := map[string][]string{"app-name": {"arch-enemy"}, "app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 

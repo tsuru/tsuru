@@ -5,7 +5,7 @@
 Gandalf
 +++++++
 
-Gandalf is a REST api written in go to manage git repositories, users and provide access to them over SSH.
+Gandalf is a REST API written in Go to manage Git repositories, users and provide access to them over SSH.
 
 YOU SHALL NOT PASS!
 ==================
@@ -19,7 +19,7 @@ First steps:
 Get involved:
 =============
 
-* `contribute <https://gandalf.readthedocs.org/en/latest/contribute.html>`_
-* `community <https://gandalf.readthedocs.org/en/latest/community.html>`_
+* `Contribute <https://gandalf.readthedocs.org/en/latest/contribute.html>`_
+* `Community <https://gandalf.readthedocs.org/en/latest/community.html>`_
 
 For more information see the `documentation <https://gandalf.readthedocs.org/en/latest/index.html>`_

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -24,7 +25,6 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -64,7 +64,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
-	now := time.Unix(time.Now().Unix(), 0)
+	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
 	expected.Init()
@@ -84,7 +84,7 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	a := app.App{Name: "a1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	now := time.Unix(time.Now().Unix(), 0)
+	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
 	expected.Init()
@@ -106,7 +106,7 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 }
 
 func (s *S) TestMigrateRCEventsInvalidTarget(c *check.C) {
-	now := time.Unix(time.Now().Unix(), 0)
+	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
 	expected.Init()

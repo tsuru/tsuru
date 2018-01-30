@@ -158,7 +158,7 @@ paths:
           description: Service instance does not exist
         default:
           $ref: '#/components/schemas/Error'
-  /resources/{name}/app-bind:
+  /resources/{name}/bind-app:
     parameters:
       - name: name
         in: path

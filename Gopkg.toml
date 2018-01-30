@@ -43,7 +43,7 @@
   revision = "7993aa4cbec0531b926db082b0d589ad2e4d5e33"
 [[constraint]]
   name = "github.com/tsuru/gandalf"
-  revision = "fb303857acdb4ceab3ded5a584384e4195138d97"
+  branch = "master"
 [[constraint]]
   name = "golang.org/x/oauth2"
   revision = "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"
@@ -199,3 +199,7 @@
 [[override]]
   name = "gopkg.in/inf.v0"
   version = "v0.9.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"

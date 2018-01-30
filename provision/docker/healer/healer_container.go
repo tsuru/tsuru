@@ -7,8 +7,10 @@ package healer
 import (
 	"bytes"
 	"context"
+	"sync/atomic"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
@@ -16,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type ContainerHealer struct {
@@ -163,9 +164,11 @@ func (h *ContainerHealer) runContainerHealerOnce() {
 	}
 }
 
+var localSkip uint64
+
 func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Duration) ([]container.Container, error) {
 	now := time.Now().UTC()
-	return p.ListContainers(bson.M{
+	conts, err := p.ListContainers(bson.M{
 		"id":                      bson.M{"$ne": ""},
 		"appname":                 bson.M{"$ne": ""},
 		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
@@ -178,4 +181,14 @@ func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Du
 			provision.StatusAsleep.String(),
 		}},
 	})
+	if err != nil {
+		return nil, err
+	}
+	if len(conts) > 0 {
+		pivot := atomic.AddUint64(&localSkip, 1) % uint64(len(conts))
+		// Rotate the queried slice on pivot index to avoid the same node to always
+		// be selected.
+		conts = append(conts[pivot:], conts[:pivot]...)
+	}
+	return conts, nil
 }

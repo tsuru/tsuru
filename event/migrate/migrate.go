@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/service"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func MigrateRCEvents() error {

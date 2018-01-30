@@ -104,6 +104,7 @@ func (s *cloudstackSuite) TestCreateMachine(c *check.C) {
 	}
 	vm, err := cs.CreateMachine(params)
 	c.Assert(err, check.IsNil)
+	queue.ResetQueue()
 	c.Assert(vm, check.NotNil)
 	c.Assert(vm.Address, check.Equals, "10.24.16.241")
 	c.Assert(vm.Id, check.Equals, "0366ae09-0a77-4e2b-8595-3b749764a107")
@@ -137,6 +138,7 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 	}
 	_, err = cs.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, ".*my weird error.*")
+	queue.ResetQueue()
 	c.Assert(calls[:2], check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
 }
 
@@ -207,6 +209,7 @@ func (s *cloudstackSuite) TestCreateMachineWithTags(c *check.C) {
 	}
 	vm, err := cs.CreateMachine(params)
 	c.Assert(err, check.IsNil)
+	queue.ResetQueue()
 	c.Assert(vm, check.NotNil)
 	c.Assert(vm.Address, check.Equals, "10.24.16.241")
 	c.Assert(vm.Id, check.Equals, "0366ae09-0a77-4e2b-8595-3b749764a107")
@@ -247,6 +250,7 @@ func (s *cloudstackSuite) TestDeleteMachineWithoutProjectID(c *check.C) {
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{}}
 	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.IsNil)
+	queue.ResetQueue()
 	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
 		"destroyVirtualMachine",
@@ -291,6 +295,7 @@ func (s *cloudstackSuite) TestDeleteMachine(c *check.C) {
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.IsNil)
+	queue.ResetQueue()
 	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
 		"destroyVirtualMachine",
@@ -328,6 +333,7 @@ func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *check.C) {
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*my awesome err.*")
+	queue.ResetQueue()
 	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
 		"destroyVirtualMachine",

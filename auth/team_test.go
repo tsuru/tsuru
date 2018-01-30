@@ -9,8 +9,8 @@ import (
 
 	authTypes "github.com/tsuru/tsuru/types/auth"
 
+	"github.com/globalsign/mgo/bson"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetTeamsNames(c *check.C) {

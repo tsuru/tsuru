@@ -9,13 +9,13 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Service struct {

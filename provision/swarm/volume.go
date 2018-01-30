@@ -51,7 +51,7 @@ func mountsForVolume(v volume.Volume, app provision.App) ([]mount.Mount, error) 
 		}
 		optsMap[parts[0]] = parts[1]
 	}
-	binds, err := v.LoadBinds()
+	binds, err := v.LoadBindsForApp(app.GetName())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -64,9 +64,6 @@ func mountsForVolume(v volume.Volume, app provision.App) ([]mount.Mount, error) 
 	})
 	var mounts []mount.Mount
 	for _, b := range binds {
-		if b.ID.App != app.GetName() {
-			continue
-		}
 		m := mount.Mount{
 			Source:   v.Name,
 			Target:   b.ID.MountPoint,

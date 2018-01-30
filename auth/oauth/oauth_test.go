@@ -9,13 +9,13 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"golang.org/x/oauth2"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestOAuthLoginWithoutCode(c *check.C) {

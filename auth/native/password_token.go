@@ -8,10 +8,10 @@ import (
 	"crypto"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type passwordToken struct {

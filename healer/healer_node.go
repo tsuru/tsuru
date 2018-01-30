@@ -9,8 +9,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -22,8 +25,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/scopedconfig"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -441,6 +442,8 @@ func (h *NodeHealer) shouldHealNode(node provision.Node) (bool, error) {
 	return count > 0, nil
 }
 
+var localSkip uint64
+
 func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provision.Node, error) {
 	nodes, err := allNodes()
 	if err != nil {
@@ -500,6 +503,12 @@ func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provisi
 	err = coll.Find(bson.M{"$or": query}).All(&nodesStatus)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to find nodes to heal")
+	}
+	if len(nodesStatus) > 0 {
+		pivot := atomic.AddUint64(&localSkip, 1) % uint64(len(nodesStatus))
+		// Rotate the queried slice on pivot index to avoid the same node to always
+		// be selected.
+		nodesStatus = append(nodesStatus[pivot:], nodesStatus[:pivot]...)
 	}
 	return nodesStatus, nodesAddrMap, nil
 }

@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -17,8 +19,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/validation"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -145,6 +145,20 @@ func (v *Volume) UnbindApp(appName, mountPoint string) error {
 		return ErrVolumeBindNotFound
 	}
 	return errors.WithStack(err)
+}
+
+func (v *Volume) LoadBindsForApp(appName string) ([]VolumeBind, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer conn.Close()
+	var binds []VolumeBind
+	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name, "_id.app": appName}).All(&binds)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return binds, nil
 }
 
 func (v *Volume) LoadBinds() ([]VolumeBind, error) {

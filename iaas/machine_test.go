@@ -5,10 +5,10 @@
 package iaas
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestCreateMachineForIaaS(c *check.C) {

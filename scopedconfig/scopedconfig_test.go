@@ -120,7 +120,7 @@ type TestDeepMerge struct {
 }
 
 func (s *S) TestScopedConfigMulti(c *check.C) {
-	t1 := time.Unix(time.Now().Unix(), 0)
+	t1 := time.Unix(time.Now().Unix(), 0).UTC()
 	t2 := t1.Add(time.Minute)
 	intPtr := func(a int) *int {
 		return &a

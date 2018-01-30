@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -25,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 type newContainerOpts struct {
