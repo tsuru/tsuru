@@ -82,7 +82,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "provision_kubernetes_tests_s")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)

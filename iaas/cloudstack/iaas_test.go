@@ -32,7 +32,7 @@ func (s *cloudstackSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *cloudstackSuite) SetUpTest(c *check.C) {
-	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("queue:mongo-database", "queue_cloudstack_iaas")
 	queue.ResetQueue()
 }

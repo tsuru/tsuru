@@ -37,7 +37,7 @@ func (s *S) SetUpSuite(c *check.C) {
 		s.reqs = append(s.reqs, r)
 		w.Write([]byte(s.rsps[r.URL.Path]))
 	}))
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_auth_saml_test")
 	config.Set("host", "http://192.168.50.4.nip.io:8080")
 	config.Set("auth:saml:sp-publiccert", "testdata/pub.crt")

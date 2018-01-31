@@ -62,7 +62,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:vulcand:domain", "vulcand.example.com")
 	config.Set("routers:vulcand:type", "vulcand")
 	config.Set("routers:vulcand:api-url", "127.0.0.1:8181")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_vulcand_tests")
 }
 

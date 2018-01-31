@@ -27,7 +27,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_nodecontainer_tests")
-	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("docker:cluster:mongo-database", "docker_provision_nodecontainer_tests_cluster_stor")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

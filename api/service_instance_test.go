@@ -62,7 +62,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	routertest.FakeRouter.Reset()
 	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_consumption_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")

@@ -18,7 +18,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "app_image_tests")
 	config.Set("docker:collection", "docker")
 	config.Set("docker:repository-namespace", "tsuru")
