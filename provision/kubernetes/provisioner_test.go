@@ -786,7 +786,14 @@ func (s *S) TestImageDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.logHook = func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`[{"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}}]`))
+		w.Write([]byte(`[
+	{
+		"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}
+	}
+]
+ignored docker tag output
+ignored docker push output
+`))
 	}
 	img, err := s.p.ImageDeploy(a, "myimg", evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
@@ -802,6 +809,27 @@ func (s *S) TestImageDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestImageDeployInspectError(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`x
+ignored docker tag output
+ignored docker push output
+`))
+	}
+	_, err = s.p.ImageDeploy(a, "myimg", evt)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
 }
 
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
