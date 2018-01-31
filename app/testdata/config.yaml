@@ -1,5 +1,5 @@
 database:
-  url: 127.0.0.1:27017
+  url: 127.0.0.1:27017?maxPoolSize=100
   name: tsuru_app_test
 auth:
   salt: tsuru-salt

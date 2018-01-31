@@ -48,7 +48,7 @@ func Test(t *testing.T) {
 
 func updateConfig(data string) {
 	config.ReadConfigBytes([]byte(data))
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_volume_test")
 }
 

@@ -247,6 +247,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 		return nil, errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
 	}
 	return &apiv1.Probe{
+		FailureThreshold: int32(hc.AllowedFailures),
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
 				Path: hc.Path,
@@ -344,6 +345,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 							Command:        cmds,
 							Env:            envs,
 							ReadinessProbe: probe,
+							LivenessProbe:  probe,
 							Resources: apiv1.ResourceRequirements{
 								Limits: resourceLimits,
 							},
@@ -674,7 +676,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
 	}
 	var imgs []dockerImageSpec
-	err = json.NewDecoder(buf).Decode(&imgs)
+	err = json.Unmarshal(buf.Bytes(), &imgs)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid image inspect response: %q", buf.String())
 	}

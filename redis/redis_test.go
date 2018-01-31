@@ -93,7 +93,7 @@ func (s *S) TestNewRedisSentinelNoMaster(c *check.C) {
 func (s *S) TestNewRedisCluster(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "127.0.0.1:6380,127.0.0.1:6381")
 	cli, err := NewRedis(s.prefix)
-	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+: getsockopt: connection refused")
+	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+:.*")
 	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
@@ -101,7 +101,7 @@ func (s *S) TestNewRedisCluster(c *check.C) {
 func (s *S) TestNewRedisClusterStripWhitespace(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "  127.0.0.1:6380 , 127.0.0.1:6381")
 	cli, err := NewRedis(s.prefix)
-	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+: getsockopt: connection refused")
+	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+:.*?")
 	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients[s.prefix], check.IsNil)
 }

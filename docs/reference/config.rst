@@ -201,6 +201,12 @@ database:name
 ``database:name`` is the name of the database that tsuru uses. It is a
 mandatory setting and has no default value. An example of value is "tsuru".
 
+database:driver
++++++++++++++++
+
+``database:driver`` is the name of the database driver that tsuru uses.
+Currently, the only value supported is "mongodb".
+
 .. _config_logdb:
 
 database:logdb-url
@@ -719,14 +725,9 @@ Database collection name used to store containers information.
 docker:port-allocator
 +++++++++++++++++++++
 
-The choice of port allocator. There are two possible values:
-
- * ``docker``: trust Docker to allocate ports. Meaning that whenever a
-   container restarts, the port might change (usually, it changes).
- * ``tsuru``: leverage port allocation to tsuru, so ports mapped to containers
-   never change.
-
-The default value is "docker".
+Deprecated. Currently, when using Docker as provisioner, tsuru trusts it
+to allocate ports. Meaning thatwhenever a container restarts, the port might
+change (usually, it changes).
 
 docker:registry
 +++++++++++++++

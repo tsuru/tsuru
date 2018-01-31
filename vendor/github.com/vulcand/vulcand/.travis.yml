@@ -1,5 +1,0 @@
-language: go
-go:
-  - 1.9
-script:
-  - go test -v -p 1 --race ./...

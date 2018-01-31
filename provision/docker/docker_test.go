@@ -261,12 +261,12 @@ func (s *S) TestProvisionerGetCluster(c *check.C) {
 }
 
 func (s *S) TestBuildClusterStorage(c *check.C) {
-	defer config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	defer config.Set("docker:cluster:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	defer config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Unset("docker:cluster:mongo-url")
 	_, err := buildClusterStorage()
 	c.Assert(err, check.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
-	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Unset("docker:cluster:mongo-database")
 	_, err = buildClusterStorage()
 	c.Assert(err, check.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
