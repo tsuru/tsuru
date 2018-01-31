@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
@@ -43,4 +44,47 @@ func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(appTokens)
+}
+
+// title: app token create
+// path: /apps/{app}/tokens
+// method: POST
+// produce: application/json
+// responses:
+//   201: App token created
+//   401: Unauthorized
+//   409: App token already exists
+func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	appName := r.URL.Query().Get(":app")
+	app, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdate,
+		contextsForApp(&app)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	appToken := authTypes.NewAppToken(appName, t.GetUserName())
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateToken,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&app)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	err = auth.AppTokenService().Insert(appToken)
+	if err == authTypes.ErrAppTokenAlreadyExists {
+		w.WriteHeader(http.StatusConflict)
+	} else if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
+	return err
 }

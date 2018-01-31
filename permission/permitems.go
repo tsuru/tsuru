@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2017 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -68,6 +68,7 @@ var (
 	PermAppUpdateSwap                    = PermissionRegistry.get("app.update.swap")                     // [global app team pool]
 	PermAppUpdateTags                    = PermissionRegistry.get("app.update.tags")                     // [global app team pool]
 	PermAppUpdateTeamowner               = PermissionRegistry.get("app.update.teamowner")                // [global app team pool]
+	PermAppUpdateToken                   = PermissionRegistry.get("app.update.token")                    // [global app team pool]
 	PermAppUpdateUnbind                  = PermissionRegistry.get("app.update.unbind")                   // [global app team pool]
 	PermAppUpdateUnbindVolume            = PermissionRegistry.get("app.update.unbind-volume")            // [global app team pool]
 	PermAppUpdateUnit                    = PermissionRegistry.get("app.update.unit")                     // [global app team pool]
