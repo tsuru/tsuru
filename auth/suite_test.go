@@ -37,7 +37,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()
 	s.gitHost, _ = config.GetString("git:host")

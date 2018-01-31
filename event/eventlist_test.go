@@ -28,7 +28,7 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_events_list_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	conn, err := db.Conn()

@@ -33,7 +33,7 @@ func (s *LimiterSuite) SetUpTest(c *check.C) {
 	s.limiter = s.makeLimiter()
 	c.Logf("Test with s.limiter: %T", s.limiter)
 	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "provision_limiter_tests_s")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

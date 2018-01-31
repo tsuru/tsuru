@@ -314,7 +314,7 @@ func init() {
 			config.Set("routers:galeb:domain", "galeb.com")
 			config.Set("routers:galeb:use-token", true)
 			config.Set("routers:galeb:type", "galeb")
-			config.Set("database:url", "127.0.0.1:27017")
+			config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 			config.Set("database:name", "router_galeb_tests")
 		},
 	}
@@ -356,7 +356,7 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:galeb:domain", "galeb.com")
 	config.Set("routers:galeb:use-token", true)
 	config.Set("routers:galeb:type", "galeb")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_galeb_tests")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

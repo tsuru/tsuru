@@ -41,7 +41,7 @@ var _ = check.Suite(&QuotaSuite{})
 func (s *QuotaSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_quota_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
