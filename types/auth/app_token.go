@@ -5,7 +5,10 @@
 package auth
 
 import (
+	"crypto"
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -29,3 +32,30 @@ var (
 	ErrAppTokenAlreadyExists = errors.New("app token already exists")
 	ErrAppTokenNotFound      = errors.New("app token not found")
 )
+
+func NewAppToken(appName, creatorEmail string) AppToken {
+	// TODO: create token, config expiration
+	return AppToken{
+		Token:        generateToken(appName, crypto.SHA1),
+		AppName:      appName,
+		CreatorEmail: creatorEmail,
+		Creation:     time.Now(),
+		Expires:      time.Duration(365 * 24 * time.Hour),
+	}
+}
+
+// TODO: extract token function from auth/native/token.go
+const keySize = 32
+
+func generateToken(data string, hash crypto.Hash) string {
+	var tokenKey [keySize]byte
+	n, err := rand.Read(tokenKey[:])
+	for n < keySize || err != nil {
+		n, err = rand.Read(tokenKey[:])
+	}
+	h := hash.New()
+	h.Write([]byte(data))
+	h.Write(tokenKey[:])
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
