@@ -348,6 +348,7 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.6", "GET", "/apps/{app}/tokens", AuthorizationRequiredHandler(appTokenList))
 	m.Add("1.6", "POST", "/apps/{app}/tokens", AuthorizationRequiredHandler(appTokenCreate))
+	m.Add("1.6", "DELETE", "/apps/{app}/tokens/{token}", AuthorizationRequiredHandler(appTokenDelete))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
