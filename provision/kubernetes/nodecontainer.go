@@ -189,6 +189,12 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 							SecurityContext: secCtx,
 						},
 					},
+					Tolerations: []apiv1.Toleration{
+						{
+							Key:      tsuruNodeDisabledTaint,
+							Operator: apiv1.TolerationOpExists,
+						},
+					},
 				},
 			},
 		},

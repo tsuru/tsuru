@@ -127,6 +127,12 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 							},
 						},
 					},
+					Tolerations: []apiv1.Toleration{
+						{
+							Key:      "tsuru.io/disabled",
+							Operator: apiv1.TolerationOpExists,
+						},
+					},
 				},
 			},
 		},
