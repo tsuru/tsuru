@@ -17,13 +17,15 @@ type AppTokenSuite struct {
 }
 
 func (s *AppTokenSuite) TestInsertAppToken(c *check.C) {
-	t := auth.AppToken{Token: "9382908", AppName: "myapp"}
+	roles := []string{"app.deploy", "app.token.read"}
+	t := auth.AppToken{Token: "9382908", AppName: "myapp", Roles: roles}
 	err := s.AppTokenService.Insert(t)
 	c.Assert(err, check.IsNil)
 	token, err := s.AppTokenService.FindByToken(t.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.Token, check.Equals, t.Token)
 	c.Assert(token.AppName, check.Equals, t.AppName)
+	c.Assert(token.Roles, check.DeepEquals, roles)
 }
 
 func (s *AppTokenSuite) TestInsertDuplicateAppToken(c *check.C) {
