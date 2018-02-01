@@ -17,8 +17,9 @@ type AppToken struct {
 	Creation     time.Time     `json:"creation"`
 	Expires      time.Duration `json:"expires"`
 	LastAccess   time.Time     `json:"last_access"`
-	CreatorEmail string        `json:"email"`
+	CreatorEmail string        `json:"creator_email"`
 	AppName      string        `json:"app"`
+	Roles        []string      `json:"roles,omitempty"`
 }
 
 type AppTokenService interface {
@@ -34,7 +35,7 @@ var (
 )
 
 func NewAppToken(appName, creatorEmail string) AppToken {
-	// TODO: create token, config expiration
+	// TODO: config expiration
 	return AppToken{
 		Token:        generateToken(appName, crypto.SHA1),
 		AppName:      appName,
@@ -58,4 +59,13 @@ func generateToken(data string, hash crypto.Hash) string {
 	h.Write(tokenKey[:])
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (t *AppToken) AddRole(roleName string) {
+	for _, r := range t.Roles {
+		if r == roleName {
+			return
+		}
+	}
+	t.Roles = append(t.Roles, roleName)
 }

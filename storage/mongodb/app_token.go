@@ -17,12 +17,13 @@ import (
 type AppTokenService struct{}
 
 type appToken struct {
-	Token        string        `bson:"token"`
-	Creation     time.Time     `bson:"creation"`
-	Expires      time.Duration `bson:"expires"`
-	LastAccess   time.Time     `bson:"last_access"`
-	CreatorEmail string        `bson:"email"`
-	AppName      string        `bson:"app"`
+	Token        string
+	Creation     time.Time
+	Expires      time.Duration
+	LastAccess   time.Time `bson:"last_access"`
+	CreatorEmail string    `bson:"creator_email"`
+	AppName      string    `bson:"app"`
+	Roles        []string  `bson:",omitempty"`
 }
 
 var _ auth.AppTokenService = &AppTokenService{}
