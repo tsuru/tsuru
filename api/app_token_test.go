@@ -61,7 +61,7 @@ func (s *S) TestAppTokenListNoPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxPool, "otherpool"),
+		Context: permission.Context(permission.CtxApp, app1.Name),
 	})
 	request.Header.Set("authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -90,7 +90,7 @@ func (s *S) TestAppTokenCreate(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeApp, Value: app1.Name},
 		Owner:  s.user.Email,
-		Kind:   "app.update.token",
+		Kind:   "app.token.create",
 	}, eventtest.HasEvent)
 }
 
@@ -102,8 +102,8 @@ func (s *S) TestAppTokenCreateNoPermission(c *check.C) {
 	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxPool, "otherpool"),
+		Scheme:  permission.PermAppTokenRead,
+		Context: permission.Context(permission.CtxApp, app1.Name),
 	})
 	request.Header.Set("authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -133,7 +133,7 @@ func (s *S) TestAppTokenDelete(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeApp, Value: app1.Name},
 		Owner:  s.user.Email,
-		Kind:   "app.update.token",
+		Kind:   "app.token.delete",
 	}, eventtest.HasEvent)
 }
 
@@ -161,8 +161,8 @@ func (s *S) TestAppTokenDeleteNoPermission(c *check.C) {
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxPool, "otherpool"),
+		Scheme:  permission.PermAppTokenCreate,
+		Context: permission.Context(permission.CtxApp, app1.Name),
 	})
 	request.Header.Set("authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()

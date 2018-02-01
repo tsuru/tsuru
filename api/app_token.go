@@ -27,7 +27,7 @@ func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppRead,
+	canRead := permission.Check(t, permission.PermAppTokenRead,
 		contextsForApp(&app)...,
 	)
 	if !canRead {
@@ -60,7 +60,7 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdate,
+	allowed := permission.Check(t, permission.PermAppTokenCreate,
 		contextsForApp(&app)...,
 	)
 	if !allowed {
@@ -70,7 +70,7 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	appToken := authTypes.NewAppToken(appName, t.GetUserName())
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateToken,
+		Kind:       permission.PermAppTokenCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&app)...),
@@ -103,7 +103,7 @@ func appTokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdate,
+	allowed := permission.Check(t, permission.PermAppTokenDelete,
 		contextsForApp(&app)...,
 	)
 	if !allowed {
@@ -112,7 +112,7 @@ func appTokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateToken,
+		Kind:       permission.PermAppTokenDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&app)...),
