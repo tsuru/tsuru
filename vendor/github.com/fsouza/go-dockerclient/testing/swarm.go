@@ -280,7 +280,7 @@ func (s *DockerServer) addTasks(service *swarm.Service, update bool) {
 			NodeID:    chosenNode.ID,
 			Status: swarm.TaskStatus{
 				State: swarm.TaskStateReady,
-				ContainerStatus: swarm.ContainerStatus{
+				ContainerStatus: &swarm.ContainerStatus{
 					ContainerID: container.ID,
 				},
 			},

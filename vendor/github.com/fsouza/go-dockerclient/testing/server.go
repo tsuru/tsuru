@@ -547,10 +547,10 @@ func (s *DockerServer) renameContainer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	copy := *container
-	copy.Name = r.URL.Query().Get("name")
 	s.cMut.Lock()
 	defer s.cMut.Unlock()
+	copy := *container
+	copy.Name = r.URL.Query().Get("name")
 	if s.containers[index].ID == copy.ID {
 		s.containers[index] = &copy
 	}
@@ -566,6 +566,8 @@ func (s *DockerServer) inspectContainer(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	s.cMut.RLock()
+	defer s.cMut.RUnlock()
 	json.NewEncoder(w).Encode(container)
 }
 
@@ -820,16 +822,18 @@ func (s *DockerServer) waitContainer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	var exitCode int
 	for {
 		time.Sleep(1e6)
 		s.cMut.RLock()
 		if !container.State.Running {
+			exitCode = container.State.ExitCode
 			s.cMut.RUnlock()
 			break
 		}
 		s.cMut.RUnlock()
 	}
-	result := map[string]int{"StatusCode": container.State.ExitCode}
+	result := map[string]int{"StatusCode": exitCode}
 	json.NewEncoder(w).Encode(result)
 }
 
@@ -1153,7 +1157,9 @@ func (s *DockerServer) createExecContainer(w http.ResponseWriter, r *http.Reques
 	}
 
 	execID := s.generateID()
+	s.cMut.Lock()
 	container.ExecIDs = append(container.ExecIDs, execID)
+	s.cMut.Unlock()
 
 	exec := docker.ExecInspect{
 		ID:          execID,

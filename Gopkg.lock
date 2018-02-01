@@ -230,7 +230,7 @@
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "ecf4125b85e0faa57d2739348e0d453c1d24d10c"
+  revision = "53a58da551e961b3710bbbdfabbc162c3f5f30f6"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -325,7 +325,7 @@
     ".",
     "testing"
   ]
-  revision = "413e380d74dfeddac90c0b89c598a1c7b19f5c54"
+  revision = "71996306d62c1b9a16ce3a4571ccaa5afac6dbe4"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
