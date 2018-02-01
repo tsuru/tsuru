@@ -615,18 +615,27 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 		iaasID = ""
 	}
 	node := nodeWrapper.node
-	if opts.Disable {
-		node.Spec.Unschedulable = true
-	} else if opts.Enable {
-		node.Spec.Unschedulable = false
+	shouldRemove := map[string]bool{
+		tsuruInProgressTaint:   true,
+		tsuruNodeDisabledTaint: opts.Enable,
 	}
 	taints := node.Spec.Taints
+	var isDisabled bool
 	for i := 0; i < len(taints); i++ {
-		if taints[i].Key == tsuruInProgressTaint {
+		if taints[i].Key == tsuruNodeDisabledTaint {
+			isDisabled = true
+		}
+		if remove := shouldRemove[taints[i].Key]; remove {
 			taints[i] = taints[len(taints)-1]
 			taints = taints[:len(taints)-1]
 			i--
 		}
+	}
+	if !isDisabled && opts.Disable {
+		taints = append(taints, apiv1.Taint{
+			Key:    tsuruNodeDisabledTaint,
+			Effect: apiv1.TaintEffectNoSchedule,
+		})
 	}
 	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
