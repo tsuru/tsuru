@@ -428,6 +428,48 @@ func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{})
 }
 
+func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Disable: true,
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{
+		{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
+	})
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Disable: true,
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{
+		{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
+	})
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Enable:  true,
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{})
+}
+
 func (s *S) TestUnits(c *check.C) {
 	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
