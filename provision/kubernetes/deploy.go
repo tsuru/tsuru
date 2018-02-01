@@ -676,12 +676,13 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
 	}
 	var imgs []dockerImageSpec
-	err = json.Unmarshal(buf.Bytes(), &imgs)
+	bufData := buf.String()
+	err = json.NewDecoder(buf).Decode(&imgs)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid image inspect response: %q", buf.String())
+		return nil, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
 	}
 	if len(imgs) != 1 {
-		return nil, errors.Errorf("unexpected image inspect response: %q", buf.String())
+		return nil, errors.Errorf("unexpected image inspect response: %q", bufData)
 	}
 	return &imgs[0], nil
 }
