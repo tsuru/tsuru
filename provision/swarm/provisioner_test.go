@@ -1073,7 +1073,9 @@ func (s *S) TestRegisterUnitWaitsContainerID(c *check.C) {
 	s.clusterSrv.MutateTask(task.ID, task)
 	go func() {
 		time.Sleep(time.Second)
-		task.Status.ContainerStatus.ContainerID = contID
+		task.Status.ContainerStatus = &swarm.ContainerStatus{
+			ContainerID: contID,
+		}
 		s.clusterSrv.MutateTask(task.ID, task)
 	}()
 	err = s.p.RegisterUnit(a, contID, map[string]interface{}{

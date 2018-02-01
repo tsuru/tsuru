@@ -1187,10 +1187,18 @@ func (c *Client) KillContainer(opts KillContainerOptions) error {
 	path := "/containers/" + opts.ID + "/kill" + "?" + queryString(opts)
 	resp, err := c.do("POST", path, doOptions{context: opts.Context})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
-			return &NoSuchContainer{ID: opts.ID}
+		e, ok := err.(*Error)
+		if !ok {
+			return err
 		}
-		return err
+		switch e.Status {
+		case http.StatusNotFound:
+			return &NoSuchContainer{ID: opts.ID}
+		case http.StatusConflict:
+			return &ContainerNotRunning{ID: opts.ID}
+		default:
+			return err
+		}
 	}
 	resp.Body.Close()
 	return nil
