@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
@@ -19,6 +20,35 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
 )
+
+func (s *S) TestServiceAccountNameForApp(c *check.C) {
+	var tests = []struct {
+		name, expected string
+	}{
+		{"myapp", "app-myapp"},
+		{"MYAPP", "app-myapp"},
+		{"my-app_app", "app-my-app-app"},
+	}
+	for i, tt := range tests {
+		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		c.Assert(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
+}
+
+func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
+	var tests = []struct {
+		name, expected string
+	}{
+		{"mync", "node-container-mync"},
+		{"MYNC", "node-container-mync"},
+		{"my-nc_nc", "node-container-my-nc-nc"},
+	}
+	for i, tt := range tests {
+		c.Assert(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
+			Name: tt.name,
+		}), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
+}
 
 func (s *S) TestDeploymentNameForApp(c *check.C) {
 	var tests = []struct {

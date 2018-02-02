@@ -323,6 +323,29 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 	}, nil
 }
 
+type ServiceAccountLabelsOpts struct {
+	App               App
+	NodeContainerName string
+	Provisioner       string
+	Prefix            string
+}
+
+func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
+	labelMap := map[string]string{
+		labelIsTsuru:     strconv.FormatBool(true),
+		labelProvisioner: opts.Provisioner,
+	}
+	if opts.App == nil {
+		labelMap[labelNodeContainerName] = opts.NodeContainerName
+	} else {
+		labelMap[labelAppName] = opts.App.GetName()
+	}
+	return &LabelSet{
+		Labels: labelMap,
+		Prefix: opts.Prefix,
+	}
+}
+
 type NodeContainerLabelsOpts struct {
 	Name         string
 	CustomLabels map[string]string

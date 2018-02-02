@@ -70,6 +70,13 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-all",
 			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-node-container":   "true",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/node-container-name": "bs",
+				"tsuru.io/node-container-pool": "",
+			},
 		},
 		Spec: v1beta2.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -98,7 +105,8 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 					},
 				},
 				Spec: apiv1.PodSpec{
-					Affinity: expectedAffinity,
+					ServiceAccountName: "node-container-bs",
+					Affinity:           expectedAffinity,
 					Volumes: []apiv1.Volume{
 						{
 							Name: "volume-0",
@@ -134,6 +142,19 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						},
 					},
 				},
+			},
+		},
+	})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace()).Get("node-container-bs", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "node-container-bs",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/node-container-name": "bs",
+				"tsuru.io/provisioner":         "kubernetes",
 			},
 		},
 	})
