@@ -105,12 +105,23 @@ func (c *clusterClient) Namespace() string {
 	return c.CustomData[namespaceClusterKey]
 }
 
-func (c *clusterClient) OvercommitFactor() (int64, error) {
-	if c.CustomData == nil || c.CustomData[overcommitClusterKey] == "" {
+func (c *clusterClient) OvercommitFactor(pool string) (int64, error) {
+	if c.CustomData == nil {
 		return 1, nil
 	}
-	overcommit, err := strconv.Atoi(c.CustomData[overcommitClusterKey])
+	overcommitConf := c.configForPool(pool, overcommitClusterKey)
+	if overcommitConf == "" {
+		return 1, nil
+	}
+	overcommit, err := strconv.Atoi(overcommitConf)
 	return int64(overcommit), err
+}
+
+func (c *clusterClient) configForPool(pool, key string) string {
+	if v, ok := c.CustomData[pool+":"+key]; ok {
+		return v
+	}
+	return c.CustomData[key]
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {
