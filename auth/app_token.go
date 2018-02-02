@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"fmt"
+
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -47,6 +49,9 @@ func (t *AppToken) Permissions() ([]permission.Permission, error) {
 			foundRole, err := permission.FindRole(roleName)
 			if err != nil && err != permission.ErrRoleNotFound {
 				return nil, err
+			}
+			if foundRole.ContextType != permission.CtxApp {
+				return nil, fmt.Errorf("App token can't have permissions outside the app context")
 			}
 			role = &foundRole
 			roles[roleName] = role
