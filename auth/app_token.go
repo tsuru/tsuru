@@ -35,9 +35,25 @@ func (t *AppToken) GetAppName() string {
 }
 
 func (t *AppToken) Permissions() ([]permission.Permission, error) {
-	// TODO: Allow creation of api tokens with a subset of app's
-	// permissions.
-	return BaseTokenPermission(t)
+	if len(t.Roles) == 0 {
+		return BaseTokenPermission(t)
+	}
+	// TODO: refactoring, this code is almost equal to auth.User.Permissions()
+	permissions := []permission.Permission{}
+	roles := make(map[string]*permission.Role)
+	for _, roleName := range t.Roles {
+		role := roles[roleName]
+		if role == nil {
+			foundRole, err := permission.FindRole(roleName)
+			if err != nil && err != permission.ErrRoleNotFound {
+				return nil, err
+			}
+			role = &foundRole
+			roles[roleName] = role
+		}
+		permissions = append(permissions, role.PermissionsFor(t.GetAppName())...)
+	}
+	return permissions, nil
 }
 
 func AppTokenService() authTypes.AppTokenService {
