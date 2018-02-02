@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +39,16 @@ const (
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
+
+func serviceAccountNameForApp(a provision.App) string {
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	return fmt.Sprintf("app-%s", name)
+}
+
+func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(nodeContainer.Name, "-"))
+	return fmt.Sprintf("node-container-%s", name)
+}
 
 func deploymentNameForApp(a provision.App, process string) string {
 	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
@@ -537,13 +548,17 @@ type runSinglePodArgs struct {
 	envs       []apiv1.EnvVar
 	name       string
 	image      string
-	pool       string
+	app        provision.App
 	dockerSock bool
 }
 
 func runPod(args runSinglePodArgs) error {
+	err := ensureServiceAccountForApp(args.client, args.app)
+	if err != nil {
+		return err
+	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   args.pool,
+		Pool:   args.app.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	pod := &apiv1.Pod{
@@ -553,8 +568,9 @@ func runPod(args runSinglePodArgs) error {
 			Labels:    args.labels.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
-			NodeSelector:  nodeSelector,
-			RestartPolicy: apiv1.RestartPolicyNever,
+			ServiceAccountName: serviceAccountNameForApp(args.app),
+			NodeSelector:       nodeSelector,
+			RestartPolicy:      apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
 					Name:    args.name,
@@ -580,7 +596,7 @@ func runPod(args runSinglePodArgs) error {
 			{Name: "dockersock", MountPath: dockerSockPath},
 		}
 	}
-	_, err := args.client.CoreV1().Pods(args.client.Namespace()).Create(pod)
+	_, err = args.client.CoreV1().Pods(args.client.Namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}

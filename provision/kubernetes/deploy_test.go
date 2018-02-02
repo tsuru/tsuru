@@ -105,6 +105,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Labels: labels,
 				},
 				Spec: apiv1.PodSpec{
+					ServiceAccountName: "app-myapp",
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: &expectedUID,
 					},
@@ -223,6 +224,19 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,
+		},
+	})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace()).Get("app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "app-myapp",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/provisioner": "kubernetes",
+			},
 		},
 	})
 }
@@ -583,6 +597,54 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
+	pods.Items[0].Spec.Containers = nil
+	pods.Items[0].Status = apiv1.PodStatus{}
+	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-v1-deploy",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/app-name":             "myapp",
+				"tsuru.io/router-type":          "fake",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/builder":              "",
+				"tsuru.io/app-process":          "",
+				"tsuru.io/is-build":             "true",
+				"tsuru.io/app-platform":         "python",
+				"tsuru.io/is-service":           "true",
+				"tsuru.io/app-process-replicas": "0",
+				"tsuru.io/app-pool":             "test-default",
+				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/router-name":          "fake",
+			},
+			Annotations: map[string]string{"build-image": "destimg"},
+		},
+		Spec: apiv1.PodSpec{
+			ServiceAccountName: "app-myapp",
+			NodeName:           "n1",
+			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
+			Volumes: []apiv1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: dockerSockPath,
+						},
+					},
+				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+			RestartPolicy: apiv1.RestartPolicyNever,
+		},
+	})
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	runAsUser := int64(1000)

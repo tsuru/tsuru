@@ -151,10 +151,21 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		restartPolicy = apiv1.RestartPolicyNever
 	}
 	maxUnavailable := intstr.FromString("20%")
+	serviceAccountName := serviceAccountNameForNodeContainer(config)
+	accountLabels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
+		NodeContainerName: config.Name,
+		Provisioner:       provisionerName,
+		Prefix:            tsuruLabelPrefix,
+	})
+	err = ensureServiceAccount(client, serviceAccountName, accountLabels)
+	if err != nil {
+		return err
+	}
 	ds := &v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
 			Namespace: client.Namespace(),
+			Labels:    ls.ToLabels(),
 		},
 		Spec: v1beta2.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -172,10 +183,11 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 					Annotations: affinityAnnotation,
 				},
 				Spec: apiv1.PodSpec{
-					Affinity:      affinity,
-					Volumes:       volumes,
-					RestartPolicy: restartPolicy,
-					HostNetwork:   config.HostConfig.NetworkMode == "host",
+					ServiceAccountName: serviceAccountName,
+					Affinity:           affinity,
+					Volumes:            volumes,
+					RestartPolicy:      restartPolicy,
+					HostNetwork:        config.HostConfig.NetworkMode == "host",
 					Containers: []apiv1.Container{
 						{
 							Name:            config.Name,

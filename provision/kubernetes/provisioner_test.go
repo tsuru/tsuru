@@ -1119,6 +1119,19 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace()).Get("app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "app-myapp",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+		},
+	})
 }
 
 func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {

@@ -84,6 +84,10 @@ type buildPodParams struct {
 }
 
 func createBuildPod(params buildPodParams) error {
+	err := ensureServiceAccountForApp(params.client, params.app)
+	if err != nil {
+		return err
+	}
 	baseName, err := deployPodNameForApp(params.app)
 	if err != nil {
 		return err
@@ -136,7 +140,8 @@ func createBuildPod(params buildPodParams) error {
 			Annotations: buildImageLabel.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
-			NodeSelector: nodeSelector,
+			ServiceAccountName: serviceAccountNameForApp(params.app),
+			NodeSelector:       nodeSelector,
 			Volumes: append([]apiv1.Volume{
 				{
 					Name: "dockersock",
@@ -257,6 +262,29 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 	}, nil
 }
 
+func ensureServiceAccount(client *clusterClient, name string, labels *provision.LabelSet) error {
+	svcAccount := apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels.ToLabels(),
+		},
+	}
+	_, err := client.CoreV1().ServiceAccounts(client.Namespace()).Create(&svcAccount)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func ensureServiceAccountForApp(client *clusterClient, a provision.App) error {
+	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
+		App:         a,
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
+	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels)
+}
+
 func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
@@ -331,6 +359,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 					Labels: labels.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
+					ServiceAccountName: serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
@@ -510,6 +539,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	if err != nil {
 		return err
 	}
+	err = ensureServiceAccountForApp(m.client, a)
+	if err != nil {
+		return err
+	}
 	depName := deploymentNameForApp(a, process)
 	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
@@ -623,7 +656,7 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 		cmds:   cmds,
 		name:   deployPodName,
 		image:  image,
-		pool:   a.GetPool(),
+		app:    a,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to inspect Procfile: %q", buf.String())
@@ -670,7 +703,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		name:       deployPodName,
 		image:      kubeConf.DeployInspectImage,
 		dockerSock: true,
-		pool:       a.GetPool(),
+		app:        a,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
