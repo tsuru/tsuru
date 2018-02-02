@@ -155,3 +155,22 @@ func (s *S) TestClusterNamespace(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(client.Namespace(), check.Equals, "default")
 }
+
+func (s *S) TestClusterOvercommitFactor(c *check.C) {
+	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+		"overcommit-factor":         "2",
+		"my-pool:overcommit-factor": "3",
+		"invalid:overcommit-factor": "a",
+	}}
+	client, err := newClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	ovf, err := client.OvercommitFactor("my-pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, int64(3))
+	ovf, err = client.OvercommitFactor("global")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, int64(2))
+	ovf, err = client.OvercommitFactor("invalid")
+	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+	c.Assert(ovf, check.Equals, int64(0))
+}

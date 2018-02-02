@@ -299,7 +299,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
-	overcommit, err := client.OvercommitFactor()
+	overcommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}

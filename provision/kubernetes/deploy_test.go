@@ -573,7 +573,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	})
 }
 
-func (s *S) TestServiceManagerDeployServiceWithClusterOvercommitFactor(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
 	s.client.clusterClient.CustomData[overcommitClusterKey] = "3"
@@ -596,6 +596,40 @@ func (s *S) TestServiceManagerDeployServiceWithClusterOvercommitFactor(c *check.
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			apiv1.ResourceMemory: *expectedMemory,
+		},
+		Requests: apiv1.ResourceList{
+			apiv1.ResourceMemory: *expectedMemoryRequest,
+		},
+	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	s.client.clusterClient.CustomData[overcommitClusterKey] = "3"
+	s.client.clusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
+	m := serviceManager{client: s.client.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Plan = appTypes.Plan{Memory: 1024}
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
+	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
 			apiv1.ResourceMemory: *expectedMemory,
