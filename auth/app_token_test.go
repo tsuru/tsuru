@@ -48,3 +48,14 @@ func (s *S) TestAppTokenPermissions(c *check.C) {
 		{Scheme: permission.PermAppUpdate, Context: permission.Context(permission.CtxApp, "myapp")},
 	})
 }
+
+func (s *S) TestAppTokenPermissionsWithInvalidPermission(c *check.C) {
+	r1, err := permission.NewRole("pool-reader", "pool", "")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("pool.read")
+	c.Assert(err, check.IsNil)
+
+	appToken := &AppToken{AppName: "myapp", Roles: []string{"pool-reader"}}
+	_, err = appToken.Permissions()
+	c.Assert(err, check.NotNil)
+}
