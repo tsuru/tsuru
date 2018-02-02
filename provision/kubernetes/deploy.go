@@ -299,9 +299,15 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
+	overcommit, err := client.OvercommitFactor()
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
+	}
+	resourceRequests := apiv1.ResourceList{}
 	memory := a.GetMemory()
 	if memory != 0 {
 		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
+		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
 	}
 	volumes, mounts, err := createVolumesForApp(client, a)
 	if err != nil {
@@ -347,7 +353,8 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 							ReadinessProbe: probe,
 							LivenessProbe:  probe,
 							Resources: apiv1.ResourceRequirements{
-								Limits: resourceLimits,
+								Limits:   resourceLimits,
+								Requests: resourceRequests,
 							},
 							VolumeMounts: mounts,
 							Ports: []apiv1.ContainerPort{

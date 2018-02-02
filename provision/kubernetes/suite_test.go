@@ -135,6 +135,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
 	}
 	err = clus.Save()
 	c.Assert(err, check.IsNil)
