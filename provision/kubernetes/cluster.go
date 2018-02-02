@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,10 +20,11 @@ import (
 )
 
 const (
-	namespaceClusterKey = "namespace"
-	tokenClusterKey     = "token"
-	userClusterKey      = "username"
-	passwordClusterKey  = "password"
+	namespaceClusterKey  = "namespace"
+	tokenClusterKey      = "token"
+	userClusterKey       = "username"
+	passwordClusterKey   = "password"
+	overcommitClusterKey = "overcommit-factor"
 )
 
 var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
@@ -101,6 +103,14 @@ func (c *clusterClient) Namespace() string {
 		return "default"
 	}
 	return c.CustomData[namespaceClusterKey]
+}
+
+func (c *clusterClient) OvercommitFactor() (int64, error) {
+	if c.CustomData == nil || c.CustomData[overcommitClusterKey] == "" {
+		return 1, nil
+	}
+	overcommit, err := strconv.Atoi(c.CustomData[overcommitClusterKey])
+	return int64(overcommit), err
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {
