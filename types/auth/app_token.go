@@ -26,6 +26,7 @@ type AppTokenService interface {
 	Insert(AppToken) error
 	FindByToken(string) (*AppToken, error)
 	FindByAppName(string) ([]AppToken, error)
+	AddRoles(AppToken, ...string) error
 	Delete(AppToken) error
 }
 
