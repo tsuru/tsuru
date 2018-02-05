@@ -104,6 +104,26 @@ func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
 	return err
 }
 
+func (s *AppTokenService) RemoveRoles(t auth.AppToken, newRoles ...string) error {
+	if len(newRoles) == 0 {
+		return nil
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = appTokensCollection(conn).Update(bson.M{"token": t.Token}, bson.M{
+		"$pull": bson.M{
+			"roles": bson.M{"$in": newRoles},
+		},
+	})
+	if err == mgo.ErrNotFound {
+		return auth.ErrAppTokenNotFound
+	}
+	return err
+}
+
 func (s *AppTokenService) Delete(t auth.AppToken) error {
 	conn, err := db.Conn()
 	if err != nil {
