@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 // title: role create
@@ -690,4 +691,53 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	return nil
+}
+
+// title: assign role to app token
+// path: /roles/{name}/apptoken
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role not found
+func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	token := r.FormValue("token")
+	if token == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "missing token value"}
+	}
+	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateAssign,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	_, err = permission.FindRole(roleName)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return err
+	}
+	appToken, err := auth.AppTokenService().FindByToken(token)
+	if err == authTypes.ErrAppTokenNotFound || appToken == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return authTypes.ErrAppTokenNotFound
+	}
+	if err != nil {
+		return err
+	}
+	return auth.AppTokenService().AddRoles(*appToken, roleName)
 }
