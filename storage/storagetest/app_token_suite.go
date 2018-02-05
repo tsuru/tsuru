@@ -114,6 +114,44 @@ func (s *AppTokenSuite) TestAddRolesNoDuplicates(c *check.C) {
 	c.Assert(t.Roles, check.DeepEquals, []string{"role1", "role2"})
 }
 
+func (s *AppTokenSuite) TestRemoveRoles(c *check.C) {
+	_, err := permission.NewRole("role1", "app", "")
+	c.Assert(err, check.IsNil)
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err = s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	err = s.AppTokenService.AddRoles(appToken, "role1", "role2", "role3")
+	c.Assert(err, check.IsNil)
+
+	err = s.AppTokenService.RemoveRoles(appToken, "role2", "role1", "role4")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.AppTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Roles, check.DeepEquals, []string{"role3"})
+}
+
+func (s *AppTokenSuite) TestRemoveRolesAppTokenNotFound(c *check.C) {
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err := s.AppTokenService.RemoveRoles(appToken, "role1")
+	c.Assert(err, check.ErrorMatches, "app token not found")
+}
+
+func (s *AppTokenSuite) TestRemoveRolesNotFound(c *check.C) {
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("role1", "app", "")
+	c.Assert(err, check.IsNil)
+
+	err = s.AppTokenService.RemoveRoles(appToken, "role1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.AppTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Roles, check.HasLen, 0)
+}
+
 func (s *AppTokenSuite) TestDeleteAppToken(c *check.C) {
 	token := auth.AppToken{Token: "abc123"}
 	err := s.AppTokenService.Insert(token)
