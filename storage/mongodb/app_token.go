@@ -84,6 +84,26 @@ func (s *AppTokenService) findByQuery(query bson.M) ([]auth.AppToken, error) {
 	return authTeams, nil
 }
 
+func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
+	if len(newRoles) == 0 {
+		return nil
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = appTokensCollection(conn).Update(bson.M{"token": t.Token}, bson.M{
+		"$addToSet": bson.M{
+			"roles": bson.M{"$each": newRoles},
+		},
+	})
+	if err == mgo.ErrNotFound {
+		return auth.ErrAppTokenNotFound
+	}
+	return err
+}
+
 func (s *AppTokenService) Delete(t auth.AppToken) error {
 	conn, err := db.Conn()
 	if err != nil {

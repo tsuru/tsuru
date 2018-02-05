@@ -7,6 +7,7 @@ package storagetest
 import (
 	"sort"
 
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -73,6 +74,44 @@ func (s *AppTokenSuite) TestFindAppTokenByAppNameNotFound(c *check.C) {
 	teams, err := s.AppTokenService.FindByAppName("app2")
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.HasLen, 0)
+}
+
+func (s *AppTokenSuite) TestAddRoles(c *check.C) {
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("role1", "app", "")
+	c.Assert(err, check.IsNil)
+
+	err = s.AppTokenService.AddRoles(appToken, "role1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.AppTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Roles, check.DeepEquals, []string{"role1"})
+}
+
+func (s *AppTokenSuite) TestAddRolesAppTokenNotFound(c *check.C) {
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err := s.AppTokenService.AddRoles(appToken, "role1")
+	c.Assert(err, check.ErrorMatches, "app token not found")
+}
+
+func (s *AppTokenSuite) TestAddRolesNoDuplicates(c *check.C) {
+	appToken := auth.AppToken{Token: "123", AppName: "app1"}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("role1", "app", "")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("role2", "app", "")
+	c.Assert(err, check.IsNil)
+
+	err = s.AppTokenService.AddRoles(appToken, "role1", "role2", "role1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.AppTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Roles, check.DeepEquals, []string{"role1", "role2"})
 }
 
 func (s *AppTokenSuite) TestDeleteAppToken(c *check.C) {
