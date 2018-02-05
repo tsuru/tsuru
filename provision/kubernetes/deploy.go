@@ -621,13 +621,13 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 	if err != nil {
 		return "", err
 	}
-	cmds := []string{"sh", "-c", "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"}
+	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
 	buf := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: buf,
 		labels: labels,
-		cmds:   cmds,
+		cmd:    cmd,
 		name:   deployPodName,
 		image:  image,
 		pool:   a.GetPool(),
@@ -668,12 +668,12 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		client: client,
 		stdout: buf,
 		labels: labels,
-		cmds: []string{"sh", "-ec", fmt.Sprintf(`
+		cmd: fmt.Sprintf(`
 			docker pull %[1]s >/dev/null
 			docker inspect %[1]s
 			docker tag %[1]s %[2]s
 			docker push %[2]s
-`, oldImage, newImage)},
+`, oldImage, newImage),
 		name:       deployPodName,
 		image:      kubeConf.DeployInspectImage,
 		dockerSock: true,

@@ -851,7 +851,7 @@ func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cm
 		client: client,
 		stdout: out,
 		labels: labels,
-		cmds:   cmds,
+		cmd:    strings.Join(cmds, " "),
 		envs:   envs,
 		name:   baseName,
 		image:  imgName,
@@ -864,7 +864,7 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 	if err != nil {
 		return err
 	}
-	cmds := append([]string{"/bin/sh", "-c", cmd}, args...)
+	cmds := append([]string{cmd}, args...)
 	return runIsolatedCmdPod(client, a, stdout, cmds)
 }
 

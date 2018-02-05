@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -534,7 +535,7 @@ type runSinglePodArgs struct {
 	client     *clusterClient
 	stdout     io.Writer
 	labels     *provision.LabelSet
-	cmds       []string
+	cmd        string
 	envs       []apiv1.EnvVar
 	name       string
 	image      string
@@ -558,10 +559,12 @@ func runPod(args runSinglePodArgs) error {
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
-					Name:    args.name,
-					Image:   args.image,
-					Command: args.cmds,
-					Env:     args.envs,
+					Name:      args.name,
+					Image:     args.image,
+					Command:   []string{"sh", "-ec", "cat >/dev/null && " + args.cmd},
+					Env:       args.envs,
+					Stdin:     true,
+					StdinOnce: true,
 				},
 			},
 		},
@@ -592,25 +595,9 @@ func runPod(args runSinglePodArgs) error {
 	if err != nil {
 		multiErr.Add(err)
 	}
-	err = args.client.SetTimeout(kubeConf.PodRunningTimeout)
+	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, pod.Name, args.name)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
-		return multiErr
-	}
-	req := args.client.CoreV1().Pods(args.client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
-		Follow:    true,
-		Container: args.name,
-	})
-	reader, err := req.Stream()
-	if err != nil {
-		multiErr.Add(errors.WithStack(err))
-		return multiErr
-	}
-	defer reader.Close()
-	_, err = io.Copy(args.stdout, reader)
-	if err != nil && err != io.EOF {
-		multiErr.Add(errors.WithStack(err))
-		return multiErr
 	}
 	return multiErr.ToError()
 }
