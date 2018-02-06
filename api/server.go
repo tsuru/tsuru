@@ -286,6 +286,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Delete", "/role/default", AuthorizationRequiredHandler(removeDefaultRole))
 	m.Add("1.0", "Get", "/permissions", AuthorizationRequiredHandler(listPermissions))
 	m.Add("1.6", "Post", "/roles/{name}/apptoken", AuthorizationRequiredHandler(assignRoleToAppToken))
+	m.Add("1.6", "Delete", "/roles/{name}/apptoken/{token}", AuthorizationRequiredHandler(dissociateRoleFromAppToken))
 
 	m.Add("1.0", "Get", "/debug/goroutines", AuthorizationRequiredHandler(dumpGoroutines))
 	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(indexHandler))
