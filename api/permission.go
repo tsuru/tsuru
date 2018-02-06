@@ -701,7 +701,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-//   404: Role not found
+//   404: Role or app token not found
 func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -740,4 +740,50 @@ func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	return auth.AppTokenService().AddRoles(*appToken, roleName)
+}
+
+// title: dissociate role from app token
+// path: /roles/{name}/apptoken/{token}
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role or app token not found
+func dissociateRoleFromAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateDissociate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	_, err = permission.FindRole(roleName)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return err
+	}
+	token := r.URL.Query().Get(":token")
+	appToken, err := auth.AppTokenService().FindByToken(token)
+	if err == authTypes.ErrAppTokenNotFound || appToken == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return authTypes.ErrAppTokenNotFound
+	}
+	if err != nil {
+		return err
+	}
+	return auth.AppTokenService().RemoveRoles(*appToken, roleName)
 }
