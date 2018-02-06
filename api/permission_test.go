@@ -63,7 +63,6 @@ func (s *S) TestAddRoleUnauthorized(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -80,7 +79,6 @@ func (s *S) TestAddRoleInvalidName(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, permission.ErrInvalidRoleName.Error()+"\n")
 }
@@ -101,7 +99,6 @@ func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, permission.ErrRoleAlreadyExists.Error()+"\n")
 }
@@ -427,7 +424,6 @@ func (s *S) TestAssignRole(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	emptyUser, err := emptyToken.User()
 	c.Assert(err, check.IsNil)
@@ -460,7 +456,6 @@ func (s *S) TestAssignRoleNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -485,7 +480,6 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
 	emptyUser, err := emptyToken.User()
@@ -517,7 +511,6 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	emptyUser, err := emptyToken.User()
 	c.Assert(err, check.IsNil)
@@ -544,7 +537,6 @@ func (s *S) TestDissociateRoleNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -573,7 +565,6 @@ func (s *S) TestDissociateRole(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	otherUser, err = otherToken.User()
 	c.Assert(err, check.IsNil)
@@ -614,7 +605,6 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
 	otherUser, err = otherToken.User()
@@ -650,7 +640,6 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	otherUser, err = otherToken.User()
 	c.Assert(err, check.IsNil)
@@ -1015,7 +1004,6 @@ func (s *S) TestAssignRoleToAppToken(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
 	t, err := auth.AppTokenService().FindByToken(appToken.Token)
@@ -1050,7 +1038,6 @@ func (s *S) TestAssignRoleToAppTokenRoleNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
@@ -1081,7 +1068,98 @@ func (s *S) TestAssignRoleToAppTokenNotAuthorized(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestDissociateRoleFromAppToken(c *check.C) {
+	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
+	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
+	err = auth.AppTokenService().Insert(appToken)
+	c.Assert(err, check.IsNil)
+	err = auth.AppTokenService().AddRoles(appToken, "newrole")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
+	req, err := http.NewRequest(http.MethodDelete, "/1.6/roles/newrole/apptoken/"+appToken.Token, roleBody)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateDissociate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	fmt.Println(recorder.Body.String())
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	t, err := auth.AppTokenService().FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Roles, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "newrole"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.dissociate",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":token", "value": appToken.Token},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestDissociateRoleFromAppTokenRoleNotFound(c *check.C) {
+	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
+	err := auth.AppTokenService().Insert(appToken)
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
+	req, err := http.NewRequest("POST", "/1.6/roles/rolenotfound/apptoken", roleBody)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.assign",
+		StartCustomData: []map[string]interface{}{
+			{"name": "token", "value": appToken.Token},
+		},
+		ErrorMatches: "role not found",
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestDissociateRoleFromAppTokenNotAuthorized(c *check.C) {
+	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
+	err := auth.AppTokenService().Insert(appToken)
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
+	_, err = permission.NewRole("newrole", "team", "")
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("POST", "/1.6/roles/newrole/apptoken", roleBody)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "otherteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
 }
