@@ -989,8 +989,7 @@ func (s *S) TestAssignRoleToAppToken(c *check.C) {
 	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
 	err = auth.AppTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
-	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
-	req, err := http.NewRequest("POST", "/1.6/roles/newrole/apptoken", roleBody)
+	req, err := http.NewRequest("POST", "/1.6/roles/newrole/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
@@ -1014,7 +1013,7 @@ func (s *S) TestAssignRoleToAppToken(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
-			{"name": "token", "value": appToken.Token},
+			{"name": ":token", "value": appToken.Token},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1023,8 +1022,7 @@ func (s *S) TestAssignRoleToAppTokenRoleNotFound(c *check.C) {
 	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
 	err := auth.AppTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
-	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
-	req, err := http.NewRequest("POST", "/1.6/roles/rolenotfound/apptoken", roleBody)
+	req, err := http.NewRequest("POST", "/1.6/roles/rolenotfound/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
@@ -1044,7 +1042,7 @@ func (s *S) TestAssignRoleToAppTokenRoleNotFound(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
-			{"name": "token", "value": appToken.Token},
+			{"name": ":token", "value": appToken.Token},
 		},
 		ErrorMatches: "role not found",
 	}, eventtest.HasEvent)
@@ -1054,10 +1052,9 @@ func (s *S) TestAssignRoleToAppTokenNotAuthorized(c *check.C) {
 	appToken := authTypes.AppToken{Token: "1234", AppName: "myapp"}
 	err := auth.AppTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
-	roleBody := bytes.NewBufferString(fmt.Sprintf("token=%s", appToken.Token))
 	_, err = permission.NewRole("newrole", "team", "")
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("POST", "/1.6/roles/newrole/apptoken", roleBody)
+	req, err := http.NewRequest("POST", "/1.6/roles/newrole/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
