@@ -81,12 +81,14 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(err) }()
 
 	err = auth.AppTokenService().Insert(appToken)
-	if err == authTypes.ErrAppTokenAlreadyExists {
-		w.WriteHeader(http.StatusConflict)
-	} else if err == nil {
-		w.WriteHeader(http.StatusCreated)
+	if err != nil {
+		if err == authTypes.ErrAppTokenAlreadyExists {
+			w.WriteHeader(http.StatusConflict)
+		}
+		return err
 	}
-	return err
+	w.WriteHeader(http.StatusCreated)
+	return json.NewEncoder(w).Encode(appToken)
 }
 
 // title: app token delete
