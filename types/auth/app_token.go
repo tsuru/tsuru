@@ -35,6 +35,7 @@ type AppTokenService interface {
 var (
 	ErrAppTokenAlreadyExists = errors.New("app token already exists")
 	ErrAppTokenNotFound      = errors.New("app token not found")
+	ErrAppTokenExpired       = errors.New("app token expired")
 )
 
 func NewAppToken(appName, creatorEmail string) AppToken {

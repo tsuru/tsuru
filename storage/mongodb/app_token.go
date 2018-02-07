@@ -90,6 +90,9 @@ func (s *AppTokenService) Authenticate(token string) (*auth.AppToken, error) {
 		return nil, err
 	}
 	now := time.Now()
+	if appToken.ExpiresAt != nil && appToken.ExpiresAt.Before(now) {
+		return nil, auth.ErrAppTokenExpired
+	}
 	appToken.LastAccess = &now
 	err = s.update(*appToken, bson.M{"last_access": appToken.LastAccess})
 	if err != nil {
