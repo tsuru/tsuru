@@ -6,6 +6,7 @@ package storagetest
 
 import (
 	"sort"
+	"time"
 
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/auth"
@@ -77,6 +78,17 @@ func (s *AppTokenSuite) TestFindAppTokenByAppNameNotFound(c *check.C) {
 }
 
 func (s *AppTokenSuite) TestAuthenticateAppToken(c *check.C) {
+	expiresAt := time.Now().Add(1 * time.Hour)
+	appToken := auth.AppToken{Token: "123", ExpiresAt: &expiresAt}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	t, err := s.AppTokenService.Authenticate(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Token, check.Equals, appToken.Token)
+	c.Assert(t.LastAccess, check.NotNil)
+}
+
+func (s *AppTokenSuite) TestAuthenticateAppTokenNoExpiration(c *check.C) {
 	appToken := auth.AppToken{Token: "123"}
 	err := s.AppTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
@@ -86,9 +98,19 @@ func (s *AppTokenSuite) TestAuthenticateAppToken(c *check.C) {
 	c.Assert(t.LastAccess, check.NotNil)
 }
 
+func (s *AppTokenSuite) TestAuthenticateAppTokenExpired(c *check.C) {
+	expiresAt := time.Now().Add(-1 * time.Second)
+	appToken := auth.AppToken{Token: "123", ExpiresAt: &expiresAt}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	t, err := s.AppTokenService.Authenticate(appToken.Token)
+	c.Assert(err, check.Equals, auth.ErrAppTokenExpired)
+	c.Assert(t, check.IsNil)
+}
+
 func (s *AppTokenSuite) TestAuthenticateAppTokenNotFound(c *check.C) {
 	t, err := s.AppTokenService.Authenticate("token-not-found")
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, auth.ErrAppTokenNotFound)
 	c.Assert(t, check.IsNil)
 }
 
