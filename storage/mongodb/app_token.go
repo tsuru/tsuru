@@ -84,44 +84,49 @@ func (s *AppTokenService) findByQuery(query bson.M) ([]auth.AppToken, error) {
 	return authTeams, nil
 }
 
-func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
-	if len(newRoles) == 0 {
-		return nil
+func (s *AppTokenService) Authenticate(token string) (*auth.AppToken, error) {
+	appToken, err := s.FindByToken(token)
+	if err != nil {
+		return nil, err
 	}
+	appToken.LastAccess = time.Now()
+	err = s.update(*appToken, bson.M{"last_access": appToken.LastAccess})
+	if err != nil {
+		return nil, err
+	}
+	return appToken, nil
+}
+
+func (s *AppTokenService) update(appToken auth.AppToken, query bson.M) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = appTokensCollection(conn).Update(bson.M{"token": t.Token}, bson.M{
-		"$addToSet": bson.M{
-			"roles": bson.M{"$each": newRoles},
-		},
-	})
+	err = appTokensCollection(conn).Update(bson.M{"token": appToken.Token}, query)
 	if err == mgo.ErrNotFound {
 		return auth.ErrAppTokenNotFound
 	}
 	return err
 }
 
+func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
+	return s.update(t, bson.M{
+		"$addToSet": bson.M{
+			"roles": bson.M{"$each": newRoles},
+		},
+	})
+}
+
 func (s *AppTokenService) RemoveRoles(t auth.AppToken, newRoles ...string) error {
 	if len(newRoles) == 0 {
 		return nil
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = appTokensCollection(conn).Update(bson.M{"token": t.Token}, bson.M{
+	return s.update(t, bson.M{
 		"$pull": bson.M{
 			"roles": bson.M{"$in": newRoles},
 		},
 	})
-	if err == mgo.ErrNotFound {
-		return auth.ErrAppTokenNotFound
-	}
-	return err
 }
 
 func (s *AppTokenService) Delete(t auth.AppToken) error {

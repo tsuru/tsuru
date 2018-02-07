@@ -76,6 +76,22 @@ func (s *AppTokenSuite) TestFindAppTokenByAppNameNotFound(c *check.C) {
 	c.Assert(teams, check.HasLen, 0)
 }
 
+func (s *AppTokenSuite) TestAuthenticateAppToken(c *check.C) {
+	appToken := auth.AppToken{Token: "123"}
+	err := s.AppTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	t, err := s.AppTokenService.Authenticate(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Token, check.Equals, appToken.Token)
+	c.Assert(t.LastAccess, check.NotNil)
+}
+
+func (s *AppTokenSuite) TestAuthenticateAppTokenNotFound(c *check.C) {
+	t, err := s.AppTokenService.Authenticate("token-not-found")
+	c.Assert(err, check.NotNil)
+	c.Assert(t, check.IsNil)
+}
+
 func (s *AppTokenSuite) TestAddRoles(c *check.C) {
 	appToken := auth.AppToken{Token: "123", AppName: "app1"}
 	err := s.AppTokenService.Insert(appToken)
