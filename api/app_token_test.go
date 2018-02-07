@@ -80,6 +80,12 @@ func (s *S) TestAppTokenCreate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	var result authTypes.AppToken
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Token, check.NotNil)
+	c.Assert(result.AppName, check.Equals, app1.Name)
+	c.Assert(result.CreatorEmail, check.Equals, s.token.GetUserName())
 
 	results, err := auth.AppTokenService().FindByAppName(app1.Name)
 	c.Assert(err, check.IsNil)
