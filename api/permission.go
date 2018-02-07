@@ -694,7 +694,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: assign role to app token
-// path: /roles/{name}/apptoken
+// path: /roles/{name}/apptoken/{token}
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
