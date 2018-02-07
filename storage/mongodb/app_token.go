@@ -18,12 +18,12 @@ type AppTokenService struct{}
 
 type appToken struct {
 	Token        string
-	Creation     time.Time
-	Expires      time.Duration
-	LastAccess   time.Time `bson:"last_access"`
-	CreatorEmail string    `bson:"creator_email"`
-	AppName      string    `bson:"app"`
-	Roles        []string  `bson:",omitempty"`
+	CreatedAt    time.Time  `bson:"created_at"`
+	ExpiresAt    *time.Time `bson:"expires_at"`
+	LastAccess   *time.Time `bson:"last_access"`
+	CreatorEmail string     `bson:"creator_email"`
+	AppName      string     `bson:"app"`
+	Roles        []string   `bson:",omitempty"`
 }
 
 var _ auth.AppTokenService = &AppTokenService{}
@@ -89,7 +89,8 @@ func (s *AppTokenService) Authenticate(token string) (*auth.AppToken, error) {
 	if err != nil {
 		return nil, err
 	}
-	appToken.LastAccess = time.Now()
+	now := time.Now()
+	appToken.LastAccess = &now
 	err = s.update(*appToken, bson.M{"last_access": appToken.LastAccess})
 	if err != nil {
 		return nil, err
