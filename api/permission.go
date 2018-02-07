@@ -707,13 +707,11 @@ func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	token := r.FormValue("token")
-	if token == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "missing token value"}
-	}
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
+
+	token := r.URL.Query().Get(":token")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
@@ -726,6 +724,7 @@ func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
+
 	_, err = permission.FindRole(roleName)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
