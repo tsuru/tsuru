@@ -77,7 +77,7 @@ func AppTokenAuth(header string) (Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := AppTokenService().FindByToken(token)
+	t, err := AppTokenService().Authenticate(token)
 	if err != nil {
 		if err == authTypes.ErrAppTokenNotFound {
 			return nil, ErrInvalidToken
