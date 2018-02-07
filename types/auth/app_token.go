@@ -13,13 +13,13 @@ import (
 )
 
 type AppToken struct {
-	Token        string        `json:"token"`
-	Creation     time.Time     `json:"creation"`
-	Expires      time.Duration `json:"expires"`
-	LastAccess   time.Time     `json:"last_access"`
-	CreatorEmail string        `json:"creator_email"`
-	AppName      string        `json:"app"`
-	Roles        []string      `json:"roles,omitempty"`
+	Token        string     `json:"token"`
+	CreatedAt    time.Time  `json:"created_at"`
+	ExpiresAt    *time.Time `json:"expires_at"`
+	LastAccess   *time.Time `json:"last_access"`
+	CreatorEmail string     `json:"creator_email"`
+	AppName      string     `json:"app"`
+	Roles        []string   `json:"roles,omitempty"`
 }
 
 type AppTokenService interface {
@@ -39,12 +39,14 @@ var (
 
 func NewAppToken(appName, creatorEmail string) AppToken {
 	// TODO: config expiration
+	now := time.Now()
+	expiresAt := now.Add(365 * 24 * time.Hour)
 	return AppToken{
 		Token:        generateToken(appName, crypto.SHA1),
 		AppName:      appName,
 		CreatorEmail: creatorEmail,
-		Creation:     time.Now(),
-		Expires:      time.Duration(365 * 24 * time.Hour),
+		CreatedAt:    now,
+		ExpiresAt:    &expiresAt,
 	}
 }
 
