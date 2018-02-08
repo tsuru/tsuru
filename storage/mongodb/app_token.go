@@ -58,8 +58,7 @@ func (s *AppTokenService) FindByToken(token string) (*auth.AppToken, error) {
 	if len(results) == 0 {
 		return nil, auth.ErrAppTokenNotFound
 	}
-	appToken := auth.AppToken(results[0])
-	return &appToken, nil
+	return &results[0], nil
 }
 
 func (s *AppTokenService) FindByAppName(appName string) ([]auth.AppToken, error) {
