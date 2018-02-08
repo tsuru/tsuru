@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -238,7 +239,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		pod.Status.Message = wantedMessage
 		return false, nil, nil
 	})
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		w.Write([]byte(`my log error`))
 	}
 	tests := []struct {

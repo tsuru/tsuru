@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -827,7 +828,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		w.Write([]byte(`[
 	{
 		"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}
@@ -863,7 +864,7 @@ func (s *S) TestImageDeployInspectError(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		w.Write([]byte(`x
 ignored docker tag output
 ignored docker push output
@@ -885,7 +886,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	calls := 0
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		calls++
 		if calls == 1 {
 			w.Write([]byte(`[{"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}}]`))
@@ -1154,10 +1155,10 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(stdout.String(), check.Equals, "my log message")
+	c.Assert(stdout.String(), check.Equals, "stderr datastdout data")
 	c.Assert(stderr.String(), check.Equals, "")
 	c.Assert(s.stream["myapp-isolated-run"].urls, check.HasLen, 1)
-	c.Assert(s.stream["myapp-isolated-run"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
+	c.Assert(s.stream["myapp-isolated-run"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
