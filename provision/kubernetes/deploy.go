@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tsuru/tsuru/safe"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -40,7 +41,7 @@ const (
 	buildIntercontainerDone   = buildIntercontainerPath + "/done"
 )
 
-func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
+func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -64,7 +65,7 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName,
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdin:             stdin,
 		Stdout:            stdout,
-		Stderr:            stdout,
+		Stderr:            stderr,
 		Tty:               false,
 		TerminalSizeQueue: nil,
 	})
@@ -210,10 +211,10 @@ func createBuildPod(params buildPodParams) error {
 	if params.attachInput != nil {
 		errCh := make(chan error)
 		go func() {
-			commitErr := doAttach(params.client, nil, params.attachOutput, pod.Name, commitContainer)
+			commitErr := doAttach(params.client, nil, params.attachOutput, params.attachOutput, pod.Name, commitContainer)
 			errCh <- commitErr
 		}()
-		err = doAttach(params.client, params.attachInput, params.attachOutput, pod.Name, baseName)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, baseName)
 		if err != nil {
 			return err
 		}
@@ -622,10 +623,11 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 		return "", err
 	}
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
-	buf := &bytes.Buffer{}
+	buf := new(safe.Buffer)
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: buf,
+		stderr: buf,
 		labels: labels,
 		cmd:    cmd,
 		name:   deployPodName,
@@ -663,10 +665,11 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		return nil, err
 	}
 	kubeConf := getKubeConfig()
-	buf := &bytes.Buffer{}
+	buf := new(safe.Buffer)
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: buf,
+		stderr: buf,
 		labels: labels,
 		cmd: fmt.Sprintf(`
 			docker pull %[1]s >/dev/null
