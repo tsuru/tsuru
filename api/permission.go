@@ -693,7 +693,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-// title: assign role to app token
+// title: assign role to team token
 // path: /roles/{name}/apptoken/{token}
 // method: POST
 // consume: application/x-www-form-urlencoded
@@ -701,8 +701,8 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-//   404: Role or app token not found
-func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+//   404: Role or team token not found
+func assignRoleToTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -730,26 +730,26 @@ func assignRoleToAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		w.WriteHeader(http.StatusNotFound)
 		return err
 	}
-	appToken, err := auth.AppTokenService().FindByToken(token)
-	if err == authTypes.ErrAppTokenNotFound || appToken == nil {
+	appToken, err := auth.TeamTokenService().FindByToken(token)
+	if err == authTypes.ErrTeamTokenNotFound || appToken == nil {
 		w.WriteHeader(http.StatusNotFound)
-		return authTypes.ErrAppTokenNotFound
+		return authTypes.ErrTeamTokenNotFound
 	}
 	if err != nil {
 		return err
 	}
-	return auth.AppTokenService().AddRoles(*appToken, roleName)
+	return auth.TeamTokenService().AddRoles(*appToken, roleName)
 }
 
-// title: dissociate role from app token
+// title: dissociate role from team token
 // path: /roles/{name}/apptoken/{token}
 // method: DELETE
 // responses:
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-//   404: Role or app token not found
-func dissociateRoleFromAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+//   404: Role or team token not found
+func dissociateRoleFromTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -776,13 +776,13 @@ func dissociateRoleFromAppToken(w http.ResponseWriter, r *http.Request, t auth.T
 		return err
 	}
 	token := r.URL.Query().Get(":token")
-	appToken, err := auth.AppTokenService().FindByToken(token)
-	if err == authTypes.ErrAppTokenNotFound || appToken == nil {
+	appToken, err := auth.TeamTokenService().FindByToken(token)
+	if err == authTypes.ErrTeamTokenNotFound || appToken == nil {
 		w.WriteHeader(http.StatusNotFound)
-		return authTypes.ErrAppTokenNotFound
+		return authTypes.ErrTeamTokenNotFound
 	}
 	if err != nil {
 		return err
 	}
-	return auth.AppTokenService().RemoveRoles(*appToken, roleName)
+	return auth.TeamTokenService().RemoveRoles(*appToken, roleName)
 }

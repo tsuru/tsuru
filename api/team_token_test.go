@@ -19,12 +19,12 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAppTokenList(c *check.C) {
+func (s *S) TestTeamTokenList(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.AppToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
-	err = auth.AppTokenService().Insert(appToken)
+	appToken := authTypes.TeamToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
+	err = auth.TeamTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/1.6/apps/%s/tokens", app1.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -33,13 +33,13 @@ func (s *S) TestAppTokenList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result []authTypes.AppToken
+	var result []authTypes.TeamToken
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []authTypes.AppToken{appToken})
+	c.Assert(result, check.DeepEquals, []authTypes.TeamToken{appToken})
 }
 
-func (s *S) TestAppTokenListEmpty(c *check.C) {
+func (s *S) TestTeamTokenListEmpty(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -52,7 +52,7 @@ func (s *S) TestAppTokenListEmpty(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
-func (s *S) TestAppTokenListNoPermission(c *check.C) {
+func (s *S) TestTeamTokenListNoPermission(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -69,7 +69,7 @@ func (s *S) TestAppTokenListNoPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAppTokenCreate(c *check.C) {
+func (s *S) TestTeamTokenCreate(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -80,14 +80,14 @@ func (s *S) TestAppTokenCreate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var result authTypes.AppToken
+	var result authTypes.TeamToken
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Token, check.NotNil)
 	c.Assert(result.AppName, check.Equals, app1.Name)
 	c.Assert(result.CreatorEmail, check.Equals, s.token.GetUserName())
 
-	results, err := auth.AppTokenService().FindByAppName(app1.Name)
+	results, err := auth.TeamTokenService().FindByAppName(app1.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(results, check.HasLen, 1)
 	c.Assert(results[0].AppName, check.Equals, app1.Name)
@@ -100,7 +100,7 @@ func (s *S) TestAppTokenCreate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestAppTokenCreateNoPermission(c *check.C) {
+func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -117,12 +117,12 @@ func (s *S) TestAppTokenCreateNoPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAppTokenDelete(c *check.C) {
+func (s *S) TestTeamTokenDelete(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.AppToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
-	err = auth.AppTokenService().Insert(appToken)
+	appToken := authTypes.TeamToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
+	err = auth.TeamTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/1.6/apps/%s/tokens/%s", app1.Name, appToken.Token)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -132,7 +132,7 @@ func (s *S) TestAppTokenDelete(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	results, err := auth.AppTokenService().FindByAppName(app1.Name)
+	results, err := auth.TeamTokenService().FindByAppName(app1.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(results, check.HasLen, 0)
 
@@ -143,7 +143,7 @@ func (s *S) TestAppTokenDelete(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestAppTokenDeleteTokenNotFound(c *check.C) {
+func (s *S) TestTeamTokenDeleteTokenNotFound(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -156,12 +156,12 @@ func (s *S) TestAppTokenDeleteTokenNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestAppTokenDeleteNoPermission(c *check.C) {
+func (s *S) TestTeamTokenDeleteNoPermission(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.AppToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
-	err = auth.AppTokenService().Insert(appToken)
+	appToken := authTypes.TeamToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
+	err = auth.TeamTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/1.6/apps/%s/tokens/%s", app1.Name, appToken.Token)
 	request, err := http.NewRequest("DELETE", url, nil)

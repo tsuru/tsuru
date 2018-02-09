@@ -14,12 +14,12 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-// title: app token list
+// title: team token list
 // path: /apps/{app}/tokens
 // method: GET
 // produce: application/json
 // responses:
-//   200: List app tokens
+//   200: List team tokens
 //   204: No content
 //   401: Unauthorized
 func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -34,7 +34,7 @@ func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	appTokens, err := auth.AppTokenService().FindByAppName(app.Name)
+	appTokens, err := auth.TeamTokenService().FindByAppName(app.Name)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(appTokens)
 }
 
-// title: app token create
+// title: team token create
 // path: /apps/{app}/tokens
 // method: POST
 // produce: application/json
@@ -67,7 +67,7 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return permission.ErrUnauthorized
 	}
 
-	appToken := authTypes.NewAppToken(appName, t.GetUserName())
+	appToken := authTypes.NewTeamToken(appName, t.GetUserName())
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppTokenCreate,
@@ -80,9 +80,9 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	defer func() { evt.Done(err) }()
 
-	err = auth.AppTokenService().Insert(appToken)
+	err = auth.TeamTokenService().Insert(appToken)
 	if err != nil {
-		if err == authTypes.ErrAppTokenAlreadyExists {
+		if err == authTypes.ErrTeamTokenAlreadyExists {
 			w.WriteHeader(http.StatusConflict)
 		}
 		return err
@@ -91,7 +91,7 @@ func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	return json.NewEncoder(w).Encode(appToken)
 }
 
-// title: app token delete
+// title: team token delete
 // path: /apps/{app}/tokens/{token}
 // method: DELETE
 // produce: application/json
@@ -125,9 +125,9 @@ func appTokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(err) }()
 
 	token := r.URL.Query().Get(":token")
-	appToken := authTypes.AppToken{Token: token}
-	err = auth.AppTokenService().Delete(appToken)
-	if err == authTypes.ErrAppTokenNotFound {
+	appToken := authTypes.TeamToken{Token: token}
+	err = auth.TeamTokenService().Delete(appToken)
+	if err == authTypes.ErrTeamTokenNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err

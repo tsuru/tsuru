@@ -42,7 +42,7 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 	if err != nil {
 		t, err = auth.APIAuth(token)
 		if err != nil {
-			t, err = auth.AppTokenAuth(token)
+			t, err = auth.TeamTokenAuth(token)
 			if err != nil {
 				return nil, err
 			}

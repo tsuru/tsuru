@@ -12,31 +12,31 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-type AppToken authTypes.AppToken
+type TeamToken authTypes.TeamToken
 
-var _ Token = &AppToken{}
+var _ Token = &TeamToken{}
 
-func (t *AppToken) GetValue() string {
+func (t *TeamToken) GetValue() string {
 	return t.Token
 }
 
-func (t *AppToken) User() (*User, error) {
+func (t *TeamToken) User() (*User, error) {
 	return nil, nil
 }
 
-func (t *AppToken) IsAppToken() bool {
+func (t *TeamToken) IsAppToken() bool {
 	return true
 }
 
-func (t *AppToken) GetUserName() string {
+func (t *TeamToken) GetUserName() string {
 	return ""
 }
 
-func (t *AppToken) GetAppName() string {
+func (t *TeamToken) GetAppName() string {
 	return t.AppName
 }
 
-func (t *AppToken) Permissions() ([]permission.Permission, error) {
+func (t *TeamToken) Permissions() ([]permission.Permission, error) {
 	if len(t.Roles) == 0 {
 		return BaseTokenPermission(t)
 	}
@@ -61,7 +61,7 @@ func (t *AppToken) Permissions() ([]permission.Permission, error) {
 	return permissions, nil
 }
 
-func AppTokenService() authTypes.AppTokenService {
+func TeamTokenService() authTypes.TeamTokenService {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -69,21 +69,21 @@ func AppTokenService() authTypes.AppTokenService {
 			return nil
 		}
 	}
-	return dbDriver.AppTokenService
+	return dbDriver.TeamTokenService
 }
 
-func AppTokenAuth(header string) (Token, error) {
+func TeamTokenAuth(header string) (Token, error) {
 	token, err := ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	t, err := AppTokenService().Authenticate(token)
+	t, err := TeamTokenService().Authenticate(token)
 	if err != nil {
-		if err == authTypes.ErrAppTokenNotFound {
+		if err == authTypes.ErrTeamTokenNotFound {
 			return nil, ErrInvalidToken
 		}
 		return nil, err
 	}
-	appToken := AppToken(*t)
+	appToken := TeamToken(*t)
 	return &appToken, nil
 }
