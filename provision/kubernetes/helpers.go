@@ -545,6 +545,7 @@ func execCommand(opts execOpts) error {
 type runSinglePodArgs struct {
 	client     *clusterClient
 	stdout     io.Writer
+	stderr     io.Writer
 	labels     *provision.LabelSet
 	cmd        string
 	envs       []apiv1.EnvVar
@@ -611,7 +612,7 @@ func runPod(args runSinglePodArgs) error {
 	if err != nil {
 		multiErr.Add(err)
 	}
-	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, pod.Name, args.name)
+	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}

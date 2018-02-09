@@ -825,7 +825,7 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 	})
 }
 
-func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cmds []string) error {
+func runIsolatedCmdPod(client *clusterClient, a provision.App, out, errW io.Writer, cmds []string) error {
 	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -850,6 +850,7 @@ func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cm
 	return runPod(runSinglePodArgs{
 		client: client,
 		stdout: out,
+		stderr: errW,
 		labels: labels,
 		cmd:    strings.Join(cmds, " "),
 		envs:   envs,
@@ -865,7 +866,7 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 		return err
 	}
 	cmds := append([]string{cmd}, args...)
-	return runIsolatedCmdPod(client, a, stdout, cmds)
+	return runIsolatedCmdPod(client, a, stdout, stderr, cmds)
 }
 
 func (p *kubernetesProvisioner) StartupMessage() (string, error) {
