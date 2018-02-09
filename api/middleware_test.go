@@ -234,9 +234,9 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 	c.Assert(t.GetUserName(), check.Equals, user.Email)
 }
 
-func (s *S) TestAuthTokenMiddlewareWithAppToken(c *check.C) {
-	token := authTypes.AppToken{Token: "123", AppName: "abc"}
-	err := auth.AppTokenService().Insert(token)
+func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
+	token := authTypes.TeamToken{Token: "123", AppName: "abc"}
+	err := auth.TeamTokenService().Insert(token)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)
@@ -251,9 +251,9 @@ func (s *S) TestAuthTokenMiddlewareWithAppToken(c *check.C) {
 	c.Assert(t.GetAppName(), check.Equals, "abc")
 }
 
-func (s *S) TestAuthTokenMiddlewareWithIncorrectAppToken(c *check.C) {
-	token := authTypes.AppToken{Token: "123", AppName: "xyz"}
-	err := auth.AppTokenService().Insert(token)
+func (s *S) TestAuthTokenMiddlewareWithIncorrectTeamToken(c *check.C) {
+	token := authTypes.TeamToken{Token: "123", AppName: "xyz"}
+	err := auth.TeamTokenService().Insert(token)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)

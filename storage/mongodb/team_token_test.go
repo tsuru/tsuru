@@ -9,7 +9,7 @@ import (
 	"gopkg.in/check.v1"
 )
 
-var _ = check.Suite(&storagetest.AppTokenSuite{
-	AppTokenService: &AppTokenService{},
-	SuiteHooks:      &mongodbBaseTest{},
+var _ = check.Suite(&storagetest.TeamTokenSuite{
+	TeamTokenService: &TeamTokenService{},
+	SuiteHooks:       &mongodbBaseTest{},
 })

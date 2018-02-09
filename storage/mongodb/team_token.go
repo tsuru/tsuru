@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/types/auth"
 )
 
-type AppTokenService struct{}
+type TeamTokenService struct{}
 
 type appToken struct {
 	Token        string
@@ -26,7 +26,7 @@ type appToken struct {
 	Roles        []string   `bson:",omitempty"`
 }
 
-var _ auth.AppTokenService = &AppTokenService{}
+var _ auth.TeamTokenService = &TeamTokenService{}
 
 func appTokensCollection(conn *db.Storage) *dbStorage.Collection {
 	c := conn.Collection("app_tokens")
@@ -34,7 +34,7 @@ func appTokensCollection(conn *db.Storage) *dbStorage.Collection {
 	return c
 }
 
-func (s *AppTokenService) Insert(t auth.AppToken) error {
+func (s *TeamTokenService) Insert(t auth.TeamToken) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -42,30 +42,30 @@ func (s *AppTokenService) Insert(t auth.AppToken) error {
 	defer conn.Close()
 	err = appTokensCollection(conn).Insert(appToken(t))
 	if mgo.IsDup(err) {
-		return auth.ErrAppTokenAlreadyExists
+		return auth.ErrTeamTokenAlreadyExists
 	}
 	return err
 }
 
-func (s *AppTokenService) FindByToken(token string) (*auth.AppToken, error) {
+func (s *TeamTokenService) FindByToken(token string) (*auth.TeamToken, error) {
 	results, err := s.findByQuery(bson.M{"token": token})
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = auth.ErrAppTokenNotFound
+			err = auth.ErrTeamTokenNotFound
 		}
 		return nil, err
 	}
 	if len(results) == 0 {
-		return nil, auth.ErrAppTokenNotFound
+		return nil, auth.ErrTeamTokenNotFound
 	}
 	return &results[0], nil
 }
 
-func (s *AppTokenService) FindByAppName(appName string) ([]auth.AppToken, error) {
+func (s *TeamTokenService) FindByAppName(appName string) ([]auth.TeamToken, error) {
 	return s.findByQuery(bson.M{"app": appName})
 }
 
-func (s *AppTokenService) findByQuery(query bson.M) ([]auth.AppToken, error) {
+func (s *TeamTokenService) findByQuery(query bson.M) ([]auth.TeamToken, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -76,21 +76,21 @@ func (s *AppTokenService) findByQuery(query bson.M) ([]auth.AppToken, error) {
 	if err != nil {
 		return nil, err
 	}
-	authTeams := make([]auth.AppToken, len(tokens))
+	authTeams := make([]auth.TeamToken, len(tokens))
 	for i, t := range tokens {
-		authTeams[i] = auth.AppToken(t)
+		authTeams[i] = auth.TeamToken(t)
 	}
 	return authTeams, nil
 }
 
-func (s *AppTokenService) Authenticate(token string) (*auth.AppToken, error) {
+func (s *TeamTokenService) Authenticate(token string) (*auth.TeamToken, error) {
 	appToken, err := s.FindByToken(token)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now()
 	if appToken.ExpiresAt != nil && appToken.ExpiresAt.Before(now) {
-		return nil, auth.ErrAppTokenExpired
+		return nil, auth.ErrTeamTokenExpired
 	}
 	appToken.LastAccess = &now
 	err = s.update(*appToken, bson.M{"last_access": appToken.LastAccess})
@@ -100,7 +100,7 @@ func (s *AppTokenService) Authenticate(token string) (*auth.AppToken, error) {
 	return appToken, nil
 }
 
-func (s *AppTokenService) update(appToken auth.AppToken, query bson.M) error {
+func (s *TeamTokenService) update(appToken auth.TeamToken, query bson.M) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -108,12 +108,12 @@ func (s *AppTokenService) update(appToken auth.AppToken, query bson.M) error {
 	defer conn.Close()
 	err = appTokensCollection(conn).Update(bson.M{"token": appToken.Token}, query)
 	if err == mgo.ErrNotFound {
-		return auth.ErrAppTokenNotFound
+		return auth.ErrTeamTokenNotFound
 	}
 	return err
 }
 
-func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
+func (s *TeamTokenService) AddRoles(t auth.TeamToken, newRoles ...string) error {
 	return s.update(t, bson.M{
 		"$addToSet": bson.M{
 			"roles": bson.M{"$each": newRoles},
@@ -121,7 +121,7 @@ func (s *AppTokenService) AddRoles(t auth.AppToken, newRoles ...string) error {
 	})
 }
 
-func (s *AppTokenService) RemoveRoles(t auth.AppToken, newRoles ...string) error {
+func (s *TeamTokenService) RemoveRoles(t auth.TeamToken, newRoles ...string) error {
 	if len(newRoles) == 0 {
 		return nil
 	}
@@ -132,7 +132,7 @@ func (s *AppTokenService) RemoveRoles(t auth.AppToken, newRoles ...string) error
 	})
 }
 
-func (s *AppTokenService) Delete(t auth.AppToken) error {
+func (s *TeamTokenService) Delete(t auth.TeamToken) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func (s *AppTokenService) Delete(t auth.AppToken) error {
 	defer conn.Close()
 	err = appTokensCollection(conn).Remove(bson.M{"token": t.Token})
 	if err == mgo.ErrNotFound {
-		return auth.ErrAppTokenNotFound
+		return auth.ErrTeamTokenNotFound
 	}
 	return err
 }

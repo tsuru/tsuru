@@ -12,22 +12,22 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAppTokenAuth(c *check.C) {
-	appToken := authTypes.AppToken{Token: "abcdef"}
-	err := AppTokenService().Insert(appToken)
+func (s *S) TestTeamTokenAuth(c *check.C) {
+	appToken := authTypes.TeamToken{Token: "abcdef"}
+	err := TeamTokenService().Insert(appToken)
 	c.Assert(err, check.IsNil)
-	t, err := AppTokenAuth(appToken.Token)
+	t, err := TeamTokenAuth(appToken.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.GetValue(), check.Equals, appToken.Token)
 }
 
-func (s *S) TestAppTokenAuthNotFound(c *check.C) {
-	t, err := AppTokenAuth("bearer invalid")
+func (s *S) TestTeamTokenAuthNotFound(c *check.C) {
+	t, err := TeamTokenAuth("bearer invalid")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, ErrInvalidToken)
 }
 
-func (s *S) TestAppTokenPermissions(c *check.C) {
+func (s *S) TestTeamTokenPermissions(c *check.C) {
 	r1, err := permission.NewRole("app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.read", "app.deploy")
@@ -37,7 +37,7 @@ func (s *S) TestAppTokenPermissions(c *check.C) {
 	err = r2.AddPermissions("app.update")
 	c.Assert(err, check.IsNil)
 
-	appToken := &AppToken{AppName: "myapp", Roles: []string{"app-deployer", "app-updater"}}
+	appToken := &TeamToken{AppName: "myapp", Roles: []string{"app-deployer", "app-updater"}}
 	perms, err := appToken.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 3)
@@ -49,13 +49,13 @@ func (s *S) TestAppTokenPermissions(c *check.C) {
 	})
 }
 
-func (s *S) TestAppTokenPermissionsWithInvalidPermission(c *check.C) {
+func (s *S) TestTeamTokenPermissionsWithInvalidPermission(c *check.C) {
 	r1, err := permission.NewRole("pool-reader", "pool", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("pool.read")
 	c.Assert(err, check.IsNil)
 
-	appToken := &AppToken{AppName: "myapp", Roles: []string{"pool-reader"}}
+	appToken := &TeamToken{AppName: "myapp", Roles: []string{"pool-reader"}}
 	_, err = appToken.Permissions()
 	c.Assert(err, check.NotNil)
 }

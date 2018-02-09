@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type AppToken struct {
+type TeamToken struct {
 	Token        string     `json:"token"`
 	CreatedAt    time.Time  `json:"created_at"`
 	ExpiresAt    *time.Time `json:"expires_at"`
@@ -22,27 +22,27 @@ type AppToken struct {
 	Roles        []string   `json:"roles,omitempty"`
 }
 
-type AppTokenService interface {
-	Insert(AppToken) error
-	FindByToken(string) (*AppToken, error)
-	FindByAppName(string) ([]AppToken, error)
-	Authenticate(string) (*AppToken, error)
-	AddRoles(AppToken, ...string) error
-	RemoveRoles(AppToken, ...string) error
-	Delete(AppToken) error
+type TeamTokenService interface {
+	Insert(TeamToken) error
+	FindByToken(string) (*TeamToken, error)
+	FindByAppName(string) ([]TeamToken, error)
+	Authenticate(string) (*TeamToken, error)
+	AddRoles(TeamToken, ...string) error
+	RemoveRoles(TeamToken, ...string) error
+	Delete(TeamToken) error
 }
 
 var (
-	ErrAppTokenAlreadyExists = errors.New("app token already exists")
-	ErrAppTokenNotFound      = errors.New("app token not found")
-	ErrAppTokenExpired       = errors.New("app token expired")
+	ErrTeamTokenAlreadyExists = errors.New("team token already exists")
+	ErrTeamTokenNotFound      = errors.New("team token not found")
+	ErrTeamTokenExpired       = errors.New("team token expired")
 )
 
-func NewAppToken(appName, creatorEmail string) AppToken {
+func NewTeamToken(appName, creatorEmail string) TeamToken {
 	// TODO: config expiration
 	now := time.Now()
 	expiresAt := now.Add(365 * 24 * time.Hour)
-	return AppToken{
+	return TeamToken{
 		Token:        generateToken(appName, crypto.SHA1),
 		AppName:      appName,
 		CreatorEmail: creatorEmail,
@@ -67,7 +67,7 @@ func generateToken(data string, hash crypto.Hash) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (t *AppToken) AddRole(roleName string) {
+func (t *TeamToken) AddRole(roleName string) {
 	for _, r := range t.Roles {
 		if r == roleName {
 			return
