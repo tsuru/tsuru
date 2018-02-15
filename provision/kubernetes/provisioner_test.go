@@ -66,7 +66,7 @@ func (s *S) TestListNodesTimeoutShort(c *check.C) {
 		<-block
 	}))
 	defer func() { close(block); blackhole.Close() }()
-	clientForConfig = defaultClientForConfig
+	ClientForConfig = defaultClientForConfig
 	s.mockfakeNodes(c, blackhole.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -538,7 +538,7 @@ func (s *S) TestUnitsTimeoutShort(c *check.C) {
 		<-block
 	}))
 	defer func() { close(block); blackhole.Close() }()
-	clientForConfig = defaultClientForConfig
+	ClientForConfig = defaultClientForConfig
 	s.mockfakeNodes(c, blackhole.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -597,7 +597,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.client.clusterClient,
+		client:           s.client.ClusterClient,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",

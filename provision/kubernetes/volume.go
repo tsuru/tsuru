@@ -32,7 +32,7 @@ func (opts *volumeOptions) isPersistent() bool {
 	return !allowedNonPersistentVolumes.Includes(opts.Plugin)
 }
 
-func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
+func createVolumesForApp(client *ClusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	volumes, err := volume.ListByApp(app.GetName())
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
@@ -148,7 +148,7 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	return &opts, nil
 }
 
-func deleteVolume(client *clusterClient, name string) error {
+func deleteVolume(client *ClusterClient, name string) error {
 	err := client.CoreV1().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
@@ -164,7 +164,7 @@ func deleteVolume(client *clusterClient, name string) error {
 	return nil
 }
 
-func createVolume(client *clusterClient, v *volume.Volume, opts *volumeOptions) error {
+func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) error {
 	labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
 		Name:        v.Name,
 		Provisioner: provisionerName,
