@@ -13,6 +13,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
+	"github.com/tsuru/tablecli"
 	"github.com/tsuru/tsuru/app"
 	appMigrate "github.com/tsuru/tsuru/app/migrate"
 	"github.com/tsuru/tsuru/auth"
@@ -117,10 +118,10 @@ func (*migrationListCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	tbl := cmd.NewTable()
-	tbl.Headers = cmd.Row{"Name", "Mandatory?", "Executed?"}
+	tbl := tablecli.NewTable()
+	tbl.Headers = tablecli.Row{"Name", "Mandatory?", "Executed?"}
 	for _, m := range migrations {
-		tbl.AddRow(cmd.Row{m.Name, strconv.FormatBool(!m.Optional), strconv.FormatBool(m.Ran)})
+		tbl.AddRow(tablecli.Row{m.Name, strconv.FormatBool(!m.Optional), strconv.FormatBool(m.Ran)})
 	}
 	fmt.Fprint(context.Stdout, tbl.String())
 	return nil

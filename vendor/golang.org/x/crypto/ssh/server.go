@@ -67,7 +67,7 @@ type ServerConfig struct {
 	PasswordCallback func(conn ConnMetadata, password []byte) (*Permissions, error)
 
 	// PublicKeyCallback, if non-nil, is called when a client
-	// offers a public key for authentication. It must return true
+	// offers a public key for authentication. It must return a nil error
 	// if the given public key can be used to authenticate the
 	// given user. For example, see CertChecker.Authenticate. A
 	// call to this function does not guarantee that the key
@@ -95,6 +95,10 @@ type ServerConfig struct {
 	// Note that RFC 4253 section 4.2 requires that this string start with
 	// "SSH-2.0-".
 	ServerVersion string
+
+	// BannerCallback, if present, is called and the return string is sent to
+	// the client after key exchange completed but before authentication.
+	BannerCallback func(conn ConnMetadata) string
 }
 
 // AddHostKey adds a private key as a host key. If an existing host
@@ -252,7 +256,7 @@ func (s *connection) serverHandshake(config *ServerConfig) (*Permissions, error)
 func isAcceptableAlgo(algo string) bool {
 	switch algo {
 	case KeyAlgoRSA, KeyAlgoDSA, KeyAlgoECDSA256, KeyAlgoECDSA384, KeyAlgoECDSA521, KeyAlgoED25519,
-		CertAlgoRSAv01, CertAlgoDSAv01, CertAlgoECDSA256v01, CertAlgoECDSA384v01, CertAlgoECDSA521v01:
+		CertAlgoRSAv01, CertAlgoDSAv01, CertAlgoECDSA256v01, CertAlgoECDSA384v01, CertAlgoECDSA521v01, CertAlgoED25519v01:
 		return true
 	}
 	return false
@@ -288,12 +292,31 @@ func checkSourceAddress(addr net.Addr, sourceAddrs string) error {
 	return fmt.Errorf("ssh: remote address %v is not allowed because of source-address restriction", addr)
 }
 
+// ServerAuthError implements the error interface. It appends any authentication
+// errors that may occur, and is returned if all of the authentication methods
+// provided by the user failed to authenticate.
+type ServerAuthError struct {
+	// Errors contains authentication errors returned by the authentication
+	// callback methods.
+	Errors []error
+}
+
+func (l ServerAuthError) Error() string {
+	var errs []string
+	for _, err := range l.Errors {
+		errs = append(errs, err.Error())
+	}
+	return "[" + strings.Join(errs, ", ") + "]"
+}
+
 func (s *connection) serverAuthenticate(config *ServerConfig) (*Permissions, error) {
 	sessionID := s.transport.getSessionID()
 	var cache pubKeyCache
 	var perms *Permissions
 
 	authFailures := 0
+	var authErrs []error
+	var displayedBanner bool
 
 userAuthLoop:
 	for {
@@ -312,6 +335,9 @@ userAuthLoop:
 
 		var userAuthReq userAuthRequestMsg
 		if packet, err := s.transport.readPacket(); err != nil {
+			if err == io.EOF {
+				return nil, &ServerAuthError{Errors: authErrs}
+			}
 			return nil, err
 		} else if err = Unmarshal(packet, &userAuthReq); err != nil {
 			return nil, err
@@ -322,6 +348,20 @@ userAuthLoop:
 		}
 
 		s.user = userAuthReq.User
+
+		if !displayedBanner && config.BannerCallback != nil {
+			displayedBanner = true
+			msg := config.BannerCallback(s)
+			if msg != "" {
+				bannerMsg := &userAuthBannerMsg{
+					Message: msg,
+				}
+				if err := s.transport.writePacket(Marshal(bannerMsg)); err != nil {
+					return nil, err
+				}
+			}
+		}
+
 		perms = nil
 		authErr := errors.New("no auth passed yet")
 
@@ -447,6 +487,8 @@ userAuthLoop:
 		default:
 			authErr = fmt.Errorf("ssh: unknown method %q", userAuthReq.Method)
 		}
+
+		authErrs = append(authErrs, authErr)
 
 		if config.AuthLogCallback != nil {
 			config.AuthLogCallback(s, userAuthReq.Method, authErr)

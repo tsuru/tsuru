@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
+	"github.com/tsuru/tablecli"
 )
 
 func getHome() string {
@@ -81,11 +82,11 @@ func ShowServicesInstancesList(b []byte) ([]byte, error) {
 	if len(services) == 0 {
 		return []byte{}, nil
 	}
-	table := NewTable()
-	table.Headers = Row([]string{"Services", "Instances"})
+	table := tablecli.NewTable()
+	table.Headers = tablecli.Row([]string{"Services", "Instances"})
 	for _, s := range services {
 		insts := strings.Join(s.Instances, ", ")
-		r := Row([]string{s.Service, insts})
+		r := tablecli.Row([]string{s.Service, insts})
 		table.AddRow(r)
 	}
 	return table.Bytes(), nil
