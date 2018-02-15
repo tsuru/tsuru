@@ -73,12 +73,15 @@ func deployPodNameForApp(a provision.App) (string, error) {
 	return fmt.Sprintf("%s-%s-deploy", name, version), nil
 }
 
-func buildPodNameForApp(a provision.App) (string, error) {
+func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 	version, err := image.AppCurrentImageVersion(a.GetName())
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to retrieve app current image version")
 	}
 	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	if suffix != "" {
+		return fmt.Sprintf("%s-%s-build-%s", name, version, suffix), nil
+	}
 	return fmt.Sprintf("%s-%s-build", name, version), nil
 }
 
@@ -127,7 +130,7 @@ func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() er
 	}
 }
 
-func podsForAppProcess(client *clusterClient, a provision.App, process string) (*apiv1.PodList, error) {
+func podsForAppProcess(client *ClusterClient, a provision.App, process string) (*apiv1.PodList, error) {
 	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
@@ -155,7 +158,7 @@ func podsForAppProcess(client *clusterClient, a provision.App, process string) (
 	return podList, nil
 }
 
-func allNewPodsRunning(client *clusterClient, a provision.App, process string, generation int64) (bool, error) {
+func allNewPodsRunning(client *ClusterClient, a provision.App, process string, generation int64) (bool, error) {
 	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
@@ -209,7 +212,7 @@ func allNewPodsRunning(client *clusterClient, a provision.App, process string, g
 	return newCount > 0, nil
 }
 
-func notReadyPodEvents(client *clusterClient, a provision.App, process string) ([]string, error) {
+func notReadyPodEvents(client *ClusterClient, a provision.App, process string) ([]string, error) {
 	pods, err := podsForAppProcess(client, a, process)
 	if err != nil {
 		return nil, err
@@ -232,7 +235,7 @@ podsLoop:
 	return messages, nil
 }
 
-func waitForPodContainersRunning(client *clusterClient, podName string, timeout time.Duration) error {
+func waitForPodContainersRunning(client *ClusterClient, podName string, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
 		err := waitForPod(client, podName, true, timeout)
 		if err != nil {
@@ -265,7 +268,7 @@ func waitForPodContainersRunning(client *clusterClient, podName string, timeout 
 	})
 }
 
-func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
+func newInvalidPodPhaseError(client *ClusterClient, pod *apiv1.Pod) error {
 	phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
 	if pod.Status.Message != "" {
 		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
@@ -297,7 +300,7 @@ func newInvalidPodPhaseError(client *clusterClient, pod *apiv1.Pod) error {
 	return retErr
 }
 
-func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
+func waitForPod(client *ClusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
 		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
@@ -326,7 +329,7 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 	})
 }
 
-func cleanupPods(client *clusterClient, opts metav1.ListOptions) error {
+func cleanupPods(client *ClusterClient, opts metav1.ListOptions) error {
 	pods, err := client.CoreV1().Pods(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
@@ -344,7 +347,7 @@ func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
 	return &p
 }
 
-func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
+func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions) error {
 	replicas, err := client.AppsV1beta2().ReplicaSets(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
@@ -360,7 +363,7 @@ func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 	return cleanupPods(client, opts)
 }
 
-func cleanupDeployment(client *clusterClient, a provision.App, process string) error {
+func cleanupDeployment(client *ClusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
 	err := client.AppsV1beta2().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
@@ -384,7 +387,7 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 	})
 }
 
-func cleanupDaemonSet(client *clusterClient, name, pool string) error {
+func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
 	err := client.AppsV1beta2().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
@@ -403,7 +406,7 @@ func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 	})
 }
 
-func cleanupPod(client *clusterClient, podName string) error {
+func cleanupPod(client *ClusterClient, podName string) error {
 	noWait := int64(0)
 	err := client.CoreV1().Pods(client.Namespace()).Delete(podName, &metav1.DeleteOptions{
 		GracePeriodSeconds: &noWait,
@@ -414,7 +417,7 @@ func cleanupPod(client *clusterClient, podName string) error {
 	return nil
 }
 
-func podsFromNode(client *clusterClient, nodeName string, labelFilter string) ([]apiv1.Pod, error) {
+func podsFromNode(client *ClusterClient, nodeName string, labelFilter string) ([]apiv1.Pod, error) {
 	podList, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labelFilter,
 		FieldSelector: fields.SelectorFromSet(fields.Set{
@@ -427,13 +430,13 @@ func podsFromNode(client *clusterClient, nodeName string, labelFilter string) ([
 	return podList.Items, nil
 }
 
-func appPodsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error) {
+func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error) {
 	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	l.SetIsService()
 	return podsFromNode(client, nodeName, fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String())
 }
 
-func getServicePort(client *clusterClient, srvName string) (int32, error) {
+func getServicePort(client *ClusterClient, srvName string) (int32, error) {
 	srv, err := client.CoreV1().Services(client.Namespace()).Get(srvName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -552,7 +555,7 @@ func execCommand(opts execOpts) error {
 }
 
 type runSinglePodArgs struct {
-	client     *clusterClient
+	client     *ClusterClient
 	stdout     io.Writer
 	stderr     io.Writer
 	labels     *provision.LabelSet
@@ -631,7 +634,7 @@ func runPod(args runSinglePodArgs) error {
 	return waitForPod(args.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
 
-func getNodeByAddr(client *clusterClient, address string) (*apiv1.Node, error) {
+func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
 	address = tsuruNet.URLToHost(address)
 	node, err := client.CoreV1().Nodes().Get(address, metav1.GetOptions{})
 	if err == nil {
@@ -660,7 +663,7 @@ nodesloop:
 	return nil, provision.ErrNodeNotFound
 }
 
-func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*apiv1.Node, error) {
+func waitNodeReady(client *ClusterClient, addr string, timeout time.Duration) (*apiv1.Node, error) {
 	var node *apiv1.Node
 	waitErr := waitFor(timeout, func() (bool, error) {
 		var err error
@@ -687,7 +690,7 @@ func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*
 
 // Hack until Kubernetes 1.7 is released to ensure daemonsets are scheduled.
 // See https://github.com/kubernetes/kubernetes/pull/45649
-func refreshNodeTaints(client *clusterClient, addr string) {
+func refreshNodeTaints(client *ClusterClient, addr string) {
 	node, err := waitNodeReady(client, addr, 30*time.Minute)
 	if err != nil {
 		log.Errorf("error waiting for node ready: %v", err)

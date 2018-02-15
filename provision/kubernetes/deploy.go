@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -96,7 +97,7 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 }
 
 type createPodParams struct {
-	client           *clusterClient
+	client           *ClusterClient
 	app              provision.App
 	podName          string
 	cmds             []string
@@ -113,7 +114,7 @@ func createBuildPod(params createPodParams) error {
 	}
 	if params.podName == "" {
 		var err error
-		if params.podName, err = buildPodNameForApp(params.app); err != nil {
+		if params.podName, err = buildPodNameForApp(params.app, ""); err != nil {
 			return err
 		}
 	}
@@ -282,7 +283,6 @@ func createPod(params createPodParams) error {
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
-
 }
 
 func extraRegisterCmds(a provision.App) string {
@@ -339,7 +339,7 @@ func ensureServiceAccountForApp(client *clusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels)
 }
 
-func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -459,7 +459,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta2.Deploymen
 }
 
 type serviceManager struct {
-	client *clusterClient
+	client *ClusterClient
 	writer io.Writer
 }
 
@@ -502,7 +502,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
+func createDeployTimeoutError(client *ClusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
 	messages, err := notReadyPodEvents(client, a, processName)
 	var msgErrorPart string
 	if err == nil {
@@ -516,7 +516,7 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
-func monitorDeployment(client *clusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer) error {
+func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
@@ -692,8 +692,8 @@ func getTargetPortForImage(imgName string) int {
 	return portInt
 }
 
-func procfileInspectPod(client *clusterClient, a provision.App, image string) (string, error) {
-	deployPodName, err := deployPodNameForApp(a)
+func procfileInspectPod(client *ClusterClient, a provision.App, image string) (string, error) {
+	deployPodName, err := buildPodNameForApp(a, "procfileInspect")
 	if err != nil {
 		return "", err
 	}
@@ -727,7 +727,7 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 	return stdout.String(), nil
 }
 
-func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage string) (*docker.Image, error) {
+func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (*docker.Image, error) {
 	deployPodName, err := deployPodNameForApp(a)
 	if err != nil {
 		return nil, err
@@ -775,4 +775,44 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		return nil, errors.Errorf("unexpected image inspect response: %q", bufData)
 	}
 	return &imgs[0], nil
+}
+
+func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*provision.TsuruYamlData, error) {
+	const path = "/home/application/current"
+	deployPodName, err := buildPodNameForApp(a, "yamldata")
+	if err != nil {
+		return nil, err
+	}
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	cmdCat := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
+	cmds := []string{"sh", "-c", cmdCat}
+	buf := &bytes.Buffer{}
+	err = runPod(runSinglePodArgs{
+		client: client,
+		stdout: buf,
+		labels: labels,
+		cmds:   cmds,
+		name:   deployPodName,
+		image:  image,
+		pool:   a.GetPool(),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to inspect tsuru.yml: %q", buf.String())
+	}
+	var tsuruYamlData provision.TsuruYamlData
+	err = yaml.Unmarshal(buf.Bytes(), &tsuruYamlData)
+	if err != nil {
+		return nil, err
+	}
+	return &tsuruYamlData, nil
 }

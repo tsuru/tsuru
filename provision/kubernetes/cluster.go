@@ -27,11 +27,11 @@ const (
 	overcommitClusterKey = "overcommit-factor"
 )
 
-var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
 }
 
-type clusterClient struct {
+type ClusterClient struct {
 	kubernetes.Interface `json:"-" bson:"-"`
 	*cluster.Cluster
 	restConfig *rest.Config
@@ -72,25 +72,25 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 	}, nil
 }
 
-func newClusterClient(clust *cluster.Cluster) (*clusterClient, error) {
+func NewClusterClient(clust *cluster.Cluster) (*ClusterClient, error) {
 	cfg, err := getRestConfig(clust)
 	if err != nil {
 		return nil, err
 	}
-	client, err := clientForConfig(cfg)
+	client, err := ClientForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &clusterClient{
+	return &ClusterClient{
 		Cluster:    clust,
 		Interface:  client,
 		restConfig: cfg,
 	}, nil
 }
 
-func (c *clusterClient) SetTimeout(timeout time.Duration) error {
+func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	c.restConfig.Timeout = timeout
-	client, err := clientForConfig(c.restConfig)
+	client, err := ClientForConfig(c.restConfig)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (c *clusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *clusterClient) Namespace() string {
+func (c *ClusterClient) Namespace() string {
 	if c.CustomData == nil || c.CustomData[namespaceClusterKey] == "" {
 		return "default"
 	}
@@ -124,22 +124,30 @@ func (c *clusterClient) configForPool(pool, key string) string {
 	return c.CustomData[key]
 }
 
-func clusterForPool(pool string) (*clusterClient, error) {
+func (c *ClusterClient) RestConfig() *rest.Config {
+	return c.restConfig
+}
+
+func (c *ClusterClient) GetCluster() *cluster.Cluster {
+	return c.Cluster
+}
+
+func clusterForPool(pool string) (*ClusterClient, error) {
 	clust, err := cluster.ForPool(provisionerName, pool)
 	if err != nil {
 		return nil, err
 	}
-	return newClusterClient(clust)
+	return NewClusterClient(clust)
 }
 
-func allClusters() ([]*clusterClient, error) {
+func allClusters() ([]*ClusterClient, error) {
 	clusters, err := cluster.ForProvisioner(provisionerName)
 	if err != nil {
 		return nil, err
 	}
-	clients := make([]*clusterClient, len(clusters))
+	clients := make([]*ClusterClient, len(clusters))
 	for i := range clusters {
-		clients[i], err = newClusterClient(clusters[i])
+		clients[i], err = NewClusterClient(clusters[i])
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +155,7 @@ func allClusters() ([]*clusterClient, error) {
 	return clients, nil
 }
 
-func forEachCluster(fn func(client *clusterClient) error) error {
+func forEachCluster(fn func(client *ClusterClient) error) error {
 	clients, err := allClusters()
 	if err != nil {
 		return err

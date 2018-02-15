@@ -31,6 +31,9 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 	if opts.BuildFromFile {
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
+	if opts.ArchiveURL != "" {
+		return "", errors.New("build image from ArchiveURL is not yet supported by kubernetes builder")
+	}
 	client, err := p.GetClient(app)
 	if err != nil {
 		return "", err
@@ -54,7 +57,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	if err != nil {
 		return "", err
 	}
-	imageInspect, procfileRaw, err := client.ImageInspect(a, imageID, newImage)
+	imageInspect, procfileRaw, tsuruYaml, err := client.ImageInspect(a, imageID, newImage)
 	if err != nil {
 		return "", err
 	}
@@ -74,8 +77,9 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)
 	}
 	imageData := image.ImageMetadata{
-		Name:      newImage,
-		Processes: procfile,
+		Name:       newImage,
+		Processes:  procfile,
+		CustomData: tsuruYamlToCustomData(tsuruYaml),
 	}
 	for k := range imageInspect.Config.ExposedPorts {
 		imageData.ExposedPort = string(k)
@@ -85,4 +89,14 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 		return "", err
 	}
 	return newImage, nil
+}
+
+func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{} {
+	if yaml == nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"healthcheck": yaml.Healthcheck,
+		"hooks":       yaml.Hooks,
+	}
 }

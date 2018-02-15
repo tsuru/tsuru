@@ -26,7 +26,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	buildPodName, err := buildPodNameForApp(a)
+	buildPodName, err := buildPodNameForApp(a, "")
 	if err != nil {
 		return "", err
 	}
@@ -35,7 +35,6 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 		return "", err
 	}
 	defer cleanupPod(client, buildPodName)
-
 	params := createPodParams{
 		app:              a,
 		client:           client,
@@ -52,18 +51,22 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	return buildingImage, nil
 }
 
-func (c *KubeClient) ImageInspect(a provision.App, imageID, newImage string) (*docker.Image, string, error) {
+func (c *KubeClient) ImageInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	inspect, err := imageTagAndPush(client, a, imageID, newImage)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	procfileRaw, err := procfileInspectPod(client, a, imageID)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
-	return inspect, procfileRaw, nil
+	tsuruYamlData, err := loadTsuruYamlPod(client, a, imageID)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	return inspect, procfileRaw, tsuruYamlData, nil
 }
