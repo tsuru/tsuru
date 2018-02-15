@@ -25,7 +25,7 @@ func (t *TeamToken) User() (*User, error) {
 }
 
 func (t *TeamToken) IsAppToken() bool {
-	return true
+	return false
 }
 
 func (t *TeamToken) GetUserName() string {
@@ -33,7 +33,7 @@ func (t *TeamToken) GetUserName() string {
 }
 
 func (t *TeamToken) GetAppName() string {
-	return t.AppName
+	return ""
 }
 
 func (t *TeamToken) Permissions() ([]permission.Permission, error) {

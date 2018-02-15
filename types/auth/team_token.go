@@ -18,7 +18,6 @@ type TeamToken struct {
 	ExpiresAt    *time.Time `json:"expires_at"`
 	LastAccess   *time.Time `json:"last_access"`
 	CreatorEmail string     `json:"creator_email"`
-	AppName      string     `json:"app"`
 	Teams        []string   `json:"teams"`
 	Roles        []string   `json:"roles,omitempty"`
 }
@@ -47,7 +46,6 @@ func NewTeamToken(appName, creatorEmail string) TeamToken {
 	expiresAt := now.Add(365 * 24 * time.Hour)
 	return TeamToken{
 		Token:        generateToken(appName, crypto.SHA1),
-		AppName:      appName,
 		CreatorEmail: creatorEmail,
 		CreatedAt:    now,
 		ExpiresAt:    &expiresAt,

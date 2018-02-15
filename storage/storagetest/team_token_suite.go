@@ -20,18 +20,18 @@ type TeamTokenSuite struct {
 
 func (s *TeamTokenSuite) TestInsertTeamToken(c *check.C) {
 	roles := []string{"app.deploy", "app.token.read"}
-	t := auth.TeamToken{Token: "9382908", AppName: "myapp", Roles: roles}
+	t := auth.TeamToken{Token: "9382908", Teams: []string{"team1", "team2"}, Roles: roles}
 	err := s.TeamTokenService.Insert(t)
 	c.Assert(err, check.IsNil)
 	token, err := s.TeamTokenService.FindByToken(t.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.Token, check.Equals, t.Token)
-	c.Assert(token.AppName, check.Equals, t.AppName)
+	c.Assert(token.Teams, check.DeepEquals, t.Teams)
 	c.Assert(token.Roles, check.DeepEquals, roles)
 }
 
 func (s *TeamTokenSuite) TestInsertDuplicateTeamToken(c *check.C) {
-	t := auth.TeamToken{Token: "9382908", AppName: "myapp"}
+	t := auth.TeamToken{Token: "9382908", Teams: []string{"myapp"}}
 	err := s.TeamTokenService.Insert(t)
 	c.Assert(err, check.IsNil)
 	err = s.TeamTokenService.Insert(t)
@@ -121,26 +121,26 @@ func (s *TeamTokenSuite) TestAuthenticateTeamTokenNotFound(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestAddTeams(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123", Teams: []string{"team1", "team2"}}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 
-	err = s.TeamTokenService.AddTeams(appToken, "team1")
+	err = s.TeamTokenService.AddTeams(appToken, "team3")
 	c.Assert(err, check.IsNil)
 
 	t, err := s.TeamTokenService.FindByToken(appToken.Token)
 	c.Assert(err, check.IsNil)
-	c.Assert(t.Teams, check.DeepEquals, []string{"team1"})
+	c.Assert(t.Teams, check.DeepEquals, []string{"team1", "team2", "team3"})
 }
 
 func (s *TeamTokenSuite) TestAddTeamsTeamTokenNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.AddTeams(appToken, "team1")
 	c.Assert(err, check.ErrorMatches, "team token not found")
 }
 
 func (s *TeamTokenSuite) TestAddTeamsNoDuplicates(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 
@@ -153,7 +153,7 @@ func (s *TeamTokenSuite) TestAddTeamsNoDuplicates(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestRemoveTeams(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 	err = s.TeamTokenService.AddTeams(appToken, "team1", "team2", "team3")
@@ -168,13 +168,13 @@ func (s *TeamTokenSuite) TestRemoveTeams(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestRemoveTeamsTeamTokenNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.RemoveTeams(appToken, "team1")
 	c.Assert(err, check.ErrorMatches, "team token not found")
 }
 
 func (s *TeamTokenSuite) TestRemoveTeamsNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 
@@ -187,7 +187,7 @@ func (s *TeamTokenSuite) TestRemoveTeamsNotFound(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestAddRoles(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole("role1", "app", "")
@@ -202,13 +202,13 @@ func (s *TeamTokenSuite) TestAddRoles(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestAddRolesTeamTokenNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.AddRoles(appToken, "role1")
 	c.Assert(err, check.ErrorMatches, "team token not found")
 }
 
 func (s *TeamTokenSuite) TestAddRolesNoDuplicates(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole("role1", "app", "")
@@ -227,7 +227,7 @@ func (s *TeamTokenSuite) TestAddRolesNoDuplicates(c *check.C) {
 func (s *TeamTokenSuite) TestRemoveRoles(c *check.C) {
 	_, err := permission.NewRole("role1", "app", "")
 	c.Assert(err, check.IsNil)
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err = s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 	err = s.TeamTokenService.AddRoles(appToken, "role1", "role2", "role3")
@@ -242,13 +242,13 @@ func (s *TeamTokenSuite) TestRemoveRoles(c *check.C) {
 }
 
 func (s *TeamTokenSuite) TestRemoveRolesTeamTokenNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.RemoveRoles(appToken, "role1")
 	c.Assert(err, check.ErrorMatches, "team token not found")
 }
 
 func (s *TeamTokenSuite) TestRemoveRolesNotFound(c *check.C) {
-	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	appToken := auth.TeamToken{Token: "123"}
 	err := s.TeamTokenService.Insert(appToken)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole("role1", "app", "")
