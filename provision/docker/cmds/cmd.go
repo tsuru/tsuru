@@ -14,6 +14,7 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/gnuflag"
+	"github.com/tsuru/tablecli"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision/docker/types"
 )
@@ -146,10 +147,10 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	baseConf := conf[""]
 	delete(conf, "")
-	t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
+	t := tablecli.Table{Headers: tablecli.Row([]string{"Name", "Value"})}
 	fmt.Fprintf(context.Stdout, "Log driver [default]: %s\n", baseConf.Driver)
 	for optName, optValue := range baseConf.LogOpts {
-		t.AddRow(cmd.Row([]string{optName, optValue}))
+		t.AddRow(tablecli.Row([]string{optName, optValue}))
 	}
 	if t.Rows() > 0 {
 		t.Sort()
@@ -162,10 +163,10 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	sort.Strings(poolNames)
 	for _, poolName := range poolNames {
 		poolConf := conf[poolName]
-		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
+		t := tablecli.Table{Headers: tablecli.Row([]string{"Name", "Value"})}
 		fmt.Fprintf(context.Stdout, "\nLog driver [pool %s]: %s\n", poolName, poolConf.Driver)
 		for optName, optValue := range poolConf.LogOpts {
-			t.AddRow(cmd.Row([]string{optName, optValue}))
+			t.AddRow(tablecli.Row([]string{optName, optValue}))
 		}
 		if t.Rows() > 0 {
 			t.Sort()

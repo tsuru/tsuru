@@ -749,6 +749,12 @@
   revision = "70e946ec66c3704722539ebf0b8beadf2d43146a"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/tsuru/tablecli"
+  packages = ["."]
+  revision = "82de88f75181e580de044c548755a88b164c658b"
+
+[[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "faddd6128c66c4708f45fdc007f575f75e592a3c"
@@ -839,6 +845,7 @@
   revision = "5686bcde5af20565d8c7a3f66b5441430ac54186"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
@@ -848,10 +855,12 @@
     "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "poly1305",
     "ssh",
     "ssh/terminal"
   ]
-  revision = "5ef0053f77724838734b6945dd364d3847e5de1d"
+  revision = "650f4a345ab4e5b245a3034b110ebc7299e68186"
 
 [[projects]]
   branch = "master"
@@ -1188,6 +1197,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ac50dc28a2117b7c631e7cee59d4e17a63e5638f0f96bf2f6a30ae604bcc459a"
+  inputs-digest = "80cdba741596bea3fe99c78b22bfe04d975fc9fb5a0709d4ddbede6b3436d14a"
   solver-name = "gps-cdcl"
   solver-version = 1
