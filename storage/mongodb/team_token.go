@@ -62,8 +62,8 @@ func (s *TeamTokenService) FindByToken(token string) (*auth.TeamToken, error) {
 	return &results[0], nil
 }
 
-func (s *TeamTokenService) FindByAppName(appName string) ([]auth.TeamToken, error) {
-	return s.findByQuery(bson.M{"app": appName})
+func (s *TeamTokenService) FindByTeam(teamName string) ([]auth.TeamToken, error) {
+	return s.findByQuery(bson.M{"teams": bson.M{"$in": []string{teamName}}})
 }
 
 func (s *TeamTokenService) findByQuery(query bson.M) ([]auth.TeamToken, error) {
