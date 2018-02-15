@@ -986,8 +986,8 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err = auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err = auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
@@ -1005,7 +1005,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	t, err := auth.TeamTokenService().FindByToken(appToken.Token)
+	t, err := auth.TeamTokenService().FindByToken(teamToken.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.DeepEquals, []string{"newrole"})
 	c.Assert(eventtest.EventDesc{
@@ -1013,14 +1013,14 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":token", "value": appToken.Token},
+			{"name": ":token", "value": teamToken.Token},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err := auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err := auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/rolenotfound/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
@@ -1042,15 +1042,15 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":token", "value": appToken.Token},
+			{"name": ":token", "value": teamToken.Token},
 		},
 		ErrorMatches: "role not found",
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err := auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err := auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole("newrole", "team", "")
 	c.Assert(err, check.IsNil)
@@ -1072,10 +1072,10 @@ func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
 func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err = auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err = auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
-	err = auth.TeamTokenService().AddRoles(appToken, "newrole")
+	err = auth.TeamTokenService().AddRoles(teamToken, "newrole")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/1.6/roles/newrole/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
@@ -1094,7 +1094,7 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	fmt.Println(recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	t, err := auth.TeamTokenService().FindByToken(appToken.Token)
+	t, err := auth.TeamTokenService().FindByToken(teamToken.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
@@ -1102,14 +1102,14 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":token", "value": appToken.Token},
+			{"name": ":token", "value": teamToken.Token},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err := auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err := auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/1.6/roles/rolenotfound/apptoken/"+appToken.Token, bytes.NewReader(nil))
 	c.Assert(err, check.IsNil)
@@ -1131,15 +1131,15 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":token", "value": appToken.Token},
+			{"name": ":token", "value": teamToken.Token},
 		},
 		ErrorMatches: "role not found",
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
-	appToken := authTypes.TeamToken{Token: "1234", AppName: "myapp"}
-	err := auth.TeamTokenService().Insert(appToken)
+	teamToken := authTypes.TeamToken{Token: "1234"}
+	err := auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
 	_, err = permission.NewRole("newrole", "team", "")
 	c.Assert(err, check.IsNil)

@@ -235,8 +235,11 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 }
 
 func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
-	token := authTypes.TeamToken{Token: "123", AppName: "abc"}
-	err := auth.TeamTokenService().Insert(token)
+	a := app.App{Name: "abc", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	token := authTypes.TeamToken{Token: "123"}
+	err = auth.TeamTokenService().Insert(token)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)
@@ -248,27 +251,7 @@ func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
 	t := context.GetAuthToken(request)
 	c.Assert(t, check.NotNil)
 	c.Assert(t.GetValue(), check.Equals, token.Token)
-	c.Assert(t.GetAppName(), check.Equals, "abc")
-}
-
-func (s *S) TestAuthTokenMiddlewareWithIncorrectTeamToken(c *check.C) {
-	token := authTypes.TeamToken{Token: "123", AppName: "xyz"}
-	err := auth.TeamTokenService().Insert(token)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:app=abc", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.Token)
-	h, log := doHandler()
-	authTokenMiddleware(recorder, request, h)
-	t := context.GetAuthToken(request)
-	c.Assert(t, check.IsNil)
-	c.Assert(log.called, check.Equals, false)
-	err = context.GetRequestError(request)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*tsuruErrors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	c.Assert(t.GetAppName(), check.Equals, "")
 }
 
 func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *check.C) {
