@@ -19,6 +19,7 @@ type TeamToken struct {
 	LastAccess   *time.Time `json:"last_access"`
 	CreatorEmail string     `json:"creator_email"`
 	AppName      string     `json:"app"`
+	Teams        []string   `json:"teams"`
 	Roles        []string   `json:"roles,omitempty"`
 }
 
@@ -27,6 +28,8 @@ type TeamTokenService interface {
 	FindByToken(string) (*TeamToken, error)
 	FindByAppName(string) ([]TeamToken, error)
 	Authenticate(string) (*TeamToken, error)
+	AddTeams(TeamToken, ...string) error
+	RemoveTeams(TeamToken, ...string) error
 	AddRoles(TeamToken, ...string) error
 	RemoveRoles(TeamToken, ...string) error
 	Delete(TeamToken) error
