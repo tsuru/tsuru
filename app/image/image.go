@@ -515,6 +515,27 @@ func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
 	return "", &InvalidVersionErr{Image: inputImage}
 }
 
+func SplitImageName(imageName string) (repo, tag string) {
+	imgNameSplit := strings.Split(imageName, ":")
+	switch len(imgNameSplit) {
+	case 1:
+		repo = imgNameSplit[0]
+		tag = "latest"
+	case 2:
+		if strings.Contains(imgNameSplit[1], "/") {
+			repo = imageName
+			tag = "latest"
+		} else {
+			repo = imgNameSplit[0]
+			tag = imgNameSplit[1]
+		}
+	default:
+		repo = strings.Join(imgNameSplit[:len(imgNameSplit)-1], ":")
+		tag = imgNameSplit[len(imgNameSplit)-1]
+	}
+	return
+}
+
 func appBasicImageName(appName string) string {
 	return fmt.Sprintf("%s/app-%s", basicImageName("tsuru"), appName)
 }

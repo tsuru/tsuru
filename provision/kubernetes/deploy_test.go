@@ -33,7 +33,7 @@ import (
 func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -245,7 +245,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -306,7 +306,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -430,9 +430,9 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
-		err = cleanupDeployment(s.client.clusterClient, a, "p1")
+		err = cleanupDeployment(s.client.ClusterClient, a, "p1")
 		c.Assert(err, check.IsNil)
-		err = cleanupDeployment(s.client.clusterClient, a, "p2")
+		err = cleanupDeployment(s.client.ClusterClient, a, "p2")
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -440,7 +440,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -485,7 +485,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	}
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -508,7 +508,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -534,7 +534,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	defer config.Unset("docker:uid")
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -658,7 +658,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
 	err := createBuildPod(createPodParams{
-		client:           s.client.clusterClient,
+		client:           s.client.ClusterClient,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
@@ -724,7 +724,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.client.clusterClient,
+		client:           s.client.ClusterClient,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
@@ -841,7 +841,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	defer config.Unset("docker:uid")
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -903,7 +903,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.clusterClient, writer: &buf}
+	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -941,7 +941,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		Name: "myapp-p1",
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.client.clusterClient, a, "p1")
+	cleanupDeployment(s.client.ClusterClient, a, "p1")
 	_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
@@ -965,7 +965,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.clusterClient, writer: &buf}
+	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1024,7 +1024,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		Name: "myapp-p1",
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting healthcheck after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.client.clusterClient, a, "p1")
+	cleanupDeployment(s.client.ClusterClient, a, "p1")
 	_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
@@ -1048,7 +1048,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.clusterClient, writer: &buf}
+	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1111,7 +1111,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1177,7 +1177,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)

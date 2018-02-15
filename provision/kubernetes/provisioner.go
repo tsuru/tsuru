@@ -72,6 +72,10 @@ func init() {
 	})
 }
 
+func GetProvisioner() *kubernetesProvisioner {
+	return &kubernetesProvisioner{}
+}
+
 type kubernetesConfig struct {
 	DeploySidecarImage string
 	DeployInspectImage string
@@ -218,7 +222,7 @@ var stateMap = map[apiv1.PodPhase]provision.Status{
 	apiv1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
@@ -416,7 +420,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	var nodes []provision.Node
 	kubeConf := getKubeConfig()
-	err := forEachCluster(func(c *clusterClient) error {
+	err := forEachCluster(func(c *ClusterClient) error {
 		err := c.SetTimeout(kubeConf.APIShortTimeout)
 		if err != nil {
 			return err
@@ -437,7 +441,7 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 	return nodes, nil
 }
 
-func (p *kubernetesProvisioner) listNodesForCluster(cluster *clusterClient, addressFilter []string) ([]provision.Node, error) {
+func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addressFilter []string) ([]provision.Node, error) {
 	var nodes []provision.Node
 	var addressSet set.Set
 	if len(addressFilter) > 0 {
@@ -568,12 +572,12 @@ func (p *kubernetesProvisioner) NodeForNodeData(nodeData provision.NodeStatusDat
 	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
-func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClient, *kubernetesNodeWrapper, error) {
+func (p *kubernetesProvisioner) findNodeByAddress(address string) (*ClusterClient, *kubernetesNodeWrapper, error) {
 	var (
 		foundNode    *kubernetesNodeWrapper
-		foundCluster *clusterClient
+		foundCluster *ClusterClient
 	)
-	err := forEachCluster(func(c *clusterClient) error {
+	err := forEachCluster(func(c *ClusterClient) error {
 		if foundNode != nil {
 			return nil
 		}
@@ -788,7 +792,7 @@ func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, w
 }
 
 func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
-	err := forEachCluster(func(cluster *clusterClient) error {
+	err := forEachCluster(func(cluster *ClusterClient) error {
 		return cleanupDaemonSet(cluster, name, pool)
 	})
 	if err == cluster.ErrNoCluster {
