@@ -114,6 +114,72 @@ func (s *TeamTokenSuite) TestAuthenticateTeamTokenNotFound(c *check.C) {
 	c.Assert(t, check.IsNil)
 }
 
+func (s *TeamTokenSuite) TestAddTeams(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+
+	err = s.TeamTokenService.AddTeams(appToken, "team1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.TeamTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Teams, check.DeepEquals, []string{"team1"})
+}
+
+func (s *TeamTokenSuite) TestAddTeamsTeamTokenNotFound(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.AddTeams(appToken, "team1")
+	c.Assert(err, check.ErrorMatches, "team token not found")
+}
+
+func (s *TeamTokenSuite) TestAddTeamsNoDuplicates(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+
+	err = s.TeamTokenService.AddTeams(appToken, "team1", "team2", "team1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.TeamTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Teams, check.DeepEquals, []string{"team1", "team2"})
+}
+
+func (s *TeamTokenSuite) TestRemoveTeams(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+	err = s.TeamTokenService.AddTeams(appToken, "team1", "team2", "team3")
+	c.Assert(err, check.IsNil)
+
+	err = s.TeamTokenService.RemoveTeams(appToken, "team2", "team1", "team4")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.TeamTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Teams, check.DeepEquals, []string{"team3"})
+}
+
+func (s *TeamTokenSuite) TestRemoveTeamsTeamTokenNotFound(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.RemoveTeams(appToken, "team1")
+	c.Assert(err, check.ErrorMatches, "team token not found")
+}
+
+func (s *TeamTokenSuite) TestRemoveTeamsNotFound(c *check.C) {
+	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
+	err := s.TeamTokenService.Insert(appToken)
+	c.Assert(err, check.IsNil)
+
+	err = s.TeamTokenService.RemoveTeams(appToken, "team1")
+	c.Assert(err, check.IsNil)
+
+	t, err := s.TeamTokenService.FindByToken(appToken.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Teams, check.HasLen, 0)
+}
+
 func (s *TeamTokenSuite) TestAddRoles(c *check.C) {
 	appToken := auth.TeamToken{Token: "123", AppName: "app1"}
 	err := s.TeamTokenService.Insert(appToken)
