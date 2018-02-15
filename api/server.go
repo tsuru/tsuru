@@ -273,6 +273,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/role/default", AuthorizationRequiredHandler(addDefaultRole))
 	m.Add("1.0", "Delete", "/role/default", AuthorizationRequiredHandler(removeDefaultRole))
 	m.Add("1.0", "Get", "/permissions", AuthorizationRequiredHandler(listPermissions))
+	m.Add("1.6", "Post", "/roles/{name}/apptoken/{token}", AuthorizationRequiredHandler(assignRoleToAppToken))
+	m.Add("1.6", "Delete", "/roles/{name}/apptoken/{token}", AuthorizationRequiredHandler(dissociateRoleFromAppToken))
 
 	m.Add("1.0", "Get", "/debug/goroutines", AuthorizationRequiredHandler(dumpGoroutines))
 	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(indexHandler))
@@ -333,6 +335,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", "POST", "/volumes/{name}/bind", AuthorizationRequiredHandler(volumeBind))
 	m.Add("1.4", "DELETE", "/volumes/{name}/bind", AuthorizationRequiredHandler(volumeUnbind))
 	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
+
+	m.Add("1.6", "GET", "/apps/{app}/tokens", AuthorizationRequiredHandler(appTokenList))
+	m.Add("1.6", "POST", "/apps/{app}/tokens", AuthorizationRequiredHandler(appTokenCreate))
+	m.Add("1.6", "DELETE", "/apps/{app}/tokens/{token}", AuthorizationRequiredHandler(appTokenDelete))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))

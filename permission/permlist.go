@@ -67,6 +67,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.routes",
 	"app.admin.quota",
 	"app.build",
+	"app.token.read",
+	"app.token.create",
+	"app.token.delete",
 ).addWithCtx(
 	"node", []contextType{CtxPool},
 ).add(

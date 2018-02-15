@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -24,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -221,7 +221,6 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
 	err := s.conn.Users().Insert(&user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
@@ -235,29 +234,30 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 }
 
 func (s *S) TestAuthTokenMiddlewareWithAppToken(c *check.C) {
-	token, err := nativeScheme.AppLogin("abc")
+	token := authTypes.AppToken{Token: "123", AppName: "abc"}
+	err := auth.AppTokenService().Insert(token)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+token.Token)
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	t := context.GetAuthToken(request)
-	c.Assert(t.GetValue(), check.Equals, token.GetValue())
+	c.Assert(t, check.NotNil)
+	c.Assert(t.GetValue(), check.Equals, token.Token)
 	c.Assert(t.GetAppName(), check.Equals, "abc")
 }
 
 func (s *S) TestAuthTokenMiddlewareWithIncorrectAppToken(c *check.C) {
-	token, err := nativeScheme.AppLogin("xyz")
+	token := authTypes.AppToken{Token: "123", AppName: "xyz"}
+	err := auth.AppTokenService().Insert(token)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+token.Token)
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	t := context.GetAuthToken(request)
@@ -274,7 +274,6 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer ifyougotozah'ha'dumyoulldie")
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
@@ -287,7 +286,6 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidAPIToken(c *check.C) {
 	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
 	err := s.conn.Users().Insert(&user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
@@ -303,7 +301,6 @@ func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *check.C) {
 	a := app.App{Name: "something", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/?:app=something", nil)
 	c.Assert(err, check.IsNil)
@@ -403,7 +400,6 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, check.IsNil)
@@ -422,7 +418,6 @@ func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, check.IsNil)
@@ -446,7 +441,6 @@ func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, check.IsNil)
@@ -491,7 +485,6 @@ func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, check.IsNil)

@@ -25,6 +25,7 @@ func (t *mongodbBaseTest) SetUpSuite(c *check.C) {
 func (t *mongodbBaseTest) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	err = dbtest.ClearAllCollections(cacheCollection(conn).Database)
 	c.Assert(err, check.IsNil)
 }
@@ -32,6 +33,7 @@ func (t *mongodbBaseTest) SetUpTest(c *check.C) {
 func (t *mongodbBaseTest) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	err = cacheCollection(conn).Database.DropDatabase()
 	c.Assert(err, check.IsNil)
 }

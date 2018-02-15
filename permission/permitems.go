@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2017 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -34,6 +34,10 @@ var (
 	PermAppReadRouter                    = PermissionRegistry.get("app.read.router")                     // [global app team pool]
 	PermAppRun                           = PermissionRegistry.get("app.run")                             // [global app team pool]
 	PermAppRunShell                      = PermissionRegistry.get("app.run.shell")                       // [global app team pool]
+	PermAppToken                         = PermissionRegistry.get("app.token")                           // [global app team pool]
+	PermAppTokenCreate                   = PermissionRegistry.get("app.token.create")                    // [global app team pool]
+	PermAppTokenDelete                   = PermissionRegistry.get("app.token.delete")                    // [global app team pool]
+	PermAppTokenRead                     = PermissionRegistry.get("app.token.read")                      // [global app team pool]
 	PermAppUpdate                        = PermissionRegistry.get("app.update")                          // [global app team pool]
 	PermAppUpdateBind                    = PermissionRegistry.get("app.update.bind")                     // [global app team pool]
 	PermAppUpdateBindVolume              = PermissionRegistry.get("app.update.bind-volume")              // [global app team pool]
