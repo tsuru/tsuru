@@ -865,7 +865,7 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 	})
 }
 
-func runIsolatedCmdPod(client *clusterClient, a provision.App, out, errW io.Writer, cmds []string) error {
+func runIsolatedCmdPod(client *ClusterClient, a provision.App, out, errW io.Writer, cmds []string) error {
 	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,

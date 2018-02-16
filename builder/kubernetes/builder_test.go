@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -92,7 +93,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-yamldata" || container == "myapp-v1-builder-procfileInspect" {
 			w.Write([]byte(""))
@@ -118,7 +119,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-procfileInspect" {
 			w.Write([]byte(`web: test.sh`))
@@ -152,7 +153,7 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-procfileInspect" {
 			w.Write([]byte(`web: my awesome cmd`))

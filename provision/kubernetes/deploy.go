@@ -62,7 +62,7 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	return remotecommand.NewSPDYExecutorForTransports(wrapper, upgradeRoundTripper, method, url)
 }
 
-func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string) error {
+func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -316,7 +316,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 	}, nil
 }
 
-func ensureServiceAccount(client *clusterClient, name string, labels *provision.LabelSet) error {
+func ensureServiceAccount(client *ClusterClient, name string, labels *provision.LabelSet) error {
 	svcAccount := apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -330,7 +330,7 @@ func ensureServiceAccount(client *clusterClient, name string, labels *provision.
 	return nil
 }
 
-func ensureServiceAccountForApp(client *clusterClient, a provision.App) error {
+func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
 		App:         a,
 		Provisioner: provisionerName,
@@ -795,16 +795,16 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 		return nil, err
 	}
 	cmdCat := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
-	cmds := []string{"sh", "-c", cmdCat}
 	buf := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: buf,
+		stderr: buf,
 		labels: labels,
-		cmds:   cmds,
+		cmd:    cmdCat,
 		name:   deployPodName,
 		image:  image,
-		pool:   a.GetPool(),
+		app:    a,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to inspect tsuru.yml: %q", buf.String())

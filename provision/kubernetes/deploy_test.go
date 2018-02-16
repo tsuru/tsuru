@@ -559,7 +559,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.clusterClient}
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -590,8 +590,8 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	s.client.clusterClient.CustomData[overcommitClusterKey] = "3"
-	m := serviceManager{client: s.client.clusterClient}
+	s.client.ClusterClient.CustomData[overcommitClusterKey] = "3"
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -623,9 +623,9 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	s.client.clusterClient.CustomData[overcommitClusterKey] = "3"
-	s.client.clusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
-	m := serviceManager{client: s.client.clusterClient}
+	s.client.ClusterClient.CustomData[overcommitClusterKey] = "3"
+	s.client.ClusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
+	m := serviceManager{client: s.client.ClusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)

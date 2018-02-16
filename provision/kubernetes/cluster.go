@@ -105,7 +105,7 @@ func (c *ClusterClient) Namespace() string {
 	return c.CustomData[namespaceClusterKey]
 }
 
-func (c *clusterClient) OvercommitFactor(pool string) (int64, error) {
+func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 	if c.CustomData == nil {
 		return 1, nil
 	}
@@ -117,7 +117,7 @@ func (c *clusterClient) OvercommitFactor(pool string) (int64, error) {
 	return int64(overcommit), err
 }
 
-func (c *clusterClient) configForPool(pool, key string) string {
+func (c *ClusterClient) configForPool(pool, key string) string {
 	if v, ok := c.CustomData[pool+":"+key]; ok {
 		return v
 	}

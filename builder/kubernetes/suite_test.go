@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -68,7 +69,7 @@ type S struct {
 	client   *clientWrapper
 	p        testProv
 	stream   map[string]streamResult
-	logHook  func(w http.ResponseWriter, r *http.Request)
+	logHook  func(w io.Writer, r *http.Request)
 }
 
 var _ = check.Suite(&S{})
@@ -287,9 +288,15 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 			mu.Unlock()
 		}
 		if stderr := streamMap[apiv1.StreamTypeStderr]; stderr != nil {
-			stderr.Write([]byte("stderr data"))
+			if s.logHook == nil {
+				stderr.Write([]byte("stderr data"))
+			}
 		}
 		if stdout := streamMap[apiv1.StreamTypeStdout]; stdout != nil {
+			if s.logHook != nil {
+				s.logHook(stdout, r)
+				return
+			}
 			stdout.Write([]byte("stdout data"))
 		}
 	}
