@@ -162,7 +162,7 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 		"my-pool:overcommit-factor": "3",
 		"invalid:overcommit-factor": "a",
 	}}
-	client, err := newClusterClient(&c1)
+	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	ovf, err := client.OvercommitFactor("my-pool")
 	c.Assert(err, check.IsNil)
