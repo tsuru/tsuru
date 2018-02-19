@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -795,7 +794,7 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 		return nil, err
 	}
 	cmdCat := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
-	buf := &bytes.Buffer{}
+	buf := new(safe.Buffer)
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: buf,
