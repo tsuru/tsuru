@@ -95,7 +95,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-yamldata" || container == "myapp-v1-builder-procfileInspect" {
+		if container == "myapp-v1-build-yamldata" || container == "myapp-v1-builder-procfile-inspect" {
 			w.Write([]byte(""))
 			return
 		}
@@ -121,7 +121,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-procfileInspect" {
+		if container == "myapp-v1-build-procfile-inspect" {
 			w.Write([]byte(`web: test.sh`))
 			return
 		}
@@ -155,7 +155,7 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-procfileInspect" {
+		if container == "myapp-v1-build-procfile-inspect" {
 			w.Write([]byte(`web: my awesome cmd`))
 			return
 		}
