@@ -9,41 +9,75 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
+func getTeamsPermissions(t auth.Token) (map[string][]string, error) {
+	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
+	teams, err := auth.ListTeams()
+	if err != nil {
+		return nil, err
+	}
+	teamsMap := map[string][]string{}
+	perms, err := t.Permissions()
+	if err != nil {
+		return nil, err
+	}
+	for _, team := range teams {
+		teamCtx := permission.Context(permission.CtxTeam, team.Name)
+		var parent *permission.PermissionScheme
+		for _, p := range permsForTeam {
+			if parent != nil && parent.IsParent(p) {
+				continue
+			}
+			if permission.CheckFromPermList(perms, p, teamCtx) {
+				parent = p
+				teamsMap[team.Name] = append(teamsMap[team.Name], p.FullName())
+			}
+		}
+	}
+	return teamsMap, nil
+}
+
 // title: team token list
-// path: /apps/{app}/tokens
+// path: /teamtokens
 // method: GET
 // produce: application/json
 // responses:
 //   200: List team tokens
 //   204: No content
 //   401: Unauthorized
-func appTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	app, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+func teamTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	tm, err := getTeamsPermissions(t)
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppTokenRead,
-		contextsForApp(&app)...,
+	if len(tm) == 0 {
+		return permission.ErrUnauthorized
+	}
+	teamNames := make([]string, len(tm))
+	i := 0
+	for name := range tm {
+		teamNames[i] = name
+		i++
+	}
+	canRead := permission.Check(t, permission.PermTeamTokenRead,
+		permission.Contexts(permission.CtxTeam, teamNames)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 
-	appTokens, err := auth.TeamTokenService().FindByAppName(app.Name)
+	teamTokens, err := auth.TeamTokenService().FindByTeams(teamNames)
 	if err != nil {
 		return err
 	}
-	if len(appTokens) == 0 {
+	if len(teamTokens) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(appTokens)
+	return json.NewEncoder(w).Encode(teamTokens)
 }
 
 // title: team token create
