@@ -6,28 +6,24 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestTeamTokenList(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
-	err := app.CreateApp(&app1, s.user)
+	teamToken1 := authTypes.TeamToken{Token: "12345", Teams: []string{s.team.Name}}
+	err := auth.TeamTokenService().Insert(teamToken1)
 	c.Assert(err, check.IsNil)
-	appToken := authTypes.TeamToken{Token: "12345", AppName: app1.Name, CreatorEmail: s.team.Name}
-	err = auth.TeamTokenService().Insert(appToken)
+	teamToken2 := authTypes.TeamToken{Token: "abc", Teams: []string{"otherteam"}}
+	err = auth.TeamTokenService().Insert(teamToken2)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.6/apps/%s/tokens", app1.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", "/1.6/teamtokens", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -36,15 +32,14 @@ func (s *S) TestTeamTokenList(c *check.C) {
 	var result []authTypes.TeamToken
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []authTypes.TeamToken{appToken})
+	c.Assert(result, check.DeepEquals, []authTypes.TeamToken{teamToken1})
 }
 
 func (s *S) TestTeamTokenListEmpty(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
-	err := app.CreateApp(&app1, s.user)
+	teamToken := authTypes.TeamToken{Token: "abc", Teams: []string{"otherteam"}}
+	err := auth.TeamTokenService().Insert(teamToken)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.6/apps/%s/tokens", app1.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", "/1.6/teamtokens", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -56,8 +51,7 @@ func (s *S) TestTeamTokenListNoPermission(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/1.6/apps/%s/tokens", app1.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", "/1.6/teamtokens", nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
