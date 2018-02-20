@@ -692,7 +692,7 @@ func getTargetPortForImage(imgName string) int {
 }
 
 func procfileInspectPod(client *ClusterClient, a provision.App, image string) (string, error) {
-	deployPodName, err := buildPodNameForApp(a, "procfileInspect")
+	deployPodName, err := buildPodNameForApp(a, "procfile-inspect")
 	if err != nil {
 		return "", err
 	}
