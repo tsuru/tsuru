@@ -53,32 +53,34 @@ func (s *TeamTokenSuite) TestFindTeamTokenByTokenNotFound(c *check.C) {
 	c.Assert(token, check.IsNil)
 }
 
-func (s *TeamTokenSuite) TestFindTeamTokensByTeam(c *check.C) {
+func (s *TeamTokenSuite) TestFindTeamTokensByTeams(c *check.C) {
 	err := s.TeamTokenService.Insert(auth.TeamToken{Token: "123", Teams: []string{"team1", "team2", "team3"}})
 	c.Assert(err, check.IsNil)
-	err = s.TeamTokenService.Insert(auth.TeamToken{Token: "456", Teams: []string{"team2"}})
+	err = s.TeamTokenService.Insert(auth.TeamToken{Token: "456", Teams: []string{"team2", "team4"}})
 	c.Assert(err, check.IsNil)
 	err = s.TeamTokenService.Insert(auth.TeamToken{Token: "789", Teams: []string{"team1"}})
 	c.Assert(err, check.IsNil)
 
-	tokens, err := s.TeamTokenService.FindByTeam("team1")
+	tokens, err := s.TeamTokenService.FindByTeams([]string{"team1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 2)
 	values := []string{tokens[0].Token, tokens[1].Token}
 	sort.Strings(values)
 	c.Assert(values, check.DeepEquals, []string{"123", "789"})
 
-	tokens, err = s.TeamTokenService.FindByTeam("team3")
+	tokens, err = s.TeamTokenService.FindByTeams([]string{"team3", "team4", "teamnotfound"})
 	c.Assert(err, check.IsNil)
-	c.Assert(tokens, check.HasLen, 1)
-	c.Assert(tokens[0].Token, check.Equals, "123")
+	c.Assert(tokens, check.HasLen, 2)
+	values = []string{tokens[0].Token, tokens[1].Token}
+	sort.Strings(values)
+	c.Assert(values, check.DeepEquals, []string{"123", "456"})
 }
 
-func (s *TeamTokenSuite) TestFindTeamTokenByTeamNotFound(c *check.C) {
+func (s *TeamTokenSuite) TestFindTeamTokenByTeamsNotFound(c *check.C) {
 	t1 := auth.TeamToken{Token: "123", Teams: []string{"team1"}}
 	err := s.TeamTokenService.Insert(t1)
 	c.Assert(err, check.IsNil)
-	teams, err := s.TeamTokenService.FindByTeam("team2")
+	teams, err := s.TeamTokenService.FindByTeams([]string{"team2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.HasLen, 0)
 }

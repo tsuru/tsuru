@@ -25,7 +25,7 @@ type TeamToken struct {
 type TeamTokenService interface {
 	Insert(TeamToken) error
 	FindByToken(string) (*TeamToken, error)
-	FindByTeam(string) ([]TeamToken, error)
+	FindByTeams([]string) ([]TeamToken, error)
 	Authenticate(string) (*TeamToken, error)
 	AddTeams(TeamToken, ...string) error
 	RemoveTeams(TeamToken, ...string) error
