@@ -93,12 +93,10 @@ func (l *eventCleaner) spin() {
 }
 
 type lockUpdater struct {
-	addCh    chan eventID
-	removeCh chan eventID
-	stopCh   chan struct{}
-	once     *sync.Once
-	setMu    sync.Mutex
-	set      map[eventID]struct{}
+	stopCh chan struct{}
+	once   *sync.Once
+	setMu  sync.Mutex
+	set    map[eventID]struct{}
 }
 
 func (l *lockUpdater) start() {
