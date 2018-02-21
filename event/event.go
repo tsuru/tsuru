@@ -889,7 +889,7 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 				evt.Done(err)
 				return nil, err
 			}
-			updater.addCh <- id
+			updater.add(id)
 			return evt, nil
 		}
 		if mgo.IsDup(err) {
@@ -1140,7 +1140,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		}
 	}()
-	updater.removeCh <- e.ID
+	updater.remove(e.ID)
 	conn, err := db.Conn()
 	if err != nil {
 		return err

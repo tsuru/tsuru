@@ -5,6 +5,8 @@
 package event
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/permission"
@@ -49,6 +51,35 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	t1 = evts[0].LockUpdateTime
 	c.Assert(t0, check.DeepEquals, t1)
+}
+
+func (s *S) TestUpdaterRemoveEventStress(c *check.C) {
+	updater.stop()
+	oldUpdateInterval := lockUpdateInterval
+	lockUpdateInterval = time.Millisecond
+	defer func() {
+		updater.stop()
+		lockUpdateInterval = oldUpdateInterval
+	}()
+	wg := sync.WaitGroup{}
+	nGoroutines := 100
+	for i := 0; i < nGoroutines; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			evt, err := New(&Opts{
+				Target:  Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
+				Kind:    permission.PermAppUpdateEnvSet,
+				Owner:   s.token,
+				Allowed: Allowed(permission.PermAppReadEvents),
+			})
+			c.Assert(err, check.IsNil)
+			evt.Done(nil)
+		}(i)
+	}
+	wg.Wait()
+	updater.stop()
+	c.Assert(updater.set, check.HasLen, 0)
 }
 
 func (s *S) TestUpdaterUpdatesMultipleEvents(c *check.C) {
