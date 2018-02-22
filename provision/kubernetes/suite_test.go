@@ -82,7 +82,10 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.clusterClient, err = NewClusterClient(clus)
 	c.Assert(err, check.IsNil)
-	s.client = &kTesting.ClientWrapper{fake.NewSimpleClientset(), s.clusterClient}
+	s.client = &kTesting.ClientWrapper{
+		Clientset:        fake.NewSimpleClientset(),
+		ClusterInterface: s.clusterClient,
+	}
 	s.clusterClient.Interface = s.client
 	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
