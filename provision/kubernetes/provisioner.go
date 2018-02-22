@@ -44,14 +44,12 @@ type kubernetesProvisioner struct{}
 
 var (
 	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.UploadDeployer           = &kubernetesProvisioner{}
 	_ provision.ShellProvisioner         = &kubernetesProvisioner{}
 	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
 	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
 	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
-	_ provision.ImageDeployer            = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
@@ -691,99 +689,6 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		return "", errors.WithStack(err)
 	}
 	return newImage, nil
-}
-
-func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt *event.Event) (string, error) {
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return "", err
-	}
-	if !strings.Contains(imageID, ":") {
-		imageID = fmt.Sprintf("%s:latest", imageID)
-	}
-	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
-	newImage, err := image.AppNewImageName(a.GetName())
-	if err != nil {
-		return "", err
-	}
-	imageInspect, err := imageTagAndPush(client, a, imageID, newImage)
-	if err != nil {
-		return "", err
-	}
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.Errorf("too many ports exposed in Dockerfile, only one allowed: %+v", imageInspect.Config.ExposedPorts)
-	}
-	procfileRaw, err := procfileInspectPod(client, a, imageID)
-	if err != nil {
-		return "", err
-	}
-	procfile := image.GetProcessesFromProcfile(procfileRaw)
-	if len(procfile) == 0 {
-		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
-		cmds := append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
-		if len(cmds) == 0 {
-			return "", errors.New("neither Procfile nor entrypoint and cmd set")
-		}
-		procfile["web"] = cmds
-	}
-	for k, v := range procfile {
-		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)
-	}
-	imageData := image.ImageMetadata{
-		Name:      newImage,
-		Processes: procfile,
-	}
-	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = string(k)
-	}
-	err = imageData.Save()
-	if err != nil {
-		return "", err
-	}
-	manager := &serviceManager{
-		client: client,
-		writer: evt,
-	}
-	err = servicecommon.RunServicePipeline(manager, a, newImage, nil)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return newImage, nil
-}
-
-func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
-	defer archiveFile.Close()
-	if build {
-		return "", errors.New("running UploadDeploy with build=true is not yet supported")
-	}
-	baseImage := image.GetBuildImage(a)
-	buildingImage, err := image.AppNewImageName(a.GetName())
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	deployPodName, err := deployPodNameForApp(a)
-	if err != nil {
-		return "", err
-	}
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return "", err
-	}
-	defer cleanupPod(client, deployPodName)
-	params := createPodParams{
-		app:              a,
-		client:           client,
-		podName:          deployPodName,
-		sourceImage:      baseImage,
-		destinationImage: buildingImage,
-		attachInput:      archiveFile,
-		attachOutput:     evt,
-	}
-	err = createBuildPod(params)
-	if err != nil {
-		return "", err
-	}
-	return p.Deploy(a, buildingImage, evt)
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
