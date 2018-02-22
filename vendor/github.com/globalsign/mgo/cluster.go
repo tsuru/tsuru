@@ -148,16 +148,38 @@ func (cluster *mongoCluster) isMaster(socket *mongoSocket, result *isMasterResul
 	session := newSession(Monotonic, cluster, 10*time.Second)
 	session.setSocket(socket)
 
-	// provide some meta infos on the client,
-	// see https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.rst#connection-handshake
-	// for details
-	metaInfo := bson.M{"driver": bson.M{"name": "mgo", "version": "globalsign"},
-		"os": bson.M{"type": runtime.GOOS, "architecture": runtime.GOARCH}}
+	var cmd = bson.D{{Name: "isMaster", Value: 1}}
 
-	if cluster.appName != "" {
-		metaInfo["application"] = bson.M{"name": cluster.appName}
-	}
-	err := session.Run(bson.D{{Name: "isMaster", Value: 1}, {Name: "client", Value: metaInfo}}, result)
+	// Send client metadata to the server to identify this socket if this is
+	// the first isMaster call only.
+	//
+	// 		isMaster commands issued after the initial connection handshake MUST NOT contain handshake arguments
+	// 		https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.rst#connection-handshake
+	//
+	socket.sendMeta.Do(func() {
+		var meta = bson.M{
+			"driver": bson.M{
+				"name":    "mgo",
+				"version": "globalsign",
+			},
+			"os": bson.M{
+				"type":         runtime.GOOS,
+				"architecture": runtime.GOARCH,
+			},
+		}
+
+		// Include the application name if set
+		if cluster.appName != "" {
+			meta["application"] = bson.M{"name": cluster.appName}
+		}
+
+		cmd = append(cmd, bson.DocElem{
+			Name:  "client",
+			Value: meta,
+		})
+	})
+
+	err := session.Run(cmd, result)
 	session.Close()
 	return err
 }
@@ -660,6 +682,7 @@ func (cluster *mongoCluster) AcquireSocket(mode Mode, slaveOk bool, syncTimeout 
 				time.Sleep(100 * time.Millisecond)
 				continue
 			} else {
+				// We've managed to successfully reconnect to the master, we are no longer abnormaly ended
 				server.Lock()
 				server.abended = false
 				server.Unlock()
