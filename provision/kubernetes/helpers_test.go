@@ -163,7 +163,7 @@ func (s *S) TestWaitFor(c *check.C) {
 }
 
 func (s *S) TestWaitForPodContainersRunning(c *check.C) {
-	err := waitForPodContainersRunning(s.client.ClusterClient, "pod1", 100*time.Millisecond)
+	err := waitForPodContainersRunning(s.clusterClient, "pod1", 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedStates []apiv1.ContainerState
@@ -212,23 +212,23 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 			},
 		})
 		c.Assert(err, check.IsNil)
-		err = waitForPodContainersRunning(s.client.ClusterClient, "pod1", 100*time.Millisecond)
+		err = waitForPodContainersRunning(s.clusterClient, "pod1", 100*time.Millisecond)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {
 			c.Assert(err, check.ErrorMatches, tt.err)
 		}
-		err = cleanupPod(s.client.ClusterClient, "pod1")
+		err = cleanupPod(s.clusterClient, "pod1")
 		c.Assert(err, check.IsNil)
 	}
 }
 
 func (s *S) TestWaitForPod(c *check.C) {
-	srv, wg := s.createDeployReadyServer(c)
-	s.mockfakeNodes(c, srv.URL)
+	srv, wg := s.mock.CreateDeployReadyServer(c)
+	s.mock.MockfakeNodes(c, srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
-	err := waitForPod(s.client.ClusterClient, "pod1", false, 100*time.Millisecond)
+	err := waitForPod(s.clusterClient, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedMessage string
@@ -239,7 +239,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		pod.Status.Message = wantedMessage
 		return false, nil, nil
 	})
-	s.logHook = func(w io.Writer, r *http.Request) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		w.Write([]byte(`my log error`))
 	}
 	tests := []struct {
@@ -305,13 +305,13 @@ func (s *S) TestWaitForPod(c *check.C) {
 			_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(tt.evt)
 			c.Assert(err, check.IsNil)
 		}
-		err = waitForPod(s.client.ClusterClient, "pod1", tt.running, 100*time.Millisecond)
+		err = waitForPod(s.clusterClient, "pod1", tt.running, 100*time.Millisecond)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {
 			c.Assert(err, check.ErrorMatches, tt.err)
 		}
-		err = cleanupPod(s.client.ClusterClient, "pod1")
+		err = cleanupPod(s.clusterClient, "pod1")
 		c.Assert(err, check.IsNil)
 		if tt.evt != nil {
 			err = s.client.CoreV1().Events(s.client.Namespace()).Delete(tt.evt.Name, nil)
@@ -335,7 +335,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 	}
-	err := cleanupPods(s.client.ClusterClient, metav1.ListOptions{
+	err := cleanupPods(s.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
@@ -392,7 +392,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupDeployment(s.client.ClusterClient, a, "p1")
+	err = cleanupDeployment(s.clusterClient, a, "p1")
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -426,7 +426,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupReplicas(s.client.ClusterClient, metav1.ListOptions{
+	err = cleanupReplicas(s.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
@@ -463,7 +463,7 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupDaemonSet(s.client.ClusterClient, "bs", "p1")
+	err = cleanupDaemonSet(s.clusterClient, "bs", "p1")
 	c.Assert(err, check.IsNil)
 	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -497,7 +497,7 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 }
 
 func (s *S) TestGetServicePort(c *check.C) {
-	port, err := getServicePort(s.client.ClusterClient, "notfound")
+	port, err := getServicePort(s.clusterClient, "notfound")
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.CoreV1().Services(s.client.Namespace()).Create(&apiv1.Service{
@@ -507,7 +507,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	port, err = getServicePort(s.client.ClusterClient, "srv1")
+	port, err = getServicePort(s.clusterClient, "srv1")
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.CoreV1().Services(s.client.Namespace()).Create(&apiv1.Service{
@@ -520,7 +520,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	port, err = getServicePort(s.client.ClusterClient, "srv2")
+	port, err = getServicePort(s.clusterClient, "srv2")
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(123))
 }

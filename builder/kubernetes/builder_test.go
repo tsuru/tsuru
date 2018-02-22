@@ -19,7 +19,7 @@ import (
 )
 
 func (s *S) TestBuilderArchiveFile(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -39,7 +39,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 }
 
 func (s *S) TestBuilderArchiveFileWithTag(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	a.TeamOwner = "admin"
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -61,7 +61,7 @@ func (s *S) TestBuilderArchiveFileWithTag(c *check.C) {
 }
 
 func (s *S) TestBuilderArchiveURL(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -84,7 +84,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 }
 
 func (s *S) TestBuilderImageID(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -93,7 +93,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w io.Writer, r *http.Request) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-yamldata" || container == "myapp-v1-builder-procfile-inspect" {
 			w.Write([]byte(""))
@@ -110,7 +110,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 }
 
 func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -119,7 +119,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w io.Writer, r *http.Request) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-procfile-inspect" {
 			w.Write([]byte(`web: test.sh`))
@@ -144,7 +144,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 }
 
 func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -152,8 +152,9 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	s.client.AppsV1beta2()
 	c.Assert(err, check.IsNil)
-	s.logHook = func(w io.Writer, r *http.Request) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		container := r.URL.Query().Get("container")
 		if container == "myapp-v1-build-procfile-inspect" {
 			w.Write([]byte(`web: my awesome cmd`))

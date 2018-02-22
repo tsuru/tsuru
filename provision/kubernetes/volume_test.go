@@ -39,7 +39,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
-	volumes, mounts, err := createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err := createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	expectedVolume := []apiv1.Volume{{
 		Name: volumeName(v.Name),
@@ -120,7 +120,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 		},
 	})
-	volumes, mounts, err = createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
@@ -147,7 +147,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
-	volumes, mounts, err := createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err := createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	expectedVolume := []apiv1.Volume{{
 		Name: volumeName(v.Name),
@@ -175,7 +175,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace()).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	volumes, mounts, err = createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
@@ -197,7 +197,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	volumes, mounts, err := createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err := createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	expectedVolume := []apiv1.Volume{{
 		Name: volumeName(v.Name),
@@ -244,7 +244,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 			},
 		},
 	})
-	volumes, mounts, err = createVolumesForApp(s.client.ClusterClient, a)
+	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
@@ -270,9 +270,9 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	_, _, err = createVolumesForApp(s.client.ClusterClient, a)
+	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
-	err = deleteVolume(s.client.ClusterClient, "v1")
+	err = deleteVolume(s.clusterClient, "v1")
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
