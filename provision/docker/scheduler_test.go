@@ -138,6 +138,62 @@ func (s *S) TestSchedulerScheduleFilteringNodes(c *check.C) {
 	c.Check(node.Address, check.Equals, localURL)
 }
 
+func (s *S) TestFilterNodes(c *check.C) {
+	tests := []struct {
+		nodes    []cluster.Node
+		filter   map[string]struct{}
+		expected []cluster.Node
+	}{
+		{
+			nodes: []cluster.Node{
+				{Address: "n1"},
+				{Address: "n3"},
+				{Address: "n2"},
+				{Address: "n4"},
+			},
+			filter: map[string]struct{}{
+				"n1": {},
+				"n2": {},
+			},
+			expected: []cluster.Node{
+				{Address: "n1"},
+				{Address: "n2"},
+			},
+		},
+		{
+			nodes: []cluster.Node{
+				{Address: "n1"},
+				{Address: "n3"},
+				{Address: "n2"},
+				{Address: "n4"},
+			},
+			filter: nil,
+			expected: []cluster.Node{
+				{Address: "n1"},
+				{Address: "n3"},
+				{Address: "n2"},
+				{Address: "n4"},
+			},
+		},
+		{
+			nodes: []cluster.Node{
+				{Address: "n1"},
+				{Address: "n3"},
+				{Address: "n2"},
+				{Address: "n4"},
+			},
+			filter: map[string]struct{}{
+				"n5": {},
+			},
+			expected: []cluster.Node{},
+		},
+	}
+	for _, tt := range tests {
+		newNodes := filterNodes(tt.nodes, tt.filter)
+		c.Assert(newNodes, check.DeepEquals, tt.expected)
+	}
+}
+
 func (s *S) TestSchedulerScheduleChangesContainerName(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "test-default"}
 	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
