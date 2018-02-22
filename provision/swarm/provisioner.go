@@ -52,7 +52,6 @@ var (
 	_ provision.VolumeProvisioner         = &swarmProvisioner{}
 	_ cluster.InitClusterProvisioner      = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
-	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &swarmProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &swarmProvisioner{}

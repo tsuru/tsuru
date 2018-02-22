@@ -296,26 +296,6 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return deployer.Rollback(opts.App, opts.Image, evt)
 		}
 	}
-
-	// Fallback if provisioner dont't implement BuilderDeploy
-	switch opts.Kind {
-	case DeployImage:
-		if deployer, ok := prov.(provision.ImageDeployer); ok {
-			return deployer.ImageDeploy(opts.App, opts.Image, evt)
-		}
-	case DeployUpload, DeployUploadBuild:
-		if deployer, ok := prov.(provision.UploadDeployer); ok {
-			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
-		}
-	case DeployRebuild:
-		if deployer, ok := prov.(provision.RebuildableDeployer); ok {
-			return deployer.Rebuild(opts.App, evt)
-		}
-	default:
-		if deployer, ok := prov.(provision.ArchiveDeployer); ok {
-			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
-		}
-	}
 	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
 }
 
