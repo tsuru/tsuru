@@ -8,6 +8,8 @@ import (
 	"io"
 	"time"
 
+	"context"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -18,7 +20,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
-	"golang.org/x/net/context"
 )
 
 const (

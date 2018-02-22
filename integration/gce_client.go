@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sort"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
