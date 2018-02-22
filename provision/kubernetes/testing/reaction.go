@@ -38,6 +38,10 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
+const (
+	trueStr = "true"
+)
+
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
@@ -127,10 +131,10 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
 	mu := sync.Mutex{}
 	attachFn := func(w http.ResponseWriter, r *http.Request, cont string) {
-		tty := r.FormValue("tty") == "true"
-		stdin := r.FormValue("stdin") == "true"
-		stdout := r.FormValue("stdout") == "true"
-		stderr := r.FormValue("stderr") == "true"
+		tty := r.FormValue("tty") == trueStr
+		stdin := r.FormValue("stdin") == trueStr
+		stdout := r.FormValue("stdout") == trueStr
+		stderr := r.FormValue("stderr") == trueStr
 		expected := 1
 		if stdin {
 			expected++
@@ -281,7 +285,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			"tsuru.io/pool": a.GetPool(),
 		})
 		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, "true")
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-name"], check.Equals, a.GetName())
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-platform"], check.Equals, a.GetPlatform())
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
