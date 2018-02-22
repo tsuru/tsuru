@@ -18,7 +18,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func (s *S) TestBuilderArchiveFile(c *check.C) {
+func (s *S) TestArchiveFile(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -38,7 +38,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
 }
 
-func (s *S) TestBuilderArchiveFileWithTag(c *check.C) {
+func (s *S) TestArchiveFileWithTag(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	a.TeamOwner = "admin"
 	defer rollback()
@@ -60,7 +60,7 @@ func (s *S) TestBuilderArchiveFileWithTag(c *check.C) {
 	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:mytag")
 }
 
-func (s *S) TestBuilderArchiveURL(c *check.C) {
+func (s *S) TestArchiveURL(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	c.Assert(imgID, check.Equals, "")
 }
 
-func (s *S) TestBuilderImageID(c *check.C) {
+func (s *S) TestImageID(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -109,7 +109,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 }
 
-func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
+func (s *S) TestImageIDWithProcfile(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -143,7 +143,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
-func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
+func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -200,4 +200,28 @@ hooks:
 			},
 		},
 	})
+}
+
+func (s *S) TestImageIDInspectError(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		w.Write([]byte(`x
+ignored docker tag output
+ignored docker push output
+`))
+	}
+	bopts := builder.BuildOpts{
+		ImageID: "test/customimage",
+	}
+	_, err = s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
 }

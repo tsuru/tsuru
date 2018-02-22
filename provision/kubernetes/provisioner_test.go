@@ -7,12 +7,10 @@ package kubernetes
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sort"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -724,8 +722,6 @@ func (s *S) TestStopStart(c *check.C) {
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	data := []byte("archivedata")
-	archive := ioutil.NopCloser(bytes.NewReader(data))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -733,7 +729,14 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 	err = s.p.Destroy(a)
@@ -762,8 +765,6 @@ func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	data := []byte("archivedata")
-	archive := ioutil.NopCloser(bytes.NewReader(data))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -771,7 +772,14 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -788,37 +796,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	})
 }
 
-func (s *S) TestUploadDeploy(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	data := []byte("archivedata")
-	archive := ioutil.NopCloser(bytes.NewReader(data))
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	img, err := s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 2)
-	var depNames []string
-	for _, dep := range deps.Items {
-		depNames = append(depNames, dep.Name)
-	}
-	sort.Strings(depNames)
-	c.Assert(depNames, check.DeepEquals, []string{"myapp-web", "myapp-worker"})
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 2)
-}
-
-func (s *S) TestImageDeploy(c *check.C) {
+func (s *S) TestDeploy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -828,17 +806,14 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		w.Write([]byte(`[
-	{
-		"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
 	}
-]
-ignored docker tag output
-ignored docker push output
-`))
-	}
-	img, err := s.p.ImageDeploy(a, "myimg", evt)
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -848,64 +823,11 @@ ignored docker push output
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
-	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{"run", "mycmd", "arg1"})
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 1)
-}
-
-func (s *S) TestImageDeployInspectError(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
+	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
 	})
-	c.Assert(err, check.IsNil)
-	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		w.Write([]byte(`x
-ignored docker tag output
-ignored docker push output
-`))
-	}
-	_, err = s.p.ImageDeploy(a, "myimg", evt)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
-}
-
-func (s *S) TestImageDeployWithProcfile(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	calls := 0
-	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		calls++
-		if calls == 1 {
-			w.Write([]byte(`[{"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}}]`))
-		} else {
-			w.Write([]byte(`web: my awesome cmd`))
-		}
-	}
-	img, err := s.p.ImageDeploy(a, "myimg", evt)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	c.Assert(calls, check.Equals, 2)
-	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
-	containers := deps.Items[0].Spec.Template.Spec.Containers
-	c.Assert(containers, check.HasLen, 1)
-	c.Assert(containers[0].Command[len(containers[0].Command)-1], check.Matches, `.*my awesome cmd$`)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
