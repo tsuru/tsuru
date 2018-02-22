@@ -250,33 +250,10 @@ type ShellOptions struct {
 	Term   string
 }
 
-// ArchiveDeployer is a provisioner that can deploy archives.
-type ArchiveDeployer interface {
-	ArchiveDeploy(app App, archiveURL string, evt *event.Event) (string, error)
-}
-
-// UploadDeployer is a provisioner that can deploy the application from an
-// uploaded file.
-type UploadDeployer interface {
-	UploadDeploy(app App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error)
-}
-
-// ImageDeployer is a provisioner that can deploy the application from a
-// previously generated image.
-type ImageDeployer interface {
-	ImageDeploy(app App, image string, evt *event.Event) (string, error)
-}
-
 // RollbackableDeployer is a provisioner that allows rolling back to a
 // previously deployed version.
 type RollbackableDeployer interface {
 	Rollback(App, string, *event.Event) (string, error)
-}
-
-// RebuildableDeployer is a provisioner that allows rebuild the last
-// deployed image.
-type RebuildableDeployer interface {
-	Rebuild(App, *event.Event) (string, error)
 }
 
 type BuilderDockerClient interface {
