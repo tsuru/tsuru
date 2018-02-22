@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -18,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
 
