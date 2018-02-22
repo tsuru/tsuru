@@ -125,7 +125,7 @@ func (s *S) TestNodeMetadata(c *check.C) {
 		"a1":    "v3",
 		"a2.a3": "v4",
 	})
-	node.cluster = s.client.ClusterClient
+	node.cluster = s.clusterClient
 	node.cluster.Name = "fakecluster"
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
 		"m2.m3":            "v2",
@@ -143,7 +143,7 @@ func (s *S) TestNodeProvisioner(c *check.C) {
 }
 
 func (s *S) TestNodeUnits(c *check.C) {
-	fakeApp, wait, rollback := s.defaultReactions(c)
+	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	routertest.FakeRouter.Reset()
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
@@ -200,7 +200,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			NodeName: "n1",
 		},
 	})
-	fakeApp, wait, rollback := s.defaultReactions(c)
+	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()

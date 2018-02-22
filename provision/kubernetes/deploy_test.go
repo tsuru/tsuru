@@ -31,9 +31,9 @@ import (
 )
 
 func (s *S) TestServiceManagerDeployService(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -48,7 +48,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -243,9 +243,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -304,9 +304,9 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -426,21 +426,21 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 		var dep *v1beta2.Deployment
-		dep, err = s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
-		err = cleanupDeployment(s.client.ClusterClient, a, "p1")
+		err = cleanupDeployment(s.clusterClient, a, "p1")
 		c.Assert(err, check.IsNil)
-		err = cleanupDeployment(s.client.ClusterClient, a, "p2")
+		err = cleanupDeployment(s.clusterClient, a, "p2")
 		c.Assert(err, check.IsNil)
 	}
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -459,7 +459,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		"p2":  servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &apiv1.Probe{
 		Handler: apiv1.Handler{
@@ -469,13 +469,13 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 	})
-	dep, err = s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -485,7 +485,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	}
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -499,16 +499,16 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep, check.NotNil)
-	daemon, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.Clientset.AppsV1beta2().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon, check.NotNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -532,9 +532,9 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	config.Set("docker:uid", 1001)
 	defer config.Unset("docker:uid")
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -548,7 +548,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &apiv1.PodSecurityContext{
@@ -557,9 +557,9 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -574,7 +574,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
@@ -588,10 +588,10 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 }
 
 func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	s.client.ClusterClient.CustomData[overcommitClusterKey] = "3"
-	m := serviceManager{client: s.client.ClusterClient}
+	s.clusterClient.CustomData[overcommitClusterKey] = "3"
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -606,7 +606,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
@@ -621,11 +621,11 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 }
 
 func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	s.client.ClusterClient.CustomData[overcommitClusterKey] = "3"
-	s.client.ClusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
-	m := serviceManager{client: s.client.ClusterClient}
+	s.clusterClient.CustomData[overcommitClusterKey] = "3"
+	s.clusterClient.CustomData["test-default:"+overcommitClusterKey] = "2"
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -640,7 +640,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
@@ -655,10 +655,10 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 }
 
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createBuildPod(createPodParams{
-		client:           s.client.ClusterClient,
+		client:           s.clusterClient,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
@@ -721,10 +721,10 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 }
 
 func (s *S) TestCreateDeployPodContainers(c *check.C) {
-	a, _, rollback := s.defaultReactions(c)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.client.ClusterClient,
+		client:           s.clusterClient,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
@@ -839,9 +839,9 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	config.Set("docker:uid", 1001)
 	defer config.Unset("docker:uid")
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -873,7 +873,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -900,10 +900,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	defer config.Unset("docker:healthcheck:max-time")
 	config.Set("kubernetes:deployment-progress-timeout", 2)
 	defer config.Unset("kubernetes:deployment-progress-timeout")
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -941,7 +941,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		Name: "myapp-p1",
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.client.ClusterClient, a, "p1")
+	cleanupDeployment(s.clusterClient, a, "p1")
 	_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
@@ -962,10 +962,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	defer config.Unset("docker:healthcheck:max-time")
 	config.Set("kubernetes:deployment-progress-timeout", 2)
 	defer config.Unset("kubernetes:deployment-progress-timeout")
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -991,7 +991,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -1024,7 +1024,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		Name: "myapp-p1",
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting healthcheck after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.client.ClusterClient, a, "p1")
+	cleanupDeployment(s.clusterClient, a, "p1")
 	_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
@@ -1045,10 +1045,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	defer config.Unset("docker:healthcheck:max-time")
 	config.Set("kubernetes:deployment-progress-timeout", 2)
 	defer config.Unset("kubernetes:deployment-progress-timeout")
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.ClusterClient, writer: &buf}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1073,7 +1073,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -1109,9 +1109,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 }
 
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1142,7 +1142,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/provisioner":          provisionerName,
 		"tsuru.io/builder":              "",
 	}
-	_, err = s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
+	_, err = s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace()).Create(&v1beta2.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: s.client.Namespace(),
@@ -1160,7 +1160,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	srvs, err := s.client.CoreV1().Services(s.client.Namespace()).List(metav1.ListOptions{})
@@ -1169,15 +1169,15 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
+	replicas, err := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
-	waitDep := s.deploymentReactions(c)
+	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.ClusterClient}
+	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1195,7 +1195,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	})
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	srvs, err := s.client.CoreV1().Services(s.client.Namespace()).List(metav1.ListOptions{})
