@@ -698,9 +698,21 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		info := fieldInfo{Num: i}
 
 		tag := field.Tag.Get("bson")
-		if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
-			tag = string(field.Tag)
+
+		// Fall-back to JSON struct tag, if feature flag is set.
+		if tag == "" && useJSONTagFallback {
+			tag = field.Tag.Get("json")
 		}
+
+		// If there's no bson/json tag available.
+		if tag == "" {
+			// If there's no tag, and also no tag: value splits (i.e. no colon)
+			// then assume the entire tag is the value
+			if strings.Index(string(field.Tag), ":") < 0 {
+				tag = string(field.Tag)
+			}
+		}
+
 		if tag == "-" {
 			continue
 		}

@@ -343,7 +343,7 @@
     "internal/sasl",
     "internal/scram"
   ]
-  revision = "896bbb89d21253a28cd5a7f8b81fe091410cb94d"
+  revision = "baa28fcb8e7d5dfab92026c0920cb6c9ae72faa2"
 
 [[projects]]
   name = "github.com/go-ini/ini"
