@@ -53,10 +53,8 @@ var (
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
-	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
