@@ -23,7 +23,7 @@ import (
 )
 
 func (s *S) TestManagerDeployNodeContainer(c *check.C) {
-	s.mockfakeNodes(c)
+	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -161,7 +161,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
-	s.mockfakeNodes(c)
+	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -240,7 +240,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
-	s.mockfakeNodes(c)
+	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: nodecontainer.BsDefaultName,
 		Config: docker.Config{
@@ -292,7 +292,7 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
-	s.mockfakeNodes(c)
+	s.mock.MockfakeNodes(c)
 	cluster2 := &cluster.Cluster{
 		Name:        "cluster2",
 		Addresses:   []string{"https://clusteraddr"},
@@ -363,7 +363,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	}
 	s.client.PrependReactor("create", "daemonsets", reaction)
 	s.client.PrependReactor("update", "daemonsets", reaction)
-	s.mockfakeNodes(c)
+	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
