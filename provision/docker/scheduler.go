@@ -87,10 +87,12 @@ func (s *segregatedScheduler) scheduleAnyNode(c *cluster.Cluster, filter map[str
 	if len(nodes) < 1 {
 		return cluster.Node{}, errors.New("There is no Docker node. Add one with `tsuru node-add`")
 	}
+	log.Debugf("[scheduler] Schedule any node with filter %#v possible nodes: %#v", filter, nodes)
 	nodeAddr, _, err := s.minMaxNodes(nodes, "", "")
 	if err != nil {
 		return cluster.Node{}, err
 	}
+	log.Debugf("[scheduler] Schedule any node with filter %#v chosen node: %q", filter, nodeAddr)
 	return cluster.Node{Address: nodeAddr}, nil
 }
 
@@ -378,6 +380,7 @@ func filterNodes(nodes []cluster.Node, filter map[string]struct{}) []cluster.Nod
 		if _, ok := filter[nodes[i].Address]; !ok {
 			nodes[i] = nodes[len(nodes)-1]
 			nodes = nodes[:len(nodes)-1]
+			i--
 		}
 	}
 	return nodes
