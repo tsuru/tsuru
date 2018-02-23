@@ -426,7 +426,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
-	teams, err := auth.ListTeams()
+	teams, err := auth.TeamService().List()
 	if err != nil {
 		return err
 	}
