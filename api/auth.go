@@ -305,7 +305,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		if err == nil {
 			return
 		}
-		rollbackErr := auth.RemoveTeam(changeRequest.NewName)
+		rollbackErr := auth.TeamService().Remove(changeRequest.NewName)
 		if rollbackErr != nil {
 			log.Errorf("error rolling back team creation from %v to %v", name, changeRequest.NewName)
 		}
@@ -324,7 +324,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		}
 		toRollback = append(toRollback, fn)
 	}
-	return auth.RemoveTeam(name)
+	return auth.TeamService().Remove(name)
 }
 
 // title: team create
@@ -402,9 +402,9 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = auth.RemoveTeam(name)
+	err = auth.TeamService().Remove(name)
 	if err != nil {
-		if _, ok := err.(*auth.ErrTeamStillUsed); ok {
+		if _, ok := err.(*authTypes.ErrTeamStillUsed); ok {
 			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
 			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 		}

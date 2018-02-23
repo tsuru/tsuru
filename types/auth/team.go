@@ -22,7 +22,7 @@ type TeamService interface {
 	FindAll() ([]Team, error)
 	FindByName(string) (*Team, error)
 	FindByNames([]string) ([]Team, error)
-	Delete(Team) error
+	Remove(string) error
 }
 
 var (
