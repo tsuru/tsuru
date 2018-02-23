@@ -62,7 +62,7 @@ func limiter() provision.ActionLimiter {
 func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
 	p, ok := prov.(provision.BuilderDeployDockerClient)
 	if !ok {
-		return "", errors.New("provisioner not supported: not implements docker builder")
+		return "", errors.New("provisioner not supported: doesn't implement docker builder")
 	}
 	archiveFullPath := fmt.Sprintf("%s/%s", defaultArchivePath, defaultArchiveName)
 	if opts.BuildFromFile {
@@ -101,7 +101,7 @@ func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, e
 }
 
 func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (string, error) {
-	repo, tag := splitImageName(opts.ImageID)
+	repo, tag := image.SplitImageName(opts.ImageID)
 	imageID := fmt.Sprintf("%s:%s", repo, tag)
 	fmt.Fprintln(evt, "---- Getting process from image ----")
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
@@ -165,7 +165,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 	if err != nil {
 		return "", err
 	}
-	repo, tag := splitImageName(newImage)
+	repo, tag := image.SplitImageName(newImage)
 	err = client.TagImage(imageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
 		return "", err
@@ -228,7 +228,7 @@ func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imag
 	if err != nil {
 		return containerID, err
 	}
-	repo, tag := splitImageName(imageID)
+	repo, tag := image.SplitImageName(imageID)
 	opts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: repo,
@@ -276,27 +276,6 @@ func runCommandInContainer(client provision.BuilderDockerClient, evt *event.Even
 	}
 	waiter.Wait()
 	return cont.ID, nil
-}
-
-func splitImageName(imageName string) (repo, tag string) {
-	imgNameSplit := strings.Split(imageName, ":")
-	switch len(imgNameSplit) {
-	case 1:
-		repo = imgNameSplit[0]
-		tag = "latest"
-	case 2:
-		if strings.Contains(imgNameSplit[1], "/") {
-			repo = imageName
-			tag = "latest"
-		} else {
-			repo = imgNameSplit[0]
-			tag = imgNameSplit[1]
-		}
-	default:
-		repo = strings.Join(imgNameSplit[:len(imgNameSplit)-1], ":")
-		tag = imgNameSplit[len(imgNameSplit)-1]
-	}
-	return
 }
 
 func removeContainer(client provision.BuilderDockerClient, containerID string) error {
