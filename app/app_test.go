@@ -2106,7 +2106,8 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 }
 
 func (s *S) TestIsValid(c *check.C) {
-	err := auth.CreateTeam("noaccessteam", s.user)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("noaccessteam", &u)
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",

@@ -295,7 +295,8 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	err = auth.CreateTeam(changeRequest.NewName, u)
+	user := authTypes.User(*u)
+	err = auth.TeamService().Create(changeRequest.NewName, &user)
 	if err != nil {
 		return err
 	}
@@ -359,7 +360,8 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	err = auth.CreateTeam(name, u)
+	user := authTypes.User(*u)
+	err = auth.TeamService().Create(name, &user)
 	switch err {
 	case authTypes.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}

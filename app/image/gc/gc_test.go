@@ -1,3 +1,7 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package gc
 
 import (
@@ -9,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	authTypes "github.com/tsuru/tsuru/types/auth"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
@@ -62,7 +68,8 @@ func (s *S) SetUpTest(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	s.team = "myteam"
-	err := auth.CreateTeam(s.team, s.user)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(s.team, &u)
 	c.Assert(err, check.IsNil)
 	err = pool.AddPool(pool.AddPoolOptions{
 		Name: "p1",

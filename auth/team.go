@@ -41,6 +41,30 @@ func (t *teamService) Insert(team authTypes.Team) error {
 	return t.storage.Insert(team)
 }
 
+func (t *teamService) Create(name string, user *authTypes.User) error {
+	if user == nil {
+		return errors.New("user cannot be null")
+	}
+	name = strings.TrimSpace(name)
+	team := authTypes.Team{
+		Name:         name,
+		CreatingUser: user.Email,
+	}
+	if err := validateTeam(team); err != nil {
+		return err
+	}
+	err := t.storage.Insert(team)
+	if err != nil {
+		return err
+	}
+	u := User(*user)
+	err = u.AddRolesForEvent(permission.RoleEventTeamCreate, name)
+	if err != nil {
+		log.Errorf("unable to add default roles during team %q creation for %q: %s", name, user.Email, err)
+	}
+	return nil
+}
+
 func (t *teamService) FindAll() ([]authTypes.Team, error) {
 	return t.storage.FindAll()
 }
@@ -82,30 +106,6 @@ func TeamService() authTypes.TeamService {
 		}
 	}
 	return ts
-}
-
-// CreateTeam creates a team and add users to this team.
-func CreateTeam(name string, user *User) error {
-	if user == nil {
-		return errors.New("user cannot be null")
-	}
-	name = strings.TrimSpace(name)
-	team := authTypes.Team{
-		Name:         name,
-		CreatingUser: user.Email,
-	}
-	if err := validateTeam(team); err != nil {
-		return err
-	}
-	err := TeamService().Insert(team)
-	if err != nil {
-		return err
-	}
-	err = user.AddRolesForEvent(permission.RoleEventTeamCreate, name)
-	if err != nil {
-		log.Errorf("unable to add default roles during team %q creation for %q: %s", name, user.Email, err)
-	}
-	return nil
 }
 
 // GetTeam finds a team by name.
