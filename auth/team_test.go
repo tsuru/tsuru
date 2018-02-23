@@ -117,12 +117,12 @@ func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
 }
 
-func (s *S) TestListTeams(c *check.C) {
+func (s *S) TestTeamServiceList(c *check.C) {
 	err := TeamService().Insert(authTypes.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)
 	err = TeamService().Insert(authTypes.Team{Name: "fenring"})
 	c.Assert(err, check.IsNil)
-	teams, err := ListTeams()
+	teams, err := TeamService().List()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.HasLen, 3)
 	names := []string{teams[0].Name, teams[1].Name, teams[2].Name}

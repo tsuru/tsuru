@@ -204,7 +204,7 @@ func routersNames() ([]string, error) {
 }
 
 func teamsNames() ([]string, error) {
-	teams, err := auth.ListTeams()
+	teams, err := auth.TeamService().List()
 	if err != nil {
 		return nil, err
 	}

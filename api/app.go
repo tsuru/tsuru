@@ -298,7 +298,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			if err != permission.ErrTooManyTeams {
 				return err
 			}
-			teams, listErr := auth.ListTeams()
+			teams, listErr := auth.TeamService().List()
 			if listErr != nil {
 				return listErr
 			}

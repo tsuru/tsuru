@@ -52,7 +52,7 @@ func (t *teamService) Create(name string, user *authTypes.User) error {
 	return nil
 }
 
-func (t *teamService) FindAll() ([]authTypes.Team, error) {
+func (t *teamService) List() ([]authTypes.Team, error) {
 	return t.storage.FindAll()
 }
 
@@ -128,8 +128,4 @@ func GetTeamsNames(teams []authTypes.Team) []string {
 		tn[i] = t.Name
 	}
 	return tn
-}
-
-func ListTeams() ([]authTypes.Team, error) {
-	return TeamService().FindAll()
 }
