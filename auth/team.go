@@ -19,21 +19,15 @@ import (
 )
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
+var ts authTypes.TeamService
 
 type ErrTeamStillUsed struct {
 	Apps             []string
 	ServiceInstances []string
 }
 
-func TeamService() authTypes.TeamService {
-	dbDriver, err := storage.GetCurrentDbDriver()
-	if err != nil {
-		dbDriver, err = storage.GetDefaultDbDriver()
-		if err != nil {
-			return nil
-		}
-	}
-	return dbDriver.TeamService
+type teamService struct {
+	storage storage.TeamStorage
 }
 
 func (e *ErrTeamStillUsed) Error() string {
@@ -43,11 +37,51 @@ func (e *ErrTeamStillUsed) Error() string {
 	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
 }
 
+func (t *teamService) Insert(team authTypes.Team) error {
+	return t.storage.Insert(team)
+}
+
+func (t *teamService) FindAll() ([]authTypes.Team, error) {
+	return t.storage.FindAll()
+}
+
+func (t *teamService) FindByName(name string) (*authTypes.Team, error) {
+	return t.storage.FindByName(name)
+}
+
+func (t *teamService) FindByNames(names []string) ([]authTypes.Team, error) {
+	return t.storage.FindByNames(names)
+}
+
+func (t *teamService) Delete(team authTypes.Team) error {
+	return t.storage.Delete(team)
+}
+
+func teamStorage() storage.TeamStorage {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
+	}
+	return dbDriver.TeamStorage
+}
+
 func validateTeam(t authTypes.Team) error {
 	if !teamNameRegexp.MatchString(t.Name) {
 		return authTypes.ErrInvalidTeamName
 	}
 	return nil
+}
+
+func TeamService() authTypes.TeamService {
+	if ts == nil {
+		ts = &teamService{
+			storage: teamStorage(),
+		}
+	}
+	return ts
 }
 
 // CreateTeam creates a team and add users to this team.
@@ -74,7 +108,7 @@ func CreateTeam(name string, user *User) error {
 	return nil
 }
 
-// GetTeam find a team by name.
+// GetTeam finds a team by name.
 func GetTeam(name string) (*authTypes.Team, error) {
 	return TeamService().FindByName(name)
 }
