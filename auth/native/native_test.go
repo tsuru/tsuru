@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
@@ -64,7 +66,7 @@ func (s *S) TestNativeLoginInvalidUser(c *check.C) {
 	params["email"] = "xxxxxxx@globo.com"
 	params["password"] = "xxxxxx"
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, auth.ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestNativeCreateNoPassword(c *check.C) {
@@ -258,5 +260,5 @@ func (s *S) TestNativeRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("timeredbull@globo.com")
-	c.Assert(err, check.Equals, auth.ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

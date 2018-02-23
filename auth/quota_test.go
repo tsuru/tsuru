@@ -11,6 +11,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -36,7 +37,7 @@ func (s *S) TestReserveApp(c *check.C) {
 func (s *S) TestReserveAppUserNotFound(c *check.C) {
 	user := User{Email: "hills@waaaat.com"}
 	err := ReserveApp(&user)
-	c.Assert(err, check.Equals, ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
@@ -134,7 +135,7 @@ func (s *S) TestReleaseAppUserNotFound(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 0},
 	}
 	err := ReleaseApp(user)
-	c.Assert(err, check.Equals, ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {

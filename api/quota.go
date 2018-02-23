@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -31,7 +33,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	email := r.URL.Query().Get(":email")
 	user, err := auth.GetUserByEmail(email)
-	if err == auth.ErrUserNotFound {
+	if err == authTypes.ErrUserNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
 			Message: err.Error(),
@@ -61,7 +63,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return permission.ErrUnauthorized
 	}
 	user, err := auth.GetUserByEmail(email)
-	if err == auth.ErrUserNotFound {
+	if err == authTypes.ErrUserNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
 			Message: err.Error(),

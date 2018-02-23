@@ -20,26 +20,16 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
-
-var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrInvalidKey   = errors.New("invalid key")
-	ErrKeyDisabled  = errors.New("key management is disabled")
-)
-
-type RoleInstance struct {
-	Name         string
-	ContextValue string
-}
 
 type User struct {
 	quota.Quota
 	Email    string
 	Password string
 	APIKey   string
-	Roles    []RoleInstance `bson:",omitempty"`
+	Roles    []authTypes.RoleInstance `bson:",omitempty"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {
@@ -100,7 +90,7 @@ func GetUserByEmail(email string) (*User, error) {
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		return nil, ErrUserNotFound
+		return nil, authTypes.ErrUserNotFound
 	}
 	return &u, nil
 }
@@ -164,7 +154,7 @@ func (u *User) Update() error {
 func (u *User) AddKey(key repository.Key, force bool) error {
 	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
 		if key.Name == "" {
-			return ErrInvalidKey
+			return authTypes.ErrInvalidKey
 		}
 		err := mngr.AddKey(u.Email, key)
 		if err == repository.ErrKeyAlreadyExists && force {
@@ -172,14 +162,14 @@ func (u *User) AddKey(key repository.Key, force bool) error {
 		}
 		return err
 	}
-	return ErrKeyDisabled
+	return authTypes.ErrKeyDisabled
 }
 
 func (u *User) RemoveKey(key repository.Key) error {
 	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
 		return mngr.RemoveKey(u.Email, key)
 	}
-	return ErrKeyDisabled
+	return authTypes.ErrKeyDisabled
 }
 
 func (u *User) ListKeys() (map[string]string, error) {
@@ -194,7 +184,7 @@ func (u *User) ListKeys() (map[string]string, error) {
 		}
 		return keysMap, nil
 	}
-	return nil, ErrKeyDisabled
+	return nil, authTypes.ErrKeyDisabled
 }
 
 func (u *User) createOnRepositoryManager() error {
