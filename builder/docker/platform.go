@@ -82,7 +82,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
-	imageName, tag := splitImageName(imageName)
+	imageName, tag := image.SplitImageName(imageName)
 	var buf safe.Buffer
 	pushOpts := docker.PushImageOptions{
 		Name:              imageName,
