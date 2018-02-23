@@ -631,7 +631,8 @@ func (s *AuthSuite) TestTeamInfoReturns404TeamNotFound(c *check.C) {
 
 func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	teamName := "team-test"
-	err := auth.CreateTeam(teamName, s.user)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(teamName, &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/teams/%v", teamName), nil)
 	c.Assert(err, check.IsNil)

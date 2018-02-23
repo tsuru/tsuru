@@ -311,7 +311,8 @@ func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
-	err := auth.CreateTeam("ateam", s.user)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("ateam", &u)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}
@@ -349,7 +350,8 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 		Scheme:  permission.PermPoolUpdateTeamRemove,
 		Context: permission.Context(permission.CtxPool, "pool1"),
 	})
-	err := auth.CreateTeam("ateam", s.user)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("ateam", &u)
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}

@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -51,11 +52,11 @@ func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = auth.CreateTeam("ateam", &auth.User{})
+	err = auth.TeamService().Create("ateam", &authTypes.User{})
 	c.Assert(err, check.IsNil)
-	err = auth.CreateTeam("test", &auth.User{})
+	err = auth.TeamService().Create("test", &authTypes.User{})
 	c.Assert(err, check.IsNil)
-	err = auth.CreateTeam("pteam", &auth.User{})
+	err = auth.TeamService().Create("pteam", &authTypes.User{})
 	c.Assert(err, check.IsNil)
 }
 
@@ -596,9 +597,9 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	config.Set("routers:router1:type", "hipache")
 	config.Set("routers:router2:type", "hipache")
 	defer config.Unset("routers")
-	err := auth.CreateTeam("pubteam", &auth.User{})
+	err := auth.TeamService().Create("pubteam", &authTypes.User{})
 	c.Assert(err, check.IsNil)
-	err = auth.CreateTeam("team1", &auth.User{})
+	err = auth.TeamService().Create("team1", &authTypes.User{})
 	c.Assert(err, check.IsNil)
 	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}

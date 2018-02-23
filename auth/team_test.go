@@ -20,33 +20,33 @@ func (s *S) TestGetTeamsNames(c *check.C) {
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
 }
 
-func (s *S) TestCreateTeam(c *check.C) {
-	one := User{Email: "king@pos.com"}
-	err := CreateTeam("pos", &one)
+func (s *S) TestTeamServiceCreate(c *check.C) {
+	one := authTypes.User{Email: "king@pos.com"}
+	err := TeamService().Create("pos", &one)
 	c.Assert(err, check.IsNil)
 	team, err := GetTeam("pos")
 	c.Assert(err, check.IsNil)
 	c.Assert(team.CreatingUser, check.Equals, one.Email)
 }
 
-func (s *S) TestCreateTeamDuplicate(c *check.C) {
-	u := User{Email: "king@pos.com"}
-	err := CreateTeam("pos", &u)
+func (s *S) TestTeamServiceCreateDuplicate(c *check.C) {
+	u := authTypes.User{Email: "king@pos.com"}
+	err := TeamService().Create("pos", &u)
 	c.Assert(err, check.IsNil)
-	err = CreateTeam("pos", &u)
+	err = TeamService().Create("pos", &u)
 	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
-func (s *S) TestCreateTeamTrimsName(c *check.C) {
-	u := User{Email: "king@pos.com"}
-	err := CreateTeam("pos    ", &u)
+func (s *S) TestTeamServiceCreateTrimsName(c *check.C) {
+	u := authTypes.User{Email: "king@pos.com"}
+	err := TeamService().Create("pos    ", &u)
 	c.Assert(err, check.IsNil)
 	_, err = GetTeam("pos")
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestCreateTeamValidation(c *check.C) {
-	u := User{Email: "king@pos.com"}
+func (s *S) TestTeamServiceCreateValidation(c *check.C) {
+	u := authTypes.User{Email: "king@pos.com"}
 	var tests = []struct {
 		input string
 		err   error
@@ -67,7 +67,7 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		{"team1", nil},
 	}
 	for _, t := range tests {
-		err := CreateTeam(t.input, &u)
+		err := TeamService().Create(t.input, &u)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}

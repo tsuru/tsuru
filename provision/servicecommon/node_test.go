@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/rebuild"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -38,7 +39,8 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 		Name: "p2",
 	})
 	c.Assert(err, check.IsNil)
-	err = auth.CreateTeam("myteam", u)
+	user := authTypes.User(*u)
+	err = auth.TeamService().Create("myteam", &user)
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&app.App{Name: "myapp1", TeamOwner: "myteam", Pool: "p1"}, u)
 	c.Assert(err, check.IsNil)
