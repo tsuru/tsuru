@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -64,7 +65,7 @@ func (s *S) TestGetUserByEmail(c *check.C) {
 func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *check.C) {
 	u, err := GetUserByEmail("unknown@globo.com")
 	c.Assert(u, check.IsNil)
-	c.Assert(err, check.Equals, ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestGetUserByEmailWithInvalidEmail(c *check.C) {
@@ -96,7 +97,7 @@ func (s *S) TestDeleteUser(c *check.C) {
 	err = u.Delete()
 	c.Assert(err, check.IsNil)
 	user, err := GetUserByEmail(u.Email)
-	c.Assert(err, check.Equals, ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 	c.Assert(user, check.IsNil)
 	c.Assert(repositorytest.Users(), check.HasLen, 0)
 }
@@ -121,7 +122,7 @@ func (s *S) TestAddKeyEmptyName(c *check.C) {
 	defer u.Delete()
 	key := repository.Key{Body: "my-key"}
 	err = u.AddKey(key, false)
-	c.Assert(err, check.Equals, ErrInvalidKey)
+	c.Assert(err, check.Equals, authTypes.ErrInvalidKey)
 }
 
 func (s *S) TestAddDuplicatedKey(c *check.C) {
@@ -161,7 +162,7 @@ func (s *S) TestAddKeyDisabled(c *check.C) {
 	defer u.Delete()
 	key := repository.Key{Name: "my-key", Body: "other-key"}
 	err = u.AddKey(key, false)
-	c.Assert(err, check.Equals, ErrKeyDisabled)
+	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
@@ -197,7 +198,7 @@ func (s *S) TestRemoveKeyDisabled(c *check.C) {
 	defer u.Delete()
 	key := repository.Key{Name: "my-key", Body: "other-key"}
 	err = u.RemoveKey(key)
-	c.Assert(err, check.Equals, ErrKeyDisabled)
+	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
 }
 
 func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
@@ -237,7 +238,7 @@ func (s *S) TestListKeysDisabled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	keys, err := u.ListKeys()
-	c.Assert(err, check.Equals, ErrKeyDisabled)
+	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
 	c.Assert(keys, check.IsNil)
 }
 
@@ -271,7 +272,7 @@ func (s *S) TestListAllUsers(c *check.C) {
 	c.Assert(users, check.HasLen, 1)
 }
 
-type roleInstanceList []RoleInstance
+type roleInstanceList []authTypes.RoleInstance
 
 func (l roleInstanceList) Len() int      { return len(l) }
 func (l roleInstanceList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
@@ -303,7 +304,7 @@ func (s *S) TestUserAddRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u.AddRole("r3", "a")
 	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
-	expected := []RoleInstance{
+	expected := []authTypes.RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
 		{Name: "r1", ContextValue: "c2"},
 		{Name: "r2", ContextValue: "x"},
@@ -321,7 +322,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	u := User{
 		Email:    "me@tsuru.com",
 		Password: "123",
-		Roles: []RoleInstance{
+		Roles: []authTypes.RoleInstance{
 			{Name: "r1", ContextValue: "c1"},
 			{Name: "r1", ContextValue: "c2"},
 			{Name: "r2", ContextValue: "x"},
@@ -333,7 +334,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u.RemoveRole("r1", "c2")
 	c.Assert(err, check.IsNil)
-	expected := []RoleInstance{
+	expected := []authTypes.RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
 		{Name: "r2", ContextValue: "x"},
 	}
@@ -350,7 +351,7 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 	u := User{
 		Email:    "me@tsuru.com",
 		Password: "123",
-		Roles: []RoleInstance{
+		Roles: []authTypes.RoleInstance{
 			{Name: "r1", ContextValue: "c1"},
 			{Name: "r1", ContextValue: "c2"},
 			{Name: "r2", ContextValue: "x"},
@@ -360,7 +361,7 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RemoveRoleFromAllUsers("r1")
 	c.Assert(err, check.IsNil)
-	expected := []RoleInstance{
+	expected := []authTypes.RoleInstance{
 		{Name: "r2", ContextValue: "x"},
 	}
 	sort.Sort(roleInstanceList(expected))
@@ -480,7 +481,7 @@ func (s *S) TestAddRolesForEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	u, err := GetUserByEmail(u1.Email)
 	c.Assert(err, check.IsNil)
-	c.Assert(u.Roles, check.DeepEquals, []RoleInstance{{Name: "r1", ContextValue: "team1"}})
+	c.Assert(u.Roles, check.DeepEquals, []authTypes.RoleInstance{{Name: "r1", ContextValue: "team1"}})
 }
 
 func (s *S) TestUpdateRoleFromAllUsers(c *check.C) {

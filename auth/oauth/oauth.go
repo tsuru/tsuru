@@ -5,13 +5,12 @@
 package oauth
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
-
-	"context"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
 )
 
@@ -155,7 +155,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	}
 	_, err = auth.GetUserByEmail(email)
 	if err != nil {
-		if err != auth.ErrUserNotFound {
+		if err != authTypes.ErrUserNotFound {
 			return nil, err
 		}
 		registrationEnabled, _ := config.GetBool("auth:user-registration")

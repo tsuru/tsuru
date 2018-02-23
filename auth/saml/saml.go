@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -160,7 +161,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	}
 	user, err := auth.GetUserByEmail(req.Email)
 	if err != nil {
-		if err != auth.ErrUserNotFound {
+		if err != authTypes.ErrUserNotFound {
 			return nil, err
 		}
 		registrationEnabled, _ := config.GetBool("auth:user-registration")

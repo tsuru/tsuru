@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/globalsign/mgo/bson"
@@ -25,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -126,7 +127,7 @@ func (s *QuotaSuite) TestGetUserQuotaUserNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, auth.ErrUserNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrUserNotFound.Error()+"\n")
 }
 
 func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
@@ -224,7 +225,7 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, auth.ErrUserNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrUserNotFound.Error()+"\n")
 }
 
 func (s *QuotaSuite) TestGetAppQuota(c *check.C) {

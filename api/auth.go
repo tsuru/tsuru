@@ -34,7 +34,7 @@ const (
 var createDisabledErr = &errors.HTTP{Code: http.StatusUnauthorized, Message: createDisabledMsg}
 
 func handleAuthError(err error) error {
-	if err == auth.ErrUserNotFound {
+	if err == authTypes.ErrUserNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	switch err.(type) {
@@ -222,7 +222,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() { evt.Done(err) }()
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
-		if err == auth.ErrUserNotFound {
+		if err == authTypes.ErrUserNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -577,7 +577,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	err = u.AddKey(key, force)
-	if err == auth.ErrKeyDisabled || err == repository.ErrUserNotFound {
+	if err == authTypes.ErrKeyDisabled || err == repository.ErrUserNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if err == repository.ErrKeyAlreadyExists {
@@ -624,7 +624,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	err = u.RemoveKey(key)
-	if err == auth.ErrKeyDisabled {
+	if err == authTypes.ErrKeyDisabled {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if err == repository.ErrKeyNotFound {
@@ -647,7 +647,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	keys, err := u.ListKeys()
-	if err == auth.ErrKeyDisabled {
+	if err == authTypes.ErrKeyDisabled {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if err != nil {

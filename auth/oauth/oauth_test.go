@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	authTypes "github.com/tsuru/tsuru/types/auth"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -70,7 +72,7 @@ func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, auth.ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
@@ -216,5 +218,5 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("rand@althor.com")
-	c.Assert(err, check.Equals, auth.ErrUserNotFound)
+	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
