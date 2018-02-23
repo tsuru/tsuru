@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -21,20 +20,8 @@ import (
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
 var ts authTypes.TeamService
 
-type ErrTeamStillUsed struct {
-	Apps             []string
-	ServiceInstances []string
-}
-
 type teamService struct {
 	storage storage.TeamStorage
-}
-
-func (e *ErrTeamStillUsed) Error() string {
-	if len(e.Apps) > 0 {
-		return fmt.Sprintf("Apps: %s", strings.Join(e.Apps, ", "))
-	}
-	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
 }
 
 func (t *teamService) Insert(team authTypes.Team) error {
@@ -50,7 +37,7 @@ func (t *teamService) Create(name string, user *authTypes.User) error {
 		Name:         name,
 		CreatingUser: user.Email,
 	}
-	if err := validateTeam(team); err != nil {
+	if err := t.validate(team); err != nil {
 		return err
 	}
 	err := t.storage.Insert(team)
@@ -77,8 +64,36 @@ func (t *teamService) FindByNames(names []string) ([]authTypes.Team, error) {
 	return t.storage.FindByNames(names)
 }
 
-func (t *teamService) Delete(team authTypes.Team) error {
-	return t.storage.Delete(team)
+func (t *teamService) Remove(teamName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var apps []string
+	err = conn.Apps().Find(bson.M{"teams": teamName}).Distinct("name", &apps)
+	if err != nil {
+		return err
+	}
+	if len(apps) > 0 {
+		return &authTypes.ErrTeamStillUsed{Apps: apps}
+	}
+	var serviceInstances []string
+	err = conn.ServiceInstances().Find(bson.M{"teams": teamName}).Distinct("name", &serviceInstances)
+	if err != nil {
+		return err
+	}
+	if len(serviceInstances) > 0 {
+		return &authTypes.ErrTeamStillUsed{ServiceInstances: serviceInstances}
+	}
+	return t.storage.Delete(authTypes.Team{Name: teamName})
+}
+
+func (t *teamService) validate(team authTypes.Team) error {
+	if !teamNameRegexp.MatchString(team.Name) {
+		return authTypes.ErrInvalidTeamName
+	}
+	return nil
 }
 
 func teamStorage() storage.TeamStorage {
@@ -90,13 +105,6 @@ func teamStorage() storage.TeamStorage {
 		}
 	}
 	return dbDriver.TeamStorage
-}
-
-func validateTeam(t authTypes.Team) error {
-	if !teamNameRegexp.MatchString(t.Name) {
-		return authTypes.ErrInvalidTeamName
-	}
-	return nil
 }
 
 func TeamService() authTypes.TeamService {
@@ -120,31 +128,6 @@ func GetTeamsNames(teams []authTypes.Team) []string {
 		tn[i] = t.Name
 	}
 	return tn
-}
-
-func RemoveTeam(teamName string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var apps []string
-	err = conn.Apps().Find(bson.M{"teams": teamName}).Distinct("name", &apps)
-	if err != nil {
-		return err
-	}
-	if len(apps) > 0 {
-		return &ErrTeamStillUsed{Apps: apps}
-	}
-	var serviceInstances []string
-	err = conn.ServiceInstances().Find(bson.M{"teams": teamName}).Distinct("name", &serviceInstances)
-	if err != nil {
-		return err
-	}
-	if len(serviceInstances) > 0 {
-		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
-	}
-	return TeamService().Delete(authTypes.Team{Name: teamName})
 }
 
 func ListTeams() ([]authTypes.Team, error) {

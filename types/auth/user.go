@@ -6,6 +6,8 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/tsuru/tsuru/quota"
 )
@@ -23,8 +25,20 @@ type RoleInstance struct {
 	ContextValue string
 }
 
+type ErrTeamStillUsed struct {
+	Apps             []string
+	ServiceInstances []string
+}
+
 var (
 	ErrUserNotFound = errors.New("user not found")
 	ErrInvalidKey   = errors.New("invalid key")
 	ErrKeyDisabled  = errors.New("key management is disabled")
 )
+
+func (e *ErrTeamStillUsed) Error() string {
+	if len(e.Apps) > 0 {
+		return fmt.Sprintf("Apps: %s", strings.Join(e.Apps, ", "))
+	}
+	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
+}

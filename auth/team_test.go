@@ -86,34 +86,34 @@ func (s *S) TestGetTeam(c *check.C) {
 	c.Assert(t, check.IsNil)
 }
 
-func (s *S) TestRemoveTeam(c *check.C) {
+func (s *S) TestTeamServiceRemove(c *check.C) {
 	team := authTypes.Team{Name: "atreides"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
-	err = RemoveTeam(team.Name)
+	err = TeamService().Remove(team.Name)
 	c.Assert(err, check.IsNil)
 	t, err := GetTeam("atreides")
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
-func (s *S) TestRemoveTeamWithApps(c *check.C) {
+func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
 	team := authTypes.Team{Name: "atreides"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
 	c.Assert(err, check.IsNil)
-	err = RemoveTeam(team.Name)
+	err = TeamService().Remove(team.Name)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")
 }
 
-func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
+func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
 	team := authTypes.Team{Name: "harkonnen"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
 	c.Assert(err, check.IsNil)
-	err = RemoveTeam(team.Name)
+	err = TeamService().Remove(team.Name)
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
 }
 
