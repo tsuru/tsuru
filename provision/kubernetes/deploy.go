@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +30,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -40,6 +43,23 @@ const (
 	buildIntercontainerStatus = buildIntercontainerPath + "/status"
 	buildIntercontainerDone   = buildIntercontainerPath + "/done"
 )
+
+func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+	tlsConfig, err := rest.TLSConfigFor(config)
+	if err != nil {
+		return nil, err
+	}
+	upgradeRoundTripper := spdy.NewSpdyRoundTripper(tlsConfig, true)
+	upgradeRoundTripper.Dialer = &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 10 * time.Second,
+	}
+	wrapper, err := rest.HTTPWrappersForConfig(config, upgradeRoundTripper)
+	if err != nil {
+		return nil, err
+	}
+	return remotecommand.NewSPDYExecutorForTransports(wrapper, upgradeRoundTripper, method, url)
+}
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
@@ -58,7 +78,7 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 		Stderr:    true,
 		TTY:       false,
 	}, scheme.ParameterCodec)
-	exec, err := remotecommand.NewSPDYExecutor(client.restConfig, "POST", req.URL())
+	exec, err := keepAliveSpdyExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}

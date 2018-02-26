@@ -519,7 +519,7 @@ func execCommand(opts execOpts) error {
 		Stderr:    true,
 		TTY:       opts.tty,
 	}, scheme.ParameterCodec)
-	exec, err := remotecommand.NewSPDYExecutor(client.restConfig, "POST", req.URL())
+	exec, err := keepAliveSpdyExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -616,7 +616,10 @@ func runPod(args runSinglePodArgs) error {
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
-	return multiErr.ToError()
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return waitForPod(args.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
 
 func getNodeByAddr(client *clusterClient, address string) (*apiv1.Node, error) {
