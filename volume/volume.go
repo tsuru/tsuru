@@ -75,7 +75,7 @@ func (v *Volume) Validate() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = auth.GetTeam(v.TeamOwner)
+	_, err = auth.TeamService().FindByName(v.TeamOwner)
 	if err != nil {
 		return errors.WithStack(err)
 	}

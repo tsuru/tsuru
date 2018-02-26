@@ -17,7 +17,7 @@ func (s *S) TestTeamServiceCreate(c *check.C) {
 	one := authTypes.User{Email: "king@pos.com"}
 	err := TeamService().Create("pos", &one)
 	c.Assert(err, check.IsNil)
-	team, err := GetTeam("pos")
+	team, err := TeamService().FindByName("pos")
 	c.Assert(err, check.IsNil)
 	c.Assert(team.CreatingUser, check.Equals, one.Email)
 }
@@ -34,7 +34,7 @@ func (s *S) TestTeamServiceCreateTrimsName(c *check.C) {
 	u := authTypes.User{Email: "king@pos.com"}
 	err := TeamService().Create("pos    ", &u)
 	c.Assert(err, check.IsNil)
-	_, err = GetTeam("pos")
+	_, err = TeamService().FindByName("pos")
 	c.Assert(err, check.IsNil)
 }
 
@@ -67,25 +67,13 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 	}
 }
 
-func (s *S) TestGetTeam(c *check.C) {
-	team := authTypes.Team{Name: "symfonia"}
-	err := TeamService().Insert(team)
-	c.Assert(err, check.IsNil)
-	t, err := GetTeam(team.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(t.Name, check.Equals, team.Name)
-	t, err = GetTeam("wat")
-	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
-	c.Assert(t, check.IsNil)
-}
-
 func (s *S) TestTeamServiceRemove(c *check.C) {
 	team := authTypes.Team{Name: "atreides"}
 	err := TeamService().Insert(team)
 	c.Assert(err, check.IsNil)
 	err = TeamService().Remove(team.Name)
 	c.Assert(err, check.IsNil)
-	t, err := GetTeam("atreides")
+	t, err := TeamService().FindByName("atreides")
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
