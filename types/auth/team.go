@@ -18,7 +18,6 @@ type Team struct {
 
 type TeamService interface {
 	Create(string, *User) error
-	Insert(Team) error
 	List() ([]Team, error)
 	FindByName(string) (*Team, error)
 	FindByNames([]string) ([]Team, error)

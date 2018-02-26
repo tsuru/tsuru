@@ -74,7 +74,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.Res
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err := auth.TeamService().Insert(*s.team)
+	err := auth.TeamService().Create(s.team.Name, &authTypes.User{Email: "user@example.com"})
 	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
@@ -264,7 +264,8 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "myteam"}
-	err = auth.TeamService().Insert(t)
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(t.Name, &u)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("username", "mysqltest")
@@ -379,7 +380,8 @@ func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestServiceUpdateReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := authTypes.Team{Name: "some-other-team"}
-	err := auth.TeamService().Insert(t)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &u)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysqlapi",
@@ -436,7 +438,8 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := authTypes.Team{Name: "some-team"}
-	err := auth.TeamService().Insert(t)
+	user := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &user)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysql",
@@ -699,7 +702,8 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	}))
 	defer ts.Close()
 	t := authTypes.Team{Name: "newteam"}
-	err := auth.TeamService().Insert(t)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &u)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()
@@ -721,14 +725,16 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &authTypes.Team{Name: "blaaaa"}
-	auth.TeamService().Insert(*t)
+	user := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &user)
+	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := se.Create()
+	err = se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
@@ -758,7 +764,8 @@ func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeamNoAccess(c *check.C) {
 	t := authTypes.Team{Name: "my-team"}
-	err := auth.TeamService().Insert(t)
+	user := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &user)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "my-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()
@@ -839,7 +846,8 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 
 func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *check.C) {
 	t := authTypes.Team{Name: "alle-da"}
-	err := auth.TeamService().Insert(t)
+	user := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &user)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
@@ -891,8 +899,9 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
-	t := authTypes.Team{Name: "Rammlied"}
-	err := auth.TeamService().Insert(t)
+	t := authTypes.Team{Name: "rammlied"}
+	user := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &user)
 	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
@@ -950,7 +959,8 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 
 func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {
 	t := authTypes.Team{Name: "new-team"}
-	err := auth.TeamService().Insert(t)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(t.Name, &u)
 	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
 	err = se.Create()

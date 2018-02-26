@@ -26,10 +26,6 @@ type teamService struct {
 	storage storage.TeamStorage
 }
 
-func (t *teamService) Insert(team authTypes.Team) error {
-	return t.storage.Insert(team)
-}
-
 func (t *teamService) Create(name string, user *authTypes.User) error {
 	if user == nil {
 		return errors.New("user cannot be null")

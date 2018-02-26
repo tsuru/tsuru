@@ -135,7 +135,8 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
 	team := authTypes.Team{Name: "team"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "g1",

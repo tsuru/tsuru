@@ -62,8 +62,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "Raul"}
-	err = auth.TeamService().Insert(*s.team)
+	s.team = &authTypes.Team{Name: "raul"}
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 }
 

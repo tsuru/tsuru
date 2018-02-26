@@ -54,7 +54,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "cobrateam"}
-	err = auth.TeamService().Insert(*s.team)
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 }
 

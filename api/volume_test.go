@@ -60,7 +60,8 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := pool.AddPool(pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Insert(authTypes.Team{Name: "otherteam"})
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create("otherteam", &u)
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Save()
