@@ -509,7 +509,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Plan = *plan
 	}
 	if teamOwner != "" {
-		team, errTeam := auth.GetTeam(teamOwner)
+		team, errTeam := auth.TeamService().FindByName(teamOwner)
 		if errTeam != nil {
 			return errTeam
 		}
@@ -1118,7 +1118,7 @@ func (app *App) validatePool() error {
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {
-	_, err := auth.GetTeam(app.TeamOwner)
+	_, err := auth.TeamService().FindByName(app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}

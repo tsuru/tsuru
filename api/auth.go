@@ -273,7 +273,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	_, err = auth.GetTeam(name)
+	_, err = auth.TeamService().FindByName(name)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -473,7 +473,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
-	team, err := auth.GetTeam(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

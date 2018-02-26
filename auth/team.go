@@ -7,6 +7,7 @@ package auth
 import (
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ import (
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
 var ts authTypes.TeamService
+var once = &sync.Once{}
 
 type teamService struct {
 	storage storage.TeamStorage
@@ -108,15 +110,10 @@ func teamStorage() storage.TeamStorage {
 }
 
 func TeamService() authTypes.TeamService {
-	if ts == nil {
+	once.Do(func() {
 		ts = &teamService{
 			storage: teamStorage(),
 		}
-	}
+	})
 	return ts
-}
-
-// GetTeam finds a team by name.
-func GetTeam(name string) (*authTypes.Team, error) {
-	return TeamService().FindByName(name)
 }

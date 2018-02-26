@@ -319,7 +319,7 @@ func (si *ServiceInstance) Status(requestID string) (string, error) {
 }
 
 func (si *ServiceInstance) Grant(teamName string) error {
-	team, err := auth.GetTeam(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil {
 		return err
 	}
@@ -327,7 +327,7 @@ func (si *ServiceInstance) Grant(teamName string) error {
 }
 
 func (si *ServiceInstance) Revoke(teamName string) error {
-	team, err := auth.GetTeam(teamName)
+	team, err := auth.TeamService().FindByName(teamName)
 	if err != nil {
 		return err
 	}
