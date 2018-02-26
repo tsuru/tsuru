@@ -120,12 +120,3 @@ func TeamService() authTypes.TeamService {
 func GetTeam(name string) (*authTypes.Team, error) {
 	return TeamService().FindByName(name)
 }
-
-// GetTeamsNames maps teams to a list of team names.
-func GetTeamsNames(teams []authTypes.Team) []string {
-	tn := make([]string, len(teams))
-	for i, t := range teams {
-		tn[i] = t.Name
-	}
-	return tn
-}

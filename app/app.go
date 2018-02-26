@@ -1327,7 +1327,7 @@ func (app *App) GetTeamOwner() string {
 	return app.TeamOwner
 }
 
-// GetTeamsNames returns the names of teams app.
+// GetTeamsName returns the names of the app teams.
 func (app *App) GetTeamsName() []string {
 	return app.Teams
 }
