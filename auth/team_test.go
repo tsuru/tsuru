@@ -68,40 +68,44 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 }
 
 func (s *S) TestTeamServiceRemove(c *check.C) {
-	team := authTypes.Team{Name: "atreides"}
-	err := TeamService().Insert(team)
+	teamName := "atreides"
+	u := authTypes.User(*s.user)
+	err := TeamService().Create(teamName, &u)
 	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(team.Name)
+	err = TeamService().Remove(teamName)
 	c.Assert(err, check.IsNil)
-	t, err := TeamService().FindByName("atreides")
+	t, err := TeamService().FindByName(teamName)
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
-	team := authTypes.Team{Name: "atreides"}
-	err := TeamService().Insert(team)
+	teamName := "atreides"
+	u := authTypes.User(*s.user)
+	err := TeamService().Create(teamName, &u)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{"atreides"}})
+	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(team.Name)
+	err = TeamService().Remove(teamName)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")
 }
 
 func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
-	team := authTypes.Team{Name: "harkonnen"}
-	err := TeamService().Insert(team)
+	teamName := "harkonnen"
+	u := authTypes.User(*s.user)
+	err := TeamService().Create(teamName, &u)
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{"harkonnen"}})
+	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(team.Name)
+	err = TeamService().Remove(teamName)
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
 }
 
 func (s *S) TestTeamServiceList(c *check.C) {
-	err := TeamService().Insert(authTypes.Team{Name: "corrino"})
+	u := authTypes.User(*s.user)
+	err := TeamService().Create("corrino", &u)
 	c.Assert(err, check.IsNil)
-	err = TeamService().Insert(authTypes.Team{Name: "fenring"})
+	err = TeamService().Create("fenring", &u)
 	c.Assert(err, check.IsNil)
 	teams, err := TeamService().List()
 	c.Assert(err, check.IsNil)

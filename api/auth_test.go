@@ -106,9 +106,10 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.team2 = &authTypes.Team{Name: "tsuruteam2"}
-	err = auth.TeamService().Insert(*s.team)
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Insert(*s.team2)
+	err = auth.TeamService().Create(s.team2.Name, &u)
 	c.Assert(err, check.IsNil)
 }
 
@@ -408,7 +409,8 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 	team := authTypes.Team{Name: "timeredbull"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("name=" + team.Name)
 	request, err := http.NewRequest("POST", "/teams", b)
@@ -423,7 +425,8 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 	team := authTypes.Team{Name: "painofsalvation"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -445,7 +448,8 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 
 func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	team := authTypes.Team{Name: "thegathering"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s", team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -483,7 +487,8 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 		Context: permission.Context(permission.CtxTeam, "other-team"),
 	})
 	team := authTypes.Team{Name: "painofsalvation"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -498,7 +503,8 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) {
 	team := authTypes.Team{Name: "evergrey"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -518,7 +524,8 @@ Apps: i-should`
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
 	team := authTypes.Team{Name: "evergrey"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}
 	err = s.conn.ServiceInstances().Insert(si1)
@@ -1656,7 +1663,8 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeam(c *check.C) {
-	err := auth.TeamService().Insert(authTypes.Team{Name: "team1"})
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("team1", &u)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1667,9 +1675,9 @@ func (s *AuthSuite) TestUpdateTeam(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	_, err = auth.GetTeam("team1")
+	_, err = auth.TeamService().FindByName("team1")
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
-	_, err = auth.GetTeam("team9000")
+	_, err = auth.TeamService().FindByName("team9000")
 	c.Assert(err, check.IsNil)
 }
 
@@ -1687,7 +1695,8 @@ func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
-	err := auth.TeamService().Insert(authTypes.Team{Name: "team1"})
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("team1", &u)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1715,7 +1724,8 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	err := auth.TeamService().Insert(authTypes.Team{Name: "team1"})
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("team1", &u)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1727,9 +1737,9 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), check.Equals, "error in \"team1\" -> \"team9000\"\n")
-	_, err = auth.GetTeam("team1")
+	_, err = auth.TeamService().FindByName("team1")
 	c.Assert(err, check.IsNil)
-	_, err = auth.GetTeam("team9000")
+	_, err = auth.TeamService().FindByName("team9000")
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(calls1, check.DeepEquals, [][]string{
 		{"team1", "team9000"},
@@ -1757,7 +1767,8 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
 	}
-	err := auth.TeamService().Insert(authTypes.Team{Name: "team1"})
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create("team1", &u)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("newname=team9000")
 	request, err := http.NewRequest("POST", "/teams/team1", body)
@@ -1772,9 +1783,9 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), check.Equals, "error in \"team1\" -> \"team9000\"\n")
-	_, err = auth.GetTeam("team1")
+	_, err = auth.TeamService().FindByName("team1")
 	c.Assert(err, check.IsNil)
-	_, err = auth.GetTeam("team9000")
+	_, err = auth.TeamService().FindByName("team9000")
 	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
 	c.Assert(calls1, check.DeepEquals, [][]string{
 		{"team1", "team9000"},

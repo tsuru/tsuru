@@ -146,7 +146,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 	s.team = &authTypes.Team{Name: "admin"}
-	err = auth.TeamService().Insert(*s.team)
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 }
 

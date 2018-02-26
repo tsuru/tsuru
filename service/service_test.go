@@ -246,7 +246,8 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	otherTeam := authTypes.Team{Name: "other-team"}
-	err = auth.TeamService().Insert(otherTeam)
+	u := authTypes.User(*s.user)
+	err = auth.TeamService().Create(otherTeam.Name, &u)
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{
 		Name:       "mysql",

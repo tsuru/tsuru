@@ -403,7 +403,8 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 
 func (s *S) TestPoolListHandler(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -453,7 +454,8 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 
 func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	err := auth.TeamService().Insert(team)
+	u := authTypes.User(*s.user)
+	err := auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	perms := []permission.Permission{
 		{

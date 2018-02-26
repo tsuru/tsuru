@@ -100,9 +100,9 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Insert(authTypes.Team{Name: "myteam"})
+	err = auth.TeamService().Create("myteam", &authTypes.User{Email: "mail@example.com"})
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Insert(authTypes.Team{Name: "otherteam"})
+	err = auth.TeamService().Create("otherteam", &authTypes.User{Email: "mail@example.com"})
 	c.Assert(err, check.IsNil)
 	updateConfig(baseConfig)
 }

@@ -59,7 +59,8 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err = auth.TeamService().Insert(*s.team)
+	u := authTypes.User(*user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -837,7 +838,8 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newteam"}
-	err = auth.TeamService().Insert(team)
+	u := authTypes.User(*user)
+	err = auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
@@ -1049,7 +1051,8 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = auth.TeamService().Insert(team)
+	u := authTypes.User(*user)
+	err = auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1087,7 +1090,8 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	err = auth.TeamService().Insert(team)
+	u := authTypes.User(*user)
+	err = auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)

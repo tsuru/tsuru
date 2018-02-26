@@ -59,7 +59,8 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
-	err = auth.TeamService().Insert(s.team)
+	u := authTypes.User(s.user)
+	err = auth.TeamService().Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
