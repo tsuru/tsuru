@@ -5,15 +5,15 @@
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.8.2"
+  version = "v6.0.0"
 
 # Kube specific overrides
 [[override]]
   name = "k8s.io/apimachinery"
-  revision = "kubernetes-1.8.2"
+  revision = "cced8e64b6ca92a8b6afcbfea3353ca016694a45"
 [[override]]
   name = "k8s.io/api"
-  revision = "kubernetes-1.8.2"
+  revision = "0d0b2f481328d8bae556061a08a02175054059f4"
 # END Kube specific overrides
 
 [[constraint]]
