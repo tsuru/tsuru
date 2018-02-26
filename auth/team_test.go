@@ -13,13 +13,6 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestGetTeamsNames(c *check.C) {
-	team := authTypes.Team{Name: "cheese"}
-	team2 := authTypes.Team{Name: "eggs"}
-	teamNames := GetTeamsNames([]authTypes.Team{team, team2})
-	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
-}
-
 func (s *S) TestTeamServiceCreate(c *check.C) {
 	one := authTypes.User{Email: "king@pos.com"}
 	err := TeamService().Create("pos", &one)
