@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -67,7 +68,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 		return teams, nil
 	}
 	ServiceManager.Team = s.mockTeamService
-	service.TeamService = s.mockTeamService
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {

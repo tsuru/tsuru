@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -42,13 +43,14 @@ import (
 )
 
 type DeploySuite struct {
-	conn        *db.Storage
-	logConn     *db.LogStorage
-	token       auth.Token
-	team        *authTypes.Team
-	provisioner *provisiontest.FakeProvisioner
-	builder     *builder.MockBuilder
-	testServer  http.Handler
+	conn            *db.Storage
+	logConn         *db.LogStorage
+	token           auth.Token
+	team            *authTypes.Team
+	provisioner     *provisiontest.FakeProvisioner
+	builder         *builder.MockBuilder
+	testServer      http.Handler
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&DeploySuite{})
@@ -59,9 +61,6 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -121,6 +120,11 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
+	s.mockTeamService = &auth.MockTeamService{}
+	servicemanager.Team = s.mockTeamService
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 }
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
@@ -838,9 +842,9 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newteam"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: team.Name}}, nil
+	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxApp, "g1"),
@@ -1050,10 +1054,6 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "team"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1090,9 +1090,9 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: team.Name}}, nil
+	}
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -35,13 +36,14 @@ import (
 )
 
 type BuildSuite struct {
-	conn        *db.Storage
-	logConn     *db.LogStorage
-	token       auth.Token
-	team        *authTypes.Team
-	provisioner *provisiontest.FakeProvisioner
-	builder     *builder.MockBuilder
-	testServer  http.Handler
+	conn            *db.Storage
+	logConn         *db.LogStorage
+	token           auth.Token
+	team            *authTypes.Team
+	provisioner     *provisiontest.FakeProvisioner
+	builder         *builder.MockBuilder
+	testServer      http.Handler
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&BuildSuite{})
@@ -52,9 +54,6 @@ func (s *BuildSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -117,6 +116,15 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{{Name: s.team.Name}}, nil
+		},
+		OnFindByName: func(_ string) (*authTypes.Team, error) {
+			return &authTypes.Team{Name: s.team.Name}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *BuildSuite) TestBuildHandler(c *check.C) {
@@ -141,7 +149,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	file.Write([]byte("hello world!"))
 	writer.Close()
-	request, err := http.NewRequest("POST", url, &body)
+	request, err := http.NewRequest(http.MethodPost, url, &body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
 	recorder := httptest.NewRecorder()
@@ -188,7 +196,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("tag=mytag&archive-url=http://something.tar.gz"))
+	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("tag=mytag&archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -226,7 +234,7 @@ func (s *BuildSuite) TestBuildWithoutTag(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
+	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()

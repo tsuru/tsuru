@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -298,7 +299,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			if err != permission.ErrTooManyTeams {
 				return err
 			}
-			teams, listErr := auth.TeamService().List()
+			teams, listErr := servicemanager.Team.List()
 			if listErr != nil {
 				return listErr
 			}
@@ -712,7 +713,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -756,7 +757,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}

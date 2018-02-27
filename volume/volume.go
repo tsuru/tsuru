@@ -12,12 +12,12 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth"
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -75,7 +75,7 @@ func (v *Volume) Validate() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = auth.TeamService().FindByName(v.TeamOwner)
+	_, err = servicemanager.Team.FindByName(v.TeamOwner)
 	if err != nil {
 		return errors.WithStack(err)
 	}

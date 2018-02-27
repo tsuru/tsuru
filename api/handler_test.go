@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -50,9 +49,6 @@ func (s *HandlerSuite) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create("tsuruteam", &u)
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 }
@@ -125,9 +121,9 @@ func (r *recorder) WriteHeader(code int) {
 
 func (s *HandlerSuite) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", Handler(errorHandler))
+	RegisterHandler("/apps", http.MethodGet, Handler(errorHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -137,9 +133,9 @@ func (s *HandlerSuite) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c 
 
 func (s *HandlerSuite) TestHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *check.C) {
 	rec := recorder{httptest.NewRecorder(), 0}
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", Handler(errorHandlerWriteHeader))
+	RegisterHandler("/apps", http.MethodGet, Handler(errorHandlerWriteHeader))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(&rec, request)
@@ -150,9 +146,9 @@ func (s *HandlerSuite) TestHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c 
 
 func (s *HandlerSuite) TestHandlerShouldPassAnHandlerWithoutError(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", Handler(simpleHandler))
+	RegisterHandler("/apps", http.MethodGet, Handler(simpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -162,9 +158,9 @@ func (s *HandlerSuite) TestHandlerShouldPassAnHandlerWithoutError(c *check.C) {
 
 func (s *HandlerSuite) TestHandlerShouldSetVersionHeaders(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", Handler(simpleHandler))
+	RegisterHandler("/apps", http.MethodGet, Handler(simpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -175,9 +171,9 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeaders(c *check.C) {
 
 func (s *HandlerSuite) TestHandlerShouldSetVersionHeadersEvenOnFail(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", Handler(errorHandler))
+	RegisterHandler("/apps", http.MethodGet, Handler(errorHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -187,9 +183,9 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeadersEvenOnFail(c *check.C) 
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheAuthorizationHeadIsNotPresent(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedSimpleHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedSimpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -200,10 +196,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheTokenIsInvalid(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "what the token?!")
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedSimpleHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedSimpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -214,10 +210,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerResultIfTheTokenIsOk(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedSimpleHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedSimpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -227,10 +223,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerRes
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeaders(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", s.token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedSimpleHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedSimpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -240,10 +236,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeaders(c
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEvenOnError(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "what the token?!")
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedSimpleHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedSimpleHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -253,10 +249,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEv
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHappen(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedErrorHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedErrorHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -266,10 +262,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErr
 
 func (s *HandlerSuite) TestAuthorizetionRequiredHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *check.C) {
 	rec := recorder{httptest.NewRecorder(), 0}
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedErrorHandlerWriteHeader))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedErrorHandlerWriteHeader))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(&rec, request)
@@ -280,10 +276,10 @@ func (s *HandlerSuite) TestAuthorizetionRequiredHandlerDontCallWriteHeaderIfItHa
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c *check.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedBadRequestHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedBadRequestHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -301,10 +297,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps/my-app/", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps/my-app/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps/{app}/", "GET", AuthorizationRequiredHandler(authorizedOutputHandler))
+	RegisterHandler("/apps/{app}/", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -316,10 +312,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps/your-app", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps/your-app", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps/{app}", "GET", AuthorizationRequiredHandler(authorizedOutputHandler))
+	RegisterHandler("/apps/{app}", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -331,10 +327,10 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
+	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps", "GET", AuthorizationRequiredHandler(authorizedOutputHandler))
+	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -349,7 +345,7 @@ func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/apps/my-app/", nil)
+	request, err := http.NewRequest(http.MethodPost, "/apps/my-app/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	handler := func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -361,7 +357,7 @@ func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *check.C) {
 		c.Assert(a.Lock.AcquireDate, check.NotNil)
 		return nil
 	}
-	RegisterHandler("/apps/{app}/", "POST", AuthorizationRequiredHandler(handler))
+	RegisterHandler("/apps/{app}/", http.MethodPost, AuthorizationRequiredHandler(handler))
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
