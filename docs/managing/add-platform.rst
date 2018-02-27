@@ -15,15 +15,13 @@ Platforms are defined as Dockerfiles and tsuru already have a number of supporte
 - Java_
 - Nodejs_
 - php_
-- Python2_
-- Python3_
+- Python_
 - Ruby_
 - Static_
 
 .. _Static: https://github.com/tsuru/platforms/tree/master/static
 .. _Ruby: https://github.com/tsuru/platforms/tree/master/ruby
-.. _Python3: https://github.com/tsuru/platforms/tree/master/python3
-.. _Python2: https://github.com/tsuru/platforms/tree/master/python
+.. _Python: https://github.com/tsuru/platforms/tree/master/python
 .. _php: https://github.com/tsuru/platforms/tree/master/php
 .. _Nodejs: https://github.com/tsuru/platforms/tree/master/nodejs
 .. _Java: https://github.com/tsuru/platforms/tree/master/java
