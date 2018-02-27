@@ -369,7 +369,7 @@ func (s *AuthSuite) TestLogout(c *check.C) {
 
 func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	teamName := "teamredbull"
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnCreate: func(teamName string, _ *authTypes.User) error {
 			c.Assert(teamName, check.Equals, teamName)
 			return nil
@@ -394,12 +394,12 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateTeamInvalidTeamName(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnCreate: func(_ string, _ *authTypes.User) error {
 			return authTypes.ErrInvalidTeamName
 		},
 	}
-	TeamService = &auth.MockTeamService{}
+	ServiceManager.Team = &auth.MockTeamService{}
 	b := strings.NewReader("ble=bla")
 	request, err := http.NewRequest(http.MethodPost, "/teams", b)
 	c.Assert(err, check.IsNil)
@@ -412,7 +412,7 @@ func (s *AuthSuite) TestCreateTeamInvalidTeamName(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnCreate: func(_ string, _ *authTypes.User) error {
 			return authTypes.ErrTeamAlreadyExists
 		},
@@ -431,7 +431,7 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 	teamName := "painofsalvation"
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnRemove: func(teamName string) error {
 			c.Assert(teamName, check.Equals, teamName)
 			return nil
@@ -454,7 +454,7 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnRemove: func(_ string) error {
 			return authTypes.ErrTeamNotFound
 		},
@@ -469,7 +469,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *check.C) {
-	TeamService = &auth.MockTeamService{}
+	ServiceManager.Team = &auth.MockTeamService{}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamDelete,
 		Context: permission.Context(permission.CtxTeam, "other-team"),
@@ -485,7 +485,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnRemove: func(_ string) error {
 			return &authTypes.ErrTeamStillUsed{Apps: []string{"i-should"}}
 		},
@@ -504,7 +504,7 @@ Apps: i-should
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnRemove: func(_ string) error {
 			return &authTypes.ErrTeamStillUsed{ServiceInstances: []string{"my_nosql", "my_nosql-2"}}
 		},
@@ -523,7 +523,7 @@ Service instances: my_nosql, my_nosql-2
 }
 
 func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
@@ -549,7 +549,7 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 }
 
 func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
@@ -578,7 +578,7 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 }
 
 func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}, {Name: s.team2.Name}}, nil
 		},
@@ -599,7 +599,7 @@ func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}, {Name: s.team2.Name}}, nil
 		},
@@ -619,7 +619,7 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 
 func (s *AuthSuite) TestTeamInfoReturns404TeamNotFound(c *check.C) {
 	teamName := "team-test"
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnFindByName: func(name string) (*authTypes.Team, error) {
 			c.Assert(name, check.Equals, teamName)
 			return nil, authTypes.ErrTeamNotFound
@@ -635,7 +635,7 @@ func (s *AuthSuite) TestTeamInfoReturns404TeamNotFound(c *check.C) {
 
 func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	teamName := "team-test"
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnFindByName: func(name string) (*authTypes.Team, error) {
 			c.Assert(name, check.Equals, teamName)
 			return &authTypes.Team{Name: name}, nil
@@ -1660,7 +1660,7 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 func (s *AuthSuite) TestUpdateTeam(c *check.C) {
 	oldTeamName := "team1"
 	newTeamName := "team9000"
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnFindByName: func(name string) (*authTypes.Team, error) {
 			c.Assert(name, check.Equals, oldTeamName)
 			return &authTypes.Team{Name: name}, nil
@@ -1685,7 +1685,7 @@ func (s *AuthSuite) TestUpdateTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnFindByName: func(_ string) (*authTypes.Team, error) {
 			return nil, authTypes.ErrTeamNotFound
 		},
@@ -1702,7 +1702,7 @@ func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
-	TeamService = &auth.MockTeamService{
+	ServiceManager.Team = &auth.MockTeamService{
 		OnFindByName: func(_ string) (*authTypes.Team, error) {
 			return nil, authTypes.ErrInvalidTeamName
 		},
@@ -1719,7 +1719,7 @@ func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
-	TeamService = &auth.MockTeamService{}
+	ServiceManager.Team = &auth.MockTeamService{}
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string
@@ -1752,7 +1752,7 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
-	TeamService = &auth.MockTeamService{}
+	ServiceManager.Team = &auth.MockTeamService{}
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string
