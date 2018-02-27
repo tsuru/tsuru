@@ -40,6 +40,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/storage"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/net/websocket"
 )
 
@@ -58,6 +59,7 @@ func fatal(err error) {
 }
 
 var tsuruHandlerList []TsuruHandler
+var TeamService authTypes.TeamService
 
 // RegisterHandler inserts a handler on a list of handlers for version 1.0
 func RegisterHandler(path string, method string, h http.Handler) {
@@ -92,6 +94,7 @@ func RunServer(dry bool) http.Handler {
 	}
 	setupDatabase()
 
+	TeamService = auth.TeamService()
 	m := apiRouter.NewRouter()
 
 	for _, handler := range tsuruHandlerList {
