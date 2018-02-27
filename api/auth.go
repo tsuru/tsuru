@@ -273,7 +273,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	_, err = TeamService.FindByName(name)
+	_, err = ServiceManager.Team.FindByName(name)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -296,7 +296,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	user := authTypes.User(*u)
-	err = TeamService.Create(changeRequest.NewName, &user)
+	err = ServiceManager.Team.Create(changeRequest.NewName, &user)
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		if err == nil {
 			return
 		}
-		rollbackErr := TeamService.Remove(changeRequest.NewName)
+		rollbackErr := ServiceManager.Team.Remove(changeRequest.NewName)
 		if rollbackErr != nil {
 			log.Errorf("error rolling back team creation from %v to %v", name, changeRequest.NewName)
 		}
@@ -324,7 +324,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		}
 		toRollback = append(toRollback, fn)
 	}
-	return TeamService.Remove(name)
+	return ServiceManager.Team.Remove(name)
 }
 
 // title: team create
@@ -361,7 +361,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	user := authTypes.User(*u)
-	err = TeamService.Create(name, &user)
+	err = ServiceManager.Team.Create(name, &user)
 	switch err {
 	case authTypes.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -402,7 +402,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = TeamService.Remove(name)
+	err = ServiceManager.Team.Remove(name)
 	if err != nil {
 		if _, ok := err.(*authTypes.ErrTeamStillUsed); ok {
 			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
@@ -426,7 +426,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
-	teams, err := TeamService.List()
+	teams, err := ServiceManager.Team.List()
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
-	team, err := TeamService.FindByName(teamName)
+	team, err := ServiceManager.Team.FindByName(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

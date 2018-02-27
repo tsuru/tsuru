@@ -53,13 +53,17 @@ type TsuruHandler struct {
 	h       http.Handler
 }
 
+type serviceManager struct {
+	Team authTypes.TeamService
+}
+
 func fatal(err error) {
 	fmt.Println(err.Error())
 	log.Fatal(err.Error())
 }
 
 var tsuruHandlerList []TsuruHandler
-var TeamService authTypes.TeamService
+var ServiceManager *serviceManager
 
 // RegisterHandler inserts a handler on a list of handlers for version 1.0
 func RegisterHandler(path string, method string, h http.Handler) {
@@ -84,6 +88,12 @@ func getAuthScheme() (string, error) {
 	return name, err
 }
 
+func setupServices() {
+	ServiceManager = &serviceManager{
+		Team: auth.TeamService(),
+	}
+}
+
 // RunServer starts tsuru API server. The dry parameter indicates whether the
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
@@ -93,8 +103,8 @@ func RunServer(dry bool) http.Handler {
 		stdLog.Fatalf("unable to initialize logging: %v", err)
 	}
 	setupDatabase()
+	setupServices()
 
-	TeamService = auth.TeamService()
 	m := apiRouter.NewRouter()
 
 	for _, handler := range tsuruHandlerList {
