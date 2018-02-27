@@ -277,7 +277,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := ServiceManager.Team.FindByName(teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
@@ -325,7 +325,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := ServiceManager.Team.FindByName(teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
