@@ -11,9 +11,9 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -31,7 +31,6 @@ type Service struct {
 
 var (
 	ErrServiceAlreadyExists = errors.New("Service already exists.")
-	TeamService             = auth.TeamService()
 )
 
 func (s *Service) Get() error {
@@ -162,7 +161,7 @@ func (s *Service) validateOwnerTeams() error {
 	if len(s.OwnerTeams) == 0 {
 		return fmt.Errorf("At least one service team owner is required")
 	}
-	teams, err := TeamService.FindByNames(s.OwnerTeams)
+	teams, err := servicemanager.Team.FindByNames(s.OwnerTeams)
 	if err != nil {
 		return nil
 	}

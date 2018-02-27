@@ -13,7 +13,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -60,9 +59,6 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := pool.AddPool(pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create("otherteam", &u)
-	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Save()
 	c.Assert(err, check.IsNil)
@@ -102,6 +98,9 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 }
 
 func (s *S) TestVolumeListBinded(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
@@ -337,6 +336,9 @@ func (s *S) TestVolumeDelete(c *check.C) {
 }
 
 func (s *S) TestVolumeBind(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
@@ -399,6 +401,9 @@ func (s *S) TestVolumeBind(c *check.C) {
 }
 
 func (s *S) TestVolumeBindConflict(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
@@ -428,6 +433,9 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 }
 
 func (s *S) TestVolumeBindNoRestart(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
@@ -450,6 +458,9 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbind(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -498,6 +509,9 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbindNotFound(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -517,6 +531,9 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}

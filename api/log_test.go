@@ -7,7 +7,6 @@ package api
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"sort"
@@ -17,77 +16,12 @@ import (
 
 	"context"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
 )
-
-type LogSuite struct {
-	conn       *db.Storage
-	logConn    *db.LogStorage
-	token      auth.Token
-	team       *authTypes.Team
-	testServer http.Handler
-}
-
-var _ = check.Suite(&LogSuite{})
-
-func (s *LogSuite) createUserAndTeam(c *check.C) {
-	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	s.team = &authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-}
-
-func (s *LogSuite) SetUpSuite(c *check.C) {
-	config.Set("log:disable-syslog", true)
-	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "tsuru_log_api_tests")
-	config.Set("auth:hash-cost", bcrypt.MinCost)
-	config.Set("repo-manager", "fake")
-	s.testServer = RunServer(true)
-}
-
-func (s *LogSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.logConn, err = db.LogConn()
-	c.Assert(err, check.IsNil)
-	s.createUserAndTeam(c)
-}
-
-func (s *LogSuite) TearDownTest(c *check.C) {
-	s.conn.Close()
-	s.logConn.Close()
-}
-
-func (s *LogSuite) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
-	logConn, err := db.LogConn()
-	c.Assert(err, check.IsNil)
-	defer logConn.Close()
-	logConn.Logs("myapp").Database.DropDatabase()
-}
 
 func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {
 	for i := range logs1 {
@@ -102,6 +36,9 @@ func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {
 }
 
 func (s *S) TestAddLogsHandler(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a1, s.user)
 	c.Assert(err, check.IsNil)
@@ -172,6 +109,9 @@ loop:
 }
 
 func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a1, s.user)
 	c.Assert(err, check.IsNil)

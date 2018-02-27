@@ -13,12 +13,12 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -204,7 +204,7 @@ func routersNames() ([]string, error) {
 }
 
 func teamsNames() ([]string, error) {
-	teams, err := auth.TeamService().List()
+	teams, err := servicemanager.Team.List()
 	if err != nil {
 		return nil, err
 	}

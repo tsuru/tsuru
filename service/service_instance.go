@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -319,7 +320,7 @@ func (si *ServiceInstance) Status(requestID string) (string, error) {
 }
 
 func (si *ServiceInstance) Grant(teamName string) error {
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
 		return err
 	}
@@ -327,7 +328,7 @@ func (si *ServiceInstance) Grant(teamName string) error {
 }
 
 func (si *ServiceInstance) Revoke(teamName string) error {
-	team, err := auth.TeamService().FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
 		return err
 	}
@@ -381,7 +382,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 	if si.TeamOwner == "" {
 		return ErrTeamMandatory
 	}
-	_, err := auth.TeamService().FindByName(si.TeamOwner)
+	_, err := servicemanager.Team.FindByName(si.TeamOwner)
 	if err == authTypes.ErrTeamNotFound {
 		return fmt.Errorf("Team owner doesn't exist")
 	}

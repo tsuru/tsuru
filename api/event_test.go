@@ -48,11 +48,6 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("other-team", &u)
-	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermApp,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),

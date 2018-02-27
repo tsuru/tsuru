@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -39,14 +40,15 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
-	logConn     *db.LogStorage
-	team        *authTypes.Team
-	user        *auth.User
-	token       auth.Token
-	provisioner *provisiontest.FakeProvisioner
-	Pool        string
-	testServer  http.Handler
+	conn            *db.Storage
+	logConn         *db.LogStorage
+	team            *authTypes.Team
+	user            *auth.User
+	token           auth.Token
+	provisioner     *provisiontest.FakeProvisioner
+	Pool            string
+	testServer      http.Handler
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -85,9 +87,6 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 }
 
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
@@ -130,6 +129,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
+	s.mockTeamService = &auth.MockTeamService{}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TearDownTest(c *check.C) {

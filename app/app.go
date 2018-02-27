@@ -40,6 +40,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -509,7 +510,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Plan = *plan
 	}
 	if teamOwner != "" {
-		team, errTeam := auth.TeamService().FindByName(teamOwner)
+		team, errTeam := servicemanager.Team.FindByName(teamOwner)
 		if errTeam != nil {
 			return errTeam
 		}
@@ -1020,7 +1021,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []authTypes.Team {
-	t, _ := auth.TeamService().FindByNames(app.Teams)
+	t, _ := servicemanager.Team.FindByNames(app.Teams)
 	return t
 }
 
@@ -1118,7 +1119,7 @@ func (app *App) validatePool() error {
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {
-	_, err := auth.TeamService().FindByName(app.TeamOwner)
+	_, err := servicemanager.Team.FindByName(app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -1127,18 +1128,13 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
-	var poolTeam bool
 	for _, team := range poolTeams {
 		if team == app.TeamOwner {
-			poolTeam = true
-			break
+			return nil
 		}
 	}
-	if !poolTeam {
-		msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, p.Name)
-		return &tsuruErrors.ValidationError{Message: msg}
-	}
-	return nil
+	msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, p.Name)
+	return &tsuruErrors.ValidationError{Message: msg}
 }
 
 func (app *App) ValidateService(service string) error {
