@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/tsuru/tsuru/safe"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -676,11 +675,12 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 		return "", err
 	}
 	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
-	buf := new(safe.Buffer)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
-		stdout: buf,
-		stderr: buf,
+		stdout: stdout,
+		stderr: stderr,
 		labels: labels,
 		cmd:    cmd,
 		name:   deployPodName,
@@ -688,9 +688,9 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 		app:    a,
 	})
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to inspect Procfile: %q", buf.String())
+		return "", errors.Wrapf(err, "unable to inspect Procfile: stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
-	return buf.String(), nil
+	return stdout.String(), nil
 }
 
 type dockerImageSpec struct {
@@ -718,11 +718,12 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		return nil, err
 	}
 	kubeConf := getKubeConfig()
-	buf := new(safe.Buffer)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
-		stdout: buf,
-		stderr: buf,
+		stdout: stdout,
+		stderr: stderr,
 		labels: labels,
 		cmd: fmt.Sprintf(`
 			docker pull %[1]s >/dev/null
@@ -736,11 +737,11 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		app:        a,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
+		return nil, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
 	var imgs []dockerImageSpec
-	bufData := buf.String()
-	err = json.NewDecoder(buf).Decode(&imgs)
+	bufData := stdout.String()
+	err = json.NewDecoder(stdout).Decode(&imgs)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
 	}
