@@ -31,11 +31,12 @@ import (
 )
 
 type ProvisionSuite struct {
-	conn       *db.Storage
-	team       *authTypes.Team
-	user       *auth.User
-	token      auth.Token
-	testServer http.Handler
+	conn            *db.Storage
+	team            *authTypes.Team
+	user            *auth.User
+	token           auth.Token
+	testServer      http.Handler
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&ProvisionSuite{})
@@ -54,6 +55,19 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	s.testServer = RunServer(true)
+	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: name}, nil
+	}
+	s.mockTeamService.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
+		teams := []authTypes.Team{}
+		for _, name := range names {
+			teams = append(teams, authTypes.Team{Name: name})
+		}
+		return teams, nil
+	}
+	ServiceManager.Team = s.mockTeamService
+	service.TeamService = s.mockTeamService
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {
@@ -68,18 +82,17 @@ func (s *ProvisionSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	recorder, request := s.makeRequest("GET", "/services", "", c)
+	recorder, request := s.makeRequest(http.MethodGet, "/services", "", c)
 	return recorder, request
 }
 
 func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
-	err := auth.TeamService().Create(s.team.Name, &authTypes.User{Email: "user@example.com"})
-	c.Assert(err, check.IsNil)
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
+	var err error
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 }
@@ -128,7 +141,7 @@ func (s *ProvisionSuite) makeRequestToCreateHandler(c *check.C) (*httptest.Respo
 	v.Set("password", "xxxx")
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return recorder, request
 }
@@ -183,7 +196,7 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeam(c *check.C) {
 	v.Set("username", "test")
 	v.Set("password", "xxxx")
 	v.Set("endpoint", "someservices.com")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
@@ -202,7 +215,7 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions
 	v.Set("username", "test")
 	v.Set("password", "xxxx")
 	v.Set("endpoint", "someservices.com")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	token := userWithPermission(c,
 		permission.Permission{
@@ -224,7 +237,7 @@ func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestIfTheServiceDoesNotHa
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("password", "xxxx")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
@@ -236,7 +249,7 @@ func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutPassword(c *ch
 	v.Set("id", "some-service")
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service id is required\n")
@@ -247,7 +260,7 @@ func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutId(c *check.C)
 	v.Set("password", "000000")
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
-	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
@@ -264,15 +277,12 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "myteam"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("username", "mysqltest")
 	v.Set("password", "yyyy")
 	v.Set("endpoint", "mysqlapi.com")
 	v.Set("team", t.Name)
-	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -306,7 +316,7 @@ func (s *ProvisionSuite) TestServiceUpdateWithoutTeamIgnoresOwnerTeams(c *check.
 	v.Set("username", "mysqltest")
 	v.Set("password", "yyyy")
 	v.Set("endpoint", "mysqlapi.com")
-	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -340,7 +350,7 @@ func (s *ProvisionSuite) TestServiceUpdateReturnsBadRequestWithoutPassword(c *ch
 	v.Set("id", "some-service")
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
-	recorder, request := s.makeRequest("PUT", "/services/some-service", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/some-service", v.Encode(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service password is required\n")
@@ -358,7 +368,7 @@ func (s *ProvisionSuite) TestServiceUpdateReturnsBadRequestWithoutProductionEndp
 	v := url.Values{}
 	v.Set("id", "mysqlapi")
 	v.Set("password", "zzzz")
-	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
@@ -371,7 +381,7 @@ func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c
 	v.Set("password", "zzzz")
 	v.Set("username", "mysqlapi")
 	v.Set("endpoint", "mysqlapi.com")
-	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
@@ -380,23 +390,20 @@ func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestServiceUpdateReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := authTypes.Team{Name: "some-other-team"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysqlapi",
 		OwnerTeams: []string{t.Name},
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("id", "mysqlapi")
 	v.Set("password", "zzzz")
 	v.Set("username", "mysqltest")
 	v.Set("endpoint", "mysqlapi.com")
-	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
@@ -411,7 +418,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	}
 	se.Create()
 	u := fmt.Sprintf("/services/%s", se.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": se.Name}
@@ -430,7 +437,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
 	u := fmt.Sprintf("/services/%s", "mongodb")
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
@@ -438,9 +445,6 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *check.C) {
 	t := authTypes.Team{Name: "some-team"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "mysql",
 		Teams:      []string{s.team.Name},
@@ -448,10 +452,10 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTe
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
@@ -469,7 +473,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.\n")
@@ -496,7 +500,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -507,7 +511,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
 	c.Assert(proxyedRequest, check.NotNil)
-	c.Assert(proxyedRequest.Method, check.Equals, "GET")
+	c.Assert(proxyedRequest.Method, check.Equals, http.MethodGet)
 	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
@@ -544,7 +548,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("my=awesome&body=1")
-	request, err := http.NewRequest("POST", url, body)
+	request, err := http.NewRequest(http.MethodPost, url, body)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -556,7 +560,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
 	c.Assert(proxyedRequest, check.NotNil)
-	c.Assert(proxyedRequest.Method, check.Equals, "POST")
+	c.Assert(proxyedRequest.Method, check.Equals, http.MethodPost)
 	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
@@ -568,7 +572,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":service", "value": "foo"},
 			{"name": "callback", "value": "/mypath"},
-			{"name": "method", "value": "POST"},
+			{"name": "method", "value": http.MethodPost},
 			{"name": "my", "value": "awesome"},
 			{"name": "body", "value": "1"},
 		},
@@ -603,7 +607,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	body := strings.NewReader("something-something")
-	request, err := http.NewRequest("POST", url, body)
+	request, err := http.NewRequest(http.MethodPost, url, body)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -615,7 +619,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
 	c.Assert(proxyedRequest, check.NotNil)
-	c.Assert(proxyedRequest.Method, check.Equals, "POST")
+	c.Assert(proxyedRequest.Method, check.Equals, http.MethodPost)
 	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
@@ -627,7 +631,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":service", "value": "foo"},
 			{"name": "callback", "value": "/mypath"},
-			{"name": "method", "value": "POST"},
+			{"name": "method", "value": http.MethodPost},
 		},
 	}, eventtest.HasEvent)
 }
@@ -646,7 +650,7 @@ func (s *ProvisionSuite) TestServiceProxyNoContent(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -670,7 +674,7 @@ func (s *ProvisionSuite) TestServiceProxyError(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -682,7 +686,7 @@ func (s *ProvisionSuite) TestServiceProxyError(c *check.C) {
 
 func (s *ProvisionSuite) TestServiceProxyNotFound(c *check.C) {
 	url := "/services/proxy/service/some-service?callback=/mypath"
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -702,17 +706,14 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	}))
 	defer ts.Close()
 	t := authTypes.Team{Name: "newteam"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{t.Name}}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
@@ -725,19 +726,16 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &authTypes.Team{Name: "blaaaa"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
-	recorder, request := s.makeRequest("PUT", u, "", c)
+	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = se.Get()
@@ -756,7 +754,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 	u := fmt.Sprintf("/services/nononono/team/%s", s.team.Name)
-	recorder, request := s.makeRequest("PUT", u, "", c)
+	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
@@ -764,19 +762,19 @@ func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeamNoAccess(c *check.C) {
 	t := authTypes.Team{Name: "my-team"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "my-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
-	recorder, request := s.makeRequest("PUT", u, "", c)
+	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *check.C) {
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -786,7 +784,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnNotFoundIfTheTeamDoes
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
-	recorder, request := s.makeRequest("PUT", u, "", c)
+	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
@@ -803,7 +801,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamAlreadyAccess(c *check.C) {
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
-	recorder, request := s.makeRequest("PUT", u, "", c)
+	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
@@ -819,7 +817,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = se.Get()
@@ -838,7 +836,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *check.C) {
 	u := fmt.Sprintf("/services/nonono/team/%s", s.team.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
@@ -846,9 +844,6 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 
 func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *check.C) {
 	t := authTypes.Team{Name: "alle-da"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{t.Name},
@@ -856,15 +851,18 @@ func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserD
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *check.C) {
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -875,7 +873,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheTeam
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
@@ -892,7 +890,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned\n")
@@ -900,9 +898,6 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *check.C) {
 	t := authTypes.Team{Name: "rammlied"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	se := service.Service{
 		Name:       "my-service",
 		OwnerTeams: []string{s.team.Name},
@@ -910,10 +905,10 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
-	recorder, request := s.makeRequest("DELETE", u, "", c)
+	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
@@ -921,7 +916,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 func (s *ProvisionSuite) TestAddDocServiceDoesNotExist(c *check.C) {
 	v := url.Values{}
 	v.Set("doc", "doc")
-	recorder, request := s.makeRequest("PUT", "/services/mongodb/doc", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mongodb/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
@@ -937,7 +932,7 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 	se.Create()
 	v := url.Values{}
 	v.Set("doc", "doc")
-	recorder, request := s.makeRequest("PUT", "/services/some-service/doc", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/some-service/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -959,15 +954,12 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 
 func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {
 	t := authTypes.Team{Name: "new-team"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	se := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{t.Name}}
-	err = se.Create()
+	err := se.Create()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("doc", "doc")
-	recorder, request := s.makeRequest("PUT", "/services/mysql/doc", v.Encode(), c)
+	recorder, request := s.makeRequest(http.MethodPut, "/services/mysql/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)

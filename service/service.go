@@ -31,6 +31,7 @@ type Service struct {
 
 var (
 	ErrServiceAlreadyExists = errors.New("Service already exists.")
+	TeamService             = auth.TeamService()
 )
 
 func (s *Service) Get() error {
@@ -161,7 +162,7 @@ func (s *Service) validateOwnerTeams() error {
 	if len(s.OwnerTeams) == 0 {
 		return fmt.Errorf("At least one service team owner is required")
 	}
-	teams, err := auth.TeamService().FindByNames(s.OwnerTeams)
+	teams, err := TeamService.FindByNames(s.OwnerTeams)
 	if err != nil {
 		return nil
 	}
