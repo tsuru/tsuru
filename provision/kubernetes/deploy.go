@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -794,11 +795,12 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 		return nil, err
 	}
 	cmdCat := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
-	buf := new(safe.Buffer)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
-		stdout: buf,
-		stderr: buf,
+		stdout: stdout,
+		stderr: stderr,
 		labels: labels,
 		cmd:    cmdCat,
 		name:   deployPodName,
@@ -806,12 +808,13 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 		app:    a,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to inspect tsuru.yml: %q", buf.String())
+		return nil, errors.Wrapf(err, "unable to inspect tsuru.yml. stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
 	var tsuruYamlData provision.TsuruYamlData
-	err = yaml.Unmarshal(buf.Bytes(), &tsuruYamlData)
+	bufData := stdout.String()
+	err = yaml.Unmarshal(stdout.Bytes(), &tsuruYamlData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "invalid load tsuru yaml response: %q", bufData)
 	}
 	return &tsuruYamlData, nil
 }
