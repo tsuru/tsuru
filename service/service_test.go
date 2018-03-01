@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"sort"
 
-	"github.com/tsuru/tsuru/auth"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 
 	"github.com/globalsign/mgo/bson"
@@ -246,9 +245,6 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	otherTeam := authTypes.Team{Name: "other-team"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(otherTeam.Name, &u)
-	c.Assert(err, check.IsNil)
 	srvc2 := Service{
 		Name:       "mysql",
 		OwnerTeams: []string{otherTeam.Name},

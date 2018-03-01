@@ -134,17 +134,20 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 }
 
 func (s *S) TestListFilteredDeploys(c *check.C) {
-	team := authTypes.Team{Name: "team"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "g1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = CreateApp(&a, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "team"}
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
 	a = App{
 		Name:      "ge",
 		Platform:  "zend",

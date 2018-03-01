@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -29,9 +30,10 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn *db.Storage
-	user *auth.User
-	team *authTypes.Team
+	conn            *db.Storage
+	user            *auth.User
+	team            *authTypes.Team
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -80,13 +82,19 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "admin"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	err = pool.AddPool(pool.AddPoolOptions{
 		Name:        "p1",
 		Default:     true,
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{*s.team}, nil
+		},
+		OnFindByName: func(_ string) (*authTypes.Team, error) {
+			return s.team, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }

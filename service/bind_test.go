@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -30,9 +31,10 @@ import (
 )
 
 type BindSuite struct {
-	conn *db.Storage
-	user auth.User
-	team authTypes.Team
+	conn            *db.Storage
+	user            auth.User
+	team            authTypes.Team
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&BindSuite{})
@@ -60,12 +62,18 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
-	u := authTypes.User(s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{s.team}, nil
+		},
+		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
+			return []authTypes.Team{s.team}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {

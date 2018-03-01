@@ -10,16 +10,18 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
-	conn    *db.Storage
-	service *Service
-	team    *authTypes.Team
-	user    *auth.User
+	conn            *db.Storage
+	service         *Service
+	team            *authTypes.Team
+	user            *auth.User
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -63,9 +65,15 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "raul"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnFindByName: func(name string) (*authTypes.Team, error) {
+			return s.team, nil
+		},
+		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
+			return []authTypes.Team{*s.team}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TearDownSuite(c *check.C) {

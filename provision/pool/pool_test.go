@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -28,7 +29,9 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	storage *db.Storage
+	storage         *db.Storage
+	teams           []authTypes.Team
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -52,12 +55,21 @@ func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("ateam", &authTypes.User{})
-	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("test", &authTypes.User{})
-	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("pteam", &authTypes.User{})
-	c.Assert(err, check.IsNil)
+	s.teams = []authTypes.Team{{Name: "ateam"}, {Name: "test"}, {Name: "pteam"}}
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return s.teams, nil
+		},
+		OnFindByName: func(name string) (*authTypes.Team, error) {
+			for _, t := range s.teams {
+				if t.Name == name {
+					return &t, nil
+				}
+			}
+			return nil, authTypes.ErrTeamNotFound
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TestValidateRouters(c *check.C) {
@@ -507,6 +519,9 @@ func (s *S) TestGetRouters(c *check.C) {
 }
 
 func (s *S) TestGetServices(c *check.C) {
+	s.mockTeamService.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: "ateam"}}, nil
+	}
 	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}, OwnerTeams: []string{"ateam"}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
@@ -597,13 +612,10 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	config.Set("routers:router1:type", "hipache")
 	config.Set("routers:router2:type", "hipache")
 	defer config.Unset("routers")
-	err := auth.TeamService().Create("pubteam", &authTypes.User{})
-	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("team1", &authTypes.User{})
-	c.Assert(err, check.IsNil)
+	s.teams = append(s.teams, authTypes.Team{Name: "pubteam"}, authTypes.Team{Name: "team1"})
 	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
-	err = coll.Insert(pool)
+	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeTeam, Values: []string{"pubteam"}})
 	c.Assert(err, check.IsNil)

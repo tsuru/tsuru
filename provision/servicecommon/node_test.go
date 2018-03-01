@@ -19,6 +19,10 @@ import (
 )
 
 func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
+	team := authTypes.Team{Name: "myteam"}
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team}, nil
+	}
 	var rebuildApps []string
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		rebuildApps = append(rebuildApps, appName)
@@ -39,12 +43,9 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 		Name: "p2",
 	})
 	c.Assert(err, check.IsNil)
-	user := authTypes.User(*u)
-	err = auth.TeamService().Create("myteam", &user)
+	err = app.CreateApp(&app.App{Name: "myapp1", TeamOwner: team.Name, Pool: "p1"}, u)
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&app.App{Name: "myapp1", TeamOwner: "myteam", Pool: "p1"}, u)
-	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&app.App{Name: "myapp2", TeamOwner: "myteam", Pool: "p2"}, u)
+	err = app.CreateApp(&app.App{Name: "myapp2", TeamOwner: team.Name, Pool: "p2"}, u)
 	c.Assert(err, check.IsNil)
 	RebuildRoutesPoolApps("p1")
 	c.Assert(rebuildApps, check.DeepEquals, []string{"myapp1"})

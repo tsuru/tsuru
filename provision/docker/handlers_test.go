@@ -78,8 +78,6 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.team = &authTypes.Team{Name: "admin"}
-	err = auth.TeamService().Create(s.team.Name, &authTypes.User{Email: "mail@tsuru.io"})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *HandlersSuite) SetUpTest(c *check.C) {

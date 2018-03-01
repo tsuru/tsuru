@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -35,15 +36,16 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
-	logConn     *db.LogStorage
-	team        authTypes.Team
-	user        *auth.User
-	provisioner *provisiontest.FakeProvisioner
-	builder     *builder.MockBuilder
-	defaultPlan appTypes.Plan
-	Pool        string
-	zeroLock    map[string]interface{}
+	conn            *db.Storage
+	logConn         *db.LogStorage
+	team            authTypes.Team
+	user            *auth.User
+	provisioner     *provisiontest.FakeProvisioner
+	builder         *builder.MockBuilder
+	defaultPlan     appTypes.Plan
+	Pool            string
+	zeroLock        map[string]interface{}
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -83,9 +85,6 @@ func (s *S) createUserAndTeam(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "tsuruteam"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 }
 
 var nativeScheme = auth.Scheme(native.NativeScheme{})
@@ -167,4 +166,22 @@ func (s *S) SetUpTest(c *check.C) {
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{{Name: s.team.Name}}, nil
+		},
+		OnFindByName: func(name string) (*authTypes.Team, error) {
+			if name == s.team.Name {
+				return &authTypes.Team{Name: s.team.Name}, nil
+			}
+			return nil, authTypes.ErrTeamNotFound
+		},
+		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
+			if len(names) == 1 && names[0] == s.team.Name {
+				return []authTypes.Team{{Name: s.team.Name}}, nil
+			}
+			return []authTypes.Team{}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -30,8 +31,9 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	user *auth.User
-	team *authTypes.Team
+	user            *auth.User
+	team            *authTypes.Team
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -54,14 +56,20 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "angra"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	provision.DefaultProvisioner = "fake"
 	provisiontest.ProvisionerInstance.Reset()
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{*s.team}, nil
+		},
+		OnFindByName: func(_ string) (*authTypes.Team, error) {
+			return s.team, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
