@@ -136,14 +136,17 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
+	team := authTypes.Team{Name: "angra"}
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: name}, nil
+	}
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	team2 := authTypes.Team{Name: "angra"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(team2.Name, &u)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name, Tags: []string{"tag 2"}}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team.Name, Tags: []string{"tag 2"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamOwner=%s", s.team.Name), nil)
@@ -617,16 +620,19 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	user := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &user)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, team.Name),
 	})
 	u, _ := token.User()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
-	err = app.CreateApp(&app1, u)
+	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, u)
@@ -858,6 +864,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -868,7 +875,6 @@ func (s *S) TestCreateApp(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
@@ -933,25 +939,26 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	t1 := authTypes.Team{Name: "team1"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t1.Name, &u)
-	c.Assert(err, check.IsNil)
 	t2 := authTypes.Team{Name: "team2"}
-	err = auth.TeamService().Create(t2.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{t1, t2}, nil
+	}
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &t1, nil
+	}
 	permissions := []permission.Permission{
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: "team1"},
+			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: t1.Name},
 		},
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: "team2"},
+			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: t2.Name},
 		},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "anotheruser", permissions...)
 	a := app.App{Name: "someapp"}
-	data := "name=someapp&platform=zend&teamOwner=team1"
+	data := "name=someapp&platform=zend&teamOwner=" + t1.Name
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -985,7 +992,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
-			{"name": "teamOwner", "value": "team1"},
+			{"name": "teamOwner", "value": t1.Name},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1052,6 +1059,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -1062,7 +1070,6 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -1284,9 +1291,12 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "tsurutwo"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Check(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
 	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1418,6 +1428,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -1428,7 +1439,6 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -1547,7 +1557,6 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	fmt.Printf("msg %s\n", recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
@@ -1580,7 +1589,6 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	fmt.Printf("msg %s\n", recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -1770,10 +1778,14 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("teamOwner=newowner")
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
+	body := strings.NewReader("teamOwner=" + team.Name)
 	req, err := http.NewRequest("PUT", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -1781,8 +1793,6 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert(a.TeamOwner, check.Equals, team.Name)
 }
 
 func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
@@ -1791,10 +1801,6 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(team.Name, &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1821,10 +1827,14 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("teamOwner=newowner")
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}, team}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
+	body := strings.NewReader("teamOwner=" + team.Name)
 	req, err := http.NewRequest("PUT", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1832,8 +1842,6 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	rec := httptest.NewRecorder()
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
 }
 
 func (s *S) TestAddUnits(c *check.C) {
@@ -2306,11 +2314,14 @@ func (list updateList) Swap(i, j int) {
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "itshardteam"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}, t}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: name}, nil
+	}
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: t.Name}
-	err = app.CreateApp(&a, s.user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -2368,7 +2379,12 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/teams/a", a.Name)
+	newTeamName := "newteam"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, newTeamName)
+		return nil, authTypes.ErrTeamNotFound
+	}
+	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, newTeamName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2405,15 +2421,15 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 	t := authTypes.Team{Name: "anything"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{t, {Name: s.team.Name}}, nil
+	}
 	a := app.App{
 		Name:      "tsuru",
 		Platform:  "zend",
 		TeamOwner: t.Name,
 	}
-	err = app.CreateApp(&a, s.user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -2429,12 +2445,8 @@ func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
-	t := authTypes.Team{Name: "abcd"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{"abcd", s.team.Name}}
-	err = s.conn.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -2492,7 +2504,12 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/teams/x", a.Name)
+	teamName := "notfound"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return nil, authTypes.ErrTeamNotFound
+	}
+	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, teamName)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2505,15 +2522,14 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "blaaa"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	t2 := authTypes.Team{Name: "team2"}
-	err = auth.TeamService().Create(t2.Name, &u)
-	c.Assert(err, check.IsNil)
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name, t2.Name}}
-	err = s.conn.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, t.Name)
+		return &t, nil
+	}
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2551,16 +2567,17 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
 	t := authTypes.Team{Name: "any-team"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(t.Name, &u)
-	c.Assert(err, check.IsNil)
 	newToken := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, t.Name),
 	})
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, t.Name)
+		return &t, nil
+	}
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2590,12 +2607,13 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(u.Email)
 	t := authTypes.Team{Name: "anything"}
-	user := authTypes.User(*s.user)
-	err = auth.TeamService().Create(t.Name, &user)
-	c.Assert(err, check.IsNil)
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, t.Name)
+		return &t, nil
+	}
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -5634,7 +5652,7 @@ func (s *S) TestMetricEnvsWhenUserDoesNotHaveAccess(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {
+func (s *S) TestMetricEnvsWhenAppDoesNotExist(c *check.C) {
 	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
