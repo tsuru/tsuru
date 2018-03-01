@@ -129,7 +129,17 @@ func (s *S) SetUpTest(c *check.C) {
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{{Name: s.team.Name}}, nil
+		},
+		OnFindByName: func(_ string) (*authTypes.Team, error) {
+			return &authTypes.Team{Name: s.team.Name}, nil
+		},
+		OnFindByNames: func(_ []string) ([]authTypes.Team, error) {
+			return []authTypes.Team{{Name: s.team.Name}}, nil
+		},
+	}
 	servicemanager.Team = s.mockTeamService
 }
 
