@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -30,14 +31,15 @@ import (
 )
 
 type S struct {
-	b           *dockerBuilder
-	conn        *db.Storage
-	user        *auth.User
-	team        *authTypes.Team
-	token       auth.Token
-	provisioner *provisiontest.FakeProvisioner
-	server      *dtesting.DockerServer
-	port        string
+	b               *dockerBuilder
+	conn            *db.Storage
+	user            *auth.User
+	team            *authTypes.Team
+	token           auth.Token
+	provisioner     *provisiontest.FakeProvisioner
+	server          *dtesting.DockerServer
+	port            string
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -98,11 +100,17 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "admin"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(s.team.Name, &u)
-	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return []authTypes.Team{{Name: s.team.Name}}, nil
+		},
+		OnFindByName: func(_ string) (*authTypes.Team, error) {
+			return &authTypes.Team{Name: s.team.Name}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TearDownTest(c *check.C) {

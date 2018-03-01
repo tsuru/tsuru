@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -38,7 +39,9 @@ type fakePlanOpts struct {
 	}
 }
 
-type S struct{}
+type S struct {
+	mockTeamService *auth.MockTeamService
+}
 
 var _ = check.Suite(&S{})
 
@@ -100,10 +103,21 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("myteam", &authTypes.User{Email: "mail@example.com"})
-	c.Assert(err, check.IsNil)
-	err = auth.TeamService().Create("otherteam", &authTypes.User{Email: "mail@example.com"})
-	c.Assert(err, check.IsNil)
+	teams := []authTypes.Team{{Name: "myteam"}, {Name: "otherteam"}}
+	s.mockTeamService = &auth.MockTeamService{
+		OnList: func() ([]authTypes.Team, error) {
+			return teams, nil
+		},
+		OnFindByName: func(name string) (*authTypes.Team, error) {
+			for _, t := range teams {
+				if name == t.Name {
+					return &t, nil
+				}
+			}
+			return nil, authTypes.ErrTeamNotFound
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 	updateConfig(baseConfig)
 }
 

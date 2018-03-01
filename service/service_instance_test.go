@@ -25,15 +25,17 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type InstanceSuite struct {
-	conn *db.Storage
-	team *authTypes.Team
-	user *auth.User
+	conn            *db.Storage
+	team            *authTypes.Team
+	user            *auth.User
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&InstanceSuite{})
@@ -52,10 +54,20 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &authTypes.Team{Name: "raul"}
-	s.conn.Users().Insert(s.user)
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(s.team.Name, &u)
+	err := s.conn.Users().Insert(s.user)
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{
+		OnFindByName: func(name string) (*authTypes.Team, error) {
+			if name == s.team.Name {
+				return s.team, nil
+			}
+			return nil, authTypes.ErrTeamNotFound
+		},
+		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
+			return []authTypes.Team{*s.team}, nil
+		},
+	}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
@@ -449,11 +461,12 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	}))
 	defer ts.Close()
 	team := authTypes.Team{Name: "owner"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err = s.conn.Services().Insert(&srv)
+	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
@@ -469,12 +482,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	team := authTypes.Team{Name: "owner"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
-	err = s.conn.Services().Insert(&srv)
+	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
@@ -574,9 +583,10 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	newTeam := authTypes.Team{Name: "new-team-owner"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(newTeam.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, newTeam.Name)
+		return &newTeam, nil
+	}
 	si.Description = "desc"
 	si.Tags = []string{"tag2"}
 	si.TeamOwner = newTeam.Name
@@ -679,11 +689,13 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := authTypes.Team{Name: "test2"}
-	s.conn.Users().Insert(user)
-	u := authTypes.User(*user)
-	err := auth.TeamService().Create(team.Name, &u)
+	err := s.conn.Users().Insert(user)
 	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "test2"}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err = s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
@@ -701,12 +713,13 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 
 func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := authTypes.Team{Name: "test2"}
 	err := s.conn.Users().Insert(user)
 	c.Assert(err, check.IsNil)
-	u := authTypes.User(*user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "test2"}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err = s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)

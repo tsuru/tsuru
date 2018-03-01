@@ -14,8 +14,6 @@ import (
 	"sync"
 	"testing"
 
-	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -30,7 +28,9 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -38,9 +38,10 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	storage *db.Storage
-	user    *auth.User
-	team    string
+	storage         *db.Storage
+	user            *auth.User
+	team            string
+	mockTeamService *auth.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -68,13 +69,12 @@ func (s *S) SetUpTest(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	s.team = "myteam"
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(s.team, &u)
-	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(pool.AddPoolOptions{
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)
+	s.mockTeamService = &auth.MockTeamService{}
+	servicemanager.Team = s.mockTeamService
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -161,6 +161,9 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 }
 
 func (s *S) TestGCStartWithApp(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
 	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
 	c.Assert(err, check.IsNil)
 	var nodeDeleteCalls []string
@@ -262,6 +265,9 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 }
 
 func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
 	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

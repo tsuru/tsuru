@@ -939,11 +939,8 @@ func (s *S) TestRevokeAccess(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	team := authTypes.Team{Name: "abcd"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	err = repository.Manager().CreateRepository(app.Name, nil)
 	c.Assert(err, check.IsNil)
@@ -962,9 +959,6 @@ func (s *S) TestRevokeAccess(c *check.C) {
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "abcd"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -973,7 +967,7 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, team.Name),
 	})
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	err = repository.Manager().CreateRepository(app.Name, nil)
 	c.Assert(err, check.IsNil)
@@ -2108,13 +2102,17 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 }
 
 func (s *S) TestIsValid(c *check.C) {
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create("noaccessteam", &u)
-	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{
+	teamName := "noaccessteam"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		if name == teamName || name == s.team.Name {
+			return &authTypes.Team{Name: teamName}, nil
+		}
+		return nil, authTypes.ErrTeamNotFound
+	}
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypeTeam,
-		Values:    []string{"noaccessteam"},
+		Values:    []string{teamName},
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
@@ -3904,11 +3902,15 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 
 func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	team := authTypes.Team{Name: "test"}
-	u := authTypes.User(*s.user)
-	err := auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
-	err = CreateApp(&a, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 }
 
@@ -4323,16 +4325,20 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	team := authTypes.Team{Name: "newowner"}
-	u := authTypes.User(*s.user)
-	err = auth.TeamService().Create(team.Name, &u)
-	c.Assert(err, check.IsNil)
-	updateData := App{Name: "example", TeamOwner: "newowner"}
+	teamName := "newowner"
+	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: teamName}, {Name: s.team.Name}}, nil
+	}
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: teamName}, nil
+	}
+	updateData := App{Name: "example", TeamOwner: teamName}
 	err = app.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.TeamOwner, check.Equals, "newowner")
+	c.Assert(dbApp.TeamOwner, check.Equals, teamName)
 }
 
 func (s *S) TestUpdateTeamOwnerNotExists(c *check.C) {
