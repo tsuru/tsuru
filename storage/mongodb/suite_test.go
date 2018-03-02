@@ -18,7 +18,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type mongodbBaseTest struct{}
 
 func (t *mongodbBaseTest) SetUpSuite(c *check.C) {
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=150")
 	config.Set("database:name", "tsuru_storage_mongodb_test")
 }
 
