@@ -45,7 +45,7 @@ type S struct {
 	defaultPlan     appTypes.Plan
 	Pool            string
 	zeroLock        map[string]interface{}
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -166,7 +166,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
-	s.mockTeamService = &auth.MockTeamService{
+	s.mockTeamService = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},

@@ -35,7 +35,7 @@ type InstanceSuite struct {
 	conn            *db.Storage
 	team            *authTypes.Team
 	user            *auth.User
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&InstanceSuite{})
@@ -56,7 +56,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "raul"}
 	err := s.conn.Users().Insert(s.user)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &auth.MockTeamService{
+	s.mockTeamService = &authTypes.MockTeamService{
 		OnFindByName: func(name string) (*authTypes.Team, error) {
 			if name == s.team.Name {
 				return s.team, nil

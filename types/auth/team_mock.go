@@ -4,40 +4,38 @@
 
 package auth
 
-import authTypes "github.com/tsuru/tsuru/types/auth"
-
-var _ authTypes.TeamService = &MockTeamService{}
+var _ TeamService = &MockTeamService{}
 
 type MockTeamService struct {
-	OnCreate      func(string, *authTypes.User) error
-	OnList        func() ([]authTypes.Team, error)
-	OnFindByName  func(string) (*authTypes.Team, error)
-	OnFindByNames func([]string) ([]authTypes.Team, error)
+	OnCreate      func(string, *User) error
+	OnList        func() ([]Team, error)
+	OnFindByName  func(string) (*Team, error)
+	OnFindByNames func([]string) ([]Team, error)
 	OnRemove      func(string) error
 }
 
-func (m *MockTeamService) Create(teamName string, user *authTypes.User) error {
+func (m *MockTeamService) Create(teamName string, user *User) error {
 	if m.OnCreate == nil {
 		return nil
 	}
 	return m.OnCreate(teamName, user)
 }
 
-func (m *MockTeamService) List() ([]authTypes.Team, error) {
+func (m *MockTeamService) List() ([]Team, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 	return m.OnList()
 }
 
-func (m *MockTeamService) FindByName(teamName string) (*authTypes.Team, error) {
+func (m *MockTeamService) FindByName(teamName string) (*Team, error) {
 	if m.OnFindByName == nil {
 		return nil, nil
 	}
 	return m.OnFindByName(teamName)
 }
 
-func (m *MockTeamService) FindByNames(teamNames []string) ([]authTypes.Team, error) {
+func (m *MockTeamService) FindByNames(teamNames []string) ([]Team, error) {
 	if m.OnFindByNames == nil {
 		return nil, nil
 	}

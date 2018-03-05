@@ -11,17 +11,17 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -47,7 +47,7 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	servicemanager.Team = s.mockTeamService
 }
 

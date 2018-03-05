@@ -51,7 +51,7 @@ type ServiceInstanceSuite struct {
 	service         *service.Service
 	ts              *httptest.Server
 	testServer      http.Handler
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&ServiceInstanceSuite{})
@@ -92,7 +92,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}

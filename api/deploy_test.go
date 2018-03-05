@@ -50,7 +50,7 @@ type DeploySuite struct {
 	provisioner     *provisiontest.FakeProvisioner
 	builder         *builder.MockBuilder
 	testServer      http.Handler
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&DeploySuite{})
@@ -120,7 +120,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	servicemanager.Team = s.mockTeamService
 	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil

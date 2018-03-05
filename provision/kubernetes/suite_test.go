@@ -41,7 +41,7 @@ type S struct {
 	lastConf        *rest.Config
 	t               *testing.T
 	mock            *kTesting.KubeMock
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var suiteInstance = &S{}
@@ -118,7 +118,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &auth.MockTeamService{
+	s.mockTeamService = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil
 		},

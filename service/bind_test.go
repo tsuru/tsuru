@@ -34,7 +34,7 @@ type BindSuite struct {
 	conn            *db.Storage
 	user            auth.User
 	team            authTypes.Team
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&BindSuite{})
@@ -65,7 +65,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &auth.MockTeamService{
+	s.mockTeamService = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{s.team}, nil
 		},
