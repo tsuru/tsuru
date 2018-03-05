@@ -81,7 +81,14 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName(app.Name, "testimage")
 	c.Assert(err, check.IsNil)
-	err = Delete(app, nil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = Delete(app, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
 	_, err = GetByName(app.Name)
@@ -112,12 +119,14 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	_, err = event.New(&event.Opts{
+	evt1, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppUpdateEnvSet,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
+	c.Assert(err, check.IsNil)
+	err = evt1.Done(nil)
 	c.Assert(err, check.IsNil)
 	evt2, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: "other"},
@@ -126,13 +135,20 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	Delete(app, nil)
+	deleteEvt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	Delete(app, deleteEvt, "")
 	evts, err := event.List(&event.Filter{})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, eventtest.EvtEquals, evt2)
 	evts, err = event.List(&event.Filter{IncludeRemoved: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 2)
+	c.Assert(evts, check.HasLen, 3)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
@@ -144,7 +160,14 @@ func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	Delete(a, nil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	Delete(a, evt, "")
 	_, err = repository.Manager().GetRepository(app.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
@@ -164,7 +187,14 @@ func (s *S) TestDeleteSwappedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Swap(&a, app2, false)
 	c.Assert(err, check.IsNil)
-	err = Delete(&a, nil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = Delete(&a, evt, "")
 	c.Assert(err, check.ErrorMatches, "application is swapped with \"app2\", cannot remove it")
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, true)
 }
@@ -183,7 +213,14 @@ func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Swap(&a, app2, true)
 	c.Assert(err, check.IsNil)
-	err = Delete(&a, nil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = Delete(&a, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 }
@@ -208,7 +245,14 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	err = Delete(app, nil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = Delete(app, evt, "")
 	c.Assert(err, check.IsNil)
 	dbV, err := volume.Load(v1.Name)
 	c.Assert(err, check.IsNil)

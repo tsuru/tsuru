@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 )
@@ -67,16 +68,7 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) error {
 	return nil
 }
 
-func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
-	var requestID string
-	requestIDs, ok := params["requestID"]
-	if ok {
-		requestID = ""
-		if len(requestIDs) > 0 {
-			requestID = requestIDs[0]
-		}
-		delete(params, "requestID")
-	}
+func (c *Client) issueRequest(path, method string, params map[string][]string, requestID string) (*http.Response, error) {
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -94,7 +86,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
 	requestIDHeader, err := config.GetString("request-id-header")
-	if err == nil && requestIDHeader != "" {
+	if err == nil && requestID != "" && requestIDHeader != "" {
 		req.Header.Add(requestIDHeader, requestID)
 	}
 	req.SetBasicAuth(c.username, c.password)
@@ -118,14 +110,14 @@ func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
-func (c *Client) Create(instance *ServiceInstance, user, requestID string) error {
+func (c *Client) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	var err error
 	var resp *http.Response
 	params := map[string][]string{
-		"name":      {instance.Name},
-		"user":      {user},
-		"team":      {instance.TeamOwner},
-		"requestID": {requestID},
+		"name":    {instance.Name},
+		"team":    {instance.TeamOwner},
+		"user":    {evt.Owner.Name},
+		"eventid": {evt.UniqueID.Hex()},
 	}
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
@@ -134,7 +126,7 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 		params["description"] = []string{instance.Description}
 	}
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
-	resp, err = c.issueRequest("/resources", "POST", params)
+	resp, err = c.issueRequest("/resources", "POST", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode < 300 {
@@ -148,16 +140,17 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 	return log.WrapError(err)
 }
 
-func (c *Client) Update(instance *ServiceInstance, requestID string) error {
+func (c *Client) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
 		"description": {instance.Description},
 		"team":        {instance.TeamOwner},
 		"tags":        instance.Tags,
 		"plan":        {instance.PlanName},
-		"requestID":   {requestID},
+		"user":        {evt.Owner.Name},
+		"eventid":     {evt.UniqueID.Hex()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -171,12 +164,13 @@ func (c *Client) Update(instance *ServiceInstance, requestID string) error {
 	return err
 }
 
-func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
+func (c *Client) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
-		"requestID": {requestID},
+		"user":    {evt.Owner.Name},
+		"eventid": {evt.UniqueID.Hex()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -190,7 +184,7 @@ func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 	return err
 }
 
-func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]string, error) {
+func (c *Client) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
@@ -200,17 +194,19 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	params := map[string][]string{
 		"app-name":  {app.GetName()},
 		"app-hosts": appAddrs,
+		"user":      {evt.Owner.Name},
+		"eventid":   {evt.UniqueID.Hex()},
 	}
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, requestID)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params, requestID)
 	}
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
@@ -248,7 +244,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params, "")
 	if err != nil {
 		return log.WrapError(errors.Wrapf(err, `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp()))
 	}
@@ -266,7 +262,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 	return nil
 }
 
-func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
+func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -276,11 +272,13 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	params := map[string][]string{
 		"app-hosts": appAddrs,
 		"app-name":  {app.GetName()},
+		"user":      {evt.Owner.Name},
+		"eventid":   {evt.UniqueID.Hex()},
 	}
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(url, "DELETE", params)
+	resp, err := c.issueRequest(url, "DELETE", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -308,7 +306,7 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(url, "DELETE", params)
+	resp, err := c.issueRequest(url, "DELETE", params, "")
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -329,10 +327,7 @@ func (c *Client) Status(instance *ServiceInstance, requestID string) (string, er
 		err  error
 	)
 	url := "/resources/" + instance.GetIdentifier() + "/status"
-	params := map[string][]string{
-		"requestID": {requestID},
-	}
-	if resp, err = c.issueRequest(url, "GET", params); err == nil {
+	if resp, err = c.issueRequest(url, "GET", nil, requestID); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
@@ -360,10 +355,7 @@ func (c *Client) Status(instance *ServiceInstance, requestID string) (string, er
 func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
-	params := map[string][]string{
-		"requestID": {requestID},
-	}
-	resp, err := c.issueRequest(url, "GET", params)
+	resp, err := c.issueRequest(url, "GET", nil, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -385,10 +377,7 @@ func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string
 // GET /resources/plans
 func (c *Client) Plans(requestID string) ([]Plan, error) {
 	url := "/resources/plans"
-	params := map[string][]string{
-		"requestID": {requestID},
-	}
-	resp, err := c.issueRequest(url, "GET", params)
+	resp, err := c.issueRequest(url, "GET", nil, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +395,7 @@ func (c *Client) Plans(requestID string) ([]Plan, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *Client) Proxy(path string, w http.ResponseWriter, r *http.Request) error {
+func (c *Client) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
 	url, err := url.Parse(rawurl)
 	if err != nil {
@@ -414,6 +403,14 @@ func (c *Client) Proxy(path string, w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	director := func(req *http.Request) {
+		if evt != nil {
+			req.Header.Set("X-Tsuru-User", evt.Owner.Name)
+			req.Header.Set("X-Tsuru-Eventid", evt.UniqueID.Hex())
+		}
+		requestIDHeader, err := config.GetString("request-id-header")
+		if err == nil && requestID != "" && requestIDHeader != "" {
+			req.Header.Set(requestIDHeader, requestID)
+		}
 		req.SetBasicAuth(c.username, c.password)
 		req.Host = url.Host
 		req.URL = url

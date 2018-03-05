@@ -45,10 +45,6 @@ func serviceIntancePermName(serviceName, instanceName string) string {
 //   409: Service already exists
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	serviceName := r.URL.Query().Get(":service")
-	user, err := t.User()
-	if err != nil {
-		return err
-	}
 	srv, err := getService(serviceName)
 	if err != nil {
 		return err
@@ -99,7 +95,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	defer func() { evt.Done(err) }()
 	requestID := requestIDHeader(r)
-	err = service.CreateServiceInstance(instance, &srv, user, requestID)
+	err = service.CreateServiceInstance(instance, &srv, evt, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,
@@ -195,7 +191,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		si.Tags = tags
 	}
 	requestID := requestIDHeader(r)
-	return si.Update(srv, *si, requestID)
+	return si.Update(srv, *si, evt, requestID)
 }
 
 // title: remove service instance
@@ -238,6 +234,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	requestID := requestIDHeader(r)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
 	if unbindAllBool {
 		if len(serviceInstance.Apps) > 0 {
@@ -247,7 +244,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 					return instErr
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				instErr = serviceInstance.UnbindApp(app, true, writer)
+				instErr = serviceInstance.UnbindApp(app, true, writer, evt, requestID)
 				if instErr != nil {
 					return instErr
 				}
@@ -259,8 +256,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			}
 		}
 	}
-	requestID := requestIDHeader(r)
-	err = service.DeleteInstance(serviceInstance, requestID)
+	err = service.DeleteInstance(serviceInstance, evt, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
 			return &tsuruErrors.HTTP{
@@ -584,8 +580,8 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
+	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		var evt *event.Event
 		evt, err = event.New(&event.Opts{
 			Target: serviceInstanceTarget(serviceName, instanceName),
 			Kind:   permission.PermServiceInstanceUpdateProxy,
@@ -602,7 +598,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 		defer func() { evt.Done(err) }()
 	}
-	return service.ProxyInstance(serviceInstance, path, w, r)
+	return service.ProxyInstance(serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
 
 // title: grant access to service instance

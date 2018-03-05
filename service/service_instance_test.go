@@ -78,7 +78,8 @@ func (s *InstanceSuite) TearDownSuite(c *check.C) {
 func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
 	si := &ServiceInstance{Name: "MySQL"}
 	s.conn.ServiceInstances().Insert(&si)
-	DeleteInstance(si, "")
+	evt := createEvt(c)
+	DeleteInstance(si, evt, "")
 	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
 	c.Assert(err, check.IsNil)
@@ -147,13 +148,14 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	var si ServiceInstance
 	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
-	err := si.BindApp(a, true, &buf)
+	evt := createEvt(c)
+	err := si.BindApp(a, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
 		"setBoundEnvsAction", "bindUnitsAction",
 	}
-	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf, shouldRestart: true}}
+	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf, shouldRestart: true, event: evt, requestID: ""}}
 	c.Assert(calls, check.DeepEquals, expectedCalls)
 	c.Assert(params, check.DeepEquals, expectedParams)
 	c.Assert(buf.String(), check.Equals, "")
@@ -367,7 +369,8 @@ func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	err = DeleteInstance(&si, "")
+	evt := createEvt(c)
+	err = DeleteInstance(&si, evt, "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -383,7 +386,8 @@ func (s *InstanceSuite) TestDeleteInstanceWithApps(c *check.C) {
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	err = DeleteInstance(&si, "")
+	evt := createEvt(c)
+	err = DeleteInstance(&si, evt, "")
 	c.Assert(err, check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
@@ -398,7 +402,8 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance("mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -418,7 +423,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) 
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: "unknown", Tags: []string{"tag1", "tag2"}}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
@@ -435,10 +441,11 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 		{Name: "mongodb3", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"},
 	}
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name}
+	evt := createEvt(c)
 	for _, service := range srv {
 		err := s.conn.Services().Insert(&service)
 		c.Assert(err, check.IsNil)
-		err = CreateServiceInstance(instance, &service, s.user, "")
+		err = CreateServiceInstance(instance, &service, evt, "")
 		c.Assert(err, check.IsNil)
 	}
 	si, err := GetServiceInstance("mongodb3", "instance")
@@ -449,7 +456,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(si.Name, check.Equals, "instance")
 	c.Assert(si.ServiceName, check.Equals, "mongodb3")
-	err = CreateServiceInstance(instance, &srv[0], s.user, "")
+	err = CreateServiceInstance(instance, &srv[0], evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -469,7 +476,8 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance("mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -486,7 +494,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.Equals, ErrTeamMandatory)
 }
 
@@ -499,9 +508,10 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *check.C) 
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", TeamOwner: s.team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -514,7 +524,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *check.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance"}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.NotNil)
 	count, err := s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).Count()
 	c.Assert(err, check.IsNil)
@@ -542,9 +553,10 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
+	evt := createEvt(c)
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
-		err := CreateServiceInstance(instance, &srv, s.user, "")
+		err := CreateServiceInstance(instance, &srv, evt, "")
 		c.Check(err, check.Equals, t.err, check.Commentf(t.input))
 	}
 }
@@ -560,7 +572,8 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"", "  tag1 ", "tag1", "  "}}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance("mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -590,7 +603,8 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	si.Description = "desc"
 	si.Tags = []string{"tag2"}
 	si.TeamOwner = newTeam.Name
-	err = instance.Update(srv, si, "")
+	evt := createEvt(c)
+	err = instance.Update(srv, si, evt, "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
@@ -610,13 +624,14 @@ func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) 
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
-	err = CreateServiceInstance(instance, &srv, s.user, "")
+	evt := createEvt(c)
+	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	si.TeamOwner = "unknown"
-	err = instance.Update(srv, si, "")
+	err = instance.Update(srv, si, evt, "")
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
@@ -634,7 +649,8 @@ func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	instance.Tags = []string{"tag2", " ", " tag2 "}
-	err = instance.Update(srv, instance, "")
+	evt := createEvt(c)
+	err = instance.Update(srv, instance, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	var si ServiceInstance
@@ -776,7 +792,8 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, false, &buf)
+	evt := createEvt(c)
+	err = si.UnbindApp(a, false, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "remove instance")
 	c.Assert(reqs, check.HasLen, 5)
@@ -838,7 +855,8 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, true, &buf)
+	evt := createEvt(c)
+	err = si.UnbindApp(a, true, &buf, evt, "")
 	c.Assert(err, check.ErrorMatches, `Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\)`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -895,7 +913,8 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, true, &buf)
+	evt := createEvt(c)
+	err = si.UnbindApp(a, true, &buf, evt, "")
 	c.Assert(err, check.ErrorMatches, `instance not found`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -946,7 +965,8 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
-	err = si.BindApp(a, true, &buf)
+	evt := createEvt(c)
+	err = si.BindApp(a, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "add instance")
 	c.Assert(reqs, check.HasLen, 3)
@@ -997,13 +1017,14 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		expectedNames = append(expectedNames, name)
 		apps = append(apps, provisiontest.NewFakeApp(name, "static", 2))
 	}
+	evt := createEvt(c)
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
 		wg.Add(1)
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			bindErr := si.BindApp(app, true, &buf)
+			bindErr := si.BindApp(app, true, &buf, evt, "")
 			c.Assert(bindErr, check.IsNil)
 		}(app)
 	}
@@ -1041,12 +1062,13 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
+	evt := createEvt(c)
 	for i := 0; i < 20; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
-		err = si.BindApp(app, true, &buf)
+		err = si.BindApp(app, true, &buf, evt, "")
 		c.Assert(err, check.IsNil)
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
@@ -1057,7 +1079,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			unbindErr := siDB.UnbindApp(app, false, &buf)
+			unbindErr := siDB.UnbindApp(app, false, &buf, evt, "")
 			c.Assert(unbindErr, check.IsNil)
 		}(app)
 	}
@@ -1127,11 +1149,12 @@ func (s *S) TestProxyInstance(c *check.C) {
 		{method: "POST", path: "/resources/noflow/otherpath", expectedPath: "/resources/noflow/otherpath"},
 		{method: "POST", path: "/resources/otherinstance/otherpath", expectedPath: "/resources/noflow/resources/otherinstance/otherpath"},
 	}
+	evt := createEvt(c)
 	for _, tt := range tests {
 		request, err := http.NewRequest(tt.method, "", nil)
 		c.Assert(err, check.IsNil)
 		recorder := httptest.NewRecorder()
-		err = ProxyInstance(&sInstance, tt.path, recorder, request)
+		err = ProxyInstance(&sInstance, tt.path, evt, "", recorder, request)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 			c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
