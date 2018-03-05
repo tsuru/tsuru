@@ -67,7 +67,6 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 		}
 		return teams, nil
 	}
-	ServiceManager.Team = s.mockTeamService
 	servicemanager.Team = s.mockTeamService
 }
 

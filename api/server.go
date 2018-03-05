@@ -39,8 +39,8 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/net/websocket"
 )
 
@@ -53,17 +53,12 @@ type TsuruHandler struct {
 	h       http.Handler
 }
 
-type serviceManager struct {
-	Team authTypes.TeamService
-}
-
 func fatal(err error) {
 	fmt.Println(err.Error())
 	log.Fatal(err.Error())
 }
 
 var tsuruHandlerList []TsuruHandler
-var ServiceManager *serviceManager
 
 // RegisterHandler inserts a handler on a list of handlers for version 1.0
 func RegisterHandler(path string, method string, h http.Handler) {
@@ -89,9 +84,7 @@ func getAuthScheme() (string, error) {
 }
 
 func setupServices() {
-	ServiceManager = &serviceManager{
-		Team: auth.TeamService(),
-	}
+	servicemanager.Team = auth.TeamService()
 }
 
 // RunServer starts tsuru API server. The dry parameter indicates whether the
