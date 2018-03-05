@@ -41,7 +41,7 @@ type S struct {
 	storage         *db.Storage
 	user            *auth.User
 	team            string
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -73,7 +73,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	servicemanager.Team = s.mockTeamService
 }
 

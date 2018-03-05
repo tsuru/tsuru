@@ -21,7 +21,7 @@ type S struct {
 	service         *Service
 	team            *authTypes.Team
 	user            *auth.User
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&S{})
@@ -65,7 +65,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "raul"}
-	s.mockTeamService = &auth.MockTeamService{
+	s.mockTeamService = &authTypes.MockTeamService{
 		OnFindByName: func(name string) (*authTypes.Team, error) {
 			return s.team, nil
 		},

@@ -37,7 +37,7 @@ type ProvisionSuite struct {
 	user            *auth.User
 	token           auth.Token
 	testServer      http.Handler
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&ProvisionSuite{})
@@ -56,7 +56,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	s.testServer = RunServer(true)
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
 		return &authTypes.Team{Name: name}, nil
 	}

@@ -51,7 +51,7 @@ type AuthSuite struct {
 	server          *authtest.SMTPServer
 	testServer      http.Handler
 	conn            *db.Storage
-	mockTeamService *auth.MockTeamService
+	mockTeamService *authTypes.MockTeamService
 }
 
 var _ = check.Suite(&AuthSuite{})
@@ -86,7 +86,7 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
-	s.mockTeamService = &auth.MockTeamService{}
+	s.mockTeamService = &authTypes.MockTeamService{}
 	servicemanager.Team = s.mockTeamService
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
