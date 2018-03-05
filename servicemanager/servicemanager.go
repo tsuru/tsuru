@@ -1,7 +1,7 @@
 package servicemanager
 
-import "github.com/tsuru/tsuru/auth"
+import authTypes "github.com/tsuru/tsuru/types/auth"
 
 var (
-	Team = auth.TeamService()
+	Team authTypes.TeamService
 )
