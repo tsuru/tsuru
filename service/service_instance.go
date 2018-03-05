@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
@@ -64,13 +65,13 @@ func (bu Unit) GetIp() string {
 }
 
 // DeleteInstance deletes the service instance from the database.
-func DeleteInstance(si *ServiceInstance, requestID string) error {
+func DeleteInstance(si *ServiceInstance, evt *event.Event, requestID string) error {
 	if len(si.Apps) > 0 {
 		return ErrServiceInstanceBound
 	}
 	endpoint, err := si.Service().getClient("production")
 	if err == nil {
-		endpoint.Destroy(si, requestID)
+		endpoint.Destroy(si, evt, requestID)
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -146,7 +147,7 @@ func (si *ServiceInstance) FindApp(appName string) int {
 }
 
 // Update changes informations of the service instance.
-func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, requestID string) error {
+func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, evt *event.Event, requestID string) error {
 	err := validateServiceInstanceTeamOwner(updateData)
 	if err != nil {
 		return err
@@ -164,7 +165,7 @@ func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, r
 	}
 	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(service, *si, updateData, requestID)
+	return pipeline.Execute(service, *si, updateData, evt, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
@@ -177,12 +178,14 @@ func (si *ServiceInstance) updateData(update bson.M) error {
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
+func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
 	args := bindPipelineArgs{
 		serviceInstance: si,
 		app:             app,
 		writer:          writer,
 		shouldRestart:   shouldRestart,
+		event:           evt,
+		requestID:       requestID,
 	}
 	actions := []*action.Action{
 		bindAppDBAction,
@@ -242,7 +245,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
+func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
 	if si.FindApp(app.GetName()) == -1 {
 		return ErrAppNotBound
 	}
@@ -251,6 +254,8 @@ func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io
 		app:             app,
 		writer:          writer,
 		shouldRestart:   shouldRestart,
+		event:           evt,
+		requestID:       requestID,
 	}
 	actions := []*action.Action{
 		&unbindUnits,
@@ -388,7 +393,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 	return err
 }
 
-func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User, requestID string) error {
+func CreateServiceInstance(instance ServiceInstance, service *Service, evt *event.Event, requestID string) error {
 	err := validateServiceInstance(instance, service)
 	if err != nil {
 		return err
@@ -398,7 +403,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(*service, instance, user.Email, requestID)
+	return pipeline.Execute(*service, instance, evt, requestID)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
@@ -501,7 +506,7 @@ func RenameServiceInstanceTeam(oldName, newName string) error {
 
 // ProxyInstance is a proxy between tsuru and the service instance.
 // This method allow customized service instance methods.
-func ProxyInstance(instance *ServiceInstance, path string, w http.ResponseWriter, r *http.Request) error {
+func ProxyInstance(instance *ServiceInstance, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	service := instance.Service()
 	endpoint, err := service.getClient("production")
 	if err != nil {
@@ -516,5 +521,5 @@ func ProxyInstance(instance *ServiceInstance, path string, w http.ResponseWriter
 			}
 		}
 	}
-	return endpoint.Proxy(fmt.Sprintf("%s%s", prefix, path), w, r)
+	return endpoint.Proxy(fmt.Sprintf("%s%s", prefix, path), evt, requestID, w, r)
 }

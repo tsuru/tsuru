@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -231,12 +232,12 @@ type ServiceModel struct {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func Proxy(service *Service, path string, w http.ResponseWriter, r *http.Request) error {
+func Proxy(service *Service, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	endpoint, err := service.getClient("production")
 	if err != nil {
 		return err
 	}
-	return endpoint.Proxy(path, w, r)
+	return endpoint.Proxy(path, evt, requestID, w, r)
 }
 
 func RenameServiceTeam(oldName, newName string) error {

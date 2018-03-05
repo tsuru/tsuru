@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"strings"
 	"sync"
@@ -561,7 +560,7 @@ func processTags(tags []string) []string {
 // unbind takes all service instances that are bound to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
-func (app *App) unbind() error {
+func (app *App) unbind(evt *event.Event, requestID string) error {
 	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
 		return err
@@ -574,7 +573,7 @@ func (app *App) unbind() error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.UnbindApp(app, true, nil)
+		err = instance.UnbindApp(app, true, nil, evt, requestID)
 		if err != nil {
 			addMsg(instance.Name, err)
 		}
@@ -607,7 +606,8 @@ func (app *App) unbindVolumes() error {
 }
 
 // Delete deletes an app.
-func Delete(app *App, w io.Writer) error {
+func Delete(app *App, evt *event.Event, requestID string) error {
+	w := evt
 	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
 	if err != nil {
 		return errors.Wrap(err, "unable to check if app is swapped")
@@ -616,9 +616,6 @@ func Delete(app *App, w io.Writer) error {
 		return errors.Errorf("application is swapped with %q, cannot remove it", swappedWith)
 	}
 	appName := app.Name
-	if w == nil {
-		w = ioutil.Discard
-	}
 	fmt.Fprintf(w, "---- Removing application %q...\n", appName)
 	var hasErrors bool
 	defer func() {
@@ -668,7 +665,7 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
-	err = app.unbind()
+	err = app.unbind(evt, requestID)
 	if err != nil {
 		logErr("Unable to unbind app", err)
 	}

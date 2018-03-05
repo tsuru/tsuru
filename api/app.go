@@ -96,8 +96,9 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	return app.Delete(&a, writer)
+	return app.Delete(&a, evt, requestIDHeader(r))
 }
 
 // miniApp is a minimal representation of the app, created to make appList
@@ -1248,7 +1249,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.BindApp(a, !noRestart, writer)
+	err = instance.BindApp(a, !noRestart, writer, evt, requestIDHeader(r))
 	if err != nil {
 		return err
 	}
@@ -1310,7 +1311,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.UnbindApp(a, !noRestart, writer)
+	err = instance.UnbindApp(a, !noRestart, writer, evt, requestIDHeader(r))
 	if err != nil {
 		return err
 	}

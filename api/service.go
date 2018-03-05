@@ -234,8 +234,9 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err := event.New(&event.Opts{
+		evt, err = event.New(&event.Opts{
 			Target: serviceTarget(s.Name),
 			Kind:   permission.PermServiceUpdateProxy,
 			Owner:  t,
@@ -251,7 +252,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		defer func() { evt.Done(err) }()
 	}
 	path := r.URL.Query().Get("callback")
-	return service.Proxy(&s, path, w, r)
+	return service.Proxy(&s, path, evt, requestIDHeader(r), w, r)
 }
 
 // title: grant access to a service

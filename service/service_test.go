@@ -363,7 +363,8 @@ func (s *S) TestProxy(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/something", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	err = Proxy(&service, "/aaa", recorder, request)
+	evt := createEvt(c)
+	err = Proxy(&service, "/aaa", evt, "", recorder, request)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
