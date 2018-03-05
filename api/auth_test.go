@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -86,7 +87,7 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
 	s.mockTeamService = &auth.MockTeamService{}
-	ServiceManager.Team = s.mockTeamService
+	servicemanager.Team = s.mockTeamService
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()

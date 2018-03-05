@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -277,7 +278,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := ServiceManager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
@@ -325,7 +326,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := ServiceManager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
