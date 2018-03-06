@@ -57,8 +57,21 @@ func Register(name string, builder Builder) {
 	builders[name] = builder
 }
 
-// Get gets the named builder from the registry.
-func Get(name string) (Builder, error) {
+// GetForProvisioner gets the builder required by the provisioner.
+func GetForProvisioner(p provision.Provisioner) (Builder, error) {
+	builder, err := get(p.GetName())
+	if err != nil {
+		if _, ok := p.(provision.BuilderDeployDockerClient); ok {
+			return get("docker")
+		} else if _, ok := p.(provision.BuilderDeployKubeClient); ok {
+			return get("kubernetes")
+		}
+	}
+	return builder, err
+}
+
+// get gets the named builder from the registry.
+func get(name string) (Builder, error) {
 	b, ok := builders[name]
 	if !ok {
 		return nil, errors.Errorf("unknown builder: %q", name)

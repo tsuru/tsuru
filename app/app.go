@@ -163,27 +163,15 @@ var (
 )
 
 func (app *App) getBuilder() (builder.Builder, error) {
+	if app.builder != nil {
+		return app.builder, nil
+	}
 	p, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
-	if app.builder == nil {
-		if app.Pool == "" {
-			return builder.Get(p.GetName())
-		}
-		pool, err := pool.GetPoolByName(app.Pool)
-		if err != nil {
-			return nil, err
-		}
-		if pool.Builder == "" {
-			return builder.Get(p.GetName())
-		}
-		app.builder, err = builder.Get(pool.Builder)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return app.builder, nil
+	app.builder, err = builder.GetForProvisioner(p)
+	return app.builder, err
 }
 
 func (app *App) CleanImage(img string) error {
