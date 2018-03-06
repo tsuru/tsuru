@@ -34,10 +34,10 @@ func (s S) SetUpTest(c *check.C) {
 func (s S) TestRegisterAndGetBuilder(c *check.C) {
 	var b Builder
 	Register("my-builder", b)
-	got, err := Get("my-builder")
+	got, err := get("my-builder")
 	c.Assert(err, check.IsNil)
 	c.Check(got, check.DeepEquals, b)
-	_, err = Get("unknown-builder")
+	_, err = get("unknown-builder")
 	c.Check(err, check.NotNil)
 	expectedMessage := `unknown builder: "unknown-builder"`
 	c.Assert(err.Error(), check.Equals, expectedMessage)
