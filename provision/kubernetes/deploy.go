@@ -62,7 +62,7 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	return remotecommand.NewSPDYExecutorForTransports(wrapper, upgradeRoundTripper, method, url)
 }
 
-func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string) error {
+func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -72,23 +72,34 @@ func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 		Name(podName).
 		Namespace(client.Namespace()).
 		SubResource("attach")
+	// Attaching stderr is only allowed if tty == false, otherwise the attach
+	// call will fail.
 	req.VersionedParams(&apiv1.PodAttachOptions{
 		Container: container,
 		Stdin:     stdin != nil,
 		Stdout:    true,
-		Stderr:    true,
-		TTY:       false,
+		Stderr:    !tty,
+		TTY:       tty,
 	}, scheme.ParameterCodec)
 	exec, err := keepAliveSpdyExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	var sizeQueue remotecommand.TerminalSizeQueue
+	if tty {
+		sizeQueue = &fixedSizeQueue{
+			sz: &remotecommand.TerminalSize{
+				Width:  1000,
+				Height: 1000,
+			},
+		}
+	}
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdin:             stdin,
 		Stdout:            stdout,
 		Stderr:            stderr,
-		Tty:               false,
-		TerminalSizeQueue: nil,
+		Tty:               tty,
+		TerminalSizeQueue: sizeQueue,
 	})
 	if err != nil {
 		return errors.WithStack(err)
@@ -269,10 +280,10 @@ func createPod(params createPodParams) error {
 	if params.attachInput != nil {
 		errCh := make(chan error)
 		go func() {
-			commitErr := doAttach(params.client, nil, params.attachOutput, params.attachOutput, pod.Name, commitContainer)
+			commitErr := doAttach(params.client, nil, params.attachOutput, params.attachOutput, pod.Name, commitContainer, true)
 			errCh <- commitErr
 		}()
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, baseName)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, baseName, false)
 		if err != nil {
 			return err
 		}
