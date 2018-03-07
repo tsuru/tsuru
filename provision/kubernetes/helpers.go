@@ -624,7 +624,7 @@ func runPod(args runSinglePodArgs) error {
 	if err != nil {
 		multiErr.Add(err)
 	}
-	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name)
+	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name, false)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
