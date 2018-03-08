@@ -205,6 +205,14 @@ func (r *Result) SetError(err error) {
 }
 
 func (r *Result) String() string {
+	var args []string
+	if r.Cmd != nil {
+		args = r.Cmd.Args
+	}
+	var input string
+	if r.Command != nil {
+		input = r.Command.Input
+	}
 	return fmt.Sprintf(`--- Command %v ---
 ExitCode: %d
 Error: %v
@@ -214,11 +222,11 @@ Stdout: %q
 Stderr: %q
 %v
 ----------
-`, r.Cmd.Args,
+`, args,
 		r.ExitCode,
 		r.Error,
 		r.Timeout,
-		r.Command.Input,
+		input,
 		r.Stdout.String(),
 		r.Stderr.String(),
 		r.Env)
