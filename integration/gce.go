@@ -5,14 +5,13 @@
 package integration
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"time"
-
-	"context"
 
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"

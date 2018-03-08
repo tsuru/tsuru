@@ -5,10 +5,9 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"sort"
-
-	"context"
 
 	"google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
