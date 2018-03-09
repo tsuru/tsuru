@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
@@ -671,37 +670,4 @@ func waitNodeReady(client *ClusterClient, addr string, timeout time.Duration) (*
 		return errors.Errorf("invalid node conditions for %q: %#v", addr, node.Status.Conditions)
 	})
 	return node, waitErr
-}
-
-// Hack until Kubernetes 1.7 is released to ensure daemonsets are scheduled.
-// See https://github.com/kubernetes/kubernetes/pull/45649
-func refreshNodeTaints(client *ClusterClient, addr string) {
-	node, err := waitNodeReady(client, addr, 30*time.Minute)
-	if err != nil {
-		log.Errorf("error waiting for node ready: %v", err)
-		return
-	}
-	tsuruTaintKey := "tsuru-refresh-node-container"
-	tsuruTempTaint := apiv1.Taint{
-		Key:    tsuruTaintKey,
-		Value:  "true",
-		Effect: apiv1.TaintEffectNoSchedule,
-	}
-	node.Spec.Taints = append(node.Spec.Taints, tsuruTempTaint)
-	node, err = client.CoreV1().Nodes().Update(node)
-	if err != nil {
-		log.Errorf("unable to add node taint %q: %v", tsuruTaintKey, err)
-		return
-	}
-	for i := 0; i < len(node.Spec.Taints); i++ {
-		if node.Spec.Taints[i].Key == tsuruTaintKey {
-			node.Spec.Taints[i] = node.Spec.Taints[len(node.Spec.Taints)-1]
-			node.Spec.Taints = node.Spec.Taints[:len(node.Spec.Taints)-1]
-			i--
-		}
-	}
-	_, err = client.CoreV1().Nodes().Update(node)
-	if err != nil {
-		log.Errorf("unable to remove node taint %q: %v", tsuruTaintKey, err)
-	}
 }

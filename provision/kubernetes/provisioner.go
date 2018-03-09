@@ -522,7 +522,6 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	if err == nil {
 		servicecommon.RebuildRoutesPoolApps(opts.Pool)
-		go refreshNodeTaints(client, hostAddr)
 	}
 	return err
 }
@@ -642,9 +641,6 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
 	_, err = client.CoreV1().Nodes().Update(node)
-	if err == nil {
-		go refreshNodeTaints(client, opts.Address)
-	}
 	return err
 }
 
