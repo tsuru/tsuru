@@ -43,6 +43,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 		destinationImage: buildingImage,
 		attachInput:      archiveFile,
 		attachOutput:     evt,
+		inputFile:        "/home/application/archive.tar.gz",
 	}
 	err = createBuildPod(params)
 	if err != nil {
