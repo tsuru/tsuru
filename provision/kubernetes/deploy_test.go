@@ -662,6 +662,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
+		inputFile:        "/home/application/archive.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -728,6 +729,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
+		inputFile:        "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -817,7 +819,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Name:  "myapp-v1-deploy",
 			Image: "myimg",
 			Command: []string{"/bin/sh", "-lc", `
-		tsuru_unit_agent   myapp deploy-only
+		cat >/dev/null && tsuru_unit_agent   myapp deploy-only
 		exit_code=$?
 		echo "${exit_code}" >/tmp/intercontainer/status
 		[ "${exit_code}" != "0" ] && exit "${exit_code}"

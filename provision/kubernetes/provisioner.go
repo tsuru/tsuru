@@ -672,6 +672,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 			sourceImage:      buildImageID,
 			destinationImage: newImage,
 			attachOutput:     evt,
+			attachInput:      strings.NewReader("."),
+			inputFile:        "/dev/null",
 		}
 		err = createDeployPod(params)
 		if err != nil {
