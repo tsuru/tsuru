@@ -114,55 +114,46 @@ type createPodParams struct {
 	cmds             []string
 	sourceImage      string
 	destinationImage string
+	inputFile        string
 	attachInput      io.Reader
 	attachOutput     io.Writer
 }
 
 func createBuildPod(params createPodParams) error {
 	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
-	if len(cmds) != 3 {
-		return errors.Errorf("unexpected cmds list: %#v", cmds)
-	}
 	if params.podName == "" {
 		var err error
 		if params.podName, err = buildPodNameForApp(params.app, ""); err != nil {
 			return err
 		}
 	}
-	cmds[2] = fmt.Sprintf(`
-		cat >/home/application/archive.tar.gz && %[1]s
-		exit_code=$?
-		echo "${exit_code}" >%[2]s
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f %[3]s ]; do sleep 1; done
-	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
 	params.cmds = cmds
 	return createPod(params)
 }
 
 func createDeployPod(params createPodParams) error {
 	cmds := dockercommon.DeployCmds(params.app)
-	if len(cmds) != 3 {
-		return errors.Errorf("unexpected cmds list: %#v", cmds)
-	}
 	if params.podName == "" {
 		var err error
 		if params.podName, err = deployPodNameForApp(params.app); err != nil {
 			return err
 		}
 	}
-	cmds[2] = fmt.Sprintf(`
-		%[1]s
-		exit_code=$?
-		echo "${exit_code}" >%[2]s
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f %[3]s ]; do sleep 1; done
-	`, cmds[2], buildIntercontainerStatus, buildIntercontainerDone)
 	params.cmds = cmds
 	return createPod(params)
 }
 
 func createPod(params createPodParams) error {
+	if len(params.cmds) != 3 {
+		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
+	}
+	params.cmds[2] = fmt.Sprintf(`
+		cat >%[4]s && %[1]s
+		exit_code=$?
+		echo "${exit_code}" >%[2]s
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f %[3]s ]; do sleep 1; done
+	`, params.cmds[2], buildIntercontainerStatus, buildIntercontainerDone, params.inputFile)
 	err := ensureServiceAccountForApp(params.client, params.app)
 	if err != nil {
 		return err
