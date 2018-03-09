@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 	stdLog "log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -95,7 +95,10 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		stdLog.Fatalf("unable to initialize logging: %v", err)
 	}
-	setupDatabase()
+	err = setupDatabase()
+	if err != nil {
+		fatal(err)
+	}
 	setupServices()
 
 	m := apiRouter.NewRouter()
@@ -394,12 +397,15 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
-		startServer(n)
+		err := startServer(n)
+		if err != nil {
+			fatal(err)
+		}
 	}
 	return n
 }
 
-func setupDatabase() {
+func setupDatabase() error {
 	connString, err := config.GetString("database:url")
 	if err != nil {
 		connString = db.DefaultDatabaseURL
@@ -416,14 +422,15 @@ func setupDatabase() {
 	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	if dbDriverName != storage.DefaultDbDriverName {
 		_, err = storage.GetDefaultDbDriver()
 		if err != nil {
-			fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {
@@ -446,38 +453,41 @@ func bindAppsLister() ([]bind.App, error) {
 	return bindApps, nil
 }
 
-func startServer(handler http.Handler) {
-	shutdown.Register(&logTracker)
-
-	shutdownChan := make(chan bool)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
-	if shutdownTimeout == 0 {
-		shutdownTimeout = 10 * 60
+func startServer(handler http.Handler) error {
+	srvConf, err := createServers(handler)
+	if err != nil {
+		return err
 	}
-	go func() {
-		<-sigChan
-		fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownTimeout)*time.Second)
+	shutdownTimeoutInt, _ := config.GetInt("shutdown-timeout")
+	shutdownTimeout := 10 * time.Minute
+	if shutdownTimeoutInt != 0 {
+		shutdownTimeout = time.Duration(shutdownTimeoutInt) * time.Second
+	}
+	go srvConf.handleSignals(shutdownTimeout)
+
+	defer func() {
+		srvConf.shutdown(shutdownTimeout)
+		fmt.Println("tsuru is running shutdown handlers")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		shutdown.Do(ctx, os.Stdout)
 		cancel()
-		close(shutdownChan)
 	}()
+
+	shutdown.Register(&logTracker)
 	var startupMessage string
-	err := router.Initialize()
+	err = router.Initialize()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	routers, err := router.List()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	for _, routerDesc := range routers {
 		var r router.Router
 		r, err = router.Get(routerDesc.Name)
 		if err != nil {
-			fatal(err)
+			return err
 		}
 		fmt.Printf("Registered router %q", routerDesc.Name)
 		if messageRouter, ok := r.(router.MessageRouter); ok {
@@ -498,7 +508,7 @@ func startServer(handler http.Handler) {
 	fmt.Printf("Using %q repository manager.\n", repoManager)
 	err = rebuild.RegisterTask(appFinder)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	scheme, err := getAuthScheme()
 	if err != nil {
@@ -506,36 +516,36 @@ func startServer(handler http.Handler) {
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
 	_, err = nodecontainer.InitializeBS(app.AuthScheme, app.InternalAppName)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	err = provision.InitializeAll()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	_, err = healer.Initialize()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	err = autoscale.Initialize()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	err = event.Initialize()
 	if err != nil {
-		fatal(errors.Wrap(err, "unable to load events throttling config"))
+		return errors.Wrap(err, "unable to load events throttling config")
 	}
 	err = gc.Initialize()
 	if err != nil {
-		fatal(errors.Wrap(err, "unable to initialize old image gc"))
+		return errors.Wrap(err, "unable to initialize old image gc")
 	}
 	err = service.InitializeSync(bindAppsLister)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	fmt.Println("Checking components status:")
 	results := hc.Check("all")
@@ -546,27 +556,17 @@ func startServer(handler http.Handler) {
 	}
 	fmt.Println("    Components checked.")
 
-	errChan := createServers(handler)
-	go func() {
-		err = <-errChan
-		fmt.Printf("Listening stopped: %s\n", err)
-		if errOp, ok := err.(*net.OpError); ok {
-			if errOp.Op == "listen" {
-				os.Exit(1)
-			}
-		}
-		fatal(err)
-	}()
-	<-shutdownChan
+	err = <-srvConf.start()
+	if err != http.ErrServerClosed {
+		return errors.Wrap(err, "unexpected error in server while listening")
+	}
+	fmt.Printf("Listening stopped: %s\n", err)
+	return nil
 }
 
-func createServers(handler http.Handler) chan error {
-	var (
-		certFile, keyFile string
-		httpSrv, httpsSrv *http.Server
-		err               error
-	)
-	errChan := make(chan error, 2)
+func createServers(handler http.Handler) (*srvConfig, error) {
+	var srvConf srvConfig
+	var err error
 	useTls, _ := config.GetBool("use-tls")
 	tlsListen, _ := config.GetString("tls:listen")
 	listen, _ := config.GetString("listen")
@@ -575,64 +575,85 @@ func createServers(handler http.Handler) chan error {
 			tlsListen = listen
 			listen = ""
 		}
-		certFile, err = config.GetString("tls:cert-file")
+		srvConf.certFile, err = config.GetString("tls:cert-file")
 		if err != nil {
-			errChan <- err
-			return errChan
+			return nil, err
 		}
-		keyFile, err = config.GetString("tls:key-file")
+		srvConf.keyFile, err = config.GetString("tls:key-file")
 		if err != nil {
-			errChan <- err
-			return errChan
+			return nil, err
 		}
 	} else if listen == "" {
-		errChan <- errors.New(`missing "listen" config key`)
-		return errChan
+		return nil, errors.New(`missing "listen" config key`)
 	}
-
 	readTimeout, _ := config.GetInt("server:read-timeout")
 	writeTimeout, _ := config.GetInt("server:write-timeout")
 	if listen != "" {
-		httpSrv = &http.Server{
+		srvConf.httpSrv = &http.Server{
 			ReadTimeout:  time.Duration(readTimeout) * time.Second,
 			WriteTimeout: time.Duration(writeTimeout) * time.Second,
 			Addr:         listen,
 			Handler:      handler,
 		}
-		shutdown.Register(httpSrv)
 	}
 	if tlsListen != "" {
-		httpsSrv = &http.Server{
+		srvConf.httpsSrv = &http.Server{
 			ReadTimeout:  time.Duration(readTimeout) * time.Second,
 			WriteTimeout: time.Duration(writeTimeout) * time.Second,
 			Addr:         tlsListen,
 			Handler:      handler,
 		}
-		shutdown.Register(httpsSrv)
 	}
+	return &srvConf, nil
+}
 
-	if httpsSrv != nil {
-		go startHttpsServer(httpsSrv, errChan, tlsListen, certFile, keyFile)
-	}
-	if httpSrv != nil {
-		go startHttpServer(httpSrv, errChan, listen)
-	}
+type srvConfig struct {
+	httpSrv  *http.Server
+	httpsSrv *http.Server
+	certFile string
+	keyFile  string
+}
 
+func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
+	wg := sync.WaitGroup{}
+	shutdownSrv := func(srv *http.Server) {
+		defer wg.Done()
+		fmt.Printf("tsuru is shutting down server %v, waiting for pending connections to finish.\n", srv.Addr)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		srv.Shutdown(ctx)
+	}
+	if conf.httpSrv != nil {
+		wg.Add(1)
+		go shutdownSrv(conf.httpSrv)
+	}
+	if conf.httpsSrv != nil {
+		wg.Add(1)
+		go shutdownSrv(conf.httpsSrv)
+	}
+	wg.Wait()
+}
+
+func (conf *srvConfig) handleSignals(shutdownTimeout time.Duration) {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+	conf.shutdown(shutdownTimeout)
+}
+
+func (conf *srvConfig) start() <-chan error {
+	errChan := make(chan error, 2)
+	if conf.httpSrv != nil {
+		go func() {
+			fmt.Printf("tsuru HTTP server listening at %s...\n", conf.httpSrv.Addr)
+			errChan <- conf.httpSrv.ListenAndServe()
+		}()
+	}
+	if conf.httpsSrv != nil {
+		go func() {
+			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", conf.httpsSrv.Addr)
+			errChan <- conf.httpsSrv.ListenAndServeTLS(conf.certFile, conf.keyFile)
+		}()
+	}
 	return errChan
-}
-
-func startHttpServer(srv *http.Server, errChan chan error, listen string) {
-	fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-	err := srv.ListenAndServe()
-	if err != nil {
-		errChan <- err
-	}
-}
-
-func startHttpsServer(srv *http.Server, errChan chan error, listen, certFile, keyFile string) {
-	fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-	err := srv.ListenAndServeTLS(certFile, keyFile)
-	if err != nil {
-		errChan <- err
-	}
 }

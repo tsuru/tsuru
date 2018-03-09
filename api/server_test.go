@@ -134,7 +134,9 @@ func (s *S) TestCreateServersHTTPOnly(c *check.C) {
 	defer resetHandlers()
 
 	handler := RunServer(true)
-	go createServers(handler)
+	srvConf, err := createServers(handler)
+	c.Assert(err, check.IsNil)
+	go srvConf.start()
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
@@ -155,7 +157,9 @@ func (s *S) TestCreateServersHTTPSOnly(c *check.C) {
 	defer resetHandlers()
 
 	handler := RunServer(true)
-	go createServers(handler)
+	srvConf, err := createServers(handler)
+	c.Assert(err, check.IsNil)
+	go srvConf.start()
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
@@ -177,7 +181,9 @@ func (s *S) TestCreateServersHTTPSOnlyWithTlsListenConfig(c *check.C) {
 	defer resetHandlers()
 
 	handler := RunServer(true)
-	go createServers(handler)
+	srvConf, err := createServers(handler)
+	c.Assert(err, check.IsNil)
+	go srvConf.start()
 
 	err = waitForServer("localhost:" + port)
 	c.Assert(err, check.IsNil)
@@ -201,7 +207,9 @@ func (s *S) TestCreateServersHTTPAndHTTPS(c *check.C) {
 	defer resetHandlers()
 
 	handler := RunServer(true)
-	go createServers(handler)
+	srvConf, err := createServers(handler)
+	c.Assert(err, check.IsNil)
+	go srvConf.start()
 
 	err = waitForServer("localhost:" + httpsPort)
 	c.Assert(err, check.IsNil)
