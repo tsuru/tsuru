@@ -36,16 +36,19 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn            *db.Storage
-	logConn         *db.LogStorage
-	team            authTypes.Team
-	user            *auth.User
-	provisioner     *provisiontest.FakeProvisioner
-	builder         *builder.MockBuilder
-	defaultPlan     appTypes.Plan
-	Pool            string
-	zeroLock        map[string]interface{}
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	logConn     *db.LogStorage
+	team        authTypes.Team
+	user        *auth.User
+	provisioner *provisiontest.FakeProvisioner
+	builder     *builder.MockBuilder
+	defaultPlan appTypes.Plan
+	Pool        string
+	zeroLock    map[string]interface{}
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -156,8 +159,6 @@ func (s *S) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	err = PlanService().Insert(s.defaultPlan)
-	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
 	err = pool.AddPool(opts)
@@ -166,7 +167,11 @@ func (s *S) SetUpTest(c *check.C) {
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
-	s.mockTeamService = &authTypes.MockTeamService{
+	setupMocks(s)
+}
+
+func setupMocks(s *S) {
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
@@ -183,5 +188,16 @@ func (s *S) SetUpTest(c *check.C) {
 			return []authTypes.Team{}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{s.defaultPlan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &s.defaultPlan, nil
+		},
+	}
+
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }

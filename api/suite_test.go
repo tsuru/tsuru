@@ -40,15 +40,18 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn            *db.Storage
-	logConn         *db.LogStorage
-	team            *authTypes.Team
-	user            *auth.User
-	token           auth.Token
-	provisioner     *provisiontest.FakeProvisioner
-	Pool            string
-	testServer      http.Handler
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	logConn     *db.LogStorage
+	team        *authTypes.Team
+	user        *auth.User
+	token       auth.Token
+	provisioner *provisiontest.FakeProvisioner
+	Pool        string
+	testServer  http.Handler
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -129,7 +132,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
@@ -140,7 +143,24 @@ func (s *S) SetUpTest(c *check.C) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	defaultPlan := appTypes.Plan{
+		Name:     "default-plan",
+		Memory:   1024,
+		Swap:     1024,
+		CpuShare: 100,
+		Default:  true,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{defaultPlan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &defaultPlan, nil
+		},
+	}
+
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 func (s *S) TearDownTest(c *check.C) {

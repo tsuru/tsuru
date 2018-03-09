@@ -81,7 +81,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 }
 
 func (s *S) TestAddPool(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	b := bytes.NewBufferString("name=pool1")
@@ -161,7 +161,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 }
 
 func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	opts := pool.AddPoolOptions{Name: "pool1"}
@@ -186,7 +186,7 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 }
 
 func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	opts := pool.AddPoolOptions{Name: "pool1"}
@@ -232,7 +232,7 @@ func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestAddTeamsToPool(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	p := pool.Pool{Name: "pool1"}
@@ -320,7 +320,7 @@ func (s *S) TestRemoveTeamsFromPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	p := pool.Pool{Name: "pool1"}
@@ -355,7 +355,7 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	token := userWithPermission(c, permission.Permission{
@@ -546,7 +546,7 @@ func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	opts := pool.AddPoolOptions{Name: "pool1"}

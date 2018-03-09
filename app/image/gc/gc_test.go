@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -38,10 +39,13 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	storage         *db.Storage
-	user            *auth.User
-	team            string
-	mockTeamService *authTypes.MockTeamService
+	storage     *db.Storage
+	user        *auth.User
+	team        string
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -73,8 +77,22 @@ func (s *S) SetUpTest(c *check.C) {
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{}
-	servicemanager.Team = s.mockTeamService
+	s.mockService.Team = &authTypes.MockTeamService{}
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -161,7 +179,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 }
 
 func (s *S) TestGCStartWithApp(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
@@ -265,7 +283,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 }
 
 func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)

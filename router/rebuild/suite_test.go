@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -30,10 +31,13 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn            *db.Storage
-	user            *auth.User
-	team            *authTypes.Team
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	user        *auth.User
+	team        *authTypes.Team
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -88,7 +92,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil
 		},
@@ -96,5 +100,19 @@ func (s *S) SetUpTest(c *check.C) {
 			return s.team, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }

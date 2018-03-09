@@ -31,15 +31,18 @@ import (
 )
 
 type S struct {
-	b               *dockerBuilder
-	conn            *db.Storage
-	user            *auth.User
-	team            *authTypes.Team
-	token           auth.Token
-	provisioner     *provisiontest.FakeProvisioner
-	server          *dtesting.DockerServer
-	port            string
-	mockTeamService *authTypes.MockTeamService
+	b           *dockerBuilder
+	conn        *db.Storage
+	user        *auth.User
+	team        *authTypes.Team
+	token       auth.Token
+	provisioner *provisiontest.FakeProvisioner
+	server      *dtesting.DockerServer
+	port        string
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -84,13 +87,6 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	p := appTypes.Plan{
-		Name:     "default",
-		Default:  true,
-		CpuShare: 100,
-	}
-	err = app.SavePlan(p)
-	c.Assert(err, check.IsNil)
 	s.b = &dockerBuilder{}
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -102,7 +98,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
@@ -110,7 +106,21 @@ func (s *S) SetUpTest(c *check.C) {
 			return &authTypes.Team{Name: s.team.Name}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 func (s *S) TearDownTest(c *check.C) {

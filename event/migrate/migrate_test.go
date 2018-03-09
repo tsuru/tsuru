@@ -31,9 +31,12 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	user            *auth.User
-	team            *authTypes.Team
-	mockTeamService *authTypes.MockTeamService
+	user        *auth.User
+	team        *authTypes.Team
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -48,7 +51,16 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	err = app.SavePlan(appTypes.Plan{Name: "default", CpuShare: 100, Default: true})
+	plan := appTypes.Plan{Name: "default", CpuShare: 100, Default: true}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Plan = s.mockService.Plan
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
@@ -61,7 +73,7 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil
 		},
@@ -69,7 +81,7 @@ func (s *S) SetUpTest(c *check.C) {
 			return s.team, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	servicemanager.Team = s.mockService.Team
 }
 
 func (s *S) TestMigrateRCEventsNoApp(c *check.C) {

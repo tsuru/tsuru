@@ -16,12 +16,16 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
-	mockTeamService *authTypes.MockTeamService
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -47,8 +51,22 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{}
-	servicemanager.Team = s.mockTeamService
+	s.mockService.Team = &authTypes.MockTeamService{}
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 type managerCall struct {

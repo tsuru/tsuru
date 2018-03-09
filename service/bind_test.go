@@ -28,15 +28,19 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type BindSuite struct {
-	conn            *db.Storage
-	user            auth.User
-	team            authTypes.Team
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	user        auth.User
+	team        authTypes.Team
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&BindSuite{})
@@ -67,7 +71,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{s.team}, nil
 		},
@@ -75,7 +79,21 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 			return []authTypes.Team{s.team}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {

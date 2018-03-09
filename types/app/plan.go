@@ -18,6 +18,14 @@ type Plan struct {
 }
 
 type PlanService interface {
+	Create(plan Plan) error
+	List() ([]Plan, error)
+	FindByName(name string) (*Plan, error)
+	DefaultPlan() (*Plan, error)
+	Remove(planName string) error
+}
+
+type PlanStorage interface {
 	Insert(Plan) error
 	FindAll() ([]Plan, error)
 	FindDefault() (*Plan, error)

@@ -36,7 +36,7 @@ func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {
 }
 
 func (s *S) TestAddLogsHandler(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
@@ -109,7 +109,7 @@ loop:
 }
 
 func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}

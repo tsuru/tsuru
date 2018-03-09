@@ -395,9 +395,9 @@ func CreateApp(app *App, user *auth.User) error {
 	var plan *appTypes.Plan
 	var err error
 	if app.Plan.Name == "" {
-		plan, err = DefaultPlan()
+		plan, err = servicemanager.Plan.DefaultPlan()
 	} else {
-		plan, err = findPlanByName(app.Plan.Name)
+		plan, err = servicemanager.Plan.FindByName(app.Plan.Name)
 	}
 	if err != nil {
 		return err
@@ -490,7 +490,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		return err
 	}
 	if planName != "" {
-		plan, errFind := findPlanByName(planName)
+		plan, errFind := servicemanager.Plan.FindByName(planName)
 		if errFind != nil {
 			return errFind
 		}

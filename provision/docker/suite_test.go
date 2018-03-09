@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -46,24 +47,27 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	collName        string
-	imageCollName   string
-	repoNamespace   string
-	deployCmd       string
-	runBin          string
-	runArgs         string
-	port            string
-	sshUser         string
-	server          *dtesting.DockerServer
-	extraServer     *dtesting.DockerServer
-	conn            *db.Storage
-	p               *dockerProvisioner
-	user            *auth.User
-	token           auth.Token
-	team            *authTypes.Team
-	clusterSess     *mgo.Session
-	logBuf          *safe.Buffer
-	mockTeamService *authTypes.MockTeamService
+	collName      string
+	imageCollName string
+	repoNamespace string
+	deployCmd     string
+	runBin        string
+	runArgs       string
+	port          string
+	sshUser       string
+	server        *dtesting.DockerServer
+	extraServer   *dtesting.DockerServer
+	conn          *db.Storage
+	p             *dockerProvisioner
+	user          *auth.User
+	token         auth.Token
+	team          *authTypes.Team
+	clusterSess   *mgo.Session
+	logBuf        *safe.Buffer
+	mockService   struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -148,7 +152,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 	s.team = &authTypes.Team{Name: "admin"}
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil
 		},
@@ -159,7 +163,23 @@ func (s *S) SetUpTest(c *check.C) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	defaultPlan := appTypes.Plan{
+		Name:     "default-plan",
+		Memory:   1024,
+		Swap:     1024,
+		CpuShare: 100,
+		Default:  true,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{defaultPlan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &defaultPlan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }
 
 func (s *S) TearDownTest(c *check.C) {

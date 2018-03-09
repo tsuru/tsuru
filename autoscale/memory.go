@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -84,7 +85,7 @@ func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, pool string, no
 }
 
 func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult, error) {
-	plans, err := app.PlansList()
+	plans, err := servicemanager.Plan.List()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't list plans")
 	}
@@ -96,7 +97,7 @@ func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult
 	}
 	if maxPlanMemory == 0 {
 		var defaultPlan *appTypes.Plan
-		defaultPlan, err = app.DefaultPlan()
+		defaultPlan, err = servicemanager.Plan.DefaultPlan()
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get default plan")
 		}

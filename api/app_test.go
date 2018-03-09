@@ -137,10 +137,10 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 
 func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		return &authTypes.Team{Name: name}, nil
 	}
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
@@ -620,10 +620,10 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
 	team := authTypes.Team{Name: "angra"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
 	token := userWithPermission(c, permission.Permission{
@@ -940,10 +940,10 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	t1 := authTypes.Team{Name: "team1"}
 	t2 := authTypes.Team{Name: "team2"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{t1, t2}, nil
 	}
-	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &t1, nil
 	}
 	permissions := []permission.Permission{
@@ -1045,8 +1045,10 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		Swap:     5,
 		CpuShare: 10,
 	}
-	err := app.SavePlan(expectedPlan)
-	c.Assert(err, check.IsNil)
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, expectedPlan.Name)
+		return &expectedPlan, nil
+	}
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1291,10 +1293,10 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "tsurutwo"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
 	data := "name=someapp&platform=zend"
@@ -1693,9 +1695,15 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
 		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
 	}
-	for _, plan := range plans {
-		err := app.SavePlan(plan)
-		c.Assert(err, check.IsNil)
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == plans[0].Name {
+			return &plans[0], nil
+		}
+		if name == plans[1].Name {
+			return &plans[1], nil
+		}
+		c.Errorf("plan name not expected, got: %s", name)
+		return nil, nil
 	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
@@ -1716,10 +1724,14 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	plan := appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
-	err := app.SavePlan(plan)
-	c.Assert(err, check.IsNil)
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == plan.Name {
+			return &plan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
+	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
-	err = app.CreateApp(&a, s.user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("plan=hiperplan")
 	request, err := http.NewRequest("PUT", "/apps/someapp", body)
@@ -1778,10 +1790,10 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, team.Name)
 		return &team, nil
 	}
@@ -1827,10 +1839,10 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newowner"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}, team}, nil
 	}
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, team.Name)
 		return &team, nil
 	}
@@ -2314,10 +2326,10 @@ func (list updateList) Swap(i, j int) {
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "itshardteam"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}, t}, nil
 	}
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		return &authTypes.Team{Name: name}, nil
 	}
 	a := app.App{Name: "itshard", Platform: "zend", TeamOwner: t.Name}
@@ -2377,7 +2389,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	newTeamName := "newteam"
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, newTeamName)
 		return nil, authTypes.ErrTeamNotFound
 	}
@@ -2416,7 +2428,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 	t := authTypes.Team{Name: "anything"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{t, {Name: s.team.Name}}, nil
 	}
 	a := app.App{
@@ -2496,7 +2508,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	teamName := "notfound"
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, teamName)
 		return nil, authTypes.ErrTeamNotFound
 	}
@@ -2516,7 +2528,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name, t2.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, t.Name)
 		return &t, nil
 	}
@@ -2562,7 +2574,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, t.Name)
 		return &t, nil
 	}
@@ -2596,7 +2608,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		c.Assert(name, check.Equals, t.Name)
 		return &t, nil
 	}

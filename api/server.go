@@ -85,6 +85,7 @@ func getAuthScheme() (string, error) {
 
 func setupServices() {
 	servicemanager.Team = auth.TeamService()
+	servicemanager.Plan = app.PlanService()
 }
 
 // RunServer starts tsuru API server. The dry parameter indicates whether the

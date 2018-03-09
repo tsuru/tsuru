@@ -13,7 +13,9 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 )
 
-type PlanService struct{}
+var _ app.PlanStorage = &PlanStorage{}
+
+type PlanStorage struct{}
 
 type plan struct {
 	Name     string `bson:"_id"`
@@ -27,7 +29,7 @@ func plansCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("plans")
 }
 
-func (s *PlanService) Insert(p app.Plan) error {
+func (s *PlanStorage) Insert(p app.Plan) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -46,11 +48,11 @@ func (s *PlanService) Insert(p app.Plan) error {
 	return err
 }
 
-func (s *PlanService) FindAll() ([]app.Plan, error) {
+func (s *PlanStorage) FindAll() ([]app.Plan, error) {
 	return s.findByQuery(nil)
 }
 
-func (s *PlanService) FindDefault() (*app.Plan, error) {
+func (s *PlanStorage) FindDefault() (*app.Plan, error) {
 	plans, err := s.findByQuery(bson.M{"default": true})
 	if err != nil {
 		return nil, err
@@ -64,7 +66,7 @@ func (s *PlanService) FindDefault() (*app.Plan, error) {
 	return &plans[0], err
 }
 
-func (s *PlanService) findByQuery(query bson.M) ([]app.Plan, error) {
+func (s *PlanStorage) findByQuery(query bson.M) ([]app.Plan, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -82,7 +84,7 @@ func (s *PlanService) findByQuery(query bson.M) ([]app.Plan, error) {
 	return appPlans, nil
 }
 
-func (s *PlanService) FindByName(name string) (*app.Plan, error) {
+func (s *PlanStorage) FindByName(name string) (*app.Plan, error) {
 	var p plan
 	conn, err := db.Conn()
 	if err != nil {
@@ -100,7 +102,7 @@ func (s *PlanService) FindByName(name string) (*app.Plan, error) {
 	return &plan, nil
 }
 
-func (s *PlanService) Delete(p app.Plan) error {
+func (s *PlanStorage) Delete(p app.Plan) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

@@ -42,16 +42,19 @@ import (
 )
 
 type ServiceInstanceSuite struct {
-	conn            *db.Storage
-	team            *authTypes.Team
-	user            *auth.User
-	token           auth.Token
-	provisioner     *provisiontest.FakeProvisioner
-	pool            string
-	service         *service.Service
-	ts              *httptest.Server
-	testServer      http.Handler
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	team        *authTypes.Team
+	user        *auth.User
+	token       auth.Token
+	provisioner *provisiontest.FakeProvisioner
+	pool        string
+	service     *service.Service
+	ts          *httptest.Server
+	testServer  http.Handler
+	mockService struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&ServiceInstanceSuite{})
@@ -92,21 +95,38 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
-	s.mockTeamService = &authTypes.MockTeamService{}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team = &authTypes.MockTeamService{}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
 		return &authTypes.Team{Name: name}, nil
 	}
-	s.mockTeamService.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
+	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
 		teams := []authTypes.Team{}
 		for _, name := range names {
 			teams = append(teams, authTypes.Team{Name: name})
 		}
 		return teams, nil
 	}
-	servicemanager.Team = s.mockTeamService
+	defaultPlan := appTypes.Plan{
+		Name:     "default-plan",
+		Memory:   1024,
+		Swap:     1024,
+		CpuShare: 100,
+		Default:  true,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{defaultPlan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &defaultPlan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
+
 	s.service = &service.Service{
 		Name:       "mysql",
 		Teams:      []string{s.team.Name},
