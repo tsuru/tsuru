@@ -39,7 +39,7 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func setBaseConfig() {
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=150")
 	config.Set("database:name", "tsuru_events_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 }
