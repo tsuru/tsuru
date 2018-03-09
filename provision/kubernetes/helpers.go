@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -282,20 +281,6 @@ func newInvalidPodPhaseError(client *ClusterClient, pod *apiv1.Pod) error {
 	if err == nil && len(events.Items) > 0 {
 		lastEvt := events.Items[len(events.Items)-1]
 		retErr = errors.Errorf("%v - last event: %s", retErr, lastEvt.Message)
-	}
-	if len(pod.Spec.Containers) > 0 {
-		lastLog := int64(100)
-		req := client.CoreV1().Pods(client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
-			Container: pod.Spec.Containers[0].Name,
-			TailLines: &lastLog,
-		})
-		reader, logErr := req.Stream()
-		if logErr == nil {
-			logContent, _ := ioutil.ReadAll(reader)
-			if len(logContent) > 0 {
-				retErr = errors.Errorf("%v - log: %s", retErr, string(logContent))
-			}
-		}
 	}
 	return retErr
 }
