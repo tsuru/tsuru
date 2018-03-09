@@ -98,7 +98,7 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 }
 
 func (s *S) TestVolumeListBinded(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -336,7 +336,7 @@ func (s *S) TestVolumeDelete(c *check.C) {
 }
 
 func (s *S) TestVolumeBind(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -401,7 +401,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 }
 
 func (s *S) TestVolumeBindConflict(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -433,7 +433,7 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 }
 
 func (s *S) TestVolumeBindNoRestart(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -458,7 +458,7 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbind(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -509,7 +509,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbindNotFound(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
@@ -531,7 +531,7 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")

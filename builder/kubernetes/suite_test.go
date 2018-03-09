@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -47,6 +48,9 @@ type S struct {
 	clusterClient *kubeProv.ClusterClient
 	p             testProv
 	mock          *kubeTesting.KubeMock
+	mockService   struct {
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var _ = check.Suite(&S{})
@@ -102,13 +106,20 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	p := appTypes.Plan{
+	plan := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	err = app.SavePlan(p)
-	c.Assert(err, check.IsNil)
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Plan = s.mockService.Plan
 	s.b = &kubernetesBuilder{}
 	s.p = kubeProv.GetProvisioner()
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p)

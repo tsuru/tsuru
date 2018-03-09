@@ -31,17 +31,20 @@ import (
 )
 
 type S struct {
-	p               *kubernetesProvisioner
-	conn            *db.Storage
-	user            *auth.User
-	team            *authTypes.Team
-	token           auth.Token
-	client          *kTesting.ClientWrapper
-	clusterClient   *ClusterClient
-	lastConf        *rest.Config
-	t               *testing.T
-	mock            *kTesting.KubeMock
-	mockTeamService *authTypes.MockTeamService
+	p             *kubernetesProvisioner
+	conn          *db.Storage
+	user          *auth.User
+	team          *authTypes.Team
+	token         auth.Token
+	client        *kTesting.ClientWrapper
+	clusterClient *ClusterClient
+	lastConf      *rest.Config
+	t             *testing.T
+	mock          *kTesting.KubeMock
+	mockService   struct {
+		Team *authTypes.MockTeamService
+		Plan *appTypes.MockPlanService
+	}
 }
 
 var suiteInstance = &S{}
@@ -101,13 +104,6 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	p := appTypes.Plan{
-		Name:     "default",
-		Default:  true,
-		CpuShare: 100,
-	}
-	err = app.SavePlan(p)
-	c.Assert(err, check.IsNil)
 	s.p = &kubernetesProvisioner{}
 	s.mock = kTesting.NewKubeMock(s.client, s.p)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.Unlimited}
@@ -118,7 +114,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
+	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil
 		},
@@ -129,5 +125,19 @@ func (s *S) SetUpTest(c *check.C) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
 		},
 	}
-	servicemanager.Team = s.mockTeamService
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
+	}
+	s.mockService.Plan = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return []appTypes.Plan{plan}, nil
+		},
+		OnDefaultPlan: func() (*appTypes.Plan, error) {
+			return &plan, nil
+		},
+	}
+	servicemanager.Team = s.mockService.Team
+	servicemanager.Plan = s.mockService.Plan
 }

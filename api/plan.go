@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -53,7 +53,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.SavePlan(plan)
+	err = servicemanager.Plan.Create(plan)
 	if err == appTypes.ErrPlanAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
@@ -80,7 +80,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: OK
 //   204: No content
 func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	plans, err := app.PlansList()
+	plans, err := servicemanager.Plan.List()
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlanRemove(planName)
+	err = servicemanager.Plan.Remove(planName)
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,

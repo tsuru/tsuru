@@ -20,7 +20,7 @@ import (
 
 func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 	team := authTypes.Team{Name: "myteam"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team}, nil
 	}
 	var rebuildApps []string

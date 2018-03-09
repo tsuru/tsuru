@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.PlanSuite{
-	PlanService: &PlanService{},
+	PlanStorage: &PlanStorage{},
 	SuiteHooks:  &mongodbBaseTest{},
 })

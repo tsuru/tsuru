@@ -142,10 +142,10 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
-	s.mockTeamService.OnList = func() ([]authTypes.Team, error) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
 	}
-	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
 		return &team, nil
 	}
 	a = App{
