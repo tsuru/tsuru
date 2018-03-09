@@ -269,22 +269,8 @@ func (s *S) TestWaitForPod(c *check.C) {
 			},
 			Message: "my evt message",
 		}},
-		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - log: my log error`, containers: []apiv1.Container{
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`, containers: []apiv1.Container{
 			{Name: "cont1"},
-		}},
-		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed" - last event: my evt with log - log: my log error`, containers: []apiv1.Container{
-			{Name: "cont1"},
-		}, evt: &apiv1.Event{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod1.evt1",
-				Namespace: s.client.Namespace(),
-			},
-			InvolvedObject: apiv1.ObjectReference{
-				Kind:      "Pod",
-				Name:      "pod1",
-				Namespace: s.client.Namespace(),
-			},
-			Message: "my evt with log",
 		}},
 	}
 	for _, tt := range tests {
