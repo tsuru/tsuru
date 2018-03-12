@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.PlatformSuite{
-	PlatformService: &PlatformService{},
+	PlatformStorage: &PlatformStorage{},
 	SuiteHooks:      &mongodbBaseTest{},
 })

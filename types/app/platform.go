@@ -15,7 +15,7 @@ type Platform struct {
 	Disabled bool
 }
 
-type PlatformService interface {
+type PlatformStorage interface {
 	Insert(Platform) error
 	FindByName(string) (*Platform, error)
 	FindAll() ([]Platform, error)

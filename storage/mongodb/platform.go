@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 )
 
-type PlatformService struct{}
+type PlatformStorage struct{}
 
 type platform struct {
 	Name     string `bson:"_id"`
@@ -23,7 +23,7 @@ func platformsCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("platforms")
 }
 
-func (s *PlatformService) Insert(p app.Platform) error {
+func (s *PlatformStorage) Insert(p app.Platform) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func (s *PlatformService) Insert(p app.Platform) error {
 	return err
 }
 
-func (s *PlatformService) FindByName(name string) (*app.Platform, error) {
+func (s *PlatformStorage) FindByName(name string) (*app.Platform, error) {
 	var p platform
 	conn, err := db.Conn()
 	if err != nil {
@@ -54,16 +54,16 @@ func (s *PlatformService) FindByName(name string) (*app.Platform, error) {
 	return &platform, nil
 }
 
-func (s *PlatformService) FindAll() ([]app.Platform, error) {
+func (s *PlatformStorage) FindAll() ([]app.Platform, error) {
 	return s.findByQuery(nil)
 }
 
-func (s *PlatformService) FindEnabled() ([]app.Platform, error) {
+func (s *PlatformStorage) FindEnabled() ([]app.Platform, error) {
 	query := bson.M{"$or": []bson.M{{"disabled": false}, {"disabled": bson.M{"$exists": false}}}}
 	return s.findByQuery(query)
 }
 
-func (s *PlatformService) findByQuery(query bson.M) ([]app.Platform, error) {
+func (s *PlatformStorage) findByQuery(query bson.M) ([]app.Platform, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (s *PlatformService) findByQuery(query bson.M) ([]app.Platform, error) {
 	return appPlatforms, nil
 }
 
-func (s *PlatformService) Update(p app.Platform) error {
+func (s *PlatformStorage) Update(p app.Platform) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (s *PlatformService) Update(p app.Platform) error {
 	return platformsCollection(conn).Update(bson.M{"_id": p.Name}, bson.M{"$set": bson.M{"disabled": p.Disabled}})
 }
 
-func (s *PlatformService) Delete(p app.Platform) error {
+func (s *PlatformStorage) Delete(p app.Platform) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
