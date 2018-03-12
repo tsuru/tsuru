@@ -18,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-func PlatformService() appTypes.PlatformService {
+func PlatformService() appTypes.PlatformStorage {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -26,7 +26,7 @@ func PlatformService() appTypes.PlatformService {
 			return nil
 		}
 	}
-	return dbDriver.PlatformService
+	return dbDriver.PlatformStorage
 }
 
 func validatePlatform(p appTypes.Platform) error {

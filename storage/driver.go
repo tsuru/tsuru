@@ -15,7 +15,7 @@ import (
 
 type DbDriver struct {
 	TeamStorage     TeamStorage
-	PlatformService app.PlatformService
+	PlatformStorage app.PlatformStorage
 	PlanStorage     app.PlanStorage
 	CacheService    cache.CacheService
 }

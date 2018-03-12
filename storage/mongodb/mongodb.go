@@ -9,7 +9,7 @@ import "github.com/tsuru/tsuru/storage"
 func init() {
 	mongodbDriver := storage.DbDriver{
 		TeamStorage:     &TeamStorage{},
-		PlatformService: &PlatformService{},
+		PlatformStorage: &PlatformStorage{},
 		PlanStorage:     &PlanStorage{},
 		CacheService:    &cacheService{},
 	}
