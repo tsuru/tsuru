@@ -7,14 +7,13 @@ package storagetest
 import (
 	"sort"
 
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type TeamSuite struct {
 	SuiteHooks
-	TeamStorage authTypes.TeamStorage
+	TeamStorage auth.TeamStorage
 }
 
 func (s *TeamSuite) TestInsertTeam(c *check.C) {

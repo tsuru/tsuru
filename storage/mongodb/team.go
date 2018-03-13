@@ -9,13 +9,12 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/auth"
 )
 
 type TeamStorage struct{}
 
-var _ authTypes.TeamStorage = &TeamStorage{}
+var _ auth.TeamStorage = &TeamStorage{}
 
 type team struct {
 	Name         string `bson:"_id"`
