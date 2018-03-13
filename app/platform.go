@@ -18,7 +18,13 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-func PlatformService() appTypes.PlatformStorage {
+var _ appTypes.PlatformService = &platformService{}
+
+type platformService struct {
+	storage appTypes.PlatformStorage
+}
+
+func PlatformService() appTypes.PlatformService {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -26,40 +32,24 @@ func PlatformService() appTypes.PlatformStorage {
 			return nil
 		}
 	}
-	return dbDriver.PlatformStorage
+	return &platformService{
+		storage: dbDriver.PlatformStorage,
+	}
 }
 
-func validatePlatform(p appTypes.Platform) error {
-	if p.Name == "" {
-		return appTypes.ErrPlatformNameMissing
-	}
-	if !validation.ValidateName(p.Name) {
-		return appTypes.ErrInvalidPlatformName
-	}
-	return nil
-}
-
-// Platforms returns the list of available platforms.
-func Platforms(enabledOnly bool) ([]appTypes.Platform, error) {
-	if enabledOnly {
-		return PlatformService().FindEnabled()
-	}
-	return PlatformService().FindAll()
-}
-
-// PlatformAdd adds a new platform to tsuru
-func PlatformAdd(opts builder.PlatformOptions) error {
+// Create implements Create method of PlatformService interface
+func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 	p := appTypes.Platform{Name: opts.Name}
-	if err := validatePlatform(p); err != nil {
+	if err := s.validate(p); err != nil {
 		return err
 	}
-	err := PlatformService().Insert(p)
+	err := s.storage.Insert(p)
 	if err != nil {
 		return err
 	}
 	err = builder.PlatformAdd(opts)
 	if err != nil {
-		dbErr := PlatformService().Delete(p)
+		dbErr := s.storage.Delete(p)
 		if dbErr != nil {
 			return tsuruErrors.NewMultiError(
 				errors.Wrapf(dbErr, "unable to rollback platform add"),
@@ -71,7 +61,25 @@ func PlatformAdd(opts builder.PlatformOptions) error {
 	return nil
 }
 
-func PlatformUpdate(opts builder.PlatformOptions) error {
+// List implements List method of PlatformService interface
+func (s *platformService) List(enabledOnly bool) ([]appTypes.Platform, error) {
+	if enabledOnly {
+		return s.storage.FindEnabled()
+	}
+	return s.storage.FindAll()
+}
+
+// FindByName implements FindByName method of PlatformService interface
+func (s *platformService) FindByName(name string) (*appTypes.Platform, error) {
+	p, err := s.storage.FindByName(name)
+	if err != nil {
+		return nil, appTypes.ErrInvalidPlatform
+	}
+	return p, nil
+}
+
+// Update implements Update method of PlatformService interface
+func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 	if opts.Name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
@@ -80,7 +88,7 @@ func PlatformUpdate(opts builder.PlatformOptions) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = PlatformService().FindByName(opts.Name)
+	_, err = s.FindByName(opts.Name)
 	if err != nil {
 		return err
 	}
@@ -103,12 +111,13 @@ func PlatformUpdate(opts builder.PlatformOptions) error {
 		if err != nil {
 			return err
 		}
-		return PlatformService().Update(appTypes.Platform{Name: opts.Name, Disabled: disableBool})
+		return s.storage.Update(appTypes.Platform{Name: opts.Name, Disabled: disableBool})
 	}
 	return nil
 }
 
-func PlatformRemove(name string) error {
+// Remove implements Remove method of PlatformService interface
+func (s *platformService) Remove(name string) error {
 	if name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
@@ -125,18 +134,15 @@ func PlatformRemove(name string) error {
 	if err != nil {
 		log.Errorf("Failed to remove platform: %s", err)
 	}
-	return PlatformService().Delete(appTypes.Platform{Name: name})
+	return s.storage.Delete(appTypes.Platform{Name: name})
 }
 
-func GetPlatform(name string) (*appTypes.Platform, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
+func (s *platformService) validate(p appTypes.Platform) error {
+	if p.Name == "" {
+		return appTypes.ErrPlatformNameMissing
 	}
-	defer conn.Close()
-	p, err := PlatformService().FindByName(name)
-	if err != nil {
-		return nil, appTypes.ErrInvalidPlatform
+	if !validation.ValidateName(p.Name) {
+		return appTypes.ErrInvalidPlatformName
 	}
-	return p, nil
+	return nil
 }

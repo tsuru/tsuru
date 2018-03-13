@@ -321,7 +321,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	if a.Platform != "" {
-		platform, errPlat := app.GetPlatform(a.Platform)
+		platform, errPlat := servicemanager.Platform.FindByName(a.Platform)
 		if errPlat != nil {
 			return errPlat
 		}

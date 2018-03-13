@@ -9,13 +9,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -57,7 +56,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlatformAdd(builder.PlatformOptions{
+	err = servicemanager.Platform.Create(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
@@ -108,7 +107,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlatformUpdate(builder.PlatformOptions{
+	err = servicemanager.Platform.Update(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
@@ -149,7 +148,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlatformRemove(name)
+	err = servicemanager.Platform.Remove(name)
 	if err == appTypes.ErrPlatformNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -167,7 +166,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 		permission.Check(t, permission.PermPlatformCreate)
-	platforms, err := app.Platforms(!canUsePlat)
+	platforms, err := servicemanager.Platform.List(!canUsePlat)
 	if err != nil {
 		return err
 	}

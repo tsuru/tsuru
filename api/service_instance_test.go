@@ -876,8 +876,6 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		err := service.Create()
 		c.Assert(err, check.IsNil)
 	}
-	p := appTypes.Platform{Name: "zend"}
-	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err := pool.AddPool(opts)
@@ -988,8 +986,6 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := appTypes.Platform{Name: "zend"}
-	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -1039,8 +1035,6 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := appTypes.Platform{Name: "zend"}
-	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
@@ -1082,8 +1076,6 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	p := appTypes.Platform{Name: "zend"}
-	app.PlatformService().Insert(p)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
