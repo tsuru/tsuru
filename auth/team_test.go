@@ -5,41 +5,70 @@
 package auth
 
 import (
-	"sort"
-
+	"github.com/globalsign/mgo/bson"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 
-	"github.com/globalsign/mgo/bson"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestTeamServiceCreate(c *check.C) {
+	teamName := "pos"
 	one := authTypes.User{Email: "king@pos.com"}
-	err := TeamService().Create("pos", &one)
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnInsert: func(t authTypes.Team) error {
+				c.Assert(t.Name, check.Equals, teamName)
+				c.Assert(t.CreatingUser, check.DeepEquals, one.Email)
+				return nil
+			},
+		},
+	}
+
+	err := ts.Create(teamName, &one)
 	c.Assert(err, check.IsNil)
-	team, err := TeamService().FindByName("pos")
-	c.Assert(err, check.IsNil)
-	c.Assert(team.CreatingUser, check.Equals, one.Email)
 }
 
 func (s *S) TestTeamServiceCreateDuplicate(c *check.C) {
+	teamName := "pos"
 	u := authTypes.User{Email: "king@pos.com"}
-	err := TeamService().Create("pos", &u)
-	c.Assert(err, check.IsNil)
-	err = TeamService().Create("pos", &u)
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnInsert: func(t authTypes.Team) error {
+				c.Assert(t.Name, check.Equals, teamName)
+				c.Assert(t.CreatingUser, check.DeepEquals, u.Email)
+				return authTypes.ErrTeamAlreadyExists
+			},
+		},
+	}
+
+	err := ts.Create("pos", &u)
 	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
 func (s *S) TestTeamServiceCreateTrimsName(c *check.C) {
 	u := authTypes.User{Email: "king@pos.com"}
-	err := TeamService().Create("pos    ", &u)
-	c.Assert(err, check.IsNil)
-	_, err = TeamService().FindByName("pos")
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnInsert: func(t authTypes.Team) error {
+				c.Assert(t.Name, check.Equals, "pos")
+				return nil
+			},
+		},
+	}
+
+	err := ts.Create("pos    ", &u)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 	u := authTypes.User{Email: "king@pos.com"}
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnInsert: func(t authTypes.Team) error {
+				return nil
+			},
+		},
+	}
 	var tests = []struct {
 		input string
 		err   error
@@ -59,8 +88,9 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 		{"ab", nil},
 		{"team1", nil},
 	}
+
 	for _, t := range tests {
-		err := TeamService().Create(t.input, &u)
+		err := ts.Create(t.input, &u)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}
@@ -69,48 +99,67 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 
 func (s *S) TestTeamServiceRemove(c *check.C) {
 	teamName := "atreides"
-	u := authTypes.User(*s.user)
-	err := TeamService().Create(teamName, &u)
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnDelete: func(t authTypes.Team) error {
+				c.Assert(t.Name, check.Equals, teamName)
+				return nil
+			},
+		},
+	}
+
+	err := ts.Remove(teamName)
 	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(teamName)
-	c.Assert(err, check.IsNil)
-	t, err := TeamService().FindByName(teamName)
-	c.Assert(err, check.Equals, authTypes.ErrTeamNotFound)
-	c.Assert(t, check.IsNil)
 }
 
 func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
 	teamName := "atreides"
-	u := authTypes.User(*s.user)
-	err := TeamService().Create(teamName, &u)
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnDelete: func(t authTypes.Team) error {
+				c.Fail()
+				return nil
+			},
+		},
+	}
+
+	err := s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
-	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(teamName)
+	err = ts.Remove(teamName)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")
 }
 
 func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
 	teamName := "harkonnen"
-	u := authTypes.User(*s.user)
-	err := TeamService().Create(teamName, &u)
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnDelete: func(t authTypes.Team) error {
+				c.Fail()
+				return nil
+			},
+		},
+	}
+
+	err := s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{teamName}})
-	c.Assert(err, check.IsNil)
-	err = TeamService().Remove(teamName)
+	err = ts.Remove(teamName)
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
 }
 
 func (s *S) TestTeamServiceList(c *check.C) {
-	u := authTypes.User(*s.user)
-	err := TeamService().Create("corrino", &u)
+	teams := []authTypes.Team{
+		{Name: "corrino"},
+		{Name: "fenring"},
+	}
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnFindAll: func() ([]authTypes.Team, error) {
+				return teams, nil
+			},
+		},
+	}
+
+	result, err := ts.List()
 	c.Assert(err, check.IsNil)
-	err = TeamService().Create("fenring", &u)
-	c.Assert(err, check.IsNil)
-	teams, err := TeamService().List()
-	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.HasLen, 3)
-	names := []string{teams[0].Name, teams[1].Name, teams[2].Name}
-	sort.Strings(names)
-	c.Assert(names, check.DeepEquals, []string{"cobrateam", "corrino", "fenring"})
+	c.Assert(result, check.DeepEquals, teams)
 }

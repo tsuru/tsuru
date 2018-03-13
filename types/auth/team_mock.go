@@ -4,7 +4,37 @@
 
 package auth
 
+var _ TeamStorage = &MockTeamStorage{}
 var _ TeamService = &MockTeamService{}
+
+// MockTeamStorage implements TeamStorage interface
+type MockTeamStorage struct {
+	OnInsert      func(Team) error
+	OnFindAll     func() ([]Team, error)
+	OnFindByName  func(string) (*Team, error)
+	OnFindByNames func([]string) ([]Team, error)
+	OnDelete      func(Team) error
+}
+
+func (m *MockTeamStorage) Insert(t Team) error {
+	return m.OnInsert(t)
+}
+
+func (m *MockTeamStorage) FindAll() ([]Team, error) {
+	return m.OnFindAll()
+}
+
+func (m *MockTeamStorage) FindByName(name string) (*Team, error) {
+	return m.OnFindByName(name)
+}
+
+func (m *MockTeamStorage) FindByNames(names []string) ([]Team, error) {
+	return m.OnFindByNames(names)
+}
+
+func (m *MockTeamStorage) Delete(t Team) error {
+	return m.OnDelete(t)
+}
 
 type MockTeamService struct {
 	OnCreate      func(string, *User) error

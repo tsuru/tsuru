@@ -7,7 +7,6 @@ package auth
 import (
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -20,10 +19,22 @@ import (
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
 var ts authTypes.TeamService
-var once = &sync.Once{}
 
 type teamService struct {
 	storage authTypes.TeamStorage
+}
+
+func TeamService() authTypes.TeamService {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil
+		}
+	}
+	return &teamService{
+		storage: dbDriver.TeamStorage,
+	}
 }
 
 func (t *teamService) Create(name string, user *authTypes.User) error {
@@ -92,24 +103,4 @@ func (t *teamService) validate(team authTypes.Team) error {
 		return authTypes.ErrInvalidTeamName
 	}
 	return nil
-}
-
-func teamStorage() authTypes.TeamStorage {
-	dbDriver, err := storage.GetCurrentDbDriver()
-	if err != nil {
-		dbDriver, err = storage.GetDefaultDbDriver()
-		if err != nil {
-			return nil
-		}
-	}
-	return dbDriver.TeamStorage
-}
-
-func TeamService() authTypes.TeamService {
-	once.Do(func() {
-		ts = &teamService{
-			storage: teamStorage(),
-		}
-	})
-	return ts
 }
