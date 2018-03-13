@@ -39,14 +39,10 @@ var builders = make(map[string]Builder)
 // PlatformBuilder is a builder where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
 type PlatformBuilder interface {
-	PlatformAdd(PlatformOptions) error
-	PlatformUpdate(PlatformOptions) error
+	PlatformAdd(appTypes.PlatformOptions) error
+	PlatformUpdate(appTypes.PlatformOptions) error
 	PlatformRemove(name string) error
 }
-
-// PlatformOptions is the set of options provided to PlatformAdd and
-// PlatformUpdate, in PlatformBuilder.
-type PlatformOptions = appTypes.PlatformOptions
 
 // Register registers a new builder in the Builder registry.
 func Register(name string, builder Builder) {
@@ -84,7 +80,7 @@ func Registry() ([]Builder, error) {
 	return registry, nil
 }
 
-func PlatformAdd(opts PlatformOptions) error {
+func PlatformAdd(opts appTypes.PlatformOptions) error {
 	builders, err := Registry()
 	if err != nil {
 		return err
@@ -105,7 +101,7 @@ func PlatformAdd(opts PlatformOptions) error {
 	return errors.New("No builder available")
 }
 
-func PlatformUpdate(opts PlatformOptions) error {
+func PlatformUpdate(opts appTypes.PlatformOptions) error {
 	builders, err := Registry()
 	if err != nil {
 		return err

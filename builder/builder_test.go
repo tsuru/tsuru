@@ -8,6 +8,7 @@ import (
 	"errors"
 	"testing"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -15,7 +16,7 @@ type S struct{}
 
 var _ = check.Suite(S{})
 
-func callPlatformWithError(PlatformOptions) error {
+func callPlatformWithError(appTypes.PlatformOptions) error {
 	return errors.New("something is wrong")
 }
 
@@ -60,7 +61,7 @@ func (s S) TestPlatformAdd(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformAdd(PlatformOptions{})
+	err := PlatformAdd(appTypes.PlatformOptions{})
 	c.Assert(err, check.IsNil)
 }
 
@@ -73,12 +74,12 @@ func (s S) TestPlatformAddError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformAdd(PlatformOptions{})
+	err := PlatformAdd(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformAddNoBuilder(c *check.C) {
-	err := PlatformAdd(PlatformOptions{})
+	err := PlatformAdd(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }
 
@@ -89,7 +90,7 @@ func (s S) TestPlatformUpdate(c *check.C) {
 	b2 := MockBuilder{}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformUpdate(PlatformOptions{})
+	err := PlatformUpdate(appTypes.PlatformOptions{})
 	c.Assert(err, check.IsNil)
 }
 
@@ -106,12 +107,12 @@ func (s S) TestPlatformUpdateError(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
-	err := PlatformUpdate(PlatformOptions{})
+	err := PlatformUpdate(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
-	err := PlatformUpdate(PlatformOptions{})
+	err := PlatformUpdate(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }
 

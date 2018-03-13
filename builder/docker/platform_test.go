@@ -14,9 +14,9 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
@@ -34,7 +34,7 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	var b dockerBuilder
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = b.PlatformAdd(builder.PlatformOptions{
+	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
@@ -62,7 +62,7 @@ func (s *S) TestPlatformAddData(c *check.C) {
 	defer config.Unset("docker:registry")
 	var b dockerBuilder
 	dockerfile := "FROM tsuru/java"
-	err = b.PlatformAdd(builder.PlatformOptions{
+	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   map[string]string{"dockerfile": "http://localhost"},
 		Output: ioutil.Discard,
@@ -80,7 +80,7 @@ func (s *S) TestPlatformAddData(c *check.C) {
 
 func (s *S) TestPlatformAddWithoutArgs(c *check.C) {
 	b := dockerBuilder{}
-	err := b.PlatformAdd(builder.PlatformOptions{Name: "test"})
+	err := b.PlatformAdd(appTypes.PlatformOptions{Name: "test"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Dockerfile is required")
 }
@@ -89,7 +89,7 @@ func (s *S) TestPlatformAddShouldValidateArgs(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "not_a_url"
 	b := dockerBuilder{}
-	err := b.PlatformAdd(builder.PlatformOptions{
+	err := b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
@@ -110,7 +110,7 @@ func (s *S) TestPlatformAddProvisionerError(c *check.C) {
 	b := dockerBuilder{}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = b.PlatformAdd(builder.PlatformOptions{
+	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
@@ -136,7 +136,7 @@ func (s *S) TestPlatformAddNoProvisioner(c *check.C) {
 	b := dockerBuilder{}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = b.PlatformAdd(builder.PlatformOptions{
+	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
@@ -157,7 +157,7 @@ func (s *S) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	var b dockerBuilder
-	err = b.PlatformAdd(builder.PlatformOptions{
+	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
 		Args:   map[string]string{"dockerfile": "http://localhost/Dockerfile"},
 		Output: &buf,
