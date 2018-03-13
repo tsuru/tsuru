@@ -34,6 +34,7 @@ var (
 		poolAdd(),
 		nodeHealer(),
 		platformAdd(),
+		planCreate(),
 		exampleApps(),
 		updateAppPools(),
 		serviceImageSetup(),
@@ -443,6 +444,23 @@ func platformAdd() ExecFlow {
 	return flow
 }
 
+func planCreate() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"defaultplan"},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("plan-create", "defaultplan", "--default").WithTimeout(15 * time.Minute).Run(env)
+		c.Assert(res, ResultOk)
+		env.Add("defaultplan", "defaultplan")
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := T("plan-remove", "defaultplan").Run(env)
+		c.Check(res, ResultOk)
+	}
+	return flow
+}
+
 func exampleApps() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
@@ -451,6 +469,7 @@ func exampleApps() ExecFlow {
 		},
 		parallel: true,
 		provides: []string{"appnames"},
+		requires: []string{"defaultplan"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("plat"), env.Get("pool"))
