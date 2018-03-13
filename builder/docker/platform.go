@@ -22,15 +22,16 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/safe"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var _ builder.Builder = &dockerBuilder{}
 
-func (b *dockerBuilder) PlatformAdd(opts builder.PlatformOptions) error {
+func (b *dockerBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
 }
 
-func (b *dockerBuilder) PlatformUpdate(opts builder.PlatformOptions) error {
+func (b *dockerBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
 }
 
