@@ -24,6 +24,14 @@ type TeamService interface {
 	Remove(string) error
 }
 
+type TeamStorage interface {
+	Insert(Team) error
+	FindAll() ([]Team, error)
+	FindByName(string) (*Team, error)
+	FindByNames([]string) ([]Team, error)
+	Delete(Team) error
+}
+
 var (
 	ErrInvalidTeamName = &tsuruErrors.ValidationError{
 		Message: "Invalid team name, team names should start with a letter and" +
