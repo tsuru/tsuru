@@ -109,7 +109,7 @@ func (s *PlanSuite) TestFindDefaultPlanNotFound(c *check.C) {
 	err := s.PlanStorage.Insert(app.Plan{Name: "plan1", Default: false})
 	c.Assert(err, check.IsNil)
 	plan, err := s.PlanStorage.FindDefault()
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.Equals, app.ErrPlanDefaultNotFound)
 	c.Assert(plan, check.IsNil)
 }
 

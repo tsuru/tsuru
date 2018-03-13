@@ -61,9 +61,9 @@ func (s *PlanStorage) FindDefault() (*app.Plan, error) {
 		return nil, app.ErrPlanDefaultAmbiguous
 	}
 	if len(plans) == 0 {
-		return nil, nil
+		return nil, app.ErrPlanDefaultNotFound
 	}
-	return &plans[0], err
+	return &plans[0], nil
 }
 
 func (s *PlanStorage) findByQuery(query bson.M) ([]app.Plan, error) {
