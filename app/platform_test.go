@@ -46,78 +46,28 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
-func (s *PlatformSuite) TestPlatforms(c *check.C) {
-	want := []appTypes.Platform{
-		{Name: "dea"},
-		{Name: "pecuniae"},
-		{Name: "money"},
-		{Name: "raise"},
-		{Name: "glass"},
-	}
-	for _, p := range want {
-		PlatformService().Insert(p)
-	}
-	got, err := Platforms(false)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, want)
-}
-
-func (s *PlatformSuite) TestPlatformsWithFilterOnlyEnabledPlatforms(c *check.C) {
-	input := []appTypes.Platform{
-		{Name: "dea"},
-		{Name: "pecuniae", Disabled: true},
-		{Name: "money"},
-		{Name: "raise", Disabled: true},
-		{Name: "glass", Disabled: false},
-	}
-	expected := []appTypes.Platform{
-		{Name: "dea"},
-		{Name: "money"},
-		{Name: "glass", Disabled: false},
-	}
-	for _, p := range input {
-		PlatformService().Insert(p)
-	}
-	got, err := Platforms(true)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, expected)
-}
-
-func (s *PlatformSuite) TestPlatformsEmpty(c *check.C) {
-	got, err := Platforms(false)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.HasLen, 0)
-}
-
-func (s *PlatformSuite) TestPlatformsEmptyWithQueryTrue(c *check.C) {
-	got, err := Platforms(true)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.HasLen, 0)
-}
-
-func (s *PlatformSuite) TestGetPlatform(c *check.C) {
-	p := appTypes.Platform{Name: "dea"}
-	PlatformService().Insert(p)
-	got, err := GetPlatform(p.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(*got, check.DeepEquals, p)
-	got, err = GetPlatform("WAT")
-	c.Assert(got, check.IsNil)
-	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
-}
-
-func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
+func (s *PlatformSuite) TestPlatformCreate(c *check.C) {
 	name := "test-platform-add"
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnInsert: func(p appTypes.Platform) error {
+				c.Assert(p.Name, check.Equals, name)
+				return nil
+			},
+		},
+	}
+	err := ps.Create(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	platform, err := GetPlatform(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(platform.Name, check.Equals, name)
 }
 
-func (s *PlatformSuite) TestPlatformAddValidatesPlatformName(c *check.C) {
+func (s *PlatformSuite) TestPlatformCreateValidatesPlatformName(c *check.C) {
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnInsert: func(_ appTypes.Platform) error {
+				return nil
+			},
+		},
+	}
 	tt := []struct {
 		name        string
 		expectedErr error
@@ -133,96 +83,197 @@ func (s *PlatformSuite) TestPlatformAddValidatesPlatformName(c *check.C) {
 		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", nil},
 	}
 	for _, t := range tt {
-		err := PlatformAdd(builder.PlatformOptions{Name: t.name})
+		err := ps.Create(builder.PlatformOptions{Name: t.name})
 		c.Assert(err, check.DeepEquals, t.expectedErr)
 	}
 }
 
-func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
+func (s *PlatformSuite) TestPlatformCreateWithStorageError(c *check.C) {
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnInsert: func(_ appTypes.Platform) error {
+				return appTypes.ErrDuplicatePlatform
+			},
+		},
+	}
 	name := "test-platform-add"
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.IsNil)
-	err = PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
+	err := ps.Create(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.Equals, appTypes.ErrDuplicatePlatform)
 }
 
-func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
+func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
 	s.builder.OnPlatformAdd = func(builder.PlatformOptions) error {
 		return errors.New("something wrong happened")
 	}
 	name := "test-platform-add"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnInsert: func(p appTypes.Platform) error {
+				c.Assert(p.Name, check.Equals, name)
+				return nil
+			},
+			OnDelete: func(p appTypes.Platform) error {
+				c.Assert(p.Name, check.Equals, name)
+				return nil
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	opts := builder.PlatformOptions{Name: name, Args: args}
-	err := PlatformAdd(opts)
+	err := ps.Create(opts)
 	c.Assert(err, check.NotNil)
-	p, err := PlatformService().FindByName(name)
-	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
-	c.Assert(p, check.IsNil)
 }
 
-func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
-	err := PlatformAdd(builder.PlatformOptions{Name: ""})
-	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
+func (s *PlatformSuite) TestPlatformList(c *check.C) {
+	enabledPlatforms := []appTypes.Platform{
+		{Name: "pecuniae"},
+		{Name: "raise", Disabled: false},
+		{Name: "glass"},
+	}
+	disabledPlatforms := []appTypes.Platform{
+		{Name: "dea", Disabled: true},
+		{Name: "money", Disabled: true},
+	}
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindAll: func() ([]appTypes.Platform, error) {
+				return append(enabledPlatforms, disabledPlatforms...), nil
+			},
+			OnFindEnabled: func() ([]appTypes.Platform, error) {
+				return enabledPlatforms, nil
+			},
+		},
+	}
+
+	plats, err := ps.List(false)
+	c.Assert(err, check.IsNil)
+	c.Assert(plats, check.HasLen, 5)
+
+	plats, err = ps.List(true)
+	c.Assert(err, check.IsNil)
+	c.Assert(plats, check.HasLen, 3)
+}
+
+func (s *PlatformSuite) TestPlatformFindByName(c *check.C) {
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(name string) (*appTypes.Platform, error) {
+				if name == "java" {
+					return &appTypes.Platform{Name: "java"}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+		},
+	}
+
+	p, err := ps.FindByName("java")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Name, check.Equals, "java")
+
+	p, err = ps.FindByName("other")
+	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
+	c.Assert(p, check.IsNil)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, false)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
-	err := PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
-	err = PlatformAdd(builder.PlatformOptions{Name: name})
+
+	err := ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.IsNil)
+
+	err = ps.Update(builder.PlatformOptions{Name: "other", Args: args})
+	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, true)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "true"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
 	appName := "test-app-1"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
-	platf, err := GetPlatform(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(platf.Disabled, check.Equals, true)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, true)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["disabled"] = "true"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
 	appName := "test-app-2"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args, Input: bytes.NewReader(nil)})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args, Input: bytes.NewReader(nil)})
 	c.Assert(err, check.IsNil)
-	platf, err := GetPlatform(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(platf.Disabled, check.Equals, true)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
@@ -230,23 +281,36 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, true)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "true"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
-	appName := "test-app-2"
+	appName := "test-app2"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
-	platf, err := GetPlatform(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(platf.Disabled, check.Equals, true)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, false)
@@ -254,68 +318,114 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, false)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "false"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
-	appName := "test-app-3"
+	appName := "test-app3"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
-	platf, err := GetPlatform(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(platf.Disabled, check.Equals, false)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, false)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "false"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
-	appName := "test-app-4"
+	appName := "test-app4"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
-	platf, err := GetPlatform(name)
+	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
-	c.Assert(platf.Disabled, check.Equals, false)
+	c.Assert(a.UpdatePlatform, check.Equals, false)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
-	err := PlatformUpdate(builder.PlatformOptions{Name: ""})
+	ps := &platformService{}
+	err := ps.Update(builder.PlatformOptions{Name: ""})
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
 	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, false)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
 	appName := "test-app"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformUpdate(builder.PlatformOptions{Name: name, Args: args})
+
+	err = ps.Update(builder.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -323,51 +433,49 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 }
 
 func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
-	err := PlatformRemove("platform-dont-exists")
+	name := "test-platform-remove"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnDelete: func(p appTypes.Platform) error {
+				if p.Name == name {
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
+
+	err := ps.Remove("platform-doesnt-exist")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
-	name := "test-platform-update"
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(builder.PlatformOptions{Name: name})
+
+	err = ps.Remove(name)
 	c.Assert(err, check.IsNil)
-	err = PlatformRemove(name)
-	c.Assert(err, check.IsNil)
-	p, err := PlatformService().FindByName(name)
-	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
-	c.Assert(p, check.IsNil)
-	err = PlatformRemove("")
+
+	err = ps.Remove("")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
-	name := "test-platform-update"
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err := PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
+	name := "test-platform-remove"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnDelete: func(p appTypes.Platform) error {
+				if p.Name == name {
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
 	appName := "test-another-app"
 	app := App{
 		Name:     appName,
 		Platform: name,
 	}
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = PlatformRemove(name)
-	c.Assert(err, check.NotNil)
-}
 
-func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
-	err := PlatformRemove("platform-dont-exists")
+	err = ps.Remove(name)
 	c.Assert(err, check.NotNil)
-	name := "test-platform-update"
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(builder.PlatformOptions{Name: name})
-	c.Assert(err, check.IsNil)
-	err = PlatformRemove(name)
-	c.Assert(err, check.IsNil)
-	p, err := PlatformService().FindByName(name)
-	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
-	c.Assert(p, check.IsNil)
 }

@@ -49,8 +49,9 @@ type S struct {
 	Pool        string
 	testServer  http.Handler
 	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
+		Team     *authTypes.MockTeamService
+		Plan     *appTypes.MockPlanService
+		Platform *appTypes.MockPlatformService
 	}
 }
 
@@ -124,14 +125,15 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
-	p := appTypes.Platform{Name: "zend"}
-	app.PlatformService().Insert(p)
-	app.PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
+	s.setupMocks()
+}
+
+func (s *S) setupMocks() {
 	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
@@ -158,9 +160,11 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
+	s.mockService.Platform = &appTypes.MockPlatformService{}
 
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
+	servicemanager.Platform = s.mockService.Platform
 }
 
 func (s *S) TearDownTest(c *check.C) {

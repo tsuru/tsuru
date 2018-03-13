@@ -6,6 +6,7 @@ import (
 )
 
 var (
-	Team auth.TeamService
-	Plan app.PlanService
+	Team     auth.TeamService
+	Plan     app.PlanService
+	Platform app.PlatformService
 )

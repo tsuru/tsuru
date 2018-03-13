@@ -102,12 +102,17 @@ A/dGIKt8r4IkvjGdt2myS/A=
 -----END PRIVATE KEY-----`
 )
 
+func (s *S) setupMockForCreateApp(c *check.C, platName string) {
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		c.Assert(name, check.Equals, platName)
+		return &appTypes.Platform{Name: platName}, nil
+	}
+}
+
 func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := appTypes.Platform{Name: "python"}
-	app.PlatformService().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"b", "c"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -182,8 +187,6 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
-	platform := appTypes.Platform{Name: "python"}
-	app.PlatformService().Insert(platform)
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -257,8 +260,6 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	platform := appTypes.Platform{Name: "python"}
-	app.PlatformService().Insert(platform)
 	app2 := app.App{
 		Name:      "app2",
 		Platform:  "python",
@@ -796,6 +797,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestCreateAppRemoveRole(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
@@ -851,6 +853,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 }
 
 func (s *S) TestCreateApp(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
@@ -938,6 +941,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 }
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	t1 := authTypes.Team{Name: "team1"}
 	t2 := authTypes.Team{Name: "team2"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -998,6 +1002,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 }
 
 func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
@@ -1038,6 +1043,7 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 }
 
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	expectedPlan := appTypes.Plan{
 		Name:     "myplan",
@@ -1091,6 +1097,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithDescription(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data, err := url.QueryUnescape("name=someapp&platform=zend&description=my app description")
 	c.Assert(err, check.IsNil)
@@ -1134,6 +1141,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithTags(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	data, err := url.QueryUnescape("name=someapp&platform=zend&tag=tag1&tag=tag2")
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
@@ -1176,10 +1184,12 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithPool(c *check.C) {
+	platName := "zend"
+	s.setupMockForCreateApp(c, platName)
 	err := pool.AddPool(pool.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
 	appName := "someapp"
-	data, err := url.QueryUnescape("name=someapp&platform=zend&pool=mypool1")
+	data, err := url.QueryUnescape(fmt.Sprintf("name=%s&platform=%s&pool=mypool1", appName, platName))
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1215,13 +1225,14 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 		Kind:   "app.create",
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": appName},
-			{"name": "platform", "value": "zend"},
+			{"name": "platform", "value": platName},
 			{"name": "pool", "value": "mypool1"},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppWithRouter(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data, err := url.QueryUnescape("name=someapp&platform=zend&router=fake")
 	c.Assert(err, check.IsNil)
@@ -1257,6 +1268,7 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
 	data, err := url.QueryUnescape("name=someapp&platform=zend&routeropts.opt1=val1&routeropts.opt2=val2")
 	c.Assert(err, check.IsNil)
@@ -1292,6 +1304,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	team := authTypes.Team{Name: "tsurutwo"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
@@ -1319,6 +1332,7 @@ func (s *S) TestCreateAppTwoTeams(c *check.C) {
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -1351,6 +1365,7 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestCreateAppInvalidName(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	b := strings.NewReader("name=123myapp&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1380,6 +1395,7 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 }
 
 func (s *S) TestCreateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
+	s.setupMockForCreateApp(c, "django")
 	token := userWithPermission(c)
 	b := strings.NewReader("name=someapp&platform=django")
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1393,6 +1409,7 @@ func (s *S) TestCreateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "plainsofdawn", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1420,9 +1437,13 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	p := appTypes.Platform{Name: "platDis", Disabled: true}
-	app.PlatformService().Insert(p)
+	s.setupMockForCreateApp(c, p.Name)
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		c.Assert(name, check.Equals, p.Name)
+		return &p, nil
+	}
 	a := app.App{Name: "someapp"}
-	data := "name=someapp&platform=platDis"
+	data := "name=someapp&platform=" + p.Name
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1453,7 +1474,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		Kind:   "app.create",
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "someapp"},
-			{"name": "platform", "value": "platDis"},
+			{"name": "platform", "value": p.Name},
 		},
 	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -1462,8 +1483,12 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 
 func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 	p := appTypes.Platform{Name: "platDis", Disabled: true}
-	app.PlatformService().Insert(p)
-	data := "name=someapp&platform=platDis"
+	s.setupMockForCreateApp(c, p.Name)
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		c.Assert(name, check.Equals, p.Name)
+		return &p, nil
+	}
+	data := "name=someapp&platform=" + p.Name
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1512,6 +1537,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
+	s.setupMockForCreateApp(c, "heimerdinger")
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

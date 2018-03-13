@@ -12,6 +12,8 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 )
 
+var _ app.PlatformStorage = &PlatformStorage{}
+
 type PlatformStorage struct{}
 
 type platform struct {

@@ -512,7 +512,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Tags = tags
 	}
 	if platform != "" {
-		p, errPlat := GetPlatform(platform)
+		p, errPlat := servicemanager.Platform.FindByName(platform)
 		if errPlat != nil {
 			return errPlat
 		}

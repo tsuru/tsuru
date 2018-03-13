@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+	"io"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 )
@@ -13,6 +14,21 @@ import (
 type Platform struct {
 	Name     string
 	Disabled bool
+}
+
+type PlatformOptions struct {
+	Name   string
+	Args   map[string]string
+	Input  io.Reader
+	Output io.Writer
+}
+
+type PlatformService interface {
+	Create(PlatformOptions) error
+	List(bool) ([]Platform, error)
+	FindByName(string) (*Platform, error)
+	Update(PlatformOptions) error
+	Remove(string) error
 }
 
 type PlatformStorage interface {

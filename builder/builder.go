@@ -11,6 +11,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var DefaultBuilder = "docker"
@@ -45,12 +46,7 @@ type PlatformBuilder interface {
 
 // PlatformOptions is the set of options provided to PlatformAdd and
 // PlatformUpdate, in PlatformBuilder.
-type PlatformOptions struct {
-	Name   string
-	Args   map[string]string
-	Input  io.Reader
-	Output io.Writer
-}
+type PlatformOptions = appTypes.PlatformOptions
 
 // Register registers a new builder in the Builder registry.
 func Register(name string, builder Builder) {

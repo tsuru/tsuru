@@ -46,8 +46,9 @@ type S struct {
 	Pool        string
 	zeroLock    map[string]interface{}
 	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
+		Team     *authTypes.MockTeamService
+		Plan     *appTypes.MockPlanService
+		Platform *appTypes.MockPlatformService
 	}
 }
 
@@ -149,9 +150,6 @@ func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
-	platform := appTypes.Platform{Name: "python"}
-	PlatformService().Insert(platform)
-	PlatformService().Insert(appTypes.Platform{Name: "heimerdinger"})
 	s.defaultPlan = appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
@@ -198,6 +196,16 @@ func setupMocks(s *S) {
 		},
 	}
 
+	s.mockService.Platform = &appTypes.MockPlatformService{
+		OnFindByName: func(name string) (*appTypes.Platform, error) {
+			if name == "python" || name == "heimerdinger" {
+				return &appTypes.Platform{Name: name}, nil
+			}
+			return nil, appTypes.ErrPlatformNotFound
+		},
+	}
+
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
+	servicemanager.Platform = s.mockService.Platform
 }
