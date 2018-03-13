@@ -14,7 +14,7 @@ import (
 
 type TeamSuite struct {
 	SuiteHooks
-	TeamStorage storage.TeamStorage
+	TeamStorage authTypes.TeamStorage
 }
 
 func (s *TeamSuite) TestInsertTeam(c *check.C) {

@@ -15,7 +15,7 @@ import (
 
 type TeamStorage struct{}
 
-var _ storage.TeamStorage = &TeamStorage{}
+var _ authTypes.TeamStorage = &TeamStorage{}
 
 type team struct {
 	Name         string `bson:"_id"`

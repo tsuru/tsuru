@@ -23,7 +23,7 @@ var ts authTypes.TeamService
 var once = &sync.Once{}
 
 type teamService struct {
-	storage storage.TeamStorage
+	storage authTypes.TeamStorage
 }
 
 func (t *teamService) Create(name string, user *authTypes.User) error {
@@ -94,7 +94,7 @@ func (t *teamService) validate(team authTypes.Team) error {
 	return nil
 }
 
-func teamStorage() storage.TeamStorage {
+func teamStorage() authTypes.TeamStorage {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
