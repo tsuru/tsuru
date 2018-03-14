@@ -27,7 +27,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
-				"curl -XPUT -fsSL http://localhost:9000/ -o/dev/null -w '%{http_code}' | grep 200",
+				"curl -k -XPUT -fsSL http://localhost:9000/ -o/dev/null -w '%{http_code}' | grep 200",
 			},
 			Timeout:  120 * time.Second,
 			Interval: 3 * time.Second,
@@ -36,10 +36,11 @@ func (s *S) TestToHealthConfig(c *check.C) {
 		{input: provision.TsuruYamlHealthcheck{
 			Path:   "/hc",
 			Status: 201,
+			Scheme: "https",
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
-				"curl -XGET -fsSL http://localhost:9000/hc -o/dev/null -w '%{http_code}' | grep 201",
+				"curl -k -XGET -fsSL https://localhost:9000/hc -o/dev/null -w '%{http_code}' | grep 201",
 			},
 			Timeout:  120 * time.Second,
 			Interval: 3 * time.Second,
@@ -53,7 +54,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
-				"curl -XGET -fsSL http://localhost:9000/hc | egrep \"WORK.NG[0-9]+\"",
+				"curl -k -XGET -fsSL http://localhost:9000/hc | egrep \"WORK.NG[0-9]+\"",
 			},
 			Timeout:  120 * time.Second,
 			Interval: 3 * time.Second,

@@ -5,6 +5,7 @@
 package net
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"time"
@@ -36,9 +37,19 @@ const (
 )
 
 var (
-	Dial5Full300Client, Dial5Dialer           = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5, true)
-	Dial5FullUnlimitedClient, _               = makeTimeoutHTTPClient(5*time.Second, 0, 5, true)
-	Dial5Full300ClientNoKeepAlive, _          = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1, true)
-	Dial5Full60ClientNoKeepAlive, _           = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, true)
-	Dial5Full60ClientNoKeepAliveNoRedirect, _ = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, false)
+	Dial5Full300Client, Dial5Dialer                = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5, true)
+	Dial5FullUnlimitedClient, _                    = makeTimeoutHTTPClient(5*time.Second, 0, 5, true)
+	Dial5Full300ClientNoKeepAlive, _               = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1, true)
+	Dial5Full60ClientNoKeepAlive, _                = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, true)
+	Dial5Full60ClientNoKeepAliveNoRedirect, _      = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, false)
+	Dial5Full60ClientNoKeepAliveNoRedirectInsecure = insecure(*Dial5Full60ClientNoKeepAliveNoRedirect)
 )
+
+func insecure(client http.Client) http.Client {
+	tlsConfig := client.Transport.(*http.Transport).TLSClientConfig
+	if tlsConfig == nil {
+		tlsConfig = &tls.Config{}
+	}
+	tlsConfig.InsecureSkipVerify = true
+	return client
+}

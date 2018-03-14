@@ -19,6 +19,10 @@ func toHealthConfig(hc provision.TsuruYamlHealthcheck, port int) *container.Heal
 	method := hc.Method
 	match := hc.Match
 	status := hc.Status
+	scheme := hc.Scheme
+	if scheme == "" {
+		scheme = provision.DefaultHealthcheckScheme
+	}
 	allowedFailures := hc.AllowedFailures
 	if path == "" {
 		return nil
@@ -35,7 +39,7 @@ func toHealthConfig(hc provision.TsuruYamlHealthcheck, port int) *container.Heal
 	if maxWaitTime == 0 {
 		maxWaitTime = 120
 	}
-	curlLine := fmt.Sprintf("curl -X%s -fsSL http://localhost:%d/%s", method, port, strings.TrimPrefix(path, "/"))
+	curlLine := fmt.Sprintf("curl -k -X%s -fsSL %s://localhost:%d/%s", method, scheme, port, strings.TrimPrefix(path, "/"))
 	if match != "" {
 		curlLine = fmt.Sprintf("%s | egrep %q", curlLine, match)
 	} else {

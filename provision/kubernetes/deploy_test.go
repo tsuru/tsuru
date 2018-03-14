@@ -450,7 +450,8 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			"p2":  "cmd2",
 		},
 		"healthcheck": provision.TsuruYamlHealthcheck{
-			Path: "/hc",
+			Path:   "/hc",
+			Scheme: "https",
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -464,8 +465,9 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &apiv1.Probe{
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
-				Path: "/hc",
-				Port: intstr.FromInt(8888),
+				Path:   "/hc",
+				Port:   intstr.FromInt(8888),
+				Scheme: apiv1.URISchemeHTTPS,
 			},
 		},
 	})
