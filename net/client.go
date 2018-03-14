@@ -51,5 +51,6 @@ func insecure(client http.Client) http.Client {
 		tlsConfig = &tls.Config{}
 	}
 	tlsConfig.InsecureSkipVerify = true
+	client.Transport.(*http.Transport).TLSClientConfig = tlsConfig
 	return client
 }

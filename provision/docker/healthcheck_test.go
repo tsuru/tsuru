@@ -53,6 +53,39 @@ func (s *S) TestHealthcheck(c *check.C) {
 	c.Assert(buf.String(), check.Equals, " ---> healthcheck successful()\n")
 }
 
+func (s *S) TestHealthcheckHTTPS(c *check.C) {
+	var requests []*http.Request
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/x/y",
+			"method": "Post",
+			"status": http.StatusCreated,
+			"scheme": "https",
+		},
+	}
+	err := image.SaveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	buf := bytes.Buffer{}
+	err = runHealthcheck(&cont, &buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 1)
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[0].Method, check.Equals, "POST")
+	c.Assert(buf.String(), check.Equals, " ---> healthcheck successful()\n")
+}
+
 func (s *S) TestHealthcheckWithMatch(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
