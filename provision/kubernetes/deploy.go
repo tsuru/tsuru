@@ -303,6 +303,11 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 	if hc.Path == "" {
 		return nil, nil
 	}
+	scheme := hc.Scheme
+	if scheme == "" {
+		scheme = provision.DefaultHealthcheckScheme
+	}
+	scheme = strings.ToUpper(scheme)
 	method := strings.ToUpper(hc.Method)
 	if method != "" && method != "GET" {
 		return nil, errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
@@ -311,8 +316,9 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 		FailureThreshold: int32(hc.AllowedFailures),
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
-				Path: hc.Path,
-				Port: intstr.FromInt(port),
+				Path:   hc.Path,
+				Port:   intstr.FromInt(port),
+				Scheme: apiv1.URIScheme(scheme),
 			},
 		},
 	}, nil

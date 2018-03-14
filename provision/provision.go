@@ -22,7 +22,10 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-const defaultDockerProvisioner = "docker"
+const (
+	defaultDockerProvisioner = "docker"
+	DefaultHealthcheckScheme = "http"
+)
 
 var (
 	ErrInvalidStatus = errors.New("invalid status")
@@ -687,6 +690,7 @@ type TsuruYamlHealthcheck struct {
 	Path            string //`bson:",omitempty"`
 	Method          string //`bson:",omitempty"`
 	Status          int    //`bson:",omitempty"`
+	Scheme          string
 	Match           string `bson:",omitempty"`
 	RouterBody      string `json:"router_body" yaml:"router_body" bson:"router_body,omitempty"`
 	UseInRouter     bool   `json:"use_in_router" yaml:"use_in_router" bson:"use_in_router,omitempty"`

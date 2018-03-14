@@ -423,6 +423,7 @@ func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
   path: /status
   method: GET
   status: 200
+  scheme: https
 hooks:
   build:
     - ./build1
@@ -467,6 +468,7 @@ hooks:
 			"path":   "/status",
 			"method": "GET",
 			"status": 200,
+			"scheme": "https",
 		},
 		"hooks": map[string]interface{}{
 			"build": []interface{}{"./build1", "./build2"},

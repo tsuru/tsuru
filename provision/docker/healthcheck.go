@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/tsuru/provision"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
@@ -29,6 +31,10 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 	method := yamlData.Healthcheck.Method
 	match := yamlData.Healthcheck.Match
 	status := yamlData.Healthcheck.Status
+	scheme := yamlData.Healthcheck.Scheme
+	if scheme == "" {
+		scheme = provision.DefaultHealthcheckScheme
+	}
 	allowedFailures := yamlData.Healthcheck.AllowedFailures
 	if path == "" {
 		return nil
@@ -56,14 +62,14 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 	maxWaitTime = maxWaitTime * int(time.Second)
 	sleepTime := 3 * time.Second
 	startedTime := time.Now()
-	url := fmt.Sprintf("http://%s:%s/%s", cont.HostAddr, cont.HostPort, path)
+	url := fmt.Sprintf("%s://%s:%s/%s", scheme, cont.HostAddr, cont.HostPort, path)
 	for {
 		var lastError error = nil
 		req, err := http.NewRequest(method, url, nil)
 		if err != nil {
 			return err
 		}
-		rsp, err := net.Dial5Full60ClientNoKeepAliveNoRedirect.Do(req)
+		rsp, err := net.Dial5Full60ClientNoKeepAliveNoRedirectInsecure.Do(req)
 		if err != nil {
 			lastError = errors.Wrapf(err, "healthcheck fail(%s)", cont.ShortID())
 		} else {
