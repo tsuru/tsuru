@@ -3523,10 +3523,10 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Swap(app1, app2, false)
 	c.Assert(err, check.IsNil)
-	entry, err := cacheService().Get(appRouterAddrKey("app1", "fake"))
+	entry, err := cacheStorage().Get(appRouterAddrKey("app1", "fake"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, oldAddrs2[0])
-	entry, err = cacheService().Get(appRouterAddrKey("app2", "fake"))
+	entry, err = cacheStorage().Get(appRouterAddrKey("app2", "fake"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, oldAddrs1[0])
 	newAddrs1, err := app1.GetAddresses()
@@ -4826,9 +4826,9 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 		Name: "fake-tls",
 	})
 	c.Assert(err, check.IsNil)
-	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	_, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
-	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	_, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake-tls"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
@@ -4836,10 +4836,10 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
 		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
-	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	entry, err := cacheStorage().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
-	entry, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	entry, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake-tls"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.faketlsrouter.com")
 }
@@ -4859,9 +4859,9 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 		{Name: "fake", Address: "", Type: ""},
 		{Name: "fake-tls", Address: "myapp.faketlsrouter.com", Type: "fake-tls"},
 	})
-	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	_, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
-	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	entry, err := cacheStorage().Get(appRouterAddrKey("myapp", "fake-tls"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.faketlsrouter.com")
 }
@@ -4879,9 +4879,9 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 		Name: "mystatus",
 	})
 	c.Assert(err, check.IsNil)
-	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	_, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
-	_, err = cacheService().Get(appRouterAddrKey("myapp", "fake-tls"))
+	_, err = cacheStorage().Get(appRouterAddrKey("myapp", "fake-tls"))
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
 	routers, err := app.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
@@ -4889,10 +4889,10 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
 		{Name: "mystatus", Address: "myapp.fakerouter.com", Type: "fake-status", Status: "not ready", StatusDetail: "burn"},
 	})
-	entry, err := cacheService().Get(appRouterAddrKey("myapp", "fake"))
+	entry, err := cacheStorage().Get(appRouterAddrKey("myapp", "fake"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
-	entry, err = cacheService().Get(appRouterAddrKey("myapp", "mystatus"))
+	entry, err = cacheStorage().Get(appRouterAddrKey("myapp", "mystatus"))
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "myapp.fakerouter.com")
 }

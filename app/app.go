@@ -1850,7 +1850,7 @@ func loadCachedAddrsInApps(apps []App) error {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
 	}
-	entries, err := cacheService().GetAll(keys...)
+	entries, err := cacheStorage().GetAll(keys...)
 	if err != nil {
 		return err
 	}
@@ -1875,7 +1875,7 @@ func loadCachedAddrsInApps(apps []App) error {
 	return nil
 }
 
-func cacheService() cache.CacheService {
+func cacheStorage() cache.CacheStorage {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -1883,7 +1883,7 @@ func cacheService() cache.CacheService {
 			return nil
 		}
 	}
-	return dbDriver.CacheService
+	return dbDriver.CacheStorage
 }
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
@@ -2136,7 +2136,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].Status = string(status)
 			routers[i].StatusDetail = detail
 		}
-		cacheService().Put(cache.CacheEntry{
+		cacheStorage().Put(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})
