@@ -75,6 +75,7 @@ Here is how you can configure a health check in your yaml file:
 
     healthcheck:
       path: /healthcheck
+      scheme: http
       method: GET
       status: 200
       match: .*OKAY.*
@@ -85,6 +86,7 @@ Here is how you can configure a health check in your yaml file:
 * ``healthcheck:path``: Which path to call in your application. This path will be
   called for each unit. It is the only mandatory field, if it's not set your
   health check will be ignored.
+* ``healthcheck:scheme``: Which scheme to use. Defaults to http.
 * ``healthcheck:method``: The method used to make the http request. Defaults to
   GET.
 * ``healthcheck:status``: The expected response code for the request. Defaults to
