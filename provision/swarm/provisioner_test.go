@@ -686,7 +686,7 @@ func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Healthcheck, check.DeepEquals, &container.HealthConfig{
 		Test: []string{
 			"CMD-SHELL",
-			"curl -XGET -fsSL http://localhost:8888/hc -o/dev/null -w '%{http_code}' | grep 200",
+			"curl -k -XGET -fsSL http://localhost:8888/hc -o/dev/null -w '%{http_code}' | grep 200",
 		},
 		Timeout:  120 * time.Second,
 		Retries:  1,
