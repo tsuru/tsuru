@@ -18,7 +18,6 @@ import (
 )
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
-var ts authTypes.TeamService
 
 type teamService struct {
 	storage authTypes.TeamStorage

@@ -646,28 +646,3 @@ nodesloop:
 	}
 	return nil, provision.ErrNodeNotFound
 }
-
-func waitNodeReady(client *ClusterClient, addr string, timeout time.Duration) (*apiv1.Node, error) {
-	var node *apiv1.Node
-	waitErr := waitFor(timeout, func() (bool, error) {
-		var err error
-		node, err = getNodeByAddr(client, addr)
-		if err != nil {
-			return true, errors.WithStack(err)
-		}
-		for _, cond := range node.Status.Conditions {
-			if cond.Type == apiv1.NodeReady && cond.Status == apiv1.ConditionTrue {
-				return true, nil
-			}
-		}
-		return false, nil
-	}, func() error {
-		var err error
-		node, err = getNodeByAddr(client, addr)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		return errors.Errorf("invalid node conditions for %q: %#v", addr, node.Status.Conditions)
-	})
-	return node, waitErr
-}
