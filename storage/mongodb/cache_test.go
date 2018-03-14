@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.CacheSuite{
-	CacheService: &cacheService{},
+	CacheStorage: &cacheStorage{},
 	SuiteHooks:   &mongodbBaseTest{},
 })

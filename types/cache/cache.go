@@ -20,7 +20,7 @@ type CacheEntry struct {
 	ExpireAt time.Time
 }
 
-type CacheService interface {
+type CacheStorage interface {
 	GetAll(keys ...string) ([]CacheEntry, error)
 	Get(key string) (CacheEntry, error)
 	Put(entry CacheEntry) error

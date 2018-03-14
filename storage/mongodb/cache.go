@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 )
 
-type cacheService struct{}
+type cacheStorage struct{}
 
 type mongoCacheEntry struct {
 	Key      string `bson:"_id"`
@@ -30,7 +30,7 @@ func cacheCollection(conn *db.Storage) *dbStorage.Collection {
 	return c
 }
 
-func (s *cacheService) GetAll(keys ...string) ([]cache.CacheEntry, error) {
+func (s *cacheStorage) GetAll(keys ...string) ([]cache.CacheEntry, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (s *cacheService) GetAll(keys ...string) ([]cache.CacheEntry, error) {
 	return entries, nil
 }
 
-func (s *cacheService) Get(key string) (cache.CacheEntry, error) {
+func (s *cacheStorage) Get(key string) (cache.CacheEntry, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return cache.CacheEntry{}, err
@@ -65,7 +65,7 @@ func (s *cacheService) Get(key string) (cache.CacheEntry, error) {
 	return cache.CacheEntry(dbEntry), nil
 }
 
-func (s *cacheService) Put(entry cache.CacheEntry) error {
+func (s *cacheStorage) Put(entry cache.CacheEntry) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

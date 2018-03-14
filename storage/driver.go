@@ -18,7 +18,7 @@ type DbDriver struct {
 	TeamStorage     auth.TeamStorage
 	PlatformStorage app.PlatformStorage
 	PlanStorage     app.PlanStorage
-	CacheService    cache.CacheService
+	CacheStorage    cache.CacheStorage
 }
 
 var (
