@@ -1,0 +1,3 @@
+healthcheck:
+  path: /
+  scheme: https

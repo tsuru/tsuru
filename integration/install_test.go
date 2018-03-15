@@ -35,6 +35,8 @@ var (
 		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
+		testCases(),
+		testApps(),
 		updateAppPools(),
 		serviceImageSetup(),
 		serviceCreate(),
@@ -103,6 +105,7 @@ func installerComposeTest() ExecFlow {
 func installerTest() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"targetaddr", "installerhostname"},
+		requires: []string{"installerconfig", "installercompose"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		res := T("install-create", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
@@ -484,6 +487,65 @@ func exampleApps() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := "{{.plat}}-{{.pool}}-iapp"
+		res := T("app-remove", "-y", "-a", appName).Run(env)
+		c.Check(res, ResultOk)
+	}
+	return flow
+}
+
+func testCases() ExecFlow {
+	return ExecFlow{
+		provides: []string{"testcases"},
+		forward: func(c *check.C, env *Environment) {
+			files, err := ioutil.ReadDir("./integration/")
+			c.Assert(err, check.IsNil)
+			for _, f := range files {
+				if !f.IsDir() {
+					continue
+				}
+				env.Add("testcases", f.Name())
+			}
+		},
+	}
+}
+
+func testApps() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"pool": "poolnames",
+			"case": "testcases",
+		},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		plat, err := ioutil.ReadFile(fmt.Sprintf("./integration/%s/platform", env.Get("case")))
+		c.Assert(err, check.IsNil)
+		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
+		res := T("app-create", appName, string(plat), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-info", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-deploy", "-a", appName, "./integration/{{.case}}/").Run(env)
+		c.Assert(res, ResultOk)
+		regex := regexp.MustCompile("started")
+		ok := retry(5*time.Minute, func() bool {
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			return regex.MatchString(res.Stdout.String())
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
+		parts := addrRE.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		cmd := NewCommand("curl", "-ksSf", "http://"+parts[1])
+		ok = retry(15*time.Minute, func() bool {
+			res = cmd.Run(env)
+			return res.ExitCode == 0
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		appName := "{{.case}}-{{.pool}}-iapp"
 		res := T("app-remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
