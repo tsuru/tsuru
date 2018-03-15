@@ -10,8 +10,8 @@ Overview
 ========
 
 This document is a hands-on guide to deploying a simple Python application in
-tsuru. The example application will be a very simple Django project associated
-to a MySQL service. It's applicable to any WSGI application.
+tsuru. The example application will be a very simple Django project using a
+SQLite database. It's applicable to any WSGI application.
 
 Creating the app
 ================
@@ -43,11 +43,11 @@ You can see all your applications using the command `app-list`:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+--------------------------+
-    | Application | Units State Summary     | Address                  |
-    +-------------+-------------------------+--------------------------+
-    | blog        | 0 of 0 units in-service | blog.192.168.50.4.nip.io |
-    +-------------+-------------------------+--------------------------+
+    +-------------+-------+--------------------------+
+    | Application | Units | Address                  |
+    +-------------+-------+--------------------------+
+    | blog        |       | blog.192.168.50.4.nip.io |
+    +-------------+-------+--------------------------+
 
 You can then send the code of your application.
 
@@ -59,13 +59,10 @@ entire source direct from GitHub:
 https://github.com/tsuru/tsuru-django-sample. Here is what we did for the
 project:
 
-#. Create the project (``django-admin.py startproject``)
-#. Enable django-admin
-#. Install South
-#. Create a "posts" app (``django-admin.py startapp posts``)
+#. Create the project (``django-admin startproject blog``)
+#. Create a "posts" app (``django-admin startapp posts``)
 #. Add a "Post" model to the app
 #. Register the model in django-admin
-#. Generate the migration using South
 
 Git deployment
 ==============
@@ -80,6 +77,7 @@ use. You can always get it using the command `app-info`:
     $ tsuru app-info --app blog
     Application: blog
     Repository: git@192.168.50.4.nip.io:blog.git
+    Tags:
     Platform: python
     Teams: admin
     Address: blog.192.168.50.4.nip.io
@@ -103,27 +101,19 @@ push to tsuru remote and your project will be deployed:
 ::
 
     $ git push git@192.168.50.4.nip.io:blog.git master
-    Counting objects: 119, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (53/53), done.
-    Writing objects: 100% (119/119), 16.24 KiB, done.
-    Total 119 (delta 55), reused 119 (delta 55)
+    remote: HEAD is now at 260ae00...
+    remote: -- Using python version: 2.7.13 (default) --
+    remote: /home/application/current /
     remote:
-    remote:  ---> tsuru receiving push
-    remote:
-    remote: From git://cloud.tsuru.io/blog.git
-    remote:  * branch            master     -> FETCH_HEAD
-    remote:
-    remote:  ---> Installing dependencies
+    remote: ---- Building image ----
+    remote:  ---> Sending image to repository (0.01MB)
+    remote:  ---> Cleaning up
     #####################################
-    #          OMIT (see below)         #
+    #                OMIT               #
     #####################################
-    remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Deploy done!
-    remote:
     To git@192.168.50.4.nip.io:blog.git
-       a211fba..bbf5b53  master -> master
+     * [new branch]      master -> master
+
 
 If you get a "Permission denied (publickey).", make sure you're member of a
 team and have a public key added to tsuru. To add a key, use the command
@@ -171,7 +161,7 @@ And you will be also able to omit the ``--app`` flag from now on:
     Pool: theonepool
     Units: 1
     +------------+---------+
-    | Unit       | State   |
+    | Unit       | Status  |
     +------------+---------+
     | eab5151eff | started |
     +------------+---------+
@@ -197,25 +187,13 @@ application can have two kinds of dependencies:
 All ``apt-get`` dependencies must be specified in a ``requirements.apt`` file,
 located in the root of your application, and pip dependencies must be located
 in a file called ``requirements.txt``, also in the root of the application.
-Since we will use MySQL with Django, we need to install ``mysql-python``
-package using ``pip``, and this package depends on two ``apt-get`` packages:
-``python-dev`` and ``libmysqlclient-dev``, so here is how ``requirements.apt``
-looks like:
+Since we will use Django, we need to install ``django`` package using ``pip``.
+As this project doesn't have any external dependencies, we don't need a
+``requirements.apt`` file. Here is the ``requirements.txt`` file contents:
 
 ::
 
-    libmysqlclient-dev
-    python-dev
-
-And here is ``requirements.txt``:
-
-::
-
-    Django==1.4.1
-    MySQL-python==1.2.3
-    South==0.7.6
-
-Please notice that we've included ``South`` too, for database migrations, and ``Django``, off-course.
+    Django<=1.11
 
 You can see the complete output of installing these dependencies below:
 
@@ -224,83 +202,22 @@ You can see the complete output of installing these dependencies below:
 ::
 
     % git push tsuru master
-    #####################################
-    #                OMIT               #
-    #####################################
-    remote: Reading package lists...
-    remote: Building dependency tree...
-    remote: Reading state information...
-    remote: python-dev is already the newest version.
-    remote: The following extra packages will be installed:
-    remote:   libmysqlclient18 mysql-common
-    remote: The following NEW packages will be installed:
-    remote:   libmysqlclient-dev libmysqlclient18 mysql-common
-    remote: 0 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
-    remote: Need to get 2360 kB of archives.
-    remote: After this operation, 9289 kB of additional disk space will be used.
-    remote: Get:1 http://archive.ubuntu.com/ubuntu/ quantal/main mysql-common all 5.5.27-0ubuntu2 [13.7 kB]
-    remote: Get:2 http://archive.ubuntu.com/ubuntu/ quantal/main libmysqlclient18 amd64 5.5.27-0ubuntu2 [949 kB]
-    remote: Get:3 http://archive.ubuntu.com/ubuntu/ quantal/main libmysqlclient-dev amd64 5.5.27-0ubuntu2 [1398 kB]
-    remote: debconf: unable to initialize frontend: Dialog
-    remote: debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
-    remote: debconf: falling back to frontend: Readline
-    remote: debconf: unable to initialize frontend: Readline
-    remote: debconf: (This frontend requires a controlling tty.)
-    remote: debconf: falling back to frontend: Teletype
-    remote: dpkg-preconfigure: unable to re-open stdin:
-    remote: Fetched 2360 kB in 1s (1285 kB/s)
-    remote: Selecting previously unselected package mysql-common.
-    remote: (Reading database ... 23143 files and directories currently installed.)
-    remote: Unpacking mysql-common (from .../mysql-common_5.5.27-0ubuntu2_all.deb) ...
-    remote: Selecting previously unselected package libmysqlclient18:amd64.
-    remote: Unpacking libmysqlclient18:amd64 (from .../libmysqlclient18_5.5.27-0ubuntu2_amd64.deb) ...
-    remote: Selecting previously unselected package libmysqlclient-dev.
-    remote: Unpacking libmysqlclient-dev (from .../libmysqlclient-dev_5.5.27-0ubuntu2_amd64.deb) ...
-    remote: Setting up mysql-common (5.5.27-0ubuntu2) ...
-    remote: Setting up libmysqlclient18:amd64 (5.5.27-0ubuntu2) ...
-    remote: Setting up libmysqlclient-dev (5.5.27-0ubuntu2) ...
-    remote: Processing triggers for libc-bin ...
-    remote: ldconfig deferred processing now taking place
-    remote: sudo: Downloading/unpacking Django==1.4.1 (from -r /home/application/current/requirements.txt (line 1))
-    remote:   Running setup.py egg_info for package Django
+    remote: HEAD is now at 260ae00...
+    remote: -- Using python version: 2.7.13 (default) --
+    remote: /home/application/current /
+    remote: requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
+    remote: Requirement already satisfied: Django<=1.11 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 1))
+    remote: Requirement already satisfied: pytz in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from Django<=1.11->-r ./requirements.txt (line 1))
+    remote: /
     remote:
-    remote: Downloading/unpacking MySQL-python==1.2.3 (from -r /home/application/current/requirements.txt (line 2))
-    remote:   Running setup.py egg_info for package MySQL-python
-    remote:
-    remote:     warning: no files found matching 'MANIFEST'
-    remote:     warning: no files found matching 'ChangeLog'
-    remote:     warning: no files found matching 'GPL'
-    remote: Downloading/unpacking South==0.7.6 (from -r /home/application/current/requirements.txt (line 3))
-    remote:   Running setup.py egg_info for package South
-    remote:
-    remote: Installing collected packages: Django, MySQL-python, South
-    remote:   Running setup.py install for Django
-    remote:     changing mode of build/scripts-2.7/django-admin.py from 644 to 755
-    remote:
-    remote:     changing mode of /usr/local/bin/django-admin.py to 755
-    remote:   Running setup.py install for MySQL-python
-    remote:     building '_mysql' extension
-    remote:     gcc -pthread -fno-strict-aliasing -DNDEBUG -g -fwrapv -O2 -Wall -Wstrict-prototypes -fPIC -Dversion_info=(1,2,3,'final',0) -D__version__=1.2.3 -I/usr/include/mysql -I/usr/include/python2.7 -c _mysql.c -o build/temp.linux-x86_64-2.7/_mysql.o -DBIG_JOINS=1 -fno-strict-aliasing -g
-    remote:     In file included from _mysql.c:36:0:
-    remote:     /usr/include/mysql/my_config.h:422:0: warning: "HAVE_WCSCOLL" redefined [enabled by default]
-    remote:     In file included from /usr/include/python2.7/Python.h:8:0,
-    remote:                      from pymemcompat.h:10,
-    remote:                      from _mysql.c:29:
-    remote:     /usr/include/python2.7/pyconfig.h:890:0: note: this is the location of the previous definition
-    remote:     gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions -Wl,-z,relro build/temp.linux-x86_64-2.7/_mysql.o -L/usr/lib/x86_64-linux-gnu -lmysqlclient_r -lpthread -lz -lm -lrt -ldl -o build/lib.linux-x86_64-2.7/_mysql.so
-    remote:
-    remote:     warning: no files found matching 'MANIFEST'
-    remote:     warning: no files found matching 'ChangeLog'
-    remote:     warning: no files found matching 'GPL'
-    remote:   Running setup.py install for South
-    remote:
-    remote: Successfully installed Django MySQL-python South
-    remote: Cleaning up...
+    remote: ---- Building image ----
+    remote:  ---> Sending image to repository (0.01MB)
+    remote:  ---> Cleaning up
     #####################################
     #                OMIT               #
     #####################################
     To git@192.168.50.4.nip.io:blog.git
-       a211fba..bbf5b53  master -> master
+     * [new branch]      master -> master
 
 Running the application
 =======================
@@ -327,26 +244,20 @@ another deploy:
     $ git add Procfile
     $ git commit -m "Procfile: added file"
     $ git push tsuru master
-    Counting objects: 5, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (2/2), done.
-    Writing objects: 100% (3/3), 326 bytes, done.
-    Total 3 (delta 1), reused 0 (delta 0)
+    remote: HEAD is now at 260ae00...
+    remote: -- Using python version: 2.7.13 (default) --
+    remote: /home/application/current /
+    remote: requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
+    remote: Requirement already satisfied: Django<=1.11 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 1))
+    remote: Requirement already satisfied: pytz in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from Django<=1.11->-r ./requirements.txt (line 1))
+    remote: /
     remote:
-    remote:  ---> tsuru receiving push
-    remote:
-    remote:  ---> Installing dependencies
-    remote: Reading package lists...
-    remote: Building dependency tree...
-    remote: Reading state information...
-    remote: python-dev is already the newest version.
-    remote: libmysqlclient-dev is already the newest version.
-    remote: 0 upgraded, 0 newly installed, 0 to remove and 1 not upgraded.
-    remote: Requirement already satisfied (use --upgrade to upgrade): Django==1.4.1 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 1))
-    remote: Requirement already satisfied (use --upgrade to upgrade): MySQL-python==1.2.3 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 2))
-    remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
-    remote: Cleaning up...
-    remote:
+    remote: ---- Building image ----
+    remote:  ---> Sending image to repository (0.01MB)
+    remote:  ---> Cleaning up
+    #####################################
+    #                OMIT               #
+    #####################################
     remote:  ---> Restarting your app
     remote: /var/lib/tsuru/hooks/start: line 13: gunicorn: command not found
     remote:
@@ -363,7 +274,7 @@ add gunicorn to ``requirements.txt`` file:
 ::
 
     $ cat >> requirements.txt
-    gunicorn==0.14.6
+    gunicorn==19.6
     ^D
 
 Now we commit the changes and run another deploy:
@@ -375,21 +286,26 @@ Now we commit the changes and run another deploy:
     $ git add requirements.txt
     $ git commit -m "requirements.txt: added gunicorn"
     $ git push tsuru master
-    Counting objects: 5, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (3/3), done.
-    Writing objects: 100% (3/3), 325 bytes, done.
-    Total 3 (delta 1), reused 0 (delta 0)
+    remote: -- Using python version: 2.7.13 (default) --
+    remote: /home/application/current /
+    remote: requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
+    remote: Requirement already satisfied: Django<=1.11 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 1))
+    remote: Requirement already satisfied: gunicorn==19.6 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 2))
+    remote: Requirement already satisfied: pytz in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from Django<=1.11->-r ./requirements.txt (line 1))
+    remote: /
     remote:
-    remote:  ---> tsuru receiving push
-    remote:
-    [...]
+    remote: ---- Building image ----
+    remote:  ---> Sending image to repository (0.01MB)
+    remote:  ---> Cleaning up
+    #####################################
+    #                OMIT               #
+    #####################################
     remote:  ---> Restarting your app
     remote:
     remote:  ---> Deploy done!
     remote:
     To git@192.168.50.4.nip.io:blog.git
-       530c528..542403a  master -> master
+       81e884e..530c528  master -> master
 
 Now that the app is deployed, you can access it from your browser, getting the
 IP or host listed in ``app-list`` and opening it. For example,
@@ -398,11 +314,11 @@ in the list below:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------------------+
-    | Application | Units State Summary     | Address             |
-    +-------------+-------------------------+---------------------+
-    | blog        | 1 of 1 units in-service | blog.cloud.tsuru.io |
-    +-------------+-------------------------+---------------------+
+    +-------------+-----------+---------------------+
+    | Application | Units     | Address             |
+    +-------------+-----------+---------------------+
+    | blog        | 1 started | blog.cloud.tsuru.io |
+    +-------------+-----------+---------------------+
 
 
 We can access the admin of the app in the URL http://blog.cloud.tsuru.io/admin/.
@@ -414,9 +330,9 @@ It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
 deployment. So we can configure an automatic hook to always run before or after
 the app restarts.
 
-tsuru parses a file called ``tsuru.yaml`` and runs restart hooks. As the
+tsuru parses a file called ``tsuru.yml`` and runs restart hooks. As the
 extension suggests, this is a YAML file, that contains a list of commands that
-should run before and after the restart. Here is our example of tsuru.yaml:
+should run before and after the restart. Here is our example of tsuru.yml:
 
 .. highlight:: yaml
 
@@ -424,7 +340,7 @@ should run before and after the restart. Here is our example of tsuru.yaml:
 
     hooks:
       build:
-        - python manage.py syncdb --noinput
+        - python manage.py collectstatic -c --noinput
         - python manage.py migrate
 
 For more details, check the :ref:`hooks documentation <yaml_deployment_hooks>`.
@@ -436,45 +352,37 @@ deploy it:
 
 ::
 
-    $ git add tsuru.yaml
-    $ git commit -m "tsuru.yaml: added file"
+    $ git add tsuru.yml
+    $ git commit -m "tsuru.yml: added file"
     $ git push tsuru master
-    Counting objects: 4, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (3/3), done.
-    Writing objects: 100% (3/3), 338 bytes, done.
-    Total 3 (delta 1), reused 0 (delta 0)
+        remote: -- Using python version: 2.7.13 (default) --
+    remote: /home/application/current /
+    remote: requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
+    remote: Requirement already satisfied: Django<=1.11 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 1))
+    remote: Requirement already satisfied: gunicorn==19.6 in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from -r ./requirements.txt (line 2))
+    remote: Requirement already satisfied: pytz in /var/lib/pyenv/versions/2.7.13/envs/app_env_2.7.13/lib/python2.7/site-packages (from Django<=1.11->-r ./requirements.txt (line 1))
+    remote: /
     remote:
-    remote:  ---> tsuru receiving push
-    remote:
-    remote:  ---> Installing dependencies
-    remote: Reading package lists...
-    remote: Building dependency tree...
-    remote: Reading state information...
-    remote: python-dev is already the newest version.
-    remote: libmysqlclient-dev is already the newest version.
-    remote: 0 upgraded, 0 newly installed, 0 to remove and 15 not upgraded.
-    remote: Requirement already satisfied (use --upgrade to upgrade): Django==1.4.1 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 1))
-    remote: Requirement already satisfied (use --upgrade to upgrade): MySQL-python==1.2.3 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 2))
-    remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
-    remote: Requirement already satisfied (use --upgrade to upgrade): gunicorn==0.14.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 4))
-    remote: Cleaning up...
-    remote:
+    remote: ---- Building image ----
+    remote:  ---> Sending image to repository (0.01MB)
+    remote:  ---> Cleaning up
+    remote: ---- Running build hooks ----
+    remote:  ---> Running "python manage.py collectstatic -c --noinput"
+    #####################################
+    #                OMIT               #
+    #####################################
     remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Running restart:after
     remote:
     remote:  ---> Deploy done!
     remote:
     To git@192.168.50.4.nip.io:blog.git
-       a780de9..1b675b8  master -> master
+       81e884e..530c528  master -> master
 
-It's done! Now we have a Django project deployed on tsuru, using a MySQL
-service.
+It's done! Now we have a Django project deployed on tsuru.
 
 Going further
 =============
 
 For more information, you can dig into `tsuru docs <http://docs.tsuru.io>`_, or
-read `complete instructions of use for the tsuru command
+read `complete instructions of use for the tsuru client
 <https://tsuru-client.readthedocs.org>`_.
