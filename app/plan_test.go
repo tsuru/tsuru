@@ -145,7 +145,7 @@ func (s *S) TestDefaultPlanNotFoundPlansNotEmpty(c *check.C) {
 				return nil, appTypes.ErrPlanDefaultNotFound
 			},
 			OnFindAll: func() ([]appTypes.Plan, error) {
-				return []appTypes.Plan{appTypes.Plan{Name: "p1"}}, nil
+				return []appTypes.Plan{{Name: "p1"}}, nil
 			},
 			OnInsert: func(plan appTypes.Plan) error {
 				c.Error("storage.Insert should not be called")
