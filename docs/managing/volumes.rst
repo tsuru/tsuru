@@ -22,12 +22,12 @@ different parameters. Each has a own set of parameters that may be set on the co
 
 ::
 
-    volume-plans:
-        - name: ebs
-            swarm:
-                driver: rexray/ebs
-            kubernetes:
-                storage-class: my-ebs-storage-class
+  volume-plans:
+    ebs:
+      swarm:
+          driver: rexray/ebs
+      kubernetes:
+          storage-class: my-ebs-storage-class
 
 On swarm a driver must be specified along with its parameters. On Kubernetes, volume plans may use a volume plugin or a storage class.
 
