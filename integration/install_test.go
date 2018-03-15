@@ -521,7 +521,7 @@ func testApps() ExecFlow {
 		plat, err := ioutil.ReadFile(fmt.Sprintf("./integration/%s/platform", env.Get("case")))
 		c.Assert(err, check.IsNil)
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
-		res := T("app-create", appName, string(plat), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		res := T("app-create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("app-info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
