@@ -798,11 +798,11 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createBuildPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "destimg",
-		inputFile:        "/home/application/archive.tar.gz",
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -814,45 +814,35 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "docker:1.11.2",
+		Image: "tsuru/deploy-agent:0.3.0",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		},
-		TTY: true,
+		Stdin:     true,
+		StdinOnce: true,
 		Command: []string{
-			"sh", "-ec",
-			`
+			"sh", "-ec", `
 							end() { touch /tmp/intercontainer/done; }
 							trap end EXIT
-							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-							exit_code=$(cat /tmp/intercontainer/status)
-							[ "${exit_code}" != "0" ] && exit "${exit_code}"
-							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-build" -f "label=io.kubernetes.pod.name=$(hostname)")
-							img="destimg"
-							echo
-							echo '---- Building application image ----'
-							docker commit "${id}" "${img}" >/dev/null
-							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-							echo " ---> Sending image to repository (${sz})"
-							` + `
-							docker push destimg
+							mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
 						`,
+		},
+		Env: []apiv1.EnvVar{
+			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
-		Name:  "myapp-v1-build",
-		Image: "myimg",
-		Command: []string{"/bin/sh", "-lc", `
-		cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
-		exit_code=$?
-		echo "${exit_code}" >/tmp/intercontainer/status
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
-	`},
-		Stdin:     true,
-		StdinOnce: true,
-		Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+		Name:    "myapp-v1-build",
+		Image:   "myimg",
+		Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+		Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: &runAsUser,
 		},
@@ -866,11 +856,11 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "destimg",
-		inputFile:        "/dev/null",
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -933,45 +923,35 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "docker:1.11.2",
+			Image: "tsuru/deploy-agent:0.3.0",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
 			},
-			TTY: true,
+			Stdin:     true,
+			StdinOnce: true,
 			Command: []string{
 				"sh", "-ec",
 				`
 							end() { touch /tmp/intercontainer/done; }
 							trap end EXIT
-							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-							exit_code=$(cat /tmp/intercontainer/status)
-							[ "${exit_code}" != "0" ] && exit "${exit_code}"
-							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
-							img="destimg"
-							echo
-							echo '---- Building application image ----'
-							docker commit "${id}" "${img}" >/dev/null
-							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-							echo " ---> Sending image to repository (${sz})"
-							` + `
-							docker push destimg
+							mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
 						`,
 			},
-		},
+			Env: []apiv1.EnvVar{
+				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			}},
 		{
-			Name:  "myapp-v1-deploy",
-			Image: "myimg",
-			Command: []string{"/bin/sh", "-lc", `
-		cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-		exit_code=$?
-		echo "${exit_code}" >/tmp/intercontainer/status
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
-	`},
-			Stdin:     true,
-			StdinOnce: true,
-			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Name:    "myapp-v1-deploy",
+			Image:   "myimg",
+			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},
@@ -992,11 +972,11 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "registry.example.com/destimg",
-		inputFile:        "/dev/null",
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"registry.example.com/destimg"},
+		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -1057,21 +1037,19 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	c.Assert(containers[0].Command, check.HasLen, 3)
 	c.Assert(containers[0].Command[:2], check.DeepEquals, []string{"sh", "-ec"})
+	c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/destimg"},
+		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
+		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
+	})
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
 trap end EXIT
-while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-exit_code=$(cat /tmp/intercontainer/status)
-[ "${exit_code}" != "0" ] && exit "${exit_code}"
-id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
-img="registry.example.com/destimg"
-echo
-echo '---- Building application image ----'
-docker commit "${id}" "${img}" >/dev/null
-sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-echo " ---> Sending image to repository (${sz})"
-docker login -u "user" -p "pwd" "registry.example.com"
-docker push registry.example.com/destimg`)
+mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
 }
 
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
@@ -1128,13 +1106,13 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	})
 	buf := safe.NewBuffer(nil)
 	err := createDeployPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "destimg",
-		inputFile:        "/dev/null",
-		attachInput:      strings.NewReader("."),
-		attachOutput:     buf,
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/dev/null",
+		attachInput:       strings.NewReader("."),
+		attachOutput:      buf,
 	})
 	c.Assert(err, check.IsNil)
 	<-podReactorDone
@@ -1150,11 +1128,11 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "ip:destimg:v1",
-		inputFile:        "/dev/null",
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"ip:destimg:v1"},
+		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
@@ -1217,49 +1195,35 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "docker:1.11.2",
+			Image: "tsuru/deploy-agent:0.3.0",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
 			},
-			TTY: true,
+			Stdin:     true,
+			StdinOnce: true,
 			Command: []string{
 				"sh", "-ec",
 				`
 							end() { touch /tmp/intercontainer/done; }
 							trap end EXIT
-							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-							exit_code=$(cat /tmp/intercontainer/status)
-							[ "${exit_code}" != "0" ] && exit "${exit_code}"
-							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
-							img="ip:destimg:v1"
-							echo
-							echo '---- Building application image ----'
-							docker commit "${id}" "${img}" >/dev/null
-							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-							echo " ---> Sending image to repository (${sz})"
-							` + `
-							docker push ip:destimg:v1
-						` + `
-
-				docker tag ip:destimg:v1 ip:destimg:latest
-				docker push ip:destimg:latest
-			`,
+							mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
+						`,
 			},
-		},
+			Env: []apiv1.EnvVar{
+				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "ip:destimg:v1,ip:destimg:latest"},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			}},
 		{
-			Name:  "myapp-v1-deploy",
-			Image: "myimg",
-			Command: []string{"/bin/sh", "-lc", `
-		cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-		exit_code=$?
-		echo "${exit_code}" >/tmp/intercontainer/status
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
-	`},
-			Stdin:     true,
-			StdinOnce: true,
-			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Name:    "myapp-v1-deploy",
+			Image:   "myimg",
+			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},

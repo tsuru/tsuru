@@ -36,14 +36,14 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	}
 	defer cleanupPod(client, buildPodName)
 	params := createPodParams{
-		app:              a,
-		client:           client,
-		podName:          buildPodName,
-		sourceImage:      baseImage,
-		destinationImage: buildingImage,
-		attachInput:      archiveFile,
-		attachOutput:     evt,
-		inputFile:        "/home/application/archive.tar.gz",
+		app:               a,
+		client:            client,
+		podName:           buildPodName,
+		sourceImage:       baseImage,
+		destinationImages: []string{buildingImage},
+		attachInput:       archiveFile,
+		attachOutput:      evt,
+		inputFile:         "/home/application/archive.tar.gz",
 	}
 	err = createBuildPod(params)
 	if err != nil {

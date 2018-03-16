@@ -37,7 +37,7 @@ const (
 	defaultPodReadyTimeout           = time.Minute
 	defaultPodRunningTimeout         = 10 * time.Minute
 	defaultDeploymentProgressTimeout = 10 * time.Minute
-	defaultDockerImageName           = "docker:1.11.2"
+	defaultSidecarImageName          = "tsuru/deploy-agent:0.3.0"
 )
 
 type kubernetesProvisioner struct{}
@@ -92,11 +92,11 @@ func getKubeConfig() kubernetesConfig {
 	conf := kubernetesConfig{}
 	conf.DeploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
 	if conf.DeploySidecarImage == "" {
-		conf.DeploySidecarImage = defaultDockerImageName
+		conf.DeploySidecarImage = defaultSidecarImageName
 	}
 	conf.DeployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
 	if conf.DeployInspectImage == "" {
-		conf.DeployInspectImage = defaultDockerImageName
+		conf.DeployInspectImage = defaultSidecarImageName
 	}
 	apiTimeout, _ := config.GetFloat("kubernetes:api-timeout")
 	if apiTimeout != 0 {
@@ -662,14 +662,14 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		}
 		defer cleanupPod(client, deployPodName)
 		params := createPodParams{
-			app:              a,
-			client:           client,
-			podName:          deployPodName,
-			sourceImage:      buildImageID,
-			destinationImage: newImage,
-			attachOutput:     evt,
-			attachInput:      strings.NewReader("."),
-			inputFile:        "/dev/null",
+			app:               a,
+			client:            client,
+			podName:           deployPodName,
+			sourceImage:       buildImageID,
+			destinationImages: []string{newImage},
+			attachOutput:      evt,
+			attachInput:       strings.NewReader("."),
+			inputFile:         "/dev/null",
 		}
 		err = createDeployPod(params)
 		if err != nil {
