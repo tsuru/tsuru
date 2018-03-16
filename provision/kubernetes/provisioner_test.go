@@ -596,10 +596,10 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(createPodParams{
-		client:           s.clusterClient,
-		app:              a,
-		sourceImage:      "myimg",
-		destinationImage: "destimg",
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
 	})
 	c.Assert(err, check.IsNil)
 	meta, err := image.GetImageMetaData("destimg")
@@ -853,20 +853,16 @@ func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
 			cmds := cleanCmds(containers[0].Command[2])
 			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
 trap end EXIT
-while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-exit_code=$(cat /tmp/intercontainer/status)
-[ "${exit_code}" != "0" ] && exit "${exit_code}"
-id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
-img="registry.example.com/tsuru/app-myapp:v1"
-echo
-echo '---- Building application image ----'
-docker commit "${id}" "${img}" >/dev/null
-sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-echo " ---> Sending image to repository (${sz})"
-docker login -u "user" -p "pwd" "registry.example.com"
-docker push registry.example.com/tsuru/app-myapp:v1
-docker tag registry.example.com/tsuru/app-myapp:v1 registry.example.com/tsuru/app-myapp:latest
-docker push registry.example.com/tsuru/app-myapp:latest`)
+mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
+			c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:v1,registry.example.com/tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
+				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
+			})
 		}
 		return false, nil, nil
 	})
@@ -1240,8 +1236,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:        "docker:1.11.2",
-		DeployInspectImage:        "docker:1.11.2",
+		DeploySidecarImage:        "tsuru/deploy-agent:0.3.0",
+		DeployInspectImage:        "tsuru/deploy-agent:0.3.0",
 		APITimeout:                60 * time.Second,
 		APIShortTimeout:           5 * time.Second,
 		PodReadyTimeout:           time.Minute,

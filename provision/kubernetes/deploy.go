@@ -112,16 +112,15 @@ func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 }
 
 type createPodParams struct {
-	client           *ClusterClient
-	app              provision.App
-	podName          string
-	cmds             []string
-	sidecarCmds      []string
-	sourceImage      string
-	destinationImage string
-	inputFile        string
-	attachInput      io.Reader
-	attachOutput     io.Writer
+	client            *ClusterClient
+	app               provision.App
+	podName           string
+	cmds              []string
+	sourceImage       string
+	destinationImages []string
+	inputFile         string
+	attachInput       io.Reader
+	attachOutput      io.Writer
 }
 
 func createBuildPod(params createPodParams) error {
@@ -145,14 +144,9 @@ func createDeployPod(params createPodParams) error {
 		}
 	}
 	params.cmds = cmds
-	repository, tag := image.SplitImageName(params.destinationImage)
+	repository, tag := image.SplitImageName(params.destinationImages[0])
 	if tag != "latest" {
-		params.sidecarCmds = []string{
-			fmt.Sprintf(`
-				docker tag %[1]s %[2]s:latest
-				docker push %[2]s:latest
-			`, params.destinationImage, repository),
-		}
+		params.destinationImages = append(params.destinationImages, fmt.Sprintf("%s:latest", repository))
 	}
 	return createPod(params)
 }
@@ -224,13 +218,6 @@ func createPod(params createPodParams) error {
 	if len(params.cmds) != 3 {
 		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 	}
-	params.cmds[2] = fmt.Sprintf(`
-		cat >%[4]s && %[1]s
-		exit_code=$?
-		echo "${exit_code}" >%[2]s
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f %[3]s ]; do sleep 1; done
-	`, params.cmds[2], buildIntercontainerStatus, buildIntercontainerDone, params.inputFile)
 	err := ensureServiceAccountForApp(params.client, params.app)
 	if err != nil {
 		return err
@@ -252,7 +239,7 @@ func createPod(params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	annotations.SetBuildImage(params.destinationImage)
+	annotations.SetBuildImage(params.destinationImages[0])
 	appEnvs := provision.EnvsForApp(params.app, "", true)
 	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
@@ -269,6 +256,7 @@ func createPod(params createPodParams) error {
 	if err != nil {
 		return err
 	}
+	regUser, regPass, regDomain := registryAuth(params.destinationImages[0])
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -299,12 +287,10 @@ func createPod(params createPodParams) error {
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
-					Name:      baseName,
-					Image:     params.sourceImage,
-					Command:   params.cmds,
-					Stdin:     true,
-					StdinOnce: true,
-					Env:       envs,
+					Name:    baseName,
+					Image:   params.sourceImage,
+					Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
+					Env:     envs,
 					SecurityContext: &apiv1.SecurityContext{
 						RunAsUser: uid,
 					},
@@ -319,27 +305,24 @@ func createPod(params createPodParams) error {
 						{Name: "dockersock", MountPath: dockerSockPath},
 						{Name: "intercontainer", MountPath: buildIntercontainerPath},
 					}, mounts...),
-					TTY: true,
+					Stdin:     true,
+					StdinOnce: true,
+					Env: []apiv1.EnvVar{
+						{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+						{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(params.destinationImages, ",")},
+						{Name: "DEPLOYAGENT_INPUT_FILE", Value: params.inputFile},
+						{Name: "DEPLOYAGENT_RUN_AS_USER", Value: strconv.FormatInt(*uid, 10)},
+						{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: regUser},
+						{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: regPass},
+						{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: regDomain},
+					},
 					Command: []string{
 						"sh", "-ec",
-						strings.Join(
-							append([]string{fmt.Sprintf(`
-							end() { touch %[4]s; }
+						fmt.Sprintf(`
+							end() { touch %[1]s; }
 							trap end EXIT
-							while [ ! -f %[3]s ]; do sleep 1; done
-							exit_code=$(cat %[3]s)
-							[ "${exit_code}" != "0" ] && exit "${exit_code}"
-							id=$(docker ps -aq -f "label=io.kubernetes.container.name=%[2]s" -f "label=io.kubernetes.pod.name=$(hostname)")
-							img="%[1]s"
-							echo
-							echo '---- Building application image ----'
-							docker commit "${id}" "${img}" >/dev/null
-							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-							echo " ---> Sending image to repository (${sz})"
-							%[5]s
-							docker push %[1]s
-						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone, registryAuth(params.destinationImage))}, params.sidecarCmds...),
-							"\n"),
+							mkdir -p $(dirname %[2]s) && cat >%[2]s && %[3]s
+						`, buildIntercontainerDone, params.inputFile, strings.Join(params.cmds[2:], " ")),
 					},
 				},
 			},
@@ -374,37 +357,27 @@ func createPod(params createPodParams) error {
 		return err
 	}
 	if params.attachInput != nil {
-		errCh := make(chan error)
-		go func() {
-			commitErr := doAttach(params.client, nil, params.attachOutput, params.attachOutput, pod.Name, commitContainer, true)
-			errCh <- commitErr
-		}()
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, baseName, false)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, commitContainer, false)
 		if err != nil {
-			return err
-		}
-		err = <-errCh
-		if err != nil {
-			return err
+			return fmt.Errorf("error attaching to %s/%s: %v", pod.Name, commitContainer, err)
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
 
-func registryAuth(img string) string {
-	imgDomain := strings.Split(img, "/")[0]
+func registryAuth(img string) (username, password, imgDomain string) {
+	imgDomain = strings.Split(img, "/")[0]
 	r, _ := config.GetString("docker:registry")
 	if imgDomain != r {
-		return ""
+		return "", "", ""
 	}
-	username, _ := config.GetString("docker:registry-auth:username")
-	password, _ := config.GetString("docker:registry-auth:password")
+	username, _ = config.GetString("docker:registry-auth:username")
+	password, _ = config.GetString("docker:registry-auth:password")
 	if len(username) == 0 && len(password) == 0 {
-		return ""
+		return "", "", ""
 	}
-
-	return fmt.Sprintf(`docker login -u "%s" -p "%s" "%s"`, username, password, imgDomain)
+	return username, password, imgDomain
 }
 
 func extraRegisterCmds(a provision.App) string {
@@ -960,6 +933,16 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 	kubeConf := getKubeConfig()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+	authFmt := `docker login -u "%s" -p "%s" "%s"`
+	var ologin, nlogin string
+	regUser, regPass, regDomain := registryAuth(oldImage)
+	if regUser != "" {
+		ologin = fmt.Sprintf(authFmt, regUser, regPass, regDomain)
+	}
+	regUser, regPass, regDomain = registryAuth(newImage)
+	if regUser != "" {
+		nlogin = fmt.Sprintf(authFmt, regUser, regPass, regDomain)
+	}
 	err = runPod(runSinglePodArgs{
 		client: client,
 		stdout: stdout,
@@ -972,7 +955,7 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 			docker tag %[2]s %[4]s
 			%[3]s
 			docker push %[4]s
-`, registryAuth(oldImage), oldImage, registryAuth(newImage), newImage),
+`, ologin, oldImage, nlogin, newImage),
 		name:       deployPodName,
 		image:      kubeConf.DeployInspectImage,
 		dockerSock: true,

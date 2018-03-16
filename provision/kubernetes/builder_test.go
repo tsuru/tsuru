@@ -36,17 +36,16 @@ func (s *S) TestBuildPod(c *check.C) {
 		cmds := cleanCmds(containers[0].Command[2])
 		c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
 trap end EXIT
-while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-exit_code=$(cat /tmp/intercontainer/status)
-[ "${exit_code}" != "0" ] && exit "${exit_code}"
-id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-build" -f "label=io.kubernetes.pod.name=$(hostname)")
-img="tsuru/app-myapp:mytag"
-echo
-echo '---- Building application image ----'
-docker commit "${id}" "${img}" >/dev/null
-sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-echo " ---> Sending image to repository (${sz})"
-docker push tsuru/app-myapp:mytag`)
+mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build`)
+		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/app-myapp:mytag"},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+		})
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
