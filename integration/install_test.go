@@ -6,8 +6,10 @@ package integration
 
 import (
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -495,10 +497,16 @@ func exampleApps() ExecFlow {
 
 func testCases() ExecFlow {
 	return ExecFlow{
-		provides: []string{"testcases"},
+		provides: []string{"testcases", "testcasesdir"},
 		forward: func(c *check.C, env *Environment) {
-			files, err := ioutil.ReadDir("./integration/")
+			gopath := os.Getenv("GOPATH")
+			if gopath == "" {
+				gopath = build.Default.GOPATH
+			}
+			casesDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "testapps")
+			files, err := ioutil.ReadDir(casesDir)
 			c.Assert(err, check.IsNil)
+			env.Add("testcasesdir", casesDir)
 			for _, f := range files {
 				if !f.IsDir() {
 					continue
@@ -511,6 +519,7 @@ func testCases() ExecFlow {
 
 func testApps() ExecFlow {
 	flow := ExecFlow{
+		requires: []string{"testcases", "testcasesdir"},
 		matrix: map[string]string{
 			"pool": "poolnames",
 			"case": "testcases",
@@ -518,14 +527,15 @@ func testApps() ExecFlow {
 		parallel: true,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		plat, err := ioutil.ReadFile(fmt.Sprintf("./integration/%s/platform", env.Get("case")))
+		path := path.Join(env.Get("testcasesdir"), env.Get("case"), "platform")
+		plat, err := ioutil.ReadFile(path)
 		c.Assert(err, check.IsNil)
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
 		res := T("app-create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("app-info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-deploy", "-a", appName, "./integration/{{.case}}/").Run(env)
+		res = T("app-deploy", "-a", appName, "{{.testcasesdir}}/{{.case}}/").Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started")
 		ok := retry(5*time.Minute, func() bool {
