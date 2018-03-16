@@ -544,15 +544,6 @@ func testApps() ExecFlow {
 			return regex.MatchString(res.Stdout.String())
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
-		parts := addrRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		cmd := NewCommand("curl", "-ksSf", "http://"+parts[1])
-		ok = retry(15*time.Minute, func() bool {
-			res = cmd.Run(env)
-			return res.ExitCode == 0
-		})
-		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := "{{.case}}-{{.pool}}-iapp"
