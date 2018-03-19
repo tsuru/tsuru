@@ -6,6 +6,7 @@ package docker
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -33,7 +34,7 @@ func (s *S) TestHealthCheckDockerRegistryV2(c *check.C) {
 	err := healthCheckDockerRegistry()
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
-	c.Assert(request.Method, check.Equals, "GET")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
 }
 
 func (s *S) TestHealthCheckDockerRegistryV1(c *check.C) {
@@ -56,7 +57,7 @@ func (s *S) TestHealthCheckDockerRegistryV1(c *check.C) {
 	err := healthCheckDockerRegistry()
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v1/_ping")
-	c.Assert(request.Method, check.Equals, "GET")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
 }
 
 func (s *S) TestHealthCheckDockerRegistryConfiguredWithoutScheme(c *check.C) {
@@ -76,7 +77,7 @@ func (s *S) TestHealthCheckDockerRegistryConfiguredWithoutScheme(c *check.C) {
 	err := healthCheckDockerRegistry()
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
-	c.Assert(request.Method, check.Equals, "GET")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
 }
 
 func (s *S) TestHealthCheckDockerRegistryFailure(c *check.C) {
@@ -105,6 +106,84 @@ func (s *S) TestHealthCheckDockerRegistryUnconfigured(c *check.C) {
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
+func (s *S) TestHealthCheckDockerRegistryV2WithAuth(c *check.C) {
+	var request *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = r
+		w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+	oldRegistry, err := config.Get("docker:registry")
+	config.Set("docker:registry", server.URL+"/")
+	if err == nil {
+		defer config.Set("docker:registry", oldRegistry)
+	} else {
+		defer config.Unset("docker:registry")
+	}
+	oldRegistryUsername, err := config.Get("docker:registry-auth:username")
+	config.Set("docker:registry-auth:username", "tsuru")
+	if err == nil {
+		defer config.Set("docker:registry-auth:username", oldRegistryUsername)
+	} else {
+		defer config.Unset("docker:registry-auth:username")
+	}
+	oldRegistryPassword, err := config.Get("docker:registry-auth:password")
+	config.Set("docker:registry-auth:password", "pwd")
+	if err == nil {
+		defer config.Set("docker:registry-auth:password", oldRegistryPassword)
+	} else {
+		defer config.Unset("docker:registry-auth:password")
+	}
+
+	err = healthCheckDockerRegistry()
+	c.Assert(err, check.IsNil)
+	c.Assert(request.URL.Path, check.Equals, "/v2/")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
+	encodedValue := base64.StdEncoding.EncodeToString([]byte("tsuru:pwd"))
+	c.Assert(request.Header.Get("Authorization"), check.Equals, "Basic "+encodedValue)
+}
+
+func (s *S) TestHealthCheckDockerRegistryV2WithAuthError(c *check.C) {
+	var request *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Scheme == "https" {
+			encodedValue := base64.StdEncoding.EncodeToString([]byte("tsuru:wrongpwd"))
+			c.Assert(r.Header.Get("Authorization"), check.Equals, "Basic "+encodedValue)
+			w.WriteHeader(http.StatusUnauthorized)
+		} else {
+			request = r
+			w.Write([]byte("{}"))
+		}
+	}))
+	defer server.Close()
+	oldRegistry, err := config.Get("docker:registry")
+	config.Set("docker:registry", server.URL+"/")
+	if err == nil {
+		defer config.Set("docker:registry", oldRegistry)
+	} else {
+		defer config.Unset("docker:registry")
+	}
+	oldRegistryUsername, err := config.Get("docker:registry-auth:username")
+	config.Set("docker:registry-auth:username", "tsuru")
+	if err == nil {
+		defer config.Set("docker:registry-auth:username", oldRegistryUsername)
+	} else {
+		defer config.Unset("docker:registry-auth:username")
+	}
+	oldRegistryPassword, err := config.Get("docker:registry-auth:password")
+	config.Set("docker:registry-auth:password", "wrongpwd")
+	if err == nil {
+		defer config.Set("docker:registry-auth:password", oldRegistryPassword)
+	} else {
+		defer config.Unset("docker:registry-auth:password")
+	}
+
+	err = healthCheckDockerRegistry()
+	c.Assert(err, check.IsNil)
+	c.Assert(request.URL.Path, check.Equals, "/v2/")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
+}
+
 func (s *S) TestHealthCheckDocker(c *check.C) {
 	var request *http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +196,7 @@ func (s *S) TestHealthCheckDocker(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = healthCheckDocker()
 	c.Assert(err, check.IsNil)
-	c.Assert(request.Method, check.Equals, "GET")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
 	c.Assert(request.URL.Path, check.Equals, "/_ping")
 }
 
@@ -188,5 +267,5 @@ func (s *S) TestHealthCheckDockerRegistryV2TLS(c *check.C) {
 	err := healthCheckDockerRegistry()
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
-	c.Assert(request.Method, check.Equals, "GET")
+	c.Assert(request.Method, check.Equals, http.MethodGet)
 }
