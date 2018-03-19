@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -41,13 +42,22 @@ func pingDockerRegistry(scheme string) error {
 	registry = fmt.Sprintf("%s://%s", scheme, strings.TrimRight(registry, "/"))
 	v1URL := registry + "/v1/_ping"
 	v2URL := registry + "/v2/"
-	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(v2URL)
+	client := tsuruNet.Dial5Full60ClientNoKeepAlive
+	req, err := newRequestWithCredentials(http.MethodGet, v2URL)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		resp.Body.Close()
-		resp, err = tsuruNet.Dial5Full60ClientNoKeepAlive.Get(v1URL)
+		req, err = newRequestWithCredentials(http.MethodGet, v1URL)
+		if err != nil {
+			return err
+		}
+		resp, err = client.Do(req)
 		if err != nil {
 			return err
 		}
@@ -61,6 +71,25 @@ func pingDockerRegistry(scheme string) error {
 		return errors.Errorf("unexpected status - %s", body)
 	}
 	return nil
+}
+
+func newRequestWithCredentials(method, url string) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	var credentials string
+	if username, _ := config.GetString("docker:registry-auth:username"); username != "" {
+		credentials = username
+	}
+	if password, _ := config.GetString("docker:registry-auth:password"); password != "" {
+		credentials += ":" + password
+	}
+	if len(credentials) > 0 {
+		b64 := base64.StdEncoding.EncodeToString([]byte(credentials))
+		req.Header.Add("Authorization", "Basic "+b64)
+	}
+	return req, nil
 }
 
 func healthCheckDocker() error {
