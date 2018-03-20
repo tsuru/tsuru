@@ -1610,6 +1610,10 @@ func (app *App) Log(message, source, unit string) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
 func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
+	return app.lastLogs(lines, filterLog, false)
+}
+
+func (app *App) lastLogs(lines int, filterLog Applog, invertFilter bool) ([]Applog, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -1638,6 +1642,11 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 	}
 	if filterLog.Unit != "" {
 		q["unit"] = filterLog.Unit
+	}
+	if invertFilter {
+		for k, v := range q {
+			q[k] = bson.M{"$ne": v}
+		}
 	}
 	err = conn.Logs(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
 	if err != nil {

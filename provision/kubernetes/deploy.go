@@ -636,7 +636,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
 		}
-		return err
+		return provision.ErrUnitStartup{Err: err}
 	}
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())

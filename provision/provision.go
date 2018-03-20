@@ -709,3 +709,22 @@ func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {
 		Path: "/",
 	}
 }
+
+type ErrUnitStartup struct {
+	Err error
+}
+
+func (e ErrUnitStartup) Error() string {
+	return e.Err.Error()
+}
+
+func (e ErrUnitStartup) IsStartupError() bool {
+	return true
+}
+
+func IsStartupError(err error) bool {
+	se, ok := errors.Cause(err).(interface {
+		IsStartupError() bool
+	})
+	return ok && se.IsStartupError()
+}

@@ -436,6 +436,9 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 		}
 		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageID)
 	}
+	if err != nil {
+		err = provision.ErrUnitStartup{Err: err}
+	}
 	return err
 }
 
