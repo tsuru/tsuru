@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -78,16 +77,10 @@ func newRequestWithCredentials(method, url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	var credentials string
-	if username, _ := config.GetString("docker:registry-auth:username"); username != "" {
-		credentials = username
-	}
-	if password, _ := config.GetString("docker:registry-auth:password"); password != "" {
-		credentials += ":" + password
-	}
-	if len(credentials) > 0 {
-		b64 := base64.StdEncoding.EncodeToString([]byte(credentials))
-		req.Header.Add("Authorization", "Basic "+b64)
+	username, _ := config.GetString("docker:registry-auth:username")
+	password, _ := config.GetString("docker:registry-auth:password")
+	if len(username) != 0 || len(password) != 0 {
+		req.SetBasicAuth(username, password)
 	}
 	return req, nil
 }
