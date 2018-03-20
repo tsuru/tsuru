@@ -961,7 +961,8 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			return errors.WithStack(err)
 		}
 	} else {
-		tasks, err := m.client.ListTasks(docker.ListTasksOptions{
+		var tasks []swarm.Task
+		tasks, err = m.client.ListTasks(docker.ListTasksOptions{
 			Filters: map[string][]string{"service": {srvName}},
 		})
 		if err != nil {
@@ -980,6 +981,14 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 			return errors.WithStack(err)
 		}
 	}
+	err = m.waitForService(srvName, existingTasks)
+	if err != nil {
+		return provision.ErrUnitStartup{Err: err}
+	}
+	return nil
+}
+
+func (m *serviceManager) waitForService(srvName string, existingTasks map[string]struct{}) error {
 	timeoutc := time.After(waitForTaskTimeout)
 loop:
 	for {

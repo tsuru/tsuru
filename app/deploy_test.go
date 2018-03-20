@@ -443,8 +443,7 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 		Commit: "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		Event:  evt,
 	})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "can't deploy app without platform, if it's not an image or rollback")
+	c.Assert(err, check.ErrorMatches, "(?s).*can't deploy app without platform, if it's not an image or rollback.*")
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
@@ -634,6 +633,36 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestDeployAppShowLogLinesOnStartupError(c *check.C) {
+	s.provisioner.PrepareFailure("Deploy", provision.ErrUnitStartup{Err: errors.New("deploy error")})
+	a := App{
+		Name:      "testerrorapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.Log("msg1", "src1", "unit1")
+	c.Assert(err, check.IsNil)
+	writer := &bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
+		App:          &a,
+		Image:        "myimage",
+		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		OutputStream: writer,
+		Event:        evt,
+	})
+	c.Assert(err, check.ErrorMatches, `(?s).*---- ERROR during deploy: ----.*deploy error.*---- Last 1 log messages: ----.*\[src1\]\[unit1\]: msg1.*`)
 }
 
 func (s *S) TestValidateOrigin(c *check.C) {

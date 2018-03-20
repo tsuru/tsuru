@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -226,6 +227,31 @@ func Build(opts DeployOptions) (string, error) {
 	return imageID, nil
 }
 
+type errorWithLog struct {
+	err  error
+	logs []Applog
+}
+
+func (e *errorWithLog) Cause() error {
+	return e.err
+}
+
+func (e *errorWithLog) formatLogLines() string {
+	linesStr := make([]string, len(e.logs))
+	for i, l := range e.logs {
+		linesStr[i] = fmt.Sprintf("    %s[%s][%s]: %s", l.Date.Format(time.RFC3339), l.Source, l.Unit, l.Message)
+	}
+	return strings.Join(linesStr, "\n")
+}
+
+func (e *errorWithLog) Error() string {
+	var logPart string
+	if len(e.logs) > 0 {
+		logPart = fmt.Sprintf("\n---- Last %d log messages: ----\n%s", len(e.logs), e.formatLogLines())
+	}
+	return fmt.Sprintf("---- ERROR during deploy: ----\n%v%s", e.err, logPart)
+}
+
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
@@ -247,6 +273,13 @@ func Deploy(opts DeployOptions) (string, error) {
 	imageID, err := deployToProvisioner(&opts, opts.Event)
 	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
 	if err != nil {
+		var logLines []Applog
+		if provision.IsStartupError(err) {
+			logLines, _ = opts.App.lastLogs(10, Applog{
+				Source: "tsuru",
+			}, true)
+		}
+		err = &errorWithLog{err: err, logs: logLines}
 		return "", err
 	}
 	err = incrementDeploy(opts.App)
