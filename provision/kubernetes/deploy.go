@@ -31,8 +31,10 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
@@ -524,11 +526,66 @@ func createDeployTimeoutError(client *ClusterClient, a provision.App, processNam
 	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
-func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer) error {
+func filteredPodEvents(client *ClusterClient, evtResourceVersion string) (watch.Interface, error) {
+	var err error
+	client, err = NewClusterClient(client.Cluster)
+	if err != nil {
+		return nil, err
+	}
+	err = client.SetTimeout(time.Hour)
+	if err != nil {
+		return nil, err
+	}
+	evtWatch, err := client.CoreV1().Events(client.Namespace()).Watch(metav1.ListOptions{
+		FieldSelector: labels.SelectorFromSet(labels.Set(map[string]string{
+			"involvedObject.kind": "Pod",
+		})).String(),
+		Watch:           true,
+		ResourceVersion: evtResourceVersion,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return evtWatch, nil
+}
+
+func isDeploymentEvent(msg watch.Event, dep *v1beta2.Deployment) bool {
+	evt, ok := msg.Object.(*apiv1.Event)
+	return ok && strings.HasPrefix(evt.Name, dep.Name)
+}
+
+func formatEvtMessage(msg watch.Event) string {
+	evt, ok := msg.Object.(*apiv1.Event)
+	if !ok {
+		return ""
+	}
+	component := []string{evt.Source.Component}
+	if evt.Source.Host != "" {
+		component = append(component, evt.Source.Host)
+	}
+	return fmt.Sprintf("%s - %s [%s]",
+		evt.InvolvedObject.Name,
+		evt.Message,
+		strings.Join(component, ", "),
+	)
+}
+
+func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) error {
+	watch, err := filteredPodEvents(client, evtResourceVersion)
+	if err != nil {
+		return err
+	}
+	watchCh := watch.ResultChan()
+	defer func() {
+		watch.Stop()
+		if watchCh != nil {
+			// Drain watch channel to avoid goroutine leaks.
+			<-watchCh
+		}
+	}()
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
-	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
 		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
@@ -589,6 +646,14 @@ func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provisi
 		}
 		select {
 		case <-time.After(100 * time.Millisecond):
+		case msg, isOpen := <-watchCh:
+			if !isOpen {
+				watchCh = nil
+				break
+			}
+			if isDeploymentEvent(msg, dep) {
+				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg))
+			}
 		case <-healthcheckTimeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
 		case <-timeout:
@@ -620,6 +685,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		dep = nil
 	}
+	events, err := m.client.CoreV1().Events(m.client.Namespace()).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
 	dep, labels, err = createAppDeployment(m.client, dep, a, process, img, replicas, labels)
 	if err != nil {
 		return err
@@ -627,7 +696,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	if m.writer == nil {
 		m.writer = ioutil.Discard
 	}
-	err = monitorDeployment(m.client, dep, a, process, m.writer)
+	err = monitorDeployment(m.client, dep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
