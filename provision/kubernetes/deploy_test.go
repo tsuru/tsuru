@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -474,6 +476,74 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+}
+
+func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	fakeWatcher := watch.NewFakeWithChanSize(2, false)
+	fakeWatcher.Add(&apiv1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp-web.1",
+		},
+		InvolvedObject: apiv1.ObjectReference{
+			Name: "pod-name-1",
+		},
+		Source: apiv1.EventSource{
+			Component: "c1",
+		},
+		Message: "msg1",
+	})
+	fakeWatcher.Add(&apiv1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp-web.2",
+		},
+		InvolvedObject: apiv1.ObjectReference{
+			Name: "pod-name-1",
+		},
+		Source: apiv1.EventSource{
+			Component: "c1",
+			Host:      "n1",
+		},
+		Message: "msg2",
+	})
+	watchCalled := make(chan struct{})
+	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		dep := obj.(*v1beta2.Deployment)
+		dep.Status.UnavailableReplicas = 1
+		depCopy := *dep
+		go func() {
+			<-watchCalled
+			time.Sleep(time.Second)
+			depCopy.Status.UnavailableReplicas = 0
+			s.client.AppsV1beta2().Deployments(s.clusterClient.Namespace()).Update(&depCopy)
+		}()
+		return false, nil, nil
+	})
+	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
+		close(watchCalled)
+		return true, fakeWatcher, nil
+	})
+	buf := bytes.NewBuffer(nil)
+	m := serviceManager{client: s.clusterClient, writer: buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cmd1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
