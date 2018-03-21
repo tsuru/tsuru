@@ -81,6 +81,34 @@ func (s *S) TestRegistryRemoveImage(c *check.C) {
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
+func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
+	config.Set("docker:registry-auth:username", "user")
+	defer config.Unset("docker:registry-auth:username")
+	config.Set("docker:registry-auth:password", "pwd")
+	defer config.Unset("docker:registry-auth:password")
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
+}
+
+func (s *S) TestRegistryRemoveImageWithAuthBadCredentials(c *check.C) {
+	config.Set("docker:registry-auth:username", "user")
+	defer config.Unset("docker:registry-auth:username")
+	config.Set("docker:registry-auth:password", "wrong-pwd")
+	defer config.Unset("docker:registry-auth:password")
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v1")
+	c.Assert(err, check.NotNil)
+	c.Assert(s.server.Repos, check.HasLen, 1)
+	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
+}
+
 func (s *S) TestRegistryRemoveImageNoRegistry(c *check.C) {
 	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)

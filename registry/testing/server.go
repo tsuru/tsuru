@@ -7,6 +7,7 @@
 package testing
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,8 +18,10 @@ import (
 )
 
 type Repository struct {
-	Name string
-	Tags map[string]string
+	Name     string
+	Tags     map[string]string
+	Username string
+	Password string
 }
 
 type tagListResponse struct {
@@ -94,7 +97,29 @@ func (s *RegistryServer) buildMuxer() {
 	s.muxer.Path("/v2/{name:.*}/tags/list").Methods("GET").HandlerFunc(s.listTags)
 }
 
+func (s *RegistryServer) auth(w http.ResponseWriter, r *http.Request) error {
+	name := mux.Vars(r)["name"]
+	repo, _ := s.findRepository(name)
+	if len(repo.Username) == 0 && len(repo.Password) == 0 {
+		return nil
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	credentials := fmt.Sprintf("%s:%s", repo.Username, repo.Password)
+	b64Credentials := "Basic " + base64.StdEncoding.EncodeToString([]byte(credentials))
+	if authHeader != b64Credentials {
+		return fmt.Errorf("bad credentials")
+	}
+	return nil
+}
+
 func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
+	err := s.auth(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	name := mux.Vars(r)["name"]
 	digest := mux.Vars(r)["digest"]
 	repo, index := s.findRepository(name)
@@ -119,6 +144,12 @@ func (s *RegistryServer) removeTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *RegistryServer) getDigest(w http.ResponseWriter, r *http.Request) {
+	err := s.auth(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	name := mux.Vars(r)["name"]
 	tag := mux.Vars(r)["tag"]
 	repo, index := s.findRepository(name)
@@ -138,6 +169,12 @@ func (s *RegistryServer) getDigest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *RegistryServer) listTags(w http.ResponseWriter, r *http.Request) {
+	err := s.auth(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	name := mux.Vars(r)["name"]
 	repo, index := s.findRepository(name)
 	if index < 0 {
@@ -152,7 +189,7 @@ func (s *RegistryServer) listTags(w http.ResponseWriter, r *http.Request) {
 		tags[i] = t
 		i++
 	}
-	err := json.NewEncoder(w).Encode(tagListResponse{Name: repo.Name, Tags: tags})
+	err = json.NewEncoder(w).Encode(tagListResponse{Name: repo.Name, Tags: tags})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
