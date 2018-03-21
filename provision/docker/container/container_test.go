@@ -678,7 +678,7 @@ func (s *S) TestContainerCommit(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = "tsuru/app-myapp:v1"
 	var buf bytes.Buffer
-	imageID, err := cont.Commit(s.cli, s.limiter, &buf)
+	imageID, err := cont.Commit(s.cli, s.limiter, &buf, false)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	repository := repoNamespace + "/app-" + cont.AppName + ":v1"
@@ -687,7 +687,7 @@ func (s *S) TestContainerCommit(c *check.C) {
 
 var pushPathRegex = regexp.MustCompile(`/images/(.*)/push`)
 
-func (s *S) TestContainerCommitWithRegistry(c *check.C) {
+func (s *S) TestContainerCommitWithRegistryBuild(c *check.C) {
 	config.Set("docker:registry-max-try", 1)
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
@@ -703,13 +703,40 @@ func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = "localhost:3030/tsuru/app-myapp:v1"
 	var buf bytes.Buffer
-	imageID, err := cont.Commit(s.cli, s.limiter, &buf)
+	imageID, err := cont.Commit(s.cli, s.limiter, &buf, false)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1"
 	c.Assert(imageID, check.Equals, repository)
 	c.Assert(pushes, check.DeepEquals, []string{
 		"localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1",
+	})
+}
+
+func (s *S) TestContainerCommitWithRegistryDeploy(c *check.C) {
+	config.Set("docker:registry-max-try", 1)
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var pushes []string
+	s.server.SetHook(func(r *http.Request) {
+		parts := pushPathRegex.FindStringSubmatch(r.URL.Path)
+		if len(parts) == 2 {
+			pushes = append(pushes, parts[1]+":"+r.URL.Query().Get("tag"))
+		}
+	})
+	cont, err := s.newContainer(newContainerOpts{AppName: "myapp"}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	cont.BuildingImage = "localhost:3030/tsuru/app-myapp:v1"
+	var buf bytes.Buffer
+	imageID, err := cont.Commit(s.cli, s.limiter, &buf, true)
+	c.Assert(err, check.IsNil)
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1"
+	c.Assert(imageID, check.Equals, repository)
+	c.Assert(pushes, check.DeepEquals, []string{
+		"localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1",
+		"localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":latest",
 	})
 }
 
@@ -731,7 +758,7 @@ func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = cont.Image
 	var buf bytes.Buffer
-	_, err = cont.Commit(s.cli, s.limiter, &buf)
+	_, err = cont.Commit(s.cli, s.limiter, &buf, false)
 	c.Assert(err, check.ErrorMatches, ".*third failure$")
 }
 
@@ -759,7 +786,7 @@ func (s *S) TestContainerCommitRetryPush(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = cont.Image
 	var buf bytes.Buffer
-	_, err = cont.Commit(s.cli, s.limiter, &buf)
+	_, err = cont.Commit(s.cli, s.limiter, &buf, false)
 	c.Assert(err, check.IsNil)
 	expectedPush := "tsuru/python:latest"
 	c.Assert(pushes, check.DeepEquals, []string{expectedPush, expectedPush, expectedPush})

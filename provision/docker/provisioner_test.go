@@ -638,12 +638,13 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*my awesome error.*")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
+	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected := []string{"tsuru/app-appdeployimagetest:v1-builder", "tsuru/python:latest"}
+	expected := []string{"tsuru/app-appdeployimagetest:latest", "tsuru/app-appdeployimagetest:v1-builder", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 }
 

@@ -272,7 +272,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	imgID, err := cont.Commit(builderClient(client), limiter(), buf)
+	imgID, err := cont.Commit(builderClient(client), limiter(), buf, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")

@@ -210,7 +210,7 @@ var followLogsAndCommit = action.Action{
 			return nil, err
 		}
 		fmt.Fprintf(args.writer, "\n---- Building image ----\n")
-		imageID, err := c.Commit(args.client, limiter(), args.writer)
+		imageID, err := c.Commit(args.client, limiter(), args.writer, false)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err

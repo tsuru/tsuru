@@ -387,7 +387,7 @@ func (c *Container) Exec(client provision.BuilderDockerClient, stdout, stderr io
 
 // Commits commits the container, creating an image in Docker. It then returns
 // the image identifier for usage in future container creation.
-func (c *Container) Commit(client provision.BuilderDockerClient, limiter provision.ActionLimiter, writer io.Writer) (string, error) {
+func (c *Container) Commit(client provision.BuilderDockerClient, limiter provision.ActionLimiter, writer io.Writer, isDeploy bool) (string, error) {
 	log.Debugf("committing container %s", c.ID)
 	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
@@ -395,40 +395,48 @@ func (c *Container) Commit(client provision.BuilderDockerClient, limiter provisi
 	}
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
-	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
-	done := limiter.Start(c.HostAddr)
-	image, err := client.CommitContainer(opts)
-	done()
-	if err != nil {
-		return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
+	tags := []string{tag}
+	if isDeploy && tag != "latest" {
+		tags = append(tags, "latest")
 	}
-	imgHistory, err := client.ImageHistory(c.BuildingImage)
-	imgSize := ""
-	if err == nil && len(imgHistory) > 0 {
-		fullSize := imgHistory[0].Size
-		if len(imgHistory) > 1 && strings.Contains(imgHistory[1].CreatedBy, "tail -f /dev/null") {
-			fullSize += imgHistory[1].Size
-		}
-		imgSize = fmt.Sprintf("(%.02fMB)", float64(fullSize)/1024/1024)
-	}
-	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
-	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	maxTry, _ := config.GetInt("docker:registry-max-try")
-	if maxTry <= 0 {
-		maxTry = 3
-	}
-	for i := 0; i < maxTry; i++ {
-		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+	for i, tag := range tags {
+		opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
+		done := limiter.Start(c.HostAddr)
+		image, err := client.CommitContainer(opts)
+		done()
 		if err != nil {
-			fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
-			log.Errorf("error in push image %s: %s", c.BuildingImage, err)
-			time.Sleep(time.Second)
-			continue
+			return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
 		}
-		break
-	}
-	if err != nil {
-		return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
+		if i == 0 {
+			imgHistory, err := client.ImageHistory(c.BuildingImage)
+			imgSize := ""
+			if err == nil && len(imgHistory) > 0 {
+				fullSize := imgHistory[0].Size
+				if len(imgHistory) > 1 && strings.Contains(imgHistory[1].CreatedBy, "tail -f /dev/null") {
+					fullSize += imgHistory[1].Size
+				}
+				imgSize = fmt.Sprintf("(%.02fMB)", float64(fullSize)/1024/1024)
+			}
+			fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
+			log.Debugf("image %s generated from container %s", image.ID, c.ID)
+		}
+		maxTry, _ := config.GetInt("docker:registry-max-try")
+		if maxTry <= 0 {
+			maxTry = 3
+		}
+		for i := 0; i < maxTry; i++ {
+			err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+			if err != nil {
+				fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
+				log.Errorf("error in push image %s: %s", c.BuildingImage, err)
+				time.Sleep(time.Second)
+				continue
+			}
+			break
+		}
+		if err != nil {
+			return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
+		}
 	}
 	return c.BuildingImage, nil
 }

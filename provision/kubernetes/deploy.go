@@ -114,6 +114,7 @@ type createPodParams struct {
 	app              provision.App
 	podName          string
 	cmds             []string
+	sidecarCmds      []string
 	sourceImage      string
 	destinationImage string
 	inputFile        string
@@ -142,6 +143,21 @@ func createDeployPod(params createPodParams) error {
 		}
 	}
 	params.cmds = cmds
+	destinationImageWithoutTag := params.destinationImage
+	parts := strings.Split(params.destinationImage, ":")
+	tag := "latest"
+	if len(parts) == 3 {
+		destinationImageWithoutTag = strings.Join([]string{parts[0], parts[1]}, ":")
+		tag = parts[2]
+	}
+	if tag != "latest" {
+		params.sidecarCmds = []string{
+			fmt.Sprintf(`
+				docker tag %[1]s %[2]s:latest
+				docker push %[2]s:latest
+			`, params.destinationImage, destinationImageWithoutTag),
+		}
+	}
 	return createPod(params)
 }
 
@@ -242,7 +258,8 @@ func createPod(params createPodParams) error {
 					TTY: true,
 					Command: []string{
 						"sh", "-ec",
-						fmt.Sprintf(`
+						strings.Join(
+							append([]string{fmt.Sprintf(`
 							end() { touch %[4]s; }
 							trap end EXIT
 							while [ ! -f %[3]s ]; do sleep 1; done
@@ -256,7 +273,8 @@ func createPod(params createPodParams) error {
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
 							docker push "${img}"
-						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone),
+						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone)}, params.sidecarCmds...),
+							"\n"),
 					},
 				},
 			},
