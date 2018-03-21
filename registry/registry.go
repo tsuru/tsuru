@@ -179,6 +179,11 @@ func (r *dockerRegistry) doRequest(method, path string, headers map[string]strin
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
+		username, _ := config.GetString("docker:registry-auth:username")
+		password, _ := config.GetString("docker:registry-auth:password")
+		if len(username) > 0 || len(password) > 0 {
+			req.SetBasicAuth(username, password)
+		}
 		resp, err = r.client.Do(req)
 		if err != nil {
 			if _, ok := err.(net.Error); ok {
