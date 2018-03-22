@@ -266,6 +266,26 @@ func createPod(params createPodParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	watch, err := filteredPodEvents(params.client, "", params.podName)
+	if err != nil {
+		return err
+	}
+	watchDone := make(chan struct{})
+	defer func() {
+		watch.Stop()
+		<-watchDone
+	}()
+	watchCh := watch.ResultChan()
+	go func() {
+		defer close(watchDone)
+		for {
+			msg, isOpen := <-watchCh
+			if !isOpen {
+				return
+			}
+			fmt.Fprintf(params.attachOutput, " ---> %s\n", formatEvtMessage(msg, true))
+		}
+	}()
 	err = waitForPodContainersRunning(params.client, pod.Name, kubeConf.PodRunningTimeout)
 	if err != nil {
 		return err
@@ -526,7 +546,7 @@ func createDeployTimeoutError(client *ClusterClient, a provision.App, processNam
 	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
 }
 
-func filteredPodEvents(client *ClusterClient, evtResourceVersion string) (watch.Interface, error) {
+func filteredPodEvents(client *ClusterClient, evtResourceVersion, podName string) (watch.Interface, error) {
 	var err error
 	client, err = NewClusterClient(client.Cluster)
 	if err != nil {
@@ -536,10 +556,14 @@ func filteredPodEvents(client *ClusterClient, evtResourceVersion string) (watch.
 	if err != nil {
 		return nil, err
 	}
+	selector := map[string]string{
+		"involvedObject.kind": "Pod",
+	}
+	if podName != "" {
+		selector["involvedObject.name"] = podName
+	}
 	evtWatch, err := client.CoreV1().Events(client.Namespace()).Watch(metav1.ListOptions{
-		FieldSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"involvedObject.kind": "Pod",
-		})).String(),
+		FieldSelector:   labels.SelectorFromSet(labels.Set(selector)).String(),
 		Watch:           true,
 		ResourceVersion: evtResourceVersion,
 	})
@@ -554,24 +578,29 @@ func isDeploymentEvent(msg watch.Event, dep *v1beta2.Deployment) bool {
 	return ok && strings.HasPrefix(evt.Name, dep.Name)
 }
 
-func formatEvtMessage(msg watch.Event) string {
+func formatEvtMessage(msg watch.Event, showSub bool) string {
 	evt, ok := msg.Object.(*apiv1.Event)
 	if !ok {
 		return ""
+	}
+	var subStr string
+	if showSub && evt.InvolvedObject.FieldPath != "" {
+		subStr = fmt.Sprintf(" - %s", evt.InvolvedObject.FieldPath)
 	}
 	component := []string{evt.Source.Component}
 	if evt.Source.Host != "" {
 		component = append(component, evt.Source.Host)
 	}
-	return fmt.Sprintf("%s - %s [%s]",
+	return fmt.Sprintf("%s%s - %s [%s]",
 		evt.InvolvedObject.Name,
+		subStr,
 		evt.Message,
 		strings.Join(component, ", "),
 	)
 }
 
 func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) error {
-	watch, err := filteredPodEvents(client, evtResourceVersion)
+	watch, err := filteredPodEvents(client, evtResourceVersion, "")
 	if err != nil {
 		return err
 	}
@@ -652,7 +681,7 @@ func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provisi
 				break
 			}
 			if isDeploymentEvent(msg, dep) {
-				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg))
+				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-healthcheckTimeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")

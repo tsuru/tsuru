@@ -38,7 +38,6 @@ type S struct {
 	token         auth.Token
 	client        *kTesting.ClientWrapper
 	clusterClient *ClusterClient
-	lastConf      *rest.Config
 	t             *testing.T
 	mock          *kTesting.KubeMock
 	mockService   struct {
@@ -93,7 +92,6 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.clusterClient.Interface = s.client
 	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
-		s.lastConf = conf
 		return s.client, nil
 	}
 	routertest.FakeRouter.Reset()

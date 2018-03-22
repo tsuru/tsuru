@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -18,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"github.com/tsuru/tsuru/safe"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -908,6 +910,78 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestCreateDeployPodProgress(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	fakeWatcher := watch.NewFakeWithChanSize(2, false)
+	fakeWatcher.Add(&apiv1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp-v1-deploy.1",
+		},
+		InvolvedObject: apiv1.ObjectReference{
+			Name: "myapp-v1-deploy",
+		},
+		Source: apiv1.EventSource{
+			Component: "c1",
+		},
+		Message: "msg1",
+	})
+	fakeWatcher.Add(&apiv1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp-v1-deploy.2",
+		},
+		InvolvedObject: apiv1.ObjectReference{
+			Name:      "myapp-v1-deploy",
+			FieldPath: "mycont",
+		},
+		Source: apiv1.EventSource{
+			Component: "c1",
+			Host:      "n1",
+		},
+		Message: "msg2",
+	})
+	watchCalled := make(chan struct{})
+	podReactorDone := make(chan struct{})
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		pod := obj.(*apiv1.Pod)
+		pod.Status.ContainerStatuses = []apiv1.ContainerStatus{
+			{State: apiv1.ContainerState{Running: &apiv1.ContainerStateRunning{}}},
+		}
+		podCopy := *pod
+		go func() {
+			defer close(podReactorDone)
+			<-watchCalled
+			time.Sleep(time.Second)
+			podCopy.Status.ContainerStatuses = nil
+			s.clusterClient.CoreV1().Pods(s.clusterClient.Namespace()).Update(&podCopy)
+		}()
+		return false, nil, nil
+	})
+	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
+		close(watchCalled)
+		return true, fakeWatcher, nil
+	})
+	buf := safe.NewBuffer(nil)
+	err := createDeployPod(createPodParams{
+		client:           s.clusterClient,
+		app:              a,
+		sourceImage:      "myimg",
+		destinationImage: "destimg",
+		inputFile:        "/dev/null",
+		attachInput:      strings.NewReader("."),
+		attachOutput:     buf,
+	})
+	c.Assert(err, check.IsNil)
+	<-podReactorDone
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(buf.String(), check.Matches, `(?s).*stdout data.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*stderr data.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).* ---> myapp-v1-deploy - msg1 \[c1\].* ---> myapp-v1-deploy - mycont - msg2 \[c1, n1\].*`)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
