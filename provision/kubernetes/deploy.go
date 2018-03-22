@@ -143,19 +143,13 @@ func createDeployPod(params createPodParams) error {
 		}
 	}
 	params.cmds = cmds
-	destinationImageWithoutTag := params.destinationImage
-	parts := strings.Split(params.destinationImage, ":")
-	tag := "latest"
-	if len(parts) == 3 {
-		destinationImageWithoutTag = strings.Join([]string{parts[0], parts[1]}, ":")
-		tag = parts[2]
-	}
+	repository, tag := image.SplitImageName(params.destinationImage)
 	if tag != "latest" {
 		params.sidecarCmds = []string{
 			fmt.Sprintf(`
 				docker tag %[1]s %[2]s:latest
 				docker push %[2]s:latest
-			`, params.destinationImage, destinationImageWithoutTag),
+			`, params.destinationImage, repository),
 		}
 	}
 	return createPod(params)

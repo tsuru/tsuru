@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -389,37 +390,38 @@ func (c *Container) Exec(client provision.BuilderDockerClient, stdout, stderr io
 // the image identifier for usage in future container creation.
 func (c *Container) Commit(client provision.BuilderDockerClient, limiter provision.ActionLimiter, writer io.Writer, isDeploy bool) (string, error) {
 	log.Debugf("committing container %s", c.ID)
-	parts := strings.Split(c.BuildingImage, ":")
-	if len(parts) < 2 {
-		return "", log.WrapError(errors.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
+	repository, tag := image.SplitImageName(c.BuildingImage)
+	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
+	done := limiter.Start(c.HostAddr)
+	image, err := client.CommitContainer(opts)
+	done()
+	if err != nil {
+		return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
 	}
-	repository := strings.Join(parts[:len(parts)-1], ":")
-	tag := parts[len(parts)-1]
 	tags := []string{tag}
 	if isDeploy && tag != "latest" {
 		tags = append(tags, "latest")
-	}
-	for i, tag := range tags {
-		opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
-		done := limiter.Start(c.HostAddr)
-		image, err := client.CommitContainer(opts)
-		done()
+		err = client.TagImage(fmt.Sprintf("%s:%s", repository, tag), docker.TagImageOptions{
+			Repo:  repository,
+			Tag:   "latest",
+			Force: true,
+		})
 		if err != nil {
-			return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
+			return "", log.WrapError(errors.Wrapf(err, "error in tag container %s", c.ID))
 		}
-		if i == 0 {
-			imgHistory, err := client.ImageHistory(c.BuildingImage)
-			imgSize := ""
-			if err == nil && len(imgHistory) > 0 {
-				fullSize := imgHistory[0].Size
-				if len(imgHistory) > 1 && strings.Contains(imgHistory[1].CreatedBy, "tail -f /dev/null") {
-					fullSize += imgHistory[1].Size
-				}
-				imgSize = fmt.Sprintf("(%.02fMB)", float64(fullSize)/1024/1024)
-			}
-			fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
-			log.Debugf("image %s generated from container %s", image.ID, c.ID)
+	}
+	imgHistory, err := client.ImageHistory(c.BuildingImage)
+	imgSize := ""
+	if err == nil && len(imgHistory) > 0 {
+		fullSize := imgHistory[0].Size
+		if len(imgHistory) > 1 && strings.Contains(imgHistory[1].CreatedBy, "tail -f /dev/null") {
+			fullSize += imgHistory[1].Size
 		}
+		imgSize = fmt.Sprintf("(%.02fMB)", float64(fullSize)/1024/1024)
+	}
+	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
+	log.Debugf("image %s generated from container %s", image.ID, c.ID)
+	for _, tag := range tags {
 		maxTry, _ := config.GetInt("docker:registry-max-try")
 		if maxTry <= 0 {
 			maxTry = 3
