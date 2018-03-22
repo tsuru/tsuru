@@ -500,6 +500,9 @@ func (s *S) TestAppList(c *check.C) {
 }
 
 func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
+	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
+		return []appTypes.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
+	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
 	err := pool.AddPool(opts)
@@ -545,6 +548,9 @@ func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
 }
 
 func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
+	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
+		return []appTypes.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
+	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
 	err := pool.AddPool(opts)

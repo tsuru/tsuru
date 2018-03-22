@@ -48,11 +48,7 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 	Pool        string
 	testServer  http.Handler
-	mockService struct {
-		Team     *authTypes.MockTeamService
-		Plan     *appTypes.MockPlanService
-		Platform *appTypes.MockPlatformService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -134,17 +130,17 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) setupMocks() {
-	s.mockService.Team = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
-			return []authTypes.Team{{Name: s.team.Name}}, nil
-		},
-		OnFindByName: func(_ string) (*authTypes.Team, error) {
-			return &authTypes.Team{Name: s.team.Name}, nil
-		},
-		OnFindByNames: func(_ []string) ([]authTypes.Team, error) {
-			return []authTypes.Team{{Name: s.team.Name}}, nil
-		},
+	servicemanager.SetMockService(&s.mockService)
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: s.team.Name}, nil
+	}
+	s.mockService.Team.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
+
 	defaultPlan := appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
@@ -152,19 +148,12 @@ func (s *S) setupMocks() {
 		CpuShare: 100,
 		Default:  true,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{defaultPlan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &defaultPlan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{defaultPlan}, nil
 	}
-	s.mockService.Platform = &appTypes.MockPlatformService{}
-
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
-	servicemanager.Platform = s.mockService.Platform
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &defaultPlan, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

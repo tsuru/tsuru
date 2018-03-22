@@ -45,11 +45,7 @@ type S struct {
 	defaultPlan appTypes.Plan
 	Pool        string
 	zeroLock    map[string]interface{}
-	mockService struct {
-		Team     *authTypes.MockTeamService
-		Plan     *appTypes.MockPlanService
-		Platform *appTypes.MockPlatformService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -173,43 +169,35 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func setupMocks(s *S) {
-	s.mockService.Team = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
+	servicemanager.SetMockService(&s.mockService)
+
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		if name == s.team.Name {
+			return &authTypes.Team{Name: s.team.Name}, nil
+		}
+		return nil, authTypes.ErrTeamNotFound
+	}
+	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
+		if len(names) == 1 && names[0] == s.team.Name {
 			return []authTypes.Team{{Name: s.team.Name}}, nil
-		},
-		OnFindByName: func(name string) (*authTypes.Team, error) {
-			if name == s.team.Name {
-				return &authTypes.Team{Name: s.team.Name}, nil
-			}
-			return nil, authTypes.ErrTeamNotFound
-		},
-		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
-			if len(names) == 1 && names[0] == s.team.Name {
-				return []authTypes.Team{{Name: s.team.Name}}, nil
-			}
-			return []authTypes.Team{}, nil
-		},
+		}
+		return []authTypes.Team{}, nil
 	}
 
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{s.defaultPlan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &s.defaultPlan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan}, nil
+	}
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &s.defaultPlan, nil
 	}
 
-	s.mockService.Platform = &appTypes.MockPlatformService{
-		OnFindByName: func(name string) (*appTypes.Platform, error) {
-			if name == "python" || name == "heimerdinger" {
-				return &appTypes.Platform{Name: name}, nil
-			}
-			return nil, appTypes.ErrPlatformNotFound
-		},
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		if name == "python" || name == "heimerdinger" {
+			return &appTypes.Platform{Name: name}, nil
+		}
+		return nil, appTypes.ErrPlatformNotFound
 	}
-
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
-	servicemanager.Platform = s.mockService.Platform
 }

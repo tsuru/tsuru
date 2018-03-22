@@ -34,9 +34,7 @@ import (
 type PlatformSuite struct {
 	conn        *db.Storage
 	testServer  http.Handler
-	mockService struct {
-		Platform *appTypes.MockPlatformService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&PlatformSuite{})
@@ -76,8 +74,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	provision.DefaultProvisioner = "fake-extensible"
 	s.reset()
-	s.mockService.Platform = &appTypes.MockPlatformService{}
-	servicemanager.Platform = s.mockService.Platform
+	servicemanager.SetMockService(&s.mockService)
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {

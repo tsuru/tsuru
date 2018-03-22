@@ -34,10 +34,7 @@ type S struct {
 	conn        *db.Storage
 	user        *auth.User
 	team        *authTypes.Team
-	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -92,27 +89,22 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockService.Team = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
-			return []authTypes.Team{*s.team}, nil
-		},
-		OnFindByName: func(_ string) (*authTypes.Team, error) {
-			return s.team, nil
-		},
+	servicemanager.SetMockService(&s.mockService)
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{*s.team}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return s.team, nil
 	}
 	plan := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{plan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &plan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &plan, nil
+	}
 }

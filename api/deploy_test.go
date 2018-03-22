@@ -50,10 +50,7 @@ type DeploySuite struct {
 	provisioner *provisiontest.FakeProvisioner
 	builder     *builder.MockBuilder
 	testServer  http.Handler
-	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&DeploySuite{})
@@ -122,10 +119,10 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
-	s.mockService.Team = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
-			return []authTypes.Team{{Name: s.team.Name}}, nil
-		},
+
+	servicemanager.SetMockService(&s.mockService)
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	defaultPlan := appTypes.Plan{
 		Name:     "default-plan",
@@ -134,16 +131,12 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{defaultPlan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &defaultPlan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{defaultPlan}, nil
 	}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &defaultPlan, nil
+	}
 }
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
