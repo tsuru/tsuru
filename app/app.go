@@ -40,10 +40,8 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
-	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -1850,11 +1848,11 @@ func loadCachedAddrsInApps(apps []App) error {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
 	}
-	entries, err := cacheStorage().GetAll(keys...)
+	entries, err := servicemanager.Cache.List(keys...)
 	if err != nil {
 		return err
 	}
-	entryMap := make(map[string]cache.CacheEntry, len(entries))
+	entryMap := make(map[string]appTypes.CacheEntry, len(entries))
 	for _, e := range entries {
 		entryMap[e.Key] = e
 	}
@@ -1873,17 +1871,6 @@ func loadCachedAddrsInApps(apps []App) error {
 		}
 	}
 	return nil
-}
-
-func cacheStorage() cache.CacheStorage {
-	dbDriver, err := storage.GetCurrentDbDriver()
-	if err != nil {
-		dbDriver, err = storage.GetDefaultDbDriver()
-		if err != nil {
-			return nil
-		}
-	}
-	return dbDriver.CacheStorage
 }
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
@@ -2136,7 +2123,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].Status = string(status)
 			routers[i].StatusDetail = detail
 		}
-		cacheStorage().Put(cache.CacheEntry{
+		servicemanager.Cache.Create(appTypes.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})

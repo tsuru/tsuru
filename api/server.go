@@ -84,6 +84,7 @@ func getAuthScheme() (string, error) {
 }
 
 func setupServices() {
+	servicemanager.Cache = app.CacheService()
 	servicemanager.Team = auth.TeamService()
 	servicemanager.Plan = app.PlanService()
 	servicemanager.Platform = app.PlatformService()

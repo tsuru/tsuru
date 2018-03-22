@@ -51,10 +51,7 @@ type ServiceInstanceSuite struct {
 	service     *service.Service
 	ts          *httptest.Server
 	testServer  http.Handler
-	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&ServiceInstanceSuite{})
@@ -95,7 +92,8 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
-	s.mockService.Team = &authTypes.MockTeamService{}
+
+	servicemanager.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
@@ -116,16 +114,12 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{defaultPlan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &defaultPlan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{defaultPlan}, nil
 	}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &defaultPlan, nil
+	}
 
 	s.service = &service.Service{
 		Name:       "mysql",

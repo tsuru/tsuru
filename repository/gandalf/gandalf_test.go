@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
@@ -32,7 +33,8 @@ func Test(t *testing.T) {
 var _ = check.Suite(&GandalfSuite{})
 
 type GandalfSuite struct {
-	server *gandalftest.GandalfServer
+	server      *gandalftest.GandalfServer
+	mockService servicemanager.MockService
 }
 
 func (s *GandalfSuite) SetUpSuite(c *check.C) {
@@ -43,6 +45,10 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("git:api-server", s.server.URL())
 	config.Set("database:name", "repository_gandalf_test")
+}
+
+func (s *GandalfSuite) SetUpTest(c *check.C) {
+	servicemanager.SetMockService(&s.mockService)
 }
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {

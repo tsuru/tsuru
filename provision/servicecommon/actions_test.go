@@ -19,15 +19,11 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
-	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -53,22 +49,18 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	s.mockService.Team = &authTypes.MockTeamService{}
+	servicemanager.SetMockService(&s.mockService)
 	plan := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{plan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &plan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &plan, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

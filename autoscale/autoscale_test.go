@@ -42,9 +42,7 @@ type S struct {
 	p           *provisiontest.FakeProvisioner
 	logBuf      *safe.Buffer
 	conn        *db.Storage
-	mockService struct {
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 func (s *S) SetUpSuite(c *check.C) {
@@ -70,15 +68,13 @@ func (s *S) SetUpTest(c *check.C) {
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(s.appInstance)
 	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{plan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &plan, nil
-		},
+	servicemanager.SetMockService(&s.mockService)
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &plan, nil
+	}
 	appStruct := &app.App{
 		Name: s.appInstance.GetName(),
 		Pool: "pool1",

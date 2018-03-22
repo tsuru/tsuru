@@ -42,10 +42,7 @@ type S struct {
 	storage     *db.Storage
 	user        *auth.User
 	team        string
-	mockService struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService servicemanager.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -77,22 +74,18 @@ func (s *S) SetUpTest(c *check.C) {
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockService.Team = &authTypes.MockTeamService{}
+	servicemanager.SetMockService(&s.mockService)
 	plan := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
 		CpuShare: 100,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{plan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &plan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &plan, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

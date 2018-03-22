@@ -8,24 +8,24 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tsuru/tsuru/types/cache"
+	"github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
 type CacheSuite struct {
 	SuiteHooks
-	CacheStorage cache.CacheStorage
+	CacheStorage app.CacheStorage
 }
 
 func (s *CacheSuite) TestCachePut(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(app.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	})
 	c.Assert(err, check.IsNil)
 	entry, err := s.CacheStorage.Get("k1")
 	c.Assert(err, check.IsNil)
-	c.Assert(entry, check.DeepEquals, cache.CacheEntry{
+	c.Assert(entry, check.DeepEquals, app.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	})
@@ -33,22 +33,22 @@ func (s *CacheSuite) TestCachePut(c *check.C) {
 
 func (s *CacheSuite) TestCacheGetNotFound(c *check.C) {
 	entry, err := s.CacheStorage.Get("k1")
-	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
-	c.Assert(entry, check.DeepEquals, cache.CacheEntry{})
+	c.Assert(err, check.Equals, app.ErrEntryNotFound)
+	c.Assert(entry, check.DeepEquals, app.CacheEntry{})
 }
 
 func (s *CacheSuite) TestCacheGetAll(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(app.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.CacheStorage.Put(cache.CacheEntry{
+	err = s.CacheStorage.Put(app.CacheEntry{
 		Key:   "k2",
 		Value: "v2",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.CacheStorage.Put(cache.CacheEntry{
+	err = s.CacheStorage.Put(app.CacheEntry{
 		Key:   "k3",
 		Value: "v3",
 	})
@@ -58,7 +58,7 @@ func (s *CacheSuite) TestCacheGetAll(c *check.C) {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Key < entries[j].Key
 	})
-	c.Assert(entries, check.DeepEquals, []cache.CacheEntry{
+	c.Assert(entries, check.DeepEquals, []app.CacheEntry{
 		{Key: "k1", Value: "v1"},
 		{Key: "k3", Value: "v3"},
 	})
@@ -68,7 +68,7 @@ func (s *CacheSuite) TestCacheGetAll(c *check.C) {
 }
 
 func (s *CacheSuite) TestCacheExpiration(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(app.CacheEntry{
 		Key:      "k1",
 		Value:    "v1",
 		ExpireAt: time.Now().Add(time.Second),
@@ -81,7 +81,7 @@ func (s *CacheSuite) TestCacheExpiration(c *check.C) {
 	for {
 		_, err = s.CacheStorage.Get("k1")
 		if err != nil {
-			c.Assert(err, check.Equals, cache.ErrEntryNotFound)
+			c.Assert(err, check.Equals, app.ErrEntryNotFound)
 			break
 		}
 		select {
