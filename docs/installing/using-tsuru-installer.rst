@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 :title: tsuru Installer
-:description: Installs tsuru and it`s dependencies
+:description: Installs tsuru and its dependencies
 
 .. _installer:
 
