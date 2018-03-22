@@ -13,9 +13,3 @@ Experimental
 The features in the section are currently marked as experimental. They are not
 ready for production environments and are available for test in non-critical
 environments. Feel free to provide any feedback regarding these features.
-
-.. toctree::
-    :caption: Current experimental features
-    :maxdepth: 1
-
-    installer
