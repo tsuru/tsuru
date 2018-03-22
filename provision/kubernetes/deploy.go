@@ -266,8 +266,8 @@ func createPod(params createPodParams) error {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}"
-						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone)}, params.sidecarCmds...),
+							%[5]s
+						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone, pushImage(params.destinationImage))}, params.sidecarCmds...),
 							"\n"),
 					},
 				},
@@ -319,6 +319,22 @@ func createPod(params createPodParams) error {
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
+}
+
+func pushImage(img string) string {
+	dockerPushCmd := fmt.Sprintf(`docker push "%s"`, img)
+	imgDomain := strings.Split(img, "/")[0]
+	r, _ := config.Get("docker:registry")
+	if imgDomain != r {
+		return dockerPushCmd
+	}
+	username, _ := config.GetString("docker:registry-auth:username")
+	password, _ := config.GetString("docker:registry-auth:password")
+	if len(username) == 0 && len(password) == 0 {
+		return dockerPushCmd
+	}
+
+	return fmt.Sprintf(`docker login -u "%s" -p "%s" "%s" && %s`, username, password, imgDomain, dockerPushCmd)
 }
 
 func extraRegisterCmds(a provision.App) string {

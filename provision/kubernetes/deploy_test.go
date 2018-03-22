@@ -779,7 +779,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}"
+							docker push "destimg"
 						`,
 		},
 	})
@@ -897,7 +897,130 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}"
+							docker push "destimg"
+						`,
+			},
+		},
+		{
+			Name:  "myapp-v1-deploy",
+			Image: "myimg",
+			Command: []string{"/bin/sh", "-lc", `
+		cat >/dev/null && tsuru_unit_agent   myapp deploy-only
+		exit_code=$?
+		echo "${exit_code}" >/tmp/intercontainer/status
+		[ "${exit_code}" != "0" ] && exit "${exit_code}"
+		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
+	`},
+			Stdin:     true,
+			StdinOnce: true,
+			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			SecurityContext: &apiv1.SecurityContext{
+				RunAsUser: &runAsUser,
+			},
+			VolumeMounts: []apiv1.VolumeMount{
+				{Name: "intercontainer", MountPath: buildIntercontainerPath},
+			},
+		},
+	})
+}
+
+func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
+	config.Set("docker:registry", "registry.example.com")
+	defer config.Unset("docker:registry")
+	config.Set("docker:registry-auth:username", "user")
+	defer config.Unset("docker:registry-auth:username")
+	config.Set("docker:registry-auth:password", "pwd")
+	defer config.Unset("docker:registry-auth:password")
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := createDeployPod(createPodParams{
+		client:           s.clusterClient,
+		app:              a,
+		sourceImage:      "myimg",
+		destinationImage: "registry.example.com/destimg",
+		inputFile:        "/dev/null",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	pods.Items[0].Spec.Containers = nil
+	pods.Items[0].Status = apiv1.PodStatus{}
+	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-v1-deploy",
+			Namespace: s.client.Namespace(),
+			Labels: map[string]string{
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/app-name":             "myapp",
+				"tsuru.io/router-type":          "fake",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/builder":              "",
+				"tsuru.io/app-process":          "",
+				"tsuru.io/is-build":             "true",
+				"tsuru.io/app-platform":         "python",
+				"tsuru.io/is-service":           "true",
+				"tsuru.io/app-process-replicas": "0",
+				"tsuru.io/app-pool":             "test-default",
+				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/router-name":          "fake",
+			},
+			Annotations: map[string]string{"build-image": "registry.example.com/destimg"},
+		},
+		Spec: apiv1.PodSpec{
+			ServiceAccountName: "app-myapp",
+			NodeName:           "n1",
+			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
+			Volumes: []apiv1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: dockerSockPath,
+						},
+					},
+				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+			RestartPolicy: apiv1.RestartPolicyNever,
+		},
+	})
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	runAsUser := int64(1000)
+	c.Assert(containers, check.DeepEquals, []apiv1.Container{
+		{
+			Name:  "committer-cont",
+			Image: "docker:1.11.2",
+			VolumeMounts: []apiv1.VolumeMount{
+				{Name: "dockersock", MountPath: dockerSockPath},
+				{Name: "intercontainer", MountPath: buildIntercontainerPath},
+			},
+			TTY: true,
+			Command: []string{
+				"sh", "-ec",
+				`
+							end() { touch /tmp/intercontainer/done; }
+							trap end EXIT
+							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
+							exit_code=$(cat /tmp/intercontainer/status)
+							[ "${exit_code}" != "0" ] && exit "${exit_code}"
+							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
+							img="registry.example.com/destimg"
+							echo
+							echo '---- Building application image ----'
+							docker commit "${id}" "${img}" >/dev/null
+							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
+							echo " ---> Sending image to repository (${sz})"
+							docker login -u "user" -p "pwd" "registry.example.com" && docker push "registry.example.com/destimg"
 						`,
 			},
 		},
