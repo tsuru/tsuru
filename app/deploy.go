@@ -55,6 +55,7 @@ type DeployData struct {
 	CanRollback bool
 	RemoveDate  time.Time `bson:",omitempty"`
 	Diff        string
+	Message     string
 }
 
 func findValidImages(apps ...App) (set.Set, error) {
@@ -127,6 +128,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 	if err == nil {
 		data.Commit = startOpts.Commit
 		data.Origin = startOpts.GetOrigin()
+		data.Message = startOpts.Message
 	}
 	if full {
 		data.Log = evt.Log
