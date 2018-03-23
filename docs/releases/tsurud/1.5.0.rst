@@ -24,6 +24,17 @@ Kubernetes Ingress/Service router
 compatible with tsuru Router API and aims to manage kubernetes services and ingresses resources for a given app.
 This can be used to leverage cloud Load Balancers.
 
+App Build (`#1521 <https://github.com/tsuru/tsuru/issues/1521>`_)
+-----------------------------------------------------------------
+
+This feature adds support for a new workflow for deploying applications to tsuru. This decouples
+the build and the deploy step, allowing the user to build an application image and deploying it at a later time.
+This also makes easier to reuse an app image across different applications, e.g: 
+
+1. Build app1-dev image
+2. Deploy app1-dev using the built image
+3. Test the application in a dev environment
+4. Deploy the same image to app1-prod
 
 Other improvements
 ==================
