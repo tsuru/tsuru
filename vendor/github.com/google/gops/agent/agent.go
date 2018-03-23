@@ -7,19 +7,25 @@
 package agent
 
 import (
+	"bufio"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	gosignal "os/signal"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
+	"runtime/trace"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/google/gops/internal"
 	"github.com/google/gops/signal"
+	"github.com/kardianos/osext"
 )
 
 const defaultAddr = "127.0.0.1:0"
@@ -28,6 +34,8 @@ var (
 	mu       sync.Mutex
 	portfile string
 	listener net.Listener
+
+	units = []string{" bytes", "KB", "MB", "GB", "TB", "PB"}
 )
 
 // Options allows configuring the started agent.
@@ -36,10 +44,16 @@ type Options struct {
 	// Optional.
 	Addr string
 
-	// NoShutdownCleanup tells the agent not to automatically cleanup
-	// resources if the running process recieves an interrupt.
+	// ConfigDir is the directory to store the configuration file,
+	// PID of the gops process, filename, port as well as content.
 	// Optional.
-	NoShutdownCleanup bool
+	ConfigDir string
+
+	// ShutdownCleanup automatically cleans up resources if the
+	// running process receives an interrupt. Otherwise, users
+	// can call Close before shutting down.
+	// Optional.
+	ShutdownCleanup bool
 }
 
 // Listen starts the gops agent on a host process. Once agent started, users
@@ -51,26 +65,29 @@ type Options struct {
 // Note: The agent exposes an endpoint via a TCP connection that can be used by
 // any program on the system. Review your security requirements before starting
 // the agent.
-func Listen(opts *Options) error {
+func Listen(opts Options) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if opts == nil {
-		opts = &Options{}
-	}
 	if portfile != "" {
 		return fmt.Errorf("gops: agent already listening at: %v", listener.Addr())
 	}
 
-	gopsdir, err := internal.ConfigDir()
+	// new
+	gopsdir := opts.ConfigDir
+	if gopsdir == "" {
+		cfgDir, err := internal.ConfigDir()
+		if err != nil {
+			return err
+		}
+		gopsdir = cfgDir
+	}
+
+	err := os.MkdirAll(gopsdir, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(gopsdir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	if !opts.NoShutdownCleanup {
+	if opts.ShutdownCleanup {
 		gracefulShutdown()
 	}
 
@@ -143,7 +160,22 @@ func Close() {
 	}
 }
 
-func handle(conn net.Conn, msg []byte) error {
+func formatBytes(val uint64) string {
+	var i int
+	var target uint64
+	for i = range units {
+		target = 1 << uint(10*(i+1))
+		if val < target {
+			break
+		}
+	}
+	if i > 0 {
+		return fmt.Sprintf("%0.2f%s (%d bytes)", float64(val)/(float64(target)/1024), units[i], val)
+	}
+	return fmt.Sprintf("%d bytes", val)
+}
+
+func handle(conn io.ReadWriter, msg []byte) error {
 	switch msg[0] {
 	case signal.StackTrace:
 		return pprof.Lookup("goroutine").WriteTo(conn, 2)
@@ -154,23 +186,34 @@ func handle(conn net.Conn, msg []byte) error {
 	case signal.MemStats:
 		var s runtime.MemStats
 		runtime.ReadMemStats(&s)
-		fmt.Fprintf(conn, "alloc: %v bytes\n", s.Alloc)
-		fmt.Fprintf(conn, "total-alloc: %v bytes\n", s.TotalAlloc)
-		fmt.Fprintf(conn, "sys: %v bytes\n", s.Sys)
+		fmt.Fprintf(conn, "alloc: %v\n", formatBytes(s.Alloc))
+		fmt.Fprintf(conn, "total-alloc: %v\n", formatBytes(s.TotalAlloc))
+		fmt.Fprintf(conn, "sys: %v\n", formatBytes(s.Sys))
 		fmt.Fprintf(conn, "lookups: %v\n", s.Lookups)
 		fmt.Fprintf(conn, "mallocs: %v\n", s.Mallocs)
 		fmt.Fprintf(conn, "frees: %v\n", s.Frees)
-		fmt.Fprintf(conn, "heap-alloc: %v bytes\n", s.HeapAlloc)
-		fmt.Fprintf(conn, "heap-sys: %v bytes\n", s.HeapSys)
-		fmt.Fprintf(conn, "heap-idle: %v bytes\n", s.HeapIdle)
-		fmt.Fprintf(conn, "heap-in-use: %v bytes\n", s.HeapInuse)
-		fmt.Fprintf(conn, "heap-released: %v bytes\n", s.HeapReleased)
+		fmt.Fprintf(conn, "heap-alloc: %v\n", formatBytes(s.HeapAlloc))
+		fmt.Fprintf(conn, "heap-sys: %v\n", formatBytes(s.HeapSys))
+		fmt.Fprintf(conn, "heap-idle: %v\n", formatBytes(s.HeapIdle))
+		fmt.Fprintf(conn, "heap-in-use: %v\n", formatBytes(s.HeapInuse))
+		fmt.Fprintf(conn, "heap-released: %v\n", formatBytes(s.HeapReleased))
 		fmt.Fprintf(conn, "heap-objects: %v\n", s.HeapObjects)
-		fmt.Fprintf(conn, "stack-in-use: %v bytes\n", s.StackInuse)
-		fmt.Fprintf(conn, "stack-sys: %v bytes\n", s.StackSys)
-		fmt.Fprintf(conn, "next-gc: when heap-alloc >= %v bytes\n", s.NextGC)
-		fmt.Fprintf(conn, "last-gc: %v ns\n", s.LastGC)
-		fmt.Fprintf(conn, "gc-pause: %v ns\n", s.PauseTotalNs)
+		fmt.Fprintf(conn, "stack-in-use: %v\n", formatBytes(s.StackInuse))
+		fmt.Fprintf(conn, "stack-sys: %v\n", formatBytes(s.StackSys))
+		fmt.Fprintf(conn, "stack-mspan-inuse: %v\n", formatBytes(s.MSpanInuse))
+		fmt.Fprintf(conn, "stack-mspan-sys: %v\n", formatBytes(s.MSpanSys))
+		fmt.Fprintf(conn, "stack-mcache-inuse: %v\n", formatBytes(s.MCacheInuse))
+		fmt.Fprintf(conn, "stack-mcache-sys: %v\n", formatBytes(s.MCacheSys))
+		fmt.Fprintf(conn, "other-sys: %v\n", formatBytes(s.OtherSys))
+		fmt.Fprintf(conn, "gc-sys: %v\n", formatBytes(s.GCSys))
+		fmt.Fprintf(conn, "next-gc: when heap-alloc >= %v\n", formatBytes(s.NextGC))
+		lastGC := "-"
+		if s.LastGC != 0 {
+			lastGC = fmt.Sprint(time.Unix(0, int64(s.LastGC)))
+		}
+		fmt.Fprintf(conn, "last-gc: %v\n", lastGC)
+		fmt.Fprintf(conn, "gc-pause-total: %v\n", time.Duration(s.PauseTotalNs))
+		fmt.Fprintf(conn, "gc-pause: %v\n", s.PauseNs[(s.NumGC+255)%256])
 		fmt.Fprintf(conn, "num-gc: %v\n", s.NumGC)
 		fmt.Fprintf(conn, "enable-gc: %v\n", s.EnableGC)
 		fmt.Fprintf(conn, "debug-gc: %v\n", s.DebugGC)
@@ -189,6 +232,29 @@ func handle(conn net.Conn, msg []byte) error {
 		fmt.Fprintf(conn, "OS threads: %v\n", pprof.Lookup("threadcreate").Count())
 		fmt.Fprintf(conn, "GOMAXPROCS: %v\n", runtime.GOMAXPROCS(0))
 		fmt.Fprintf(conn, "num CPU: %v\n", runtime.NumCPU())
+	case signal.BinaryDump:
+		path, err := osext.Executable()
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		_, err = bufio.NewReader(f).WriteTo(conn)
+		return err
+	case signal.Trace:
+		trace.Start(conn)
+		time.Sleep(5 * time.Second)
+		trace.Stop()
+	case signal.SetGCPercent:
+		perc, err := binary.ReadVarint(bufio.NewReader(conn))
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(conn, "New GC percent set to %v. Previous value was %v.\n", perc, debug.SetGCPercent(int(perc)))
 	}
 	return nil
 }
