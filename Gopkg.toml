@@ -79,6 +79,9 @@
 [[constraint]]
   name = "github.com/hashicorp/go-version"
   revision = "0181db47023708a38c2d20d2fe25a5fa034d5743"
+[[constraint]]
+  name = "github.com/google/gops"
+  branch = "master"
 
 # Misc overrides (transitive deps from docker, docker/machine, ...)
 [[override]]

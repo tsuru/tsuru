@@ -361,14 +361,14 @@
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/google/gops"
   packages = [
     "agent",
     "internal",
     "signal"
   ]
-  revision = "fa6968806ca68b7db113256f300d82b5206a2c3c"
-  version = "v0.3.1"
+  revision = "160b358b10d6123169a895090938b088c8f78dc9"
 
 [[projects]]
   name = "github.com/googleapis/gnostic"
@@ -1133,6 +1133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "da9d613527e7c9237211a66c489bb2b5895c1181ebc1aaacb47fea656d55e97b"
+  inputs-digest = "5cb46254e5a90af7bb7f045bc55f5438600a2efd51ec5ee9e91da4cca064459a"
   solver-name = "gps-cdcl"
   solver-version = 1

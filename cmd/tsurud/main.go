@@ -43,9 +43,7 @@ func inDockerMachineDriverMode() bool {
 }
 
 func main() {
-	err := agent.Listen(&agent.Options{
-		NoShutdownCleanup: true,
-	})
+	err := agent.Listen(agent.Options{})
 	if err != nil {
 		log.Fatalf("Unable to start a Gops agent %s", err)
 	}
