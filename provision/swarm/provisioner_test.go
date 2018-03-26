@@ -1095,6 +1095,12 @@ func (s *S) TestDeploy(c *check.C) {
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	attached := s.attachRegister(c, s.clusterSrv, true, a)
+	tags := []string{}
+	s.clusterSrv.CustomHandler("/images/.*/push", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Path, check.Equals, "/images/"+fmt.Sprintf("registry.tsuru.io/tsuru/app-myapp")+"/push")
+		tags = append(tags, r.URL.Query().Get("tag"))
+		s.clusterSrv.DefaultHandler().ServeHTTP(w, r)
+	}))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -1114,6 +1120,7 @@ func (s *S) TestDeploy(c *check.C) {
 	imgID, err := s.p.Deploy(a, builderImgID, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(<-attached, check.Equals, true)
+	c.Assert(tags, check.DeepEquals, []string{"v1", "latest"})
 	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)

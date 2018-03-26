@@ -176,9 +176,7 @@ func waitForTasks(client *clusterClient, serviceID string, wantedStates ...swarm
 }
 
 func commitPushBuildImage(client *docker.Client, img, contID string, app provision.App) (string, error) {
-	parts := strings.Split(img, ":")
-	repository := strings.Join(parts[:len(parts)-1], ":")
-	tag := parts[len(parts)-1]
+	repository, tag := image.SplitImageName(img)
 	_, err := client.CommitContainer(docker.CommitContainerOptions{
 		Container:  contID,
 		Repository: repository,
@@ -187,9 +185,23 @@ func commitPushBuildImage(client *docker.Client, img, contID string, app provisi
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
-	if err != nil {
-		return "", err
+	tags := []string{tag}
+	if tag != "latest" {
+		tags = append(tags, "latest")
+		err = client.TagImage(fmt.Sprintf("%s:%s", repository, tag), docker.TagImageOptions{
+			Repo:  repository,
+			Tag:   "latest",
+			Force: true,
+		})
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+	}
+	for _, tag := range tags {
+		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+		if err != nil {
+			return "", err
+		}
 	}
 	return img, nil
 }
