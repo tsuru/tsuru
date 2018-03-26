@@ -687,9 +687,9 @@ type TsuruYamlRestartHooks struct {
 }
 
 type TsuruYamlHealthcheck struct {
-	Path            string //`bson:",omitempty"`
-	Method          string //`bson:",omitempty"`
-	Status          int    //`bson:",omitempty"`
+	Path            string
+	Method          string
+	Status          int
 	Scheme          string
 	Match           string `bson:",omitempty"`
 	RouterBody      string `json:"router_body" yaml:"router_body" bson:"router_body,omitempty"`

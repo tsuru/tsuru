@@ -242,7 +242,6 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 		}
 	}))
 	return srv, &wg
-
 }
 
 func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
