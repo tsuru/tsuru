@@ -1097,7 +1097,7 @@ func (s *S) TestDeploy(c *check.C) {
 	attached := s.attachRegister(c, s.clusterSrv, true, a)
 	tags := []string{}
 	s.clusterSrv.CustomHandler("/images/.*/push", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.URL.Path, check.Equals, "/images/"+fmt.Sprintf("registry.tsuru.io/tsuru/app-myapp")+"/push")
+		c.Assert(r.URL.Path, check.Equals, "/images/registry.tsuru.io/tsuru/app-myapp/push")
 		tags = append(tags, r.URL.Query().Get("tag"))
 		s.clusterSrv.DefaultHandler().ServeHTTP(w, r)
 	}))
