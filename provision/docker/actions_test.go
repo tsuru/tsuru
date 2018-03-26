@@ -1285,7 +1285,7 @@ func (s *S) TestUpdateAppImageForward(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	imgID, err := cont.Commit(s.p.ClusterClient(), s.p.ActionLimiter(), buf)
+	imgID, err := cont.Commit(s.p.ClusterClient(), s.p.ActionLimiter(), buf, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, registry.Addr()+"/tsuru/app-mightyapp:v2")
 	c.Assert(buf.String(), check.Not(check.Equals), "")

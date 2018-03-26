@@ -804,7 +804,7 @@ var followLogsAndCommit = action.Action{
 			}
 		}
 		fmt.Fprintf(args.writer, "\n---- Deploying application image ----\n")
-		imageID, err := c.Commit(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter(), args.writer)
+		imageID, err := c.Commit(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter(), args.writer, true)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err

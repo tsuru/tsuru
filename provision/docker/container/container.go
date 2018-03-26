@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -387,20 +388,27 @@ func (c *Container) Exec(client provision.BuilderDockerClient, stdout, stderr io
 
 // Commits commits the container, creating an image in Docker. It then returns
 // the image identifier for usage in future container creation.
-func (c *Container) Commit(client provision.BuilderDockerClient, limiter provision.ActionLimiter, writer io.Writer) (string, error) {
+func (c *Container) Commit(client provision.BuilderDockerClient, limiter provision.ActionLimiter, writer io.Writer, isDeploy bool) (string, error) {
 	log.Debugf("committing container %s", c.ID)
-	parts := strings.Split(c.BuildingImage, ":")
-	if len(parts) < 2 {
-		return "", log.WrapError(errors.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
-	}
-	repository := strings.Join(parts[:len(parts)-1], ":")
-	tag := parts[len(parts)-1]
+	repository, tag := image.SplitImageName(c.BuildingImage)
 	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
 	done := limiter.Start(c.HostAddr)
 	image, err := client.CommitContainer(opts)
 	done()
 	if err != nil {
 		return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
+	}
+	tags := []string{tag}
+	if isDeploy && tag != "latest" {
+		tags = append(tags, "latest")
+		err = client.TagImage(fmt.Sprintf("%s:%s", repository, tag), docker.TagImageOptions{
+			Repo:  repository,
+			Tag:   "latest",
+			Force: true,
+		})
+		if err != nil {
+			return "", log.WrapError(errors.Wrapf(err, "error in tag container %s", c.ID))
+		}
 	}
 	imgHistory, err := client.ImageHistory(c.BuildingImage)
 	imgSize := ""
@@ -413,22 +421,24 @@ func (c *Container) Commit(client provision.BuilderDockerClient, limiter provisi
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	maxTry, _ := config.GetInt("docker:registry-max-try")
-	if maxTry <= 0 {
-		maxTry = 3
-	}
-	for i := 0; i < maxTry; i++ {
-		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
-		if err != nil {
-			fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
-			log.Errorf("error in push image %s: %s", c.BuildingImage, err)
-			time.Sleep(time.Second)
-			continue
+	for _, tag := range tags {
+		maxTry, _ := config.GetInt("docker:registry-max-try")
+		if maxTry <= 0 {
+			maxTry = 3
 		}
-		break
-	}
-	if err != nil {
-		return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
+		for i := 0; i < maxTry; i++ {
+			err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+			if err != nil {
+				fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
+				log.Errorf("error in push image %s: %s", c.BuildingImage, err)
+				time.Sleep(time.Second)
+				continue
+			}
+			break
+		}
+		if err != nil {
+			return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
+		}
 	}
 	return c.BuildingImage, nil
 }
