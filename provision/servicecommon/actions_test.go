@@ -41,6 +41,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("queue:mongo-database", "queue_servicecommon_tests_s")
 	config.Set("queue:mongo-polling-interval", 0.01)
+	servicemanager.SetMockService(&s.mockService)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -49,7 +50,6 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	servicemanager.SetMockService(&s.mockService)
 	plan := appTypes.Plan{
 		Name:     "default",
 		Default:  true,
@@ -65,6 +65,9 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	app.GetAppRouterUpdater().Shutdown(context.Background())
+	s.mockService.ResetPlan()
+	s.mockService.ResetPlatform()
+	s.mockService.ResetTeam()
 }
 
 type managerCall struct {

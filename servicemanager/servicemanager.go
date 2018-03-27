@@ -15,23 +15,3 @@ var (
 	Platform app.PlatformService
 	Team     auth.TeamService
 )
-
-// MockService is a struct to use in tests
-type MockService struct {
-	Cache    *app.MockCacheService
-	Plan     *app.MockPlanService
-	Platform *app.MockPlatformService
-	Team     *auth.MockTeamService
-}
-
-// SetMockService return a new MockService and set as an servicemanager
-func SetMockService(m *MockService) {
-	m.Cache = &app.MockCacheService{}
-	m.Plan = &app.MockPlanService{}
-	m.Platform = &app.MockPlatformService{}
-	m.Team = &auth.MockTeamService{}
-	Cache = m.Cache
-	Plan = m.Plan
-	Platform = m.Platform
-	Team = m.Team
-}
