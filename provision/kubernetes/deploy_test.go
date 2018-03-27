@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,18 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	ktesting "k8s.io/client-go/testing"
 )
+
+func cleanCmds(cmds string) string {
+	result := []string{}
+	trimpattern := regexp.MustCompile("^[\t ]*(.*?)[\t ]*$")
+	for _, cmd := range strings.Split(cmds, "\n") {
+		cleanCmd := trimpattern.ReplaceAllString(cmd, "$1")
+		if len(cleanCmd) > 0 {
+			result = append(result, cleanCmd)
+		}
+	}
+	return strings.Join(result, "\n")
+}
 
 func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
@@ -779,7 +792,8 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "destimg"
+							` + `
+							docker push destimg
 						`,
 		},
 	})
@@ -897,7 +911,8 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "destimg"
+							` + `
+							docker push destimg
 						`,
 			},
 		},
@@ -995,56 +1010,23 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	})
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
-	runAsUser := int64(1000)
-	c.Assert(containers, check.DeepEquals, []apiv1.Container{
-		{
-			Name:  "committer-cont",
-			Image: "docker:1.11.2",
-			VolumeMounts: []apiv1.VolumeMount{
-				{Name: "dockersock", MountPath: dockerSockPath},
-				{Name: "intercontainer", MountPath: buildIntercontainerPath},
-			},
-			TTY: true,
-			Command: []string{
-				"sh", "-ec",
-				`
-							end() { touch /tmp/intercontainer/done; }
-							trap end EXIT
-							while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
-							exit_code=$(cat /tmp/intercontainer/status)
-							[ "${exit_code}" != "0" ] && exit "${exit_code}"
-							id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
-							img="registry.example.com/destimg"
-							echo
-							echo '---- Building application image ----'
-							docker commit "${id}" "${img}" >/dev/null
-							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
-							echo " ---> Sending image to repository (${sz})"
-							docker login -u "user" -p "pwd" "registry.example.com" && docker push "registry.example.com/destimg"
-						`,
-			},
-		},
-		{
-			Name:  "myapp-v1-deploy",
-			Image: "myimg",
-			Command: []string{"/bin/sh", "-lc", `
-		cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-		exit_code=$?
-		echo "${exit_code}" >/tmp/intercontainer/status
-		[ "${exit_code}" != "0" ] && exit "${exit_code}"
-		while [ ! -f /tmp/intercontainer/done ]; do sleep 1; done
-	`},
-			Stdin:     true,
-			StdinOnce: true,
-			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
-			SecurityContext: &apiv1.SecurityContext{
-				RunAsUser: &runAsUser,
-			},
-			VolumeMounts: []apiv1.VolumeMount{
-				{Name: "intercontainer", MountPath: buildIntercontainerPath},
-			},
-		},
-	})
+	c.Assert(containers[0].Command, check.HasLen, 3)
+	c.Assert(containers[0].Command[:2], check.DeepEquals, []string{"sh", "-ec"})
+	cmds := cleanCmds(containers[0].Command[2])
+	c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
+trap end EXIT
+while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
+exit_code=$(cat /tmp/intercontainer/status)
+[ "${exit_code}" != "0" ] && exit "${exit_code}"
+id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
+img="registry.example.com/destimg"
+echo
+echo '---- Building application image ----'
+docker commit "${id}" "${img}" >/dev/null
+sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
+echo " ---> Sending image to repository (${sz})"
+docker login -u "user" -p "pwd" "registry.example.com"
+docker push registry.example.com/destimg`)
 }
 
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
@@ -1211,7 +1193,8 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "ip:destimg:v1"
+							` + `
+							docker push ip:destimg:v1
 						` + `
 
 				docker tag ip:destimg:v1 ip:destimg:latest
