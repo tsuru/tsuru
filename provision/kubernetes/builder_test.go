@@ -116,8 +116,6 @@ func (s *S) TestImageInspectWithRegistryAuth(c *check.C) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		if containers[0].Name == "myapp-v1-deploy" {
-			pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-			containers := pod.Spec.Containers
 			c.Assert(containers, check.HasLen, 1)
 			cmds := cleanCmds(containers[0].Command[2])
 			c.Assert(cmds, check.Equals, `cat >/dev/null &&

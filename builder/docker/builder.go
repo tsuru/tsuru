@@ -192,7 +192,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 
 func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provision.TsuruYamlData, string, error) {
 	path := defaultArchivePath + "/current"
-	cmd := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
+	cmd := fmt.Sprintf("(cat %[1]s/tsuru.yml || cat %[1]s/tsuru.yaml || cat %[1]s/app.yml || cat %[1]s/app.yaml || true) 2>/dev/null", path)
 	var buf bytes.Buffer
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
 	if err != nil {
