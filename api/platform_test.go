@@ -26,7 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
@@ -34,7 +34,7 @@ import (
 type PlatformSuite struct {
 	conn        *db.Storage
 	testServer  http.Handler
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&PlatformSuite{})
@@ -74,7 +74,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	provision.DefaultProvisioner = "fake-extensible"
 	s.reset()
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {

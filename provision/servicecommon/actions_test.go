@@ -17,13 +17,13 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
 type S struct {
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -41,7 +41,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("queue:mongo-database", "queue_servicecommon_tests_s")
 	config.Set("queue:mongo-polling-interval", 0.01)
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *S) SetUpTest(c *check.C) {

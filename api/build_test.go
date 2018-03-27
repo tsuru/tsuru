@@ -27,7 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -43,7 +43,7 @@ type BuildSuite struct {
 	provisioner *provisiontest.FakeProvisioner
 	builder     *builder.MockBuilder
 	testServer  http.Handler
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&BuildSuite{})
@@ -115,7 +115,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}

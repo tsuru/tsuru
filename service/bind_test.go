@@ -25,7 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -37,7 +37,7 @@ type BindSuite struct {
 	conn        *db.Storage
 	user        auth.User
 	team        authTypes.Team
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&BindSuite{})
@@ -68,7 +68,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{s.team}, nil
 	}
