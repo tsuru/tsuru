@@ -1211,8 +1211,8 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 							docker commit "${id}" "${img}" >/dev/null
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push "${img}"
-						
+							docker push "ip:destimg:v1"
+						` + `
 
 				docker tag ip:destimg:v1 ip:destimg:latest
 				docker push ip:destimg:latest
