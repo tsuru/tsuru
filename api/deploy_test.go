@@ -547,7 +547,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 			"archiveurl": "http://something.tar.gz",
 			"user":       s.token.GetUserName(),
 			"image":      "",
-			"origin":     "",
+			"origin":     "git",
 			"build":      false,
 			"rollback":   false,
 		},
