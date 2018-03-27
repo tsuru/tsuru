@@ -494,7 +494,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 			"app.name":   a.Name,
 			"commit":     "123",
 			"filesize":   0,
-			"kind":       "git",
+			"kind":       "archive-url",
 			"archiveurl": "http://something.tar.gz",
 			"user":       "fulano",
 			"image":      "",
