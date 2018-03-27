@@ -935,7 +935,7 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 	if err != nil {
 		return nil, err
 	}
-	cmdCat := fmt.Sprintf("(cat %s/tsuru.yml || cat %s/tsuru.yaml || cat %s/app.yml || cat %s/app.yaml || true) 2>/dev/null", path, path, path, path)
+	cmdCat := fmt.Sprintf("(cat %[1]s/tsuru.yml || cat %[1]s/tsuru.yaml || cat %[1]s/app.yml || cat %[1]s/app.yaml || true) 2>/dev/null", path)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{

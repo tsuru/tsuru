@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -831,6 +832,54 @@ func (s *S) TestDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
+	config.Set("docker:registry", "registry.example.com")
+	defer config.Unset("docker:registry")
+	config.Set("docker:registry-auth:username", "user")
+	defer config.Unset("docker:registry-auth:username")
+	config.Set("docker:registry-auth:password", "pwd")
+	defer config.Unset("docker:registry-auth:password")
+
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		containers := pod.Spec.Containers
+		if containers[0].Name == "myapp-v1-deploy" {
+			c.Assert(containers, check.HasLen, 2)
+			sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+			cmds := cleanCmds(containers[0].Command[2])
+			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
+trap end EXIT
+while [ ! -f /tmp/intercontainer/status ]; do sleep 1; done
+exit_code=$(cat /tmp/intercontainer/status)
+[ "${exit_code}" != "0" ] && exit "${exit_code}"
+id=$(docker ps -aq -f "label=io.kubernetes.container.name=myapp-v1-deploy" -f "label=io.kubernetes.pod.name=$(hostname)")
+img="registry.example.com/tsuru/app-myapp:v1"
+echo
+echo '---- Building application image ----'
+docker commit "${id}" "${img}" >/dev/null
+sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
+echo " ---> Sending image to repository (${sz})"
+docker login -u "user" -p "pwd" "registry.example.com"
+docker push registry.example.com/tsuru/app-myapp:v1
+docker tag registry.example.com/tsuru/app-myapp:v1 registry.example.com/tsuru/app-myapp:latest
+docker push registry.example.com/tsuru/app-myapp:latest`)
+		}
+		return false, nil, nil
+	})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "registry.example.com/tsuru/app-myapp:v1-builder", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
 
 func (s *S) TestUpgradeNodeContainer(c *check.C) {
