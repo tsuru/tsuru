@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -40,7 +40,7 @@ type S struct {
 	clusterClient *ClusterClient
 	t             *testing.T
 	mock          *kTesting.KubeMock
-	mockService   servicemanager.MockService
+	mockService   servicemock.MockService
 }
 
 var suiteInstance = &S{}
@@ -109,7 +109,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil
 	}

@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package servicemanager
+package mock
 
 import (
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 )
@@ -17,16 +18,16 @@ type MockService struct {
 	Team     *auth.MockTeamService
 }
 
-// SetMockService return a new MockService and set as an servicemanager
+// SetMockService return a new MockService and set as a servicemanager
 func SetMockService(m *MockService) {
 	m.Cache = &app.MockCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.Team = &auth.MockTeamService{}
-	Cache = m.Cache
-	Plan = m.Plan
-	Platform = m.Platform
-	Team = m.Team
+	servicemanager.Cache = m.Cache
+	servicemanager.Plan = m.Plan
+	servicemanager.Platform = m.Platform
+	servicemanager.Team = m.Team
 }
 
 func (m *MockService) ResetCache() {

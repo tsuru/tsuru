@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -48,7 +48,7 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 	Pool        string
 	testServer  http.Handler
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -130,7 +130,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) setupMocks() {
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}

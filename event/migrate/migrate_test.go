@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -33,7 +33,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	user        *auth.User
 	team        *authTypes.Team
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -48,7 +48,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	plan := appTypes.Plan{Name: "default", CpuShare: 100, Default: true}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil

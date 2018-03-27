@@ -27,7 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
@@ -42,7 +42,7 @@ type S struct {
 	p           *provisiontest.FakeProvisioner
 	logBuf      *safe.Buffer
 	conn        *db.Storage
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 func (s *S) SetUpSuite(c *check.C) {
@@ -68,7 +68,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(s.appInstance)
 	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil
 	}

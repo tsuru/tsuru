@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -34,7 +34,7 @@ type S struct {
 	conn        *db.Storage
 	user        *auth.User
 	team        *authTypes.Team
-	mockService servicemanager.MockService
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -89,7 +89,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	servicemanager.SetMockService(&s.mockService)
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil
 	}
