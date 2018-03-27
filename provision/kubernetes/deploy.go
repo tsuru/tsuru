@@ -267,7 +267,8 @@ func createPod(params createPodParams) error {
 							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
 							%[5]s
-						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone, pushImage(params.destinationImage))}, params.sidecarCmds...),
+							docker push %[1]s
+						`, params.destinationImage, baseName, buildIntercontainerStatus, buildIntercontainerDone, registryAuth(params.destinationImage))}, params.sidecarCmds...),
 							"\n"),
 					},
 				},
@@ -321,20 +322,19 @@ func createPod(params createPodParams) error {
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
 
-func pushImage(img string) string {
-	dockerPushCmd := fmt.Sprintf(`docker push "%s"`, img)
+func registryAuth(img string) string {
 	imgDomain := strings.Split(img, "/")[0]
 	r, _ := config.Get("docker:registry")
 	if imgDomain != r {
-		return dockerPushCmd
+		return ""
 	}
 	username, _ := config.GetString("docker:registry-auth:username")
 	password, _ := config.GetString("docker:registry-auth:password")
 	if len(username) == 0 && len(password) == 0 {
-		return dockerPushCmd
+		return ""
 	}
 
-	return fmt.Sprintf(`docker login -u "%s" -p "%s" "%s" && %s`, username, password, imgDomain, dockerPushCmd)
+	return fmt.Sprintf(`docker login -u "%s" -p "%s" "%s"`, username, password, imgDomain)
 }
 
 func extraRegisterCmds(a provision.App) string {
@@ -891,11 +891,13 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 		stderr: stderr,
 		labels: labels,
 		cmd: fmt.Sprintf(`
-			docker pull %[1]s >/dev/null
-			docker inspect %[1]s
-			docker tag %[1]s %[2]s
-			docker push %[2]s
-`, oldImage, newImage),
+			%[1]s
+			docker pull %[2]s >/dev/null
+			docker inspect %[2]s
+			docker tag %[2]s %[4]s
+			%[3]s
+			docker push %[4]s
+`, registryAuth(oldImage), oldImage, registryAuth(newImage), newImage),
 		name:       deployPodName,
 		image:      kubeConf.DeployInspectImage,
 		dockerSock: true,
