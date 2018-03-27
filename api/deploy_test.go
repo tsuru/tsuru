@@ -541,7 +541,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 		Kind:   "app.deploy",
 		StartCustomData: map[string]interface{}{
 			"app.name":   a.Name,
-			"commit":     "",
+			"commit":     "123",
 			"filesize":   0,
 			"kind":       "archive-url",
 			"archiveurl": "http://something.tar.gz",
