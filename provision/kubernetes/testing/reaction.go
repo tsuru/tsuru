@@ -289,9 +289,10 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-name"], check.Equals, a.GetName())
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-platform"], check.Equals, a.GetPlatform())
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/router-type"], check.Equals, "fake")
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/router-name"], check.Equals, "fake")
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
+		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
+		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
+		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-name"], check.Equals, "fake")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
 			return false, nil, nil
 		}

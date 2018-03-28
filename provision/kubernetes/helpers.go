@@ -560,11 +560,13 @@ func runPod(args runSinglePodArgs) error {
 		Pool:   args.app.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
+	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      args.name,
-			Namespace: args.client.Namespace(),
-			Labels:    args.labels.ToLabels(),
+			Name:        args.name,
+			Namespace:   args.client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
 			ServiceAccountName: serviceAccountNameForApp(args.app),

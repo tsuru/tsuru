@@ -286,6 +286,23 @@ func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
 	return set, nil
 }
 
+func SplitServiceLabelsAnnotations(ls *LabelSet) (labels *LabelSet, ann *LabelSet) {
+	labels = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}}
+	ann = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}}
+	annKeys := map[string]struct{}{
+		labelRouterName: {},
+		labelRouterType: {},
+	}
+	for k, v := range ls.Labels {
+		if _, ok := annKeys[k]; ok {
+			ann.Labels[k] = v
+		} else {
+			labels.Labels[k] = v
+		}
+	}
+	return labels, ann
+}
+
 type ProcessLabelsOpts struct {
 	App         App
 	Process     string
