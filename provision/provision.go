@@ -291,7 +291,7 @@ type ExecDockerClient interface {
 
 type BuilderKubeClient interface {
 	BuildPod(App, *event.Event, io.Reader, string) (string, error)
-	ImageInspect(App, string, string) (*docker.Image, string, *TsuruYamlData, error)
+	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *TsuruYamlData, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.

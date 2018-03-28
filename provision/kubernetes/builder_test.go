@@ -62,7 +62,7 @@ docker push tsuru/app-myapp:mytag`)
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestImageInspect(c *check.C) {
+func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		exp := regexp.MustCompile("/api/v1/namespaces/default/pods/(.*)/attach")
 		parts := exp.FindStringSubmatch(r.URL.Path)
@@ -79,7 +79,7 @@ func (s *S) TestImageInspect(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")
@@ -87,7 +87,7 @@ func (s *S) TestImageInspect(c *check.C) {
 	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
 }
 
-func (s *S) TestImageInspectWithRegistryAuth(c *check.C) {
+func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	config.Set("docker:registry", "registry.example.com")
 	defer config.Unset("docker:registry")
 	config.Set("docker:registry-auth:username", "user")
@@ -130,7 +130,7 @@ docker push registry.example.com/tsuru/app-myapp:tag2`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageInspect(a, "registry.example.com/tsuru/app-myapp:tag1", "registry.example.com/tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "registry.example.com/tsuru/app-myapp:tag1", "registry.example.com/tsuru/app-myapp:tag2")
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")
@@ -138,7 +138,7 @@ docker push registry.example.com/tsuru/app-myapp:tag2`)
 	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
 }
 
-func (s *S) TestImageInspectWithRegistryAuthAndDifferentDomain(c *check.C) {
+func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *check.C) {
 	config.Set("docker:registry", "registry.example.com")
 	defer config.Unset("docker:registry")
 	config.Set("docker:registry-auth:username", "user")
@@ -181,7 +181,7 @@ docker push otherregistry.example.com/tsuru/app-myapp:tag2`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageInspect(a, "otherregistry.example.com/tsuru/app-myapp:tag1", "otherregistry.example.com/tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "otherregistry.example.com/tsuru/app-myapp:tag1", "otherregistry.example.com/tsuru/app-myapp:tag2")
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")

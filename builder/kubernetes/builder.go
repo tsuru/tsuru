@@ -57,7 +57,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	if err != nil {
 		return "", err
 	}
-	imageInspect, procfileRaw, tsuruYaml, err := client.ImageInspect(a, imageID, newImage)
+	imageInspect, procfileRaw, tsuruYaml, err := client.ImageTagPushAndInspect(a, imageID, newImage)
 	if err != nil {
 		return "", err
 	}
