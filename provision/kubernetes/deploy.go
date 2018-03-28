@@ -324,7 +324,7 @@ func createPod(params createPodParams) error {
 
 func registryAuth(img string) string {
 	imgDomain := strings.Split(img, "/")[0]
-	r, _ := config.Get("docker:registry")
+	r, _ := config.GetString("docker:registry")
 	if imgDomain != r {
 		return ""
 	}
