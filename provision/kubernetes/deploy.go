@@ -182,12 +182,12 @@ func createPod(params createPodParams) error {
 	if err != nil {
 		return err
 	}
+	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	volumes, mounts, err := createVolumesForApp(params.client, params.app)
 	if err != nil {
 		return err
 	}
-	buildImageLabel := &provision.LabelSet{}
-	buildImageLabel.SetBuildImage(params.destinationImage)
+	annotations.SetBuildImage(params.destinationImage)
 	appEnvs := provision.EnvsForApp(params.app, "", true)
 	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
@@ -205,7 +205,7 @@ func createPod(params createPodParams) error {
 			Name:        baseName,
 			Namespace:   params.client.Namespace(),
 			Labels:      labels.ToLabels(),
-			Annotations: buildImageLabel.ToLabels(),
+			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
 			ServiceAccountName: serviceAccountNameForApp(params.app),
@@ -381,7 +381,7 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -390,7 +390,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	extra := []string{extraRegisterCmds(a)}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, nil, nil, errors.WithStack(err)
 	}
 	appEnvs := provision.EnvsForApp(a, process, false)
 	var envs []apiv1.EnvVar
@@ -401,18 +401,18 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	tenRevs := int32(10)
 	webProcessName, err := image.GetImageWebProcessName(imageName)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, nil, nil, errors.WithStack(err)
 	}
 	portInt := getTargetPortForImage(imageName)
 	var probe *apiv1.Probe
 	if process == webProcessName {
 		yamlData, errImg := image.GetImageTsuruYamlData(imageName)
 		if errImg != nil {
-			return nil, nil, errors.WithStack(errImg)
+			return nil, nil, nil, errors.WithStack(errImg)
 		}
 		probe, err = probeFromHC(yamlData.Healthcheck, portInt)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	maxSurge := intstr.FromString("100%")
@@ -425,7 +425,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
+		return nil, nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
 	resourceRequests := apiv1.ResourceList{}
 	memory := a.GetMemory()
@@ -435,13 +435,15 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	}
 	volumes, mounts, err := createVolumesForApp(client, a)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      depName,
-			Namespace: client.Namespace(),
-			Labels:    labels.ToLabels(),
+			Name:        depName,
+			Namespace:   client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
 		},
 		Spec: v1beta2.DeploymentSpec{
 			Strategy: v1beta2.DeploymentStrategy{
@@ -458,7 +460,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels.ToLabels(),
+					Labels:      labels.ToLabels(),
+					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
 					ServiceAccountName: serviceAccountNameForApp(a),
@@ -497,7 +500,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	} else {
 		newDep, err = client.AppsV1beta2().Deployments(client.Namespace()).Update(&deployment)
 	}
-	return newDep, labels, errors.WithStack(err)
+	return newDep, labels, annotations, errors.WithStack(err)
 }
 
 type serviceManager struct {
@@ -730,7 +733,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	if err != nil {
 		return err
 	}
-	dep, labels, err = createAppDeployment(m.client, dep, a, process, img, replicas, labels)
+	dep, labels, annotations, err := createAppDeployment(m.client, dep, a, process, img, replicas, labels)
 	if err != nil {
 		return err
 	}
@@ -752,9 +755,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      depName,
-			Namespace: m.client.Namespace(),
-			Labels:    labels.ToLabels(),
+			Name:        depName,
+			Namespace:   m.client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: labels.ToSelector(),
@@ -774,9 +778,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	labels.SetIsHeadlessService()
 	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      headlessServiceNameForApp(a, process),
-			Namespace: m.client.Namespace(),
-			Labels:    labels.ToLabels(),
+			Name:        headlessServiceNameForApp(a, process),
+			Namespace:   m.client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: labels.ToSelector(),

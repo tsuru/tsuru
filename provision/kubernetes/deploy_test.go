@@ -71,16 +71,19 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/app-process-replicas": "1",
 		"tsuru.io/app-platform":         "",
 		"tsuru.io/app-pool":             "test-default",
-		"tsuru.io/router-type":          "fake",
-		"tsuru.io/router-name":          "fake",
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
 	}
+	annotations := map[string]string{
+		"tsuru.io/router-type": "fake",
+		"tsuru.io/router-name": "fake",
+	}
 	c.Assert(dep, check.DeepEquals, &v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myapp-p1",
-			Namespace: s.client.Namespace(),
-			Labels:    labels,
+			Name:        "myapp-p1",
+			Namespace:   s.client.Namespace(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Status: v1beta2.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -106,7 +109,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
 					ServiceAccountName: "app-myapp",
@@ -165,10 +169,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/app-process-replicas": "1",
 				"tsuru.io/app-platform":         "",
 				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/router-type":          "fake",
-				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
 				"tsuru.io/builder":              "",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -207,10 +213,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/app-process-replicas": "1",
 				"tsuru.io/app-platform":         "",
 				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/router-type":          "fake",
-				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
 				"tsuru.io/builder":              "",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -282,10 +290,12 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 				"tsuru.io/app-process-replicas": "1",
 				"tsuru.io/app-platform":         "",
 				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/router-type":          "fake",
-				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
 				"tsuru.io/builder":              "",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -821,7 +831,6 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/is-stopped":           "false",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/router-type":          "fake",
 				"tsuru.io/is-isolated-run":      "false",
 				"tsuru.io/builder":              "",
 				"tsuru.io/app-process":          "",
@@ -831,9 +840,12 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/app-process-replicas": "0",
 				"tsuru.io/app-pool":             "test-default",
 				"tsuru.io/provisioner":          "kubernetes",
-				"tsuru.io/router-name":          "fake",
 			},
-			Annotations: map[string]string{"build-image": "destimg"},
+			Annotations: map[string]string{
+				"tsuru.io/build-image": "destimg",
+				"tsuru.io/router-name": "fake",
+				"tsuru.io/router-type": "fake",
+			},
 		},
 		Spec: apiv1.PodSpec{
 			ServiceAccountName: "app-myapp",
@@ -1010,7 +1022,6 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 				"tsuru.io/is-stopped":           "false",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/router-type":          "fake",
 				"tsuru.io/is-isolated-run":      "false",
 				"tsuru.io/builder":              "",
 				"tsuru.io/app-process":          "",
@@ -1020,9 +1031,12 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 				"tsuru.io/app-process-replicas": "0",
 				"tsuru.io/app-pool":             "test-default",
 				"tsuru.io/provisioner":          "kubernetes",
-				"tsuru.io/router-name":          "fake",
 			},
-			Annotations: map[string]string{"build-image": "ip:destimg:v1"},
+			Annotations: map[string]string{
+				"tsuru.io/build-image": "ip:destimg:v1",
+				"tsuru.io/router-name": "fake",
+				"tsuru.io/router-type": "fake",
+			},
 		},
 		Spec: apiv1.PodSpec{
 			ServiceAccountName: "app-myapp",
@@ -1406,8 +1420,6 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/restarts":             "0",
 		"tsuru.io/app-platform":         a.GetPlatform(),
 		"tsuru.io/app-pool":             a.GetPool(),
-		"tsuru.io/router-name":          "fake",
-		"tsuru.io/router-type":          "fake",
 		"tsuru.io/provisioner":          provisionerName,
 		"tsuru.io/builder":              "",
 	}
