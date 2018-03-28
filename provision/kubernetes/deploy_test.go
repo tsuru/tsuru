@@ -971,7 +971,6 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 				"tsuru.io/is-stopped":           "false",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/router-type":          "fake",
 				"tsuru.io/is-isolated-run":      "false",
 				"tsuru.io/builder":              "",
 				"tsuru.io/app-process":          "",
@@ -981,9 +980,12 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 				"tsuru.io/app-process-replicas": "0",
 				"tsuru.io/app-pool":             "test-default",
 				"tsuru.io/provisioner":          "kubernetes",
-				"tsuru.io/router-name":          "fake",
 			},
-			Annotations: map[string]string{"build-image": "registry.example.com/destimg"},
+			Annotations: map[string]string{
+				"tsuru.io/build-image": "registry.example.com/destimg",
+				"tsuru.io/router-name": "fake",
+				"tsuru.io/router-type": "fake",
+			},
 		},
 		Spec: apiv1.PodSpec{
 			ServiceAccountName: "app-myapp",
