@@ -52,7 +52,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	return buildingImage, nil
 }
 
-func (c *KubeClient) ImageInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
+func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, "", nil, err
