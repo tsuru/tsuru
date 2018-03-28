@@ -126,6 +126,18 @@ func (s *S) TestDaemonSetName(c *check.C) {
 	}
 }
 
+func (s *S) TestRegistrySecretName(c *check.C) {
+	var tests = []struct {
+		name, expected string
+	}{
+		{"registry.tsuru.io", "registry-registry.tsuru.io"},
+		{"my-registry", "registry-my-registry"},
+	}
+	for i, tt := range tests {
+		c.Assert(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
+}
+
 func (s *S) TestWaitFor(c *check.C) {
 	err := waitFor(100*time.Millisecond, func() (bool, error) {
 		return true, nil

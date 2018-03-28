@@ -490,6 +490,49 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 }
 
+func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
+	config.Set("docker:registry", "myreg.com")
+	config.Set("docker:registry-auth:username", "user")
+	config.Set("docker:registry-auth:password", "pass")
+	defer config.Unset("docker:registry")
+	defer config.Unset("docker:registry-auth")
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myreg.com/myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cmd1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myreg.com/myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
+		{Name: "registry-myreg.com"},
+	})
+	secrets, err := s.client.CoreV1().Secrets(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "registry-myreg.com",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				".dockerconfigjson": []byte(`{"auths":{"myreg.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}`),
+			},
+			Type: "kubernetes.io/dockerconfigjson",
+		},
+	})
+}
+
 func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()

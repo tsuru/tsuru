@@ -105,6 +105,11 @@ func volumeClaimName(name string) string {
 	return fmt.Sprintf("%s-tsuru-claim", name)
 }
 
+func registrySecretName(registry string) string {
+	registry = strings.ToLower(kubeNameRegex.ReplaceAllString(registry, "-"))
+	return fmt.Sprintf("registry-%s", registry)
+}
+
 func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() error) error {
 	timeoutCh := time.After(timeout)
 	for {
@@ -560,6 +565,10 @@ func runPod(args runSinglePodArgs) error {
 		Pool:   args.app.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
+	pullSecrets, err := getImagePullSecrets(args.client, args.image)
+	if err != nil {
+		return err
+	}
 	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -569,6 +578,7 @@ func runPod(args runSinglePodArgs) error {
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
+			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(args.app),
 			NodeSelector:       nodeSelector,
 			RestartPolicy:      apiv1.RestartPolicyNever,
