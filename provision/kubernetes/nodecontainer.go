@@ -161,6 +161,10 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if err != nil {
 		return err
 	}
+	pullSecrets, err := getImagePullSecrets(client, config.Image())
+	if err != nil {
+		return err
+	}
 	ds := &v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
@@ -183,6 +187,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 					Annotations: affinityAnnotation,
 				},
 				Spec: apiv1.PodSpec{
+					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: serviceAccountName,
 					Affinity:           affinity,
 					Volumes:            volumes,

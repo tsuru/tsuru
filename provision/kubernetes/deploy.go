@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	dockerTypes "github.com/docker/docker/api/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -155,6 +157,69 @@ func createDeployPod(params createPodParams) error {
 	return createPod(params)
 }
 
+func getImagePullSecrets(client *ClusterClient, images ...string) ([]apiv1.LocalObjectReference, error) {
+	registry, _ := config.GetString("docker:registry")
+	useSecret := false
+	for _, image := range images {
+		imgDomain := strings.Split(image, "/")[0]
+		if imgDomain == registry {
+			useSecret = true
+			break
+		}
+	}
+	if !useSecret {
+		return nil, nil
+	}
+	err := ensureAuthSecret(client)
+	if err != nil {
+		return nil, err
+	}
+	secretName := registrySecretName(registry)
+	return []apiv1.LocalObjectReference{
+		{Name: secretName},
+	}, nil
+}
+
+func ensureAuthSecret(client *ClusterClient) error {
+	registry, _ := config.GetString("docker:registry")
+	username, _ := config.GetString("docker:registry-auth:username")
+	password, _ := config.GetString("docker:registry-auth:password")
+	if len(username) == 0 && len(password) == 0 {
+		return nil
+	}
+	authEncoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	conf := map[string]map[string]dockerTypes.AuthConfig{
+		"auths": {
+			registry: {
+				Username: username,
+				Password: password,
+				Auth:     authEncoded,
+			},
+		},
+	}
+	serializedConf, err := json.Marshal(conf)
+	if err != nil {
+		return err
+	}
+	secret := &apiv1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: registrySecretName(registry),
+		},
+		Data: map[string][]byte{
+			apiv1.DockerConfigJsonKey: serializedConf,
+		},
+		Type: apiv1.SecretTypeDockerConfigJson,
+	}
+	_, err = client.CoreV1().Secrets(client.Namespace()).Update(secret)
+	if err != nil && k8sErrors.IsNotFound(err) {
+		_, err = client.CoreV1().Secrets(client.Namespace()).Create(secret)
+	}
+	if err != nil {
+		err = errors.WithStack(err)
+	}
+	return err
+}
+
 func createPod(params createPodParams) error {
 	if len(params.cmds) != 3 {
 		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
@@ -200,6 +265,10 @@ func createPod(params createPodParams) error {
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	kubeConf := getKubeConfig()
+	pullSecrets, err := getImagePullSecrets(params.client, params.sourceImage, kubeConf.DeploySidecarImage)
+	if err != nil {
+		return err
+	}
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -208,6 +277,7 @@ func createPod(params createPodParams) error {
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
+			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(params.app),
 			NodeSelector:       nodeSelector,
 			Volumes: append([]apiv1.Volume{
@@ -453,6 +523,10 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	pullSecrets, err := getImagePullSecrets(client, imageName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -480,6 +554,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
+					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
