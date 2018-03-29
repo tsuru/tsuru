@@ -1869,7 +1869,7 @@ func loadCachedAddrsInApps(apps []App) error {
 			}
 		}
 		if hasEmpty {
-			go a.GetRoutersWithAddr()
+			GetAppRouterUpdater().update(a)
 		}
 	}
 	return nil

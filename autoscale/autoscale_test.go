@@ -5,6 +5,7 @@
 package autoscale
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"testing"
@@ -107,6 +108,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
+	app.GetAppRouterUpdater().Shutdown(context.Background())
 	s.conn.Close()
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Unset("docker:auto-scale:prevent-rebalance")

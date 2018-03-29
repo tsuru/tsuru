@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -183,6 +184,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
+	app.GetAppRouterUpdater().Shutdown(context.Background())
 	log.SetLogger(nil)
 	s.server.Stop()
 	if s.extraServer != nil {

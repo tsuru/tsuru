@@ -5,11 +5,10 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
-
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -30,6 +29,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -166,6 +166,10 @@ func (s *S) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	setupMocks(s)
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	GetAppRouterUpdater().Shutdown(context.Background())
 }
 
 func setupMocks(s *S) {
