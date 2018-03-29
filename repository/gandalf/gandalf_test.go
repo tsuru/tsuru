@@ -6,6 +6,7 @@ package gandalf
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"testing"
 
@@ -45,6 +46,7 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {
+	app.GetAppRouterUpdater().Shutdown(context.Background())
 	s.server.Stop()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

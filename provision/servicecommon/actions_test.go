@@ -5,11 +5,13 @@
 package servicecommon
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -67,6 +69,10 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	app.GetAppRouterUpdater().Shutdown(context.Background())
 }
 
 type managerCall struct {
