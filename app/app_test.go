@@ -3058,7 +3058,6 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 		apps, err = List(nil)
 		c.Assert(err, check.IsNil)
 		c.Assert(apps, check.HasLen, 2)
-		fmt.Println(apps[0].Routers[0].Address)
 		if apps[0].Routers[0].Address != "" && apps[1].Routers[0].Address != "" {
 			break
 		}
