@@ -2,7 +2,7 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-:title: tsuru Installer
+:title: Using tsuru Installer
 :description: Installs tsuru and its dependencies
 
 .. _installer:
@@ -11,7 +11,7 @@
 tsuru Installer
 ###############
 
-tsuru Installer provides a way to install tsuru API and it's required components
+tsuru Installer provides a way to install tsuru API and its required components
 locally or on remote hosts.
 
 .. note::
@@ -31,6 +31,9 @@ To install tsuru locally, one can simply run
     $ tsuru install-create
 
 
+This command accepts custom configurations, as we'll see in a later section. Without
+parameters, it uses the default configurations, which means creating a new VM
+with VirtualBox.
 After a couple of minutes you will have a full tsuru installation, inside a local
 VirtualBox VM, where you can start deploying your applications and experience the
 tsuru workflow.
@@ -63,9 +66,9 @@ Swarm Mode
 ----------
 
 tsuru installer provisions docker hosts with docker v1.12 and uses docker swarm mode
-to orchestrate it's core components in the docker node cluster. This means that it's
+to orchestrate its core components in the docker node cluster. This means that it's
 easy to scale up and down every service and swarm is also responsible for recovering
-a service if one of it's tasks is lost.
+a service if one of its tasks is lost.
 
 Hosts
 -----
@@ -116,8 +119,32 @@ uses to bootstrap the installation.
 Customizing the installation
 ============================
 
-The ``install`` command accepts a configuration file as parameter to customize the
-installation.
+The ``install`` command accepts two configuration files as parameters to customize the
+installation. To generate these files with the default values, run this command:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru install-config-init
+
+
+This will generate two files in the current directory: ``install-config.yml`` and
+``install-compose.yml``. In the first one you can set the docker-machine driver
+and configurations like the machine CPU and memory, and tsuru specifi configurations,
+like the default provisioner, HTTP/HTTPS ports, users quotas and enable or disable
+the dashboard. The seconf file includes configurations for each tsuru component,
+like redis and gandalf. You can change configurations like version, port and mounts
+for each one.
+
+After customizing the config files, run this command to start the installer:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru install-create -c install-config.yml -e install-compose.yml
+
 
 For example, to install tsuru on amazon ec2, one could create the following file:
 
