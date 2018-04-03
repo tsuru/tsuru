@@ -146,3 +146,6 @@ test-int:
 	TSURU_INTEGRATION_platforms="python" \
 	TSURU_INTEGRATION_provisioners="docker" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
+
+gen-client:
+	swagger generate client -f docs/reference/api.yaml -c api/client
