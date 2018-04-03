@@ -135,6 +135,9 @@ func createBuildPod(params createPodParams) error {
 }
 
 func createDeployPod(params createPodParams) error {
+	if len(params.destinationImages) == 0 {
+		return fmt.Errorf("no destination images provided")
+	}
 	cmds := dockercommon.DeployCmds(params.app)
 	if params.podName == "" {
 		var err error
@@ -216,6 +219,9 @@ func ensureAuthSecret(client *ClusterClient) error {
 func createPod(params createPodParams) error {
 	if len(params.cmds) != 3 {
 		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
+	}
+	if len(params.destinationImages) == 0 {
+		return errors.Errorf("no destination images provided")
 	}
 	err := ensureServiceAccountForApp(params.client, params.app)
 	if err != nil {
