@@ -3,7 +3,11 @@ info:
   title: Tsuru
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
   version: 1.6.0
-
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
 paths:
   /apps/{app}/restart:
     post:
@@ -260,6 +264,7 @@ paths:
   /apps:
     get:
       description: app list
+      operationId: AppList
       produces:
       - application/json
       responses:
@@ -269,6 +274,32 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+      tags: 
+        - app
+      security:
+        - Bearer: []
+    post:
+      description: app create
+      operationId: AppCreate
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201': 
+          description: App created
+        '400': 
+          description: Invalid data
+        '401': 
+          description: Unauthorized
+        '403': 
+          description: Quota exceeded
+        '409': 
+          description: App already exists
+      tags: 
+        - app
+      security:
+        - Bearer: []
   /apps/{app}/units:
     delete:
       description: remove units
@@ -1947,8 +1978,6 @@ paths:
           type: string
           minimum: 1
           description: App name.
-      produces:
-      - Websocket connection upgrade
       responses:
         '101':
           description: Switch Protocol to websocket

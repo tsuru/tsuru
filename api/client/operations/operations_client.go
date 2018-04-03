@@ -703,40 +703,6 @@ func (a *Client) GetAppAppRouters(params *GetAppAppRoutersParams) (*GetAppAppRou
 }
 
 /*
-GetApps app list
-*/
-func (a *Client) GetApps(params *GetAppsParams) (*GetAppsOK, *GetAppsNoContent, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetAppsParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "GetApps",
-		Method:             "GET",
-		PathPattern:        "/apps",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{""},
-		Schemes:            []string{"http"},
-		Params:             params,
-		Reader:             &GetAppsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	switch value := result.(type) {
-	case *GetAppsOK:
-		return value, nil, nil
-	case *GetAppsNoContent:
-		return nil, value, nil
-	}
-	return nil, nil, nil
-
-}
-
-/*
 GetAppsAppMetricEnvs metric envs
 */
 func (a *Client) GetAppsAppMetricEnvs(params *GetAppsAppMetricEnvsParams) (*GetAppsAppMetricEnvsOK, error) {
@@ -777,7 +743,7 @@ func (a *Client) GetAppsAppShell(params *GetAppsAppShellParams) error {
 		ID:                 "GetAppsAppShell",
 		Method:             "GET",
 		PathPattern:        "/apps/{app}/shell",
-		ProducesMediaTypes: []string{"Websocket connection upgrade"},
+		ProducesMediaTypes: []string{""},
 		ConsumesMediaTypes: []string{""},
 		Schemes:            []string{"http"},
 		Params:             params,

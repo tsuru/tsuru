@@ -11,6 +11,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
+	"github.com/tsuru/tsuru/api_client/app"
 	"github.com/tsuru/tsuru/api_client/operations"
 )
 
@@ -54,6 +55,8 @@ func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Tsu
 func New(transport runtime.ClientTransport, formats strfmt.Registry) *Tsuru {
 	cli := new(Tsuru)
 	cli.Transport = transport
+
+	cli.App = app.New(transport, formats)
 
 	cli.Operations = operations.New(transport, formats)
 
@@ -101,6 +104,8 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 
 // Tsuru is a client for tsuru
 type Tsuru struct {
+	App *app.Client
+
 	Operations *operations.Client
 
 	Transport runtime.ClientTransport
@@ -109,6 +114,8 @@ type Tsuru struct {
 // SetTransport changes the transport on the client and all its subresources
 func (c *Tsuru) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
+
+	c.App.SetTransport(transport)
 
 	c.Operations.SetTransport(transport)
 
