@@ -21,6 +21,12 @@ locally or on remote hosts.
     reference, including how to install it: https://tsuru-client.readthedocs.org.
 
 
+.. note::
+
+    Other methods of installation like `tsuru Now <https://github.com/tsuru/now>`_
+    and `tsuru-bootstrap <https://github.com/tsuru/tsuru-bootstrap>`_ are deprecated.
+
+
 To install tsuru locally, one can simply run
 (requires `VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_):
 
