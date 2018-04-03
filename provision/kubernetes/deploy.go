@@ -43,10 +43,9 @@ import (
 )
 
 const (
-	dockerSockPath            = "/var/run/docker.sock"
-	buildIntercontainerPath   = "/tmp/intercontainer"
-	buildIntercontainerStatus = buildIntercontainerPath + "/status"
-	buildIntercontainerDone   = buildIntercontainerPath + "/done"
+	dockerSockPath          = "/var/run/docker.sock"
+	buildIntercontainerPath = "/tmp/intercontainer"
+	buildIntercontainerDone = buildIntercontainerPath + "/done"
 )
 
 func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
