@@ -261,6 +261,10 @@ func createPod(params createPodParams) error {
 	if err != nil {
 		return err
 	}
+	var runAsUser string
+	if uid != nil {
+		runAsUser = strconv.FormatInt(*uid, 10)
+	}
 	regUser, regPass, regDomain := registryAuth(params.destinationImages[0])
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -316,7 +320,7 @@ func createPod(params createPodParams) error {
 						{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 						{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(params.destinationImages, ",")},
 						{Name: "DEPLOYAGENT_INPUT_FILE", Value: params.inputFile},
-						{Name: "DEPLOYAGENT_RUN_AS_USER", Value: strconv.FormatInt(*uid, 10)},
+						{Name: "DEPLOYAGENT_RUN_AS_USER", Value: runAsUser},
 						{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: regUser},
 						{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: regPass},
 						{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: regDomain},
