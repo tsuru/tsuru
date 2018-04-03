@@ -231,7 +231,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   200: OK
 //   400: Invalid uuid
 //   401: Unauthorized
-//	 404: Active block with provided uuid not found
+//   404: Active block with provided uuid not found
 func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermEventBlockRemove) {
 		return permission.ErrUnauthorized

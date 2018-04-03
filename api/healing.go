@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/healer"
 )
 
+// title: docker healing history
 // path: /docker/healing
 // method: GET
 // produce: application/json
