@@ -1,0 +1,2047 @@
+paths:
+  /apps/{app}/restart:
+    post:
+      description: app restart
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/env:
+    post:
+      description: set envs
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Envs updated
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/log:
+    post:
+      description: app log
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/cname:
+    post:
+      description: set cname
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /services/{service}/instances/{instance}/{app}:
+    put:
+      description: bind service instance
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+        - name: instance
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Instance name.
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/certificate:
+    delete:
+      description: unset app certificate
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /swap:
+    post:
+      description: app swap
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+        '409':
+          description: App locked
+        '412':
+          description: Number of units or platform don't match
+  /apps/{app}:
+    put:
+      description: app update
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: App updated
+        '400':
+          description: Invalid new pool
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /apps/{app}/teams/{team}:
+    put:
+      description: grant access to app
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+        - name: team
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Team name.
+      responses:
+        '200':
+          description: Access granted
+        '401':
+          description: Unauthorized
+        '404':
+          description: App or team not found
+        '409':
+          description: Grant already exists
+  /apps/{app}/sleep:
+    post:
+      description: app sleep
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/start:
+    post:
+      description: app start
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/units:
+    delete:
+      description: remove units
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      responses:
+        '200':
+          description: Units removed
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/units/{unit}:
+    post:
+      description: set unit status
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+        - name: unit
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Unit ID.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App or unit not found
+  /apps/{app}/units/register:
+    post:
+      description: register unit
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/lock:
+    delete:
+      description: app unlock
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/routes:
+    post:
+      description: rebuild routes
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /node/status:
+    post:
+      description: set node status
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: App or unit not found
+  /apps/{app}/stop:
+    post:
+      description: app stop
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/metric/envs:
+    get:
+      description: metric envs
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /apps/{app}/run:
+    post:
+      description: run commands
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: App not found
+  /teams/{team}:
+    post:
+      description: team update
+      parameters:
+        - name: team
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Team name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Team updated
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Team not found
+  /auth/scheme:
+    get:
+      description: get auth scheme
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+  /users/api-key:
+    get:
+      description: show token
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+  /users/keys/{key}:
+    delete:
+      description: remove key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: SSH Key.
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /teams:
+    post:
+      description: team create
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Team created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Team already exists
+  /users/keys:
+    post:
+      description: add key
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Key already exists
+  /users:
+    get:
+      description: user list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /users/info:
+    get:
+      description: user info
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /users/password:
+    put:
+      description: change password
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /auth/login:
+    post:
+      description: login
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /users/tokens:
+    delete:
+      description: logout
+      responses:
+        '200':
+          description: Ok
+  /users/{email}/password:
+    post:
+      description: reset password
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: User e-mail.
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /autoscale:
+    get:
+      description: list autoscale history
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+  /autoscale/run:
+    post:
+      description: autoscale run
+      produces:
+      - application/x-json-stream
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /autoscale/config:
+    get:
+      description: get autoscale config
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /autoscale/rules:
+    post:
+      description: autoscale set rule
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /autoscale/rules/{rule}:
+    delete:
+      description: delete autoscale rule
+      parameters:
+        - name: rule
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Rule ID.
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /apps/{app}/build:
+    post:
+      description: app build
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /provisioner/clusters:
+    get:
+      description: list provisioner clusters
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+  /provisioner/clusters/{cluster}:
+    get:
+      description: delete provisioner cluster
+      parameters:
+        - name: cluster
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Cluster name.
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cluster not found
+  /debug/goroutines:
+    get:
+      description: dump goroutines
+      responses:
+        '200':
+          description: Ok
+  /deploys/{deploy}:
+    get:
+      description: deploy info
+      parameters:
+        - name: deploy
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Deploy ID.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /apps/{app}/deploy/rebuild:
+    post:
+      description: rebuild
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /apps/{app}/deploy/rollback/update:
+    put:
+      description: rollback update
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Rollback updated
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+  /apps/{app}/deploy:
+    post:
+      description: app deploy
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /apps/{app}/diff:
+    post:
+      description: deploy diff
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /apps/{app}/deploy/rollback:
+    post:
+      description: rollback
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+  /deploys:
+    get:
+      description: deploy list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No content
+  /events/blocks:
+    post:
+      description: add event block
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data or empty reason
+        '401':
+          description: Unauthorized
+  /events/blocks/{block}:
+    delete:
+      description: remove event block
+      parameters:
+        - name: block
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Event block ID.
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid uuid
+        '401':
+          description: Unauthorized
+        '404':
+          description: Active block with provided uuid not found
+  /events:
+    get:
+      description: event list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No content
+  /events/kinds:
+    get:
+      description: kind list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No content
+  /events/{event}:
+    get:
+      description: event info
+      parameters:
+        - name: event
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Event ID.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid uuid
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /events/{event}/cancel:
+    post:
+      description: event cancel
+      parameters:
+        - name: event
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Event ID.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid uuid or empty reason
+        '404':
+          description: Not found
+  /docker/healing:
+    get:
+      description: docker healing history
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '204':
+          description: No content
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /healthcheck:
+    get:
+      description: healthcheck
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Internal server error
+  /iaas/machines:
+    get:
+      description: machine list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /iaas/machines/{machine}:
+    delete:
+      description: machine destroy
+      parameters:
+        - name: machine
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Machine ID.
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /iaas/templates:
+    post:
+      description: template create
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Template created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Existent template
+  /iaas/templates/{template}:
+    put:
+      description: template update
+      parameters:
+        - name: template
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Template name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /:
+    get:
+      description: index
+      responses:
+        '200':
+          description: OK
+  /info:
+    get:
+      description: api info
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+  /install/hosts:
+    get:
+      description: list install hosts
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /install/hosts/{host}:
+    get:
+      description: install host info
+      parameters:
+        - name: host
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Host name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /node:
+    post:
+      description: add node
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+    put:
+      description: update nodes
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /node/{address}:
+    parameters:
+      - name: address
+        in: path
+        required: true
+        type: string
+        minimum: 1
+        description: Node address.
+    delete:
+      description: remove node
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+    get:
+      description: node info
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '404':
+          description: Not found
+  /docker/node/apps/{app}/containers:
+    get:
+      description: list units by app
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /healing/node:
+    delete:
+      description: remove node healing
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /node/rebalance:
+    post:
+      description: rebalance units in nodes
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /node/{address}/containers:
+    get:
+      description: list units by node
+      parameters:
+        - name: address
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Node address.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /docker/nodecontainers:
+    post:
+      description: node container create
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invald data
+        '401':
+          description: Unauthorized
+  /docker/nodecontainers/{nodecontainer}:
+    delete:
+      description: remove node container
+      parameters:
+        - name: nodecontainer
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Nodecontainer name.
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /docker/nodecontainers/{nodecontainer}/upgrade:
+    post:
+      description: node container upgrade
+      parameters:
+        - name: nodecontainer
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Nodecontainer name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invald data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /roles/{role}:
+    get:
+      description: role info
+      parameters:
+        - name: role
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Role name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: Role not found
+  /roles:
+    put:
+      description: updates a role
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /roles/{role}/permissions/{permission}:
+    delete:
+      description: remove permission
+      parameters:
+        - name: role
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Role name.
+        - name: permission
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Permission name.
+      responses:
+        '200':
+          description: Permission removed
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /roles/{role}/user/{email}:
+    delete:
+      description: dissociate role from user
+      parameters:
+        - name: role
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Role name.
+        - name: email
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: User e-mail.
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Role not found
+  /role/default:
+    post:
+      description: add default role
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /roles/{role}/user:
+    post:
+      description: assign role to user
+      parameters:
+        - name: role
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Role name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Role not found
+  /permissions:
+    get:
+      description: list permissions
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /roles/{role}/permissions:
+    post:
+      description: add permissions
+      parameters:
+        - name: role
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Role name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Permission not allowed
+  /plans:
+    post:
+      description: plan create
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Plan created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Plan already exists
+  /plans/{plan}:
+    delete:
+      description: remove plan
+      parameters:
+        - name: plan
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Plan name.
+      responses:
+        '200':
+          description: Plan removed
+        '401':
+          description: Unauthorized
+        '404':
+          description: Plan not found
+  /platforms/{platform}:
+    delete:
+      description: remove platform
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Platform name.
+      responses:
+        '200':
+          description: Platform removed
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /platforms:
+    post:
+      description: add platform
+      produces:
+      - application/x-json-stream
+      consumes:
+      - multipart/form-data
+      responses:
+        '200':
+          description: Platform created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+  /pools/{pool}/team:
+    post:
+      description: add team too pool
+      parameters:
+        - name: pool
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Pool name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Pool updated
+        '401':
+          description: Unauthorized
+        '400':
+          description: Invalid data
+        '404':
+          description: Pool not found
+  /pools/{pool}:
+    delete:
+      description: remove pool
+      parameters:
+        - name: pool
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Pool name.
+      responses:
+        '200':
+          description: Pool removed
+        '401':
+          description: Unauthorized
+        '404':
+          description: Pool not found
+  /constraints:
+    put:
+      description: set a pool constraint
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /pools:
+    post:
+      description: pool create
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Pool created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Pool already exists
+  /debug/pprof/trace:
+    get:
+      description: profile trace handler
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /debug/pprof:
+    get:
+      description: profile index handler
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /debug/pprof/cmdline:
+    get:
+      description: profile cmdline handler
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /debug/pprof/profile:
+    get:
+      description: profile handler
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /debug/pprof/symbol:
+    get:
+      description: profile symbol handler
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+  /users/{email}/quota:
+    get:
+      description: user quota
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: User e-mail.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+  /apps/{app}/quota:
+    put:
+      description: update application quota
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Quota updated
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Application not found
+  /routers:
+    get:
+      description: router list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No content
+  /app/{app}/routers:
+    get:
+      description: list app routers
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '204':
+          description: No content
+        '404':
+          description: App not found
+  /app/{app}/routers/{router}:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minimum: 1
+        description: App name.
+      - name: router
+        in: path
+        required: true
+        type: string
+        minimum: 1
+        description: Router name.
+    put:
+      description: update app router
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: App or router not found
+        '400':
+          description: Invalid request
+    delete:
+      description: delete app router
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: App or router not found
+  /auth/saml:
+    post:
+      description: saml callback
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+  /services:
+    get:
+      description: service list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List services
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+  /services/{service}:
+    get:
+      description: service info
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+  /services/proxy/service/{service}:
+    get:
+      description: service proxy
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+      responses:
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service not found
+  /services/{service}/team/{team}:
+    delete:
+      description: revoke access to a service
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+        - name: team
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Team name.
+      responses:
+        '200':
+          description: Access revoked
+        '400':
+          description: Team not found
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service not found
+        '409':
+          description: Team does not has access to this service
+  /services/{service}/doc:
+    get:
+      description: service doc
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /services/{service}/instances/{instance}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minimum: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minimum: 1
+        description: Instance name.
+    put:
+      description: service instance update
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Service instance updated
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service instance not found
+    delete:
+      description: remove service instance
+      produces:
+      - application/x-json-stream
+      responses:
+        '200':
+          description: Service removed
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service instance not found
+  /services/{service}/plans:
+    get:
+      description: service plans
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service not found
+  /services/{service}/proxy/{instance}:
+    get:
+      description: service instance proxy
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+        - name: instance
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Instance name.
+      responses:
+        '401':
+          description: Unauthorized
+        '404':
+          description: Instance not found
+  /services/instances:
+    get:
+      description: service instance list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List services instances
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+  /services/{service}/instances/permission/{instance}/{team}:
+    delete:
+      description: revoke access to service instance
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+        - name: instance
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Instance name.
+        - name: team
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Team name.
+      responses:
+        '200':
+          description: Access revoked
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service instance not found
+  /services/{service}/instances:
+    post:
+      description: service instance create
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '201':
+          description: Service created
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '409':
+          description: Service already exists
+  /services/{service}/instances/{instance}/status:
+    get:
+      description: service instance status
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Service name.
+        - name: instance
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Instance name.
+      responses:
+        '200':
+          description: List services instances
+        '401':
+          description: Unauthorized
+        '404':
+          description: Service instance not found
+  /apps/{app}/shell:
+    get:
+      description: app shell
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+      responses:
+        '101':
+          description: Switch Protocol to websocket
+  /volumes/{volume}:
+    delete:
+      description: volume delete
+      parameters:
+        - name: volume
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Volume name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Volume deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Volume not found
+  /volumes:
+    get:
+      description: volume list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List volumes
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+  /volumeplans:
+    get:
+      description: volume plan list
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List volume plans
+        '401':
+          description: Unauthorized
+  /volumes/{volume}/bind:
+    delete:
+      description: volume unbind
+      parameters:
+        - name: volume
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Volume name.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Volume unbinded
+        '401':
+          description: Unauthorized
+        '404':
+          description: Volume not found
+  /docker/container/{container}/move:
+    post:
+      description: move container
+      parameters:
+        - name: container
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: Container ID.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /docker/containers/move:
+    post:
+      description: move containers
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /docker/logs:
+    post:
+      description: logs config set
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/x-www-form-urlencoded
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+        '401':
+          description: Unauthorized

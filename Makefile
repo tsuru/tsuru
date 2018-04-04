@@ -148,4 +148,4 @@ test-int:
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
 gen-client:
-	swagger generate client -f docs/reference/api.yaml -c api/client
+	cd api && rm -rf models/ && rm -rf client/ && swagger generate client -f ../docs/reference/api.yaml -c client -m models

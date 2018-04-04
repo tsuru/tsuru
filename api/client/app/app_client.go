@@ -25,23 +25,23 @@ type Client struct {
 }
 
 /*
-AppCreate app create
+Create create a new app
 */
-func (a *Client) AppCreate(params *AppCreateParams, authInfo runtime.ClientAuthInfoWriter) (*AppCreateCreated, error) {
+func (a *Client) Create(params *CreateParams, authInfo runtime.ClientAuthInfoWriter) (*CreateCreated, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewAppCreateParams()
+		params = NewCreateParams()
 	}
 
 	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "AppCreate",
+		ID:                 "Create",
 		Method:             "POST",
 		PathPattern:        "/apps",
 		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/x-www-form-urlencoded"},
+		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &AppCreateReader{formats: a.formats},
+		Reader:             &CreateReader{formats: a.formats},
 		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
@@ -49,28 +49,28 @@ func (a *Client) AppCreate(params *AppCreateParams, authInfo runtime.ClientAuthI
 	if err != nil {
 		return nil, err
 	}
-	return result.(*AppCreateCreated), nil
+	return result.(*CreateCreated), nil
 
 }
 
 /*
-AppList app list
+List list apps
 */
-func (a *Client) AppList(params *AppListParams, authInfo runtime.ClientAuthInfoWriter) (*AppListOK, *AppListNoContent, error) {
+func (a *Client) List(params *ListParams, authInfo runtime.ClientAuthInfoWriter) (*ListOK, *ListNoContent, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewAppListParams()
+		params = NewListParams()
 	}
 
 	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "AppList",
+		ID:                 "List",
 		Method:             "GET",
 		PathPattern:        "/apps",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{""},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &AppListReader{formats: a.formats},
+		Reader:             &ListReader{formats: a.formats},
 		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
@@ -79,9 +79,9 @@ func (a *Client) AppList(params *AppListParams, authInfo runtime.ClientAuthInfoW
 		return nil, nil, err
 	}
 	switch value := result.(type) {
-	case *AppListOK:
+	case *ListOK:
 		return value, nil, nil
-	case *AppListNoContent:
+	case *ListNoContent:
 		return nil, value, nil
 	}
 	return nil, nil, nil

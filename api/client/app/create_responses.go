@@ -7,10 +7,13 @@ package app
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/go-openapi/runtime"
 
 	strfmt "github.com/go-openapi/strfmt"
+
+	"github.com/tsuru/tsuru/api/models"
 )
 
 // CreateReader is a Reader for the Create structure.
@@ -72,13 +75,21 @@ func NewCreateCreated() *CreateCreated {
 App created
 */
 type CreateCreated struct {
+	Payload *models.AppCreateResponse
 }
 
 func (o *CreateCreated) Error() string {
-	return fmt.Sprintf("[POST /apps][%d] createCreated ", 201)
+	return fmt.Sprintf("[POST /apps][%d] createCreated  %+v", 201, o.Payload)
 }
 
 func (o *CreateCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.AppCreateResponse)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -93,13 +104,19 @@ func NewCreateBadRequest() *CreateBadRequest {
 Invalid data
 */
 type CreateBadRequest struct {
+	Payload models.ErrorMessage
 }
 
 func (o *CreateBadRequest) Error() string {
-	return fmt.Sprintf("[POST /apps][%d] createBadRequest ", 400)
+	return fmt.Sprintf("[POST /apps][%d] createBadRequest  %+v", 400, o.Payload)
 }
 
 func (o *CreateBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	// response payload
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -114,13 +131,19 @@ func NewCreateUnauthorized() *CreateUnauthorized {
 Unauthorized
 */
 type CreateUnauthorized struct {
+	Payload models.ErrorMessage
 }
 
 func (o *CreateUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /apps][%d] createUnauthorized ", 401)
+	return fmt.Sprintf("[POST /apps][%d] createUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *CreateUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	// response payload
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -135,13 +158,19 @@ func NewCreateForbidden() *CreateForbidden {
 Quota exceeded
 */
 type CreateForbidden struct {
+	Payload models.ErrorMessage
 }
 
 func (o *CreateForbidden) Error() string {
-	return fmt.Sprintf("[POST /apps][%d] createForbidden ", 403)
+	return fmt.Sprintf("[POST /apps][%d] createForbidden  %+v", 403, o.Payload)
 }
 
 func (o *CreateForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	// response payload
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -156,13 +185,19 @@ func NewCreateConflict() *CreateConflict {
 App already exists
 */
 type CreateConflict struct {
+	Payload models.ErrorMessage
 }
 
 func (o *CreateConflict) Error() string {
-	return fmt.Sprintf("[POST /apps][%d] createConflict ", 409)
+	return fmt.Sprintf("[POST /apps][%d] createConflict  %+v", 409, o.Payload)
 }
 
 func (o *CreateConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	// response payload
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

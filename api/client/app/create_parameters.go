@@ -16,12 +16,14 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 
 	strfmt "github.com/go-openapi/strfmt"
+
+	"github.com/tsuru/tsuru/api/models"
 )
 
 // NewCreateParams creates a new CreateParams object
 // with the default values initialized.
 func NewCreateParams() *CreateParams {
-
+	var ()
 	return &CreateParams{
 
 		timeout: cr.DefaultTimeout,
@@ -31,7 +33,7 @@ func NewCreateParams() *CreateParams {
 // NewCreateParamsWithTimeout creates a new CreateParams object
 // with the default values initialized, and the ability to set a timeout on a request
 func NewCreateParamsWithTimeout(timeout time.Duration) *CreateParams {
-
+	var ()
 	return &CreateParams{
 
 		timeout: timeout,
@@ -41,7 +43,7 @@ func NewCreateParamsWithTimeout(timeout time.Duration) *CreateParams {
 // NewCreateParamsWithContext creates a new CreateParams object
 // with the default values initialized, and the ability to set a context for a request
 func NewCreateParamsWithContext(ctx context.Context) *CreateParams {
-
+	var ()
 	return &CreateParams{
 
 		Context: ctx,
@@ -51,7 +53,7 @@ func NewCreateParamsWithContext(ctx context.Context) *CreateParams {
 // NewCreateParamsWithHTTPClient creates a new CreateParams object
 // with the default values initialized, and the ability to set a custom HTTPClient for a request
 func NewCreateParamsWithHTTPClient(client *http.Client) *CreateParams {
-
+	var ()
 	return &CreateParams{
 		HTTPClient: client,
 	}
@@ -61,6 +63,10 @@ func NewCreateParamsWithHTTPClient(client *http.Client) *CreateParams {
 for the create operation typically these are written to a http.Request
 */
 type CreateParams struct {
+
+	/*App*/
+	App *models.App
+
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
@@ -99,6 +105,17 @@ func (o *CreateParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithApp adds the app to the create params
+func (o *CreateParams) WithApp(app *models.App) *CreateParams {
+	o.SetApp(app)
+	return o
+}
+
+// SetApp adds the app to the create params
+func (o *CreateParams) SetApp(app *models.App) {
+	o.App = app
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *CreateParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -106,6 +123,12 @@ func (o *CreateParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Regist
 		return err
 	}
 	var res []error
+
+	if o.App != nil {
+		if err := r.SetBodyParam(o.App); err != nil {
+			return err
+		}
+	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
