@@ -7,6 +7,7 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -569,4 +570,19 @@ func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
 	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
+}
+
+func (s *S) TestContentHijackerMiddleware(c *check.C) {
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader(`{"a": "b", "c": [1, 2, 3], "d": {"a": 1}}`)
+	request, err := http.NewRequest("POST", "/my/path", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	h, handlerLog := doHandler()
+	contentHijacker(recorder, request, h)
+	c.Assert(handlerLog.called, check.Equals, true)
+	data, err := ioutil.ReadAll(handlerLog.r.Body)
+	c.Assert(err, check.IsNil)
+	c.Assert(string(data), check.Equals, `a=b&c.0=1&c.1=2&c.2=3&d.a=1`)
+	c.Assert(handlerLog.r.Header.Get("Content-Type"), check.Equals, "application/x-www-form-urlencoded")
 }
