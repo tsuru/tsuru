@@ -13,7 +13,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	"github.com/tsuru/tsuru/api/models"
+	"github.com/tsuru/tsuru/api/generated/models"
 )
 
 // CreateReader is a Reader for the Create structure.

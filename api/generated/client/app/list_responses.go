@@ -7,10 +7,13 @@ package app
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/go-openapi/runtime"
 
 	strfmt "github.com/go-openapi/strfmt"
+
+	"github.com/tsuru/tsuru/api/generated/models"
 )
 
 // ListReader is a Reader for the List structure.
@@ -100,13 +103,19 @@ func NewListUnauthorized() *ListUnauthorized {
 Unauthorized
 */
 type ListUnauthorized struct {
+	Payload models.ErrorMessage
 }
 
 func (o *ListUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /apps][%d] listUnauthorized ", 401)
+	return fmt.Sprintf("[GET /apps][%d] listUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *ListUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	// response payload
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

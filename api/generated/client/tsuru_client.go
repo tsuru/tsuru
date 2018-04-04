@@ -11,7 +11,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	"github.com/tsuru/tsuru/api/client/app"
+	"github.com/tsuru/tsuru/api/generated/client/app"
 )
 
 // Default tsuru HTTP client.

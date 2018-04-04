@@ -17,7 +17,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	"github.com/tsuru/tsuru/api/models"
+	"github.com/tsuru/tsuru/api/generated/models"
 )
 
 // NewCreateParams creates a new CreateParams object
