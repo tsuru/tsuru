@@ -13,8 +13,43 @@ securityDefinitions:
 paths:
   /apps:
     get:
-      description: list apps
       operationId: List
+      description: list apps
+      parameters:
+        - name: locked
+          description: Filter applications by lock status
+          in: query
+          type: boolean
+        - name: name
+          description: Filter applications by name
+          in: query
+          type: string
+        - name: owner
+          description: Filter applications by owner
+          in: query
+          type: string
+        - name: platform
+          description: Filter applications by platform
+          in: query
+          type: string
+        - name: pool
+          description: Filter applications by pool
+          in: query
+          type: string
+        - name: status
+          description: Filter applications by unit status.
+          in: query
+          type: string
+        - name: tag
+          description: Filter applications by tag.
+          in: query
+          type: array
+          items:
+            type: string
+        - name: teamOwner
+          description: Filter applications by team owner
+          in: query
+          type: string
       produces:
       - application/json
       responses:
@@ -31,6 +66,7 @@ paths:
       security:
         - Bearer: []
     post:
+      operationId: Create
       description: create a new app
       parameters:
         - name: app
@@ -38,7 +74,6 @@ paths:
           in: body
           schema: 
             $ref: '#/definitions/App'
-      operationId: Create
       produces:
       - application/json
       consumes:
@@ -119,3 +154,118 @@ definitions:
         type: string
       ip:
         type: string
+  AppListResponse:
+    description: List containing minimal information about apps
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        pool:
+          type: string
+        teamOwner:
+          type: string
+        plan:
+          type: object
+          $ref: '#/definitions/Plan'
+        units:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/Unit'
+        cname:
+          type: array
+          items:
+            type: string
+        ip:
+          type: string
+        routers:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/Router'
+        lock:
+          type: object
+          $ref: '#/definitions/Lock'
+        tags:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+  Plan:
+    description: App plan
+    type: object
+    properties:
+      name:
+        type: string
+      memory:
+        type: integer
+        format: int64
+        minimum: 0
+      swap:
+        type: integer
+        format: int64
+        minimum: 0
+      cpushare:
+        type: integer
+        minimum: 0
+      default:
+        type: boolean
+  Unit:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      appname:
+        type: string
+      processname:
+        type: string
+      type:
+        type: string
+      ip:
+        type: string
+      status:
+        type: string
+      address:
+        type: object
+        $ref: '#/definitions/URL'
+  Router:
+    type: object
+    properties:
+      name:
+        type: string
+      opts:
+        type: object
+        additionalProperties:
+          type: string
+      addres:
+        type: string
+      type:
+        type: string
+      status:
+        type: string
+      status-detail:
+        type: string
+  Lock:
+    type: object
+    properties:
+      locked:
+        type: boolean
+      reason:
+        type: string
+      owner:
+        type: string
+      acquireDate:
+        type: string
+  URL:
+    type: object
+    properties:
+      scheme:
+        type: string
+      host:
+        type: string
+  
