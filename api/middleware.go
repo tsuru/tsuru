@@ -7,13 +7,16 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	stdLog "log"
 	"net/http"
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
@@ -263,4 +266,36 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 		}
 	}
 	l.logger.Printf("%s %s %s %d in %0.6fms%s", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond), requestID)
+}
+
+func contentHijacker(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	defer next(w, r)
+	if r.Body == nil {
+		return
+	}
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		return
+	}
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Errorf("[content hijacker] error reading body: %v", err)
+		return
+	}
+	if len(data) == 0 {
+		return
+	}
+	var bodyData map[string]interface{}
+	err = json.Unmarshal(data, &bodyData)
+	if err != nil {
+		log.Errorf("[content hijacker] unable to parse as json: %q - %v", string(data), err)
+		return
+	}
+	formData, err := form.EncodeToString(bodyData)
+	if err != nil {
+		log.Errorf("[content hijacker] unable to format as form: %v", err)
+		return
+	}
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Body = ioutil.NopCloser(strings.NewReader(formData))
 }
