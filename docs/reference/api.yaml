@@ -55,6 +55,8 @@ paths:
       responses:
         '200':
           description: List apps
+          schema:
+            $ref: '#/definitions/AppListResponse'
         '204':
           description: No content
         '401':
