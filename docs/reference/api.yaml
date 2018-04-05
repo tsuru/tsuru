@@ -56,7 +56,10 @@ paths:
         '200':
           description: List apps
           schema:
-            $ref: '#/definitions/AppListResponse'
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/MiniApp'
         '204':
           description: No content
         '401':
@@ -114,7 +117,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
         - name: envs
           in: path
@@ -122,7 +125,7 @@ paths:
           type: array
           items:
             type: string
-          minimum: 1
+          minItems: 1
           description: List of environment variables formatted as `NAME=VALUE`.
       produces:
       - application/x-json-stream
@@ -198,46 +201,44 @@ definitions:
         type: string
       ip:
         type: string
-  AppListResponse:
+  MiniApp:
     description: List containing minimal information about apps.
-    type: array
-    items:
-      type: object
-      properties:
-        name:
-          type: string
-        pool:
-          type: string
-        teamOwner:
-          type: string
-        plan:
+    type: object
+    properties:
+      name:
+        type: string
+      pool:
+        type: string
+      teamOwner:
+        type: string
+      plan:
+        type: object
+        $ref: '#/definitions/Plan'
+      units:
+        type: array
+        items:
           type: object
-          $ref: '#/definitions/Plan'
-        units:
-          type: array
-          items:
-            type: object
-            $ref: '#/definitions/Unit'
-        cname:
-          type: array
-          items:
-            type: string
-        ip:
+          $ref: '#/definitions/Unit'
+      cname:
+        type: array
+        items:
           type: string
-        routers:
-          type: array
-          items:
-            type: object
-            $ref: '#/definitions/Router'
-        lock:
+      ip:
+        type: string
+      routers:
+        type: array
+        items:
           type: object
-          $ref: '#/definitions/Lock'
-        tags:
-          type: array
-          items:
-            type: string
-        error:
+          $ref: '#/definitions/Router'
+      lock:
+        type: object
+        $ref: '#/definitions/Lock'
+      tags:
+        type: array
+        items:
           type: string
+      error:
+        type: string
   Plan:
     description: App plan.
     type: object
