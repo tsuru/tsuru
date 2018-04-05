@@ -1,0 +1,271 @@
+swagger: "2.0"
+info:
+  title: Tsuru
+  description: Open source, extensible and Docker-based Platform as a Service (PaaS)
+  version: "1.6"
+schemes:
+  - http
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
+paths:
+  /apps:
+    get:
+      operationId: List
+      description: list apps
+      parameters:
+        - name: locked
+          description: Filter applications by lock status
+          in: query
+          type: boolean
+        - name: name
+          description: Filter applications by name
+          in: query
+          type: string
+        - name: owner
+          description: Filter applications by owner
+          in: query
+          type: string
+        - name: platform
+          description: Filter applications by platform
+          in: query
+          type: string
+        - name: pool
+          description: Filter applications by pool
+          in: query
+          type: string
+        - name: status
+          description: Filter applications by unit status.
+          in: query
+          type: string
+        - name: tag
+          description: Filter applications by tag.
+          in: query
+          type: array
+          items:
+            type: string
+        - name: teamOwner
+          description: Filter applications by team owner
+          in: query
+          type: string
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List apps
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - app
+      security:
+        - Bearer: []
+    post:
+      operationId: Create
+      description: create a new app
+      parameters:
+        - name: app
+          required: true
+          in: body
+          schema: 
+            $ref: '#/definitions/App'
+      produces:
+      - application/json
+      consumes:
+      - application/json
+      responses:
+        '201': 
+          description: App created
+          schema:
+            $ref: '#/definitions/AppCreateResponse'
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Quota exceeded
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409': 
+          description: App already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - app
+      security:
+        - Bearer: []
+definitions:
+  ErrorMessage:
+    description: Error message
+    type: string
+  App:
+    description: Tsuru app
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: App name
+      tag:
+        type: array
+        items:
+          type: string
+        description: App Tags
+      router:
+        type: string
+        description: App router
+      routeropts:
+        type: object
+        additionalProperties:
+          type: string
+        description: Custom router options
+      plan:
+        type: string
+        description: App plan
+      pool:
+        type: string
+        description: App pool
+      platform:
+        type: string
+        description: App platform
+      description:
+        type: string
+        description: App description
+      teamOwner:
+        type: string
+        description: Team that owns the app
+  AppCreateResponse:
+    description: Newly created app information
+    type: object
+    properties:
+      status:
+        type: string
+      repository_url:
+        type: string
+      ip:
+        type: string
+  AppListResponse:
+    description: List containing minimal information about apps
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        pool:
+          type: string
+        teamOwner:
+          type: string
+        plan:
+          type: object
+          $ref: '#/definitions/Plan'
+        units:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/Unit'
+        cname:
+          type: array
+          items:
+            type: string
+        ip:
+          type: string
+        routers:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/Router'
+        lock:
+          type: object
+          $ref: '#/definitions/Lock'
+        tags:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+  Plan:
+    description: App plan
+    type: object
+    properties:
+      name:
+        type: string
+      memory:
+        type: integer
+        format: int64
+        minimum: 0
+      swap:
+        type: integer
+        format: int64
+        minimum: 0
+      cpushare:
+        type: integer
+        minimum: 0
+      default:
+        type: boolean
+  Unit:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      appname:
+        type: string
+      processname:
+        type: string
+      type:
+        type: string
+      ip:
+        type: string
+      status:
+        type: string
+      address:
+        type: object
+        $ref: '#/definitions/URL'
+  Router:
+    type: object
+    properties:
+      name:
+        type: string
+      opts:
+        type: object
+        additionalProperties:
+          type: string
+      addres:
+        type: string
+      type:
+        type: string
+      status:
+        type: string
+      status-detail:
+        type: string
+  Lock:
+    type: object
+    properties:
+      locked:
+        type: boolean
+      reason:
+        type: string
+      owner:
+        type: string
+      acquireDate:
+        type: string
+  URL:
+    type: object
+    properties:
+      scheme:
+        type: string
+      host:
+        type: string
+  

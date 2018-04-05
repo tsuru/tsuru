@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.abspath('.'))
 extensions = [
     'sphinx.ext.mathjax',
     'tsuru_sphinx.handlers',
+    'sphinxcontrib.openapi',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
