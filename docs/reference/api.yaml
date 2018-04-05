@@ -14,26 +14,26 @@ paths:
   /apps:
     get:
       operationId: List
-      description: list apps
+      description: List apps.
       parameters:
         - name: locked
-          description: Filter applications by lock status
+          description: Filter applications by lock status.
           in: query
           type: boolean
         - name: name
-          description: Filter applications by name
+          description: Filter applications by name.
           in: query
           type: string
         - name: owner
-          description: Filter applications by owner
+          description: Filter applications by owner.
           in: query
           type: string
         - name: platform
-          description: Filter applications by platform
+          description: Filter applications by platform.
           in: query
           type: string
         - name: pool
-          description: Filter applications by pool
+          description: Filter applications by pool.
           in: query
           type: string
         - name: status
@@ -47,7 +47,7 @@ paths:
           items:
             type: string
         - name: teamOwner
-          description: Filter applications by team owner
+          description: Filter applications by team owner.
           in: query
           type: string
       produces:
@@ -67,7 +67,7 @@ paths:
         - Bearer: []
     post:
       operationId: Create
-      description: create a new app
+      description: Create a new app.
       parameters:
         - name: app
           required: true
@@ -105,8 +105,8 @@ paths:
         - Bearer: []
   /apps/{app}/env:
     post:
-      operationId: SetEnv
-      description: set new environment variable
+      operationId: EnvSet
+      description: Set new environment variable.
       parameters:
         - name: app
           in: path
@@ -130,7 +130,7 @@ paths:
         '200':
           description: Envs updated
           schema:
-            $ref: '#/definitions/SetEnvResponse'
+            $ref: '#/definitions/EnvSetResponse'
         '400':
           description: Invalid data
           schema:
@@ -147,47 +147,47 @@ paths:
         - app
 definitions:
   ErrorMessage:
-    description: Error message
+    description: Error message.
     type: string
   App:
-    description: Tsuru app
+    description: Tsuru app.
     type: object
     required:
       - name
     properties:
       name:
         type: string
-        description: App name
+        description: App name.
       tag:
         type: array
         items:
           type: string
-        description: App Tags
+        description: App tags.
       router:
         type: string
-        description: App router
+        description: App router.
       routeropts:
         type: object
         additionalProperties:
           type: string
-        description: Custom router options
+        description: Custom router options.
       plan:
         type: string
-        description: App plan
+        description: App plan.
       pool:
         type: string
-        description: App pool
+        description: App pool.
       platform:
         type: string
-        description: App platform
+        description: App platform.
       description:
         type: string
-        description: App description
+        description: App description.
       teamOwner:
         type: string
-        description: Team that owns the app
+        description: Team that owns the app.
   AppCreateResponse:
-    description: Newly created app information
+    description: Newly created app information.
     type: object
     properties:
       status:
@@ -197,7 +197,7 @@ definitions:
       ip:
         type: string
   AppListResponse:
-    description: List containing minimal information about apps
+    description: List containing minimal information about apps.
     type: array
     items:
       type: object
@@ -237,7 +237,7 @@ definitions:
         error:
           type: string
   Plan:
-    description: App plan
+    description: App plan.
     type: object
     properties:
       name:
@@ -255,8 +255,8 @@ definitions:
         minimum: 0
       default:
         type: boolean
-  SetEnvResponse:
-    description: Environment variables set information
+  EnvSetResponse:
+    description: Environment variables response information.
     type: array
     items:
       type: object
