@@ -108,7 +108,7 @@ paths:
         - app
       security:
         - Bearer: []
-  /apps/{app}/env:
+  /1.0/apps/{app}/env:
     post:
       operationId: EnvSet
       description: Set new environment variable.
@@ -120,13 +120,26 @@ paths:
           minLength: 1
           description: App name.
         - name: envs
-          in: path
+          in: body
           required: true
-          type: array
-          items:
-            type: string
-          minItems: 1
-          description: List of environment variables formatted as `NAME=VALUE`.
+          schema:
+            type: object
+            properties:
+              envs:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                minItems: 1
+              norestart:
+                type: boolean
+              private:
+                type: boolean
+          description: Environment variables.
       produces:
       - application/x-json-stream
       consumes:
