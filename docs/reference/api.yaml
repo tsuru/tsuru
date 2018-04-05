@@ -103,6 +103,48 @@ paths:
         - app
       security:
         - Bearer: []
+  /apps/{app}/env:
+    post:
+      operationId: SetEnv
+      description: set new environment variable
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minimum: 1
+          description: App name.
+        - name: envs
+          in: path
+          required: true
+          type: array
+          items:
+            type: string
+          minimum: 1
+          description: List of environment variables formatted as `NAME=VALUE`.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: Envs updated
+          schema:
+            $ref: '#/definitions/SetEnvResponse'
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - app
 definitions:
   ErrorMessage:
     description: Error message
@@ -213,6 +255,18 @@ definitions:
         minimum: 0
       default:
         type: boolean
+  SetEnvResponse:
+    description: Environment variables set information
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        public:
+          type: boolean
   Unit:
     type: object
     properties:
