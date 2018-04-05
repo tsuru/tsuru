@@ -2,7 +2,7 @@ swagger: "2.0"
 info:
   title: Tsuru
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
-  version: "1.6.0"
+  version: "1.6"
 schemes:
   - http
 securityDefinitions:

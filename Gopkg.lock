@@ -53,18 +53,6 @@
   revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
 
 [[projects]]
-  name = "github.com/PuerkitoBio/purell"
-  packages = ["."]
-  revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
-  version = "v1.1.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/PuerkitoBio/urlesc"
-  packages = ["."]
-  revision = "de5bf2ad457846296e2031421a34e2568e304e35"
-
-[[projects]]
   name = "github.com/RobotsAndPencils/go-saml"
   packages = ["util"]
   revision = "aa127de49a0111329d9dbd2e19ddf21da90eb931"
@@ -79,12 +67,6 @@
   packages = ["."]
   revision = "c4c7ba05422cabfe88a60fb72645bee5e13a6ac8"
   version = "v0.7.0"
-
-[[projects]]
-  name = "github.com/asaskevich/govalidator"
-  packages = ["."]
-  revision = "ccb8e960c48f04d6935e72476ae4a51028f9e22f"
-  version = "v9"
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
@@ -338,75 +320,6 @@
   version = "v1.28.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/analysis"
-  packages = ["."]
-  revision = "f59a71f0ece6f9dfb438be7f45148f006cbad88e"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/errors"
-  packages = ["."]
-  revision = "7bcb96a367bac6b76e6e42fa84155bb5581dcff8"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/jsonpointer"
-  packages = ["."]
-  revision = "3a0015ad55fa9873f41605d3e8f28cd279c32ab2"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/jsonreference"
-  packages = ["."]
-  revision = "3fb327e6747da3043567ee86abd02bb6376b6be2"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/loads"
-  packages = ["."]
-  revision = "2a2b323bab96e6b1fdee110e57d959322446e9c9"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/runtime"
-  packages = [
-    ".",
-    "client",
-    "logger",
-    "middleware",
-    "middleware/denco",
-    "middleware/header",
-    "middleware/untyped",
-    "security"
-  ]
-  revision = "62281b694b396a17fe3e4313ee8b0ca2c3cca719"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/spec"
-  packages = ["."]
-  revision = "9acd88844bc186c3ec7f318cd3d56f1114b4ab99"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/strfmt"
-  packages = ["."]
-  revision = "6ba31556a6c60db8615afb9d8eddae7aae15eb48"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/swag"
-  packages = ["."]
-  revision = "ceb469cb0fdf2d792f28d771bc05da6c606f55e5"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/validate"
-  packages = ["."]
-  revision = "180bba53b98899f743a112e568bed9e2ef31aa20"
-
-[[projects]]
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
@@ -564,16 +477,6 @@
   name = "github.com/mailgun/ttlmap"
   packages = ["."]
   revision = "c1c17f74874f2a5ea48bfb06b5459d4ef2689749"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mailru/easyjson"
-  packages = [
-    "buffer",
-    "jlexer",
-    "jwriter"
-  ]
-  revision = "8b799c424f57fa123fc63a99d6383bc6e4c02578"
 
 [[projects]]
   name = "github.com/mattn/go-shellwords"
@@ -942,8 +845,7 @@
     "unicode/bidi",
     "unicode/cldr",
     "unicode/norm",
-    "unicode/rangetable",
-    "width"
+    "unicode/rangetable"
   ]
   revision = "2bf8f2a19ec09c670e931282edfe6567f6be21c9"
 
@@ -1231,6 +1133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0b387c1e08fae0af9a900fc9d381d6625932b0ca5bc70a4e7e8897ddc47f12aa"
+  inputs-digest = "673588f92d94e5e3ec8cd48f0963816373ccf4d3793ae2854fdd5be2381295b5"
   solver-name = "gps-cdcl"
   solver-version = 1
