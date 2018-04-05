@@ -13,7 +13,7 @@ securityDefinitions:
 paths:
   /1.0/apps:
     get:
-      operationId: List
+      operationId: AppList
       description: List apps.
       parameters:
         - name: locked
@@ -148,7 +148,7 @@ paths:
         - app
   /1.4/volumes:
     get:
-      operationId: List
+      operationId: VolumeList
       description: List volumes.
       produces:
       - application/json
@@ -176,7 +176,7 @@ paths:
         minLength: 1
         description: Volume name.
     delete:
-      operationId: Delete
+      operationId: VolumeDelete
       description: Delete volume.
       produces:
       - application/json
@@ -196,7 +196,7 @@ paths:
       security:
         - Bearer: []
     post:
-      operationId: Create
+      operationId: VolumeCreate
       description: Create volume.
       parameters:
         - name: volumeData
@@ -222,7 +222,7 @@ paths:
       security:
         - Bearer: []
     get:
-      operationId: Get
+      operationId: VolumeGet
       description: Get a volume.
       produces:
         - application/json
@@ -251,24 +251,13 @@ paths:
         type: string
         minLength: 1
         description: Volume name.
-      - name: app
+      - name: BindData
         in: body
         schema:
-          type: string
-      - name: mountpoint
-        in: body
-        schema:
-          type: string
-      - name: norestart
-        in: body
-        schema:
-          type: boolean
-      - name: readonly
-        in: body
-        schema:
-          type: boolean
+          type: object
+          $ref: '#/definitions/VolumeBindData'
     post:
-      operationId: Bind
+      operationId: VolumeBind
       description: Bind volume.
       produces:
         - application/json
@@ -292,7 +281,7 @@ paths:
       security:
         - Bearer: []
     delete:
-      operationId: Unbind
+      operationId: VolumeUnbind
       description: Unbind volume.
       produces:
       - application/json
@@ -313,7 +302,7 @@ paths:
         - Bearer: []
   /1.4/volumeplans:
     get:
-      operationId: ListPlans
+      operationId: VolumePlansList
       description: List volume plans.
       produces:
       - application/json
@@ -411,6 +400,15 @@ definitions:
       volume:
         description: Volume name.
         type: string
+  VolumeBindData:
+    type: object
+    properties:
+      mountpoint:
+        type: string
+      norestart:
+        type: boolean
+      readonly:
+        type: boolean
   App:
     description: Tsuru app.
     type: object
