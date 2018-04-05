@@ -12,14 +12,18 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/env:
     post:
       description: set envs
@@ -33,16 +37,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Envs updated
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/log:
     post:
       description: app log
@@ -54,16 +64,22 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/cname:
     post:
       description: set cname
@@ -75,16 +91,22 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances/{instance}/{app}:
     put:
       description: bind service instance
@@ -110,16 +132,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/certificate:
     delete:
       description: unset app certificate
@@ -131,34 +159,50 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /swap:
     post:
       description: app swap
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: App locked
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '412':
           description: Number of units or platform don't match
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}:
     put:
       description: app update
@@ -172,16 +216,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: App updated
         '400':
           description: Invalid new pool
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/teams/{team}:
     put:
       description: grant access to app
@@ -203,10 +253,16 @@ paths:
           description: Access granted
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App or team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Grant already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/sleep:
     post:
       description: app sleep
@@ -220,16 +276,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/start:
     post:
       description: app start
@@ -243,14 +305,18 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/units:
     delete:
       description: remove units
@@ -268,10 +334,16 @@ paths:
           description: Units removed
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/units/{unit}:
     post:
       description: set unit status
@@ -289,16 +361,22 @@ paths:
           minimum: 1
           description: Unit ID.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App or unit not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/units/register:
     post:
       description: register unit
@@ -312,14 +390,18 @@ paths:
       produces:
       - application/json
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/lock:
     delete:
       description: app unlock
@@ -337,8 +419,12 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/routes:
     post:
       description: rebuild routes
@@ -356,24 +442,34 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /node/status:
     post:
       description: set node status
       produces:
       - application/json
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App or unit not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/stop:
     post:
       description: app stop
@@ -387,14 +483,18 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/metric/envs:
     get:
       description: metric envs
@@ -412,8 +512,12 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/run:
     post:
       description: run commands
@@ -427,14 +531,18 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /teams/{team}:
     post:
       description: team update
@@ -446,16 +554,22 @@ paths:
           minimum: 1
           description: Team name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Team updated
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /auth/scheme:
     get:
       description: get auth scheme
@@ -474,8 +588,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/keys/{key}:
     delete:
       description: remove key
@@ -491,38 +609,56 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /teams:
     post:
       description: team create
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Team created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Team already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/keys:
     post:
       description: add key
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Key already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users:
     get:
       description: user list
@@ -533,6 +669,8 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/info:
     get:
       description: user info
@@ -543,40 +681,58 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/password:
     put:
       description: change password
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /auth/login:
     post:
       description: login
       produces:
       - application/json
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/tokens:
     delete:
       description: logout
@@ -598,12 +754,20 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /autoscale:
     get:
       description: list autoscale history
@@ -616,6 +780,8 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /autoscale/run:
     post:
       description: autoscale run
@@ -626,6 +792,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /autoscale/config:
     get:
       description: get autoscale config
@@ -636,18 +804,24 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /autoscale/rules:
     post:
       description: autoscale set rule
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /autoscale/rules/{rule}:
     delete:
       description: delete autoscale rule
@@ -663,8 +837,12 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/build:
     post:
       description: app build
@@ -676,23 +854,29 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /provisioner/clusters:
     get:
       description: list provisioner clusters
       produces:
       - application/json
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
@@ -700,6 +884,8 @@ paths:
           description: No Content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /provisioner/clusters/{cluster}:
     get:
       description: delete provisioner cluster
@@ -713,14 +899,18 @@ paths:
       produces:
       - application/json
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Cluster not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/goroutines:
     get:
       description: dump goroutines
@@ -744,8 +934,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/deploy/rebuild:
     post:
       description: rebuild
@@ -759,16 +953,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/deploy/rollback/update:
     put:
       description: rollback update
@@ -780,14 +980,18 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Rollback updated
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/deploy:
     post:
       description: app deploy
@@ -799,16 +1003,22 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/diff:
     post:
       description: deploy diff
@@ -820,16 +1030,22 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/deploy/rollback:
     post:
       description: rollback
@@ -843,16 +1059,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '403':
           description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /deploys:
     get:
       description: deploy list
@@ -867,14 +1089,18 @@ paths:
     post:
       description: add event block
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data or empty reason
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /events/blocks/{block}:
     delete:
       description: remove event block
@@ -890,10 +1116,16 @@ paths:
           description: OK
         '400':
           description: Invalid uuid
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Active block with provided uuid not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /events:
     get:
       description: event list
@@ -931,10 +1163,16 @@ paths:
           description: OK
         '400':
           description: Invalid uuid
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /events/{event}/cancel:
     post:
       description: event cancel
@@ -952,8 +1190,12 @@ paths:
           description: OK
         '400':
           description: Invalid uuid or empty reason
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/healing:
     get:
       description: docker healing history
@@ -966,8 +1208,12 @@ paths:
           description: No content
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /healthcheck:
     get:
       description: healthcheck
@@ -986,6 +1232,8 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /iaas/machines/{machine}:
     delete:
       description: machine destroy
@@ -1001,24 +1249,36 @@ paths:
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /iaas/templates:
     post:
       description: template create
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Template created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Existent template
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /iaas/templates/{template}:
     put:
       description: template update
@@ -1030,16 +1290,22 @@ paths:
           minimum: 1
           description: Template name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /:
     get:
       description: index
@@ -1064,6 +1330,8 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /install/hosts/{host}:
     get:
       description: install host info
@@ -1081,35 +1349,49 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /node:
     post:
       description: add node
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
     put:
       description: update nodes
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /node/{address}:
     parameters:
       - name: address
@@ -1125,8 +1407,12 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
     get:
       description: node info
       produces:
@@ -1136,6 +1422,8 @@ paths:
           description: Ok
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/node/apps/{app}/containers:
     get:
       description: list units by app
@@ -1155,8 +1443,12 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /healing/node:
     delete:
       description: remove node healing
@@ -1167,20 +1459,26 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /node/rebalance:
     post:
       description: rebalance units in nodes
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /node/{address}/containers:
     get:
       description: list units by node
@@ -1200,20 +1498,28 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/nodecontainers:
     post:
       description: node container create
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invald data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/nodecontainers/{nodecontainer}:
     delete:
       description: remove node container
@@ -1229,8 +1535,12 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/nodecontainers/{nodecontainer}/upgrade:
     post:
       description: node container upgrade
@@ -1244,16 +1554,22 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invald data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles/{role}:
     get:
       description: role info
@@ -1271,8 +1587,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Role not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles:
     put:
       description: updates a role
@@ -1281,8 +1601,12 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles/{role}/permissions/{permission}:
     delete:
       description: remove permission
@@ -1304,8 +1628,12 @@ paths:
           description: Permission removed
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles/{role}/user/{email}:
     delete:
       description: dissociate role from user
@@ -1327,10 +1655,16 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Role not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /role/default:
     post:
       description: add default role
@@ -1339,8 +1673,12 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles/{role}/user:
     post:
       description: assign role to user
@@ -1352,16 +1690,22 @@ paths:
           minimum: 1
           description: Role name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Role not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /permissions:
     get:
       description: list permissions
@@ -1372,6 +1716,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /roles/{role}/permissions:
     post:
       description: add permissions
@@ -1383,30 +1729,42 @@ paths:
           minimum: 1
           description: Role name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Permission not allowed
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /plans:
     post:
       description: plan create
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Plan created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Plan already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /plans/{plan}:
     delete:
       description: remove plan
@@ -1422,8 +1780,12 @@ paths:
           description: Plan removed
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Plan not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /platforms/{platform}:
     delete:
       description: remove platform
@@ -1439,8 +1801,12 @@ paths:
           description: Platform removed
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /platforms:
     post:
       description: add platform
@@ -1453,8 +1819,12 @@ paths:
           description: Platform created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /pools/{pool}/team:
     post:
       description: add team too pool
@@ -1466,16 +1836,22 @@ paths:
           minimum: 1
           description: Pool name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Pool updated
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Pool not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /pools/{pool}:
     delete:
       description: remove pool
@@ -1491,32 +1867,44 @@ paths:
           description: Pool removed
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Pool not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /constraints:
     put:
       description: set a pool constraint
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /pools:
     post:
       description: pool create
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Pool created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Pool already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/pprof/trace:
     get:
       description: profile trace handler
@@ -1525,6 +1913,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/pprof:
     get:
       description: profile index handler
@@ -1533,6 +1923,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/pprof/cmdline:
     get:
       description: profile cmdline handler
@@ -1541,6 +1933,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/pprof/profile:
     get:
       description: profile handler
@@ -1549,6 +1943,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /debug/pprof/symbol:
     get:
       description: profile symbol handler
@@ -1557,6 +1953,8 @@ paths:
           description: Ok
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /users/{email}/quota:
     get:
       description: user quota
@@ -1574,8 +1972,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/quota:
     put:
       description: update application quota
@@ -1587,16 +1989,22 @@ paths:
           minimum: 1
           description: App name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Quota updated
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Application not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /routers:
     get:
       description: router list
@@ -1626,6 +2034,8 @@ paths:
           description: No content
         '404':
           description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /app/{app}/routers/{router}:
     parameters:
       - name: app
@@ -1649,8 +2059,12 @@ paths:
           description: OK
         '404':
           description: App or router not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '400':
           description: Invalid request
+          schema:
+            $ref: '#/definitions/ErrorMessage'
     delete:
       description: delete app router
       produces:
@@ -1660,6 +2074,8 @@ paths:
           description: OK
         '404':
           description: App or router not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /auth/saml:
     post:
       description: saml callback
@@ -1668,6 +2084,8 @@ paths:
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services:
     get:
       description: service list
@@ -1680,6 +2098,8 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}:
     get:
       description: service info
@@ -1708,8 +2128,12 @@ paths:
       responses:
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/team/{team}:
     delete:
       description: revoke access to a service
@@ -1731,12 +2155,20 @@ paths:
           description: Access revoked
         '400':
           description: Team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Team does not has access to this service
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/doc:
     get:
       description: service doc
@@ -1752,8 +2184,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances/{instance}:
     parameters:
       - name: service
@@ -1771,16 +2207,22 @@ paths:
     put:
       description: service instance update
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Service instance updated
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
     delete:
       description: remove service instance
       produces:
@@ -1792,8 +2234,12 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/plans:
     get:
       description: service plans
@@ -1811,8 +2257,12 @@ paths:
           description: OK
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/proxy/{instance}:
     get:
       description: service instance proxy
@@ -1832,8 +2282,12 @@ paths:
       responses:
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/instances:
     get:
       description: service instance list
@@ -1846,6 +2300,8 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances/permission/{instance}/{team}:
     delete:
       description: revoke access to service instance
@@ -1873,8 +2329,12 @@ paths:
           description: Access revoked
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances:
     post:
       description: service instance create
@@ -1886,16 +2346,22 @@ paths:
           minimum: 1
           description: Service name.
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '201':
           description: Service created
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '409':
           description: Service already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances/{instance}/status:
     get:
       description: service instance status
@@ -1917,8 +2383,12 @@ paths:
           description: List services instances
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /apps/{app}/shell:
     get:
       description: app shell
@@ -1949,8 +2419,12 @@ paths:
           description: Volume deleted
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Volume not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /volumes:
     get:
       description: volume list
@@ -1963,6 +2437,8 @@ paths:
           description: No content
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /volumeplans:
     get:
       description: volume plan list
@@ -1973,6 +2449,8 @@ paths:
           description: List volume plans
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /volumes/{volume}/bind:
     delete:
       description: volume unbind
@@ -1990,8 +2468,12 @@ paths:
           description: Volume unbinded
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Volume not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/container/{container}/move:
     post:
       description: move container
@@ -2005,43 +2487,59 @@ paths:
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/containers/move:
     post:
       description: move containers
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
   /docker/logs:
     post:
       description: logs config set
       produces:
       - application/x-json-stream
       consumes:
-      - application/x-www-form-urlencoded
+      - application/json
       responses:
         '200':
           description: Ok
         '400':
           description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
