@@ -7,7 +7,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -32,7 +32,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -61,7 +61,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -88,7 +88,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -115,19 +115,19 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
         - name: instance
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Instance name.
         - name: app
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -156,7 +156,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -211,7 +211,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -240,13 +240,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
         - name: team
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Team name.
       responses:
         '200':
@@ -271,7 +271,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -300,7 +300,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -325,7 +325,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -352,13 +352,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
         - name: unit
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Unit ID.
       consumes:
       - application/json
@@ -385,7 +385,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -410,7 +410,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -433,7 +433,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -478,7 +478,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -503,7 +503,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -526,7 +526,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -551,7 +551,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Team name.
       consumes:
       - application/json
@@ -602,7 +602,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: SSH Key.
       responses:
         '200':
@@ -747,7 +747,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: User e-mail.
       responses:
         '200':
@@ -830,7 +830,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Rule ID.
       responses:
         '200':
@@ -851,7 +851,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -894,7 +894,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Cluster name.
       produces:
       - application/json
@@ -925,7 +925,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Deploy ID.
       produces:
       - application/json
@@ -948,7 +948,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -977,7 +977,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -1000,7 +1000,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -1027,7 +1027,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -1054,7 +1054,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/x-json-stream
@@ -1109,7 +1109,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Event block ID.
       responses:
         '200':
@@ -1154,7 +1154,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Event ID.
       produces:
       - application/json
@@ -1181,7 +1181,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Event ID.
       produces:
       - application/json
@@ -1242,7 +1242,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Machine ID.
       responses:
         '200':
@@ -1287,7 +1287,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Template name.
       consumes:
       - application/json
@@ -1340,7 +1340,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Host name.
       produces:
       - application/json
@@ -1398,7 +1398,7 @@ paths:
         in: path
         required: true
         type: string
-        minimum: 1
+        minLength: 1
         description: Node address.
     delete:
       description: remove node
@@ -1432,7 +1432,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -1487,7 +1487,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Node address.
       produces:
       - application/json
@@ -1528,7 +1528,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Nodecontainer name.
       responses:
         '200':
@@ -1549,7 +1549,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Nodecontainer name.
       produces:
       - application/x-json-stream
@@ -1578,7 +1578,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Role name.
       produces:
       - application/json
@@ -1615,13 +1615,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Role name.
         - name: permission
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Permission name.
       responses:
         '200':
@@ -1642,13 +1642,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Role name.
         - name: email
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: User e-mail.
       responses:
         '200':
@@ -1687,7 +1687,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Role name.
       consumes:
       - application/json
@@ -1726,7 +1726,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Role name.
       consumes:
       - application/json
@@ -1773,7 +1773,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Plan name.
       responses:
         '200':
@@ -1794,7 +1794,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Platform name.
       responses:
         '200':
@@ -1833,7 +1833,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Pool name.
       consumes:
       - application/json
@@ -1860,7 +1860,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Pool name.
       responses:
         '200':
@@ -1963,7 +1963,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: User e-mail.
       produces:
       - application/json
@@ -1986,7 +1986,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       consumes:
       - application/json
@@ -2023,7 +2023,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       produces:
       - application/json
@@ -2042,13 +2042,13 @@ paths:
         in: path
         required: true
         type: string
-        minimum: 1
+        minLength: 1
         description: App name.
       - name: router
         in: path
         required: true
         type: string
-        minimum: 1
+        minLength: 1
         description: Router name.
     put:
       description: update app router
@@ -2108,7 +2108,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
       produces:
       - application/json
@@ -2123,7 +2123,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
       responses:
         '401':
@@ -2142,13 +2142,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
         - name: team
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Team name.
       responses:
         '200':
@@ -2177,7 +2177,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
       responses:
         '200':
@@ -2196,13 +2196,13 @@ paths:
         in: path
         required: true
         type: string
-        minimum: 1
+        minLength: 1
         description: Service name.
       - name: instance
         in: path
         required: true
         type: string
-        minimum: 1
+        minLength: 1
         description: Instance name.
     put:
       description: service instance update
@@ -2248,7 +2248,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
       produces:
       - application/json
@@ -2271,13 +2271,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
         - name: instance
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Instance name.
       responses:
         '401':
@@ -2310,19 +2310,19 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
         - name: instance
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Instance name.
         - name: team
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Team name.
       responses:
         '200':
@@ -2343,7 +2343,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
       consumes:
       - application/json
@@ -2370,13 +2370,13 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Service name.
         - name: instance
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Instance name.
       responses:
         '200':
@@ -2397,83 +2397,11 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: App name.
       responses:
         '101':
           description: Switch Protocol to websocket
-  /volumes/{volume}:
-    delete:
-      description: volume delete
-      parameters:
-        - name: volume
-          in: path
-          required: true
-          type: string
-          minimum: 1
-          description: Volume name.
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: Volume deleted
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Volume not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /volumes:
-    get:
-      description: volume list
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: List volumes
-        '204':
-          description: No content
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /volumeplans:
-    get:
-      description: volume plan list
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: List volume plans
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /volumes/{volume}/bind:
-    delete:
-      description: volume unbind
-      parameters:
-        - name: volume
-          in: path
-          required: true
-          type: string
-          minimum: 1
-          description: Volume name.
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: Volume unbinded
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Volume not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
   /docker/container/{container}/move:
     post:
       description: move container
@@ -2482,7 +2410,7 @@ paths:
           in: path
           required: true
           type: string
-          minimum: 1
+          minLength: 1
           description: Container ID.
       produces:
       - application/x-json-stream
