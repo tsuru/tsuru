@@ -260,6 +260,7 @@ type inputApp struct {
 	Pool        string
 	Router      string
 	RouterOpts  map[string]string
+	Tags        []string
 }
 
 // title: app create
@@ -292,8 +293,9 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ia.Pool,
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
-		Tags:        r.Form["tag"],
+		Tags:        ia.Tags,
 	}
+	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
 		if err != nil {
@@ -421,11 +423,12 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
-		Tags:           r.Form["tag"],
+		Tags:           ia.Tags,
 		Platform:       r.FormValue("platform"),
 		UpdatePlatform: imageReset,
 		RouterOpts:     ia.RouterOpts,
 	}
+	updateData.Tags = append(updateData.Tags, r.Form["tag"]...) // for compatibility
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
