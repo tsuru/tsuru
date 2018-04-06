@@ -344,9 +344,9 @@ paths:
   /1.0/users/info:
     get:
       operationId: UserInfo
-      description: Get information on an user.
+      description: Get information on logged user.
       produces:
-        - application/x-json-stream
+        - application/json
       responses:
         '200': 
           description: OK
@@ -357,6 +357,74 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags: 
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/{email}/quota:
+    get:
+      operationId: UserQuotaView
+      description: Get quota of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: User e-mail.
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/UserQuotaViewResponse'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    put:
+      operationId: UserQuotaChange
+      description: Change quota of apps of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: User e-mail.
+        - name: quota
+          in: query
+          required: true
+          type: integer
+          description: User new quota.
+      consumes:
+        - application/x-www-form-urlencoded
+      responses:
+        '200': 
+          description: Quota successfully updated
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
         - users
       security:
         - Bearer: []
@@ -821,6 +889,14 @@ definitions:
         type: string
       password:
         type: string
+  UserQuotaViewResponse:
+    description: Response returned by User Quota View.
+    type: object
+    properties:
+      inuse:
+        type: integer
+      limit:
+        type: integer
   VolumeListResponse:
     description: Response returned by Volume List.
     type: array
