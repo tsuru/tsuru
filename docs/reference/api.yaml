@@ -11,9 +11,9 @@ securityDefinitions:
     name: Authorization
     in: header
 paths:
-  /apps:
+  /1.0/apps:
     get:
-      operationId: List
+      operationId: AppList
       description: List apps.
       parameters:
         - name: locked
@@ -108,7 +108,7 @@ paths:
         - app
       security:
         - Bearer: []
-  /apps/{app}/env:
+  /1.0/apps/{app}/env:
     post:
       operationId: EnvSet
       description: Set new environment variable.
@@ -120,13 +120,26 @@ paths:
           minLength: 1
           description: App name.
         - name: envs
-          in: path
+          in: body
           required: true
-          type: array
-          items:
-            type: string
-          minItems: 1
-          description: List of environment variables formatted as `NAME=VALUE`.
+          schema:
+            type: object
+            properties:
+              envs:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                minItems: 1
+              norestart:
+                type: boolean
+              private:
+                type: boolean
+          description: Environment variables.
       produces:
       - application/x-json-stream
       consumes:
@@ -140,20 +153,275 @@ paths:
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
         - app
+  /1.4/volumes:
+    get:
+      operationId: VolumeList
+      description: List volumes.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List volumes
+          schema:
+            $ref: '#/definitions/VolumeListResponse'
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+  /1.4/volumes/{volume}:
+    parameters:
+      - name: volume
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Volume name.
+    delete:
+      operationId: VolumeDelete
+      description: Delete volume.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Volume deleted
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Volume not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+    post:
+      operationId: VolumeCreate
+      description: Create volume.
+      parameters:
+        - name: volumeData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Volume'
+      produces:
+        - application/json
+      responses:
+        '201':
+          description: Volume created
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Volume already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+    get:
+      operationId: VolumeGet
+      description: Get a volume.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Volume
+          schema:
+            $ref: '#/definitions/Volume'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Volume already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+  /1.4/volumes/{volume}/bind:
+    parameters:
+      - name: volume
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Volume name.
+      - name: BindData
+        in: body
+        schema:
+          type: object
+          $ref: '#/definitions/VolumeBindData'
+    post:
+      operationId: VolumeBind
+      description: Bind volume.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Volume bind
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Volume not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Volume bind already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+    delete:
+      operationId: VolumeUnbind
+      description: Unbind volume.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Volume unbinded
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Volume not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
+  /1.4/volumeplans:
+    get:
+      operationId: VolumePlansList
+      description: List volume plans.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Volume plans list
+          schema:
+            $ref: '#/definitions/VolumePlansListResponse'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
 definitions:
   ErrorMessage:
     description: Error message.
     type: string
+  VolumeListResponse:
+    description: Response returned by Volume List.
+    type: array
+    items:
+      type: object
+      $ref: "#/definitions/Volume"
+  VolumePlansListResponse:
+    description: Response returned by Volume Plans list.
+    type: object
+    additionalProperties:
+      type: object
+      $ref: "#/definitions/VolumePlan"
+  Volume:
+    description: Volume
+    type: object
+    properties:
+      name:
+        type: string
+        description: Volume name.
+      pool:
+        type: string
+        description: Volume pool.
+      teamOwner:
+        type: string
+        description: Team that owns the volume.
+      status:
+        type: string
+        description: Volume status.
+      plan:
+        type: object
+        description: Volume plan.
+        $ref: '#/definitions/VolumePlan'
+      binds:
+        type: array
+        description: Volume binds.
+        items:
+          type: object
+          $ref: '#/definitions/VolumeBind'
+      opts:
+        type: object
+        description: Custom volume options.
+        additionalProperties:
+          type: string
+  VolumePlan:
+    description: Volume plan.
+    type: object
+    properties:
+      name:
+        description: Volume plan name.
+        type: string
+      opts:
+        description: Volume plan opts.
+        type: object
+        additionalProperties:
+          type: string
+  VolumeBind:
+    type: object
+    properties:
+      id:
+        description: Volume bind ID.
+        type: object
+        $ref: '#/definitions/VolumeBindID'
+      readonly:
+        description: Volume is read-only.
+        type: boolean
+  VolumeBindID:
+    type: object
+    properties:
+      app:
+        description: App the volume is bound to.
+        type: string
+      mountpoint:
+        description: Volume mountpoint.
+        type: string
+      volume:
+        description: Volume name.
+        type: string
+  VolumeBindData:
+    type: object
+    properties:
+      mountpoint:
+        type: string
+      norestart:
+        type: boolean
+      readonly:
+        type: boolean
   App:
     description: Tsuru app.
     type: object
