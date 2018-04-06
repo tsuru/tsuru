@@ -216,6 +216,7 @@ paths:
           description: Environment variable name.
           type: string
           in: query
+          required: true
       produces:
         - application/json
       responses:
@@ -272,6 +273,91 @@ paths:
             $ref: '#/definitions/ErrorMessage'
       tags:
         - app
+      security:
+        - Bearer: []
+  /1.0/users:
+    get:
+      operationId: UsersList
+      description: List users.
+      parameters:
+        - name: useremail
+          in: query
+          required: true
+          type: string
+        - name: role
+          in: query
+          type: string
+        - name: context
+          in: query
+          type: string
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List users.
+          schema:
+            $ref: '#/definitions/UserListResponse'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+      - users
+      security:
+        - Bearer: []
+    post:
+      operationId: UserCreate
+      description: Create a new user.
+      parameters:
+        - name: UserData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/UserData'
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/json
+      responses:
+        '201': 
+          description: User created.
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409': 
+          description: User already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/info:
+    get:
+      operationId: UserInfo
+      description: Get information on an user.
+      produces:
+        - application/x-json-stream
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/UserInfoResponse'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - users
       security:
         - Bearer: []
   /1.2/node:
@@ -674,6 +760,67 @@ definitions:
         type: string
       successful:
         type: boolean
+  RoleUser:
+    description: Role of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contexttype:
+        type: string
+      contextvalue:
+        type: string
+  PermissionUser:
+    description: Permission of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contexttype:
+        type: string
+      contextvalue:
+        type: string
+  UserListResponse:
+    type: array
+    description: Response returned by Users List.
+    items:
+      type: object
+      properties:
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/RoleUser'
+        permissions:
+          type: array
+          items:
+            type: object
+            $ref: '#/definitions/PermissionUser'
+  UserInfoResponse:
+    description: Response returned by User Info.
+    type: object
+    properties:
+      email:
+        type: string
+      roles:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/RoleUser'
+      permissions:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/PermissionUser'
+  UserData:
+    type: object
+    properties:
+      email:
+        type: string
+      password:
+        type: string
   VolumeListResponse:
     description: Response returned by Volume List.
     type: array
