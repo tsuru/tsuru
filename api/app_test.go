@@ -1142,7 +1142,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 
 func (s *S) TestCreateAppWithTags(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
-	data, err := url.QueryUnescape("name=someapp&platform=zend&tag=tag1&tag=tag2")
+	data, err := url.QueryUnescape("name=someapp&platform=zend&tag=tag1&tag=tag2&tags.0=tag0")
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1169,7 +1169,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag1", "tag2"})
+	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2"})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("someapp"),
@@ -1179,6 +1179,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": "zend"},
 			{"name": "tag", "value": []string{"tag1", "tag2"}},
+			{"name": "tags.0", "value": "tag0"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1578,7 +1579,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permission.CtxApp, a.Name),
 	})
-	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3")
+	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3&tags.0=tag0")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1590,7 +1591,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag1", "tag2", "tag3"})
+	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2", "tag3"})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("myapp"),
 		Owner:  token.GetUserName(),
@@ -1598,6 +1599,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":appname", "value": a.Name},
 			{"name": "tag", "value": []string{"tag1", "tag2", "tag3"}},
+			{"name": "tags.0", "value": "tag0"},
 		},
 	}, eventtest.HasEvent)
 }
