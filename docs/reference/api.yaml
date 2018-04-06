@@ -212,6 +212,37 @@ paths:
         - app
       security:
         - Bearer: []
+    delete:
+      operationId: EnvUnset
+      description: Unset app environment variables.
+      parameters:
+        - name: unsetData
+          in: body
+          schema:
+            $ref: '#/definitions/EnvUnsetData'
+      consumes:
+        - application/json
+      produces:
+        - application/x-json-stream
+      responses:
+        '200':
+          description: Envs deleted
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.4/volumes:
     get:
       operationId: VolumeList
@@ -613,6 +644,18 @@ definitions:
           type: string
         public:
           type: boolean
+  EnvUnsetData:
+    description: Data sent to the environment unset endpoint.
+    type: object
+    properties:
+      env:
+        type: array
+        required: true
+        minLength: 1
+        items:
+          type: string
+      norestart:
+        type: boolean
   Unit:
     type: object
     properties:
