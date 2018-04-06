@@ -109,6 +109,37 @@ paths:
       security:
         - Bearer: []
   /1.0/apps/{app}:
+    get:
+      operationId: AppGet
+      description: Get info about a tsuru app.
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: Appname.
+      produces:
+      - application/json
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: 'App info'
+          schema:
+            $ref: '#/definitions/App'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: App not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - app
+      security:
+        - Bearer: []
     delete:
       operationId: AppDelete
       description: Delete a tsuru app.
