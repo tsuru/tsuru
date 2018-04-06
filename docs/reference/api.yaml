@@ -341,6 +341,31 @@ paths:
         - users
       security:
         - Bearer: []
+    delete:
+      operationId: DeleteUser
+      description: Delete an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+          minLength: 1
+          description: User e-mail.
+      responses:
+        '200': 
+          description: User removed
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - users
+      security:
+        - Bearer: []
   /1.0/users/info:
     get:
       operationId: UserInfo
@@ -402,13 +427,13 @@ paths:
           type: string
           minLength: 1
           description: User e-mail.
-        - name: quota
+        - name: limit
           in: query
           required: true
-          type: integer
           description: User new quota.
+          type: integer
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       responses:
         '200': 
           description: Quota successfully updated
