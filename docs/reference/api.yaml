@@ -139,16 +139,17 @@ paths:
       security:
         - Bearer: []
   /1.0/apps/{app}/env:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
     post:
       operationId: EnvSet
       description: Set new environment variable.
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
         - name: envs
           in: body
           required: true
@@ -168,12 +169,49 @@ paths:
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: App not found
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
         - app
+      security:
+        - Bearer: []
+    get:
+      operationId: EnvGet
+      description: Get app environment variables.
+      parameters:
+        - name: env
+          description: Environment variable name.
+          type: string
+          in: query
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      responses:
+        '200':
+          description: Environment variables
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Env'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: App not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.4/volumes:
     get:
       operationId: VolumeList
