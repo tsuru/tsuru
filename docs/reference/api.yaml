@@ -381,7 +381,7 @@ paths:
         '200': 
           description: OK
           schema:
-            $ref: '#/definitions/APITokenResponse'
+            $ref: '#/definitions/UserAPITokenResponse'
         '401': 
           description: Unauthorized
           schema:
@@ -408,7 +408,7 @@ paths:
         '200': 
           description: OK
           schema:
-            $ref: '#/definitions/APITokenResponse'
+            $ref: '#/definitions/UserAPITokenResponse'
         '401': 
           description: Unauthorized
           schema:
@@ -588,6 +588,91 @@ paths:
           description: User not found
           schema:
             $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/password:
+    put:
+      operationId: ChangePassword
+      description: Change password of logged user.
+      parameters:
+        - name: ChangePasswordData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ChangePasswordData'
+      consumes:
+       - application/x-www-form-urlencoded
+      responses:
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/{email}/password:
+    post:
+      operationId: ResetPassword
+      description: Reset password of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+        - name: ResetPasswordData
+          in: body
+          schema:
+            $ref: '#/definitions/ResetPasswordData'
+      consumes:
+       - application/json
+      responses:
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/tokens:
+    delete:
+      operationId: UserTokenDelete
+      description: Logout.
+      responses:
+        '200': 
+          description: Ok
       tags:
         - users
       security:
@@ -1060,6 +1145,21 @@ definitions:
         type: string
       password:
         type: string
+  UserAPITokenResponse:
+    description: A token returned by API Token calls.
+    type: string
+  ChangePasswordData:
+    type: object
+    properties:
+      confirm:
+        type: string
+      new:
+        type: string
+      old:
+        type: string
+  ResetPasswordData:
+    description: Token of user to have password reseted.
+    type: string
   UserSSHKeyAddData:
     type: object
     properties:
