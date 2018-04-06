@@ -123,22 +123,7 @@ paths:
           in: body
           required: true
           schema:
-            type: object
-            properties:
-              envs:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
-                minItems: 1
-              norestart:
-                type: boolean
-              private:
-                type: boolean
+            $ref: '#/definitions/EnvSetData'
           description: Environment variables.
       produces:
       - application/x-json-stream
@@ -525,6 +510,28 @@ definitions:
         type: integer
         minimum: 0
       default:
+        type: boolean
+  Env:
+    description: Environment variable.
+    type: object
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+  EnvSetData:
+    description: Data sent to the environment set endpoint.
+    type: object
+    properties:
+      envs:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/Env'
+        minItems: 1
+      norestart:
+        type: boolean
+      private:
         type: boolean
   EnvSetResponse:
     description: Environment variables response information.
