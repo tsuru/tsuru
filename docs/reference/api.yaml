@@ -71,7 +71,7 @@ paths:
       security:
         - Bearer: []
     post:
-      operationId: Create
+      operationId: AppCreate
       description: Create a new app.
       parameters:
         - name: app
@@ -105,6 +105,36 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags: 
+        - app
+      security:
+        - Bearer: []
+  /1.0/apps/{app}:
+    delete:
+      operationId: AppDelete
+      description: Delete a tsuru app.
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: App name.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: App removed.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: App not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
         - app
       security:
         - Bearer: []
