@@ -275,12 +275,67 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/users/api-key:
+    get:
+      operationId: APITokenShow
+      description: Show the API token on an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+      produces: 
+        - application/json
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/APITokenResponse'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    post:
+      operationId: APITokenRegenerate
+      description: Regenerate the API Token of an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+      produces:
+        - application/json
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/APITokenResponse'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
   /1.0/users:
     get:
       operationId: UsersList
       description: List users.
       parameters:
-        - name: useremail
+        - name: email
           in: query
           required: true
           type: string
@@ -1146,6 +1201,21 @@ definitions:
           type: string
         public:
           type: boolean
+  EnvUnsetData:
+    description: Data sent to the environment unset endpoint.
+    type: object
+    properties:
+      env:
+        type: array
+        required: true
+        minLength: 1
+        items:
+          type: string
+      norestart:
+        type: boolean
+  APITokenResponse:
+    description: String of a token of an user.
+    type: string
   Unit:
     type: object
     properties:
