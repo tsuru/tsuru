@@ -274,6 +274,124 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.2/node:
+    post:
+      operationId: NodeAdd
+      description: Add a node.
+      parameters:
+        - name: nodeAddData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/NodeAddData'
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/json
+      responses:
+        '201':
+          description: Ok
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '400':
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - node
+      security:
+        - Bearer: []
+    put:
+      operationId: NodeUpdate
+      description: Update node.
+      parameters:
+        - name: nodeUpdateData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/NodeUpdateData'
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - node
+      security:
+        - Bearer: []
+  /1.2/node/{address}:
+    parameters:
+      - name: address
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Node address.
+    delete:
+      operationId: NodeDelete
+      description: Remove node.
+      parameters:
+        - name: no-rebalance
+          in: query
+          required: true
+          type: boolean
+          description: Trigger node rebalance.
+        - name: remove-iaas
+          in: query
+          required: true
+          type: boolean
+          description: Remove machine from IaaS.
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - node
+      security:
+        - Bearer: []
+    get:
+      operationId: NodeGet
+      description: Get node information.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/NodeGetResponse'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - node
+      security:
+        - Bearer: []
   /1.4/volumes:
     get:
       operationId: VolumeList
@@ -451,6 +569,111 @@ definitions:
   ErrorMessage:
     description: Error message.
     type: string
+  NodeUpdateData:
+    type: object
+    properties:
+      address:
+        type: string
+      pool:
+        type: string
+      metadata:
+        type: object
+        additionalProperties:
+          type: string
+      enable:
+        type: boolean
+      disable:
+        type: boolean
+  NodeAddData:
+    type: object
+    properties:
+      address:
+        type: string
+      cacert:
+        description: Docker API CA certificate.
+        type: string
+      clientcert:
+        description: Docker API client certificate.
+        type: string
+      clientkey:
+        description: Docker API client key.
+        type: string
+      register:
+        description: Register an existing node.
+        type: boolean
+      waitto:
+        description: Timeout in nanoseconds.
+        type: integer
+        format: int64
+      metadata:
+        type: object
+        additionalProperties:
+          type: string
+  NodeGetResponse:
+    type: object
+    properties:
+      node:
+        type: object
+        $ref: '#/definitions/Node'
+      status:
+        type: object
+        $ref: '#/definitions/NodeStatus'
+      units:
+        type: object
+        $ref: '#/definitions/Unit'
+  Node:
+    type: object
+    properties:
+      address:
+        type: string
+      iaasid:
+        type: string
+      status:
+        type: string
+      pool:
+        type: string
+      provisioner:
+        type: string
+      metadata:
+        type: object
+        additionalProperties:
+          type: string
+  NodeStatus:
+    type: object
+    properties:
+      address:
+        type: string
+      checks:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/NodeCheck'
+      lastsuccess:
+        type: string
+        format: date-time
+      lastupdate:
+        type: string
+        format: date-time
+  NodeCheck:
+    type: object
+    properties:
+      time:
+        type: string
+        format: date-time
+      checks:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/NodeCheckResult'
+  NodeCheckResult:
+    type: object
+    properties:
+      name:
+        type: string
+      err:
+        type: string
+      successful:
+        type: boolean
   VolumeListResponse:
     description: Response returned by Volume List.
     type: array
