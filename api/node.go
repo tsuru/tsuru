@@ -678,6 +678,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 // produce: application/json
 // responses:
 //   200: Ok
+//   401: Unauthorized
 //   404: Not found
 func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
@@ -693,6 +694,11 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			}
 		}
 		return err
+	}
+	hasAccess := permission.Check(t, permission.PermNodeRead,
+		permission.Context(permission.CtxPool, node.Pool()))
+	if !hasAccess {
+		return permission.ErrUnauthorized
 	}
 	spec := provision.NodeToSpec(node)
 	if spec.IaaSID == "" {
