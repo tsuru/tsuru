@@ -121,8 +121,6 @@ paths:
           description: Appname.
       produces:
       - application/json
-      consumes:
-      - application/json
       responses:
         '200':
           description: 'App info'
@@ -152,8 +150,6 @@ paths:
           description: App name.
       produces:
       - application/x-json-stream
-      consumes:
-      - application/json
       responses:
         '200':
           description: App removed.
@@ -222,8 +218,6 @@ paths:
           in: query
       produces:
         - application/json
-      consumes:
-        - application/json
       responses:
         '200':
           description: Environment variables
@@ -247,12 +241,18 @@ paths:
       operationId: EnvUnset
       description: Unset app environment variables.
       parameters:
-        - name: unsetData
-          in: body
-          schema:
-            $ref: '#/definitions/EnvUnsetData'
-      consumes:
-        - application/json
+        - name: env
+          in: query
+          type: array
+          collectionFormat: multi
+          required: true
+          minItems: 1
+          items:
+            type: string
+        - name: norestart
+          in: query
+          required: true
+          type: boolean
       produces:
         - application/x-json-stream
       responses:
@@ -675,18 +675,6 @@ definitions:
           type: string
         public:
           type: boolean
-  EnvUnsetData:
-    description: Data sent to the environment unset endpoint.
-    type: object
-    properties:
-      env:
-        type: array
-        required: true
-        minLength: 1
-        items:
-          type: string
-      norestart:
-        type: boolean
   Unit:
     type: object
     properties:
