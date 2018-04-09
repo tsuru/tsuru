@@ -423,7 +423,7 @@ paths:
         - Bearer: []
   /1.0/users/keys:
     get:
-      operationId: UserSSHKeyList
+      operationId: SSHKeyList
       description: Show the list of the ssh keys of logged user.
       produces:
         - application/json
@@ -445,7 +445,7 @@ paths:
       security:
         - Bearer: []
     post:
-      operationId: UserSSHKeyAdd
+      operationId: SSHKeyAdd
       description: Add SSH key to logged user.
       parameters:
         - name: UserSSHKeyAddData
@@ -478,7 +478,7 @@ paths:
         - Bearer: []
   /1.0/users/keys/{key}:
     delete:
-      operationId: UserSSHKeyRemove
+      operationId: SSHKeyRemove
       description: Delete one ssh key of logged user.
       parameters:
         - name: key
@@ -507,7 +507,7 @@ paths:
         - Bearer: []
   /1.0/users/info:
     get:
-      operationId: UserInfo
+      operationId: UserGet
       description: Get information on logged user.
       produces:
         - application/json
