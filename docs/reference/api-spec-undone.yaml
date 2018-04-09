@@ -1356,23 +1356,6 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
   /node:
-    post:
-      description: add node
-      produces:
-      - application/x-json-stream
-      consumes:
-      - application/json
-      responses:
-        '201':
-          description: Ok
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
     put:
       description: update nodes
       consumes:
@@ -1393,26 +1376,6 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
   /node/{address}:
-    parameters:
-      - name: address
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Node address.
-    delete:
-      description: remove node
-      responses:
-        '200':
-          description: Ok
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
     get:
       description: node info
       produces:
