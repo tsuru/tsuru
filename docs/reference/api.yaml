@@ -455,7 +455,7 @@ paths:
           schema:
             $ref: '#/definitions/UserSSHKeyAddData'
       consumes:
-        - x-www-form-url-encoded
+        - application/json
       produces:
         - application/json
       responses: 
