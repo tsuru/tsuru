@@ -413,6 +413,32 @@ paths:
         - volume
       security:
         - Bearer: []
+    post:
+      operationId: VolumeCreate
+      description: Create volume.
+      parameters:
+        - name: volumeData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Volume'
+      produces:
+        - application/json
+      responses:
+        '201':
+          description: Volume created
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Volume already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - volume
+      security:
+        - Bearer: []
   /1.4/volumes/{volume}:
     parameters:
       - name: volume
@@ -435,32 +461,6 @@ paths:
             $ref: '#/definitions/ErrorMessage'
         '404':
           description: Volume not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-      tags:
-        - volume
-      security:
-        - Bearer: []
-    post:
-      operationId: VolumeCreate
-      description: Create volume.
-      parameters:
-        - name: volumeData
-          in: body
-          required: true
-          schema:
-            $ref: '#/definitions/Volume'
-      produces:
-        - application/json
-      responses:
-        '201':
-          description: Volume created
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
-          description: Volume already exists
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
