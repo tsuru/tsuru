@@ -216,7 +216,6 @@ paths:
           description: Environment variable name.
           type: string
           in: query
-          required: true
       produces:
         - application/json
       responses:
@@ -296,7 +295,9 @@ paths:
         '200':
           description: List users.
           schema:
-            $ref: '#/definitions/UserListResponse'
+            type: array
+            items:
+              $ref: '#/definitions/UserListResponse'
         '401':
           description: Unauthorized
           schema:
@@ -342,7 +343,7 @@ paths:
       security:
         - Bearer: []
     delete:
-      operationId: DeleteUser
+      operationId: UserDelete
       description: Delete an user.
       parameters:
         - name: email
@@ -368,7 +369,7 @@ paths:
         - Bearer: []
   /1.0/users/api-key:
     get:
-      operationId: APITokenShow
+      operationId: APITokenGet
       description: Show the API token of an user.
       parameters:
         - name: email
@@ -379,9 +380,9 @@ paths:
         - application/json
       responses:
         '200': 
-          description: OK
+          description: <API_TOKEN>
           schema:
-            $ref: '#/definitions/UserAPITokenResponse'
+            type: string
         '401': 
           description: Unauthorized
           schema:
@@ -406,9 +407,9 @@ paths:
         - application/json
       responses:
         '200': 
-          description: OK
+          description: <API_TOKEN>
           schema:
-            $ref: '#/definitions/UserAPITokenResponse'
+            type: string
         '401': 
           description: Unauthorized
           schema:
@@ -526,7 +527,7 @@ paths:
         - Bearer: []
   /1.0/users/{email}/quota:
     get:
-      operationId: UserQuotaView
+      operationId: UserQuotaGet
       description: Get quota of an user.
       parameters:
         - name: email
@@ -558,7 +559,7 @@ paths:
         - Bearer: []
     put:
       operationId: UserQuotaChange
-      description: Change quota of apps of an user.
+      description: Change quota of an user.
       parameters:
         - name: email
           in: path
@@ -637,10 +638,12 @@ paths:
           required: true
           type: string
           minLength: 1
-        - name: ResetPasswordData
+        - name: token
           in: body
+          required: true
           schema:
-            $ref: '#/definitions/ResetPasswordData'
+            type: string
+            minLength: 1
       consumes:
        - application/json
       responses:
@@ -805,7 +808,9 @@ paths:
         '200':
           description: List volumes
           schema:
-            $ref: '#/definitions/VolumeListResponse'
+            type: array
+            items:
+              $ref: '#/definitions/Volume'
         '204':
           description: No content
         '401':
@@ -1097,24 +1102,21 @@ definitions:
         type: string
       contextvalue:
         type: string
-  UserListResponse:
-    type: array
-    description: Response returned by Users List.
-    items:
-      type: object
-      properties:
-        email:
-          type: string
-        roles:
-          type: array
-          items:
-            type: object
-            $ref: '#/definitions/RoleUser'
-        permissions:
-          type: array
-          items:
-            type: object
-            $ref: '#/definitions/PermissionUser'
+  UserListResponseItem:
+    type: object
+    properties:
+      email:
+        type: string
+      roles:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/RoleUser'
+      permissions:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/PermissionUser'
   UserInfoResponse:
     description: Response returned by User Info.
     type: object
@@ -1145,9 +1147,6 @@ definitions:
         type: string
       password:
         type: string
-  UserAPITokenResponse:
-    description: A token returned by API Token calls.
-    type: string
   ChangePasswordData:
     type: object
     properties:
@@ -1157,9 +1156,6 @@ definitions:
         type: string
       old:
         type: string
-  ResetPasswordData:
-    description: Token of user to have password reseted.
-    type: string
   UserSSHKeyAddData:
     type: object
     properties:
@@ -1177,12 +1173,6 @@ definitions:
         type: integer
       limit:
         type: integer
-  VolumeListResponse:
-    description: Response returned by Volume List.
-    type: array
-    items:
-      type: object
-      $ref: "#/definitions/Volume"
   VolumePlansListResponse:
     description: Response returned by Volume Plans list.
     type: object
@@ -1401,18 +1391,6 @@ definitions:
           type: string
         public:
           type: boolean
-  EnvUnsetData:
-    description: Data sent to the environment unset endpoint.
-    type: object
-    properties:
-      env:
-        type: array
-        required: true
-        minLength: 1
-        items:
-          type: string
-      norestart:
-        type: boolean
   APITokenResponse:
     description: String of a token of an user.
     type: string
