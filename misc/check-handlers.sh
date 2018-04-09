@@ -48,7 +48,6 @@ github.com/tsuru/tsuru/api.eventList
 github.com/tsuru/tsuru/api.eventInfo
 github.com/tsuru/tsuru/api.eventCancel
 github.com/tsuru/tsuru/api.listNodesHandler
-github.com/tsuru/tsuru/api.infoNodeHandler
 github.com/tsuru/tsuru/api.nodeContainerInfo
 github.com/tsuru/tsuru/api.nodeContainerList
 github.com/tsuru/tsuru/api.nodeHealingRead
