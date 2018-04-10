@@ -8,12 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/tsuru/tsuru/quota"
 )
 
 type User struct {
-	quota.Quota
+	Quota    *AuthQuota
 	Email    string
 	Password string
 	APIKey   string

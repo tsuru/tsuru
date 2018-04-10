@@ -5,114 +5,109 @@
 package app
 
 import (
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"sync"
+
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/quota"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-func reserveUnits(app *App, quantity int) error {
-	app, err := checkAppLimit(app.Name, quantity)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-	)
-	for err == mgo.ErrNotFound {
-		app, err = checkAppLimit(app.Name, quantity)
-		if err != nil {
-			return err
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-		)
-	}
-	return err
+type quotaService struct {
+	storage appTypes.AppQuotaStorage
+	mutex   *sync.Mutex
 }
 
-func checkAppLimit(name string, quantity int) (*App, error) {
-	app, err := GetByName(name)
+func (s *quotaService) ReserveUnits(quota *appTypes.AppQuota, quantity int) error {
+	s.mutex.Lock()
+	err := s.CheckAppLimit(quota, quantity)
+	quota.InUse += quantity
+	s.mutex.Unlock()
 	if err != nil {
-		return nil, err
+		s.mutex.Lock()
+		quota.InUse -= quantity
+		s.mutex.Unlock()
+		return err
 	}
-	if !app.Quota.Unlimited() && app.Quota.InUse+quantity > app.Quota.Limit {
-		return nil, &quota.QuotaExceededError{
-			Available: uint(app.Quota.Limit - app.Quota.InUse),
+	err = s.storage.IncInUse(s, quota, quantity)
+	if err != nil {
+		s.mutex.Lock()
+		quota.InUse -= quantity
+		s.mutex.Unlock()
+		return err
+	}
+	return nil
+}
+
+func (s *quotaService) CheckAppLimit(quota *appTypes.AppQuota, quantity int) error {
+	if !quota.Unlimited() && quota.InUse+quantity > quota.Limit {
+		return &appTypes.AppQuotaExceededError{
+			Available: uint(quota.Limit - quota.InUse),
 			Requested: uint(quantity),
 		}
 	}
-	return app, nil
+	return nil
 }
 
-func releaseUnits(app *App, quantity int) error {
-	app, err := checkAppUsage(app.Name, quantity)
+func (s *quotaService) ReleaseUnits(quota *appTypes.AppQuota, quantity int) error {
+	s.mutex.Lock()
+	err := s.CheckAppUsage(quota, quantity)
+	quota.InUse -= quantity
+	s.mutex.Unlock()
 	if err != nil {
+		s.mutex.Lock()
+		quota.InUse += quantity
+		s.mutex.Unlock()
 		return err
 	}
-	conn, err := db.Conn()
+	err = s.storage.IncInUse(s, quota, -1*quantity)
 	if err != nil {
+		s.mutex.Lock()
+		quota.InUse += quantity
+		s.mutex.Unlock()
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-		bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
-	)
-	for err == mgo.ErrNotFound {
-		app, err = checkAppUsage(app.Name, quantity)
-		if err != nil {
-			return err
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
-		)
-	}
-	return err
+	return nil
 }
 
-func checkAppUsage(name string, quantity int) (*App, error) {
-	app, err := GetByName(name)
-	if err != nil {
-		return nil, err
+func (s *quotaService) CheckAppUsage(quota *appTypes.AppQuota, quantity int) error {
+	if quota.InUse-quantity < 0 {
+		return appTypes.ErrNoReservedUnits
 	}
-	if app.Quota.InUse-quantity < 0 {
-		return nil, errors.New("Not enough reserved units")
-	}
-	return app, nil
+	return nil
 }
 
 // ChangeQuota redefines the limit of the app. The new limit must be bigger
 // than or equal to the current number of units in the app. The new limit may be
 // smaller than 0, which means that the app should have an unlimited number of
 // units.
-func ChangeQuota(app *App, limit int) error {
+func (s *quotaService) ChangeLimitQuota(quota *appTypes.AppQuota, limit int) error {
 	if limit < 0 {
 		limit = -1
-	} else if limit < app.Quota.InUse {
-		return errors.New("new limit is lesser than the current allocated value")
+	} else if limit < quota.InUse {
+		return appTypes.ErrLimitLowerThanAllocated
 	}
-	conn, err := db.Conn()
+	err := s.storage.SetLimit(quota.AppName, limit)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"quota.limit": limit}},
-	)
-	if err != nil {
-		return err
+	s.mutex.Lock()
+	quota.Limit = limit
+	s.mutex.Unlock()
+	return nil
+}
+
+func (s *quotaService) ChangeInUseQuota(quota *appTypes.AppQuota, inUse int) error {
+	if inUse < 0 {
+		return errors.New("invalid value, cannot be lesser than 0")
 	}
-	app.Quota.Limit = limit
+	if !quota.Unlimited() && inUse > quota.Limit {
+		return &appTypes.AppQuotaExceededError{
+			Requested: uint(inUse),
+			Available: uint(quota.Limit),
+		}
+	}
+	s.storage.SetInUse(quota.AppName, inUse)
+	s.mutex.Lock()
+	quota.InUse = inUse
+	s.mutex.Unlock()
 	return nil
 }
