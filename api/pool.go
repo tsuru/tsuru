@@ -26,7 +26,6 @@ import (
 //   200: OK
 //   204: No content
 //   401: Unauthorized
-//   404: User not found
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var teams, poolNames []string
 	isGlobal := false
