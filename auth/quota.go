@@ -26,7 +26,7 @@ func ReserveApp(user *User) error {
 	}
 	defer conn.Close()
 	err = conn.Users().Update(
-		bson.M{"email": user.Email, "quota.inuse": user.InUse},
+		bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
 		bson.M{"$inc": bson.M{"quota.inuse": 1}},
 	)
 	for err == mgo.ErrNotFound {
@@ -35,7 +35,7 @@ func ReserveApp(user *User) error {
 			return err
 		}
 		err = conn.Users().Update(
-			bson.M{"email": user.Email, "quota.inuse": user.InUse},
+			bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
 			bson.M{"$inc": bson.M{"quota.inuse": 1}},
 		)
 	}
@@ -72,7 +72,7 @@ func ReleaseApp(user *User) error {
 	}
 	defer conn.Close()
 	err = conn.Users().Update(
-		bson.M{"email": user.Email, "quota.inuse": user.InUse},
+		bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
 		bson.M{"$inc": bson.M{"quota.inuse": -1}},
 	)
 	for err == mgo.ErrNotFound {
@@ -84,7 +84,7 @@ func ReleaseApp(user *User) error {
 			return errCantRelease
 		}
 		err = conn.Users().Update(
-			bson.M{"email": user.Email, "quota.inuse": user.InUse},
+			bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
 			bson.M{"$inc": bson.M{"quota.inuse": -1}},
 		)
 	}

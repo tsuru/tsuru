@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -349,7 +350,7 @@ func (s *S) TestProvisionAppMinParams(c *check.C) {
 func (s *S) TestReserveUserAppForward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: quota.Quota{Limit: 1},
+		Quota: &authTypes.AuthQuota{Limit: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -373,7 +374,7 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: quota.Quota{Limit: 1},
+		Quota: &authTypes.AuthQuota{Limit: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -397,7 +398,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: quota.Quota{Limit: 1},
+		Quota: &authTypes.AuthQuota{Limit: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -440,7 +441,7 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *check.C) {
 func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: quota.Quota{Limit: 1, InUse: 1},
+		Quota: &authTypes.AuthQuota{Limit: 1, InUse: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -457,7 +458,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 func (s *S) TestReserveUserAppBackward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: quota.Quota{Limit: 1, InUse: 1},
+		Quota: &authTypes.AuthQuota{Limit: 1, InUse: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -484,7 +485,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    quota.Unlimited,
+		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: -1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -494,14 +495,14 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	c.Assert(result.(int), check.Equals, 3)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.InUse, check.Equals, 3)
+	c.Assert(gotApp.Quota.InUse, check.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    quota.Unlimited,
+		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: -1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -511,14 +512,14 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	c.Assert(result.(int), check.Equals, 3)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.InUse, check.Equals, 3)
+	c.Assert(gotApp.Quota.InUse, check.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    quota.Quota{Limit: 1, InUse: 1},
+		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: 1, InUse: 1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -558,7 +559,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    quota.Quota{Limit: 5, InUse: 4},
+		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: 5, InUse: 4},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -566,7 +567,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.InUse, check.Equals, 1)
+	c.Assert(gotApp.Quota.InUse, check.Equals, 1)
 }
 
 func (s *S) TestReserveUnitsMinParams(c *check.C) {

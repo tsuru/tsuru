@@ -33,7 +33,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
@@ -149,7 +148,7 @@ type App struct {
 	Error          string
 	Routers        []appTypes.AppRouter
 
-	quota.Quota
+	Quota       *appTypes.AppQuota
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -1345,26 +1344,12 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuota() quota.Quota {
+func (app *App) GetQuota() *appTypes.AppQuota {
 	return app.Quota
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	if inUse < 0 {
-		return errors.New("invalid value, cannot be lesser than 0")
-	}
-	if !app.Quota.Unlimited() && inUse > app.Quota.Limit {
-		return &quota.QuotaExceededError{
-			Requested: uint(inUse),
-			Available: uint(app.Quota.Limit),
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"quota.inuse": inUse}})
+	err := servicemanager.AppQuota.ChangeInUseQuota(app.Quota, inUse)
 	if err == mgo.ErrNotFound {
 		return ErrAppNotFound
 	}

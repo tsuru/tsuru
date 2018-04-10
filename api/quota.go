@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -151,5 +151,5 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	return app.ChangeQuota(&a, limit)
+	return servicemanager.AppQuota.ChangeLimitQuota(a.Quota, limit)
 }

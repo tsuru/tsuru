@@ -9,6 +9,9 @@ import (
 	"io"
 	"regexp"
 
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -20,7 +23,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 )
@@ -89,7 +91,7 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app.Quota = quota.Unlimited
+		app.Quota = &appTypes.AppQuota{AppName: app.Name, Limit: -1, InUse: 0}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
@@ -351,7 +353,7 @@ var reserveUnitsToAdd = action.Action{
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		err = reserveUnits(app, n)
+		err = servicemanager.AppQuota.ReserveUnits(app.Quota, n)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +366,7 @@ var reserveUnitsToAdd = action.Action{
 			app = ctx.Params[0].(*App)
 		}
 		qty := ctx.FWResult.(int)
-		err := releaseUnits(app, qty)
+		err := servicemanager.AppQuota.ReleaseUnits(app.Quota, qty)
 		if err != nil {
 			log.Errorf("Failed to rollback reserveUnitsToAdd: %s", err)
 		}

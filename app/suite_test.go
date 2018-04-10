@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -80,7 +79,7 @@ var Greater check.Checker = &greaterChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
-		Quota: quota.Unlimited,
+		Quota: &authTypes.AuthQuota{Limit: -1},
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
