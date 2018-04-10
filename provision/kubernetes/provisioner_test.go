@@ -834,6 +834,74 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
+func (s *S) TestRollback(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	deployEvt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", deployEvt)
+
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+
+	customData = map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg2",
+		},
+	}
+
+	err = image.SaveImageCustomData("tsuru/app-myapp:v2", customData)
+	c.Assert(err, check.IsNil)
+	img, err = s.p.Deploy(a, "tsuru/app-myapp:v2", deployEvt)
+
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
+
+	deployEvt.Done(err)
+	c.Assert(err, check.IsNil)
+
+	rollbackEvt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeployRollback,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeployRollback),
+	})
+	c.Assert(err, check.IsNil)
+
+	img, err = s.p.Rollback(a, "tsuru/app-myapp:v1", rollbackEvt)
+
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	containers := deps.Items[0].Spec.Template.Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
+	})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 1)
+}
+
 func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
 	config.Set("docker:registry", "registry.example.com")
 	defer config.Unset("docker:registry")
