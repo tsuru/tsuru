@@ -439,6 +439,113 @@ paths:
         - volume
       security:
         - Bearer: []
+  /1.0/pools:
+    get:
+      operationId: PoolList
+      description: List pools.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Pools list
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Pool'
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - pool
+      security:
+        - Bearer: []
+    post:
+      operationId: PoolCreate
+      description: Creates a pool.
+      parameters:
+        - name: PoolCreateData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/PoolCreateData'
+      consumes:
+        - application/json
+      responses:
+        '201':
+          description: Pool created
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Pool already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - pool
+      security:
+        - Bearer: []
+  /pools/{pool}:
+    parameters:
+      - name: pool
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: PoolDelete
+      description: Deletes a pool.
+      responses:
+        '200':
+          description: Pool deleted
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Pool not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - pool
+      security:
+        - Bearer: []
+    put:
+      operationId: PoolUpdate
+      description: Updates a pool.
+      parameters:
+        - name: PoolUpdateData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/PoolUpdateData'
+      consumes:
+        - application/json
+      responses:
+        '200':
+          description: Pool updated
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Pool not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Default pool already defined
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - pool
+      security:
+        - Bearer: []
   /1.4/volumes/{volume}:
     parameters:
       - name: volume
@@ -569,6 +676,37 @@ definitions:
   ErrorMessage:
     description: Error message.
     type: string
+  Pool:
+    type: object
+    properties:
+      name:
+        type: string
+      default:
+        type: boolean
+      provisioner:
+        type: string
+  PoolCreateData:
+    type: object
+    properties:
+      name:
+        type: string
+      public:
+        type: boolean
+      default:
+        type: boolean
+      force:
+        type: boolean
+      provisioner:
+        type: string
+  PoolUpdateData:
+    type: object
+    properties:
+      default:
+        type: boolean
+      public:
+        type: boolean
+      force:
+        type: boolean
   NodeUpdateData:
     type: object
     properties:
