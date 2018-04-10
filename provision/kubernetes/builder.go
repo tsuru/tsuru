@@ -57,17 +57,5 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 	if err != nil {
 		return nil, "", nil, err
 	}
-	inspect, err := imageTagAndPush(client, a, imageID, newImage)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	procfileRaw, err := procfileInspectPod(client, a, imageID)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	tsuruYamlData, err := loadTsuruYamlPod(client, a, imageID)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	return inspect, procfileRaw, tsuruYamlData, nil
+	return imageTagAndPush(client, a, imageID, newImage)
 }
