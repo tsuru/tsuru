@@ -297,7 +297,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/UserListResponse'
+              $ref: '#/definitions/UserListResponseItem'
         '401':
           description: Unauthorized
           schema:
@@ -380,7 +380,7 @@ paths:
         - application/json
       responses:
         '200': 
-          description: <API_TOKEN>
+          description: API TOKEN
           schema:
             type: string
         '401': 
@@ -407,7 +407,7 @@ paths:
         - application/json
       responses:
         '200': 
-          description: <API_TOKEN>
+          description: API TOKEN
           schema:
             type: string
         '401': 
@@ -432,7 +432,7 @@ paths:
         '200':
           description: OK
           schema:
-            $ref: '#/definitions/UserSSHKeyListResponse'
+            $ref: '#/definitions/SSHKeyListResponse'
         '400':
           description: Invalid data
           schema:
@@ -449,11 +449,11 @@ paths:
       operationId: SSHKeyAdd
       description: Add SSH key to logged user.
       parameters:
-        - name: UserSSHKeyAddData
+        - name: SSHKeyAddData
           in: body
           required: true
           schema:
-            $ref: '#/definitions/UserSSHKeyAddData'
+            $ref: '#/definitions/SSHKeyAddData'
       consumes:
         - application/json
       produces:
@@ -516,7 +516,7 @@ paths:
         '200': 
           description: OK
           schema:
-            $ref: '#/definitions/UserInfoResponse'
+            $ref: '#/definitions/UserGetResponse'
         '401': 
           description: Unauthorized
           schema:
@@ -536,8 +536,6 @@ paths:
           type: string
           minLength: 1
           description: User e-mail.
-      consumes:
-        - application/x-www-form-urlencoded
       produces:
         - application/json
       responses:
@@ -1117,7 +1115,7 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/PermissionUser'
-  UserInfoResponse:
+  UserGetResponse:
     description: Response returned by User Info.
     type: object
     properties:
@@ -1133,7 +1131,7 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/PermissionUser'
-  UserSSHKeyListResponse:
+  SSHKeyListResponse:
     description: Response returned by User SSH Key List.
     type: object
     properties:
@@ -1156,7 +1154,7 @@ definitions:
         type: string
       old:
         type: string
-  UserSSHKeyAddData:
+  SSHKeyAddData:
     type: object
     properties:
       force:
