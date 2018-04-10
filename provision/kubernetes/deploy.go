@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -888,45 +887,10 @@ func getTargetPortForImage(imgName string) int {
 	return portInt
 }
 
-func procfileInspectPod(client *ClusterClient, a provision.App, image string) (string, error) {
-	deployPodName, err := buildPodNameForApp(a, "procfile-inspect")
-	if err != nil {
-		return "", err
-	}
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			IsBuild:     true,
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	err = runPod(runSinglePodArgs{
-		client: client,
-		stdout: stdout,
-		stderr: stderr,
-		labels: labels,
-		cmd:    cmd,
-		name:   deployPodName,
-		image:  image,
-		app:    a,
-	})
-	if err != nil {
-		return "", errors.Wrapf(err, "unable to inspect Procfile: stdout: %q, stderr: %q", stdout.String(), stderr.String())
-	}
-	return stdout.String(), nil
-}
-
-func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (*docker.Image, error) {
+func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
 	deployPodName, err := deployPodNameForApp(a)
 	if err != nil {
-		return nil, err
+		return nil, "", nil, err
 	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -937,62 +901,63 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", nil, err
 	}
-	kubeConf := getKubeConfig()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	authFmt := `docker login -u "%s" -p "%s" "%s"`
-	var ologin, nlogin string
-	regUser, regPass, regDomain := registryAuth(oldImage)
-	if regUser != "" {
-		ologin = fmt.Sprintf(authFmt, regUser, regPass, regDomain)
+	destImages := []string{newImage}
+	repository, tag := image.SplitImageName(newImage)
+	if tag != "latest" {
+		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
 	}
-	regUser, regPass, regDomain = registryAuth(newImage)
-	if regUser != "" {
-		nlogin = fmt.Sprintf(authFmt, regUser, regPass, regDomain)
-	}
-	err = runPod(runSinglePodArgs{
-		client: client,
-		stdout: stdout,
-		stderr: stderr,
-		labels: labels,
-		cmd: fmt.Sprintf(`
-			%[1]s
-			docker pull %[2]s >/dev/null
-			docker inspect %[2]s
-			docker tag %[2]s %[4]s
-			%[3]s
-			docker push %[4]s
-`, ologin, oldImage, nlogin, newImage),
-		name:       deployPodName,
-		image:      kubeConf.DeployInspectImage,
-		dockerSock: true,
-		app:        a,
+	err = runInspectSidecar(inspectParams{
+		client:            client,
+		stdout:            stdout,
+		stderr:            stderr,
+		app:               a,
+		sourceImage:       oldImage,
+		destinationImages: destImages,
+		podName:           deployPodName,
+		labels:            labels,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
+		return nil, "", nil, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
-	var imgs []docker.Image
+	var data struct {
+		Image     *docker.Image
+		TsuruYaml *provision.TsuruYamlData
+		Procfile  string
+	}
 	bufData := stdout.String()
-	err = json.NewDecoder(stdout).Decode(&imgs)
+	err = json.NewDecoder(stdout).Decode(&data)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
+		return nil, "", nil, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
 	}
-	if len(imgs) != 1 {
-		return nil, errors.Errorf("unexpected image inspect response: %q", bufData)
-	}
-	return &imgs[0], nil
+	return data.Image, data.Procfile, data.TsuruYaml, err
 }
 
-func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*provision.TsuruYamlData, error) {
-	const path = "/home/application/current"
-	deployPodName, err := buildPodNameForApp(a, "yamldata")
-	if err != nil {
-		return nil, err
+type inspectParams struct {
+	sourceImage       string
+	podName           string
+	destinationImages []string
+	stdout            io.Writer
+	stderr            io.Writer
+	client            *ClusterClient
+	labels            *provision.LabelSet
+	app               provision.App
+}
+
+func runInspectSidecar(params inspectParams) error {
+	if len(params.destinationImages) == 0 {
+		return errors.Errorf("no destination images provided")
 	}
+	err := ensureServiceAccountForApp(params.client, params.app)
+	if err != nil {
+		return err
+	}
+	baseName := params.podName
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
+		App: params.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			IsBuild:     true,
 			Prefix:      tsuruLabelPrefix,
@@ -1000,29 +965,103 @@ func loadTsuruYamlPod(client *ClusterClient, a provision.App, image string) (*pr
 		},
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cmdCat := fmt.Sprintf("(cat %[1]s/tsuru.yml || cat %[1]s/tsuru.yaml || cat %[1]s/app.yml || cat %[1]s/app.yaml || true) 2>/dev/null", path)
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	err = runPod(runSinglePodArgs{
-		client: client,
-		stdout: stdout,
-		stderr: stderr,
-		labels: labels,
-		cmd:    cmdCat,
-		name:   deployPodName,
-		image:  image,
-		app:    a,
-	})
+	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
+	annotations.SetBuildImage(params.destinationImages[0])
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   params.app.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector()
+	inspectContainer := "inspect-cont"
+	kubeConf := getKubeConfig()
+	pullSecrets, err := getImagePullSecrets(params.client, params.sourceImage, kubeConf.DeploySidecarImage)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to inspect tsuru.yml. stdout: %q, stderr: %q", stdout.String(), stderr.String())
+		return err
 	}
-	var tsuruYamlData provision.TsuruYamlData
-	bufData := stdout.String()
-	err = yaml.Unmarshal(stdout.Bytes(), &tsuruYamlData)
+	regUser, regPass, regDomain := registryAuth(params.destinationImages[0])
+	pod := &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        baseName,
+			Namespace:   params.client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
+		},
+		Spec: apiv1.PodSpec{
+			ImagePullSecrets:   pullSecrets,
+			ServiceAccountName: serviceAccountNameForApp(params.app),
+			NodeSelector:       nodeSelector,
+			Volumes: append([]apiv1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: dockerSockPath,
+						},
+					},
+				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
+			}),
+			RestartPolicy: apiv1.RestartPolicyNever,
+			Containers: []apiv1.Container{
+				{
+					Name:    baseName,
+					Image:   params.sourceImage,
+					Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
+					VolumeMounts: append([]apiv1.VolumeMount{
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
+					}),
+				},
+				{
+					Name:  inspectContainer,
+					Image: kubeConf.DeployInspectImage,
+					VolumeMounts: append([]apiv1.VolumeMount{
+						{Name: "dockersock", MountPath: dockerSockPath},
+						{Name: "intercontainer", MountPath: buildIntercontainerPath},
+					}),
+					Stdin:     true,
+					StdinOnce: true,
+					Env: []apiv1.EnvVar{
+						{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+						{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(params.destinationImages, ",")},
+						{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: params.sourceImage},
+						{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: regUser},
+						{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: regPass},
+						{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: regDomain},
+					},
+					Command: []string{
+						"sh", "-ec",
+						fmt.Sprintf(`
+							end() { touch %[1]s; }
+							trap end EXIT
+							cat >/dev/null && /bin/deploy-agent
+						`, buildIntercontainerDone),
+					},
+				},
+			},
+		},
+	}
+	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(pod)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid load tsuru yaml response: %q", bufData)
+		return errors.WithStack(err)
 	}
-	return &tsuruYamlData, nil
+	defer cleanupPod(params.client, pod.Name)
+	multiErr := tsuruErrors.NewMultiError()
+	err = waitForPodContainersRunning(params.client, pod.Name, kubeConf.PodRunningTimeout)
+	if err != nil {
+		multiErr.Add(errors.WithStack(err))
+	}
+	err = doAttach(params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false)
+	if err != nil {
+		multiErr.Add(errors.WithStack(err))
+	}
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
