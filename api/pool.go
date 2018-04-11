@@ -150,6 +150,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // responses:
 //   200: Pool removed
 //   401: Unauthorized
+//   403: Pool still has apps
 //   404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
