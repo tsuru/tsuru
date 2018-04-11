@@ -914,6 +914,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
+        '403':
+          description: Pool still has apps
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '404':
           description: Pool not found
           schema:
