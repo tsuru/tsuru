@@ -248,7 +248,7 @@ func (s *S) TestNativeRemove(c *check.C) {
 	params["password"] = "123456"
 	token, err := scheme.Login(params)
 	c.Assert(err, check.IsNil)
-	u, err := token.User()
+	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(u)
 	c.Assert(err, check.IsNil)

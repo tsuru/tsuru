@@ -5,33 +5,55 @@
 package auth
 
 import (
-	"crypto"
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"time"
 )
 
+type TeamTokenCreateArgs struct {
+	TokenID     string `json:"token_id" form:"token_id"`
+	Description string `json:"description" form:"description"`
+	ExpiresIn   int    `json:"expires_in" form:"expires_in"`
+	Team        string `json:"team" form:"team"`
+}
+
+type TeamTokenUpdateArgs struct {
+	TokenID     string `json:"token_id" form:"token_id"`
+	Regenerate  bool   `json:"regenerate" form:"regenerate"`
+	Description string `json:"description" form:"description"`
+	ExpiresIn   int    `json:"expires_in" form:"expires_in"`
+}
+
 type TeamToken struct {
-	Token        string     `json:"token"`
-	CreatedAt    time.Time  `json:"created_at"`
-	ExpiresAt    *time.Time `json:"expires_at"`
-	LastAccess   *time.Time `json:"last_access"`
-	CreatorEmail string     `json:"creator_email"`
-	Teams        []string   `json:"teams"`
-	Roles        []string   `json:"roles,omitempty"`
+	Token        string         `json:"token"`
+	TokenID      string         `json:"token_id"`
+	Description  string         `json:"description"`
+	CreatedAt    time.Time      `json:"created_at"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	LastAccess   time.Time      `json:"last_access"`
+	CreatorEmail string         `json:"creator_email"`
+	Team         string         `json:"team"`
+	Roles        []RoleInstance `json:"roles,omitempty"`
+}
+
+type TeamTokenStorage interface {
+	Insert(TeamToken) error
+	FindByTokenID(tokenID string) (*TeamToken, error)
+	FindByToken(token string) (*TeamToken, error)
+	FindByTeams(teams []string) ([]TeamToken, error)
+	UpdateLastAccess(token string) error
+	Update(TeamToken) error
+	Delete(tokenID string) error
 }
 
 type TeamTokenService interface {
-	Insert(TeamToken) error
-	FindByToken(string) (*TeamToken, error)
-	FindByTeams([]string) ([]TeamToken, error)
-	Authenticate(string) (*TeamToken, error)
-	AddTeams(TeamToken, ...string) error
-	RemoveTeams(TeamToken, ...string) error
-	AddRoles(TeamToken, ...string) error
-	RemoveRoles(TeamToken, ...string) error
-	Delete(TeamToken) error
+	Create(args TeamTokenCreateArgs, token Token) (TeamToken, error)
+	Update(args TeamTokenUpdateArgs, token Token) (TeamToken, error)
+	Delete(tokenID string) error
+	Authenticate(header string) (Token, error)
+	FindByTokenID(tokenID string) (TeamToken, error)
+	FindByUserToken(t Token) ([]TeamToken, error)
+	AddRole(tokenID string, roleName, contextValue string) error
+	RemoveRole(tokenID string, roleName, contextValue string) error
 }
 
 var (
@@ -39,40 +61,3 @@ var (
 	ErrTeamTokenNotFound      = errors.New("team token not found")
 	ErrTeamTokenExpired       = errors.New("team token expired")
 )
-
-func NewTeamToken(appName, creatorEmail string) TeamToken {
-	// TODO: config expiration
-	now := time.Now()
-	expiresAt := now.Add(365 * 24 * time.Hour)
-	return TeamToken{
-		Token:        generateToken(appName, crypto.SHA1),
-		CreatorEmail: creatorEmail,
-		CreatedAt:    now,
-		ExpiresAt:    &expiresAt,
-	}
-}
-
-// TODO: extract token function from auth/native/token.go
-const keySize = 32
-
-func generateToken(data string, hash crypto.Hash) string {
-	var tokenKey [keySize]byte
-	n, err := rand.Read(tokenKey[:])
-	for n < keySize || err != nil {
-		n, err = rand.Read(tokenKey[:])
-	}
-	h := hash.New()
-	h.Write([]byte(data))
-	h.Write(tokenKey[:])
-	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-func (t *TeamToken) AddRole(roleName string) {
-	for _, r := range t.Roles {
-		if r == roleName {
-			return
-		}
-	}
-	t.Roles = append(t.Roles, roleName)
-}

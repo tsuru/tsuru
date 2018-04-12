@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	Cache    app.CacheService
-	Plan     app.PlanService
-	Platform app.PlatformService
-	Team     auth.TeamService
+	Cache     app.CacheService
+	Plan      app.PlanService
+	Platform  app.PlatformService
+	Team      auth.TeamService
+	TeamToken auth.TeamTokenService
 )

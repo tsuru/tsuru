@@ -5,29 +5,355 @@
 package auth
 
 import (
+	"fmt"
 	"sort"
+	"time"
 
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestTeamTokenAuth(c *check.C) {
-	appToken := authTypes.TeamToken{Token: "abcdef"}
-	err := TeamTokenService().Insert(appToken)
-	c.Assert(err, check.IsNil)
-	t, err := TeamTokenAuth(appToken.Token)
-	c.Assert(err, check.IsNil)
-	c.Assert(t.GetValue(), check.Equals, appToken.Token)
+type userToken struct {
+	user        *User
+	permissions []permission.Permission
 }
 
-func (s *S) TestTeamTokenAuthNotFound(c *check.C) {
-	t, err := TeamTokenAuth("bearer invalid")
-	c.Assert(t, check.IsNil)
+func (t *userToken) GetValue() string {
+	return ""
+}
+func (t *userToken) GetAppName() string {
+	return ""
+}
+func (t *userToken) GetUserName() string {
+	return ""
+}
+func (t *userToken) IsAppToken() bool {
+	return false
+}
+func (t *userToken) User() (*authTypes.User, error) {
+	return ConvertOldUser(t.user, nil)
+}
+func (t *userToken) Permissions() ([]permission.Permission, error) {
+	return t.permissions, nil
+}
+
+func (s *S) Test_TeamTokenService_Create(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	expected := authTypes.TeamToken{
+		Team:         "cobrateam",
+		Token:        token.Token,
+		TokenID:      "cobrateam-" + token.Token[:5],
+		CreatorEmail: s.user.Email,
+		CreatedAt:    token.CreatedAt,
+		ExpiresAt:    time.Time{},
+	}
+	c.Assert(token, check.DeepEquals, expected)
+	t, err := servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	t.CreatedAt = expected.CreatedAt
+	c.Assert(t, check.DeepEquals, expected)
+}
+
+func (s *S) Test_TeamTokenService_Create_WithExpires(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name, ExpiresIn: 60 * 60}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	expected := authTypes.TeamToken{
+		Team:         "cobrateam",
+		Token:        token.Token,
+		TokenID:      "cobrateam-" + token.Token[:5],
+		CreatorEmail: s.user.Email,
+		CreatedAt:    token.CreatedAt,
+		ExpiresAt:    token.CreatedAt.Add(time.Hour),
+	}
+	c.Assert(token, check.DeepEquals, expected)
+	t, err := servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.ExpiresAt.Sub(t.CreatedAt), check.Equals, time.Hour)
+	t.CreatedAt = expected.CreatedAt
+	t.ExpiresAt = expected.ExpiresAt
+	c.Assert(t, check.DeepEquals, expected)
+}
+
+func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	t, err := servicemanager.TeamToken.Authenticate("bearer " + token.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.GetValue(), check.Equals, token.Token)
+	c.Assert(t.IsAppToken(), check.Equals, false)
+	c.Assert(t.GetUserName(), check.Equals, fmt.Sprintf("token: cobrateam-%s", token.Token[:5]))
+	c.Assert(t.GetAppName(), check.Equals, "")
+	_, err = t.User()
+	c.Assert(err, check.ErrorMatches, `team token is not a user token`)
+	perms, err := t.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.HasLen, 0)
+	dbToken, err := servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.LastAccess.IsZero(), check.Equals, false)
+}
+
+func (s *S) Test_TeamTokenService_Authenticate_NotFound(c *check.C) {
+	_, err := servicemanager.TeamToken.Authenticate("bearer abc")
 	c.Assert(err, check.Equals, ErrInvalidToken)
 }
 
-func (s *S) TestTeamTokenPermissions(c *check.C) {
+func (s *S) Test_TeamTokenService_Authenticate_Expired(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name, ExpiresIn: -1}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	_, err = servicemanager.TeamToken.Authenticate("bearer " + token.Token)
+	c.Assert(err, check.Equals, authTypes.ErrTeamTokenExpired)
+}
+
+func (s *S) Test_TeamTokenService_AddRole(c *check.C) {
+	_, err := permission.NewRole("app-deployer", "app", "")
+	c.Assert(err, check.IsNil)
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp2")
+	c.Assert(err, check.IsNil)
+	dbToken, err := servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.Roles, check.DeepEquals, []authTypes.RoleInstance{
+		{Name: "app-deployer", ContextValue: "myapp"},
+		{Name: "app-deployer", ContextValue: "myapp2"},
+	})
+}
+
+func (s *S) Test_TeamTokenService_AddRole_TokenNotFound(c *check.C) {
+	_, err := permission.NewRole("app-deployer", "app", "")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole("invalid-token", "app-deployer", "myapp")
+	c.Assert(err, check.Equals, authTypes.ErrTeamTokenNotFound)
+}
+
+func (s *S) Test_TeamTokenService_AddRole_RoleNotFound(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
+}
+
+func (s *S) Test_TeamTokenService_RemoveRole(c *check.C) {
+	_, err := permission.NewRole("app-deployer", "app", "")
+	c.Assert(err, check.IsNil)
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp2")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.RemoveRole(token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	dbToken, err := servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.Roles, check.DeepEquals, []authTypes.RoleInstance{
+		{Name: "app-deployer", ContextValue: "myapp2"},
+	})
+	err = servicemanager.TeamToken.RemoveRole(token.TokenID, "app-deployer", "myapp2")
+	c.Assert(err, check.IsNil)
+	dbToken, err = servicemanager.TeamToken.FindByTokenID(token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.Roles, check.IsNil)
+}
+
+func tokensForEquals(v []authTypes.TeamToken) []authTypes.TeamToken {
+	sort.Slice(v, func(i, j int) bool {
+		return v[i].TokenID < v[j].TokenID
+	})
+	for i := range v {
+		v[i].CreatedAt = time.Time{}
+	}
+	return v
+}
+
+func (s *S) Test_TeamTokenService_FindByUserToken(c *check.C) {
+	userToken := &userToken{
+		user: s.user,
+	}
+	t1, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:    s.team.Name,
+		TokenID: "t1",
+	}, userToken)
+	c.Assert(err, check.IsNil)
+	t2, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:    s.team.Name,
+		TokenID: "t2",
+	}, userToken)
+	c.Assert(err, check.IsNil)
+	teamTokens, err := servicemanager.TeamToken.FindByUserToken(userToken)
+	c.Assert(err, check.IsNil)
+	c.Assert(tokensForEquals(teamTokens), check.DeepEquals, tokensForEquals([]authTypes.TeamToken{
+		{
+			Token:        t1.Token,
+			TokenID:      "t1",
+			Team:         "cobrateam",
+			CreatorEmail: "timeredbull@globo.com",
+		},
+		{
+			Token:        t2.Token,
+			TokenID:      "t2",
+			Team:         "cobrateam",
+			CreatorEmail: "timeredbull@globo.com",
+		},
+	}))
+}
+
+func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C) {
+	r1, err := permission.NewRole("app-deployer", "app", "")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions(permission.PermAppDeploy.FullName())
+	c.Assert(err, check.IsNil)
+	userToken := &userToken{
+		user: s.user,
+		permissions: []permission.Permission{
+			{
+				Scheme:  permission.PermAppDeploy,
+				Context: permission.Context(permission.CtxApp, "myapp"),
+			},
+		},
+	}
+	t1, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:    s.team.Name,
+		TokenID: "t1",
+	}, userToken)
+	c.Assert(err, check.IsNil)
+	t2, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:    s.team.Name,
+		TokenID: "t2",
+	}, userToken)
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(t1.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(t2.TokenID, "app-deployer", "myapp2")
+	c.Assert(err, check.IsNil)
+	teamTokens, err := servicemanager.TeamToken.FindByUserToken(userToken)
+	c.Assert(err, check.IsNil)
+	c.Assert(tokensForEquals(teamTokens), check.DeepEquals, tokensForEquals([]authTypes.TeamToken{
+		{
+			Token:        t1.Token,
+			TokenID:      "t1",
+			Team:         "cobrateam",
+			CreatorEmail: "timeredbull@globo.com",
+			Roles:        []authTypes.RoleInstance{{Name: "app-deployer", ContextValue: "myapp"}},
+		},
+		{
+			Token:        "",
+			TokenID:      "t2",
+			Team:         "cobrateam",
+			CreatorEmail: "timeredbull@globo.com",
+			Roles:        []authTypes.RoleInstance{{Name: "app-deployer", ContextValue: "myapp2"}},
+		},
+	}))
+}
+
+func (s *S) Test_TeamTokenService_FindByUserToken_Empty(c *check.C) {
+	userToken := &userToken{
+		user: s.user,
+	}
+	teamTokens, err := servicemanager.TeamToken.FindByUserToken(userToken)
+	c.Assert(err, check.IsNil)
+	c.Assert(teamTokens, check.HasLen, 0)
+}
+
+func (s *S) Test_TeamTokenService_Update_Description(c *check.C) {
+	_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:    s.team.Name,
+		TokenID: "t1",
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	token, err := servicemanager.TeamToken.FindByTokenID("t1")
+	c.Assert(err, check.IsNil)
+	updatedToken, err := servicemanager.TeamToken.Update(authTypes.TeamTokenUpdateArgs{
+		TokenID:     "t1",
+		Description: "xyz",
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	expected := authTypes.TeamToken{
+		Team:         "cobrateam",
+		Description:  "xyz",
+		Token:        token.Token,
+		TokenID:      "t1",
+		CreatorEmail: s.user.Email,
+		CreatedAt:    token.CreatedAt,
+		ExpiresAt:    time.Time{},
+	}
+	c.Assert(updatedToken, check.DeepEquals, expected)
+	t, err := servicemanager.TeamToken.FindByTokenID("t1")
+	c.Assert(err, check.IsNil)
+	c.Assert(t, check.DeepEquals, expected)
+}
+
+func (s *S) Test_TeamTokenService_Update_Regenerate(c *check.C) {
+	_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:        s.team.Name,
+		TokenID:     "t1",
+		Description: "abc",
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	token, err := servicemanager.TeamToken.FindByTokenID("t1")
+	c.Assert(err, check.IsNil)
+	updatedToken, err := servicemanager.TeamToken.Update(authTypes.TeamTokenUpdateArgs{
+		TokenID:    "t1",
+		Regenerate: true,
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedToken.Token, check.Not(check.Equals), token.Token)
+	expected := authTypes.TeamToken{
+		Team:         "cobrateam",
+		Description:  "abc",
+		Token:        updatedToken.Token,
+		TokenID:      "t1",
+		CreatorEmail: s.user.Email,
+		CreatedAt:    token.CreatedAt,
+		ExpiresAt:    time.Time{},
+	}
+	c.Assert(updatedToken, check.DeepEquals, expected)
+	t, err := servicemanager.TeamToken.FindByTokenID("t1")
+	c.Assert(err, check.IsNil)
+	c.Assert(t, check.DeepEquals, expected)
+}
+
+func (s *S) Test_TeamTokenService_Update_Expires(c *check.C) {
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:        s.team.Name,
+		TokenID:     "t1",
+		Description: "abc",
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	updatedToken, err := servicemanager.TeamToken.Update(authTypes.TeamTokenUpdateArgs{
+		TokenID:   "t1",
+		ExpiresIn: 60 * 60,
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedToken.Description, check.Equals, "abc")
+	c.Assert(updatedToken.Token, check.Equals, token.Token)
+	c.Assert(updatedToken.ExpiresAt.IsZero(), check.Equals, false)
+	t, err := servicemanager.TeamToken.FindByTokenID("t1")
+	c.Assert(err, check.IsNil)
+	c.Assert(t.ExpiresAt.IsZero(), check.Equals, false)
+
+	updatedToken, err = servicemanager.TeamToken.Update(authTypes.TeamTokenUpdateArgs{
+		TokenID:   "t1",
+		ExpiresIn: 0,
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedToken.ExpiresAt.IsZero(), check.Equals, false)
+
+	updatedToken, err = servicemanager.TeamToken.Update(authTypes.TeamTokenUpdateArgs{
+		TokenID:   "t1",
+		ExpiresIn: -1,
+	}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedToken.ExpiresAt.IsZero(), check.Equals, true)
+}
+
+func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	r1, err := permission.NewRole("app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.read", "app.deploy")
@@ -36,9 +362,14 @@ func (s *S) TestTeamTokenPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r2.AddPermissions("app.update")
 	c.Assert(err, check.IsNil)
-
-	appToken := &TeamToken{AppName: "myapp", Roles: []string{"app-deployer", "app-updater"}}
-	perms, err := appToken.Permissions()
+	teamToken := &TeamToken{
+		Team: s.team.Name,
+		Roles: []authTypes.RoleInstance{
+			{Name: "app-deployer", ContextValue: "myapp"},
+			{Name: "app-updater", ContextValue: "myapp"},
+		},
+	}
+	perms, err := teamToken.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })
@@ -47,15 +378,4 @@ func (s *S) TestTeamTokenPermissions(c *check.C) {
 		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdate, Context: permission.Context(permission.CtxApp, "myapp")},
 	})
-}
-
-func (s *S) TestTeamTokenPermissionsWithInvalidPermission(c *check.C) {
-	r1, err := permission.NewRole("pool-reader", "pool", "")
-	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("pool.read")
-	c.Assert(err, check.IsNil)
-
-	appToken := &TeamToken{AppName: "myapp", Roles: []string{"pool-reader"}}
-	_, err = appToken.Permissions()
-	c.Assert(err, check.NotNil)
 }

@@ -318,7 +318,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canCreate {
 		return permission.ErrUnauthorized
 	}
-	u, err := t.User()
+	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}

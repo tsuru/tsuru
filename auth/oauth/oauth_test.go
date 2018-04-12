@@ -9,13 +9,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
 	"gopkg.in/check.v1"
 )
@@ -204,7 +203,7 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	token, err := scheme.Login(params)
 	c.Assert(err, check.IsNil)
-	u, err := token.User()
+	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = scheme.Remove(u)
 	c.Assert(err, check.IsNil)

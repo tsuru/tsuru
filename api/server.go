@@ -83,11 +83,17 @@ func getAuthScheme() (string, error) {
 	return name, err
 }
 
-func setupServices() {
+func setupServices() error {
+	var err error
+	servicemanager.TeamToken, err = auth.TeamTokenService()
+	if err != nil {
+		return err
+	}
 	servicemanager.Cache = app.CacheService()
 	servicemanager.Team = auth.TeamService()
 	servicemanager.Plan = app.PlanService()
 	servicemanager.Platform = app.PlatformService()
+	return nil
 }
 
 // RunServer starts tsuru API server. The dry parameter indicates whether the
@@ -102,7 +108,10 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		fatal(err)
 	}
-	setupServices()
+	err = setupServices()
+	if err != nil {
+		fatal(err)
+	}
 
 	m := apiRouter.NewRouter()
 
@@ -285,8 +294,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/role/default", AuthorizationRequiredHandler(addDefaultRole))
 	m.Add("1.0", "Delete", "/role/default", AuthorizationRequiredHandler(removeDefaultRole))
 	m.Add("1.0", "Get", "/permissions", AuthorizationRequiredHandler(listPermissions))
-	m.Add("1.6", "Post", "/roles/{name}/apptoken/{token}", AuthorizationRequiredHandler(assignRoleToTeamToken))
-	m.Add("1.6", "Delete", "/roles/{name}/apptoken/{token}", AuthorizationRequiredHandler(dissociateRoleFromTeamToken))
+	m.Add("1.6", "Post", "/roles/{name}/token", AuthorizationRequiredHandler(assignRoleToToken))
+	m.Add("1.6", "Delete", "/roles/{name}/token/{token_id}", AuthorizationRequiredHandler(dissociateRoleFromToken))
 
 	m.Add("1.0", "Get", "/debug/goroutines", AuthorizationRequiredHandler(dumpGoroutines))
 	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(indexHandler))
@@ -348,9 +357,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", "DELETE", "/volumes/{name}/bind", AuthorizationRequiredHandler(volumeUnbind))
 	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
 
-	m.Add("1.6", "GET", "/teamtokens", AuthorizationRequiredHandler(teamTokenList))
-	m.Add("1.6", "POST", "/apps/{app}/tokens", AuthorizationRequiredHandler(appTokenCreate))
-	m.Add("1.6", "DELETE", "/apps/{app}/tokens/{token}", AuthorizationRequiredHandler(appTokenDelete))
+	m.Add("1.6", "GET", "/tokens", AuthorizationRequiredHandler(tokenList))
+	m.Add("1.6", "POST", "/tokens", AuthorizationRequiredHandler(tokenCreate))
+	m.Add("1.6", "DELETE", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
+	m.Add("1.6", "PUT", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))

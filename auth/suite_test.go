@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -46,6 +47,11 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
 	config.Set("repo-manager", "fake")
+	var err error
+	servicemanager.TeamToken, err = TeamTokenService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Team = TeamService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

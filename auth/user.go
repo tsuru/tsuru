@@ -198,17 +198,23 @@ func (u *User) ShowAPIKey() (string, error) {
 	return u.APIKey, u.Update()
 }
 
-func (u *User) RegenerateAPIKey() (string, error) {
-	random_byte := make([]byte, 32)
-	_, err := rand.Read(random_byte)
-	if err != nil {
-		return "", err
+const keySize = 32
+
+func generateToken(data string, hash crypto.Hash) string {
+	var tokenKey [keySize]byte
+	n, err := rand.Read(tokenKey[:])
+	for n < keySize || err != nil {
+		n, err = rand.Read(tokenKey[:])
 	}
-	h := crypto.SHA256.New()
-	h.Write([]byte(u.Email))
-	h.Write(random_byte)
+	h := hash.New()
+	h.Write([]byte(data))
+	h.Write(tokenKey[:])
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
-	u.APIKey = fmt.Sprintf("%x", h.Sum(nil))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (u *User) RegenerateAPIKey() (string, error) {
+	u.APIKey = generateToken(u.Email, crypto.SHA256)
 	return u.APIKey, u.Update()
 }
 
@@ -221,12 +227,10 @@ func (u *User) Reload() error {
 	return conn.Users().Find(bson.M{"email": u.Email}).One(u)
 }
 
-func (u *User) Permissions() ([]permission.Permission, error) {
-	permissions := []permission.Permission{
-		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
-	}
+func expandRolePermissions(roleInstances []authTypes.RoleInstance) ([]permission.Permission, error) {
+	var permissions []permission.Permission
 	roles := make(map[string]*permission.Role)
-	for _, roleData := range u.Roles {
+	for _, roleData := range roleInstances {
 		role := roles[roleData.Name]
 		if role == nil {
 			foundRole, err := permission.FindRole(roleData.Name)
@@ -239,6 +243,17 @@ func (u *User) Permissions() ([]permission.Permission, error) {
 		permissions = append(permissions, role.PermissionsFor(roleData.ContextValue)...)
 	}
 	return permissions, nil
+}
+
+func (u *User) Permissions() ([]permission.Permission, error) {
+	permissions, err := expandRolePermissions(u.Roles)
+	if err != nil {
+		return nil, err
+	}
+	return append([]permission.Permission{{
+		Scheme:  permission.PermUser,
+		Context: permission.Context(permission.CtxUser, u.Email),
+	}}, permissions...), nil
 }
 
 func (u *User) AddRole(roleName string, contextValue string) error {

@@ -14,27 +14,30 @@ import (
 	"github.com/tsuru/tsuru/types/auth"
 )
 
-type TeamTokenService struct{}
+type teamTokenStorage struct{}
 
 type teamToken struct {
 	Token        string
-	CreatedAt    time.Time  `bson:"created_at"`
-	ExpiresAt    *time.Time `bson:"expires_at"`
-	LastAccess   *time.Time `bson:"last_access"`
-	CreatorEmail string     `bson:"creator_email"`
-	Teams        []string
-	Roles        []string `bson:",omitempty"`
+	TokenID      string `bson:"token_id"`
+	Description  string
+	CreatedAt    time.Time `bson:"created_at"`
+	ExpiresAt    time.Time `bson:"expires_at,omitempty"`
+	LastAccess   time.Time `bson:"last_access,omitempty"`
+	CreatorEmail string    `bson:"creator_email"`
+	Team         string
+	Roles        []auth.RoleInstance `bson:",omitempty"`
 }
 
-var _ auth.TeamTokenService = &TeamTokenService{}
+var _ auth.TeamTokenStorage = &teamTokenStorage{}
 
 func teamTokensCollection(conn *db.Storage) *dbStorage.Collection {
 	c := conn.Collection("team_tokens")
-	c.EnsureIndex(mgo.Index{Key: []string{"token"}, Unique: true, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"token"}, Unique: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"token_id"}, Unique: true})
 	return c
 }
 
-func (s *TeamTokenService) Insert(t auth.TeamToken) error {
+func (s *teamTokenStorage) Insert(t auth.TeamToken) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -47,8 +50,8 @@ func (s *TeamTokenService) Insert(t auth.TeamToken) error {
 	return err
 }
 
-func (s *TeamTokenService) FindByToken(token string) (*auth.TeamToken, error) {
-	results, err := s.findByQuery(bson.M{"token": token})
+func (s *teamTokenStorage) findOne(query bson.M) (*auth.TeamToken, error) {
+	results, err := s.findByQuery(query)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			err = auth.ErrTeamTokenNotFound
@@ -61,11 +64,23 @@ func (s *TeamTokenService) FindByToken(token string) (*auth.TeamToken, error) {
 	return &results[0], nil
 }
 
-func (s *TeamTokenService) FindByTeams(teamNames []string) ([]auth.TeamToken, error) {
-	return s.findByQuery(bson.M{"teams": bson.M{"$in": teamNames}})
+func (s *teamTokenStorage) FindByToken(token string) (*auth.TeamToken, error) {
+	return s.findOne(bson.M{"token": token})
 }
 
-func (s *TeamTokenService) findByQuery(query bson.M) ([]auth.TeamToken, error) {
+func (s *teamTokenStorage) FindByTokenID(tokenID string) (*auth.TeamToken, error) {
+	return s.findOne(bson.M{"token_id": tokenID})
+}
+
+func (s *teamTokenStorage) FindByTeams(teamNames []string) ([]auth.TeamToken, error) {
+	query := bson.M{}
+	if teamNames != nil {
+		query["team"] = bson.M{"$in": teamNames}
+	}
+	return s.findByQuery(query)
+}
+
+func (s *teamTokenStorage) findByQuery(query bson.M) ([]auth.TeamToken, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -83,81 +98,43 @@ func (s *TeamTokenService) findByQuery(query bson.M) ([]auth.TeamToken, error) {
 	return authTeams, nil
 }
 
-func (s *TeamTokenService) Authenticate(token string) (*auth.TeamToken, error) {
-	teamToken, err := s.FindByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	now := time.Now()
-	if teamToken.ExpiresAt != nil && teamToken.ExpiresAt.Before(now) {
-		return nil, auth.ErrTeamTokenExpired
-	}
-	teamToken.LastAccess = &now
-	err = s.update(*teamToken, bson.M{"last_access": teamToken.LastAccess})
-	if err != nil {
-		return nil, err
-	}
-	return teamToken, nil
-}
-
-func (s *TeamTokenService) update(teamToken auth.TeamToken, query bson.M) error {
+func (s *teamTokenStorage) UpdateLastAccess(token string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = teamTokensCollection(conn).Update(bson.M{"token": teamToken.Token}, query)
+	err = teamTokensCollection(conn).Update(bson.M{
+		"token": token,
+	}, bson.M{
+		"$set": bson.M{"last_access": time.Now().UTC()},
+	})
 	if err == mgo.ErrNotFound {
-		return auth.ErrTeamTokenNotFound
+		err = auth.ErrTeamTokenNotFound
 	}
 	return err
 }
 
-func (s *TeamTokenService) AddTeams(t auth.TeamToken, teams ...string) error {
-	return s.update(t, bson.M{
-		"$addToSet": bson.M{
-			"teams": bson.M{"$each": teams},
-		},
-	})
-}
-
-func (s *TeamTokenService) RemoveTeams(t auth.TeamToken, teams ...string) error {
-	if len(teams) == 0 {
-		return nil
-	}
-	return s.update(t, bson.M{
-		"$pull": bson.M{
-			"teams": bson.M{"$in": teams},
-		},
-	})
-}
-
-func (s *TeamTokenService) AddRoles(t auth.TeamToken, newRoles ...string) error {
-	return s.update(t, bson.M{
-		"$addToSet": bson.M{
-			"roles": bson.M{"$each": newRoles},
-		},
-	})
-}
-
-func (s *TeamTokenService) RemoveRoles(t auth.TeamToken, newRoles ...string) error {
-	if len(newRoles) == 0 {
-		return nil
-	}
-	return s.update(t, bson.M{
-		"$pull": bson.M{
-			"roles": bson.M{"$in": newRoles},
-		},
-	})
-}
-
-func (s *TeamTokenService) Delete(t auth.TeamToken) error {
+func (s *teamTokenStorage) Update(token auth.TeamToken) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = teamTokensCollection(conn).Remove(bson.M{"token": t.Token})
+	err = teamTokensCollection(conn).Update(bson.M{"token_id": token.TokenID}, teamToken(token))
+	if err == mgo.ErrNotFound {
+		err = auth.ErrTeamTokenNotFound
+	}
+	return err
+}
+
+func (s *teamTokenStorage) Delete(token string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = teamTokensCollection(conn).Remove(bson.M{"token_id": token})
 	if err == mgo.ErrNotFound {
 		return auth.ErrTeamTokenNotFound
 	}

@@ -201,6 +201,7 @@ var (
 	PermTeamTokenCreate                  = PermissionRegistry.get("team.token.create")                   // [global team]
 	PermTeamTokenDelete                  = PermissionRegistry.get("team.token.delete")                   // [global team]
 	PermTeamTokenRead                    = PermissionRegistry.get("team.token.read")                     // [global team]
+	PermTeamTokenUpdate                  = PermissionRegistry.get("team.token.update")                   // [global team]
 	PermTeamUpdate                       = PermissionRegistry.get("team.update")                         // [global team]
 	PermUser                             = PermissionRegistry.get("user")                                // [global user]
 	PermUserCreate                       = PermissionRegistry.get("user.create")                         // [global]

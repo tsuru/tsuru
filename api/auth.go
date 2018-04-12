@@ -296,8 +296,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	user := authTypes.User(*u)
-	err = servicemanager.Team.Create(changeRequest.NewName, &user)
+	err = servicemanager.Team.Create(changeRequest.NewName, u)
 	if err != nil {
 		return err
 	}
@@ -361,8 +360,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	user := authTypes.User(*u)
-	err = servicemanager.Team.Create(name, &user)
+	err = servicemanager.Team.Create(name, u)
 	switch err {
 	case authTypes.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -575,7 +573,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if key.Body == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
 	}
-	u, err := t.User()
+	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}
@@ -622,7 +620,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	u, err := t.User()
+	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}
@@ -645,7 +643,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   401: Unauthorized
 func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
+	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}
@@ -781,7 +779,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //   401: Unauthorized
 //   404: User not found
 func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
+	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}
@@ -927,7 +925,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if contextValue != "" {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "Wrong context being passed."}
 		}
-		user, err := t.User()
+		user, err := auth.ConvertNewUser(t.User())
 		if err != nil {
 			return err
 		}
@@ -953,7 +951,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: OK
 //   401: Unauthorized
 func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	user, err := t.User()
+	user, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}

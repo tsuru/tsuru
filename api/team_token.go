@@ -8,161 +8,192 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-func getTeamsPermissions(t auth.Token) (map[string][]string, error) {
-	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
-	teams, err := auth.ListTeams()
-	if err != nil {
-		return nil, err
-	}
-	teamsMap := map[string][]string{}
-	perms, err := t.Permissions()
-	if err != nil {
-		return nil, err
-	}
-	for _, team := range teams {
-		teamCtx := permission.Context(permission.CtxTeam, team.Name)
-		var parent *permission.PermissionScheme
-		for _, p := range permsForTeam {
-			if parent != nil && parent.IsParent(p) {
-				continue
-			}
-			if permission.CheckFromPermList(perms, p, teamCtx) {
-				parent = p
-				teamsMap[team.Name] = append(teamsMap[team.Name], p.FullName())
-			}
-		}
-	}
-	return teamsMap, nil
-}
-
-// title: team token list
-// path: /teamtokens
+// title: token list
+// path: /tokens
 // method: GET
 // produce: application/json
 // responses:
-//   200: List team tokens
+//   200: List tokens
 //   204: No content
 //   401: Unauthorized
-func teamTokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	tm, err := getTeamsPermissions(t)
+func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	tokens, err := servicemanager.TeamToken.FindByUserToken(t)
 	if err != nil {
 		return err
 	}
-	if len(tm) == 0 {
-		return permission.ErrUnauthorized
-	}
-	teamNames := make([]string, len(tm))
-	i := 0
-	for name := range tm {
-		teamNames[i] = name
-		i++
-	}
-	canRead := permission.Check(t, permission.PermTeamTokenRead,
-		permission.Contexts(permission.CtxTeam, teamNames)...,
-	)
-	if !canRead {
-		return permission.ErrUnauthorized
-	}
-
-	teamTokens, err := auth.TeamTokenService().FindByTeams(teamNames)
-	if err != nil {
-		return err
-	}
-	if len(teamTokens) == 0 {
+	if len(tokens) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(teamTokens)
+	return json.NewEncoder(w).Encode(tokens)
 }
 
-// title: team token create
-// path: /apps/{app}/tokens
+// title: token create
+// path: /tokens
 // method: POST
 // produce: application/json
 // responses:
-//   201: App token created
+//   201: Token created
 //   401: Unauthorized
-//   409: App token already exists
-func appTokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	appName := r.URL.Query().Get(":app")
-	app, err := getAppFromContext(appName, r)
+//   409: Token already exists
+func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	var args authTypes.TeamTokenCreateArgs
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	err = dec.DecodeValues(&args, r.Form)
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	allowed := permission.Check(t, permission.PermAppTokenCreate,
-		contextsForApp(&app)...,
+	allowed := permission.Check(t, permission.PermTeamTokenCreate,
+		permission.Context(permission.CtxTeam, args.Team),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-
-	appToken := authTypes.NewTeamToken(appName, t.GetUserName())
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppTokenCreate,
+		Target:     teamTarget(args.Team),
+		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&app)...),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, args.Team)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
-	err = auth.TeamTokenService().Insert(appToken)
+	token, err := servicemanager.TeamToken.Create(args, t)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		if err == authTypes.ErrTeamTokenAlreadyExists {
-			w.WriteHeader(http.StatusConflict)
+			return &errors.HTTP{
+				Code:    http.StatusConflict,
+				Message: err.Error(),
+			}
 		}
 		return err
 	}
 	w.WriteHeader(http.StatusCreated)
-	return json.NewEncoder(w).Encode(appToken)
+	return json.NewEncoder(w).Encode(token)
 }
 
-// title: team token delete
-// path: /apps/{app}/tokens/{token}
-// method: DELETE
+// title: token update
+// path: /tokens/{token_id}
+// method: PUT
 // produce: application/json
 // responses:
-//   200: App token created
+//   200: Token updated
 //   401: Unauthorized
-//   404: App token not found
-func appTokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	appName := r.URL.Query().Get(":app")
-	app, err := getAppFromContext(appName, r)
+//   404: Token not found
+func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	var args authTypes.TeamTokenUpdateArgs
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	err = dec.DecodeValues(&args, r.Form)
 	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	args.TokenID = r.URL.Query().Get(":token_id")
+	teamToken, err := servicemanager.TeamToken.FindByTokenID(args.TokenID)
+	if err != nil {
+		if err == authTypes.ErrTeamTokenNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppTokenDelete,
-		contextsForApp(&app)...,
+	allowed := permission.Check(t, permission.PermTeamTokenUpdate,
+		permission.Context(permission.CtxTeam, teamToken.Team),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppTokenDelete,
+		Target:     teamTarget(teamToken.Team),
+		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&app)...),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, teamToken.Team)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
-	token := r.URL.Query().Get(":token")
-	appToken := authTypes.TeamToken{Token: token}
-	err = auth.TeamTokenService().Delete(appToken)
+	teamToken, err = servicemanager.TeamToken.Update(args, t)
 	if err == authTypes.ErrTeamTokenNotFound {
-		w.WriteHeader(http.StatusNotFound)
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(teamToken)
+}
+
+// title: token delete
+// path: /tokens/{token_id}
+// method: DELETE
+// produce: application/json
+// responses:
+//   200: Token created
+//   401: Unauthorized
+//   404: Token not found
+func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	tokenID := r.URL.Query().Get(":token_id")
+	teamToken, err := servicemanager.TeamToken.FindByTokenID(tokenID)
+	if err != nil {
+		if err == authTypes.ErrTeamTokenNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
+	teamName := teamToken.Team
+	allowed := permission.Check(t, permission.PermTeamTokenDelete,
+		permission.Context(permission.CtxTeam, teamName),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     teamTarget(teamName),
+		Kind:       permission.PermTeamTokenDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, teamName)),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = servicemanager.TeamToken.Delete(tokenID)
+	if err == authTypes.ErrTeamTokenNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
 	}
 	return err
 }

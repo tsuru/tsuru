@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/permission"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 const (
@@ -38,8 +39,8 @@ func (t *Token) GetValue() string {
 	return t.Token
 }
 
-func (t *Token) User() (*auth.User, error) {
-	return auth.GetUserByEmail(t.UserEmail)
+func (t *Token) User() (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
 func (t *Token) IsAppToken() bool {

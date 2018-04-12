@@ -83,7 +83,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		Scheme:  permission.PermServiceRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	s.user, err = s.token.User()
+	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.provisioner = provisiontest.ProvisionerInstance
@@ -254,9 +254,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions(p.Scheme.FullName())
 	c.Assert(err, check.IsNil)
-	user, err := s.token.User()
-	c.Assert(err, check.IsNil)
-	err = user.AddRole(role.Name, p.Context.Value)
+	err = s.user.AddRole(role.Name, p.Context.Value)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
