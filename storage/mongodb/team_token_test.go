@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.TeamTokenSuite{
-	TeamTokenService: &TeamTokenService{},
+	TeamTokenStorage: &teamTokenStorage{},
 	SuiteHooks:       &mongodbBaseTest{},
 })

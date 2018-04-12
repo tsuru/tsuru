@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -235,14 +236,12 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 }
 
 func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
-	a := app.App{Name: "abc", Teams: []string{s.team.Name}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := authTypes.TeamToken{Token: "123"}
-	err = auth.TeamTokenService().Insert(token)
+	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team: s.team.Name,
+	}, s.token)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:app=abc", nil)
+	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.Token)
 	h, log := doHandler()

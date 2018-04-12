@@ -82,7 +82,7 @@ func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
 }
 
 func (s NativeScheme) ChangePassword(token auth.Token, oldPassword string, newPassword string) error {
-	user, err := token.User()
+	user, err := auth.ConvertNewUser(token.User())
 	if err != nil {
 		return err
 	}

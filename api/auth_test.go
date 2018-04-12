@@ -105,7 +105,7 @@ func (s *AuthSuite) createUser(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	var err error
-	s.user, err = s.token.User()
+	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
 }
 
@@ -1530,7 +1530,7 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.create", "app.deploy")
 	c.Assert(err, check.IsNil)
-	u, err := token.User()
+	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = u.AddRole("myrole", "a")
 	c.Assert(err, check.IsNil)
@@ -1576,7 +1576,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 		email := fmt.Sprintf("user-%d", i)
 		expectedNames = append(expectedNames, email+"@groundcontrol.com")
 		_, t := permissiontest.CustomUserWithPermission(c, nativeScheme, email, perm)
-		u, err := t.User()
+		u, err := auth.ConvertNewUser(t.User())
 		c.Assert(err, check.IsNil)
 		err = u.AddRole(u.Roles[0].Name, "someothervalue")
 		c.Assert(err, check.IsNil)

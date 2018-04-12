@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -693,8 +694,8 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-// title: assign role to team token
-// path: /roles/{name}/apptoken/{token}
+// title: assign role to token
+// path: /roles/{name}/token
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
@@ -702,7 +703,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Role or team token not found
-func assignRoleToTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -710,8 +711,8 @@ func assignRoleToTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
-
-	token := r.URL.Query().Get(":token")
+	tokenID := r.FormValue("token_id")
+	contextValue := r.FormValue("context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
@@ -724,32 +725,27 @@ func assignRoleToTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
-	_, err = permission.FindRole(roleName)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return err
-	}
-	appToken, err := auth.TeamTokenService().FindByToken(token)
-	if err == authTypes.ErrTeamTokenNotFound || appToken == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return authTypes.ErrTeamTokenNotFound
-	}
+	err = canUseRole(t, roleName, contextValue)
 	if err != nil {
 		return err
 	}
-	return auth.TeamTokenService().AddRoles(*appToken, roleName)
+	err = servicemanager.TeamToken.AddRole(tokenID, roleName, contextValue)
+	if err == authTypes.ErrTeamTokenNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+	return err
 }
 
-// title: dissociate role from team token
-// path: /roles/{name}/apptoken/{token}
+// title: dissociate role from token
+// path: /roles/{name}/token/{token_id}
 // method: DELETE
 // responses:
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Role or team token not found
-func dissociateRoleFromTeamToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -757,6 +753,8 @@ func dissociateRoleFromTeamToken(w http.ResponseWriter, r *http.Request, t auth.
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
+	tokenID := r.URL.Query().Get(":token_id")
+	contextValue := r.FormValue("context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
@@ -769,20 +767,14 @@ func dissociateRoleFromTeamToken(w http.ResponseWriter, r *http.Request, t auth.
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
-	_, err = permission.FindRole(roleName)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return err
-	}
-	token := r.URL.Query().Get(":token")
-	appToken, err := auth.TeamTokenService().FindByToken(token)
-	if err == authTypes.ErrTeamTokenNotFound || appToken == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return authTypes.ErrTeamTokenNotFound
-	}
+	err = canUseRole(t, roleName, contextValue)
 	if err != nil {
 		return err
 	}
-	return auth.TeamTokenService().RemoveRoles(*appToken, roleName)
+	err = servicemanager.TeamToken.RemoveRole(tokenID, roleName, contextValue)
+	if err == authTypes.ErrTeamTokenNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+	return err
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -47,8 +48,8 @@ func (t *Token) GetValue() string {
 	return t.Token
 }
 
-func (t *Token) User() (*auth.User, error) {
-	return auth.GetUserByEmail(t.UserEmail)
+func (t *Token) User() (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
 func (t *Token) IsAppToken() bool {

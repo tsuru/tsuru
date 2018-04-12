@@ -12,7 +12,7 @@ func init() {
 		PlatformStorage:  &PlatformStorage{},
 		PlanStorage:      &PlanStorage{},
 		CacheStorage:     &cacheStorage{},
-		TeamTokenService: &TeamTokenService{},
+		TeamTokenStorage: &teamTokenStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }

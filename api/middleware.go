@@ -28,6 +28,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 )
 
 const (
@@ -42,7 +43,7 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 	if err != nil {
 		t, err = auth.APIAuth(token)
 		if err != nil {
-			t, err = auth.TeamTokenAuth(token)
+			t, err = servicemanager.TeamToken.Authenticate(token)
 			if err != nil {
 				return nil, err
 			}

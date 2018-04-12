@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
 )
 
@@ -25,8 +26,8 @@ func (t *Token) GetValue() string {
 	return t.AccessToken
 }
 
-func (t *Token) User() (*auth.User, error) {
-	return auth.GetUserByEmail(t.UserEmail)
+func (t *Token) User() (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
 func (t *Token) IsAppToken() bool {

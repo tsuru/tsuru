@@ -9,6 +9,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/permission"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 type APIToken struct {
@@ -20,8 +21,8 @@ func (t *APIToken) GetValue() string {
 	return t.Token
 }
 
-func (t *APIToken) User() (*User, error) {
-	return GetUserByEmail(t.UserEmail)
+func (t *APIToken) User() (*authTypes.User, error) {
+	return ConvertOldUser(GetUserByEmail(t.UserEmail))
 }
 
 func (t *APIToken) IsAppToken() bool {
@@ -37,8 +38,6 @@ func (t *APIToken) GetAppName() string {
 }
 
 func (t *APIToken) Permissions() ([]permission.Permission, error) {
-	// TODO(cezarsa): Allow creation of api tokens with a subset of user's
-	// permissions.
 	return BaseTokenPermission(t)
 }
 

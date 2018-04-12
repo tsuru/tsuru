@@ -9,17 +9,16 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 )
 
 type DbDriver struct {
-	TeamStorage     auth.TeamStorage
-	PlatformStorage app.PlatformStorage
-	PlanStorage     app.PlanStorage
-	CacheStorage    app.CacheStorage
-	AppTokenService auth.AppTokenService
+	TeamStorage      auth.TeamStorage
+	PlatformStorage  app.PlatformStorage
+	PlanStorage      app.PlanStorage
+	CacheStorage     app.CacheStorage
+	TeamTokenStorage auth.TeamTokenStorage
 }
 
 var (

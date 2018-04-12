@@ -183,7 +183,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	u, _ := token.User()
+	u, _ := auth.ConvertNewUser(token.User())
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
@@ -219,7 +219,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	u, _ := token.User()
+	u, _ := auth.ConvertNewUser(token.User())
 	app1 := app.App{Name: "app1", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
@@ -637,7 +637,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, team.Name),
 	})
-	u, _ := token.User()
+	u, _ := auth.ConvertNewUser(token.User())
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
@@ -818,7 +818,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	recorder := httptest.NewRecorder()
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
-	user, err := token.User()
+	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = user.AddRole(role.Name, "team")
 	c.Assert(err, check.IsNil)
@@ -1819,7 +1819,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
 	})
-	user, err := token.User()
+	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -1868,7 +1868,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
 	})
-	user, err := token.User()
+	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)

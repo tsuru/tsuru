@@ -9,15 +9,28 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-type Token interface {
-	GetValue() string
-	GetAppName() string
-	GetUserName() string
-	IsAppToken() bool
-	User() (*User, error)
-	Permissions() ([]permission.Permission, error)
+// Token type alias exists to ease refactoring while we move auth types to
+// types/auth package. Both this type alias and the Convert*User funcs should
+// be eliminated once we convert everyone to use authTypes.User.
+type Token authTypes.Token
+
+func ConvertOldUser(u *User, err error) (*authTypes.User, error) {
+	if u != nil {
+		wu := authTypes.User(*u)
+		return &wu, err
+	}
+	return nil, err
+}
+
+func ConvertNewUser(u *authTypes.User, err error) (*User, error) {
+	if u != nil {
+		wu := User(*u)
+		return &wu, err
+	}
+	return nil, err
 }
 
 var ErrInvalidToken = errors.New("Invalid token")
@@ -60,9 +73,9 @@ func BaseTokenPermission(t Token) ([]permission.Permission, error) {
 			},
 		}, nil
 	}
-	user, err := t.User()
+	u, err := ConvertNewUser(t.User())
 	if err != nil {
 		return nil, err
 	}
-	return user.Permissions()
+	return u.Permissions()
 }

@@ -39,6 +39,7 @@ type BuildSuite struct {
 	conn        *db.Storage
 	logConn     *db.LogStorage
 	token       auth.Token
+	user        *auth.User
 	team        *authTypes.Team
 	provisioner *provisiontest.FakeProvisioner
 	builder     *builder.MockBuilder
@@ -111,9 +112,9 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	user, err := s.token.User()
+	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(user.Email)
+	repository.Manager().CreateUser(s.user.Email)
 	config.Set("docker:router", "fake")
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -145,14 +146,13 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 		c.Assert(opts.Tag, check.Equals, "mytag")
 		return "tsuruteam/app-otherapp:mytag", nil
 	}
-	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build?tag=mytag", a.Name)
 	var body bytes.Buffer
@@ -198,14 +198,13 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
 		return "tsuruteam/app-otherapp:mytag", nil
 	}
-	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		Router:    "fake",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
 	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("tag=mytag&archive-url=http://something.tar.gz"))
@@ -242,8 +241,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 
 func (s *BuildSuite) TestBuildWithoutTag(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
-	user, _ := s.token.User()
-	err := app.CreateApp(&a, user)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
 	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("archive-url=http://something.tar.gz"))
