@@ -58,7 +58,7 @@ var reserveUserApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if err := auth.ReserveApp(usr); err != nil {
+		if err := servicemanager.AuthQuota.ReserveApp(usr, &usr.Quota); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
@@ -91,7 +91,7 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app.Quota = &appTypes.AppQuota{AppName: app.Name, Limit: -1, InUse: 0}
+		app.Quota = appTypes.AppQuota{AppName: app.Name, Limit: -1, InUse: 0}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
@@ -353,7 +353,7 @@ var reserveUnitsToAdd = action.Action{
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		err = servicemanager.AppQuota.ReserveUnits(app.Quota, n)
+		err = servicemanager.AppQuota.ReserveUnits(&app.Quota, n)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +366,7 @@ var reserveUnitsToAdd = action.Action{
 			app = ctx.Params[0].(*App)
 		}
 		qty := ctx.FWResult.(int)
-		err := servicemanager.AppQuota.ReleaseUnits(app.Quota, qty)
+		err := servicemanager.AppQuota.ReleaseUnits(&app.Quota, qty)
 		if err != nil {
 			log.Errorf("Failed to rollback reserveUnitsToAdd: %s", err)
 		}

@@ -82,7 +82,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    quota.Quota{Limit: 4, InUse: 2},
+		Quota:    &authTypes.AuthQuota{Limit: 4, InUse: 2},
 	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -136,7 +136,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    quota.Quota{Limit: 4, InUse: 2},
+		Quota:    &authTypes.AuthQuota{Limit: 4, InUse: 2},
 	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -168,7 +168,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    quota.Quota{Limit: 4, InUse: 2},
+		Quota:    &authTypes.AuthQuota{Limit: 4, InUse: 2},
 	}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -187,7 +187,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    quota.Quota{Limit: 4, InUse: 2},
+		Quota:    &authTypes.AuthQuota{Limit: 4, InUse: 2},
 	}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -233,7 +233,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	defer conn.Close()
 	app := &app.App{
 		Name:  "civil",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: &appTypes.AppQuota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -261,7 +261,7 @@ func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := &app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: &appTypes.AppQuota{Limit: 4, InUse: 2},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -300,7 +300,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	defer conn.Close()
 	a := &app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: &appTypes.AppQuota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(a)
@@ -335,7 +335,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	defer conn.Close()
 	app := app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: &appTypes.AppQuota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -361,7 +361,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 	defer conn.Close()
 	app := app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: &appTypes.AppQuota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)

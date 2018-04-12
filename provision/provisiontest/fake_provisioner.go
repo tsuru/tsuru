@@ -71,7 +71,7 @@ type FakeApp struct {
 	UpdatePlatform bool
 	TeamOwner      string
 	Teams          []string
-	quota.Quota
+	Quota          *appTypes.AppQuota
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -79,7 +79,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		name:     name,
 		platform: platform,
 		units:    make([]provision.Unit, units),
-		Quota:    quota.Unlimited,
+		Quota:    &appTypes.AppQuota{Limit: -1},
 		Pool:     "test-default",
 	}
 	routertest.FakeRouter.AddBackend(&app)
@@ -152,7 +152,7 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 	return nil
 }
 
-func (a *FakeApp) GetQuota() quota.Quota {
+func (a *FakeApp) GetQuota() *appTypes.AppQuota {
 	return a.Quota
 }
 

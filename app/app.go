@@ -148,7 +148,7 @@ type App struct {
 	Error          string
 	Routers        []appTypes.AppRouter
 
-	Quota       *appTypes.AppQuota
+	Quota       appTypes.AppQuota
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -1344,12 +1344,12 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuota() *appTypes.AppQuota {
+func (app *App) GetQuota() appTypes.AppQuota {
 	return app.Quota
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	err := servicemanager.AppQuota.ChangeInUseQuota(app.Quota, inUse)
+	err := servicemanager.AppQuota.ChangeInUseQuota(&app.Quota, inUse)
 	if err == mgo.ErrNotFound {
 		return ErrAppNotFound
 	}

@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -77,7 +76,7 @@ func (s *S) SetUpTest(c *check.C) {
 	provisiontest.ProvisionerInstance.Reset()
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)

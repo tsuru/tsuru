@@ -571,7 +571,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
-	a.Quota = quota.Unlimited
+	a.Quota = &appTypes.AppQuota{Limit: -1}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))

@@ -69,7 +69,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 	c.Assert(a.Platform, check.Equals, app.Platform)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota, check.DeepEquals, quota.Unlimited)
+	c.Assert(gotApp.Quota, check.DeepEquals, appTypes.AppQuota{Limit: -1})
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {

@@ -11,33 +11,25 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-type quotaService struct {
+type appQuotaService struct {
 	storage appTypes.AppQuotaStorage
 	mutex   *sync.Mutex
 }
 
-func (s *quotaService) ReserveUnits(quota *appTypes.AppQuota, quantity int) error {
-	s.mutex.Lock()
+func (s *appQuotaService) ReserveUnits(quota *appTypes.AppQuota, quantity int) error {
 	err := s.CheckAppLimit(quota, quantity)
-	quota.InUse += quantity
-	s.mutex.Unlock()
 	if err != nil {
-		s.mutex.Lock()
-		quota.InUse -= quantity
-		s.mutex.Unlock()
 		return err
 	}
 	err = s.storage.IncInUse(s, quota, quantity)
 	if err != nil {
-		s.mutex.Lock()
-		quota.InUse -= quantity
-		s.mutex.Unlock()
 		return err
 	}
+	quota.Limit += 1
 	return nil
 }
 
-func (s *quotaService) CheckAppLimit(quota *appTypes.AppQuota, quantity int) error {
+func (s *appQuotaService) CheckAppLimit(quota *appTypes.AppQuota, quantity int) error {
 	if !quota.Unlimited() && quota.InUse+quantity > quota.Limit {
 		return &appTypes.AppQuotaExceededError{
 			Available: uint(quota.Limit - quota.InUse),
@@ -47,7 +39,7 @@ func (s *quotaService) CheckAppLimit(quota *appTypes.AppQuota, quantity int) err
 	return nil
 }
 
-func (s *quotaService) ReleaseUnits(quota *appTypes.AppQuota, quantity int) error {
+func (s *appQuotaService) ReleaseUnits(quota *appTypes.AppQuota, quantity int) error {
 	s.mutex.Lock()
 	err := s.CheckAppUsage(quota, quantity)
 	quota.InUse -= quantity
@@ -68,7 +60,7 @@ func (s *quotaService) ReleaseUnits(quota *appTypes.AppQuota, quantity int) erro
 	return nil
 }
 
-func (s *quotaService) CheckAppUsage(quota *appTypes.AppQuota, quantity int) error {
+func (s *appQuotaService) CheckAppUsage(quota *appTypes.AppQuota, quantity int) error {
 	if quota.InUse-quantity < 0 {
 		return appTypes.ErrNoReservedUnits
 	}
@@ -79,23 +71,21 @@ func (s *quotaService) CheckAppUsage(quota *appTypes.AppQuota, quantity int) err
 // than or equal to the current number of units in the app. The new limit may be
 // smaller than 0, which means that the app should have an unlimited number of
 // units.
-func (s *quotaService) ChangeLimitQuota(quota *appTypes.AppQuota, limit int) error {
+func (s *appQuotaService) ChangeLimitQuota(quota *appTypes.AppQuota, limit int) error {
 	if limit < 0 {
 		limit = -1
 	} else if limit < quota.InUse {
 		return appTypes.ErrLimitLowerThanAllocated
 	}
-	err := s.storage.SetLimit(quota.AppName, limit)
+	quota.Limit = limit
+	err := s.storage.SetLimit(quota.AppName, quota.Limit)
 	if err != nil {
 		return err
 	}
-	s.mutex.Lock()
-	quota.Limit = limit
-	s.mutex.Unlock()
 	return nil
 }
 
-func (s *quotaService) ChangeInUseQuota(quota *appTypes.AppQuota, inUse int) error {
+func (s *appQuotaService) ChangeInUseQuota(quota *appTypes.AppQuota, inUse int) error {
 	if inUse < 0 {
 		return errors.New("invalid value, cannot be lesser than 0")
 	}
@@ -106,8 +96,6 @@ func (s *quotaService) ChangeInUseQuota(quota *appTypes.AppQuota, inUse int) err
 		}
 	}
 	s.storage.SetInUse(quota.AppName, inUse)
-	s.mutex.Lock()
 	quota.InUse = inUse
-	s.mutex.Unlock()
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/globalsign/mgo/bson"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
@@ -195,6 +196,36 @@ func (s *S) TestReleaseUnitsIsAtomic(c *check.C) {
 	c.Assert(app.Quota.InUse, check.Equals, 4)
 }
 
+func (s *S) TestChangeQuotaIsAtomic(c *check.C) {
+	app := &App{
+		Name:   "together",
+		Quota:  &appTypes.AppQuota{AppName: "together", Limit: 3, InUse: 3},
+		Router: "fake",
+	}
+	qs := &quotaService{
+		storage: &appTypes.MockAppQuotaStorage{
+			OnIncInUse: func(service appTypes.AppQuotaService, quota *appTypes.AppQuota, quantity int) error {
+				c.Assert(quota.AppName, check.Equals, "together")
+				return nil
+			},
+		},
+		mutex: &sync.Mutex{},
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			qs.ReleaseUnits(app.Quota, 7)
+		}()
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err := ChangeQuota(app, 2)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "new limit is lesser than the current allocated value")
+}
+
 // func (s *S) TestReleaseUnitsAppNotFound(c *check.C) {
 // 	app := App{
 // 		Name:   "together",
@@ -235,19 +266,6 @@ func (s *S) TestReleaseUnitsIsAtomic(c *check.C) {
 // 	c.Assert(err, check.IsNil)
 // 	c.Assert(app.Quota.InUse, check.Equals, 2)
 // 	c.Assert(app.Quota.Limit, check.Equals, -1)
-// }
-
-// func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
-// 	app := &App{
-// 		Name:   "together",
-// 		Quota:  quota.Quota{Limit: 3, InUse: 3},
-// 		Router: "fake",
-// 	}
-// 	s.conn.Apps().Insert(app)
-// 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-// 	err := ChangeQuota(app, 2)
-// 	c.Assert(err, check.NotNil)
-// 	c.Assert(err.Error(), check.Equals, "new limit is lesser than the current allocated value")
 // }
 
 // func (s *S) TestChangeQuotaAppNotFound(c *check.C) {

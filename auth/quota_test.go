@@ -19,7 +19,7 @@ func (s *S) TestReserveApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -44,7 +44,7 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -52,7 +52,7 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	user.InUse = 4
+	user.Quota.InUse = 4
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
 	user, err = GetUserByEmail(email)
@@ -64,7 +64,7 @@ func (s *S) TestReserveAppQuotaExceeded(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 4},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 4},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -85,7 +85,7 @@ func (s *S) TestReserveAppIsSafe(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 10, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 10, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -111,7 +111,7 @@ func (s *S) TestReleaseApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -132,7 +132,7 @@ func (s *S) TestReleaseAppUserNotFound(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := ReleaseApp(user)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
@@ -142,7 +142,7 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -152,7 +152,7 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {
 	defer conn.Close()
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
-	user.InUse = 4
+	user.Quota.InUse = 4
 	err = ReleaseApp(user)
 	c.Assert(err, check.IsNil)
 	user, err = GetUserByEmail(email)
@@ -164,7 +164,7 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 0},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -183,7 +183,7 @@ func (s *S) TestReleaseAppIsSafe(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: quota.Quota{Limit: 10, InUse: 10},
+		Quota: &authTypes.AuthQuota{Limit: 10, InUse: 10},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -208,7 +208,7 @@ func (s *S) TestReleaseAppIsSafe(c *check.C) {
 func (s *S) TestChangeQuota(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 3},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 3},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -227,7 +227,7 @@ func (s *S) TestChangeQuota(c *check.C) {
 func (s *S) TestChangeQuotaUnlimited(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 3},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 3},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -246,7 +246,7 @@ func (s *S) TestChangeQuotaUnlimited(c *check.C) {
 func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 4},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 4},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -262,7 +262,7 @@ func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
 func (s *S) TestChangeQuotaUserNotFound(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: quota.Quota{Limit: 4, InUse: 4},
+		Quota: &authTypes.AuthQuota{Limit: 4, InUse: 4},
 	}
 	err := ChangeQuota(user, 20)
 	c.Assert(err, check.NotNil)

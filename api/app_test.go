@@ -1845,7 +1845,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
+	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
@@ -1891,7 +1891,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 }
 
 func (s *S) TestAddUnits(c *check.C) {
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.AppQuota{AppName: "armorandsword", Limit: -1, InUse: 0}}
+	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: &appTypes.AppQuota{AppName: "armorandsword", Limit: -1, InUse: 0}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("units=3&process=web")
@@ -1963,7 +1963,7 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 }
 
 func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.AppQuota{AppName: "armorandsword", Limit: -1}}
+	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: &appTypes.AppQuota{AppName: "armorandsword", Limit: -1}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("units=3&process=")
@@ -2006,7 +2006,7 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *check.C) {
 }
 
 func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
-	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: appTypes.AppQuota{AppName: "armorandsword", Limit: 2}}
+	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: &appTypes.AppQuota{AppName: "armorandsword", Limit: 2}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("units=3&process=web")
@@ -2634,7 +2634,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 }
 
 func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *check.C) {
-	u := auth.User{Email: "burning@angel.com", Quota: quota.Unlimited}
+	u := auth.User{Email: "burning@angel.com", Quota: &authTypes.AuthQuota{Limit: -1}}
 	err := s.conn.Users().Insert(u)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(u.Email)

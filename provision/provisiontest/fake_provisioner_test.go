@@ -170,7 +170,7 @@ func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
 
 func (s *S) TestFakeAppGetQuota(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	c.Assert(app.GetQuota(), check.DeepEquals, quota.Unlimited)
+	c.Assert(app.GetQuota(), check.DeepEquals, appTypes.AppQuota{Limit: -1})
 	q := quota.Quota{Limit: 10, InUse: 3}
 	app.Quota = q
 	c.Assert(app.GetQuota(), check.DeepEquals, q)

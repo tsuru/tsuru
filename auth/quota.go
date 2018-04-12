@@ -5,40 +5,29 @@
 package auth
 
 import (
+	"sync"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
+
+type authQuotaService struct {
+	storage authTypes.AuthQuotaStorage
+	mutex   *sync.Mutex
+}
 
 // ReserveApp reserves an app for the user, reserving it in the database. It's
 // used to reserve the app in the user quota, returning an error when there
 // isn't any space available.
-func ReserveApp(user *User) error {
-	user, err := checkUser(user.Email)
+func (s *authQuotaService) ReserveApp(user *authTypes.User, authQuota *authTypes.AuthQuota) error {
+	_, err := checkUser(user.Email)
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Users().Update(
-		bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
-		bson.M{"$inc": bson.M{"quota.inuse": 1}},
-	)
-	for err == mgo.ErrNotFound {
-		user, err = checkUser(user.Email)
-		if err != nil {
-			return err
-		}
-		err = conn.Users().Update(
-			bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": 1}},
-		)
-	}
+	err = s.storage.IncInUse(user, authQuota, 1)
 	return err
 }
 
@@ -58,13 +47,12 @@ func checkUser(email string) (*User, error) {
 // ReleaseApp releases an app from the user list, releasing the quota spot for
 // another app.
 func ReleaseApp(user *User) error {
-	errCantRelease := errors.New("Cannot release unreserved app")
 	user, err := GetUserByEmail(user.Email)
 	if err != nil {
 		return err
 	}
 	if user.Quota.InUse == 0 {
-		return errCantRelease
+		return authTypes.ErrCantRelease
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -81,7 +69,7 @@ func ReleaseApp(user *User) error {
 			return err
 		}
 		if user.Quota.InUse == 0 {
-			return errCantRelease
+			return authTypes.ErrCantRelease
 		}
 		err = conn.Users().Update(
 			bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
@@ -99,7 +87,7 @@ func ChangeQuota(user *User, limit int) error {
 	if limit < 0 {
 		limit = -1
 	} else if limit < user.Quota.InUse {
-		return errors.New("new limit is lesser than the current allocated value")
+		return authTypes.ErrLimitLowerThanAllocated
 	}
 	user.Quota.Limit = limit
 	return user.Update()
