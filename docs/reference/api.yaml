@@ -297,7 +297,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/definitions/UserListResponseItem'
+              $ref: '#/definitions/User'
         '401':
           description: Unauthorized
           schema:
@@ -516,7 +516,7 @@ paths:
         '200': 
           description: OK
           schema:
-            $ref: '#/definitions/UserGetResponse'
+            $ref: '#/definitions/User'
         '401': 
           description: Unauthorized
           schema:
@@ -1100,23 +1100,8 @@ definitions:
         type: string
       contextvalue:
         type: string
-  UserListResponseItem:
-    type: object
-    properties:
-      email:
-        type: string
-      roles:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/RoleUser'
-      permissions:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/PermissionUser'
-  UserGetResponse:
-    description: Response returned by User Info.
+  User:
+    description: User object.
     type: object
     properties:
       email:
