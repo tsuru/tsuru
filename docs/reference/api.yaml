@@ -66,7 +66,7 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-      tags: 
+      tags:
         - app
       security:
         - Bearer: []
@@ -77,34 +77,34 @@ paths:
         - name: app
           required: true
           in: body
-          schema: 
+          schema:
             $ref: '#/definitions/App'
       produces:
       - application/json
       consumes:
       - application/json
       responses:
-        '201': 
+        '201':
           description: App created
           schema:
             $ref: '#/definitions/AppCreateResponse'
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '403': 
+        '403':
           description: Quota exceeded
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '409': 
+        '409':
           description: App already exists
           schema:
             $ref: '#/definitions/ErrorMessage'
-      tags: 
+      tags:
         - app
       security:
         - Bearer: []
@@ -1082,6 +1082,167 @@ paths:
         - volume
       security:
         - Bearer: []
+  /1.6/roles/{role_name}/token:
+    post:
+      tags:
+        - auth
+      operationId: AssignRoleToToken
+      description: Assigns a role to a team token.
+      consumes:
+      - application/json
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: token
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/AssignTokenArgs'
+      responses:
+        '200':
+          description: Role assigned.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Role or token not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+  /1.6/roles/{role_name}/token/{token_id}:
+    delete:
+      tags:
+        - auth
+      operationId: DissociateRoleFromToken
+      description: Dissociates a role from a team token.
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: token_id
+          required: true
+          in: path
+          type: string
+        - name: context
+          required: true
+          in: query
+          type: string
+      responses:
+        '200':
+          description: Role dissociated.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Role or token not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+  /1.6/tokens:
+    get:
+      tags:
+        - auth
+      operationId: TeamTokensList
+      description: List team tokens.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Team tokens list.
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/TeamToken'
+        '204':
+          description: No content.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+    post:
+      tags:
+        - auth
+      operationId: TeamTokenCreate
+      description: Creates a team token.
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+        - name: token
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/TeamTokenCreateArgs'
+      responses:
+        '201':
+          description: Team token created.
+          schema:
+            $ref: '#/definitions/TeamToken'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Token with the same ID already exists.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+  /1.6/tokens/{token_id}:
+    parameters:
+      - name: token_id
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Token ID.
+    delete:
+      tags:
+        - auth
+      operationId: TeamTokenDelete
+      description: Deletes a team token.
+      responses:
+        '200':
+          description: Team token deleted.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Team token not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+    put:
+      tags:
+        - auth
+      operationId: TeamTokenUpdate
+      description: Updates a team token.
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+        - name: token
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/TeamTokenUpdateArgs'
+      responses:
+        '200':
+          description: Team token updated.
+          schema:
+            $ref: '#/definitions/TeamToken'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Team token not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
 definitions:
   ErrorMessage:
     description: Error message.
@@ -1574,4 +1735,74 @@ definitions:
         type: string
       host:
         type: string
-  
+  TeamTokenUpdateArgs:
+    description: Arguments for updating an existing team token.
+    properties:
+      regenerate:
+        type: boolean
+      description:
+        type: string
+      expires_in:
+        description: Expire time in seconds, using a negative value removes the expiration.
+        type: integer
+        format: int64
+  TeamTokenCreateArgs:
+    description: Arguments for creating a new team token.
+    type: object
+    required:
+      - team
+    properties:
+      token_id:
+        type: string
+      description:
+        type: string
+      expires_in:
+        description: Expire time in seconds.
+        type: integer
+        format: int64
+      team:
+        type: string
+  TeamToken:
+    description: An authorization token associated to a team.
+    type: object
+    properties:
+      token:
+        type: string
+      token_id:
+        type: string
+      description:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      expires_at:
+        type: string
+        format: date-time
+      last_access:
+        type: string
+        format: date-time
+      creator_email:
+        type: string
+      team:
+        type: string
+      roles:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/RoleInstance'
+  RoleInstance:
+    description: Association between a role and a context value.
+    type: object
+    properties:
+      name:
+        type: string
+      contextvalue:
+        type: string
+  AssignTokenArgs:
+    description: Assign role to token arguments.
+    type: object
+    properties:
+      token_id:
+        type: string
+      context:
+        type: string
