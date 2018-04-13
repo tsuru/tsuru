@@ -1128,8 +1128,6 @@ definitions:
   TeamTokenCreateArgs:
     description: Arguments for creating a new team token.
     type: object
-    required:
-      - team
     properties:
       token_id:
         type: string

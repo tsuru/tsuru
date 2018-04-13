@@ -105,6 +105,42 @@ func (s *S) TestTeamTokenCreate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestTeamTokenCreateAutomaticTeam(c *check.C) {
+	body := strings.NewReader(`token_id=t1&description=desc&expires_in=60`)
+	request, err := http.NewRequest("POST", "/1.6/tokens", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated, check.Commentf("body: %q", recorder.Body.String()))
+	var result authTypes.TeamToken
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Token, check.Not(check.Equals), "")
+	c.Assert(result.CreatedAt.IsZero(), check.Equals, false)
+	c.Assert(result.ExpiresAt.IsZero(), check.Equals, false)
+	result.CreatedAt = time.Time{}
+	result.ExpiresAt = time.Time{}
+	result.Token = ""
+	c.Assert(result, check.DeepEquals, authTypes.TeamToken{
+		Team:         s.team.Name,
+		TokenID:      "t1",
+		CreatorEmail: s.token.GetUserName(),
+		Description:  "desc",
+	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:  s.user.Email,
+		Kind:   "team.token.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "token_id", "value": "t1"},
+			{"name": "description", "value": "desc"},
+			{"name": "expires_in", "value": "60"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 	body := strings.NewReader(`token_id=t1&description=desc&expires_in=60&team=` + s.team.Name)
 	request, err := http.NewRequest("POST", "/1.6/tokens", body)

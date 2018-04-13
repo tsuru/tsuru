@@ -263,6 +263,24 @@ type inputApp struct {
 	Tags        []string
 }
 
+func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, error) {
+	team, err := permission.TeamForPermission(t, perm)
+	if err == nil {
+		return team, nil
+	}
+	if err != permission.ErrTooManyTeams {
+		return "", err
+	}
+	teams, listErr := servicemanager.Team.List()
+	if listErr != nil {
+		return "", listErr
+	}
+	if len(teams) != 1 {
+		return "", err
+	}
+	return teams[0].Name, nil
+}
+
 // title: app create
 // path: /apps
 // method: POST
@@ -297,19 +315,9 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {
-		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
+		a.TeamOwner, err = autoTeamOwner(t, permission.PermAppCreate)
 		if err != nil {
-			if err != permission.ErrTooManyTeams {
-				return err
-			}
-			teams, listErr := servicemanager.Team.List()
-			if listErr != nil {
-				return listErr
-			}
-			if len(teams) != 1 {
-				return err
-			}
-			a.TeamOwner = teams[0].Name
+			return err
 		}
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,

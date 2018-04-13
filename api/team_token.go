@@ -56,6 +56,12 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	if args.Team == "" {
+		args.Team, err = autoTeamOwner(t, permission.PermTeamTokenCreate)
+		if err != nil {
+			return err
+		}
+	}
 	allowed := permission.Check(t, permission.PermTeamTokenCreate,
 		permission.Context(permission.CtxTeam, args.Team),
 	)
