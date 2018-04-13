@@ -793,7 +793,11 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err = si.UnbindApp(a, false, &buf, evt, "")
+	evt.SetLogWriter(&buf)
+	err = si.UnbindApp(UnbindAppArgs{
+		App:   a,
+		Event: evt,
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "remove instance")
 	c.Assert(reqs, check.HasLen, 5)
@@ -856,7 +860,12 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err = si.UnbindApp(a, true, &buf, evt, "")
+	evt.SetLogWriter(&buf)
+	err = si.UnbindApp(UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.ErrorMatches, `Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\)`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -882,6 +891,75 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 	})
+}
+
+func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C) {
+	var reqs []*http.Request
+	var mut sync.Mutex
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mut.Lock()
+		defer mut.Unlock()
+		reqs = append(reqs, r)
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind-app" {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("my unbind app err"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
+	err := serv.Create()
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.GetName()},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for i := range units {
+		err = si.BindUnit(a, &units[i])
+		c.Assert(err, check.IsNil)
+	}
+	var buf bytes.Buffer
+	evt := createEvt(c)
+	evt.SetLogWriter(&buf)
+	err = si.UnbindApp(UnbindAppArgs{
+		App:         a,
+		Restart:     true,
+		ForceRemove: true,
+		Event:       evt,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s)\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\).*remove instance`)
+	c.Assert(reqs, check.HasLen, 5)
+	c.Assert(reqs[0].Method, check.Equals, "POST")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs[1].Method, check.Equals, "POST")
+	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs[2].Method, check.Equals, "DELETE")
+	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs[3].Method, check.Equals, "DELETE")
+	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs[4].Method, check.Equals, "DELETE")
+	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(siDB.Apps, check.DeepEquals, []string{})
+	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{})
 }
 
 func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
@@ -914,7 +992,12 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err = si.UnbindApp(a, true, &buf, evt, "")
+	evt.SetLogWriter(&buf)
+	err = si.UnbindApp(UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.ErrorMatches, `instance not found`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -1078,8 +1161,10 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		wg.Add(1)
 		go func(app bind.App) {
 			defer wg.Done()
-			var buf bytes.Buffer
-			unbindErr := siDB.UnbindApp(app, false, &buf, evt, "")
+			unbindErr := siDB.UnbindApp(UnbindAppArgs{
+				App:   app,
+				Event: evt,
+			})
 			c.Assert(unbindErr, check.IsNil)
 		}(app)
 	}

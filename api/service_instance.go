@@ -233,6 +233,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	evt.SetLogWriter(writer)
 	defer func() { evt.Done(err) }()
 	requestID := requestIDHeader(r)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
@@ -243,12 +244,18 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 				if instErr != nil {
 					return instErr
 				}
-				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				instErr = serviceInstance.UnbindApp(app, true, writer, evt, requestID)
+				fmt.Fprintf(evt, "Unbind app %q ...\n", app.GetName())
+				instErr = serviceInstance.UnbindApp(service.UnbindAppArgs{
+					App:         app,
+					Restart:     true,
+					ForceRemove: false,
+					Event:       evt,
+					RequestID:   requestID,
+				})
 				if instErr != nil {
 					return instErr
 				}
-				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
+				fmt.Fprintf(evt, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
 			}
 			serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
 			if err != nil {
@@ -266,7 +273,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 		return err
 	}
-	writer.Write([]byte("service instance successfully removed\n"))
+	evt.Write([]byte("service instance successfully removed\n"))
 	return nil
 }
 

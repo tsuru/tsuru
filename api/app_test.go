@@ -4774,6 +4774,143 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestUnbindForceFlag(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind-app" {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("my unbind err"))
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+	otherApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
+		EnvVar: bind.EnvVar{
+			Name:  "DATABASE_HOST",
+			Value: "arrea",
+		},
+		InstanceName: instance.Name,
+		ServiceName:  instance.ServiceName,
+	})
+	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
+	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&force=true", instance.ServiceName, instance.Name, a.Name,
+		instance.ServiceName, instance.Name, a.Name)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateUnbind,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppUpdateUnbind,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermServiceUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	err = unbindServiceInstance(recorder, req, token)
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{})
+	otherApp, err = app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{
+		Name:  "MY_VAR",
+		Value: "123",
+	}
+	allEnvs := otherApp.Envs()
+	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
+	_, ok := allEnvs["DATABASE_HOST"]
+	c.Assert(ok, check.Equals, false)
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 5)
+	c.Assert(parts[0], check.Equals, `{"Message":"[unbind-app-endpoint] ignored error due to force: Failed to unbind (\"/resources/my-mysql/bind-app\"): invalid response: my unbind err (code: 500)\n"}`)
+	c.Assert(parts[1], check.Equals, `{"Message":"---- Unsetting 1 environment variables ----\n"}`)
+	c.Assert(parts[2], check.Equals, `{"Message":"restarting app"}`)
+	c.Assert(parts[3], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
+	c.Assert(parts[4], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update.unbind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "force", "value": "true"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "myendpoint"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&force=true", instance.ServiceName, instance.Name, a.Name,
+		instance.ServiceName, instance.Name, a.Name)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateUnbind,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppUpdateUnbind,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	err = unbindServiceInstance(recorder, req, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
 func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32

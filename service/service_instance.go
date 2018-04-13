@@ -244,18 +244,27 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	return nil
 }
 
+type UnbindAppArgs struct {
+	App         bind.App
+	Restart     bool
+	ForceRemove bool
+	Event       *event.Event
+	RequestID   string
+}
+
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
-	if si.FindApp(app.GetName()) == -1 {
+func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
+	if si.FindApp(unbindArgs.App.GetName()) == -1 {
 		return ErrAppNotBound
 	}
 	args := bindPipelineArgs{
 		serviceInstance: si,
-		app:             app,
-		writer:          writer,
-		shouldRestart:   shouldRestart,
-		event:           evt,
-		requestID:       requestID,
+		app:             unbindArgs.App,
+		writer:          unbindArgs.Event,
+		shouldRestart:   unbindArgs.Restart,
+		event:           unbindArgs.Event,
+		requestID:       unbindArgs.RequestID,
+		forceRemove:     unbindArgs.ForceRemove,
 	}
 	actions := []*action.Action{
 		&unbindUnits,

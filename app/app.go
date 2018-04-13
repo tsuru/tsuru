@@ -572,7 +572,13 @@ func (app *App) unbind(evt *event.Event, requestID string) error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.UnbindApp(app, true, nil, evt, requestID)
+		err = instance.UnbindApp(service.UnbindAppArgs{
+			App:         app,
+			Restart:     false,
+			ForceRemove: true,
+			Event:       evt,
+			RequestID:   requestID,
+		})
 		if err != nil {
 			addMsg(instance.Name, err)
 		}

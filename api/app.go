@@ -1282,6 +1282,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
 	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
+	force, _ := strconv.ParseBool(r.FormValue("force"))
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1300,6 +1301,14 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	if force {
+		allowed = permission.Check(t, permission.PermServiceUpdate,
+			contextsForServiceProvision(instance.Service())...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnbind,
@@ -1315,11 +1324,18 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.UnbindApp(a, !noRestart, writer, evt, requestIDHeader(r))
+	evt.SetLogWriter(writer)
+	err = instance.UnbindApp(service.UnbindAppArgs{
+		App:         a,
+		Restart:     !noRestart,
+		ForceRemove: force,
+		Event:       evt,
+		RequestID:   requestIDHeader(r),
+	})
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", instanceName, appName)
+	fmt.Fprintf(evt, "\nInstance %q is not bound to the app %q anymore.\n", instanceName, appName)
 	return nil
 }
 
