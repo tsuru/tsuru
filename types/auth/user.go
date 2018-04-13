@@ -11,7 +11,7 @@ import (
 )
 
 type User struct {
-	Quota    *AuthQuota
+	Quota    AuthQuota
 	Email    string
 	Password string
 	APIKey   string

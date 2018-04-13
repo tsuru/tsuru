@@ -16,7 +16,7 @@ import (
 func (s *S) TestReserveUnits(c *check.C) {
 	app := &App{
 		Name:   "together",
-		Quota:  &appTypes.AppQuota{AppName: "together", Limit: 7},
+		Quota:  appTypes.AppQuota{AppName: "together", Limit: 7},
 		Router: "fake",
 	}
 	qs := &quotaService{

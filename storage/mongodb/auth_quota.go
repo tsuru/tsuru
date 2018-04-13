@@ -14,27 +14,27 @@ var _ authTypes.AuthQuotaStorage = &AuthQuotaStorage{}
 
 type AuthQuotaStorage struct{}
 
-func (s *AuthQuotaStorage) IncInUse(user *authTypes.User, quota *authTypes.AuthQuota, quantity int) error {
+func (s *AuthQuotaStorage) IncInUse(email string, quota *authTypes.AuthQuota, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	err = conn.Users().Update(
-		bson.M{"email": user.Email, "quota.inuse": user.Quota.InUse},
+		bson.M{"email": email, "quota.inuse": quota.InUse},
 		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
 	)
 	return err
 }
 
-func (s *AuthQuotaStorage) SetLimit(user *authTypes.User, quota *authTypes.AuthQuota, quantity int) error {
+func (s *AuthQuotaStorage) SetLimit(email string, quota *authTypes.AuthQuota, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	err = conn.Users().Update(
-		bson.M{"email": user.Email},
+		bson.M{"email": email},
 		bson.M{"$set": bson.M{"quota.limit": quantity}},
 	)
 	return err
