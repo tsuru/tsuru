@@ -5,6 +5,7 @@
 package service
 
 import (
+	"fmt"
 	"io"
 	"sort"
 	"sync"
@@ -214,9 +215,10 @@ type bindPipelineArgs struct {
 	app             bind.App
 	writer          io.Writer
 	serviceInstance *ServiceInstance
-	shouldRestart   bool
 	event           *event.Event
 	requestID       string
+	shouldRestart   bool
+	forceRemove     bool
 }
 
 var bindAppDBAction = &action.Action{
@@ -456,6 +458,14 @@ var unbindAppEndpoint = action.Action{
 		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
 			err := endpoint.UnbindApp(args.serviceInstance, args.app, args.event, args.requestID)
 			if err != nil && err != ErrInstanceNotFoundInAPI {
+				if args.forceRemove {
+					msg := fmt.Sprintf("[unbind-app-endpoint] ignored error due to force: %v", err.Error())
+					if args.writer != nil {
+						fmt.Fprintln(args.writer, msg)
+					}
+					log.Errorf("%s", msg)
+					return nil, nil
+				}
 				return nil, err
 			}
 		}

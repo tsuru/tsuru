@@ -251,7 +251,11 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	})
 	dbI1, err := service.GetServiceInstance(instance1.ServiceName, instance1.Name)
 	c.Assert(err, check.IsNil)
-	err = dbI1.UnbindApp(a, true, nil, evt, "")
+	err = dbI1.UnbindApp(service.UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.IsNil)
 	envs = a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{})
@@ -387,7 +391,11 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(a, true, nil, evt, "")
+	err = instance.UnbindApp(service.UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		return atomic.LoadInt32(&calls) > 1
@@ -424,7 +432,11 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(a, true, nil, evt, "")
+	err = instance.UnbindApp(service.UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
@@ -465,7 +477,11 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(a, true, nil, evt, "")
+	err = instance.UnbindApp(service.UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		return atomic.LoadInt32(&called) > 0
@@ -488,6 +504,10 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(a, true, nil, evt, "")
+	err = instance.UnbindApp(service.UnbindAppArgs{
+		App:     a,
+		Restart: true,
+		Event:   evt,
+	})
 	c.Assert(err, check.Equals, service.ErrAppNotBound)
 }
