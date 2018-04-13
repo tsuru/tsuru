@@ -274,6 +274,410 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/users:
+    get:
+      operationId: UsersList
+      description: List users.
+      parameters:
+        - name: email
+          in: query
+          required: true
+          type: string
+        - name: role
+          in: query
+          type: string
+        - name: context
+          in: query
+          type: string
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: List users.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/User'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+      - users
+      security:
+        - Bearer: []
+    post:
+      operationId: UserCreate
+      description: Create a new user.
+      parameters:
+        - name: UserData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/UserData'
+      produces:
+      - application/x-json-stream
+      consumes:
+      - application/json
+      responses:
+        '201': 
+          description: User created.
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409': 
+          description: User already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    delete:
+      operationId: UserDelete
+      description: Delete an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+          minLength: 1
+          description: User e-mail.
+      responses:
+        '200': 
+          description: User removed
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/api-key:
+    get:
+      operationId: APITokenGet
+      description: Show the API token of an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+      produces: 
+        - application/json
+      responses:
+        '200': 
+          description: API TOKEN
+          schema:
+            type: string
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    post:
+      operationId: APITokenRegenerate
+      description: Regenerate the API Token of an user.
+      parameters:
+        - name: email
+          in: query
+          type: string
+          required: true
+      produces:
+        - application/json
+      responses:
+        '200': 
+          description: API TOKEN
+          schema:
+            type: string
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/keys:
+    get:
+      operationId: SSHKeyList
+      description: Show the list of the ssh keys of logged user.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SSHKeyListResponse'
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    post:
+      operationId: SSHKeyAdd
+      description: Add SSH key to logged user.
+      parameters:
+        - name: SSHKeyAddData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SSHKeyAddData'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses: 
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409': 
+          description: Key already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/keys/{key}:
+    delete:
+      operationId: SSHKeyRemove
+      description: Delete one ssh key of logged user.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          type: string
+          minLength: 1
+      responses:
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/info:
+    get:
+      operationId: UserGet
+      description: Get information on logged user.
+      produces:
+        - application/json
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags: 
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/{email}/quota:
+    get:
+      operationId: UserQuotaGet
+      description: Get quota of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: User e-mail.
+      produces:
+        - application/json
+      responses:
+        '200': 
+          description: OK
+          schema:
+            $ref: '#/definitions/UserQuotaViewResponse'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+    put:
+      operationId: UserQuotaChange
+      description: Change quota of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: User e-mail.
+        - name: limit
+          in: query
+          required: true
+          description: User new quota.
+          type: integer
+      consumes:
+        - application/json
+      responses:
+        '200': 
+          description: Quota successfully updated
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: User not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/password:
+    put:
+      operationId: ChangePassword
+      description: Change password of logged user.
+      parameters:
+        - name: ChangePasswordData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ChangePasswordData'
+      consumes:
+       - application/x-www-form-urlencoded
+      responses:
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/{email}/password:
+    post:
+      operationId: ResetPassword
+      description: Reset password of an user.
+      parameters:
+        - name: email
+          in: path
+          required: true
+          type: string
+          minLength: 1
+        - name: token
+          in: body
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      consumes:
+       - application/json
+      responses:
+        '200': 
+          description: Ok
+        '400': 
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401': 
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403': 
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404': 
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - users
+      security:
+        - Bearer: []
+  /1.0/users/tokens:
+    delete:
+      operationId: UserTokenDelete
+      description: Logout.
+      responses:
+        '200': 
+          description: Ok
+      tags:
+        - users
+      security:
+        - Bearer: []
   /1.2/node:
     post:
       operationId: NodeAdd
@@ -402,7 +806,9 @@ paths:
         '200':
           description: List volumes
           schema:
-            $ref: '#/definitions/VolumeListResponse'
+            type: array
+            items:
+              $ref: '#/definitions/Volume'
         '204':
           description: No content
         '401':
@@ -674,12 +1080,82 @@ definitions:
         type: string
       successful:
         type: boolean
-  VolumeListResponse:
-    description: Response returned by Volume List.
-    type: array
-    items:
-      type: object
-      $ref: "#/definitions/Volume"
+  RoleUser:
+    description: Role of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contexttype:
+        type: string
+      contextvalue:
+        type: string
+  PermissionUser:
+    description: Permission of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contexttype:
+        type: string
+      contextvalue:
+        type: string
+  User:
+    description: User object.
+    type: object
+    properties:
+      email:
+        type: string
+      roles:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/RoleUser'
+      permissions:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/PermissionUser'
+  SSHKeyListResponse:
+    description: Response returned by User SSH Key List.
+    type: object
+    properties:
+      keyname:
+        type: string
+        description: keyvalue
+  UserData:
+    type: object
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+  ChangePasswordData:
+    type: object
+    properties:
+      confirm:
+        type: string
+      new:
+        type: string
+      old:
+        type: string
+  SSHKeyAddData:
+    type: object
+    properties:
+      force:
+        type: boolean
+      key:
+        type: string
+      keyname:
+        type: string
+  UserQuotaViewResponse:
+    description: Response returned by User Quota View.
+    type: object
+    properties:
+      inuse:
+        type: integer
+      limit:
+        type: integer
   VolumePlansListResponse:
     description: Response returned by Volume Plans list.
     type: object
@@ -898,6 +1374,9 @@ definitions:
           type: string
         public:
           type: boolean
+  APITokenResponse:
+    description: String of a token of an user.
+    type: string
   Unit:
     type: object
     properties:
