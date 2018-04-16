@@ -365,14 +365,14 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r2.AddPermissions("app.update")
 	c.Assert(err, check.IsNil)
-	teamToken := &TeamToken{
+	token := &teamToken{
 		Team: s.team.Name,
 		Roles: []authTypes.RoleInstance{
 			{Name: "app-deployer", ContextValue: "myapp"},
 			{Name: "app-updater", ContextValue: "myapp"},
 		},
 	}
-	perms, err := teamToken.Permissions()
+	perms, err := token.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })

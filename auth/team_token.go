@@ -17,38 +17,38 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-type TeamToken authTypes.TeamToken
+type teamToken authTypes.TeamToken
 
 var (
-	_ authTypes.Token      = &TeamToken{}
-	_ authTypes.NamedToken = &TeamToken{}
+	_ authTypes.Token      = &teamToken{}
+	_ authTypes.NamedToken = &teamToken{}
 )
 
-func (t *TeamToken) GetValue() string {
+func (t *teamToken) GetValue() string {
 	return t.Token
 }
 
-func (t *TeamToken) User() (*authTypes.User, error) {
+func (t *teamToken) User() (*authTypes.User, error) {
 	return nil, errors.New("team token is not a user token")
 }
 
-func (t *TeamToken) IsAppToken() bool {
+func (t *teamToken) IsAppToken() bool {
 	return false
 }
 
-func (t *TeamToken) GetUserName() string {
+func (t *teamToken) GetUserName() string {
 	return t.GetTokenName()
 }
 
-func (t *TeamToken) GetTokenName() string {
+func (t *teamToken) GetTokenName() string {
 	return t.TokenID
 }
 
-func (t *TeamToken) GetAppName() string {
+func (t *teamToken) GetAppName() string {
 	return ""
 }
 
-func (t *TeamToken) Permissions() ([]permission.Permission, error) {
+func (t *teamToken) Permissions() ([]permission.Permission, error) {
 	return expandRolePermissions(t.Roles)
 }
 
@@ -70,11 +70,11 @@ func TeamTokenService() (authTypes.TeamTokenService, error) {
 }
 
 func (s *teamTokenService) Authenticate(header string) (authTypes.Token, error) {
-	token, err := ParseToken(header)
+	tokenStr, err := ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	teamToken, err := s.storage.FindByToken(token)
+	storedToken, err := s.storage.FindByToken(tokenStr)
 	if err != nil {
 		if err == authTypes.ErrTeamTokenNotFound {
 			err = ErrInvalidToken
@@ -82,15 +82,15 @@ func (s *teamTokenService) Authenticate(header string) (authTypes.Token, error) 
 		return nil, err
 	}
 	now := time.Now()
-	if !teamToken.ExpiresAt.IsZero() && teamToken.ExpiresAt.Before(now) {
+	if !storedToken.ExpiresAt.IsZero() && storedToken.ExpiresAt.Before(now) {
 		return nil, authTypes.ErrTeamTokenExpired
 	}
-	err = s.storage.UpdateLastAccess(token)
+	err = s.storage.UpdateLastAccess(tokenStr)
 	if err != nil {
 		return nil, err
 	}
-	appToken := TeamToken(*teamToken)
-	return &appToken, nil
+	token := teamToken(*storedToken)
+	return &token, nil
 }
 
 func (s *teamTokenService) Delete(tokenID string) error {
