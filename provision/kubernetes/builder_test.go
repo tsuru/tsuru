@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -40,11 +39,12 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/app-myapp:mytag"},
-			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
-			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		})
 		return false, nil, nil
 	})
@@ -63,17 +63,12 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 
 func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		exp := regexp.MustCompile("/api/v1/namespaces/default/pods/(.*)/attach")
-		parts := exp.FindStringSubmatch(r.URL.Path)
-		c.Assert(parts, check.HasLen, 2)
-		switch parts[1] {
-		case "myapp-v1-deploy":
-			w.Write([]byte(`[{"Id":"1234"}]`))
-		case "myapp-v1-build-procfile-inspect":
-			w.Write([]byte(`web: make run`))
-		case "myapp-v1-build-yamldata":
-			w.Write([]byte("healthcheck:\n  path: /health\n  scheme: https"))
-		}
+		output := `{
+"image": {"Id":"1234"},
+"procfile": "web: make run",
+"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+}`
+		w.Write([]byte(output))
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -95,17 +90,12 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:password")
 
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		exp := regexp.MustCompile("/api/v1/namespaces/default/pods/(.*)/attach")
-		parts := exp.FindStringSubmatch(r.URL.Path)
-		c.Assert(parts, check.HasLen, 2)
-		switch parts[1] {
-		case "myapp-v1-deploy":
-			w.Write([]byte(`[{"Id":"1234"}]`))
-		case "myapp-v1-build-procfile-inspect":
-			w.Write([]byte(`web: make run`))
-		case "myapp-v1-build-yamldata":
-			w.Write([]byte("healthcheck:\n  path: /health\n  scheme: https"))
-		}
+		output := `{
+"image": {"Id":"1234"},
+"procfile": "web: make run",
+"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+}`
+		w.Write([]byte(output))
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -115,15 +105,23 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		if containers[0].Name == "myapp-v1-deploy" {
-			c.Assert(containers, check.HasLen, 1)
+			c.Assert(containers, check.HasLen, 2)
 			cmds := cleanCmds(containers[0].Command[2])
-			c.Assert(cmds, check.Equals, `cat >/dev/null &&
-docker login -u "user" -p "pwd" "registry.example.com"
-docker pull registry.example.com/tsuru/app-myapp:tag1 >/dev/null
-docker inspect registry.example.com/tsuru/app-myapp:tag1
-docker tag registry.example.com/tsuru/app-myapp:tag1 registry.example.com/tsuru/app-myapp:tag2
-docker login -u "user" -p "pwd" "registry.example.com"
-docker push registry.example.com/tsuru/app-myapp:tag2`)
+			c.Assert(cmds, check.Equals, `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`)
+			cmds = cleanCmds(containers[1].Command[2])
+			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
+trap end EXIT
+cat >/dev/null && /bin/deploy-agent`)
+			c.Assert(containers[1].Env, check.DeepEquals, []apiv1.EnvVar{
+				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:tag2,registry.example.com/tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: "registry.example.com/tsuru/app-myapp:tag1"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
+				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: ""},
+			})
 		}
 		return false, nil, nil
 	})
@@ -146,17 +144,12 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 	defer config.Unset("docker:registry-auth:password")
 
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		exp := regexp.MustCompile("/api/v1/namespaces/default/pods/(.*)/attach")
-		parts := exp.FindStringSubmatch(r.URL.Path)
-		c.Assert(parts, check.HasLen, 2)
-		switch parts[1] {
-		case "myapp-v1-deploy":
-			w.Write([]byte(`[{"Id":"1234"}]`))
-		case "myapp-v1-build-procfile-inspect":
-			w.Write([]byte(`web: make run`))
-		case "myapp-v1-build-yamldata":
-			w.Write([]byte("healthcheck:\n  path: /health\n  scheme: https"))
-		}
+		output := `{
+"image": {"Id":"1234"},
+"procfile": "web: make run",
+"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+}`
+		w.Write([]byte(output))
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -166,15 +159,23 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		if containers[0].Name == "myapp-v1-deploy" {
-			pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-			containers := pod.Spec.Containers
-			c.Assert(containers, check.HasLen, 1)
+			c.Assert(containers, check.HasLen, 2)
 			cmds := cleanCmds(containers[0].Command[2])
-			c.Assert(cmds, check.Equals, `cat >/dev/null &&
-docker pull otherregistry.example.com/tsuru/app-myapp:tag1 >/dev/null
-docker inspect otherregistry.example.com/tsuru/app-myapp:tag1
-docker tag otherregistry.example.com/tsuru/app-myapp:tag1 otherregistry.example.com/tsuru/app-myapp:tag2
-docker push otherregistry.example.com/tsuru/app-myapp:tag2`)
+			c.Assert(cmds, check.Equals, `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`)
+			cmds = cleanCmds(containers[1].Command[2])
+			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
+trap end EXIT
+cat >/dev/null && /bin/deploy-agent`)
+			c.Assert(containers[1].Env, check.DeepEquals, []apiv1.EnvVar{
+				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "otherregistry.example.com/tsuru/app-myapp:tag2,otherregistry.example.com/tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: "otherregistry.example.com/tsuru/app-myapp:tag1"},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: ""},
+			})
 		}
 		return false, nil, nil
 	})

@@ -94,12 +94,12 @@ func (s *S) TestImageID(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-yamldata" || container == "myapp-v1-builder-procfile-inspect" {
-			w.Write([]byte(""))
-			return
-		}
-		w.Write([]byte(`[{"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}}]`))
+		output := `{
+			"image": {"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}},
+			"procfile": "web: make run",
+			"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+		}`
+		w.Write([]byte(output))
 	}
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
@@ -120,16 +120,12 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-procfile-inspect" {
-			w.Write([]byte(`web: test.sh`))
-			return
-		}
-		if container == "myapp-v1-build-yamldata" {
-			w.Write([]byte(""))
-			return
-		}
-		w.Write([]byte(`[{"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}}]`))
+		output := `{
+			"image": {"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}},
+			"procfile": "web: test.sh",
+			"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+		}`
+		w.Write([]byte(output))
 	}
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
@@ -155,29 +151,26 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	s.client.AppsV1beta2()
 	c.Assert(err, check.IsNil)
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		container := r.URL.Query().Get("container")
-		if container == "myapp-v1-build-procfile-inspect" {
-			w.Write([]byte(`web: my awesome cmd`))
-			return
-		}
-		if container == "myapp-v1-build-yamldata" {
-			w.Write([]byte(`healthcheck:
-  path: /status
-  method: GET
-  status: 200
-  scheme: https
-hooks:
-  build:
-    - ./build1
-    - ./build2
-  restart:
-    before:
-      - ./before.sh
-    after:
-      - ./after.sh`))
-			return
-		}
-		w.Write([]byte(`[{"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}}]`))
+		output := `{
+			"image": {"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}},
+			"procfile": "web: test.sh",
+			"tsuruYaml": {
+				"healthcheck": {
+					"path": "/status", 
+					"status": 200, 
+					"method":"GET", 
+					"scheme": "https"
+				},
+				"hooks": {
+					"build": ["./build1", "./build2"],
+					"restart": {
+						"before": ["./before.sh"],
+						"after": ["./after.sh"]
+					}
+				}
+			}
+		}`
+		w.Write([]byte(output))
 	}
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",

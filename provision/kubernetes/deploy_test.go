@@ -823,19 +823,20 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		StdinOnce: true,
 		Command: []string{
 			"sh", "-ec", `
-							end() { touch /tmp/intercontainer/done; }
-							trap end EXIT
-							mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
-						`,
+				end() { touch /tmp/intercontainer/done; }
+				trap end EXIT
+				mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
+			`,
 		},
 		Env: []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
-			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
-			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
@@ -931,21 +932,21 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Stdin:     true,
 			StdinOnce: true,
 			Command: []string{
-				"sh", "-ec",
-				`
-							end() { touch /tmp/intercontainer/done; }
-							trap end EXIT
-							mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-						`,
+				"sh", "-ec", `
+				end() { touch /tmp/intercontainer/done; }
+				trap end EXIT
+				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
+			`,
 			},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			}},
 		{
 			Name:    "myapp-v1-deploy",
@@ -1040,11 +1041,12 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/destimg"},
-		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
 		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
+		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 	})
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
@@ -1203,21 +1205,21 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 			Stdin:     true,
 			StdinOnce: true,
 			Command: []string{
-				"sh", "-ec",
-				`
-							end() { touch /tmp/intercontainer/done; }
-							trap end EXIT
-							mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-						`,
+				"sh", "-ec", `
+				end() { touch /tmp/intercontainer/done; }
+				trap end EXIT
+				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
+			`,
 			},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "ip:destimg:v1,ip:destimg:latest"},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			}},
 		{
 			Name:    "myapp-v1-deploy",
