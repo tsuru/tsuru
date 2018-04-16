@@ -57,5 +57,9 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 	if err != nil {
 		return nil, "", nil, err
 	}
-	return imageTagAndPush(client, a, imageID, newImage)
+	inspectData, err := imageTagAndPush(client, a, imageID, newImage)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
 }

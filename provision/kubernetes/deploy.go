@@ -47,6 +47,12 @@ const (
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 )
 
+type InspectData struct {
+	Image     docker.Image
+	TsuruYaml provision.TsuruYamlData
+	Procfile  string
+}
+
 func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 	tlsConfig, err := rest.TLSConfigFor(config)
 	if err != nil {
@@ -264,7 +270,6 @@ func createPod(params createPodParams) error {
 	if uid != nil {
 		runAsUser = strconv.FormatInt(*uid, 10)
 	}
-	regUser, regPass, regDomain := registryAuth(params.destinationImages[0])
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -276,63 +281,18 @@ func createPod(params createPodParams) error {
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(params.app),
 			NodeSelector:       nodeSelector,
-			Volumes: append([]apiv1.Volume{
-				{
-					Name: "dockersock",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
-							Path: dockerSockPath,
-						},
-					},
-				},
-				{
-					Name: "intercontainer",
-					VolumeSource: apiv1.VolumeSource{
-						EmptyDir: &apiv1.EmptyDirVolumeSource{},
-					},
-				},
-			}, volumes...),
-			RestartPolicy: apiv1.RestartPolicyNever,
+			Volumes:            append(deployVolumes(), volumes...),
+			RestartPolicy:      apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				{
-					Name:    baseName,
-					Image:   params.sourceImage,
-					Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
-					Env:     envs,
-					SecurityContext: &apiv1.SecurityContext{
-						RunAsUser: uid,
-					},
-					VolumeMounts: append([]apiv1.VolumeMount{
-						{Name: "intercontainer", MountPath: buildIntercontainerPath},
-					}, mounts...),
-				},
-				{
-					Name:  commitContainer,
-					Image: kubeConf.DeploySidecarImage,
-					VolumeMounts: append([]apiv1.VolumeMount{
-						{Name: "dockersock", MountPath: dockerSockPath},
-						{Name: "intercontainer", MountPath: buildIntercontainerPath},
-					}, mounts...),
-					Stdin:     true,
-					StdinOnce: true,
-					Env: []apiv1.EnvVar{
-						{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-						{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(params.destinationImages, ",")},
-						{Name: "DEPLOYAGENT_INPUT_FILE", Value: params.inputFile},
-						{Name: "DEPLOYAGENT_RUN_AS_USER", Value: runAsUser},
-						{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: regUser},
-						{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: regPass},
-						{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: regDomain},
-					},
-					Command: []string{
-						"sh", "-ec",
-						fmt.Sprintf(`
-							end() { touch %[1]s; }
-							trap end EXIT
-							mkdir -p $(dirname %[2]s) && cat >%[2]s && %[3]s
-						`, buildIntercontainerDone, params.inputFile, strings.Join(params.cmds[2:], " ")),
-					},
-				},
+				newSleepyContainer(baseName, params.sourceImage, uid, envs, mounts...),
+				newDeployAgentContainer(deployAgentConfig{
+					name:              commitContainer,
+					image:             kubeConf.DeploySidecarImage,
+					cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
+					destinationImages: params.destinationImages,
+					inputFile:         params.inputFile,
+					runAsUser:         runAsUser,
+				}),
 			},
 		},
 	}
@@ -887,10 +847,10 @@ func getTargetPortForImage(imgName string) int {
 	return portInt
 }
 
-func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
+func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {
 	deployPodName, err := deployPodNameForApp(a)
 	if err != nil {
-		return nil, "", nil, err
+		return InspectData{}, err
 	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -901,7 +861,7 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 		},
 	})
 	if err != nil {
-		return nil, "", nil, err
+		return InspectData{}, err
 	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -921,19 +881,15 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 		labels:            labels,
 	})
 	if err != nil {
-		return nil, "", nil, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
+		return InspectData{}, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
 	}
-	var data struct {
-		Image     *docker.Image
-		TsuruYaml *provision.TsuruYamlData
-		Procfile  string
-	}
+	var data InspectData
 	bufData := stdout.String()
 	err = json.NewDecoder(stdout).Decode(&data)
 	if err != nil {
-		return nil, "", nil, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
+		return InspectData{}, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
 	}
-	return data.Image, data.Procfile, data.TsuruYaml, err
+	return data, err
 }
 
 type inspectParams struct {
@@ -979,7 +935,6 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		return err
 	}
-	regUser, regPass, regDomain := registryAuth(params.destinationImages[0])
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -991,58 +946,17 @@ func runInspectSidecar(params inspectParams) error {
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(params.app),
 			NodeSelector:       nodeSelector,
-			Volumes: append([]apiv1.Volume{
-				{
-					Name: "dockersock",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
-							Path: dockerSockPath,
-						},
-					},
-				},
-				{
-					Name: "intercontainer",
-					VolumeSource: apiv1.VolumeSource{
-						EmptyDir: &apiv1.EmptyDirVolumeSource{},
-					},
-				},
-			}),
-			RestartPolicy: apiv1.RestartPolicyNever,
+			Volumes:            deployVolumes(),
+			RestartPolicy:      apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				{
-					Name:    baseName,
-					Image:   params.sourceImage,
-					Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
-					VolumeMounts: append([]apiv1.VolumeMount{
-						{Name: "intercontainer", MountPath: buildIntercontainerPath},
-					}),
-				},
-				{
-					Name:  inspectContainer,
-					Image: kubeConf.DeployInspectImage,
-					VolumeMounts: append([]apiv1.VolumeMount{
-						{Name: "dockersock", MountPath: dockerSockPath},
-						{Name: "intercontainer", MountPath: buildIntercontainerPath},
-					}),
-					Stdin:     true,
-					StdinOnce: true,
-					Env: []apiv1.EnvVar{
-						{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-						{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(params.destinationImages, ",")},
-						{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: params.sourceImage},
-						{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: regUser},
-						{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: regPass},
-						{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: regDomain},
-					},
-					Command: []string{
-						"sh", "-ec",
-						fmt.Sprintf(`
-							end() { touch %[1]s; }
-							trap end EXIT
-							cat >/dev/null && /bin/deploy-agent
-						`, buildIntercontainerDone),
-					},
-				},
+				newSleepyContainer(baseName, params.sourceImage, nil, nil),
+				newDeployAgentContainer(deployAgentConfig{
+					name:              inspectContainer,
+					image:             kubeConf.DeployInspectImage,
+					cmd:               "cat >/dev/null && /bin/deploy-agent",
+					destinationImages: params.destinationImages,
+					sourceImage:       params.sourceImage,
+				}),
 			},
 		},
 	}
@@ -1064,4 +978,88 @@ func runInspectSidecar(params inspectParams) error {
 		return multiErr
 	}
 	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
+}
+
+type deployAgentConfig struct {
+	name              string
+	image             string
+	cmd               string
+	destinationImages []string
+	sourceImage       string
+	inputFile         string
+	registryAuthEmail string
+	registryAuthPass  string
+	registryAuthUser  string
+	registryAddress   string
+	runAsUser         string
+}
+
+func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
+	return []apiv1.EnvVar{
+		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(c.destinationImages, ",")},
+		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: c.sourceImage},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: c.registryAuthUser},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: c.registryAuthPass},
+		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: c.registryAddress},
+		{Name: "DEPLOYAGENT_INPUT_FILE", Value: c.inputFile},
+		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: c.runAsUser},
+	}
+}
+
+func newDeployAgentContainer(conf deployAgentConfig) apiv1.Container {
+	conf.registryAuthUser, conf.registryAuthPass, conf.registryAddress = registryAuth(conf.destinationImages[0])
+	return apiv1.Container{
+		Name:  conf.name,
+		Image: conf.image,
+		VolumeMounts: append([]apiv1.VolumeMount{
+			{Name: "dockersock", MountPath: dockerSockPath},
+			{Name: "intercontainer", MountPath: buildIntercontainerPath},
+		}),
+		Stdin:     true,
+		StdinOnce: true,
+		Env:       conf.asEnvs(),
+		Command: []string{
+			"sh", "-ec",
+			fmt.Sprintf(`
+				end() { touch %[1]s; }
+				trap end EXIT
+				%[2]s
+			`, buildIntercontainerDone, conf.cmd),
+		},
+	}
+}
+
+func newSleepyContainer(name, image string, uid *int64, envs []apiv1.EnvVar, mounts ...apiv1.VolumeMount) apiv1.Container {
+	return apiv1.Container{
+		Name:  name,
+		Image: image,
+		Env:   envs,
+		SecurityContext: &apiv1.SecurityContext{
+			RunAsUser: uid,
+		},
+		Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
+		VolumeMounts: append([]apiv1.VolumeMount{
+			{Name: "intercontainer", MountPath: buildIntercontainerPath},
+		}, mounts...),
+	}
+}
+
+func deployVolumes() []apiv1.Volume {
+	return []apiv1.Volume{
+		{
+			Name: "dockersock",
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: dockerSockPath,
+				},
+			},
+		},
+		{
+			Name: "intercontainer",
+			VolumeSource: apiv1.VolumeSource{
+				EmptyDir: &apiv1.EmptyDirVolumeSource{},
+			},
+		},
+	}
 }

@@ -925,11 +925,12 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 			c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:v1,registry.example.com/tsuru/app-myapp:latest"},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
+				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			})
 		}
 		return false, nil, nil
