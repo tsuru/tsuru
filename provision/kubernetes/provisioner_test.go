@@ -1305,8 +1305,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:        "tsuru/deploy-agent:0.3.1",
-		DeployInspectImage:        "tsuru/deploy-agent:0.3.1",
+		DeploySidecarImage:        "tsuru/deploy-agent:0.4.0",
+		DeployInspectImage:        "tsuru/deploy-agent:0.4.0",
 		APITimeout:                60 * time.Second,
 		APIShortTimeout:           5 * time.Second,
 		PodReadyTimeout:           time.Minute,
