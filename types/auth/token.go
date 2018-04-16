@@ -14,3 +14,7 @@ type Token interface {
 	User() (*User, error)
 	Permissions() ([]permission.Permission, error)
 }
+
+type NamedToken interface {
+	GetTokenName() string
+}
