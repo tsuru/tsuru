@@ -19,7 +19,10 @@ import (
 
 type TeamToken authTypes.TeamToken
 
-var _ authTypes.Token = &TeamToken{}
+var (
+	_ authTypes.Token      = &TeamToken{}
+	_ authTypes.NamedToken = &TeamToken{}
+)
 
 func (t *TeamToken) GetValue() string {
 	return t.Token
@@ -34,7 +37,11 @@ func (t *TeamToken) IsAppToken() bool {
 }
 
 func (t *TeamToken) GetUserName() string {
-	return fmt.Sprintf("token: %v", t.TokenID)
+	return t.GetTokenName()
+}
+
+func (t *TeamToken) GetTokenName() string {
+	return t.TokenID
 }
 
 func (t *TeamToken) GetAppName() string {

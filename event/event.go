@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 var (
@@ -78,6 +79,7 @@ var (
 	OwnerTypeUser     = ownerType("user")
 	OwnerTypeApp      = ownerType("app")
 	OwnerTypeInternal = ownerType("internal")
+	OwnerTypeToken    = ownerType("token")
 
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
@@ -826,12 +828,17 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 		} else {
 			o.Type = OwnerTypeInternal
 		}
-	} else if opts.Owner.IsAppToken() {
-		o.Type = OwnerTypeApp
-		o.Name = opts.Owner.GetAppName()
 	} else {
-		o.Type = OwnerTypeUser
-		o.Name = opts.Owner.GetUserName()
+		if token, ok := opts.Owner.(authTypes.NamedToken); ok {
+			o.Type = OwnerTypeToken
+			o.Name = token.GetTokenName()
+		} else if opts.Owner.IsAppToken() {
+			o.Type = OwnerTypeApp
+			o.Name = opts.Owner.GetAppName()
+		} else {
+			o.Type = OwnerTypeUser
+			o.Name = opts.Owner.GetUserName()
+		}
 	}
 	conn, err := db.Conn()
 	if err != nil {
