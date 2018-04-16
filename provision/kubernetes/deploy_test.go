@@ -814,7 +814,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "tsuru/deploy-agent:0.3.1",
+		Image: "tsuru/deploy-agent:0.4.0",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -924,7 +924,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.3.1",
+			Image: "tsuru/deploy-agent:0.4.0",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -1197,7 +1197,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.3.1",
+			Image: "tsuru/deploy-agent:0.4.0",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},

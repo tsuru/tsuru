@@ -987,7 +987,6 @@ type deployAgentConfig struct {
 	destinationImages []string
 	sourceImage       string
 	inputFile         string
-	registryAuthEmail string
 	registryAuthPass  string
 	registryAuthUser  string
 	registryAddress   string
