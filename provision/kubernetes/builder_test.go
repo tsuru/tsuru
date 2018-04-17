@@ -120,7 +120,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: ""},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			})
 		}
 		return false, nil, nil
@@ -174,7 +174,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: ""},
+				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			})
 		}
 		return false, nil, nil

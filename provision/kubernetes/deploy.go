@@ -225,78 +225,19 @@ func createPod(params createPodParams) error {
 	if len(params.cmds) != 3 {
 		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 	}
-	if len(params.destinationImages) == 0 {
-		return errors.Errorf("no destination images provided")
-	}
-	err := ensureServiceAccountForApp(params.client, params.app)
-	if err != nil {
-		return err
-	}
-	baseName := params.podName
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: params.app,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			IsBuild:     true,
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
+	commitContainer := "committer-cont"
+	kubeConf := getKubeConfig()
+	pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+		name:              commitContainer,
+		image:             kubeConf.DeploySidecarImage,
+		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
+		destinationImages: params.destinationImages,
+		inputFile:         params.inputFile,
 	})
 	if err != nil {
 		return err
 	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
-	volumes, mounts, err := createVolumesForApp(params.client, params.app)
-	if err != nil {
-		return err
-	}
-	annotations.SetBuildImage(params.destinationImages[0])
-	appEnvs := provision.EnvsForApp(params.app, "", true)
-	var envs []apiv1.EnvVar
-	for _, envData := range appEnvs {
-		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
-	}
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   params.app.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
-	commitContainer := "committer-cont"
-	_, uid := dockercommon.UserForContainer()
-	kubeConf := getKubeConfig()
-	pullSecrets, err := getImagePullSecrets(params.client, params.sourceImage, kubeConf.DeploySidecarImage)
-	if err != nil {
-		return err
-	}
-	var runAsUser string
-	if uid != nil {
-		runAsUser = strconv.FormatInt(*uid, 10)
-	}
-	pod := &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        baseName,
-			Namespace:   params.client.Namespace(),
-			Labels:      labels.ToLabels(),
-			Annotations: annotations.ToLabels(),
-		},
-		Spec: apiv1.PodSpec{
-			ImagePullSecrets:   pullSecrets,
-			ServiceAccountName: serviceAccountNameForApp(params.app),
-			NodeSelector:       nodeSelector,
-			Volumes:            append(deployVolumes(), volumes...),
-			RestartPolicy:      apiv1.RestartPolicyNever,
-			Containers: []apiv1.Container{
-				newSleepyContainer(baseName, params.sourceImage, uid, envs, mounts...),
-				newDeployAgentContainer(deployAgentConfig{
-					name:              commitContainer,
-					image:             kubeConf.DeploySidecarImage,
-					cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
-					destinationImages: params.destinationImages,
-					inputFile:         params.inputFile,
-					runAsUser:         runAsUser,
-				}),
-			},
-		},
-	}
-	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(pod)
+	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -904,63 +845,19 @@ type inspectParams struct {
 }
 
 func runInspectSidecar(params inspectParams) error {
-	if len(params.destinationImages) == 0 {
-		return errors.Errorf("no destination images provided")
-	}
-	err := ensureServiceAccountForApp(params.client, params.app)
-	if err != nil {
-		return err
-	}
-	baseName := params.podName
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: params.app,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			IsBuild:     true,
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
+	inspectContainer := "inspect-cont"
+	kubeConf := getKubeConfig()
+	pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+		name:              inspectContainer,
+		image:             kubeConf.DeployInspectImage,
+		cmd:               "cat >/dev/null && /bin/deploy-agent",
+		destinationImages: params.destinationImages,
+		sourceImage:       params.sourceImage,
 	})
 	if err != nil {
 		return err
 	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
-	annotations.SetBuildImage(params.destinationImages[0])
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   params.app.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
-	inspectContainer := "inspect-cont"
-	kubeConf := getKubeConfig()
-	pullSecrets, err := getImagePullSecrets(params.client, params.sourceImage, kubeConf.DeploySidecarImage)
-	if err != nil {
-		return err
-	}
-	pod := &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        baseName,
-			Namespace:   params.client.Namespace(),
-			Labels:      labels.ToLabels(),
-			Annotations: annotations.ToLabels(),
-		},
-		Spec: apiv1.PodSpec{
-			ImagePullSecrets:   pullSecrets,
-			ServiceAccountName: serviceAccountNameForApp(params.app),
-			NodeSelector:       nodeSelector,
-			Volumes:            deployVolumes(),
-			RestartPolicy:      apiv1.RestartPolicyNever,
-			Containers: []apiv1.Container{
-				newSleepyContainer(baseName, params.sourceImage, nil, nil),
-				newDeployAgentContainer(deployAgentConfig{
-					name:              inspectContainer,
-					image:             kubeConf.DeployInspectImage,
-					cmd:               "cat >/dev/null && /bin/deploy-agent",
-					destinationImages: params.destinationImages,
-					sourceImage:       params.sourceImage,
-				}),
-			},
-		},
-	}
-	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(pod)
+	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -991,6 +888,84 @@ type deployAgentConfig struct {
 	registryAuthUser  string
 	registryAddress   string
 	runAsUser         string
+}
+
+func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
+	if len(conf.destinationImages) == 0 {
+		return apiv1.Pod{}, errors.Errorf("no destination images provided")
+	}
+	err := ensureServiceAccountForApp(client, app)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: app,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
+	volumes, mounts, err := createVolumesForApp(client, app)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	annotations.SetBuildImage(conf.destinationImages[0])
+	appEnvs := provision.EnvsForApp(app, "", true)
+	var envs []apiv1.EnvVar
+	for _, envData := range appEnvs {
+		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
+	}
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   app.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector()
+	_, uid := dockercommon.UserForContainer()
+	pullSecrets, err := getImagePullSecrets(client, sourceImage, conf.image)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	if uid != nil && conf.runAsUser == "" {
+		conf.runAsUser = strconv.FormatInt(*uid, 10)
+	}
+	return apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        podName,
+			Namespace:   client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
+		},
+		Spec: apiv1.PodSpec{
+			ImagePullSecrets:   pullSecrets,
+			ServiceAccountName: serviceAccountNameForApp(app),
+			NodeSelector:       nodeSelector,
+			Volumes: append([]apiv1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: dockerSockPath,
+						},
+					},
+				},
+				{
+					Name: "intercontainer",
+					VolumeSource: apiv1.VolumeSource{
+						EmptyDir: &apiv1.EmptyDirVolumeSource{},
+					},
+				},
+			}, volumes...),
+			RestartPolicy: apiv1.RestartPolicyNever,
+			Containers: []apiv1.Container{
+				newSleepyContainer(podName, sourceImage, uid, envs, mounts...),
+				newDeployAgentContainer(conf),
+			},
+		},
+	}, nil
 }
 
 func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
@@ -1041,24 +1016,5 @@ func newSleepyContainer(name, image string, uid *int64, envs []apiv1.EnvVar, mou
 		VolumeMounts: append([]apiv1.VolumeMount{
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		}, mounts...),
-	}
-}
-
-func deployVolumes() []apiv1.Volume {
-	return []apiv1.Volume{
-		{
-			Name: "dockersock",
-			VolumeSource: apiv1.VolumeSource{
-				HostPath: &apiv1.HostPathVolumeSource{
-					Path: dockerSockPath,
-				},
-			},
-		},
-		{
-			Name: "intercontainer",
-			VolumeSource: apiv1.VolumeSource{
-				EmptyDir: &apiv1.EmptyDirVolumeSource{},
-			},
-		},
 	}
 }
