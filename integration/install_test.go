@@ -607,10 +607,11 @@ func serviceCreate() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"servicename"},
 		requires: []string{"poolnames", "installedplatforms", "serviceimage"},
+		matrix:   map[string]string{"pool": "poolnames"},
 	}
-	appName := "integration-service-app"
+	appName := "{{.pool}}-integration-service-app"
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("app-create", appName, env.Get("installedplatforms"), "-t", "{{.team}}", "-o", env.Get("poolnames")).Run(env)
+		res := T("app-create", appName, env.Get("installedplatforms"), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("app-info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
@@ -640,7 +641,7 @@ func serviceCreate() ExecFlow {
 		replaces := map[string]string{
 			"team_responsible_to_provide_service": "integration-team",
 			"production-endpoint.com":             "http://" + parts[1],
-			"servicename":                         "integration-service",
+			"servicename":                         "integration-service-" + env.Get("pool"),
 		}
 		for k, v := range replaces {
 			res = NewCommand("sed", "-i", "-e", "'s~"+k+"~"+v+"~'", "manifest.yaml").Run(env)
@@ -650,12 +651,12 @@ func serviceCreate() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("service-info", "integration-service").Run(env)
 		c.Assert(res, ResultOk)
-		env.Set("servicename", "integration-service")
+		env.Add("servicename", "integration-service-"+env.Get("pool"))
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		res := T("app-remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
-		res = T("service-destroy", "integration-service", "-y").Run(env)
+		res = T("service-destroy", "integration-service-{{.pool}}", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
