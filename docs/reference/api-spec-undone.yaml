@@ -543,33 +543,6 @@ paths:
           description: App not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-  /teams/{team}:
-    post:
-      description: team update
-      parameters:
-        - name: team
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Team name.
-      consumes:
-      - application/json
-      responses:
-        '200':
-          description: Team updated
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Team not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
   /auth/scheme:
     get:
       description: get auth scheme
@@ -617,26 +590,6 @@ paths:
             $ref: '#/definitions/ErrorMessage'
         '404':
           description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /teams:
-    post:
-      description: team create
-      consumes:
-      - application/json
-      responses:
-        '201':
-          description: Team created
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
-          description: Team already exists
           schema:
             $ref: '#/definitions/ErrorMessage'
   /users/keys:

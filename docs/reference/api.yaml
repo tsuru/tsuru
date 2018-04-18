@@ -274,6 +274,152 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/teams:
+    get:
+      operationId: TeamsList
+      description: List teams.
+      produces:
+      - application/json
+      responses:
+        '200':
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Team'
+        '204':
+          description: No content.
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - team
+      security:
+        - Bearer: []
+    post:
+      operationId: TeamCreate
+      description: Create a team.
+      consumes:
+      - application/json
+      parameters:
+        - name: teamData
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+          description: Team name.
+      responses:
+        '201':
+          description: Team created.
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: Team already exists
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - team
+      security:
+        - Bearer: []
+  /1.0/teams/{team}:
+    parameters:
+      - name: team
+        in: path
+        required: true
+        description: Team name.
+    delete:
+      operationId: TeamDelete
+      description: Delete a team.
+      responses:
+        '200':
+          description: Team removed.
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '403':
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - team
+      security:
+        - Bearer: []
+  /1.4/teams/{team}:
+    parameters:
+      - name: team
+        in: path
+        required: true
+        description: Team name.
+    get:
+      operationId: TeamGet
+      description: Get a team.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Team data
+          schema:
+            $ref: '#/definitions/TeamInfo'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - team
+      security:
+        - Bearer: []
+    post:
+      operationId: TeamUpdate
+      description: Update a team.
+      parameters:
+        - name: updateData
+          in: body
+          required: true
+          description: Team update data.
+          schema:
+            type: object
+            properties:
+              newname:
+                type: string
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: Team updated
+        '400':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Team not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - team
+      security:
+        - Bearer: []
   /1.0/users:
     get:
       operationId: UsersList
@@ -1735,6 +1881,35 @@ definitions:
         type: string
       host:
         type: string
+  Team:
+    type: object
+    properties:
+      name:
+        type: string
+      permissions:
+        type: array
+        items:
+          type: string
+  TeamInfo:
+    type: object
+    properties:
+      name:
+        type: string
+      users:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/User'
+      pools:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/Pool'
+      apps:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/App'
   TeamTokenUpdateArgs:
     description: Arguments for updating an existing team token.
     properties:
