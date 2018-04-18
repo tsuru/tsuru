@@ -195,15 +195,22 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 	var volName string
 	var selector *metav1.LabelSelector
 	if opts.Plugin != "" {
-		_, err = client.CoreV1().PersistentVolumes().Create(&apiv1.PersistentVolume{
+		pv := &apiv1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   volumeName(v.Name),
 				Labels: labelSet.ToLabels(),
 			},
 			Spec: pvSpec,
-		})
-		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return err
+		}
+		_, err = client.CoreV1().PersistentVolumes().Update(pv)
+		if err != nil {
+			if !k8sErrors.IsNotFound(err) {
+				return err
+			}
+			_, err = client.CoreV1().PersistentVolumes().Create(pv)
+			if err != nil {
+				return err
+			}
 		}
 		selector = &metav1.LabelSelector{
 			MatchLabels: labelSet.ToVolumeSelector(),
