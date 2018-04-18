@@ -15,15 +15,15 @@ type cacheService struct {
 	storage appTypes.CacheStorage
 }
 
-func CacheService() appTypes.CacheService {
+func CacheService() (appTypes.CacheService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
-	return &cacheService{dbDriver.CacheStorage}
+	return &cacheService{dbDriver.CacheStorage}, nil
 }
 
 func (s *cacheService) Create(entry appTypes.CacheEntry) error {

@@ -23,17 +23,17 @@ type teamService struct {
 	storage authTypes.TeamStorage
 }
 
-func TeamService() authTypes.TeamService {
+func TeamService() (authTypes.TeamService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
 	return &teamService{
 		storage: dbDriver.TeamStorage,
-	}
+	}, nil
 }
 
 func (t *teamService) Create(name string, user *authTypes.User) error {
