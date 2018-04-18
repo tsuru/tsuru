@@ -89,11 +89,20 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.Cache = app.CacheService()
-	servicemanager.Team = auth.TeamService()
-	servicemanager.Plan = app.PlanService()
-	servicemanager.Platform = app.PlatformService()
-	return nil
+	servicemanager.Cache, err = app.CacheService()
+	if err != nil {
+		return err
+	}
+	servicemanager.Team, err = auth.TeamService()
+	if err != nil {
+		return err
+	}
+	servicemanager.Plan, err = app.PlanService()
+	if err != nil {
+		return err
+	}
+	servicemanager.Platform, err = app.PlatformService()
+	return err
 }
 
 // RunServer starts tsuru API server. The dry parameter indicates whether the
