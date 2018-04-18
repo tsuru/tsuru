@@ -75,7 +75,14 @@ func (s *planService) DefaultPlan() (*appTypes.Plan, error) {
 	}
 	err = s.storage.Insert(dp)
 	if err != nil {
-		return nil, err
+		if err != appTypes.ErrPlanAlreadyExists {
+			return nil, err
+		}
+		plan, errDefault := s.storage.FindDefault()
+		if errDefault != nil {
+			return nil, errDefault
+		}
+		return plan, nil
 	}
 	return &dp, nil
 }
