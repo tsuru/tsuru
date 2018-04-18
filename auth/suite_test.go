@@ -61,7 +61,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.hashed = s.user.Password
 	s.team = &authTypes.Team{Name: "cobrateam"}
 	u := authTypes.User(*s.user)
-	err = TeamService().Create(s.team.Name, &u)
+	svc, err := TeamService()
+	c.Assert(err, check.IsNil)
+	err = svc.Create(s.team.Name, &u)
 	c.Assert(err, check.IsNil)
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)

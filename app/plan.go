@@ -14,17 +14,17 @@ type planService struct {
 	storage appTypes.PlanStorage
 }
 
-func PlanService() appTypes.PlanService {
+func PlanService() (appTypes.PlanService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
 	return &planService{
 		storage: dbDriver.PlanStorage,
-	}
+	}, nil
 }
 
 // Create implements Create method of PlanService interface

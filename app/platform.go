@@ -24,17 +24,17 @@ type platformService struct {
 	storage appTypes.PlatformStorage
 }
 
-func PlatformService() appTypes.PlatformService {
+func PlatformService() (appTypes.PlatformService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
 	return &platformService{
 		storage: dbDriver.PlatformStorage,
-	}
+	}, nil
 }
 
 // Create implements Create method of PlatformService interface
