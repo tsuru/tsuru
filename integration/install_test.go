@@ -649,7 +649,7 @@ func serviceCreate() ExecFlow {
 		}
 		res = T("service-create", "manifest.yaml").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("service-info", "integration-service").Run(env)
+		res = T("service-info", "integration-service-{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		env.Add("servicename", "integration-service-"+env.Get("pool"))
 	}
