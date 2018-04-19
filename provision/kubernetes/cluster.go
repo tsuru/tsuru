@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -130,6 +131,44 @@ func (c *ClusterClient) RestConfig() *rest.Config {
 
 func (c *ClusterClient) GetCluster() *cluster.Cluster {
 	return c.Cluster
+}
+
+type clusterApp struct {
+	client *ClusterClient
+	apps   []provision.App
+}
+
+func clustersForApps(apps []provision.App) ([]clusterApp, error) {
+	clusterClientMap := map[string]clusterApp{}
+	clusterPoolMap := map[string]*cluster.Cluster{}
+	var err error
+	for _, a := range apps {
+		poolName := a.GetPool()
+		clust, inMap := clusterPoolMap[poolName]
+		if !inMap {
+			clust, err = cluster.ForPool(provisionerName, poolName)
+			if err != nil {
+				return nil, err
+			}
+		}
+		mapItem, inMap := clusterClientMap[clust.Name]
+		if !inMap {
+			cli, err := NewClusterClient(clust)
+			if err != nil {
+				return nil, err
+			}
+			mapItem = clusterApp{
+				client: cli,
+			}
+		}
+		mapItem.apps = append(mapItem.apps, a)
+		clusterClientMap[clust.Name] = mapItem
+	}
+	result := make([]clusterApp, 0, len(clusterClientMap))
+	for _, v := range clusterClientMap {
+		result = append(result, v)
+	}
+	return result, nil
 }
 
 func clusterForPool(pool string) (*ClusterClient, error) {

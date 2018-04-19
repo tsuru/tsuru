@@ -27,6 +27,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -219,6 +220,18 @@ var stateMap = map[apiv1.PodPhase]provision.Status{
 }
 
 func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
+	var apps []provision.App
+	if baseApp != nil {
+		apps = append(apps, baseApp)
+	}
+	var nodes []apiv1.Node
+	if baseNode != nil {
+		nodes = append(nodes, *baseNode)
+	}
+	return p.podsToUnitsMultiple(client, pods, apps, nodes)
+}
+
+func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App, baseNodes []apiv1.Node) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
@@ -227,11 +240,17 @@ func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.
 	appMap := map[string]provision.App{}
 	webProcMap := map[string]string{}
 	portMap := map[string]int32{}
-	if baseApp != nil {
+	for _, baseApp := range baseApps {
 		appMap[baseApp.GetName()] = baseApp
 	}
-	if baseNode != nil {
-		nodeMap[baseNode.Name] = baseNode
+	if len(baseNodes) == 0 {
+		baseNodes, err = nodesForPods(client, pods)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for i, baseNode := range baseNodes {
+		nodeMap[baseNode.Name] = &baseNodes[i]
 	}
 	units := make([]provision.Unit, len(pods))
 	for i, pod := range pods {
@@ -297,45 +316,91 @@ func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.
 	return units, nil
 }
 
+func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error) {
+	nodeSet := map[string]struct{}{}
+	for _, p := range pods {
+		nodeSet[p.Spec.NodeName] = struct{}{}
+	}
+	nodeNames := make([]string, 0, len(nodeSet))
+	for nodeName := range nodeSet {
+		nodeNames = append(nodeNames, nodeName)
+	}
+	req, err := labels.NewRequirement("metadata.name", selection.In, nodeNames)
+	if err != nil {
+		return nil, err
+	}
+	sel := labels.NewSelector()
+	sel.Add(*req)
+	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{
+		FieldSelector: sel.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return nodes.Items, nil
+}
+
 func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
+	cApps, err := clustersForApps(apps)
+	if err != nil {
+		return nil, err
+	}
 	var units []provision.Unit
-	for _, a := range apps {
-		appUnits, err := p.units(a)
+	for _, cApp := range cApps {
+		kubeConf := getKubeConfig()
+		err = cApp.client.SetTimeout(kubeConf.APIShortTimeout)
 		if err != nil {
 			return nil, err
 		}
-		units = append(units, appUnits...)
+		pods, err := podsForApps(cApp.client, cApp.apps)
+		if err != nil {
+			return nil, err
+		}
+		clusterUnits, err := p.podsToUnitsMultiple(cApp.client, pods, cApp.apps, nil)
+		if err != nil {
+			return nil, err
+		}
+		units = append(units, clusterUnits...)
 	}
 	return units, nil
 }
 
-func (p *kubernetesProvisioner) units(a provision.App) ([]provision.Unit, error) {
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return nil, err
+func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {
+	inSelectorMap := map[string][]string{}
+	for _, a := range apps {
+		l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+			App: a,
+			ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+				Prefix:      tsuruLabelPrefix,
+				Provisioner: provisionerName,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		appSel := l.ToAppSelector()
+		for k, v := range appSel {
+			inSelectorMap[k] = append(inSelectorMap[k], v)
+		}
 	}
-	kubeConf := getKubeConfig()
-	err = client.SetTimeout(kubeConf.APIShortTimeout)
-	if err != nil {
-		return nil, err
-	}
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return nil, err
+	sel := labels.NewSelector()
+	for k, v := range inSelectorMap {
+		if len(v) == 0 {
+			continue
+		}
+		req, err := labels.NewRequirement(k, selection.In, v)
+		if err != nil {
+			return nil, err
+		}
+		sel.Add(*req)
 	}
 	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
+		LabelSelector: sel.String(),
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
-	return p.podsToUnits(client, pods.Items, a, nil)
+	return pods.Items, nil
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {

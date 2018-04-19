@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -518,12 +519,134 @@ func (s *S) TestUnits(c *check.C) {
 	})
 }
 
+func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
+	a1 := provisiontest.NewFakeApp("myapp", "python", 0)
+	a2 := provisiontest.NewFakeApp("otherapp", "python", 0)
+	nNodes := 3
+	for i := 1; i <= nNodes; i++ {
+		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("n%d", i)},
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
+					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
+				},
+			},
+		})
+		c.Assert(err, check.IsNil)
+	}
+	for _, a := range []provision.App{a1, a2} {
+		for i := 1; i <= nNodes; i++ {
+			_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("p1-%s-%d", a.GetName(), i),
+					Labels: map[string]string{
+						"tsuru.io/app-name":     a.GetName(),
+						"tsuru.io/app-process":  "web",
+						"tsuru.io/app-platform": "python",
+					},
+				},
+				Spec: apiv1.PodSpec{
+					NodeName: fmt.Sprintf("n%d", i),
+				},
+			})
+			c.Assert(err, check.IsNil)
+		}
+	}
+	listPodsCalls := 0
+	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
+		listPodsCalls++
+		return false, nil, nil
+	})
+	listNodesCalls := 0
+	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+		listNodesCalls++
+		return false, nil, nil
+	})
+	units, err := s.p.Units(a1, a2)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 6)
+	c.Assert(listNodesCalls, check.Equals, 1)
+	c.Assert(listPodsCalls, check.Equals, 1)
+	sort.Slice(units, func(i, j int) bool {
+		return units[i].ID < units[j].ID
+	})
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{
+			ID:          "p1-myapp-1",
+			Name:        "p1-myapp-1",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+		},
+		{
+			ID:          "p1-myapp-2",
+			Name:        "p1-myapp-2",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.2",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
+		},
+		{
+			ID:          "p1-myapp-3",
+			Name:        "p1-myapp-3",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.3",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+		},
+		{
+			ID:          "p1-otherapp-1",
+			Name:        "p1-otherapp-1",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+		},
+		{
+			ID:          "p1-otherapp-2",
+			Name:        "p1-otherapp-2",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.2",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
+		},
+		{
+			ID:          "p1-otherapp-3",
+			Name:        "p1-otherapp-3",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.3",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+		},
+	})
+}
+
 func (s *S) TestUnitsEmpty(c *check.C) {
 	s.mock.MockfakeNodes(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+}
+
+func (s *S) TestUnitsNoApps(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	units, err := s.p.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 }
