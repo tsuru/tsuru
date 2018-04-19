@@ -12,10 +12,12 @@ import (
 
 // MockService is a struct to use in tests
 type MockService struct {
-	Cache    *app.MockCacheService
-	Plan     *app.MockPlanService
-	Platform *app.MockPlatformService
-	Team     *auth.MockTeamService
+	Cache     *app.MockCacheService
+	Plan      *app.MockPlanService
+	Platform  *app.MockPlatformService
+	Team      *auth.MockTeamService
+	AuthQuota *auth.MockAuthQuotaService
+	AppQuota  *app.MockAppQuotaService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -24,10 +26,14 @@ func SetMockService(m *MockService) {
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.Team = &auth.MockTeamService{}
+	m.AuthQuota = &auth.MockAuthQuotaService{}
+	m.AppQuota = &app.MockAppQuotaService{}
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
 	servicemanager.Team = m.Team
+	servicemanager.AuthQuota = m.AuthQuota
+	servicemanager.AppQuota = m.AppQuota
 }
 
 func (m *MockService) ResetCache() {
@@ -58,4 +64,19 @@ func (m *MockService) ResetTeam() {
 	m.Team.OnList = nil
 	m.Team.OnRemove = nil
 	m.Team.OnFindByNames = nil
+}
+
+func (m *MockService) ResetAuthQuota() {
+	m.AuthQuota.OnChangeLimit = nil
+	m.AuthQuota.OnReleaseApp = nil
+	m.AuthQuota.OnReserveApp = nil
+}
+
+func (m *MockService) ResetAppQuota() {
+	m.AppQuota.OnChangeInUse = nil
+	m.AppQuota.OnChangeLimit = nil
+	m.AppQuota.OnCheckAppLimit = nil
+	m.AppQuota.OnCheckAppUsage = nil
+	m.AppQuota.OnReleaseUnits = nil
+	m.AppQuota.OnReserveUnits = nil
 }

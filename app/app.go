@@ -807,16 +807,16 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 		return err
 	}
 	w = app.withLogWriter(w)
+	err = servicemanager.AppQuota.ReleaseUnits(&app.Quota, int(n))
+	if err != nil {
+		return err
+	}
 	err = prov.RemoveUnits(app, n, process, w)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	if err != nil {
 		return err
 	}
-	units, err := app.Units()
-	if err != nil {
-		return err
-	}
-	return app.SetQuotaInUse(len(units))
+	return nil
 }
 
 // SetUnitStatus changes the status of the given unit.
@@ -1349,11 +1349,7 @@ func (app *App) GetQuota() appTypes.AppQuota {
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	err := servicemanager.AppQuota.ChangeInUseQuota(&app.Quota, inUse)
-	if err == mgo.ErrNotFound {
-		return ErrAppNotFound
-	}
-	return err
+	return servicemanager.AppQuota.ChangeInUse(&app.Quota, inUse)
 }
 
 // GetCname returns the cnames of the app.

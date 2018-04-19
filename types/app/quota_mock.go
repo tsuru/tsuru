@@ -10,13 +10,14 @@ var (
 )
 
 type MockAppQuotaStorage struct {
-	OnIncInUse func(AppQuotaService, *AppQuota, int) error
-	OnSetLimit func(string, int) error
-	OnSetInUse func(string, int) error
+	OnIncInUse      func(*AppQuota, int) error
+	OnSetLimit      func(string, int) error
+	OnSetInUse      func(string, int) error
+	OnFindByAppName func(string) (*AppQuota, error)
 }
 
-func (m *MockAppQuotaStorage) IncInUse(service AppQuotaService, quota *AppQuota, quantity int) error {
-	return m.OnIncInUse(service, quota, quantity)
+func (m *MockAppQuotaStorage) IncInUse(quota *AppQuota, quantity int) error {
+	return m.OnIncInUse(quota, quantity)
 }
 
 func (m *MockAppQuotaStorage) SetLimit(appName string, limit int) error {
@@ -27,13 +28,19 @@ func (m *MockAppQuotaStorage) SetInUse(appName string, inUse int) error {
 	return m.OnSetInUse(appName, inUse)
 }
 
+func (m *MockAppQuotaStorage) FindByAppName(appName string) (*AppQuota, error) {
+	return m.OnFindByAppName(appName)
+}
+
 type MockAppQuotaService struct {
-	OnCheckAppUsage    func(*AppQuota, int) error
-	OnCheckAppLimit    func(*AppQuota, int) error
-	OnReserveUnits     func(*AppQuota, int) error
-	OnReleaseUnits     func(*AppQuota, int) error
-	OnChangeLimitQuota func(*AppQuota, int) error
-	OnChangeInUseQuota func(*AppQuota, int) error
+	OnCheckAppUsage  func(*AppQuota, int) error
+	OnCheckAppLimit  func(*AppQuota, int) error
+	OnReserveUnits   func(*AppQuota, int) error
+	OnReleaseUnits   func(*AppQuota, int) error
+	OnChangeLimit    func(*AppQuota, int) error
+	OnChangeInUse    func(*AppQuota, int) error
+	OnFindByAppName  func(string) (*AppQuota, error)
+	OnCheckAppExists func(string) error
 }
 
 func (m *MockAppQuotaService) CheckAppUsage(quota *AppQuota, quantity int) error {
@@ -64,16 +71,23 @@ func (m *MockAppQuotaService) ReleaseUnits(quota *AppQuota, quantity int) error 
 	return m.OnReleaseUnits(quota, quantity)
 }
 
-func (m *MockAppQuotaService) ChangeLimitQuota(quota *AppQuota, quantity int) error {
-	if m.OnChangeLimitQuota == nil {
+func (m *MockAppQuotaService) ChangeLimit(quota *AppQuota, quantity int) error {
+	if m.OnChangeLimit == nil {
 		return nil
 	}
-	return m.OnChangeLimitQuota(quota, quantity)
+	return m.OnChangeLimit(quota, quantity)
 }
 
-func (m *MockAppQuotaService) ChangeInUseQuota(quota *AppQuota, quantity int) error {
-	if m.OnChangeInUseQuota == nil {
+func (m *MockAppQuotaService) ChangeInUse(quota *AppQuota, quantity int) error {
+	if m.OnChangeInUse == nil {
 		return nil
 	}
-	return m.OnChangeInUseQuota(quota, quantity)
+	return m.OnChangeInUse(quota, quantity)
+}
+
+func (m *MockAppQuotaService) FindByAppName(appName string) (*AppQuota, error) {
+	if m.OnFindByAppName == nil {
+		return nil, nil
+	}
+	return m.OnFindByAppName(appName)
 }

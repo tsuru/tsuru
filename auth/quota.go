@@ -12,11 +12,19 @@ type authQuotaService struct {
 	storage authTypes.AuthQuotaStorage
 }
 
+func (s *authQuotaService) checkUserExists(email string) error {
+	_, err := s.storage.FindByUserEmail(email)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ReserveApp reserves an app for the user, reserving it in the database. It's
 // used to reserve the app in the user quota, returning an error when there
 // isn't any space available.
 func (s *authQuotaService) ReserveApp(email string, quota *authTypes.AuthQuota) error {
-	err := checkUserExists(email)
+	err := s.checkUserExists(email)
 	if err != nil {
 		return err
 	}
@@ -33,18 +41,10 @@ func (s *authQuotaService) ReserveApp(email string, quota *authTypes.AuthQuota) 
 	return nil
 }
 
-func checkUserExists(email string) error {
-	_, err := GetUserByEmail(email)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // ReleaseApp releases an app from the user list, releasing the quota spot for
 // another app.
 func (s *authQuotaService) ReleaseApp(email string, quota *authTypes.AuthQuota) error {
-	err := checkUserExists(email)
+	err := s.checkUserExists(email)
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func (s *authQuotaService) ReleaseApp(email string, quota *authTypes.AuthQuota) 
 // than or equal to the current number of apps of the user. The new limit maybe
 // smaller than 0, which mean that the user should have an unlimited number of
 // apps.
-func (s *authQuotaService) ChangeQuota(email string, quota *authTypes.AuthQuota, limit int) error {
-	err := checkUserExists(email)
+func (s *authQuotaService) ChangeLimit(email string, quota *authTypes.AuthQuota, limit int) error {
+	err := s.checkUserExists(email)
 	if err != nil {
 		return err
 	}
@@ -79,4 +79,8 @@ func (s *authQuotaService) ChangeQuota(email string, quota *authTypes.AuthQuota,
 	}
 	quota.Limit = limit
 	return err
+}
+
+func (s *authQuotaService) FindByUserEmail(email string) (*authTypes.AuthQuota, error) {
+	return s.storage.FindByUserEmail(email)
 }

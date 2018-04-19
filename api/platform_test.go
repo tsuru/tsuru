@@ -40,7 +40,7 @@ type PlatformSuite struct {
 var _ = check.Suite(&PlatformSuite{})
 
 func createToken(c *check.C) auth.Token {
-	user := &auth.User{Email: "platform-admin" + "@groundcontrol.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
+	user := &auth.User{Email: "platform-admin" + "@groundcontrol.com", Password: "123456", Quota: authTypes.AuthQuota{Limit: -1}}
 	nativeScheme.Remove(user)
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)

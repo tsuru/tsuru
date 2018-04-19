@@ -58,7 +58,7 @@ var reserveUserApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if err := servicemanager.AuthQuota.ReserveApp(usr, &usr.Quota); err != nil {
+		if err := servicemanager.AuthQuota.ReserveApp(usr.Email, &usr.Quota); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
@@ -66,7 +66,7 @@ var reserveUserApp = action.Action{
 	Backward: func(ctx action.BWContext) {
 		m := ctx.FWResult.(map[string]string)
 		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
-			auth.ReleaseApp(user)
+			servicemanager.AuthQuota.ReleaseApp(user.Email, &user.Quota)
 		}
 	},
 	MinParams: 2,
@@ -91,7 +91,9 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app.Quota = appTypes.AppQuota{AppName: app.Name, Limit: -1, InUse: 0}
+		if app.Quota == (appTypes.AppQuota{}) {
+			app.Quota = appTypes.AppQuota{AppName: app.Name, Limit: -1}
+		}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit

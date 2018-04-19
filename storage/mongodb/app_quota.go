@@ -8,14 +8,19 @@ import (
 	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
-	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/app"
 )
 
-var _ appTypes.AppQuotaStorage = &AppQuotaStorage{}
+var _ app.AppQuotaStorage = &AppQuotaStorage{}
 
 type AppQuotaStorage struct{}
 
-func (s *AppQuotaStorage) IncInUse(service appTypes.AppQuotaService, quota *appTypes.AppQuota, quantity int) error {
+type _app struct {
+	appName string `bson:"_id"`
+	quota   *app.AppQuota
+}
+
+func (s *AppQuotaStorage) IncInUse(quota *app.AppQuota, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -25,16 +30,6 @@ func (s *AppQuotaStorage) IncInUse(service appTypes.AppQuotaService, quota *appT
 		bson.M{"name": quota.AppName, "quota.inuse": quota.InUse},
 		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
 	)
-	for err == mgo.ErrNotFound {
-		err = service.CheckAppLimit(quota, quantity)
-		if err != nil {
-			return err
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": quota.AppName, "quota.inuse": quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-		)
-	}
 	return err
 }
 
@@ -62,4 +57,21 @@ func (s *AppQuotaStorage) SetInUse(appName string, inUse int) error {
 		bson.M{"$set": bson.M{"quota.inuse": inUse}},
 	)
 	return err
+}
+
+func (s *AppQuotaStorage) FindByAppName(appName string) (*app.AppQuota, error) {
+	var a _app
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Apps().FindId(appName).One(&a)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, app.ErrAppNotFound
+		}
+		return nil, err
+	}
+	return a.quota, nil
 }

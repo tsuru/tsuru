@@ -5,19 +5,17 @@
 package app
 
 import (
-	"errors"
-
 	"github.com/globalsign/mgo/bson"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestReserveUserAppName(c *check.C) {
@@ -69,7 +67,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 	c.Assert(a.Platform, check.Equals, app.Platform)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota, check.DeepEquals, appTypes.AppQuota{Limit: -1})
+	c.Assert(gotApp.Quota, check.DeepEquals, appTypes.AppQuota{AppName: "conviction", Limit: -1})
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
@@ -81,7 +79,8 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	expected := quota.Quota{Limit: 2}
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	expected := appTypes.AppQuota{AppName: "come", Limit: 2}
 	a, ok := r.(*App)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(app.Quota, check.DeepEquals, expected)
@@ -350,7 +349,13 @@ func (s *S) TestProvisionAppMinParams(c *check.C) {
 func (s *S) TestReserveUserAppForward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: &authTypes.AuthQuota{Limit: 1},
+		Quota: authTypes.AuthQuota{Limit: 1},
+	}
+	s.mockService.AuthQuota.OnReserveApp = func(email string, quota *authTypes.AuthQuota) error {
+		c.Assert(quota.InUse, check.Equals, 0)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(email, check.Equals, user.Email)
+		return nil
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -362,19 +367,18 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, &user}})
 	c.Assert(err, check.IsNil)
 	c.Assert(previous, check.DeepEquals, expected)
-	err = auth.ReserveApp(&user)
-	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	err = auth.ReleaseApp(&user)
-	c.Assert(err, check.IsNil)
-	err = auth.ReserveApp(&user)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: &authTypes.AuthQuota{Limit: 1},
+		Quota: authTypes.AuthQuota{Limit: 1},
+	}
+	s.mockService.AuthQuota.OnReserveApp = func(email string, quota *authTypes.AuthQuota) error {
+		c.Assert(quota.InUse, check.Equals, 0)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(email, check.Equals, user.Email)
+		return nil
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -386,19 +390,18 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(err, check.IsNil)
 	c.Assert(previous, check.DeepEquals, expected)
-	err = auth.ReserveApp(&user)
-	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	err = auth.ReleaseApp(&user)
-	c.Assert(err, check.IsNil)
-	err = auth.ReserveApp(&user)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: &authTypes.AuthQuota{Limit: 1},
+		Quota: authTypes.AuthQuota{Limit: 1},
+	}
+	s.mockService.AuthQuota.OnReserveApp = func(email string, quota *authTypes.AuthQuota) error {
+		c.Assert(quota.InUse, check.Equals, 0)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(email, check.Equals, user.Email)
+		return nil
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -410,13 +413,6 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(err, check.IsNil)
 	c.Assert(previous, check.DeepEquals, expected)
-	err = auth.ReserveApp(&user)
-	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	err = auth.ReleaseApp(&user)
-	c.Assert(err, check.IsNil)
-	err = auth.ReserveApp(&user)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestReserveUserAppForwardInvalidApp(c *check.C) {
@@ -441,7 +437,13 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *check.C) {
 func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: &authTypes.AuthQuota{Limit: 1, InUse: 1},
+		Quota: authTypes.AuthQuota{Limit: 1, InUse: 1},
+	}
+	s.mockService.AuthQuota.OnReserveApp = func(email string, quota *authTypes.AuthQuota) error {
+		c.Assert(quota.InUse, check.Equals, 1)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(email, check.Equals, user.Email)
+		return &authTypes.AuthQuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -451,14 +453,22 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 	}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(previous, check.IsNil)
-	_, ok := err.(*quota.QuotaExceededError)
+	e, ok := err.(*authTypes.AuthQuotaExceededError)
 	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Available, check.Equals, uint(0))
+	c.Assert(e.Requested, check.Equals, uint(1))
 }
 
 func (s *S) TestReserveUserAppBackward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
-		Quota: &authTypes.AuthQuota{Limit: 1, InUse: 1},
+		Quota: authTypes.AuthQuota{Limit: 1, InUse: 1},
+	}
+	s.mockService.AuthQuota.OnReleaseApp = func(email string, quota *authTypes.AuthQuota) error {
+		c.Assert(quota.InUse, check.Equals, 1)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(email, check.Equals, user.Email)
+		return nil
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
@@ -473,8 +483,6 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 		},
 	}
 	reserveUserApp.Backward(ctx)
-	err = auth.ReserveApp(&user)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestReserveUserAppMinParams(c *check.C) {
@@ -485,49 +493,61 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: -1},
+		Quota:    appTypes.AppQuota{AppName: "visions", Limit: -1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
+	}
+	s.mockService.AppQuota.OnReserveUnits = func(quota *appTypes.AppQuota, quantity int) error {
+		c.Assert(quota.InUse, check.Equals, 0)
+		c.Assert(quota.Limit, check.Equals, -1)
+		c.Assert(quantity, check.Equals, 3)
+		return nil
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, check.IsNil)
 	c.Assert(result.(int), check.Equals, 3)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota.InUse, check.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: -1},
+		Quota:    appTypes.AppQuota{AppName: "visions", Limit: -1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
+	}
+	s.mockService.AppQuota.OnReserveUnits = func(quota *appTypes.AppQuota, quantity int) error {
+		c.Assert(quota.InUse, check.Equals, 0)
+		c.Assert(quota.Limit, check.Equals, -1)
+		c.Assert(quantity, check.Equals, 3)
+		return nil
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, check.IsNil)
 	c.Assert(result.(int), check.Equals, 3)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota.InUse, check.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: 1, InUse: 1},
+		Quota:    appTypes.AppQuota{AppName: "visions", Limit: 1, InUse: 1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
+	}
+	s.mockService.AppQuota.OnReserveUnits = func(quota *appTypes.AppQuota, quantity int) error {
+		c.Assert(quota.InUse, check.Equals, 1)
+		c.Assert(quota.Limit, check.Equals, 1)
+		c.Assert(quantity, check.Equals, 1)
+		return &appTypes.AppQuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*quota.QuotaExceededError)
+	e, ok := err.(*appTypes.AppQuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(0))
 	c.Assert(e.Requested, check.Equals, uint(1))
@@ -559,15 +579,18 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    &appTypes.AppQuota{AppName: "visions", Limit: 5, InUse: 4},
+		Quota:    appTypes.AppQuota{AppName: "visions", Limit: 5, InUse: 4},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
+	}
+	s.mockService.AppQuota.OnReleaseUnits = func(quota *appTypes.AppQuota, quantity int) error {
+		c.Assert(quota.InUse, check.Equals, 4)
+		c.Assert(quota.Limit, check.Equals, 5)
+		c.Assert(quantity, check.Equals, 3)
+		return nil
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota.InUse, check.Equals, 1)
 }
 
 func (s *S) TestReserveUnitsMinParams(c *check.C) {

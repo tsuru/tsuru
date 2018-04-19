@@ -24,14 +24,16 @@ type AppQuotaService interface {
 	CheckAppLimit(quota *AppQuota, quantity int) error
 	ReserveUnits(quota *AppQuota, quantity int) error
 	ReleaseUnits(quota *AppQuota, quantity int) error
-	ChangeLimitQuota(quota *AppQuota, limit int) error
-	ChangeInUseQuota(quota *AppQuota, inUse int) error
+	ChangeLimit(quota *AppQuota, limit int) error
+	ChangeInUse(quota *AppQuota, inUse int) error
+	FindByAppName(appName string) (*AppQuota, error)
 }
 
 type AppQuotaStorage interface {
-	IncInUse(service AppQuotaService, quota *AppQuota, quantity int) error
+	IncInUse(quota *AppQuota, quantity int) error
 	SetLimit(appName string, limit int) error
 	SetInUse(appName string, inUse int) error
+	FindByAppName(appName string) (*AppQuota, error)
 }
 
 type AppQuotaExceededError struct {
@@ -46,4 +48,6 @@ func (err *AppQuotaExceededError) Error() string {
 var (
 	ErrNoReservedUnits         = errors.New("Not enough reserved units")
 	ErrLimitLowerThanAllocated = errors.New("new limit is lesser than the current allocated value")
+	ErrLesserThanZero          = errors.New("invalid value, cannot be lesser than 0")
+	ErrAppNotFound             = errors.New("App not found.")
 )

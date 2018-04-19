@@ -15,15 +15,16 @@ import (
 	"gopkg.in/check.v1"
 )
 
+func defaultOnFindByUserEmail(email string) (*authTypes.AuthQuota, error) {
+	return nil, nil
+}
+
 func (s *S) TestReserveApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
 		Quota: authTypes.AuthQuota{Limit: 4, InUse: 0},
 	}
-	err := user.Create()
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
 	qs := &authQuotaService{
 		storage: &authTypes.MockAuthQuotaStorage{
 			OnIncInUse: func(email string, quota *authTypes.AuthQuota, quantity int) error {
@@ -32,17 +33,24 @@ func (s *S) TestReserveApp(c *check.C) {
 				c.Assert(quantity, check.Equals, 1)
 				return nil
 			},
+			OnFindByUserEmail: defaultOnFindByUserEmail,
 		},
 	}
-	err = qs.ReserveApp(user.Email, &user.Quota)
+	expected := authTypes.AuthQuota{Limit: 4, InUse: 1}
+	err := qs.ReserveApp(user.Email, &user.Quota)
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota.InUse, check.Equals, 1)
+	c.Assert(user.Quota, check.Equals, expected)
 }
 
 func (s *S) TestReserveAppUserNotFound(c *check.C) {
 	user := User{Email: "hills@waaaat.com"}
 	qs := &authQuotaService{
-		storage: &authTypes.MockAuthQuotaStorage{},
+		storage: &authTypes.MockAuthQuotaStorage{
+			OnFindByUserEmail: func(email string) (*authTypes.AuthQuota, error) {
+				c.Assert(email, check.Equals, user.Email)
+				return nil, authTypes.ErrUserNotFound
+			},
+		},
 	}
 	err := qs.ReserveApp(user.Email, &user.Quota)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)

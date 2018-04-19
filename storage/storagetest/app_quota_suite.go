@@ -17,6 +17,12 @@ type AppQuotaSuite struct {
 
 func (s *AppQuotaSuite) TestIncInUse(c *check.C) {
 	q := &appTypes.AppQuota{AppName: "myapp", Limit: 2, InUse: 0}
-	err := s.AppQuotaStorage.IncInUse(s.AppQuotaService, q, 1)
+	err := s.AppQuotaStorage.IncInUse(q, 1)
+	c.Assert(err, check.Equals, nil)
+}
+
+func (s *AppQuotaSuite) TestSetLimit(c *check.C) {
+	q := &appTypes.AppQuota{AppName: "myapp", Limit: 2, InUse: 0}
+	err := s.AppQuotaStorage.SetLimit(q.AppName, 1)
 	c.Assert(err, check.Equals, nil)
 }

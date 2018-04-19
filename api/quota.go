@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 
 	"github.com/tsuru/tsuru/auth"
@@ -55,6 +56,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: User not found
+//   412: Limit lower than allocated value
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	email := r.URL.Query().Get(":email")
@@ -89,7 +91,14 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	return auth.ChangeQuota(user, limit)
+	err = servicemanager.AuthQuota.ChangeLimit(user.Email, &user.Quota, limit)
+	if err == authTypes.ErrLimitLowerThanAllocated {
+		return &errors.HTTP{
+			Code:    http.StatusPreconditionFailed,
+			Message: "Limit lower than allocated value",
+		}
+	}
+	return err
 }
 
 // title: application quota
@@ -122,6 +131,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Application not found
+//   412: Limit lower than allocated
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	appName := r.URL.Query().Get(":appname")
@@ -151,5 +161,12 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	return servicemanager.AppQuota.ChangeLimitQuota(a.Quota, limit)
+	err = servicemanager.AppQuota.ChangeLimit(&a.Quota, limit)
+	if err == appTypes.ErrLimitLowerThanAllocated {
+		return &errors.HTTP{
+			Code:    http.StatusPreconditionFailed,
+			Message: "Limit lower than allocated",
+		}
+	}
+	return err
 }

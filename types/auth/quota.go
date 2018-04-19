@@ -13,12 +13,14 @@ type AuthQuota struct {
 type AuthQuotaService interface {
 	ReserveApp(email string, quota *AuthQuota) error
 	ReleaseApp(email string, quota *AuthQuota) error
-	ChangeQuota(email string, limit int) error
+	ChangeLimit(email string, quota *AuthQuota, limit int) error
+	FindByUserEmail(email string) (*AuthQuota, error)
 }
 
 type AuthQuotaStorage interface {
 	IncInUse(email string, quota *AuthQuota, quantity int) error
 	SetLimit(email string, quota *AuthQuota, limit int) error
+	FindByUserEmail(email string) (*AuthQuota, error)
 }
 
 type AuthQuotaExceededError struct {

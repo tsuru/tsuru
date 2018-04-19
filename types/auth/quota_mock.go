@@ -10,23 +10,28 @@ var (
 )
 
 type MockAuthQuotaStorage struct {
-	OnIncInUse func(string, *AuthQuota, int) error
-	OnSetLimit func(string, int) error
-	OnSetInUse func(string, int) error
+	OnIncInUse        func(string, *AuthQuota, int) error
+	OnSetLimit        func(string, int) error
+	OnFindByUserEmail func(string) (*AuthQuota, error)
 }
 
 func (m *MockAuthQuotaStorage) IncInUse(email string, quota *AuthQuota, quantity int) error {
 	return m.OnIncInUse(email, quota, quantity)
 }
 
-func (m *MockAuthQuotaStorage) SetLimit(appName string, quota *AuthQuota, limit int) error {
-	return m.OnSetLimit(appName, limit)
+func (m *MockAuthQuotaStorage) SetLimit(email string, quota *AuthQuota, limit int) error {
+	return m.OnSetLimit(email, limit)
+}
+
+func (m *MockAuthQuotaStorage) FindByUserEmail(email string) (*AuthQuota, error) {
+	return m.OnFindByUserEmail(email)
 }
 
 type MockAuthQuotaService struct {
-	OnReserveApp  func(string, *AuthQuota) error
-	OnReleaseApp  func(string, *AuthQuota) error
-	OnChangeQuota func(string, int) error
+	OnReserveApp      func(string, *AuthQuota) error
+	OnReleaseApp      func(string, *AuthQuota) error
+	OnChangeLimit     func(string, *AuthQuota, int) error
+	OnFindByUserEmail func(string) (*AuthQuota, error)
 }
 
 func (m *MockAuthQuotaService) ReserveApp(email string, quota *AuthQuota) error {
@@ -43,9 +48,16 @@ func (m *MockAuthQuotaService) ReleaseApp(email string, quota *AuthQuota) error 
 	return m.OnReleaseApp(email, quota)
 }
 
-func (m *MockAuthQuotaService) ChangeQuota(email string, quantity int) error {
-	if m.OnChangeQuota == nil {
+func (m *MockAuthQuotaService) ChangeLimit(email string, quota *AuthQuota, quantity int) error {
+	if m.OnChangeLimit == nil {
 		return nil
 	}
-	return m.OnChangeQuota(email, quantity)
+	return m.OnChangeLimit(email, quota, quantity)
+}
+
+func (m *MockAuthQuotaService) FindByUserEmail(email string) (*AuthQuota, error) {
+	if m.OnFindByUserEmail == nil {
+		return nil, nil
+	}
+	return m.OnFindByUserEmail(email)
 }
