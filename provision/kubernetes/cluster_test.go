@@ -6,9 +6,12 @@ package kubernetes
 
 import (
 	"math/rand"
+	"sort"
 	"time"
 
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/rest"
 )
@@ -173,4 +176,46 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 	ovf, err = client.OvercommitFactor("invalid")
 	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
 	c.Assert(ovf, check.Equals, int64(0))
+}
+
+func (s *S) TestClustersForApps(c *check.C) {
+	c1 := cluster.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Default:     true,
+		Provisioner: provisionerName,
+	}
+	err := c1.Save()
+	c.Assert(err, check.IsNil)
+	c2 := cluster.Cluster{
+		Name:        "c2",
+		Addresses:   []string{"addr2"},
+		Pools:       []string{"p1", "p2"},
+		Provisioner: provisionerName,
+	}
+	err = c2.Save()
+	c.Assert(err, check.IsNil)
+	a1 := provisiontest.NewFakeApp("myapp1", "python", 0)
+	a1.Pool = "xyz"
+	a2 := provisiontest.NewFakeApp("myapp2", "python", 0)
+	a2.Pool = "p1"
+	a3 := provisiontest.NewFakeApp("myapp3", "python", 0)
+	a3.Pool = "p2"
+	a4 := provisiontest.NewFakeApp("myapp4", "python", 0)
+	a4.Pool = "abc"
+	cApps, err := clustersForApps([]provision.App{a1, a2, a3, a4})
+	c.Assert(err, check.IsNil)
+	c.Assert(cApps, check.HasLen, 2)
+	sort.Slice(cApps, func(i, j int) bool {
+		return cApps[i].client.Name < cApps[j].client.Name
+	})
+	c.Assert(cApps[0].client.Name, check.Equals, "c1")
+	c.Assert(cApps[1].client.Name, check.Equals, "c2")
+	for idx := range cApps {
+		sort.Slice(cApps[idx].apps, func(i, j int) bool {
+			return cApps[idx].apps[i].GetName() < cApps[idx].apps[j].GetName()
+		})
+	}
+	c.Assert(cApps[0].apps, check.DeepEquals, []provision.App{a1, a4})
+	c.Assert(cApps[1].apps, check.DeepEquals, []provision.App{a2, a3})
 }
