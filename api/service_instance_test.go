@@ -758,6 +758,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
+		PlanName:    "plan",
 	}
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
@@ -779,6 +780,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 			{"name": "plan", "value": "newplan"},
 		},
 	}, eventtest.HasEvent)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.PlanName, check.Equals, "newplan")
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) {
