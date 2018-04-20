@@ -386,7 +386,13 @@ paths:
         - team
       security:
         - Bearer: []
-    post:
+  /1.6/teams/{team}:
+    parameters:
+      - name: team
+        in: path
+        required: true
+        description: Team name.
+    put:
       operationId: TeamUpdate
       description: Update a team.
       parameters:

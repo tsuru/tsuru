@@ -261,7 +261,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/teams", AuthorizationRequiredHandler(teamList))
 	m.Add("1.0", "Post", "/teams", AuthorizationRequiredHandler(createTeam))
 	m.Add("1.0", "Delete", "/teams/{name}", AuthorizationRequiredHandler(removeTeam))
-	m.Add("1.4", "Post", "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
+	m.Add("1.6", "Put", "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
 	m.Add("1.4", "Get", "/teams/{name}", AuthorizationRequiredHandler(teamInfo))
 
 	m.Add("1.0", "Post", "/swap", AuthorizationRequiredHandler(swap))
@@ -372,6 +372,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.6", "PUT", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
+	m.Add("1.4", "Post", "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
 	m.Add("1.0", "GET", "/docker/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))

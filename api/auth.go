@@ -244,7 +244,7 @@ var teamRenameFns = []func(oldName, newName string) error{
 
 // title: team update
 // path: /teams/{name}
-// method: POST
+// method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
 //   200: Team updated
