@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ajg/form"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -130,10 +132,17 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
-	description := r.FormValue("description")
-	teamOwner := r.FormValue("teamowner")
-	plan := r.FormValue("plan")
-	tags := r.Form["tag"]
+	updateData := struct {
+		Description string
+		Plan        string
+		TeamOwner   string
+		Tags        []string
+	}{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&updateData, r.Form)
+	updateData.Tags = append(updateData.Tags, r.Form["tag"]...) // for compatibility
 	srv, err := getService(serviceName)
 	if err != nil {
 		return err
@@ -143,17 +152,21 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	var wantedPerms []*permission.PermissionScheme
-	if description != "" {
+	if updateData.Description != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
+		si.Description = updateData.Description
 	}
-	if teamOwner != "" {
+	if updateData.TeamOwner != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamowner)
+		si.TeamOwner = updateData.TeamOwner
 	}
-	if tags != nil {
+	if updateData.Tags != nil {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
+		si.Tags = updateData.Tags
 	}
-	if plan != "" {
+	if updateData.Plan != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdatePlan)
+		si.PlanName = updateData.Plan
 	}
 	if len(wantedPerms) == 0 {
 		return &tsuruErrors.HTTP{
@@ -181,15 +194,6 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if description != "" {
-		si.Description = description
-	}
-	if teamOwner != "" {
-		si.TeamOwner = teamOwner
-	}
-	if tags != nil {
-		si.Tags = tags
-	}
 	requestID := requestIDHeader(r)
 	return si.Update(srv, *si, evt, requestID)
 }
