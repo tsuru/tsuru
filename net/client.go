@@ -43,6 +43,7 @@ var (
 	Dial5Full60ClientNoKeepAlive, _                = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, true)
 	Dial5Full60ClientNoKeepAliveNoRedirect, _      = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, false)
 	Dial5Full60ClientNoKeepAliveNoRedirectInsecure = insecure(*Dial5Full60ClientNoKeepAliveNoRedirect)
+	Dial5Full60ClientNoKeepAliveInsecure           = insecure(*Dial5Full60ClientNoKeepAlive)
 )
 
 func insecure(client http.Client) http.Client {
