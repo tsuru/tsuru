@@ -274,6 +274,102 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/platforms/{platform}:
+    parameters:
+      - name: platform
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Platform name.
+    delete:
+      operationId: PlatformDelete
+      description: Delete platform.
+      responses:
+        '200':
+          description: Platform removed
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - platform
+      security:
+        - Bearer: []
+    put:
+      operationId: PlatformUpdate
+      description: Update platform.
+      parameters:
+        - name: dockerfile_content
+          in: form
+          required: true
+          type: file
+      produces:
+      - application/x-json-stream
+      consumes:
+      - multipart/form-data
+      tags:
+        - platform
+      security:
+        - Bearer: []
+  /1.0/platforms:
+    get:
+      operationId: PlatformList
+      description: List platforms.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Platform list
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Platform'
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - platform
+      security:
+        - Bearer: []
+    post:
+      operationId: PlatformAdd
+      description: Add new platform.
+      produces:
+      - application/x-json-stream
+      consumes:
+      - multipart/form-data
+      parameters:
+        - name: name
+          in: form
+          required: true
+          type: string
+        - name: dockerfile_content
+          in: form
+          required: true
+          type: file
+      responses:
+        '200':
+          description: Platform created
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - platform
+      security:
+        - Bearer: []
   /1.0/teams:
     get:
       operationId: TeamsList
@@ -1979,3 +2075,10 @@ definitions:
         type: string
       context:
         type: string
+  Platform:
+    type: object
+    properties:
+      name:
+        type: string
+      disabled:
+        type: boolean
