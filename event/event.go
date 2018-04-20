@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -1153,6 +1154,10 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		eventCurrent.WithLabelValues(e.Kind.Name).Dec()
 		if err != nil {
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
+		} else {
+			if servicemanager.WebHook != nil {
+				servicemanager.WebHook.Notify(string(e.UniqueID))
+			}
 		}
 	}()
 	updater.remove(e.ID)

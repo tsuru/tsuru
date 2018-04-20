@@ -16,7 +16,10 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
+	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -26,6 +29,12 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func (s *S) SetUpSuite(c *check.C) {
+	var err error
+	servicemanager.WebHook, err = webhook.WebHookService()
+	c.Assert(err, check.IsNil)
+}
 
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
