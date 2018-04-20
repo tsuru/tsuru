@@ -1702,45 +1702,6 @@ paths:
           description: Plan not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-  /platforms/{platform}:
-    delete:
-      description: remove platform
-      parameters:
-        - name: platform
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Platform name.
-      responses:
-        '200':
-          description: Platform removed
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /platforms:
-    post:
-      description: add platform
-      produces:
-      - application/x-json-stream
-      consumes:
-      - multipart/form-data
-      responses:
-        '200':
-          description: Platform created
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
   /pools/{pool}/team:
     post:
       description: add team too pool
