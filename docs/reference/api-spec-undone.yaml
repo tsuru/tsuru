@@ -2067,56 +2067,6 @@ paths:
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-  /services/{service}/instances/{instance}:
-    parameters:
-      - name: service
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Service name.
-      - name: instance
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Instance name.
-    put:
-      description: service instance update
-      consumes:
-      - application/json
-      responses:
-        '200':
-          description: Service instance updated
-        '400':
-          description: Invalid data
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Service instance not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-    delete:
-      description: remove service instance
-      produces:
-      - application/x-json-stream
-      responses:
-        '200':
-          description: Service removed
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
-          description: Service instance not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
   /services/{service}/plans:
     get:
       description: service plans
@@ -2163,20 +2113,6 @@ paths:
             $ref: '#/definitions/ErrorMessage'
         '404':
           description: Instance not found
-          schema:
-            $ref: '#/definitions/ErrorMessage'
-  /services/instances:
-    get:
-      description: service instance list
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: List services instances
-        '204':
-          description: No content
-        '401':
-          description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
   /services/{service}/instances/permission/{instance}/{team}:
