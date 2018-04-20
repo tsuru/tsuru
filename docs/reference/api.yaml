@@ -11,6 +11,131 @@ securityDefinitions:
     name: Authorization
     in: header
 paths:
+  /1.0/services/instances:
+    get:
+      operationId: InstancesList
+      description: List service instances
+      produces:
+      - application/json
+      parameters:
+        - name: app
+          description: Filter instances by app name
+          type: string
+          in: query
+      responses:
+        '200':
+          description: Service instances
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/Service'
+        '204':
+          description: No content
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{service}/instances/{instance}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+    get:
+      operationId: InstanceGet
+      description: Get service instance information
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Service instance
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/ServiceInstanceInfo'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - service
+      security:
+        - Bearer: []
+    put:
+      operationId: InstanceUpdate
+      description: Update a service instance
+      consumes:
+      - application/json
+      parameters:
+        - name: updateData
+          in: body
+          schema:
+            $ref: '#/definitions/ServiceInstanceUpdateData'
+      responses:
+        '200':
+          description: Service instance updated
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: InstanceDelete
+      description: Remove service instance
+      produces:
+      - application/x-json-stream
+      parameters:
+        - name: unbindall
+          description: Remove current binds to this instance
+          in: query
+          type: boolean
+          required: true
+      responses:
+        '200':
+          description: Service removed
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Service instance not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - service
+      security:
+        - Bearer: []
   /1.0/apps:
     get:
       operationId: AppList
@@ -1393,6 +1518,73 @@ definitions:
   ErrorMessage:
     description: Error message.
     type: string
+  Service:
+    type: object
+    properties:
+      service: 
+        type: string
+      instances: 
+        type: array
+        items:
+          type: string
+      plans:
+        type: array
+        items:
+          type: string
+      service_instances:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/ServiceInstance'
+  ServiceInstance:
+    type: object
+    properties:
+      name:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+  ServiceInstanceInfo:
+    type: object
+    properties:
+      apps:
+        type: array
+        items:
+          type: string
+      teams:
+        type: array
+        items:
+          type: string
+      teamowner:
+        type: string
+      description:
+        type: string
+      planname:
+        type: string
+      plandescription:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+      custominfo:
+        type: object
+        additionalProperties:
+          type: string
+  ServiceInstanceUpdateData:
+    type: object
+    properties:
+      description:
+        type: string
+      teamowner:
+        type: string
+      plan:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
   Pool:
     type: object
     properties:
