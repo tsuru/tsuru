@@ -430,13 +430,24 @@ paths:
       description: Update platform.
       parameters:
         - name: dockerfile_content
-          in: form
+          in: formData
           required: true
           type: file
       produces:
       - application/x-json-stream
       consumes:
       - multipart/form-data
+      responses:
+        '200':
+          description: Platform updated
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
       tags:
         - platform
       security:
@@ -473,11 +484,11 @@ paths:
       - multipart/form-data
       parameters:
         - name: name
-          in: form
+          in: formData
           required: true
           type: string
         - name: dockerfile_content
-          in: form
+          in: formData
           required: true
           type: file
       responses:
@@ -503,6 +514,7 @@ paths:
       - application/json
       responses:
         '200':
+          description: Team list.
           schema:
             type: array
             items:
@@ -556,6 +568,7 @@ paths:
       - name: team
         in: path
         required: true
+        type: string
         description: Team name.
     delete:
       operationId: TeamDelete
@@ -584,6 +597,7 @@ paths:
       - name: team
         in: path
         required: true
+        type: string
         description: Team name.
     get:
       operationId: TeamGet
@@ -612,6 +626,7 @@ paths:
       - name: team
         in: path
         required: true
+        type: string
         description: Team name.
     put:
       operationId: TeamUpdate
@@ -2117,9 +2132,6 @@ definitions:
           type: string
         public:
           type: boolean
-  APITokenResponse:
-    description: String of a token of an user.
-    type: string
   Unit:
     type: object
     properties:

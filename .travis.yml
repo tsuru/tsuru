@@ -20,6 +20,7 @@ script:
   - 'if [ "${JOB}" = "checkhandlers" ]; then ./misc/check-handlers.sh; fi'
   - 'if [ "${JOB}" = "checkevents" ]; then ./misc/check-events.sh; fi'
   - 'if [ "${JOB}" = "checkapidocs" ]; then make check-api-doc; fi'
+  - 'if [ "${JOB}" = "validateapispec" ]; then make validate-api-spec; fi'
 env:
   global:
     - GOARCH=amd64
@@ -33,6 +34,7 @@ env:
     - JOB=checkhandlers
     - JOB=checkevents
     - JOB=checkapidocs
+    - JOB=validateapispec
 jobs:
   fast_finish: true
   allow_failures:
@@ -48,6 +50,8 @@ jobs:
       env: JOB=checkevents
     - go: master
       env: JOB=checkapidocs
+    - go: master
+      env: JOB=validateapispec
   include:
     - stage: deploy
       script:

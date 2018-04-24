@@ -139,6 +139,10 @@ run-tsurud-api: $(TSR_BIN)
 run-tsurud-token: $(TSR_BIN)
 	$(TSR_BIN) token
 
+validate-api-spec:
+	go get github.com/go-swagger/go-swagger/cmd/swagger
+	swagger validate ./docs/reference/api.yaml
+
 test-int:
 	go get -d github.com/tsuru/platforms/...
 	TSURU_INTEGRATION_examplesdir="${GOPATH}/src/github.com/tsuru/platforms/examples" \
