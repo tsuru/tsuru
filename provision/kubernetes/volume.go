@@ -220,7 +220,7 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 	if opts.StorageClass != "" {
 		storageClass = &opts.StorageClass
 	}
-	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(&apiv1.PersistentVolumeClaim{
+	pvc := &apiv1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   volumeClaimName(v.Name),
 			Labels: labelSet.ToLabels(),
@@ -234,9 +234,16 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 			VolumeName:       volName,
 			StorageClassName: storageClass,
 		},
-	})
-	if err != nil && !k8sErrors.IsAlreadyExists(err) {
-		return err
+	}
+	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Update(pvc)
+	if err != nil {
+		if !k8sErrors.IsNotFound(err) {
+			return err
+		}
+		_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(pvc)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
