@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -236,16 +237,21 @@ func (s *S) TestCreateVolumesForAppPluginUpdatePV(c *check.C) {
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 
+	err = pool.AddPool(pool.AddPoolOptions{
+		Name:        "test-prod",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
 	v = volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports/changed",
 			"server":       "192.168.1.1",
 			"capacity":     "10Gi",
-			"access-modes": string(apiv1.ReadWriteMany),
+			"access-modes": string(apiv1.ReadOnlyMany),
 		},
 		Plan:      volume.VolumePlan{Name: "p1"},
-		Pool:      "test-default",
+		Pool:      "test-prod",
 		TeamOwner: "admin",
 	}
 	err = v.Save()
@@ -285,7 +291,7 @@ func (s *S) TestCreateVolumesForAppPluginUpdatePV(c *check.C) {
 			Name: volumeName(v.Name),
 			Labels: map[string]string{
 				"tsuru.io/volume-name": "v1",
-				"tsuru.io/volume-pool": "test-default",
+				"tsuru.io/volume-pool": "test-prod",
 				"tsuru.io/volume-plan": "p1",
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/provisioner": "kubernetes",
@@ -298,9 +304,37 @@ func (s *S) TestCreateVolumesForAppPluginUpdatePV(c *check.C) {
 					Server: "192.168.1.1",
 				},
 			},
-			AccessModes: []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteMany},
+			AccessModes: []apiv1.PersistentVolumeAccessMode{apiv1.ReadOnlyMany},
 			Capacity: apiv1.ResourceList{
 				apiv1.ResourceStorage: expectedCap,
+			},
+		},
+	})
+	pvc, err = s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace()).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: volumeClaimName(v.Name),
+			Labels: map[string]string{
+				"tsuru.io/volume-name": "v1",
+				"tsuru.io/volume-pool": "test-prod",
+				"tsuru.io/volume-plan": "p1",
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+			Namespace: s.client.Namespace(),
+		},
+		Spec: apiv1.PersistentVolumeClaimSpec{
+			AccessModes: []apiv1.PersistentVolumeAccessMode{apiv1.ReadOnlyMany},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"tsuru.io/volume-name": "v1"},
+			},
+			VolumeName:       volumeName(v.Name),
+			StorageClassName: nil,
+			Resources: apiv1.ResourceRequirements{
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceStorage: expectedCap,
+				},
 			},
 		},
 	})
