@@ -65,9 +65,6 @@ func (c *Cluster) validate() error {
 	if err != nil {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: err.Error()})
 	}
-	if len(c.Addresses) == 0 {
-		return errors.WithStack(&tsuruErrors.ValidationError{Message: "at least one address must be present"})
-	}
 	if len(c.Pools) > 0 {
 		if c.Default {
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "cannot have both pools and default set"})

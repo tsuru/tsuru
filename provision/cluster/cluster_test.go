@@ -282,15 +282,6 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 		{
 			c: Cluster{
 				Name:        "c1",
-				Addresses:   []string{},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "at least one address must be present",
-		},
-		{
-			c: Cluster{
-				Name:        "c1",
 				Addresses:   []string{"addr1"},
 				Default:     false,
 				Provisioner: "fake",
