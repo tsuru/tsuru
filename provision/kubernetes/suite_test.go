@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -101,7 +100,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p = &kubernetesProvisioner{}
 	s.mock = kTesting.NewKubeMock(s.client, s.p)
-	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
+	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)

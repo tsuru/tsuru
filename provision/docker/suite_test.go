@@ -111,7 +111,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	repositorytest.Reset()
-	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
 	nScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nScheme
 	_, err = nScheme.Create(s.user)

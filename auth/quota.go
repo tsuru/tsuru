@@ -9,7 +9,7 @@ import (
 )
 
 type authQuotaService struct {
-	storage authTypes.AuthQuotaStorage
+	storage authTypes.QuotaStorage
 }
 
 func (s *authQuotaService) checkUserExists(email string) error {
@@ -23,17 +23,17 @@ func (s *authQuotaService) checkUserExists(email string) error {
 // ReserveApp reserves an app for the user, reserving it in the database. It's
 // used to reserve the app in the user quota, returning an error when there
 // isn't any space available.
-func (s *authQuotaService) ReserveApp(email string, quota *authTypes.AuthQuota) error {
-	err := s.checkUserExists(email)
+func (s *authQuotaService) ReserveApp(email string) error {
+	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
 	if quota.Limit == quota.InUse {
-		return &authTypes.AuthQuotaExceededError{
+		return &authTypes.QuotaExceededError{
 			Available: 0, Requested: 1,
 		}
 	}
-	err = s.storage.IncInUse(email, quota, 1)
+	err = s.storage.IncInUse(email, 1)
 	if err != nil {
 		return err
 	}
@@ -43,15 +43,15 @@ func (s *authQuotaService) ReserveApp(email string, quota *authTypes.AuthQuota) 
 
 // ReleaseApp releases an app from the user list, releasing the quota spot for
 // another app.
-func (s *authQuotaService) ReleaseApp(email string, quota *authTypes.AuthQuota) error {
-	err := s.checkUserExists(email)
+func (s *authQuotaService) ReleaseApp(email string) error {
+	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
 	if quota.InUse == 0 {
 		return authTypes.ErrCantRelease
 	}
-	err = s.storage.IncInUse(email, quota, -1)
+	err = s.storage.IncInUse(email, -1)
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func (s *authQuotaService) ReleaseApp(email string, quota *authTypes.AuthQuota) 
 // than or equal to the current number of apps of the user. The new limit maybe
 // smaller than 0, which mean that the user should have an unlimited number of
 // apps.
-func (s *authQuotaService) ChangeLimit(email string, quota *authTypes.AuthQuota, limit int) error {
-	err := s.checkUserExists(email)
+func (s *authQuotaService) ChangeLimit(email string, limit int) error {
+	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (s *authQuotaService) ChangeLimit(email string, quota *authTypes.AuthQuota,
 	} else if limit < quota.InUse {
 		return authTypes.ErrLimitLowerThanAllocated
 	}
-	err = s.storage.SetLimit(email, quota, limit)
+	err = s.storage.SetLimit(email, limit)
 	if err != nil {
 		return err
 	}
@@ -81,6 +81,6 @@ func (s *authQuotaService) ChangeLimit(email string, quota *authTypes.AuthQuota,
 	return err
 }
 
-func (s *authQuotaService) FindByUserEmail(email string) (*authTypes.AuthQuota, error) {
+func (s *authQuotaService) FindByUserEmail(email string) (*authTypes.Quota, error) {
 	return s.storage.FindByUserEmail(email)
 }

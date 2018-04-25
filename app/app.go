@@ -148,7 +148,7 @@ type App struct {
 	Error          string
 	Routers        []appTypes.AppRouter
 
-	Quota       appTypes.AppQuota
+	Quota       appTypes.Quota
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -704,7 +704,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = servicemanager.AuthQuota.ReleaseApp(owner.Email, &owner.Quota)
+		err = servicemanager.AuthQuota.ReleaseApp(owner.Email)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)
@@ -807,7 +807,7 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 		return err
 	}
 	w = app.withLogWriter(w)
-	err = servicemanager.AppQuota.ReleaseUnits(&app.Quota, int(n))
+	err = servicemanager.AppQuota.ReleaseUnits(app.Name, int(n))
 	if err != nil {
 		return err
 	}
@@ -1344,12 +1344,16 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuota() appTypes.AppQuota {
+func (app *App) GetQuota() appTypes.Quota {
 	return app.Quota
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	return servicemanager.AppQuota.ChangeInUse(&app.Quota, inUse)
+	return servicemanager.AppQuota.ChangeInUse(app.Name, inUse)
+}
+
+func (app *App) SetQuotaLimit(limit int) error {
+	return servicemanager.AppQuota.ChangeLimit(app.Name, limit)
 }
 
 // GetCname returns the cnames of the app.

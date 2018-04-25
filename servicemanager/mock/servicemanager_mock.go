@@ -16,8 +16,8 @@ type MockService struct {
 	Plan      *app.MockPlanService
 	Platform  *app.MockPlatformService
 	Team      *auth.MockTeamService
-	AuthQuota *auth.MockAuthQuotaService
-	AppQuota  *app.MockAppQuotaService
+	AuthQuota *auth.MockQuotaService
+	AppQuota  *app.MockQuotaService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -26,8 +26,8 @@ func SetMockService(m *MockService) {
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.Team = &auth.MockTeamService{}
-	m.AuthQuota = &auth.MockAuthQuotaService{}
-	m.AppQuota = &app.MockAppQuotaService{}
+	m.AuthQuota = &auth.MockQuotaService{}
+	m.AppQuota = &app.MockQuotaService{}
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform

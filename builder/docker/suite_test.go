@@ -86,7 +86,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.b = &dockerBuilder{}
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
-	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: &authTypes.AuthQuota{Limit: -1}}
+	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)

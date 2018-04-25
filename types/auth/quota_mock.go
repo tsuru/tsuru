@@ -5,57 +5,57 @@
 package auth
 
 var (
-	_ AuthQuotaStorage = &MockAuthQuotaStorage{}
-	_ AuthQuotaService = &MockAuthQuotaService{}
+	_ QuotaStorage = &MockQuotaStorage{}
+	_ QuotaService = &MockQuotaService{}
 )
 
-type MockAuthQuotaStorage struct {
-	OnIncInUse        func(string, *AuthQuota, int) error
+type MockQuotaStorage struct {
+	OnIncInUse        func(string, int) error
 	OnSetLimit        func(string, int) error
-	OnFindByUserEmail func(string) (*AuthQuota, error)
+	OnFindByUserEmail func(string) (*Quota, error)
 }
 
-func (m *MockAuthQuotaStorage) IncInUse(email string, quota *AuthQuota, quantity int) error {
-	return m.OnIncInUse(email, quota, quantity)
+func (m *MockQuotaStorage) IncInUse(email string, quantity int) error {
+	return m.OnIncInUse(email, quantity)
 }
 
-func (m *MockAuthQuotaStorage) SetLimit(email string, quota *AuthQuota, limit int) error {
+func (m *MockQuotaStorage) SetLimit(email string, limit int) error {
 	return m.OnSetLimit(email, limit)
 }
 
-func (m *MockAuthQuotaStorage) FindByUserEmail(email string) (*AuthQuota, error) {
+func (m *MockQuotaStorage) FindByUserEmail(email string) (*Quota, error) {
 	return m.OnFindByUserEmail(email)
 }
 
-type MockAuthQuotaService struct {
-	OnReserveApp      func(string, *AuthQuota) error
-	OnReleaseApp      func(string, *AuthQuota) error
-	OnChangeLimit     func(string, *AuthQuota, int) error
-	OnFindByUserEmail func(string) (*AuthQuota, error)
+type MockQuotaService struct {
+	OnReserveApp      func(string) error
+	OnReleaseApp      func(string) error
+	OnChangeLimit     func(string, int) error
+	OnFindByUserEmail func(string) (*Quota, error)
 }
 
-func (m *MockAuthQuotaService) ReserveApp(email string, quota *AuthQuota) error {
+func (m *MockQuotaService) ReserveApp(email string) error {
 	if m.OnReserveApp == nil {
 		return nil
 	}
-	return m.OnReserveApp(email, quota)
+	return m.OnReserveApp(email)
 }
 
-func (m *MockAuthQuotaService) ReleaseApp(email string, quota *AuthQuota) error {
+func (m *MockQuotaService) ReleaseApp(email string) error {
 	if m.OnReleaseApp == nil {
 		return nil
 	}
-	return m.OnReleaseApp(email, quota)
+	return m.OnReleaseApp(email)
 }
 
-func (m *MockAuthQuotaService) ChangeLimit(email string, quota *AuthQuota, quantity int) error {
+func (m *MockQuotaService) ChangeLimit(email string, quantity int) error {
 	if m.OnChangeLimit == nil {
 		return nil
 	}
-	return m.OnChangeLimit(email, quota, quantity)
+	return m.OnChangeLimit(email, quantity)
 }
 
-func (m *MockAuthQuotaService) FindByUserEmail(email string) (*AuthQuota, error) {
+func (m *MockQuotaService) FindByUserEmail(email string) (*Quota, error) {
 	if m.OnFindByUserEmail == nil {
 		return nil, nil
 	}

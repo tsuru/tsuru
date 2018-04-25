@@ -91,7 +91,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	err = servicemanager.AuthQuota.ChangeLimit(user.Email, &user.Quota, limit)
+	err = servicemanager.AuthQuota.ChangeLimit(user.Email, limit)
 	if err == authTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusPreconditionFailed,
@@ -161,7 +161,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	err = servicemanager.AppQuota.ChangeLimit(&a.Quota, limit)
+	err = a.SetQuotaLimit(limit)
 	if err == appTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusPreconditionFailed,

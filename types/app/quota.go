@@ -9,39 +9,38 @@ import (
 	"fmt"
 )
 
-type AppQuota struct {
-	AppName string `json:"appname"`
-	Limit   int    `json:"limit"`
-	InUse   int    `json:"inuse"`
+type Quota struct {
+	Limit int `json:"limit"`
+	InUse int `json:"inuse"`
 }
 
-func (q *AppQuota) Unlimited() bool {
+func (q *Quota) Unlimited() bool {
 	return -1 == q.Limit
 }
 
-type AppQuotaService interface {
-	CheckAppUsage(quota *AppQuota, quantity int) error
-	CheckAppLimit(quota *AppQuota, quantity int) error
-	ReserveUnits(quota *AppQuota, quantity int) error
-	ReleaseUnits(quota *AppQuota, quantity int) error
-	ChangeLimit(quota *AppQuota, limit int) error
-	ChangeInUse(quota *AppQuota, inUse int) error
-	FindByAppName(appName string) (*AppQuota, error)
+type QuotaService interface {
+	CheckAppUsage(quota *Quota, quantity int) error
+	CheckAppLimit(quota *Quota, quantity int) error
+	ReserveUnits(appName string, quantity int) error
+	ReleaseUnits(appName string, quantity int) error
+	ChangeLimit(appName string, limit int) error
+	ChangeInUse(appName string, inUse int) error
+	FindByAppName(appName string) (*Quota, error)
 }
 
-type AppQuotaStorage interface {
-	IncInUse(quota *AppQuota, quantity int) error
+type QuotaStorage interface {
+	IncInUse(appName string, quantity int) error
 	SetLimit(appName string, limit int) error
 	SetInUse(appName string, inUse int) error
-	FindByAppName(appName string) (*AppQuota, error)
+	FindByAppName(appName string) (*Quota, error)
 }
 
-type AppQuotaExceededError struct {
+type QuotaExceededError struct {
 	Requested uint
 	Available uint
 }
 
-func (err *AppQuotaExceededError) Error() string {
+func (err *QuotaExceededError) Error() string {
 	return fmt.Sprintf("Quota exceeded. Available: %d, Requested: %d.", err.Available, err.Requested)
 }
 
@@ -49,5 +48,5 @@ var (
 	ErrNoReservedUnits         = errors.New("Not enough reserved units")
 	ErrLimitLowerThanAllocated = errors.New("new limit is lesser than the current allocated value")
 	ErrLesserThanZero          = errors.New("invalid value, cannot be lesser than 0")
-	ErrAppNotFound             = errors.New("App not found.")
+	ErrAppNotFound             = errors.New("App not found")
 )

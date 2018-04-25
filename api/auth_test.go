@@ -123,7 +123,7 @@ func (s *AuthSuite) TestCreateUser(c *check.C) {
 		Owner:  "nobody@globo.com",
 		Kind:   "user.create",
 	}, eventtest.HasEvent)
-	c.Assert(user.Quota, check.DeepEquals, authTypes.AuthQuota{Limit: -1})
+	c.Assert(user.Quota, check.DeepEquals, authTypes.Quota{Limit: -1})
 }
 
 func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
@@ -138,7 +138,7 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota, check.DeepEquals, authTypes.AuthQuota{Limit: 1, InUse: 0})
+	c.Assert(user.Quota, check.DeepEquals, authTypes.Quota{Limit: 1, InUse: 0})
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
@@ -151,7 +151,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota, check.DeepEquals, authTypes.AuthQuota{Limit: -1})
+	c.Assert(user.Quota, check.DeepEquals, authTypes.Quota{Limit: -1})
 }
 
 func (s *AuthSuite) TestCreateUserEmailAlreadyExists(c *check.C) {
@@ -1364,7 +1364,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
-	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: authTypes.AuthQuota{Limit: -1}}
+	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
 	_, err = nativeScheme.Create(otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)
@@ -1395,7 +1395,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
-	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: authTypes.AuthQuota{Limit: -1}}
+	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
 	_, err = nativeScheme.Create(otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)

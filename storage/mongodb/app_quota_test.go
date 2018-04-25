@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.AppQuotaSuite{
-	AppQuotaStorage: &AppQuotaStorage{},
+	AppQuotaStorage: &QuotaStorage{},
 	SuiteHooks:      &mongodbBaseTest{},
 })

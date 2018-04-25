@@ -312,7 +312,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
 		Tags:        ia.Tags,
-		Quota:       appTypes.AppQuota{AppName: ia.Name, Limit: -1},
+		Quota:       appTypes.Quota{Limit: -1},
 	}
 	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {
@@ -368,7 +368,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
-			if _, ok := e.Err.(*authTypes.AuthQuotaExceededError); ok {
+			if _, ok := e.Err.(*authTypes.QuotaExceededError); ok {
 				return &errors.HTTP{
 					Code:    http.StatusForbidden,
 					Message: "Quota exceeded",

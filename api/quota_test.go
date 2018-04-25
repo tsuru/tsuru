@@ -84,7 +84,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    authTypes.AuthQuota{Limit: 4, InUse: 2},
+		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -96,7 +96,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var qt authTypes.AuthQuota
+	var qt authTypes.Quota
 	err = json.NewDecoder(recorder.Body).Decode(&qt)
 	c.Assert(err, check.IsNil)
 	c.Assert(qt, check.DeepEquals, user.Quota)
@@ -138,12 +138,10 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    authTypes.AuthQuota{Limit: 4, InUse: 2},
+		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.AuthQuota.OnChangeLimit = func(email string, quota *authTypes.AuthQuota, limit int) error {
+	s.mockService.AuthQuota.OnChangeLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
-		c.Assert(quota.InUse, check.Equals, 2)
-		c.Assert(quota.Limit, check.Equals, 4)
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
@@ -174,7 +172,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    authTypes.AuthQuota{Limit: 4, InUse: 2},
+		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -193,7 +191,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    authTypes.AuthQuota{Limit: 4, InUse: 2},
+		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -228,12 +226,10 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
-		Quota:    authTypes.AuthQuota{Limit: 4, InUse: 2},
+		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.AuthQuota.OnChangeLimit = func(email string, quota *authTypes.AuthQuota, limit int) error {
+	s.mockService.AuthQuota.OnChangeLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
-		c.Assert(quota.InUse, check.Equals, 2)
-		c.Assert(quota.Limit, check.Equals, 4)
 		c.Assert(limit, check.Equals, 3)
 		return authTypes.ErrLimitLowerThanAllocated
 	}
@@ -279,7 +275,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	defer conn.Close()
 	app := &app.App{
 		Name:  "civil",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -296,7 +292,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var qt appTypes.AppQuota
+	var qt appTypes.Quota
 	err = json.NewDecoder(recorder.Body).Decode(&qt)
 	c.Assert(err, check.IsNil)
 	c.Assert(qt, check.DeepEquals, app.Quota)
@@ -308,7 +304,7 @@ func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	defer conn.Close()
 	app := &app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -347,12 +343,11 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	defer conn.Close()
 	a := &app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{AppName: "shangrila", Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnChangeLimit = func(quota *appTypes.AppQuota, limit int) error {
-		expected := appTypes.AppQuota{AppName: a.Name, Limit: 4, InUse: 2}
-		c.Assert(*quota, check.DeepEquals, expected)
+	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
@@ -384,7 +379,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	defer conn.Close()
 	app := app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -410,7 +405,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 	defer conn.Close()
 	app := app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -458,12 +453,11 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 	defer conn.Close()
 	a := &app.App{
 		Name:  "shangrila",
-		Quota: appTypes.AppQuota{AppName: "shangrila", Limit: 4, InUse: 2},
+		Quota: appTypes.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnChangeLimit = func(quota *appTypes.AppQuota, limit int) error {
-		expected := appTypes.AppQuota{AppName: a.Name, Limit: 4, InUse: 2}
-		c.Assert(*quota, check.DeepEquals, expected)
+	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 3)
 		return appTypes.ErrLimitLowerThanAllocated
 	}

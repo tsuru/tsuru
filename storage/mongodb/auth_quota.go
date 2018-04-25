@@ -10,7 +10,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-var _ authTypes.AuthQuotaStorage = &AuthQuotaStorage{}
+var _ authTypes.QuotaStorage = &AuthQuotaStorage{}
 
 type AuthQuotaStorage struct{}
 
@@ -19,20 +19,20 @@ type authQuota struct {
 	InUse int `json:"inuse"`
 }
 
-func (s *AuthQuotaStorage) IncInUse(email string, quota *authTypes.AuthQuota, quantity int) error {
+func (s *AuthQuotaStorage) IncInUse(email string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	err = conn.Users().Update(
-		bson.M{"email": email, "quota.inuse": quota.InUse},
+		bson.M{"email": email},
 		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
 	)
 	return err
 }
 
-func (s *AuthQuotaStorage) SetLimit(email string, quota *authTypes.AuthQuota, quantity int) error {
+func (s *AuthQuotaStorage) SetLimit(email string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func (s *AuthQuotaStorage) SetLimit(email string, quota *authTypes.AuthQuota, qu
 	return err
 }
 
-func (s *AuthQuotaStorage) FindByUserEmail(email string) (*authTypes.AuthQuota, error) {
+func (s *AuthQuotaStorage) FindByUserEmail(email string) (*authTypes.Quota, error) {
 	var user authTypes.User
 	conn, err := db.Conn()
 	if err != nil {

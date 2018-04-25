@@ -44,6 +44,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
@@ -433,7 +434,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.ChangeQuota(&a, 1)
+	err = a.SetQuotaLimit(1)
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +572,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
-	a.Quota = &appTypes.AppQuota{Limit: -1}
+	a.Quota = appTypes.Quota{Limit: -1}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
