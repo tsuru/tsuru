@@ -38,8 +38,24 @@ type ClusterClient struct {
 	restConfig *rest.Config
 }
 
-func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
+func getRestBaseConfig(c *cluster.Cluster) (*rest.Config, error) {
 	gv, err := schema.ParseGroupVersion("/v1")
+	if err != nil {
+		return nil, err
+	}
+	kubeConf := getKubeConfig()
+	return &rest.Config{
+		APIPath: "/api",
+		ContentConfig: rest.ContentConfig{
+			GroupVersion:         &gv,
+			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: scheme.Codecs},
+		},
+		Timeout: kubeConf.APITimeout,
+	}, nil
+}
+
+func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
+	cfg, err := getRestBaseConfig(c)
 	if err != nil {
 		return nil, err
 	}
@@ -53,28 +69,41 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 		user = c.CustomData[userClusterKey]
 		password = c.CustomData[passwordClusterKey]
 	}
-	kubeConf := getKubeConfig()
-	return &rest.Config{
-		APIPath: "/api",
-		ContentConfig: rest.ContentConfig{
-			GroupVersion:         &gv,
-			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: scheme.Codecs},
-		},
-		Host: addr,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData:   c.CaCert,
-			CertData: c.ClientCert,
-			KeyData:  c.ClientKey,
-		},
-		Timeout:     kubeConf.APITimeout,
-		BearerToken: token,
-		Username:    user,
-		Password:    password,
-	}, nil
+	cfg.Host = addr
+	cfg.TLSClientConfig = rest.TLSClientConfig{
+		CAData:   c.CaCert,
+		CertData: c.ClientCert,
+		KeyData:  c.ClientKey,
+	}
+	cfg.BearerToken = token
+	cfg.Username = user
+	cfg.Password = password
+	return cfg, nil
+}
+
+func getInClusterConfig(c *cluster.Cluster) (*rest.Config, error) {
+	cfg, err := getRestBaseConfig(c)
+	if err != nil {
+		return nil, err
+	}
+	inClusterCfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	cfg.Host = inClusterCfg.Host
+	cfg.BearerToken = inClusterCfg.BearerToken
+	cfg.TLSClientConfig = inClusterCfg.TLSClientConfig
+	return cfg, nil
 }
 
 func NewClusterClient(clust *cluster.Cluster) (*ClusterClient, error) {
-	cfg, err := getRestConfig(clust)
+	var cfg *rest.Config
+	var err error
+	if len(clust.Addresses) == 0 {
+		cfg, err = getInClusterConfig(clust)
+	} else {
+		cfg, err = getRestConfig(clust)
+	}
 	if err != nil {
 		return nil, err
 	}
