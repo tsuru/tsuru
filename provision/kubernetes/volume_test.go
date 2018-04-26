@@ -92,7 +92,8 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 		},
 	})
-	pvc, err := s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace(a.Pool)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	ns := s.client.Namespace(a.Pool)
+	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	emptyStr := ""
 	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
@@ -105,7 +106,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/provisioner": "kubernetes",
 			},
-			Namespace: s.client.Namespace(a.Pool),
+			Namespace: ns,
 		},
 		Spec: apiv1.PersistentVolumeClaimSpec{
 			AccessModes: []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteMany},
@@ -221,7 +222,8 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	expectedClass := "my-class"
 	expectedCap, err := resource.ParseQuantity("20Gi")
 	c.Assert(err, check.IsNil)
-	pvc, err := s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace(a.Pool)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	ns := s.client.Namespace(a.Pool)
+	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -233,7 +235,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/provisioner": "kubernetes",
 			},
-			Namespace: s.client.Namespace(a.Pool),
+			Namespace: ns,
 		},
 		Spec: apiv1.PersistentVolumeClaimSpec{
 			AccessModes:      []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteMany},
@@ -273,11 +275,12 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
-	err = deleteVolume(s.clusterClient, "v1")
+	ns := s.client.Namespace(a.Pool)
+	err = deleteVolume(s.clusterClient, "v1", ns)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace(a.Pool)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 }
 

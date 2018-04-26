@@ -167,6 +167,7 @@ func (s *S) TestClusterNamespacePerPool(c *check.C) {
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.Namespace("mypool"), check.Equals, "x_mypool")
+	c.Assert(client.Namespace(""), check.Equals, "x")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)

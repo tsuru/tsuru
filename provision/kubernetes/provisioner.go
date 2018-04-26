@@ -297,7 +297,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			srvName := deploymentNameForApp(podApp, webProcessName)
 			port, ok := portMap[srvName]
 			if !ok {
-				port, err = getServicePort(client, srvName)
+				port, err = getServicePort(client, srvName, pod.ObjectMeta.Namespace)
 				if err != nil {
 					return nil, err
 				}
@@ -432,7 +432,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName)
+	pubPort, err := getServicePort(client, srvName, client.Namespace(a.GetPool()))
 	if err != nil {
 		return nil, err
 	}
@@ -612,16 +612,17 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		ns := client.Namespace(nodeWrapper.Pool())
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name, "")
+		pods, err = podsFromNode(client, node.Name, "", ns)
 		if err != nil {
 			return err
 		}
 		for _, pod := range pods {
-			err = client.CoreV1().Pods(client.Namespace()).Evict(&policy.Eviction{
+			err = client.CoreV1().Pods(ns).Evict(&policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
-					Namespace: client.Namespace(),
+					Namespace: ns,
 				},
 			})
 			if err != nil {
@@ -734,7 +735,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName)
+		defer cleanupPod(client, deployPodName, client.Namespace(a.GetPool()))
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -914,7 +915,7 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName)
+	return deleteVolume(client, volumeName, client.Namespace(pool))
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {

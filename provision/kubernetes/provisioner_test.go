@@ -101,8 +101,9 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	s.mock.MockfakeNodes(c)
-	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: s.client.Namespace()},
+	ns := s.client.Namespace("")
+	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: ns},
 	})
 	c.Assert(err, check.IsNil)
 	evictionCalled := false
@@ -1154,6 +1155,8 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 }
 
 func (s *S) TestUpgradeNodeContainer(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1178,24 +1181,34 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+
+	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace("")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 3)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace("p1")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace("p2")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
 }
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
-	_, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Create(&v1beta2.DaemonSet{
+	ns := s.client.Namespace("p1")
+	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
-			Namespace: s.client.Namespace(),
+			Namespace: ns,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: s.client.Namespace(),
+			Namespace: ns,
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-node-container":   "true",
@@ -1208,10 +1221,10 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
