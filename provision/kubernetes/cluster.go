@@ -130,9 +130,8 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) Namespace() string {
+func (c *ClusterClient) Namespace(poolName string) string {
 	prefix := "default"
-	poolName := "pool"
 	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
 	if usePoolNamespaces {
 		prefix = "tsuru"

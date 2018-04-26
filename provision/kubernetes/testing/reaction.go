@@ -45,7 +45,7 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	Namespace() string
+	Namespace(string) string
 	GetCluster() *cluster.Cluster
 }
 
@@ -317,7 +317,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(pod)
+				_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}

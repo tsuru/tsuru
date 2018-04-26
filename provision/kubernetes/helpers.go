@@ -153,7 +153,7 @@ func podsForAppProcess(client *ClusterClient, a provision.App, process string) (
 	} else {
 		selector = l.ToSelector()
 	}
-	podList, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
+	podList, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
 	if err != nil {
@@ -175,7 +175,7 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, g
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	replicaSets, err := client.AppsV1beta2().ReplicaSets(client.Namespace()).List(metav1.ListOptions{
+	replicaSets, err := client.AppsV1beta2().ReplicaSets(client.Namespace(a.GetPool())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
@@ -355,7 +355,7 @@ func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions) error {
 
 func cleanupDeployment(client *ClusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
-	err := client.AppsV1beta2().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
+	err := client.AppsV1beta2().Deployments(client.Namespace(a.GetPool())).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -379,7 +379,7 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string) e
 
 func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
-	err := client.AppsV1beta2().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
+	err := client.AppsV1beta2().DaemonSets(client.Namespace(pool)).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -492,7 +492,7 @@ func execCommand(opts execOpts) error {
 	req := restCli.Post().
 		Resource("pods").
 		Name(chosenPod.Name).
-		Namespace(client.Namespace()).
+		Namespace(client.Namespace(opts.app.GetPool())).
 		SubResource("exec").
 		Param("container", containerName)
 	req.VersionedParams(&apiv1.PodExecOptions{
@@ -563,7 +563,7 @@ func runPod(args runSinglePodArgs) error {
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        args.name,
-			Namespace:   args.client.Namespace(),
+			Namespace:   args.client.Namespace(args.app.GetPool()),
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
@@ -585,7 +585,7 @@ func runPod(args runSinglePodArgs) error {
 			},
 		},
 	}
-	_, err = args.client.CoreV1().Pods(args.client.Namespace()).Create(pod)
+	_, err = args.client.CoreV1().Pods(args.client.Namespace(args.app.GetPool())).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}

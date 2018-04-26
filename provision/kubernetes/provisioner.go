@@ -462,7 +462,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -922,5 +922,5 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName)
+	return volumeExists(client, volumeName, client.Namespace(pool))
 }

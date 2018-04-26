@@ -225,16 +225,16 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 			StorageClassName: &opts.StorageClass,
 		},
 	}
-	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(pvc)
+	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace(v.Pool)).Create(pvc)
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return err
 	}
 	return nil
 }
 
-func volumeExists(client *ClusterClient, name string) (bool, error) {
+func volumeExists(client *ClusterClient, name, namespace string) (bool, error) {
 	_, pvErr := client.CoreV1().PersistentVolumes().Get(volumeName(name), metav1.GetOptions{})
-	_, pvcErr := client.CoreV1().PersistentVolumeClaims(client.Namespace()).Get(volumeClaimName(name), metav1.GetOptions{})
+	_, pvcErr := client.CoreV1().PersistentVolumeClaims(namespace).Get(volumeClaimName(name), metav1.GetOptions{})
 	if k8sErrors.IsNotFound(pvErr) && k8sErrors.IsNotFound(pvcErr) {
 		return false, nil
 	}

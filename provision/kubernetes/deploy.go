@@ -242,7 +242,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(&pod)
+	_, err = params.client.CoreV1().Pods(params.client.Namespace(params.app.GetPool())).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -478,7 +478,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
-			Namespace:   client.Namespace(),
+			Namespace:   client.Namespace(a.GetPool()),
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
@@ -535,9 +535,9 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	}
 	var newDep *v1beta2.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.AppsV1beta2().Deployments(client.Namespace()).Create(&deployment)
+		newDep, err = client.AppsV1beta2().Deployments(client.Namespace(a.GetPool())).Create(&deployment)
 	} else {
-		newDep, err = client.AppsV1beta2().Deployments(client.Namespace()).Update(&deployment)
+		newDep, err = client.AppsV1beta2().Deployments(client.Namespace(a.GetPool())).Update(&deployment)
 	}
 	return newDep, labels, annotations, errors.WithStack(err)
 }
@@ -556,14 +556,14 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.CoreV1().Services(m.client.Namespace()).Delete(depName, &metav1.DeleteOptions{
+	err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
 	headlessSvcName := headlessServiceNameForApp(a, process)
-	err = m.client.CoreV1().Services(m.client.Namespace()).Delete(headlessSvcName, &metav1.DeleteOptions{
+	err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Delete(headlessSvcName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -574,7 +574,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace(a.GetPool())).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -670,7 +670,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1beta2().Deployments(client.Namespace(a.GetPool())).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -746,7 +746,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1beta2().Deployments(client.Namespace(a.GetPool())).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -765,14 +765,14 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
+	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace(a.GetPool())).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 		dep = nil
 	}
-	events, err := m.client.CoreV1().Events(m.client.Namespace()).List(metav1.ListOptions{})
+	events, err := m.client.CoreV1().Events(m.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -786,7 +786,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	err = monitorDeployment(ctx, m.client, dep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace(a.GetPool())).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -796,10 +796,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
+	_, err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
-			Namespace:   m.client.Namespace(),
+			Namespace:   m.client.Namespace(a.GetPool()),
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
@@ -819,10 +819,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	labels.SetIsHeadlessService()
-	_, err = m.client.CoreV1().Services(m.client.Namespace()).Create(&apiv1.Service{
+	_, err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
-			Namespace:   m.client.Namespace(),
+			Namespace:   m.client.Namespace(a.GetPool()),
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
@@ -927,7 +927,7 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		return err
 	}
-	_, err = params.client.CoreV1().Pods(params.client.Namespace()).Create(&pod)
+	_, err = params.client.CoreV1().Pods(params.client.Namespace(params.app.GetPool())).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1009,7 +1009,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 	return apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podName,
-			Namespace:   client.Namespace(),
+			Namespace:   client.Namespace(app.GetPool()),
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},

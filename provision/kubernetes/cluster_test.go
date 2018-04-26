@@ -149,15 +149,15 @@ func (s *S) TestClusterNamespace(c *check.C) {
 	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "x")
+	c.Assert(client.Namespace("mypool"), check.Equals, "x")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "default")
+	c.Assert(client.Namespace("mypool"), check.Equals, "default")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "default")
+	c.Assert(client.Namespace("mypool"), check.Equals, "default")
 }
 
 func (s *S) TestClusterNamespacePerPool(c *check.C) {
@@ -166,15 +166,15 @@ func (s *S) TestClusterNamespacePerPool(c *check.C) {
 	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "x_pool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "x_mypool")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "tsuru_pool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru_mypool")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace(), check.Equals, "tsuru_pool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru_mypool")
 }
 
 func (s *S) TestClusterOvercommitFactor(c *check.C) {
