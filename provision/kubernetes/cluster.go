@@ -5,11 +5,13 @@
 package kubernetes
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -129,10 +131,20 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *ClusterClient) Namespace() string {
-	if c.CustomData == nil || c.CustomData[namespaceClusterKey] == "" {
-		return "default"
+	prefix := "default"
+	poolName := "pool"
+	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
+	if usePoolNamespaces {
+		prefix = "tsuru"
 	}
-	return c.CustomData[namespaceClusterKey]
+	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
+		prefix = c.CustomData[namespaceClusterKey]
+	}
+
+	if usePoolNamespaces {
+		return fmt.Sprintf("%s_%s", prefix, poolName)
+	}
+	return prefix
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -157,6 +158,23 @@ func (s *S) TestClusterNamespace(c *check.C) {
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.Namespace(), check.Equals, "default")
+}
+
+func (s *S) TestClusterNamespacePerPool(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+	client, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "x_pool")
+	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+	client, err = NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "tsuru_pool")
+	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
+	client, err = NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "tsuru_pool")
 }
 
 func (s *S) TestClusterOvercommitFactor(c *check.C) {
