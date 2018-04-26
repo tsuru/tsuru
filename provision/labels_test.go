@@ -152,3 +152,24 @@ func (s *S) TestNodeLabels(c *check.C) {
 		Prefix: "myprefix",
 	})
 }
+
+func (s *S) TestLabelSet_WithoutAppReplicas(c *check.C) {
+	config.Set("routers:fake:type", "fake")
+	defer config.Unset("routers")
+	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
+	opts := provision.ServiceLabelsOpts{
+		App:      a,
+		Replicas: 3,
+		Process:  "p1",
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			BuildImage:  "myimg",
+			IsBuild:     true,
+			Provisioner: "kubernetes",
+			Builder:     "docker",
+		},
+	}
+	ls, err := provision.ServiceLabels(opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(ls.Labels["app-process-replicas"], check.Equals, "3")
+	c.Assert(ls.WithoutAppReplicas().Labels["app-process-replicas"], check.Equals, "")
+}

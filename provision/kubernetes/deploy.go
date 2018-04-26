@@ -432,7 +432,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels.ToLabels(),
+					Labels:      labels.WithoutAppReplicas().ToLabels(),
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
@@ -515,7 +515,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 		}
 		return nil, errors.WithStack(err)
 	}
-	return labelSetFromMeta(&dep.Spec.Template.ObjectMeta), nil
+	return labelSetFromMeta(&dep.ObjectMeta), nil
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
