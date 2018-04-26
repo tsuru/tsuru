@@ -116,6 +116,17 @@ func (s *LabelSet) NodeIaaSID() string {
 	return s.getLabel(labelNodeIaaSID)
 }
 
+func (s *LabelSet) WithoutAppReplicas() *LabelSet {
+	ns := LabelSet{Prefix: s.Prefix, Labels: make(map[string]string)}
+	for k, v := range s.Labels {
+		if k == labelAppProcessReplicas {
+			continue
+		}
+		ns.Labels[k] = v
+	}
+	return &ns
+}
+
 func filterByPrefix(m map[string]string, prefix string, withPrefix bool) map[string]string {
 	result := make(map[string]string, len(m))
 	for k, v := range m {

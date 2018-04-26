@@ -6,6 +6,7 @@ package provision
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
@@ -25,6 +26,9 @@ func EnvsForApp(a App, process string, isDeploy bool) []bind.EnvVar {
 		for _, envData := range a.Envs() {
 			envs = append(envs, envData)
 		}
+		sort.Slice(envs, func(i int, j int) bool {
+			return envs[i].Name < envs[j].Name
+		})
 		envs = append(envs, bind.EnvVar{Name: "TSURU_PROCESSNAME", Value: process})
 	}
 	host, _ := config.GetString("host")
