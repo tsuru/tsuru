@@ -632,6 +632,9 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		Message: "msg2",
 	})
 	watchCalled := make(chan struct{})
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
 		dep := obj.(*v1beta2.Deployment)
@@ -641,7 +644,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 			<-watchCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
-			s.client.AppsV1beta2().Deployments(s.clusterClient.Namespace()).Update(&depCopy)
+			s.client.AppsV1beta2().Deployments(s.clusterClient.Namespace(a.GetPool())).Update(&depCopy)
 		}()
 		return false, nil, nil
 	})
@@ -651,9 +654,6 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	})
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cmd1",

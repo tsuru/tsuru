@@ -140,7 +140,7 @@ func (c *ClusterClient) Namespace(poolName string) string {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
 
-	if usePoolNamespaces {
+	if usePoolNamespaces && len(poolName) > 0 {
 		return fmt.Sprintf("%s_%s", prefix, poolName)
 	}
 	return prefix

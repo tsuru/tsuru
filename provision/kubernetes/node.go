@@ -5,8 +5,10 @@
 package kubernetes
 
 import (
+	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	apiv1 "k8s.io/api/core/v1"
 )
 
@@ -74,10 +76,29 @@ func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
-	pods, err := appPodsFromNode(n.cluster, n.node.Name)
-	if err != nil {
-		return nil, err
+	namespaces := []string{}
+	nss, _ := config.GetBool("kubernetes:use-pool-namespaces")
+	if nss {
+		pools, err := pool.ListAllPools()
+		if err != nil {
+			return nil, err
+		}
+		for _, pool := range pools {
+			namespaces = append(namespaces, n.cluster.Namespace(pool.Name))
+		}
+	} else {
+		namespaces = append(namespaces, n.cluster.Namespace(""))
 	}
+
+	pods := []apiv1.Pod{}
+	for _, ns := range namespaces {
+		p, err := appPodsFromNode(n.cluster, n.node.Name, ns)
+		if err != nil {
+			return nil, err
+		}
+		pods = append(pods, p...)
+	}
+
 	return n.prov.podsToUnits(n.cluster, pods, nil, n.node)
 }
 
