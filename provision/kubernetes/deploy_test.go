@@ -72,7 +72,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
-	labels := map[string]string{
+	depLabels := map[string]string{
 		"tsuru.io/is-tsuru":             "true",
 		"tsuru.io/is-service":           "true",
 		"tsuru.io/is-build":             "false",
@@ -87,6 +87,13 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
 	}
+	podLabels := make(map[string]string)
+	for k, v := range depLabels {
+		if k == "tsuru.io/app-process-replicas" {
+			continue
+		}
+		podLabels[k] = v
+	}
 	annotations := map[string]string{
 		"tsuru.io/router-type": "fake",
 		"tsuru.io/router-name": "fake",
@@ -95,7 +102,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
 			Namespace:   s.client.Namespace(),
-			Labels:      labels,
+			Labels:      depLabels,
 			Annotations: annotations,
 		},
 		Status: v1beta2.DeploymentStatus{
@@ -122,7 +129,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
+					Labels:      podLabels,
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
@@ -362,7 +369,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			},
 			fn: func(dep *v1beta2.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.AppReplicas(), check.Equals, 3)
 				c.Assert(ls.IsStopped(), check.Equals, true)
 			},
@@ -372,7 +379,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Sleep: true},
 			},
 			fn: func(dep *v1beta2.Deployment) {
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
 		},
@@ -382,7 +389,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			},
 			fn: func(dep *v1beta2.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -391,7 +398,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Sleep: true}, {Start: true},
 			},
 			fn: func(dep *v1beta2.Deployment) {
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
 		},
@@ -401,7 +408,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			},
 			fn: func(dep *v1beta2.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -410,7 +417,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Sleep: true}, {Restart: true},
 			},
 			fn: func(dep *v1beta2.Deployment) {
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
 		},
@@ -420,7 +427,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			},
 			fn: func(dep *v1beta2.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.AppReplicas(), check.Equals, 3)
 				c.Assert(ls.IsStopped(), check.Equals, true)
 			},
@@ -430,7 +437,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Sleep: true}, {},
 			},
 			fn: func(dep *v1beta2.Deployment) {
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
 		},
@@ -440,7 +447,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			},
 			fn: func(dep *v1beta2.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
-				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.Restarts(), check.Equals, 2)
 			},
 		},
