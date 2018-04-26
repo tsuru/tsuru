@@ -45,7 +45,7 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	Namespace() string
+	Namespace(string) string
 	GetCluster() *cluster.Cluster
 }
 

@@ -574,7 +574,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	}
 	for _, a := range []provision.App{a1, a2} {
 		for i := 1; i <= nNodes; i++ {
-			_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+			_, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("p1-%s-%d", a.GetName(), i),
 					Labels: map[string]string{
@@ -903,16 +903,16 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	services, err := s.client.CoreV1().Services(s.client.Namespace()).List(metav1.ListOptions{})
+	services, err := s.client.CoreV1().Services(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
 }
@@ -979,7 +979,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1092,7 +1092,7 @@ func (s *S) TestRollback(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1401,15 +1401,15 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "stderr data")
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace()).Get("app-myapp", metav1.GetOptions{})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.Pool)).Get("app-myapp", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app-myapp",
-			Namespace: s.client.Namespace(),
+			Namespace: s.client.Namespace(a.Pool),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/app-name":    "myapp",
