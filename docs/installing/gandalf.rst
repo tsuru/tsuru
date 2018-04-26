@@ -48,42 +48,19 @@ For more details, check `packagecloud.io documentation
 <https://packagecloud.io/tsuru/stable/install#bash>`_.
 
 A deploy is executed in the ``git push``. In order to get it working, you will
-need to add a pre-receive hook. tsuru comes with three pre-receive hooks, all
-of them need further configuration:
+need to add a pre-receive hook. tsuru comes with one pre-receive hook,
+but you can create your own.
 
-    * s3cmd: uses `Amazon S3 <https://s3.amazonaws.com>`_ to store and serve
-      archives
-    * archive-server: uses tsuru's `archive-server
-      <https://github.com/tsuru/archive-server>`_ to store and serve archives
-    * swift: uses `Swift <http://swift.openstack.org>`_ to store and serve
-      archives (compatible with `Rackspace Cloud Files
-      <http://www.rackspace.com/cloud/files/>`_)
 
-In this documentation, we will use archive-server, but you can use anything that
-can store a git archive and serve it via HTTP or FTP. You can install archive-server via apt-get too:
-
-.. highlight:: bash
-
-::
-
-    sudo apt-get install archive-server
-
-Then you will need to configure Gandalf, install the pre-receive hook, set the
-proper environment variables and start Gandalf and the archive-server, please note
-that you should replace the value ``<your-machine-addr>`` with your machine public
-address:
-
+Then you will need to configure Gandalf, install the pre-receive hook and start Gandalf.
 .. highlight:: bash
 
 ::
 
     sudo mkdir -p /home/git/bare-template/hooks
-    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/pre-receive.archive-server -o /home/git/bare-template/hooks/pre-receive
+    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/pre-receive -o /home/git/bare-template/hooks/pre-receive
     sudo chmod +x /home/git/bare-template/hooks/pre-receive
     sudo chown -R git:git /home/git/bare-template
-    cat | sudo tee -a /home/git/.bash_profile <<EOF
-    export ARCHIVE_SERVER_READ=http://<your-machine-addr>:3232 ARCHIVE_SERVER_WRITE=http://127.0.0.1:3131
-    EOF
 
 In the ``/etc/gandalf.conf`` file, remove the comment from the line "template:
 /home/git/bare-template" and from the line "database", so it looks like that:
@@ -101,14 +78,13 @@ In the ``/etc/gandalf.conf`` file, remove the comment from the line "template:
         location: /var/lib/gandalf/repositories
         template: /home/git/bare-template
 
-Then start gandalf and archive-server:
+Then start gandalf:
 
 .. highlight:: bash
 
 ::
 
     sudo start gandalf-server
-    sudo start archive-server
 
 ++++++++++++++++++++++++++++++++
 Configuring tsuru to use Gandalf
