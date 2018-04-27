@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"regexp"
 	"sort"
 	"strconv"
@@ -804,7 +805,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := createBuildPod(createPodParams{
+	err := createBuildPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
@@ -863,7 +864,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := createDeployPod(createPodParams{
+	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
@@ -979,7 +980,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:password")
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := createDeployPod(createPodParams{
+	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
@@ -1114,7 +1115,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 		return true, fakeWatcher, nil
 	})
 	buf := safe.NewBuffer(nil)
-	err := createDeployPod(createPodParams{
+	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
@@ -1136,7 +1137,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := createDeployPod(createPodParams{
+	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
