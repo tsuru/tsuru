@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-	"golang.org/x/net/context"
 )
 
 // ErrContainerAlreadyExists is the error returned by CreateContainer when the
@@ -303,6 +303,7 @@ type Config struct {
 	StopTimeout       int                 `json:"StopTimeout,omitempty" yaml:"StopTimeout,omitempty" toml:"StopTimeout,omitempty"`
 	Env               []string            `json:"Env,omitempty" yaml:"Env,omitempty" toml:"Env,omitempty"`
 	Cmd               []string            `json:"Cmd" yaml:"Cmd" toml:"Cmd"`
+	Shell             []string            `json:"Shell,omitempty" yaml:"Shell,omitempty" toml:"Shell,omitempty"`
 	Healthcheck       *HealthConfig       `json:"Healthcheck,omitempty" yaml:"Healthcheck,omitempty" toml:"Healthcheck,omitempty"`
 	DNS               []string            `json:"Dns,omitempty" yaml:"Dns,omitempty" toml:"Dns,omitempty"` // For Docker API v1.9 and below only
 	Image             string              `json:"Image,omitempty" yaml:"Image,omitempty" toml:"Image,omitempty"`
@@ -1052,6 +1053,7 @@ type CPUStats struct {
 		UsageInKernelmode uint64   `json:"usage_in_kernelmode,omitempty" yaml:"usage_in_kernelmode,omitempty" toml:"usage_in_kernelmode,omitempty"`
 	} `json:"cpu_usage,omitempty" yaml:"cpu_usage,omitempty" toml:"cpu_usage,omitempty"`
 	SystemCPUUsage uint64 `json:"system_cpu_usage,omitempty" yaml:"system_cpu_usage,omitempty" toml:"system_cpu_usage,omitempty"`
+	OnlineCPUs     uint64 `json:"online_cpus,omitempty" yaml:"online_cpus,omitempty" toml:"online_cpus,omitempty"`
 	ThrottlingData struct {
 		Periods          uint64 `json:"periods,omitempty"`
 		ThrottledPeriods uint64 `json:"throttled_periods,omitempty"`
@@ -1286,9 +1288,10 @@ func (c *Client) DownloadFromContainer(id string, opts DownloadFromContainerOpti
 	})
 }
 
-// CopyFromContainerOptions has been DEPRECATED, please use DownloadFromContainerOptions along with DownloadFromContainer.
+// CopyFromContainerOptions contains the set of options used for copying
+// files from a container.
 //
-// See https://goo.gl/nWk2YQ for more details.
+// Deprecated: Use DownloadFromContainerOptions and DownloadFromContainer instead.
 type CopyFromContainerOptions struct {
 	OutputStream io.Writer `json:"-"`
 	Container    string    `json:"-"`
@@ -1296,9 +1299,9 @@ type CopyFromContainerOptions struct {
 	Context      context.Context `json:"-"`
 }
 
-// CopyFromContainer has been DEPRECATED, please use DownloadFromContainerOptions along with DownloadFromContainer.
+// CopyFromContainer copies files from a container.
 //
-// See https://goo.gl/nWk2YQ for more details.
+// Deprecated: Use DownloadFromContainer and DownloadFromContainer instead.
 func (c *Client) CopyFromContainer(opts CopyFromContainerOptions) error {
 	if opts.Container == "" {
 		return &NoSuchContainer{ID: opts.Container}

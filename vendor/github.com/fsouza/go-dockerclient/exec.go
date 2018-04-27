@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,8 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-
-	"golang.org/x/net/context"
 )
 
 // Exec is the type representing a `docker exec` instance and containing the

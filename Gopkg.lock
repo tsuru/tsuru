@@ -212,7 +212,7 @@
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "53a58da551e961b3710bbbdfabbc162c3f5f30f6"
+  revision = "fef1a5ea809976d0d3d2160f3e0a4459e6482763"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -293,7 +293,7 @@
     ".",
     "testing"
   ]
-  revision = "71996306d62c1b9a16ce3a4571ccaa5afac6dbe4"
+  revision = "3a206030a28aea7b55e78db63a78aa6df21b5c09"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -1133,6 +1133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "673588f92d94e5e3ec8cd48f0963816373ccf4d3793ae2854fdd5be2381295b5"
+  inputs-digest = "2e9c3097e0c935d2e5693ef2a049c11b18f411c8aa5d8af2dcfb6d192e9a51ec"
   solver-name = "gps-cdcl"
   solver-version = 1

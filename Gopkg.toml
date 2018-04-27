@@ -16,7 +16,7 @@
   revision = "0d0b2f481328d8bae556061a08a02175054059f4"
 # END Kube specific overrides
 
-[[constraint]]
+[[override]]
   name = "github.com/docker/docker"
   branch = "master"
 [[constraint]]

@@ -288,7 +288,7 @@ func (s *DockerServer) addTasks(service *swarm.Service, update bool) {
 			Spec:         service.Spec.TaskTemplate,
 		}
 		s.tasks = append(s.tasks, &task)
-		s.containers = append(s.containers, container)
+		s.addContainer(container)
 		s.notify(container)
 	}
 }
@@ -444,9 +444,10 @@ func (s *DockerServer) serviceDelete(w http.ResponseWriter, r *http.Request) {
 	s.services = s.services[:len(s.services)-1]
 	for i := 0; i < len(s.tasks); i++ {
 		if s.tasks[i].ServiceID == toDelete.ID {
-			_, contIdx, _ := s.findContainerWithLock(s.tasks[i].Status.ContainerStatus.ContainerID, false)
-			if contIdx != -1 {
-				s.containers = append(s.containers[:contIdx], s.containers[contIdx+1:]...)
+			cont, _ := s.findContainerWithLock(s.tasks[i].Status.ContainerStatus.ContainerID, false)
+			if cont != nil {
+				delete(s.containers, cont.ID)
+				delete(s.contNameToID, cont.Name)
 			}
 			s.tasks = append(s.tasks[:i], s.tasks[i+1:]...)
 			i--
@@ -499,9 +500,10 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 		if s.tasks[i].ServiceID != toUpdate.ID {
 			continue
 		}
-		_, contIdx, _ := s.findContainerWithLock(s.tasks[i].Status.ContainerStatus.ContainerID, false)
-		if contIdx != -1 {
-			s.containers = append(s.containers[:contIdx], s.containers[contIdx+1:]...)
+		cont, _ := s.findContainerWithLock(s.tasks[i].Status.ContainerStatus.ContainerID, false)
+		if cont != nil {
+			delete(s.containers, cont.ID)
+			delete(s.contNameToID, cont.Name)
 		}
 		s.tasks = append(s.tasks[:i], s.tasks[i+1:]...)
 		i--
