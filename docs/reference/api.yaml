@@ -1067,6 +1067,22 @@ paths:
       security:
         - Bearer: []
   /1.2/node:
+    get:
+      operationId: NodeList
+      description: List nodes.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Nodes List.
+          schema:
+            $ref: '#/definitions/NodeListResponse'
+        '204':
+          description: No content.
+      tags:
+        - node
+      security:
+        - Bearer: []
     post:
       operationId: NodeAdd
       description: Add a node.
@@ -1785,6 +1801,19 @@ definitions:
       units:
         type: object
         $ref: '#/definitions/Unit'
+  NodeListResponse:
+    type: object
+    properties:
+      nodes:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/Node'
+      machines:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/Machine'
   Node:
     type: object
     properties:
@@ -1838,6 +1867,23 @@ definitions:
         type: string
       successful:
         type: boolean
+  Machine:
+    type: object
+    properties:
+      id:
+        type: string
+      iaas:
+        type: string
+      address:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+      creationparams:
+        type: object
+        additionalProperties:
+          type: string
   RoleUser:
     description: Role of an user.
     type: object
