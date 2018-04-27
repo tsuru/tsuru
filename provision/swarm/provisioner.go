@@ -890,7 +890,10 @@ func (p *swarmProvisioner) DeleteVolume(volumeName, pool string) error {
 			if err != nil {
 				return err
 			}
-			if err := nodeClient.RemoveVolume(volumeName); err != docker.ErrNoSuchVolume && err != nil {
+			err = nodeClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{
+				Name: volumeName,
+			})
+			if err != docker.ErrNoSuchVolume && err != nil {
 				return err
 			}
 		}
