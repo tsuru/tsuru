@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -139,43 +140,57 @@ func (s *S) TestRegistrySecretName(c *check.C) {
 }
 
 func (s *S) TestWaitFor(c *check.C) {
-	err := waitFor(100*time.Millisecond, func() (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err := waitFor(ctx, func() (bool, error) {
 		return true, nil
 	}, nil)
+	cancel()
 	c.Assert(err, check.IsNil)
 	called := false
-	err = waitFor(100*time.Millisecond, func() (bool, error) {
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err = waitFor(ctx, func() (bool, error) {
 		return true, nil
 	}, func() error {
 		called = true
 		return nil
 	})
+	cancel()
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, false)
-	err = waitFor(100*time.Millisecond, func() (bool, error) {
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
 	}, nil)
-	c.Assert(err, check.ErrorMatches, `timeout after .*`)
-	err = waitFor(100*time.Millisecond, func() (bool, error) {
+	cancel()
+	c.Assert(err, check.ErrorMatches, `canceled after .*`)
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
 	}, func() error {
 		return errors.New("my error")
 	})
-	c.Assert(err, check.ErrorMatches, `timeout after .*?: my error$`)
-	err = waitFor(100*time.Millisecond, func() (bool, error) {
+	cancel()
+	c.Assert(err, check.ErrorMatches, `canceled after .*?: my error$`)
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
 	}, func() error {
 		return nil
 	})
-	c.Assert(err, check.ErrorMatches, `timeout after .*?: <nil>$`)
-	err = waitFor(100*time.Millisecond, func() (bool, error) {
+	cancel()
+	c.Assert(err, check.ErrorMatches, `canceled after .*?: <nil>$`)
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err = waitFor(ctx, func() (bool, error) {
 		return true, errors.New("myerr")
 	}, nil)
+	cancel()
 	c.Assert(err, check.ErrorMatches, `myerr`)
 }
 
 func (s *S) TestWaitForPodContainersRunning(c *check.C) {
-	err := waitForPodContainersRunning(s.clusterClient, "pod1", 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err := waitForPodContainersRunning(ctx, s.clusterClient, "pod1")
+	cancel()
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedStates []apiv1.ContainerState
@@ -196,15 +211,15 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 		err    string
 	}{
 		{phase: apiv1.PodSucceeded},
-		{phase: apiv1.PodPending, err: `timeout after .*`},
+		{phase: apiv1.PodPending, err: `canceled after .*`},
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
 		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{},
-		}, err: `timeout after .*`},
+		}, err: `canceled after .*`},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{Running: &apiv1.ContainerStateRunning{}}, {},
-		}, err: `timeout after .*`},
+		}, err: `canceled after .*`},
 		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{Running: &apiv1.ContainerStateRunning{}}, {Running: &apiv1.ContainerStateRunning{}},
 		}},
@@ -224,7 +239,9 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 			},
 		})
 		c.Assert(err, check.IsNil)
-		err = waitForPodContainersRunning(s.clusterClient, "pod1", 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		err = waitForPodContainersRunning(ctx, s.clusterClient, "pod1")
+		cancel()
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {
@@ -240,7 +257,9 @@ func (s *S) TestWaitForPod(c *check.C) {
 	s.mock.MockfakeNodes(c, srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
-	err := waitForPod(s.clusterClient, "pod1", false, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	err := waitForPod(ctx, s.clusterClient, "pod1", false)
+	cancel()
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
 	var wantedMessage string
@@ -263,9 +282,9 @@ func (s *S) TestWaitForPod(c *check.C) {
 		running    bool
 	}{
 		{phase: apiv1.PodSucceeded},
-		{phase: apiv1.PodRunning, err: `timeout after .*`},
+		{phase: apiv1.PodRunning, err: `canceled after .*`},
 		{phase: apiv1.PodRunning, running: true},
-		{phase: apiv1.PodPending, err: `timeout after .*`},
+		{phase: apiv1.PodPending, err: `canceled after .*`},
 		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
 		{phase: apiv1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
 		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
@@ -303,7 +322,9 @@ func (s *S) TestWaitForPod(c *check.C) {
 			_, err = s.client.CoreV1().Events(s.client.Namespace()).Create(tt.evt)
 			c.Assert(err, check.IsNil)
 		}
-		err = waitForPod(s.clusterClient, "pod1", tt.running, 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		err = waitForPod(ctx, s.clusterClient, "pod1", tt.running)
+		cancel()
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {

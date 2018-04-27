@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -261,7 +262,9 @@ func createPod(params createPodParams) error {
 			fmt.Fprintf(params.attachOutput, " ---> %s\n", formatEvtMessage(msg, true))
 		}
 	}()
-	err = waitForPodContainersRunning(params.client, pod.Name, kubeConf.PodRunningTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+	err = waitForPodContainersRunning(ctx, params.client, pod.Name)
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -272,7 +275,9 @@ func createPod(params createPodParams) error {
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
-	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+	defer cancel()
+	return waitForPod(ctx, params.client, pod.Name, false)
 }
 
 func registryAuth(img string) (username, password, imgDomain string) {
@@ -863,7 +868,9 @@ func runInspectSidecar(params inspectParams) error {
 	}
 	defer cleanupPod(params.client, pod.Name)
 	multiErr := tsuruErrors.NewMultiError()
-	err = waitForPodContainersRunning(params.client, pod.Name, kubeConf.PodRunningTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+	err = waitForPodContainersRunning(ctx, params.client, pod.Name)
+	cancel()
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
@@ -874,7 +881,9 @@ func runInspectSidecar(params inspectParams) error {
 	if multiErr.Len() > 0 {
 		return multiErr
 	}
-	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+	defer cancel()
+	return waitForPod(ctx, params.client, pod.Name, false)
 }
 
 type deployAgentConfig struct {
