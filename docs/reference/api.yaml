@@ -691,7 +691,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-      - users
+      - user
       security:
         - Bearer: []
     post:
@@ -727,7 +727,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
     delete:
@@ -752,7 +752,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags: 
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/api-key:
@@ -780,7 +780,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
     post:
@@ -807,7 +807,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/keys:
@@ -830,7 +830,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
     post:
@@ -862,7 +862,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/keys/{key}:
@@ -891,7 +891,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/info:
@@ -910,7 +910,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags: 
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/{email}/quota:
@@ -940,7 +940,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
     put:
@@ -976,7 +976,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/password:
@@ -1011,7 +1011,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/{email}/password:
@@ -1052,7 +1052,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.0/users/tokens:
@@ -1063,7 +1063,7 @@ paths:
         '200': 
           description: Ok
       tags:
-        - users
+        - user
       security:
         - Bearer: []
   /1.2/node:
