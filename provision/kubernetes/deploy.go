@@ -592,7 +592,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) error {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) error {
 	watch, err := filteredPodEvents(client, evtResourceVersion, "")
 	if err != nil {
 		return err
@@ -617,6 +617,8 @@ func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provisi
 		case <-time.After(100 * time.Millisecond):
 		case <-timeout:
 			return errors.Errorf("timeout waiting for deployment generation to update")
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 	var specReplicas int32
@@ -680,6 +682,8 @@ func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provisi
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 		dep, err = client.AppsV1beta2().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
@@ -690,7 +694,7 @@ func monitorDeployment(client *ClusterClient, dep *v1beta2.Deployment, a provisi
 	return nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
+func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
 	err := ensureNodeContainers()
 	if err != nil {
 		return err
@@ -718,7 +722,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	if m.writer == nil {
 		m.writer = ioutil.Discard
 	}
-	err = monitorDeployment(m.client, dep, a, process, m.writer, events.ResourceVersion)
+	err = monitorDeployment(ctx, m.client, dep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{

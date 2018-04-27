@@ -748,7 +748,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		client: client,
 		writer: evt,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, newImage, nil)
+	err = servicecommon.RunServicePipeline(manager, a, newImage, nil, evt)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -775,7 +775,7 @@ func (p *kubernetesProvisioner) Rollback(a provision.App, imageID string, evt *e
 		client: client,
 		writer: evt,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, foundImageID, nil)
+	err = servicecommon.RunServicePipeline(manager, a, foundImageID, nil, evt)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
