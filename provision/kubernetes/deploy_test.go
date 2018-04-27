@@ -64,7 +64,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -291,7 +291,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	srv, err := s.client.CoreV1().Services(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -457,7 +457,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		for _, s := range tt.states {
 			err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 				"p1": s,
-			})
+			}, nil)
 			c.Assert(err, check.IsNil)
 		}
 		var dep *v1beta2.Deployment
@@ -493,7 +493,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 		"p2":  servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -531,7 +531,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myreg.com/myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -614,7 +614,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -645,7 +645,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -673,7 +673,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
 }
 
@@ -694,7 +694,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -720,7 +720,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -752,7 +752,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -786,7 +786,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1279,7 +1279,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1343,7 +1343,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
@@ -1361,7 +1361,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
 }
 
@@ -1426,7 +1426,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
@@ -1444,7 +1444,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
 }
 
@@ -1509,7 +1509,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
-	})
+	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Pending\"$")
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
@@ -1529,7 +1529,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil, nil)
 	c.Assert(err, check.IsNil)
 	waitDep()
 	expectedLabels := map[string]string{
@@ -1593,7 +1593,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil, nil)
 	c.Assert(err, check.IsNil)
 	waitDep()
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {

@@ -5,11 +5,13 @@
 package servicecommon
 
 import (
+	"context"
 	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/set"
@@ -32,6 +34,7 @@ type pipelineArgs struct {
 	newImageSpec     ProcessSpec
 	currentImage     string
 	currentImageSpec ProcessSpec
+	event            *event.Event
 }
 
 type labelReplicas struct {
@@ -42,10 +45,10 @@ type labelReplicas struct {
 type ServiceManager interface {
 	RemoveService(a provision.App, processName string) error
 	CurrentLabels(a provision.App, processName string) (*provision.LabelSet, error)
-	DeployService(a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error
+	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error
 }
 
-func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, updateSpec ProcessSpec) error {
+func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, updateSpec ProcessSpec, evt *event.Event) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
@@ -84,6 +87,7 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 		newImageSpec:     newSpec,
 		currentImage:     curImg,
 		currentImageSpec: currentSpec,
+		event:            evt,
 	})
 }
 
@@ -94,7 +98,7 @@ func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 			var labels *labelReplicas
 			labels, err = labelsForService(args, processName, state)
 			if err == nil {
-				err = args.manager.DeployService(args.app, processName, labels.labels, labels.realReplicas, args.currentImage)
+				err = args.manager.DeployService(context.Background(), args.app, processName, labels.labels, labels.realReplicas, args.currentImage)
 			}
 		} else {
 			err = args.manager.RemoveService(args.app, processName)
@@ -186,7 +190,9 @@ var updateServices = &action.Action{
 		}
 		for _, processName := range toDeployProcesses {
 			labels := labelsMap[processName]
-			err = args.manager.DeployService(args.app, processName, labels.labels, labels.realReplicas, args.newImage)
+			ectx, cancel := args.event.CancelableContext(context.Background())
+			err = args.manager.DeployService(ectx, args.app, processName, labels.labels, labels.realReplicas, args.newImage)
+			cancel()
 			if err != nil {
 				break
 			}

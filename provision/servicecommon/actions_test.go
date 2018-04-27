@@ -99,7 +99,7 @@ func (m *recordManager) CurrentLabels(a provision.App, processName string) (*pro
 	return nil, nil
 }
 
-func (m *recordManager) DeployService(a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error {
+func (m *recordManager) DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error {
 	call := managerCall{
 		action:      "deploy",
 		processName: processName,
@@ -150,7 +150,7 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 	err = RunServicePipeline(m, fakeApp, "newImage", ProcessSpec{
 		"web":     ProcessState{Increment: 5},
 		"worker2": ProcessState{},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
@@ -193,7 +193,7 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = RunServicePipeline(m, fakeApp, "newImage", nil)
+	err = RunServicePipeline(m, fakeApp, "newImage", nil, nil)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
@@ -231,7 +231,7 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RunServicePipeline(m, fakeApp, "oldImage", ProcessSpec{
 		"web": ProcessState{Restart: true},
-	})
+	}, nil)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
@@ -555,7 +555,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			m.reset()
 			err = RunServicePipeline(m, a, "myimg", ProcessSpec{
 				"p1": s,
-			})
+			}, nil)
 			c.Assert(err, check.IsNil)
 			c.Assert(m.calls, check.HasLen, 1)
 			m.lastLabels = map[string]*provision.LabelSet{

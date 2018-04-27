@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -909,7 +910,7 @@ func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.Pr
 	manager := &serviceManager{
 		client: client,
 	}
-	return servicecommon.RunServicePipeline(manager, a, newImg, updateSpec)
+	return servicecommon.RunServicePipeline(manager, a, newImg, updateSpec, nil)
 }
 
 type serviceManager struct {
@@ -937,7 +938,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 	return &provision.LabelSet{Labels: srv.Spec.Labels, Prefix: tsuruLabelPrefix}, nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, imgID string) error {
+func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := m.client.InspectService(srvName)
 	if err != nil {
