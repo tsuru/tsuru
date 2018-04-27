@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -27,6 +28,33 @@ const (
 	ConstraintTypeRouter  = poolConstraintType("router")
 	ConstraintTypeService = poolConstraintType("service")
 )
+
+type regexpCache struct {
+	m sync.Map
+}
+
+var rCache = regexpCache{}
+
+func (c *regexpCache) Lookup(pattern string) (*regexp.Regexp, error) {
+	cached, _ := c.m.Load(pattern)
+	if cached == nil {
+		var err error
+		cached, err = regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+		c.m.Store(pattern, cached)
+	}
+	return cached.(*regexp.Regexp), nil
+}
+
+func (c *regexpCache) MatchString(pattern, value string) (bool, error) {
+	r, err := c.Lookup(pattern)
+	if err != nil {
+		return false, err
+	}
+	return r.MatchString(value), nil
+}
 
 type PoolConstraint struct {
 	PoolExpr  string
@@ -53,7 +81,7 @@ func (c *PoolConstraint) check(v string) bool {
 	}
 	for _, r := range c.Values {
 		pattern := exprAsGlobPattern(r)
-		if match, _ := regexp.MatchString(pattern, v); match {
+		if match, _ := rCache.MatchString(pattern, v); match {
 			return !c.Blacklist
 		}
 	}
@@ -180,7 +208,7 @@ func getConstraintsForPool(pool string, fields ...poolConstraintType) (map[poolC
 	var matches []*PoolConstraint
 	for _, c := range constraints {
 		pattern := exprAsGlobPattern(c.PoolExpr)
-		match, err := regexp.MatchString(pattern, pool)
+		match, err := rCache.MatchString(pattern, pool)
 		if err != nil {
 			return nil, err
 		}
