@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -736,7 +737,9 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
 		}
-		err = createDeployPod(params)
+		ctx, cancel := evt.CancelableContext(context.Background())
+		err = createDeployPod(ctx, params)
+		cancel()
 		if err != nil {
 			return "", err
 		}

@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -45,7 +46,9 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 		attachOutput:      evt,
 		inputFile:         "/home/application/archive.tar.gz",
 	}
-	err = createBuildPod(params)
+	ctx, cancel := evt.CancelableContext(context.Background())
+	err = createBuildPod(ctx, params)
+	cancel()
 	if err != nil {
 		return "", err
 	}

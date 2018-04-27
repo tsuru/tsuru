@@ -128,7 +128,7 @@ type createPodParams struct {
 	attachOutput      io.Writer
 }
 
-func createBuildPod(params createPodParams) error {
+func createBuildPod(ctx context.Context, params createPodParams) error {
 	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
 	if params.podName == "" {
 		var err error
@@ -137,10 +137,10 @@ func createBuildPod(params createPodParams) error {
 		}
 	}
 	params.cmds = cmds
-	return createPod(params)
+	return createPod(ctx, params)
 }
 
-func createDeployPod(params createPodParams) error {
+func createDeployPod(ctx context.Context, params createPodParams) error {
 	if len(params.destinationImages) == 0 {
 		return fmt.Errorf("no destination images provided")
 	}
@@ -156,7 +156,7 @@ func createDeployPod(params createPodParams) error {
 	if tag != "latest" {
 		params.destinationImages = append(params.destinationImages, fmt.Sprintf("%s:latest", repository))
 	}
-	return createPod(params)
+	return createPod(ctx, params)
 }
 
 func getImagePullSecrets(client *ClusterClient, images ...string) ([]apiv1.LocalObjectReference, error) {
@@ -222,7 +222,7 @@ func ensureAuthSecret(client *ClusterClient) error {
 	return err
 }
 
-func createPod(params createPodParams) error {
+func createPod(ctx context.Context, params createPodParams) error {
 	if len(params.cmds) != 3 {
 		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 	}
@@ -262,8 +262,8 @@ func createPod(params createPodParams) error {
 			fmt.Fprintf(params.attachOutput, " ---> %s\n", formatEvtMessage(msg, true))
 		}
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(ctx, params.client, pod.Name)
+	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
+	err = waitForPodContainersRunning(tctx, params.client, pod.Name)
 	cancel()
 	if err != nil {
 		return err
@@ -275,9 +275,9 @@ func createPod(params createPodParams) error {
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(ctx, params.client, pod.Name, false)
+	return waitForPod(tctx, params.client, pod.Name, false)
 }
 
 func registryAuth(img string) (username, password, imgDomain string) {

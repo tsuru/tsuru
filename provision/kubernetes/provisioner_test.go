@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -722,7 +723,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := createDeployPod(createPodParams{
+	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
 		sourceImage:       "myimg",
@@ -959,6 +960,51 @@ func (s *S) TestDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestDeployBuilderImageCancel(c *check.C) {
+	srv, wg := s.mock.CreateDeployReadyServer(c)
+	s.mock.MockfakeNodes(c, srv.URL)
+	defer srv.Close()
+	defer wg.Wait()
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	deploy := make(chan struct{})
+	attach := make(chan struct{})
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		deploy <- struct{}{}
+		<-attach
+		return false, nil, nil
+	})
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(ok, check.Equals, true)
+		pod.Status.Phase = apiv1.PodRunning
+		return false, nil, nil
+	})
+	evt, err := event.New(&event.Opts{
+		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Allowed:       event.Allowed(permission.PermAppDeploy),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
+		Cancelable:    true,
+	})
+	c.Assert(err, check.IsNil)
+	go func() {
+		img, err := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", evt)
+		c.Check(err, check.ErrorMatches, `canceled after .*`)
+		c.Check(img, check.Equals, "")
+		deploy <- struct{}{}
+	}()
+	<-deploy
+	err = evt.TryCancel("because I want.", "admin@admin.com")
+	attach <- struct{}{}
+	c.Assert(err, check.IsNil)
+	select {
+	case <-deploy:
+	case <-time.After(time.Second * 15):
+		c.Fatal("timeout waiting for cancelation")
+	}
 }
 
 func (s *S) TestRollback(c *check.C) {
