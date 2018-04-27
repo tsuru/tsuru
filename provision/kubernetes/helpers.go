@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -110,8 +111,8 @@ func registrySecretName(registry string) string {
 	return fmt.Sprintf("registry-%s", registry)
 }
 
-func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() error) error {
-	timeoutCh := time.After(timeout)
+func waitFor(ctx context.Context, fn func() (bool, error), onCancel func() error) error {
+	start := time.Now()
 	for {
 		done, err := fn()
 		if err != nil {
@@ -121,11 +122,11 @@ func waitFor(timeout time.Duration, fn func() (bool, error), onTimeout func() er
 			return nil
 		}
 		select {
-		case <-timeoutCh:
-			if onTimeout == nil {
-				err = errors.Errorf("timeout after %v", timeout)
+		case <-ctx.Done():
+			if onCancel == nil {
+				err = errors.Errorf("canceled after %v", time.Since(start))
 			} else {
-				err = errors.Errorf("timeout after %v: %v", timeout, onTimeout())
+				err = errors.Errorf("canceled after %v: %v", time.Since(start), onCancel())
 			}
 			return err
 		case <-time.After(500 * time.Millisecond):
@@ -238,9 +239,9 @@ podsLoop:
 	return messages, nil
 }
 
-func waitForPodContainersRunning(client *ClusterClient, podName string, timeout time.Duration) error {
-	return waitFor(timeout, func() (bool, error) {
-		err := waitForPod(client, podName, true, timeout)
+func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, podName string) error {
+	return waitFor(ctx, func() (bool, error) {
+		err := waitForPod(ctx, client, podName, true)
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -289,8 +290,8 @@ func newInvalidPodPhaseError(client *ClusterClient, pod *apiv1.Pod) error {
 	return retErr
 }
 
-func waitForPod(client *ClusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
-	return waitFor(timeout, func() (bool, error) {
+func waitForPod(ctx context.Context, client *ClusterClient, podName string, returnOnRunning bool) error {
+	return waitFor(ctx, func() (bool, error) {
 		pod, err := client.CoreV1().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
@@ -616,7 +617,9 @@ func runPod(args runSinglePodArgs) error {
 	defer cleanupPod(args.client, pod.Name)
 	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
-	err = waitForPod(args.client, pod.Name, true, kubeConf.PodRunningTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+	err = waitForPod(ctx, args.client, pod.Name, true)
+	cancel()
 	if err != nil {
 		multiErr.Add(err)
 	}
@@ -627,7 +630,9 @@ func runPod(args runSinglePodArgs) error {
 	if multiErr.Len() > 0 {
 		return multiErr
 	}
-	return waitForPod(args.client, pod.Name, false, kubeConf.PodReadyTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+	defer cancel()
+	return waitForPod(ctx, args.client, pod.Name, false)
 }
 
 func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
