@@ -403,13 +403,21 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		}
 		sel = sel.Add(*req)
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: sel.String(),
-	})
-	if err != nil {
-		return nil, err
+	poolNames := make([]string, len(apps))
+	for i, app := range apps {
+		poolNames[i] = app.GetPool()
 	}
-	return pods.Items, nil
+	pods := []apiv1.Pod{}
+	for _, ns := range client.Namespaces(poolNames) {
+		podList, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
+			LabelSelector: sel.String(),
+		})
+		if err != nil {
+			return nil, err
+		}
+		pods = append(pods, podList.Items...)
+	}
+	return pods, nil
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {

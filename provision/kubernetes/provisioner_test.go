@@ -525,6 +525,56 @@ func (s *S) TestUnits(c *check.C) {
 	})
 }
 
+func (s *S) TestUnitsUsingPoolNamespaces(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 2)
+	webNum, workerNum := "1", "2"
+	if units[0].ProcessName == "worker" {
+		webNum, workerNum = workerNum, webNum
+		units[0], units[1] = units[1], units[0]
+	}
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{
+			ID:          "myapp-web-pod-" + webNum + "-1",
+			Name:        "myapp-web-pod-" + webNum + "-1",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+		},
+		{
+			ID:          "myapp-worker-pod-" + workerNum + "-1",
+			Name:        "myapp-worker-pod-" + workerNum + "-1",
+			AppName:     "myapp",
+			ProcessName: "worker",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+		},
+	})
+}
+
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -541,14 +591,15 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()
-	podlist, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	ns := s.client.Namespace(a.GetPool())
+	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 2)
 	for _, p := range podlist.Items {
 		if p.Labels["tsuru.io/app-process"] == "worker" {
 			deadline := int64(10)
 			p.Spec.ActiveDeadlineSeconds = &deadline
-			_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(&p)
+			_, err = s.client.CoreV1().Pods(ns).Update(&p)
 			c.Assert(err, check.IsNil)
 		}
 	}
