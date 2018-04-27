@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -66,7 +67,7 @@ func newClient(address string, tlsConfig *tls.Config) (*docker.Client, error) {
 }
 
 func joinSwarm(existingClient *clusterClient, newClient *docker.Client, addr string) error {
-	swarmInfo, err := existingClient.InspectSwarm(nil)
+	swarmInfo, err := existingClient.InspectSwarm(context.TODO())
 	if err != nil {
 		return errors.WithStack(err)
 	}
