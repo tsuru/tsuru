@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -76,19 +75,15 @@ func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
-	namespaces := []string{}
-	nss, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	if nss {
-		pools, err := pool.ListAllPools()
-		if err != nil {
-			return nil, err
-		}
-		for _, pool := range pools {
-			namespaces = append(namespaces, n.cluster.Namespace(pool.Name))
-		}
-	} else {
-		namespaces = append(namespaces, n.cluster.Namespace(""))
+	pools, err := pool.ListAllPools()
+	if err != nil {
+		return nil, err
 	}
+	poolNames := make([]string, len(pools))
+	for i, pool := range pools {
+		poolNames[i] = pool.Name
+	}
+	namespaces := n.cluster.Namespaces(poolNames)
 
 	pods := []apiv1.Pod{}
 	for _, ns := range namespaces {
