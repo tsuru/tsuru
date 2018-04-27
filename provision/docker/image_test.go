@@ -7,6 +7,7 @@ package docker
 import (
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -118,6 +119,9 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.HasLen, 2)
+	sort.Slice(images, func(i, j int) bool {
+		return strings.Join(images[i].RepoTags, "") < strings.Join(images[j].RepoTags, "")
+	})
 	tags1 := images[0].RepoTags
 	sort.Strings(tags1)
 	tags2 := images[1].RepoTags
