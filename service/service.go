@@ -32,6 +32,8 @@ type Service struct {
 
 var (
 	ErrServiceAlreadyExists = errors.New("Service already exists.")
+
+	schemeRegexp = regexp.MustCompile("^https?://")
 )
 
 func (s *Service) Get() error {
@@ -87,7 +89,7 @@ func (s *Service) Delete() error {
 
 func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 	if e, ok := s.Endpoint[endpoint]; ok {
-		if p, _ := regexp.MatchString("^https?://", e); !p {
+		if p := schemeRegexp.MatchString(e); !p {
 			e = "http://" + e
 		}
 		cli = &Client{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
