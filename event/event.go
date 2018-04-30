@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -1040,7 +1041,14 @@ func (e *Event) CancelableContext(ctx context.Context) (context.Context, context
 	if e == nil || !e.Cancelable {
 		return ctx, cancel
 	}
+	wg := sync.WaitGroup{}
+	cancelWrapper := func() {
+		cancel()
+		wg.Wait()
+	}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			canceled, err := e.AckCancel()
 			if err != nil {
@@ -1058,7 +1066,7 @@ func (e *Event) CancelableContext(ctx context.Context) (context.Context, context
 			}
 		}
 	}()
-	return ctx, cancel
+	return ctx, cancelWrapper
 }
 
 func (e *Event) TryCancel(reason, owner string) error {
