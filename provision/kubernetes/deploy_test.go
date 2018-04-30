@@ -659,7 +659,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
 		PostStart: &apiv1.Handler{
@@ -672,7 +672,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd := dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc1$`)
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, expectedLifecycle)
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
@@ -832,7 +832,7 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*? ---> context canceled <---.*`)
 }

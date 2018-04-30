@@ -32,7 +32,7 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 		{"my-app_app", "app-my-app-app"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		a := provisiontest.NewFakeApp(tt.name, "plat", "test-default", 1)
 		c.Assert(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
@@ -61,7 +61,7 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		a := provisiontest.NewFakeApp(tt.name, "plat", "test-default", 1)
 		c.Assert(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
@@ -75,7 +75,7 @@ func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		a := provisiontest.NewFakeApp(tt.name, "plat", "test-default", 1)
 		c.Assert(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
@@ -89,7 +89,7 @@ func (s *S) TestDeployPodNameForApp(c *check.C) {
 		{"my-app_app", "my-app-app-v1-deploy"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		a := provisiontest.NewFakeApp(tt.name, "plat", "test-default", 1)
 		name, err := deployPodNameForApp(a)
 		c.Assert(err, check.IsNil)
 		c.Assert(name, check.Equals, tt.expected, check.Commentf("test %d", i))
@@ -105,7 +105,7 @@ func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 		{"my-app_app", "my-app-app-isolated-run"},
 	}
 	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		a := provisiontest.NewFakeApp(tt.name, "plat", "test-default", 1)
 		c.Assert(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
@@ -373,7 +373,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 }
 
 func (s *S) TestCleanupDeployment(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
+	a := provisiontest.NewFakeApp("myapp", "plat", "test-default", 1)
 	expectedLabels := map[string]string{
 		"tsuru.io/is-tsuru":             "true",
 		"tsuru.io/is-service":           "true",
@@ -532,7 +532,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	port, err = getServicePort(s.clusterClient, "srv1", ns)
+	port, err := getServicePort(s.clusterClient, "srv1", ns)
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.CoreV1().Services(ns).Create(&apiv1.Service{

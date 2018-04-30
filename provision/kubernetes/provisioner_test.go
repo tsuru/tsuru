@@ -474,7 +474,7 @@ func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
-	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
+	_, err := s.client.CoreV1().Pods("default").Create(&apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: "non-app-pod",
 	}})
 	c.Assert(err, check.IsNil)
@@ -525,52 +525,129 @@ func (s *S) TestUnits(c *check.C) {
 	})
 }
 
-func (s *S) TestUnitsUsingPoolNamespaces(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 2)
-	webNum, workerNum := "1", "2"
-	if units[0].ProcessName == "worker" {
-		webNum, workerNum = workerNum, webNum
-		units[0], units[1] = units[1], units[0]
+func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
+	a1 := provisiontest.NewFakeApp("myapp", "python", "pool1", 0)
+	a2 := provisiontest.NewFakeApp("otherapp", "python", "pool2", 0)
+	nNodes := 3
+	poolIndex := 1
+	for i := 1; i <= nNodes; i++ {
+		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("n%d", i),
+				Labels: map[string]string{
+					"tsuru.io/pool": fmt.Sprintf("pool%d", poolIndex),
+				},
+			},
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
+					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
+				},
+			},
+		})
+		c.Assert(err, check.IsNil)
+		if poolIndex <= 2 {
+			poolIndex++
+		} else {
+			poolIndex = 1
+		}
 	}
+	for _, a := range []provision.App{a1, a2} {
+		ns := s.client.Namespace(a.GetPool())
+		for i := 1; i <= nNodes; i++ {
+			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
+					Labels: map[string]string{
+						"tsuru.io/app-name":     a.GetName(),
+						"tsuru.io/app-process":  "web",
+						"tsuru.io/app-platform": "python",
+					},
+				},
+				Spec: apiv1.PodSpec{
+					NodeName: fmt.Sprintf("n%d", i),
+				},
+			})
+			c.Assert(err, check.IsNil)
+		}
+	}
+	listPodsCalls := 0
+	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
+		listPodsCalls++
+		return false, nil, nil
+	})
+	listNodesCalls := 0
+	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+		listNodesCalls++
+		return false, nil, nil
+	})
+	units, err := s.p.Units(a1, a2)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 6)
+	c.Assert(listNodesCalls, check.Equals, 1)
+	c.Assert(listPodsCalls, check.Equals, 2)
+	sort.Slice(units, func(i, j int) bool {
+		return units[i].ID < units[j].ID
+	})
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
-			ID:          "myapp-web-pod-" + webNum + "-1",
-			Name:        "myapp-web-pod-" + webNum + "-1",
+			ID:          "myapp-1",
+			Name:        "myapp-1",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
-			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
 		},
 		{
-			ID:          "myapp-worker-pod-" + workerNum + "-1",
-			Name:        "myapp-worker-pod-" + workerNum + "-1",
+			ID:          "myapp-2",
+			Name:        "myapp-2",
 			AppName:     "myapp",
-			ProcessName: "worker",
+			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
-			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			IP:          "192.168.55.2",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
+		},
+		{
+			ID:          "myapp-3",
+			Name:        "myapp-3",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.3",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+		},
+		{
+			ID:          "otherapp-1",
+			Name:        "otherapp-1",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+		},
+		{
+			ID:          "otherapp-2",
+			Name:        "otherapp-2",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.2",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
+		},
+		{
+			ID:          "otherapp-3",
+			Name:        "otherapp-3",
+			AppName:     "otherapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.55.3",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
 		},
 	})
 }
@@ -607,121 +684,6 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
 	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
-}
-
-func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
-	a1 := provisiontest.NewFakeApp("myapp", "python", 0)
-	a2 := provisiontest.NewFakeApp("otherapp", "python", 0)
-	nNodes := 3
-	for i := 1; i <= nNodes; i++ {
-		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("n%d", i)},
-			Status: apiv1.NodeStatus{
-				Addresses: []apiv1.NodeAddress{
-					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
-				},
-			},
-		})
-		c.Assert(err, check.IsNil)
-	}
-	for _, a := range []provision.App{a1, a2} {
-		for i := 1; i <= nNodes; i++ {
-			_, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Create(&apiv1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("p1-%s-%d", a.GetName(), i),
-					Labels: map[string]string{
-						"tsuru.io/app-name":     a.GetName(),
-						"tsuru.io/app-process":  "web",
-						"tsuru.io/app-platform": "python",
-					},
-				},
-				Spec: apiv1.PodSpec{
-					NodeName: fmt.Sprintf("n%d", i),
-				},
-			})
-			c.Assert(err, check.IsNil)
-		}
-	}
-	listPodsCalls := 0
-	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
-		listPodsCalls++
-		return false, nil, nil
-	})
-	listNodesCalls := 0
-	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
-		listNodesCalls++
-		return false, nil, nil
-	})
-	units, err := s.p.Units(a1, a2)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 6)
-	c.Assert(listNodesCalls, check.Equals, 1)
-	c.Assert(listPodsCalls, check.Equals, 1)
-	sort.Slice(units, func(i, j int) bool {
-		return units[i].ID < units[j].ID
-	})
-	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{
-			ID:          "p1-myapp-1",
-			Name:        "p1-myapp-1",
-			AppName:     "myapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.1",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
-		},
-		{
-			ID:          "p1-myapp-2",
-			Name:        "p1-myapp-2",
-			AppName:     "myapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.2",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "p1-myapp-3",
-			Name:        "p1-myapp-3",
-			AppName:     "myapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
-		},
-		{
-			ID:          "p1-otherapp-1",
-			Name:        "p1-otherapp-1",
-			AppName:     "otherapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.1",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
-		},
-		{
-			ID:          "p1-otherapp-2",
-			Name:        "p1-otherapp-2",
-			AppName:     "otherapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.2",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "p1-otherapp-3",
-			Name:        "p1-otherapp-3",
-			AppName:     "otherapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
-		},
-	})
 }
 
 func (s *S) TestUnitsEmpty(c *check.C) {
@@ -971,7 +933,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 
 func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
 	s.mock.MockfakeNodes(c)
-	a := provisiontest.NewFakeApp("myapp", "plat", 0)
+	a := provisiontest.NewFakeApp("myapp", "plat", "test-default", 0)
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 }
@@ -1052,7 +1014,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	s.mock.MockfakeNodes(c, srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
-	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
 	deploy := make(chan struct{})
 	attach := make(chan struct{})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
