@@ -18,6 +18,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -620,6 +622,52 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
+}
+
+func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	deployCreated := make(chan struct{})
+	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		if dep, ok := obj.(*v1beta2.Deployment); ok {
+			dep.Status.UnavailableReplicas = 1
+			deployCreated <- struct{}{}
+		}
+		return false, nil, nil
+	})
+	buf := bytes.NewBuffer(nil)
+	m := serviceManager{client: s.clusterClient, writer: buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cmd1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Allowed:       event.Allowed(permission.PermAppDeploy),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
+		Cancelable:    true,
+	})
+	c.Assert(err, check.IsNil)
+	go func() {
+		<-deployCreated
+		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
+		c.Assert(errCancel, check.IsNil)
+	}()
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	}, evt)
+	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*? ---> context canceled <---.*`)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
