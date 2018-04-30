@@ -711,7 +711,7 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*? ---> context canceled <---.*`)
 }

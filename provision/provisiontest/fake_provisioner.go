@@ -74,13 +74,13 @@ type FakeApp struct {
 	quota.Quota
 }
 
-func NewFakeApp(name, platform string, units int) *FakeApp {
+func NewFakeApp(name, platform, pool string, units int) *FakeApp {
 	app := FakeApp{
 		name:     name,
 		platform: platform,
 		units:    make([]provision.Unit, units),
 		Quota:    quota.Unlimited,
-		Pool:     "test-default",
+		Pool:     pool,
 	}
 	routertest.FakeRouter.AddBackend(&app)
 	namefmt := "%s-%d"

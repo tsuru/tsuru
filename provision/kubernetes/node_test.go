@@ -5,16 +5,21 @@
 package kubernetes
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestNodeAddress(c *check.C) {
@@ -204,49 +209,97 @@ func (s *S) TestNodeUnits(c *check.C) {
 func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	routertest.FakeRouter.Reset()
-	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
+
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fakeprov"
+	provision.Register(p1.Name, func() (provision.Provisioner, error) {
+		return p1, nil
 	})
+	defer provision.Unregister(p1.Name)
+	err := pool.AddPool(pool.AddPoolOptions{Name: "pool1", Provisioner: p1.Name})
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name})
 	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
+	app1 := &app.App{Name: "myapp", TeamOwner: s.team.Name, Platform: "python", Pool: "pool1"}
+	err = app.CreateApp(app1, s.user)
 	c.Assert(err, check.IsNil)
-	wait()
-	node, err := s.p.GetNode("192.168.99.1")
+	app2 := &app.App{Name: "otherapp", TeamOwner: s.team.Name, Platform: "python", Pool: "pool2"}
+	err = app.CreateApp(app2, s.user)
+	c.Assert(err, check.IsNil)
+	// TODO: add a second node after fixing kubernetes FakePods: https://github.com/kubernetes/kubernetes/blob/865321c2d69d249d95079b7f8e2ca99f5430d79e/staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake/fake_pod.go#L67
+	numNodes := 1
+	for i := 1; i <= numNodes; i++ {
+		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("n%d", i),
+				Labels: map[string]string{
+					"tsuru.io/pool": fmt.Sprintf("pool%d", i),
+				},
+			},
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
+					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
+				},
+			},
+		})
+		c.Assert(err, check.IsNil)
+	}
+	for _, a := range []provision.App{app1, app2} {
+		ns := s.client.Namespace(a.GetPool())
+		for i := 1; i <= numNodes; i++ {
+			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
+					Labels: map[string]string{
+						"tsuru.io/app-name":     a.GetName(),
+						"tsuru.io/app-process":  "web",
+						"tsuru.io/app-platform": "python",
+						"tsuru.io/is-service":   "true",
+					},
+				},
+				Spec: apiv1.PodSpec{
+					NodeName: fmt.Sprintf("n%d", i),
+				},
+			})
+			c.Assert(err, check.IsNil)
+		}
+	}
+	listPodsCalls := 0
+	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
+		listPodsCalls++
+		return false, nil, nil
+	})
+	listNodesCalls := 0
+	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+		listNodesCalls++
+		return false, nil, nil
+	})
+
+	node, err := s.p.GetNode("192.168.55.1")
 	c.Assert(err, check.IsNil)
 	units, err := node.Units()
 	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
-			ID:          "myapp-web-pod-1-1",
-			Name:        "myapp-web-pod-1-1",
+			ID:          "myapp-1",
+			Name:        "myapp-1",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
-			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
 		},
 		{
-			ID:          "myapp-worker-pod-2-1",
-			Name:        "myapp-worker-pod-2-1",
-			AppName:     "myapp",
-			ProcessName: "worker",
+			ID:          "otherapp-1",
+			Name:        "otherapp-1",
+			AppName:     "otherapp",
+			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
-			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			IP:          "192.168.55.1",
+			Status:      "",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
 		},
 	})
 }
