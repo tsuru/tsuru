@@ -990,12 +990,12 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	go func() {
-		img, errDeploy := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", evt)
+	go func(evt event.Event) {
+		img, errDeploy := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", &evt)
 		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
-	}()
+	}(*evt)
 	<-deploy
 	err = evt.TryCancel("because I want.", "admin@admin.com")
 	attach <- struct{}{}

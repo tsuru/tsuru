@@ -656,11 +656,11 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	go func() {
+	go func(evt event.Event) {
 		<-deployCreated
 		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
-	}()
+	}(*evt)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
