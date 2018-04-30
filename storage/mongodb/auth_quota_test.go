@@ -9,8 +9,8 @@ import (
 	"gopkg.in/check.v1"
 )
 
-var _ = check.Suite(&storagetest.AppQuotaSuite{
-	AppStorage:      &AppStorage{},
-	AppQuotaStorage: &AppQuotaStorage{},
-	SuiteHooks:      &mongodbBaseTest{},
+var _ = check.Suite(&storagetest.AuthQuotaSuite{
+	UserStorage:      &UserStorage{},
+	AuthQuotaStorage: &AuthQuotaStorage{},
+	SuiteHooks:       &mongodbBaseTest{},
 })

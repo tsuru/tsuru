@@ -12,3 +12,8 @@ type AppRouter struct {
 	Status       string            `json:"status,omitempty" bson:"-"`
 	StatusDetail string            `json:"status-detail,omitempty" bson:"-"`
 }
+
+type AppStorage interface {
+	Create(interface{}) error
+	Remove(interface{}) error
+}

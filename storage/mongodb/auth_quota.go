@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -14,9 +15,9 @@ var _ authTypes.QuotaStorage = &AuthQuotaStorage{}
 
 type AuthQuotaStorage struct{}
 
-type authQuota struct {
-	Limit int `json:"limit"`
-	InUse int `json:"inuse"`
+type _user struct {
+	email string          `bson:"_id"`
+	Quota authTypes.Quota `bson:"quota"`
 }
 
 func (s *AuthQuotaStorage) IncInUse(email string, quantity int) error {
@@ -25,6 +26,10 @@ func (s *AuthQuotaStorage) IncInUse(email string, quantity int) error {
 		return err
 	}
 	defer conn.Close()
+	_, err = s.FindByUserEmail(email)
+	if err != nil {
+		return err
+	}
 	err = conn.Users().Update(
 		bson.M{"email": email},
 		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
@@ -38,6 +43,10 @@ func (s *AuthQuotaStorage) SetLimit(email string, quantity int) error {
 		return err
 	}
 	defer conn.Close()
+	_, err = s.FindByUserEmail(email)
+	if err != nil {
+		return err
+	}
 	err = conn.Users().Update(
 		bson.M{"email": email},
 		bson.M{"$set": bson.M{"quota.limit": quantity}},
@@ -46,14 +55,17 @@ func (s *AuthQuotaStorage) SetLimit(email string, quantity int) error {
 }
 
 func (s *AuthQuotaStorage) FindByUserEmail(email string) (*authTypes.Quota, error) {
-	var user authTypes.User
+	var user _user
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Users().FindId(email).One(&user)
+	err = conn.Users().Find(bson.M{"email": email}).One(&user)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, authTypes.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &user.Quota, nil
