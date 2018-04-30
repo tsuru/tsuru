@@ -18,8 +18,9 @@ then
   fi
 fi
 
+if [[ ! $(docker images -q tsuru-build) ]]; then docker build -t tsuru-build -f Dockerfile.build .; fi;
 
-BUILD_IMAGE='tsuru/alpine-go:latest'
+BUILD_IMAGE='tsuru-build'
 
 LOCAL_PKG=${GOPATH}'/pkg/linux_amd64'
 CONTAINER_PKG='/go/pkg/linux_amd64'
