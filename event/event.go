@@ -1037,7 +1037,7 @@ func (e *Event) Write(data []byte) (int, error) {
 
 func (e *Event) CancelableContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
-	if !e.Cancelable {
+	if e == nil || !e.Cancelable {
 		return ctx, cancel
 	}
 	go func() {
