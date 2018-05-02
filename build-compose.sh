@@ -18,7 +18,9 @@ then
   fi
 fi
 
-if [[ ! $(docker images -q tsuru-build) ]]; then docker build -t tsuru-build -f Dockerfile.build .; fi;
+context=$(mktemp -d)
+docker build -t tsuru-build -f Dockerfile.build $context
+rmdir $context
 
 BUILD_IMAGE='tsuru-build'
 
