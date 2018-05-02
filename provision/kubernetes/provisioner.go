@@ -392,7 +392,7 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		if err != nil {
 			return nil, err
 		}
-		sel.Add(*req)
+		sel = sel.Add(*req)
 	}
 	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: sel.String(),
