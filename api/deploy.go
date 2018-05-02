@@ -20,6 +20,8 @@ import (
 	"github.com/tsuru/tsuru/repository"
 )
 
+const eventIDHeader = "X-Tsuru-Eventid"
+
 // title: app deploy
 // path: /apps/{appname}/deploy
 // method: POST
@@ -106,6 +108,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	w.Header().Set(eventIDHeader, evt.UniqueID.Hex())
 	opts.Event = evt
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
