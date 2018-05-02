@@ -1,4 +1,4 @@
-// Copyright 2017 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,11 +14,10 @@ type AppQuotaSuite struct {
 	SuiteHooks
 	AppStorage      appTypes.AppStorage
 	AppQuotaStorage appTypes.QuotaStorage
-	AppQuotaService appTypes.QuotaService
 }
 
 func (s *AppQuotaSuite) TestFindByAppName(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: -1, InUse: 0}}
+	app := &app.App{Name: "myapp", Quota: appTypes.UnlimitedQuota}
 	s.AppStorage.Create(app)
 	defer s.AppStorage.Remove(app)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")

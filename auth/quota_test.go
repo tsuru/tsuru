@@ -13,7 +13,7 @@ func (s *S) TestReserveApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 0},
+		Quota: authTypes.Quota{Limit: 4},
 	}
 	qs := &authQuotaService{
 		storage: &authTypes.MockQuotaStorage{
@@ -110,7 +110,7 @@ func (s *S) TestReleaseApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 0},
+		Quota: authTypes.Quota{Limit: 4},
 	}
 	qs := &authQuotaService{
 		storage: &authTypes.MockQuotaStorage{
@@ -139,7 +139,7 @@ func (s *S) TestReleaseAppUserNotFound(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 0},
+		Quota: authTypes.Quota{Limit: 4},
 	}
 	qs := &authQuotaService{
 		storage: &authTypes.MockQuotaStorage{
@@ -193,7 +193,7 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 0},
+		Quota: authTypes.Quota{Limit: 4},
 	}
 	qs := &authQuotaService{
 		storage: &authTypes.MockQuotaStorage{

@@ -1851,7 +1851,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
+	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
@@ -1928,7 +1928,7 @@ func (s *S) TestAddUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsUnlimited(c *check.C) {
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.Quota{Limit: -1, InUse: 0}}
+	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
@@ -2005,7 +2005,7 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 }
 
 func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.Quota{Limit: -1}}
+	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: appTypes.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
@@ -2720,7 +2720,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 }
 
 func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *check.C) {
-	u := auth.User{Email: "burning@angel.com", Quota: authTypes.Quota{Limit: -1}}
+	u := auth.User{Email: "burning@angel.com", Quota: authTypes.UnlimitedQuota}
 	err := s.conn.Users().Insert(u)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(u.Email)

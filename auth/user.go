@@ -102,7 +102,7 @@ func (u *User) Create() error {
 	}
 	defer conn.Close()
 	if u.Quota.Limit == 0 {
-		u.Quota = authTypes.Quota{Limit: -1}
+		u.Quota = authTypes.UnlimitedQuota
 		var limit int
 		if limit, err = config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
 			u.Quota.Limit = limit

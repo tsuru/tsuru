@@ -82,7 +82,7 @@ func (s *S) TestReserveUnitsQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsUnlimitedQuota(c *check.C) {
-	app := &App{Name: "together", Quota: appTypes.Quota{Limit: -1}, Router: "fake"}
+	app := &App{Name: "together", Quota: appTypes.UnlimitedQuota, Router: "fake"}
 	qs := &appQuotaService{
 		storage: &appTypes.MockQuotaStorage{
 			OnIncInUse: func(appName string, quantity int) error {

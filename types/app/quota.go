@@ -14,7 +14,10 @@ type Quota struct {
 	InUse int `json:"inuse"`
 }
 
-func (q *Quota) Unlimited() bool {
+// UnlimitedQuota is the struct which any new unlimited quota copies from.
+var UnlimitedQuota = Quota{Limit: -1, InUse: 0}
+
+func (q *Quota) IsUnlimited() bool {
 	return -1 == q.Limit
 }
 

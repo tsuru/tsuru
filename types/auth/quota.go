@@ -1,3 +1,6 @@
+// Copyright 2018 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 package auth
 
 import (
@@ -9,6 +12,9 @@ type Quota struct {
 	Limit int `json:"limit"`
 	InUse int `json:"inuse"`
 }
+
+// UnlimitedQuota is the struct which any new unlimited quota copies from.
+var UnlimitedQuota = Quota{Limit: -1, InUse: 0}
 
 type QuotaService interface {
 	ReserveApp(email string) error

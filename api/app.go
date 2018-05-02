@@ -312,7 +312,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
 		Tags:        ia.Tags,
-		Quota:       appTypes.Quota{Limit: -1},
+		Quota:       appTypes.UnlimitedQuota,
 	}
 	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {

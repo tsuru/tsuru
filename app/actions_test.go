@@ -67,7 +67,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 	c.Assert(a.Platform, check.Equals, app.Platform)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota, check.DeepEquals, appTypes.Quota{Limit: -1})
+	c.Assert(gotApp.Quota, check.DeepEquals, appTypes.UnlimitedQuota)
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
@@ -483,7 +483,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    appTypes.Quota{Limit: -1},
+		Quota:    appTypes.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
@@ -502,7 +502,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
-		Quota:    appTypes.Quota{Limit: -1},
+		Quota:    appTypes.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
 	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {

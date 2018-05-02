@@ -79,7 +79,7 @@ var Greater check.Checker = &greaterChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
-		Quota: authTypes.Quota{Limit: -1},
+		Quota: authTypes.UnlimitedQuota,
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)

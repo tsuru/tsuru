@@ -78,7 +78,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		name:     name,
 		platform: platform,
 		units:    make([]provision.Unit, units),
-		Quota:    appTypes.Quota{Limit: -1},
+		Quota:    appTypes.UnlimitedQuota,
 		Pool:     "test-default",
 	}
 	routertest.FakeRouter.AddBackend(&app)

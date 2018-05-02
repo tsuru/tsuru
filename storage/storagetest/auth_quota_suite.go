@@ -18,7 +18,7 @@ type AuthQuotaSuite struct {
 }
 
 func (s *AuthQuotaSuite) TestFindByUserEmail(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: -1, InUse: 0}}
+	user := &auth.User{Email: "example@example.com", Quota: authTypes.UnlimitedQuota}
 	s.UserStorage.Create(user)
 	defer s.UserStorage.Remove(user)
 	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")

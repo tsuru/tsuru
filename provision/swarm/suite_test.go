@@ -78,7 +78,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.p = &swarmProvisioner{}
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
-	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
+	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)

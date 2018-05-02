@@ -475,7 +475,7 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	defer server.Close()
 	app := App{
 		Name: "warpaint", Platform: "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&app, s.user)
@@ -532,7 +532,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 	defer server.Close()
 	app := App{
 		Name: "warpaint", Platform: "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&app, s.user)
@@ -574,7 +574,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 func (s *S) TestAddUnits(c *check.C) {
 	app := App{
 		Name: "warpaint", Platform: "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&app, s.user)
@@ -603,7 +603,7 @@ func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
 	a := App{
 		Name: "sejuani", Platform: "python",
 		TeamOwner: s.team.Name,
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -623,7 +623,7 @@ func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
 	a := App{
 		Name: "sejuani", Platform: "python",
 		TeamOwner: s.team.Name,
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -642,7 +642,7 @@ func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
 func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	app := App{
 		Name: "warpaint", Platform: "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&app, s.user)
@@ -735,7 +735,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	app := App{
 		Name:      "scars",
 		Platform:  "golang",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 		Routers:   []appTypes.AppRouter{{Name: "fake"}},
 	}
@@ -749,7 +749,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 func (s *S) TestAddUnitsIsAtomic(c *check.C) {
 	app := App{
 		Name: "warpaint", Platform: "golang",
-		Quota: appTypes.Quota{Limit: -1},
+		Quota: appTypes.UnlimitedQuota,
 	}
 	err := app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
@@ -811,7 +811,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	app := App{
 		Name:      "chemistry",
 		Platform:  "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	instance := service.ServiceInstance{
@@ -3046,7 +3046,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
-			Quota: appTypes.Quota{Limit: -1, InUse: 0},
+			Quota: appTypes.UnlimitedQuota,
 		},
 		{
 			Name:      "app2",
@@ -3072,7 +3072,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
-			Quota: appTypes.Quota{Limit: -1, InUse: 0},
+			Quota: appTypes.UnlimitedQuota,
 		},
 	})
 	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
@@ -3437,8 +3437,8 @@ func (s *S) TestGetName(c *check.C) {
 }
 
 func (s *S) TestGetQuota(c *check.C) {
-	a := App{Name: "app1", Quota: appTypes.Quota{Limit: -1}}
-	c.Assert(a.GetQuota(), check.DeepEquals, appTypes.Quota{Limit: -1})
+	a := App{Name: "app1", Quota: appTypes.UnlimitedQuota}
+	c.Assert(a.GetQuota(), check.DeepEquals, appTypes.UnlimitedQuota)
 }
 
 func (s *S) TestSetQuotaInUse(c *check.C) {
@@ -3464,7 +3464,7 @@ func (s *S) TestSetQuotaInUseNotFound(c *check.C) {
 }
 
 func (s *S) TestSetQuotaInUseUnlimited(c *check.C) {
-	app := App{Name: "someapp", Quota: appTypes.Quota{Limit: -1}, TeamOwner: s.team.Name}
+	app := App{Name: "someapp", Quota: appTypes.UnlimitedQuota, TeamOwner: s.team.Name}
 	s.mockService.AppQuota.OnChangeInUse = func(appName string, inUse int) error {
 		c.Assert(appName, check.Equals, app.Name)
 		c.Assert(inUse, check.Equals, 3)
@@ -3923,7 +3923,7 @@ func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
 	defer server.Close()
 	app := App{
 		Name: "warpaint", Platform: "python",
-		Quota:     appTypes.Quota{Limit: -1},
+		Quota:     appTypes.UnlimitedQuota,
 		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&app, s.user)

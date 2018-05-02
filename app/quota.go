@@ -30,7 +30,7 @@ func (s *appQuotaService) ReserveUnits(appName string, quantity int) error {
 
 // CheckAppLimit implements CheckAppLimit method from AppQuotaService interface
 func (s *appQuotaService) CheckAppLimit(quota *appTypes.Quota, quantity int) error {
-	if !quota.Unlimited() && quota.InUse+quantity > quota.Limit {
+	if !quota.IsUnlimited() && quota.InUse+quantity > quota.Limit {
 		return &appTypes.QuotaExceededError{
 			Available: uint(quota.Limit - quota.InUse),
 			Requested: uint(quantity),
@@ -98,7 +98,7 @@ func (s *appQuotaService) ChangeInUse(appName string, inUse int) error {
 	if inUse < 0 {
 		return appTypes.ErrLesserThanZero
 	}
-	if !quota.Unlimited() && inUse > quota.Limit {
+	if !quota.IsUnlimited() && inUse > quota.Limit {
 		return &appTypes.QuotaExceededError{
 			Requested: uint(inUse),
 			Available: uint(quota.Limit),

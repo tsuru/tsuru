@@ -14,7 +14,7 @@ import (
 )
 
 func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, perm ...permission.Permission) (*auth.User, auth.Token) {
-	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: authTypes.Quota{Limit: -1}}
+	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
 	_, err := scheme.Create(user)
 	c.Assert(err, check.IsNil)
 	return user, ExistingUserWithPermission(c, scheme, user, perm...)

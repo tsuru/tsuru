@@ -92,7 +92,7 @@ var insertApp = action.Action{
 		}
 		defer conn.Close()
 		if app.Quota == (appTypes.Quota{}) {
-			app.Quota = appTypes.Quota{Limit: -1}
+			app.Quota = appTypes.UnlimitedQuota
 		}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
