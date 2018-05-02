@@ -124,9 +124,9 @@ func waitFor(ctx context.Context, fn func() (bool, error), onCancel func() error
 		select {
 		case <-ctx.Done():
 			if onCancel == nil {
-				err = errors.Errorf("canceled after %v", time.Since(start))
+				err = errors.Wrapf(ctx.Err(), "canceled after %v", time.Since(start))
 			} else {
-				err = errors.Errorf("canceled after %v: %v", time.Since(start), onCancel())
+				err = errors.Wrapf(ctx.Err(), "canceled after %v: %v", time.Since(start), onCancel())
 			}
 			return err
 		case <-time.After(500 * time.Millisecond):

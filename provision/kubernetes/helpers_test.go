@@ -170,7 +170,7 @@ func (s *S) TestWaitFor(c *check.C) {
 		return errors.New("my error")
 	})
 	cancel()
-	c.Assert(err, check.ErrorMatches, `canceled after .*?: my error$`)
+	c.Assert(err, check.ErrorMatches, `canceled after .*?: my error: context deadline exceeded$`)
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return false, nil
@@ -178,7 +178,7 @@ func (s *S) TestWaitFor(c *check.C) {
 		return nil
 	})
 	cancel()
-	c.Assert(err, check.ErrorMatches, `canceled after .*?: <nil>$`)
+	c.Assert(err, check.ErrorMatches, `canceled after .*?: <nil>: context deadline exceeded$`)
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	err = waitFor(ctx, func() (bool, error) {
 		return true, errors.New("myerr")
