@@ -10,9 +10,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -26,6 +28,26 @@ var (
 
 	chanBufferSize   = 1000
 	defaultUserAgent = "tsuru-webhook-client/1.0"
+
+	webhooksLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "tsuru_webhooks_latency_seconds",
+		Help: "The latency for webhooks requests in seconds",
+	})
+
+	webhooksQueue = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_webhooks_event_queue_current",
+		Help: "The current number of queued events waiting for webhooks processing",
+	})
+
+	webhooksTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_webhooks_calls_total",
+		Help: "The total number of webhooks calls",
+	})
+
+	webhooksError = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_webhooks_calls_error",
+		Help: "The total number of webhooks calls with error",
+	})
 )
 
 func WebHookService() (eventTypes.WebHookService, error) {
@@ -70,6 +92,7 @@ func (s *webHookService) Notify(evtID string) {
 	case s.evtCh <- evtID:
 	case <-s.quitCh:
 	}
+	webhooksQueue.Set(float64(len(s.evtCh)))
 }
 
 func (s *webHookService) run() {
@@ -77,6 +100,7 @@ func (s *webHookService) run() {
 	for {
 		select {
 		case evtID := <-s.evtCh:
+			webhooksQueue.Set(float64(len(s.evtCh)))
 			err := s.handleEvent(evtID)
 			if err != nil {
 				log.Errorf("[webhooks] error handling webhooks for event %s", evtID)
@@ -115,7 +139,13 @@ func (s *webHookService) handleEvent(evtID string) error {
 	return nil
 }
 
-func (s *webHookService) doHook(hook eventTypes.WebHook) error {
+func (s *webHookService) doHook(hook eventTypes.WebHook) (err error) {
+	defer func() {
+		webhooksTotal.Inc()
+		if err != nil {
+			webhooksError.Inc()
+		}
+	}()
 	var body io.Reader
 	if hook.Body != "" {
 		body = strings.NewReader(hook.Body)
@@ -132,7 +162,9 @@ func (s *webHookService) doHook(hook eventTypes.WebHook) error {
 	if hook.Insecure {
 		client = &tsuruNet.Dial5Full60ClientNoKeepAliveInsecure
 	}
+	reqStart := time.Now()
 	rsp, err := client.Do(req)
+	webhooksLatency.Observe(time.Since(reqStart).Seconds())
 	if err != nil {
 		return err
 	}
