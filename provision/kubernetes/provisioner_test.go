@@ -472,10 +472,14 @@ func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
+	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "non-app-pod",
+	}})
+	c.Assert(err, check.IsNil)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
