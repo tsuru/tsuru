@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -157,8 +156,8 @@ func (a *FakeApp) GetQuota() appTypes.Quota {
 }
 
 func (a *FakeApp) SetQuotaInUse(inUse int) error {
-	if !a.Quota.Unlimited() && inUse > a.Quota.Limit {
-		return &quota.QuotaExceededError{
+	if !a.Quota.IsUnlimited() && inUse > a.Quota.Limit {
+		return &appTypes.QuotaExceededError{
 			Requested: uint(inUse),
 			Available: uint(a.Quota.Limit),
 		}

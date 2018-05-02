@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
@@ -188,7 +187,7 @@ func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 	c.Assert(app.GetQuota(), check.DeepEquals, q)
 	err = app.SetQuotaInUse(q.Limit + 1)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*quota.QuotaExceededError)
+	e, ok := err.(*appTypes.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(q.Limit))
 	c.Assert(e.Requested, check.Equals, uint(q.Limit+1))

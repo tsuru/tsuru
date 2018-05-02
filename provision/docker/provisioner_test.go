@@ -41,7 +41,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -305,7 +304,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
+	c.Assert(app.Quota, check.DeepEquals, appTypes.Quota{Limit: -1, InUse: 1})
 	cont, err := s.p.Cluster().InspectContainer(units[0].GetID())
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Cmd, check.DeepEquals, []string{
@@ -472,7 +471,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	compErr, ok := err.(*errors.CompositeError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(compErr.Message, check.Equals, "Cannot start application units")
-	e, ok := compErr.Base.(*quota.QuotaExceededError)
+	e, ok := compErr.Base.(*appTypes.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(1))
 	c.Assert(e.Requested, check.Equals, uint(2))
