@@ -64,7 +64,7 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
+	s.appInstance = provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(s.appInstance)
 	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
@@ -999,7 +999,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = coll.Insert(rule2)
 	c.Assert(err, check.IsNil)
-	appInstance2 := provisiontest.NewFakeApp("myapp2", "python", 0)
+	appInstance2 := provisiontest.NewFakeApp("myapp2", "python", "test-default", 0)
 	appInstance2.Pool = "pool2"
 	s.p.Provision(appInstance2)
 	err = pool.AddPool(pool.AddPoolOptions{Name: "pool2"})

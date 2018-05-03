@@ -28,7 +28,7 @@ import (
 )
 
 func newFakeAppInDB(name, platform string, units int) *provisiontest.FakeApp {
-	a := provisiontest.NewFakeApp(name, platform, units)
+	a := provisiontest.NewFakeApp(name, platform, "test-default", units)
 	appStruct := &app.App{
 		Name:     a.GetName(),
 		Platform: a.GetPlatform(),

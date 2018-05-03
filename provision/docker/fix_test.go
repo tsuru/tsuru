@@ -89,7 +89,7 @@ func (s *S) TestFixContainer(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": cont.AppName})
 	err = s.conn.Apps().Insert(&app.App{Name: cont.AppName})
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp(cont.AppName, cont.Type, 0)
+	appInstance := provisiontest.NewFakeApp(cont.AppName, cont.Type, "test-default", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	var storage cluster.MapStorage

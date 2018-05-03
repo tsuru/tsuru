@@ -178,7 +178,7 @@ func (s *S) TestGetContainers(c *check.C) {
 }
 
 func (s *S) TestGetImageFromAppPlatform(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
 	img := image.GetBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
@@ -204,7 +204,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 func (s *S) TestGetImageWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
 	img := image.GetBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python:latest", repoNamespace)
@@ -214,7 +214,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 func (s *S) TestStart(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
 	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app)
 	var buf bytes.Buffer
@@ -233,7 +233,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	cont.Status = provision.StatusStopped.String()
 	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
 	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app)
 	var buf bytes.Buffer
