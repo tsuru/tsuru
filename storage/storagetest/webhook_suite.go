@@ -7,10 +7,8 @@ package storagetest
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
 
-	"github.com/tsuru/tsuru/permission"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	"gopkg.in/check.v1"
 )
@@ -21,13 +19,12 @@ type WebHookSuite struct {
 }
 
 func (s *WebHookSuite) TestInsertWebHook(c *check.C) {
-	u, _ := url.Parse("http://mysrv.com:123/abc?a=b")
 	w := eventTypes.WebHook{
 		Name:      "wh1",
 		TeamOwner: "team1",
-		URL:       *u,
+		URL:       "http://mysrv.com:123/abc?a=b",
 		Method:    "GET",
-		EventFilter: eventTypes.EventFilter{
+		EventFilter: eventTypes.WebHookEventFilter{
 			TargetTypes:  []string{"app"},
 			TargetValues: []string{"myapp"},
 		},
@@ -39,23 +36,20 @@ func (s *WebHookSuite) TestInsertWebHook(c *check.C) {
 	c.Assert(webHook, check.DeepEquals, &eventTypes.WebHook{
 		Name:      "wh1",
 		TeamOwner: "team1",
-		URL:       *u,
+		URL:       "http://mysrv.com:123/abc?a=b",
 		Method:    "GET",
 		Headers:   http.Header{},
-		EventFilter: eventTypes.EventFilter{
+		EventFilter: eventTypes.WebHookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},
 			TargetTypes:  []string{"app"},
 			TargetValues: []string{"myapp"},
-			AllowedPermissions: eventTypes.WebHookAllowedPermission{
-				Contexts: []permission.PermissionContext{},
-			},
 		},
 	})
 }
 
 func (s *WebHookSuite) TestFindByEvent(c *check.C) {
-	filters := []eventTypes.EventFilter{
+	filters := []eventTypes.WebHookEventFilter{
 		{TargetTypes: []string{"app"}, TargetValues: []string{"myapp"}},
 		{ErrorOnly: true},
 		{SuccessOnly: true},
@@ -66,13 +60,13 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 		{TargetTypes: []string{"app"}, TargetValues: []string{"myapp"}, ErrorOnly: true, KindTypes: []string{"permission"}, KindNames: []string{"app.deploy", "app.update"}},
 		{TargetTypes: []string{"app"}, TargetValues: []string{"otherapp"}},
 		{KindTypes: []string{"permission"}, KindNames: []string{"app.update"}},
+		{},
 	}
-	u, _ := url.Parse("http://mysrv.com:123/abc?a=b")
 	for i, f := range filters {
 		w := eventTypes.WebHook{
 			Name:        fmt.Sprintf("wh-%d", i),
 			TeamOwner:   "team1",
-			URL:         *u,
+			URL:         "http://mysrv.com:123/abc?a=b",
 			Method:      "GET",
 			EventFilter: f,
 		}
@@ -80,85 +74,86 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	tests := []struct {
-		f        eventTypes.EventFilter
+		f        eventTypes.WebHookEventFilter
 		success  bool
 		expected []string
 	}{
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.deploy"},
 			},
 			success:  false,
-			expected: []string{"wh-0", "wh-1", "wh-3", "wh-4", "wh-5", "wh-7"},
+			expected: []string{"wh-0", "wh-1", "wh-3", "wh-4", "wh-5", "wh-7", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.deploy"},
 			},
 			success:  true,
-			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5"},
+			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"otherapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.deploy"},
 			},
 			success:  true,
-			expected: []string{"wh-2", "wh-4", "wh-5", "wh-8"},
+			expected: []string{"wh-2", "wh-4", "wh-5", "wh-8", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"anyapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.update.env.set"},
 			},
 			success:  true,
-			expected: []string{"wh-2", "wh-5", "wh-9"},
+			expected: []string{"wh-2", "wh-5", "wh-9", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"node"},
 				TargetValues: []string{"10.0.0.1", "10.0.0.2"},
 				KindTypes:    []string{"internal"},
 				KindNames:    []string{"healer"},
 			},
 			success:  true,
-			expected: []string{"wh-2", "wh-6"},
+			expected: []string{"wh-2", "wh-6", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp", "otherapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.update"},
 			},
 			success:  true,
-			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5", "wh-8", "wh-9"},
+			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5", "wh-8", "wh-9", "wh-10"},
 		},
 		{
-			f: eventTypes.EventFilter{
+			f: eventTypes.WebHookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp", "otherapp"},
 				KindTypes:    []string{"permission"},
 				KindNames:    []string{"app.update"},
 			},
 			success:  false,
-			expected: []string{"wh-0", "wh-1", "wh-3", "wh-4", "wh-5", "wh-7", "wh-8", "wh-9"},
+			expected: []string{"wh-0", "wh-1", "wh-3", "wh-4", "wh-5", "wh-7", "wh-8", "wh-9", "wh-10"},
 		},
 	}
 	for i, tt := range tests {
 		hooks, err := s.WebHookStorage.FindByEvent(tt.f, tt.success)
 		c.Assert(err, check.IsNil)
 		names := webhooksNames(hooks)
+		sort.Strings(tt.expected)
 		c.Assert(names, check.DeepEquals, tt.expected, check.Commentf("failed test %d", i))
 	}
 }
@@ -226,14 +221,11 @@ func (s *WebHookSuite) TestUpdate(c *check.C) {
 		Name:    "wh1",
 		Method:  "GET",
 		Headers: http.Header{},
-		EventFilter: eventTypes.EventFilter{
+		EventFilter: eventTypes.WebHookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},
 			TargetTypes:  []string{},
 			TargetValues: []string{},
-			AllowedPermissions: eventTypes.WebHookAllowedPermission{
-				Contexts: []permission.PermissionContext{},
-			},
 		},
 	})
 }

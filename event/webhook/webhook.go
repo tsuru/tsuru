@@ -5,10 +5,14 @@
 package webhook
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,11 +20,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/shutdown"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/storage"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	"github.com/tsuru/tsuru/validation"
 )
 
 var (
@@ -116,7 +122,7 @@ func (s *webHookService) handleEvent(evtID string) error {
 	if err != nil {
 		return err
 	}
-	filter := eventTypes.EventFilter{
+	filter := eventTypes.WebHookEventFilter{
 		TargetTypes:  []string{string(evt.Target.Type)},
 		TargetValues: []string{evt.Target.Value},
 		KindTypes:    []string{string(evt.Kind.Type)},
@@ -131,7 +137,7 @@ func (s *webHookService) handleEvent(evtID string) error {
 		return err
 	}
 	for _, h := range hooks {
-		err = s.doHook(h)
+		err = s.doHook(h, evt)
 		if err != nil {
 			log.Errorf("[webhooks] error calling webhook %q: %v", h.Name, err)
 		}
@@ -139,18 +145,39 @@ func (s *webHookService) handleEvent(evtID string) error {
 	return nil
 }
 
-func (s *webHookService) doHook(hook eventTypes.WebHook) (err error) {
+func webhookBody(hook *eventTypes.WebHook, evt *event.Event) (io.Reader, error) {
+	if hook.Body != "" {
+		return strings.NewReader(hook.Body), nil
+	}
+	if hook.Method != http.MethodPost &&
+		hook.Method != http.MethodPut &&
+		hook.Method != http.MethodPatch {
+		return nil, nil
+	}
+	hook.Headers.Set("Content-Type", "application/json")
+	data, err := json.Marshal(evt)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(data), nil
+}
+
+func (s *webHookService) doHook(hook eventTypes.WebHook, evt *event.Event) (err error) {
 	defer func() {
 		webhooksTotal.Inc()
 		if err != nil {
 			webhooksError.Inc()
 		}
 	}()
-	var body io.Reader
-	if hook.Body != "" {
-		body = strings.NewReader(hook.Body)
+	hook.Method = strings.ToUpper(hook.Method)
+	if hook.Method == "" {
+		hook.Method = http.MethodPost
 	}
-	req, err := http.NewRequest(hook.Method, hook.URL.String(), body)
+	body, err := webhookBody(&hook, evt)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(hook.Method, hook.URL, body)
 	if err != nil {
 		return err
 	}
@@ -174,4 +201,56 @@ func (s *webHookService) doHook(hook eventTypes.WebHook) (err error) {
 		return errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
 	}
 	return nil
+}
+
+func validateURL(u string) error {
+	if u == "" {
+		return &tsuruErrors.ValidationError{Message: "webhook url must not be empty"}
+	}
+	_, err := url.Parse(u)
+	if err != nil {
+		return &tsuruErrors.ValidationError{
+			Message: fmt.Sprintf("webhook url is not valid: %v", err),
+		}
+	}
+	return nil
+}
+
+func (s *webHookService) Create(w eventTypes.WebHook) error {
+	if w.Name == "" {
+		return &tsuruErrors.ValidationError{Message: "webhook name must not be empty"}
+	}
+	err := validation.EnsureValidateName(w.Name)
+	if err != nil {
+		return err
+	}
+	err = validateURL(w.URL)
+	if err != nil {
+		return err
+	}
+	return s.storage.Insert(w)
+}
+
+func (s *webHookService) Update(w eventTypes.WebHook) error {
+	err := validateURL(w.URL)
+	if err != nil {
+		return err
+	}
+	return s.storage.Update(w)
+}
+
+func (s *webHookService) Delete(name string) error {
+	return s.storage.Delete(name)
+}
+
+func (s *webHookService) Find(name string) (eventTypes.WebHook, error) {
+	w, err := s.storage.FindByName(name)
+	if err != nil {
+		return eventTypes.WebHook{}, err
+	}
+	return *w, nil
+}
+
+func (s *webHookService) List(teams []string) ([]eventTypes.WebHook, error) {
+	return s.storage.FindAllByTeams(teams)
 }
