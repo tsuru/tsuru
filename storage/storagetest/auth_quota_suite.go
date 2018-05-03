@@ -34,7 +34,7 @@ func (s *AuthQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
 }
 
 func (s *AuthQuotaSuite) TestIncInUse(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5, InUse: 0}}
+	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
 	defer s.UserStorage.Remove(user)
 	err := s.AuthQuotaStorage.IncInUse("example@example.com", 1)
@@ -58,7 +58,7 @@ func (s *AuthQuotaSuite) TestIncInUseNotFound(c *check.C) {
 }
 
 func (s *AuthQuotaSuite) TestSetLimit(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5, InUse: 0}}
+	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
 	defer s.UserStorage.Remove(user)
 	err := s.AuthQuotaStorage.SetLimit("example@example.com", 1)
