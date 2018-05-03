@@ -10,6 +10,9 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs"
@@ -902,6 +905,22 @@ func (s *S) TestValidateVersion(c *check.C) {
 	}
 }
 
+func (s *S) TestRunCancel(c *check.C) {
+	cmd := &CancelableCommand{}
+	cmd.running = make(chan struct{})
+	cmd.canceled = make(chan struct{})
+	go func() {
+		<-cmd.running
+		p, err := os.FindProcess(os.Getpid())
+		c.Assert(err, check.IsNil)
+		err = p.Signal(unix.SIGINT)
+		c.Assert(err, check.IsNil)
+	}()
+	globalManager.Register(cmd)
+	globalManager.Run([]string{"foo"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, "Attempting command cancellation...\nCanceled.\n")
+}
+
 type recordingExiter int
 
 func (e *recordingExiter) Exit(code int) {
@@ -910,6 +929,37 @@ func (e *recordingExiter) Exit(code int) {
 
 func (e recordingExiter) value() int {
 	return int(e)
+}
+
+var _ Cancelable = &CancelableCommand{}
+
+type CancelableCommand struct {
+	running  chan struct{}
+	canceled chan struct{}
+}
+
+func (c *CancelableCommand) Info() *Info {
+	return &Info{
+		Name:  "foo",
+		Desc:  "Foo do anything or nothing.",
+		Usage: "foo",
+	}
+}
+
+func (c *CancelableCommand) Run(context *Context, client *Client) error {
+	c.running <- struct{}{}
+	select {
+	case <-c.canceled:
+	case <-time.After(time.Second * 5):
+		return fmt.Errorf("timeout waiting for cancellation")
+	}
+	return nil
+}
+
+func (c *CancelableCommand) Cancel(context Context, client *Client) error {
+	fmt.Fprintln(context.Stdout, "Canceled.")
+	c.canceled <- struct{}{}
+	return nil
 }
 
 type TestCommand struct{}
