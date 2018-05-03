@@ -221,4 +221,12 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"volume.update.bind",
 	"volume.update.unbind",
 	"volume.delete",
+).addWithCtx(
+	"webhook", []contextType{CtxTeam},
+).add(
+	"webhook.read",
+	"webhook.read.events",
+	"webhook.create",
+	"webhook.update",
+	"webhook.delete",
 )

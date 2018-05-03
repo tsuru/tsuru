@@ -224,4 +224,10 @@ var (
 	PermVolumeUpdate                     = PermissionRegistry.get("volume.update")                       // [global volume team pool]
 	PermVolumeUpdateBind                 = PermissionRegistry.get("volume.update.bind")                  // [global volume team pool]
 	PermVolumeUpdateUnbind               = PermissionRegistry.get("volume.update.unbind")                // [global volume team pool]
+	PermWebhook                          = PermissionRegistry.get("webhook")                             // [global team]
+	PermWebhookCreate                    = PermissionRegistry.get("webhook.create")                      // [global team]
+	PermWebhookDelete                    = PermissionRegistry.get("webhook.delete")                      // [global team]
+	PermWebhookRead                      = PermissionRegistry.get("webhook.read")                        // [global team]
+	PermWebhookReadEvents                = PermissionRegistry.get("webhook.read.events")                 // [global team]
+	PermWebhookUpdate                    = PermissionRegistry.get("webhook.update")                      // [global team]
 )
