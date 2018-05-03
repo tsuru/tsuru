@@ -242,20 +242,17 @@ func (m *Manager) Run(args []string) {
 	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
 	client := NewClient(net.Dial5FullUnlimitedClient, context, m)
 	client.Verbosity = verbosity
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {
-		signal.Notify(sigChan, unix.SIGINT, unix.SIGHUP)
+		signal.Notify(sigChan, unix.SIGINT)
 		go func(context Context, client *Client) {
-			for {
-				if _, ok := <-sigChan; !ok {
-					return
-				}
+			for range sigChan {
 				fmt.Fprintln(m.stdout, "Attempting command cancellation...")
-				err := cancelable.Cancel(context, client)
-				if err == nil {
+				errCancel := cancelable.Cancel(context, client)
+				if errCancel == nil {
 					return
 				}
-				fmt.Fprintf(m.stderr, "Error canceling command: %v. Proceeding.", err)
+				fmt.Fprintf(m.stderr, "Error canceling command: %v. Proceeding.", errCancel)
 			}
 		}(*context, client)
 	}
