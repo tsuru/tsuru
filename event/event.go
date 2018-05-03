@@ -104,6 +104,7 @@ var (
 	TargetTypeEventBlock      = TargetType("event-block")
 	TargetTypeCluster         = TargetType("cluster")
 	TargetTypeVolume          = TargetType("volume")
+	TargetTypeWebHook         = TargetType("webhook")
 )
 
 const (
@@ -244,6 +245,26 @@ func GetTargetType(t string) (TargetType, error) {
 		return TargetTypeTeam, nil
 	case "user":
 		return TargetTypeUser, nil
+	case "iaas":
+		return TargetTypeIaas, nil
+	case "role":
+		return TargetTypeRole, nil
+	case "platform":
+		return TargetTypePlatform, nil
+	case "plan":
+		return TargetTypePlan, nil
+	case "node-container":
+		return TargetTypeNodeContainer, nil
+	case "install-host":
+		return TargetTypeInstallHost, nil
+	case "event-block":
+		return TargetTypeEventBlock, nil
+	case "cluster":
+		return TargetTypeCluster, nil
+	case "volume":
+		return TargetTypeVolume, nil
+	case "webhook":
+		return TargetTypeWebHook, nil
 	}
 	return TargetType(""), ErrInvalidTargetType
 }

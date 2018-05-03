@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
@@ -102,6 +103,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Platform, err = app.PlatformService()
+	if err != nil {
+		return err
+	}
+	servicemanager.WebHook, err = webhook.WebHookService()
 	return err
 }
 
@@ -215,6 +220,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.1", "Get", "/events/kinds", AuthorizationRequiredHandler(kindList))
 	m.Add("1.1", "Get", "/events/{uuid}", AuthorizationRequiredHandler(eventInfo))
 	m.Add("1.1", "Post", "/events/{uuid}/cancel", AuthorizationRequiredHandler(eventCancel))
+
+	m.Add("1.6", "Get", "/events/webhooks", AuthorizationRequiredHandler(webhookList))
+	m.Add("1.6", "Post", "/events/webhooks", AuthorizationRequiredHandler(webhookCreate))
+	m.Add("1.6", "Put", "/events/webhooks/{name}", AuthorizationRequiredHandler(webhookUpdate))
+	m.Add("1.6", "Delete", "/events/webhooks/{name}", AuthorizationRequiredHandler(webhookDelete))
 
 	m.Add("1.0", "Get", "/platforms", AuthorizationRequiredHandler(platformList))
 	m.Add("1.0", "Post", "/platforms", AuthorizationRequiredHandler(platformAdd))
