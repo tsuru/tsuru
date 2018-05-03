@@ -10,9 +10,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"sort"
 	"strings"
+
+	"golang.org/x/sys/unix"
 
 	goVersion "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
@@ -239,7 +242,25 @@ func (m *Manager) Run(args []string) {
 	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
 	client := NewClient(net.Dial5FullUnlimitedClient, context, m)
 	client.Verbosity = verbosity
+	sigChan := make(chan os.Signal)
+	if cancelable, ok := command.(Cancelable); ok {
+		signal.Notify(sigChan, unix.SIGINT, unix.SIGHUP)
+		go func(context Context, client *Client) {
+			for {
+				if _, ok := <-sigChan; !ok {
+					return
+				}
+				fmt.Fprintln(m.stdout, "Attempting command cancellation...")
+				err := cancelable.Cancel(context, client)
+				if err == nil {
+					return
+				}
+				fmt.Fprintf(m.stderr, "Error canceling command: %v. Proceeding.", err)
+			}
+		}(*context, client)
+	}
 	err = command.Run(context, client)
+	close(sigChan)
 	if err == errUnauthorized && name != loginCmdName {
 		if cmd, ok := m.Commands[loginCmdName]; ok {
 			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
@@ -429,6 +450,16 @@ func (m *Manager) discoverTopics() []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+// Cancelable are implemented by commands that support cancellation
+type Cancelable interface {
+	// Cancel handles the command cancellation and is required to be thread safe as
+	// this method is called by a different goroutine.
+	// Cancel should return an error if the operation is not cancelable yet/anymore or there
+	// was any error during the cancellation.
+	// Cancel may be called multiple times.
+	Cancel(context Context, client *Client) error
 }
 
 type Command interface {
