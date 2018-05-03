@@ -1488,8 +1488,6 @@ paths:
         - Bearer: []
   /1.6/roles/{role_name}/token:
     post:
-      tags:
-        - auth
       operationId: AssignRoleToToken
       description: Assigns a role to a team token.
       consumes:
@@ -1515,10 +1513,12 @@ paths:
           description: Role or token not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-  /1.6/roles/{role_name}/token/{token_id}:
-    delete:
       tags:
         - auth
+      security:
+        - Bearer: []
+  /1.6/roles/{role_name}/token/{token_id}:
+    delete:
       operationId: DissociateRoleFromToken
       description: Dissociates a role from a team token.
       parameters:
@@ -1545,10 +1545,12 @@ paths:
           description: Role or token not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-  /1.6/tokens:
-    get:
       tags:
         - auth
+      security:
+        - Bearer: []
+  /1.6/tokens:
+    get:
       operationId: TeamTokensList
       description: List team tokens.
       produces:
@@ -1567,9 +1569,11 @@ paths:
           description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
-    post:
       tags:
         - auth
+      security:
+        - Bearer: []
+    post:
       operationId: TeamTokenCreate
       description: Creates a team token.
       consumes:
@@ -1595,6 +1599,10 @@ paths:
           description: Token with the same ID already exists.
           schema:
             $ref: '#/definitions/ErrorMessage'
+      tags:
+        - auth
+      security:
+        - Bearer: []
   /1.6/tokens/{token_id}:
     parameters:
       - name: token_id
@@ -1604,8 +1612,6 @@ paths:
         minLength: 1
         description: Token ID.
     delete:
-      tags:
-        - auth
       operationId: TeamTokenDelete
       description: Deletes a team token.
       responses:
@@ -1619,9 +1625,11 @@ paths:
           description: Team token not found.
           schema:
             $ref: '#/definitions/ErrorMessage'
-    put:
       tags:
         - auth
+      security:
+        - Bearer: []
+    put:
       operationId: TeamTokenUpdate
       description: Updates a team token.
       consumes:
@@ -1647,6 +1655,46 @@ paths:
           description: Team token not found.
           schema:
             $ref: '#/definitions/ErrorMessage'
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.1/events/{eventid}/cancel:
+    post:
+      operationId: EventCancel
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+        - name: eventid
+          required: true
+          in: path
+          type: string
+        - name: cancel
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/EventCancelArgs'
+      responses:
+        '204':
+          description: Event cancelation requested.
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Event not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
 definitions:
   ErrorMessage:
     description: Error message.
@@ -2338,3 +2386,8 @@ definitions:
         type: string
       disabled:
         type: boolean
+  EventCancelArgs:
+    type: object
+    properties:
+      reason:
+        type: string
