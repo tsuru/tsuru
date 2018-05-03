@@ -13,7 +13,7 @@ import (
 
 func (s *S) TestChangeAppState(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
 	err := image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web1",
@@ -60,7 +60,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 
 func (s *S) TestChangeUnits(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
 	fakeApp.Deploys = 1
 	err := image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
@@ -95,7 +95,7 @@ func (s *S) TestChangeUnits(c *check.C) {
 
 func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
 	fakeApp.Deploys = 1
 	err := image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{

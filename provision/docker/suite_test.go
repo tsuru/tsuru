@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -65,10 +66,7 @@ type S struct {
 	team          *authTypes.Team
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
-	mockService   struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
-	}
+	mockService   servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -153,6 +151,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 	s.team = &authTypes.Team{Name: "admin"}
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return []authTypes.Team{*s.team}, nil

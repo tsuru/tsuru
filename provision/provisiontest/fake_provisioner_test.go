@@ -50,19 +50,19 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestFakeAppAddUnit(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	app.AddUnit(provision.Unit{ID: "jean-0"})
 	c.Assert(app.units, check.HasLen, 1)
 }
 
 func (s *S) TestFakeAppGetMemory(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	app.Memory = 100
 	c.Assert(app.GetMemory(), check.Equals, int64(100))
 }
 
 func (s *S) TestFakeAppGetSwap(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	c.Assert(app.GetSwap(), check.Equals, int64(0))
 }
 
@@ -118,7 +118,7 @@ func (s *S) TestSetEnvs(c *check.C) {
 }
 
 func (s *S) TestGetUnitsReturnUnits(c *check.C) {
-	a := NewFakeApp("foo", "static", 2)
+	a := NewFakeApp("foo", "static", "test-default", 2)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
@@ -144,7 +144,7 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 
 func (s *S) TestFakeAppBindUnit(c *check.C) {
 	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.BindUnit(&unit)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.HasBind(&unit), check.Equals, true)
@@ -152,7 +152,7 @@ func (s *S) TestFakeAppBindUnit(c *check.C) {
 
 func (s *S) TestFakeAppUnbindUnit(c *check.C) {
 	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.BindUnit(&unit)
 	c.Assert(err, check.IsNil)
 	err = app.UnbindUnit(&unit)
@@ -162,14 +162,14 @@ func (s *S) TestFakeAppUnbindUnit(c *check.C) {
 
 func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
 	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.UnbindUnit(&unit)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not bound")
 }
 
 func (s *S) TestFakeAppGetQuota(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	c.Assert(app.GetQuota(), check.DeepEquals, quota.Unlimited)
 	q := quota.Quota{Limit: 10, InUse: 3}
 	app.Quota = q
@@ -178,7 +178,7 @@ func (s *S) TestFakeAppGetQuota(c *check.C) {
 
 func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 	q := quota.Quota{Limit: 10, InUse: 3}
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	app.Quota = q
 	c.Assert(app.GetQuota(), check.DeepEquals, q)
 	q.InUse = 8
@@ -194,13 +194,13 @@ func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 }
 
 func (s *S) TestFakeAppGetCname(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	app.cname = []string{"cname1", "cname2"}
 	c.Assert(app.GetCname(), check.DeepEquals, []string{"cname1", "cname2"})
 }
 
 func (s *S) TestFakeAppAddInstance(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{
@@ -239,7 +239,7 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 }
 
 func (s *S) TestFakeAppRemoveInstance(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{
@@ -279,7 +279,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 }
 
 func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{
@@ -300,7 +300,7 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	err := app.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst2",
@@ -310,31 +310,31 @@ func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeAppLogs(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	app.Log("something happened", "[tsuru]", "[api]")
 	c.Assert(app.Logs(), check.DeepEquals, []string{"[tsuru][api]something happened"})
 }
 
 func (s *S) TestFakeAppHasLog(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
+	app := NewFakeApp("sou", "otm", "test-default", 0)
 	app.Log("something happened", "[tsuru]", "[api]")
 	c.Assert(app.HasLog("[tsuru]", "[api]", "something happened"), check.Equals, true)
 	c.Assert(app.HasLog("tsuru", "api", "something happened"), check.Equals, false)
 }
 
 func (s *S) TestProvisioned(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Provisioned(app), check.Equals, true)
-	otherapp := NewFakeApp("blue-sector", "rush", 1)
+	otherapp := NewFakeApp("blue-sector", "rush", "test-default", 1)
 	c.Assert(p.Provisioned(otherapp), check.Equals, false)
 }
 
 func (s *S) TestRestarts(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
+	app1 := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, restarts: map[string]int{"": 10, "web": 2}},
@@ -343,12 +343,12 @@ func (s *S) TestRestarts(c *check.C) {
 	c.Assert(p.Restarts(app1, ""), check.Equals, 10)
 	c.Assert(p.Restarts(app1, "web"), check.Equals, 2)
 	c.Assert(p.Restarts(app2, ""), check.Equals, 0)
-	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
+	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", "test-default", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestStarts(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
+	app1 := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
@@ -357,12 +357,12 @@ func (s *S) TestStarts(c *check.C) {
 	c.Assert(p.Starts(app1, "web"), check.Equals, 10)
 	c.Assert(p.Starts(app1, "worker"), check.Equals, 1)
 	c.Assert(p.Starts(app2, ""), check.Equals, 0)
-	c.Assert(p.Starts(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
+	c.Assert(p.Starts(NewFakeApp("pride", "shaman", "test-default", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestStops(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
+	app1 := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
@@ -371,12 +371,12 @@ func (s *S) TestStops(c *check.C) {
 	c.Assert(p.Stops(app1, "web"), check.Equals, 10)
 	c.Assert(p.Stops(app1, "worker"), check.Equals, 1)
 	c.Assert(p.Stops(app2, ""), check.Equals, 0)
-	c.Assert(p.Stops(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
+	c.Assert(p.Stops(NewFakeApp("pride", "shaman", "test-default", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestSleeps(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
+	app1 := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, sleeps: map[string]int{"web": 10, "worker": 1}},
@@ -385,11 +385,11 @@ func (s *S) TestSleeps(c *check.C) {
 	c.Assert(p.Sleeps(app1, "web"), check.Equals, 10)
 	c.Assert(p.Sleeps(app1, "worker"), check.Equals, 1)
 	c.Assert(p.Sleeps(app2, ""), check.Equals, 0)
-	c.Assert(p.Sleeps(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
+	c.Assert(p.Sleeps(NewFakeApp("pride", "shaman", "test-default", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestGetCmds(c *check.C) {
-	app := NewFakeApp("enemy-within", "rush", 1)
+	app := NewFakeApp("enemy-within", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.cmds = []Cmd{
 		{Cmd: "ls -lh", App: app},
@@ -398,7 +398,7 @@ func (s *S) TestGetCmds(c *check.C) {
 	c.Assert(p.GetCmds("ls -lh", app), check.HasLen, 1)
 	c.Assert(p.GetCmds("l", app), check.HasLen, 0)
 	c.Assert(p.GetCmds("", app), check.HasLen, 2)
-	otherapp := NewFakeApp("enemy-without", "rush", 1)
+	otherapp := NewFakeApp("enemy-without", "rush", "test-default", 1)
 	c.Assert(p.GetCmds("ls -lh", otherapp), check.HasLen, 0)
 	c.Assert(p.GetCmds("", otherapp), check.HasLen, 0)
 }
@@ -408,7 +408,7 @@ func (s *S) TestGetUnits(c *check.C) {
 		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
 		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provision.StatusStarted},
 	}
-	app := NewFakeApp("chain-lighting", "rush", 1)
+	app := NewFakeApp("chain-lighting", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app.GetName(): {app: app, units: list},
@@ -435,7 +435,7 @@ func (s *S) TestPrepareFailure(c *check.C) {
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -455,7 +455,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 }
 
 func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	p := NewFakeProvisioner()
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
@@ -469,7 +469,7 @@ func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
 }
 
 func (s *S) TestArchiveDeployWithPreparedFailure(c *check.C) {
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -488,7 +488,7 @@ func (s *S) TestArchiveDeployWithPreparedFailure(c *check.C) {
 func (s *S) TestUploadDeploy(c *check.C) {
 	var input bytes.Buffer
 	file := ioutil.NopCloser(&input)
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -508,7 +508,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 }
 
 func (s *S) TestUploadDeployUnknownApp(c *check.C) {
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -522,7 +522,7 @@ func (s *S) TestUploadDeployUnknownApp(c *check.C) {
 }
 
 func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
-	app := NewFakeApp("soul", "arch", 1)
+	app := NewFakeApp("soul", "arch", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -539,7 +539,7 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	app := NewFakeApp("otherapp", "test", 1)
+	app := NewFakeApp("otherapp", "test", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -559,7 +559,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
-	app := NewFakeApp("otherapp", "test", 1)
+	app := NewFakeApp("otherapp", "test", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
@@ -576,7 +576,7 @@ func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
 }
 
 func (s *S) TestProvision(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -587,7 +587,7 @@ func (s *S) TestProvision(c *check.C) {
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Provision", errors.New("Failed to provision."))
 	err := p.Provision(app)
@@ -596,7 +596,7 @@ func (s *S) TestProvisionWithPreparedFailure(c *check.C) {
 }
 
 func (s *S) TestDoubleProvision(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -609,7 +609,7 @@ func (s *S) TestRestart(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	a := NewFakeApp("kid-gloves", "rush", 1)
+	a := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	nApp := app.App{
 		Name: a.name,
 	}
@@ -624,7 +624,7 @@ func (s *S) TestRestart(c *check.C) {
 }
 
 func (s *S) TestStart(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	err := p.Start(app, "")
@@ -636,7 +636,7 @@ func (s *S) TestStart(c *check.C) {
 }
 
 func (s *S) TestStop(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	err := p.Stop(app, "")
@@ -645,7 +645,7 @@ func (s *S) TestStop(c *check.C) {
 }
 
 func (s *S) TestSleep(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	err := p.Sleep(app, "")
@@ -654,14 +654,14 @@ func (s *S) TestSleep(c *check.C) {
 }
 
 func (s *S) TestRestartNotProvisioned(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Restart(app, "web", nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRestartWithPreparedFailure(c *check.C) {
-	app := NewFakeApp("fairy-tale", "shaman", 1)
+	app := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Restart", errors.New("Failed to restart."))
 	err := p.Restart(app, "web", nil)
@@ -670,7 +670,7 @@ func (s *S) TestRestartWithPreparedFailure(c *check.C) {
 }
 
 func (s *S) TestDestroy(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
+	app := NewFakeApp("kid-gloves", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	err := p.Destroy(app)
@@ -679,7 +679,7 @@ func (s *S) TestDestroy(c *check.C) {
 }
 
 func (s *S) TestDestroyWithPreparedFailure(c *check.C) {
-	app := NewFakeApp("red-lenses", "rush", 1)
+	app := NewFakeApp("red-lenses", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Destroy", errors.New("Failed to destroy."))
 	err := p.Destroy(app)
@@ -688,14 +688,14 @@ func (s *S) TestDestroyWithPreparedFailure(c *check.C) {
 }
 
 func (s *S) TestDestroyNotProvisionedApp(c *check.C) {
-	app := NewFakeApp("red-lenses", "rush", 1)
+	app := NewFakeApp("red-lenses", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Destroy(app)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestAddUnits(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	app := NewFakeApp("mystic-rhythms", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -716,7 +716,7 @@ func (s *S) TestAddUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
-	app := NewFakeApp("fiction", "python", 0)
+	app := NewFakeApp("fiction", "python", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	defer p.Destroy(app)
@@ -736,7 +736,7 @@ func (s *S) TestAddZeroUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsUnprovisionedApp(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	app := NewFakeApp("mystic-rhythms", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
@@ -751,7 +751,7 @@ func (s *S) TestAddUnitsFailure(c *check.C) {
 }
 
 func (s *S) TestAddUnitsNodeAware(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	app := NewFakeApp("mystic-rhythms", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.Reset()
 	err := p.Provision(app)
@@ -769,7 +769,7 @@ func (s *S) TestAddUnitsNodeAware(c *check.C) {
 }
 
 func (s *S) TestAddUnitsToNode(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	app := NewFakeApp("mystic-rhythms", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.Reset()
 	err := p.Provision(app)
@@ -787,7 +787,7 @@ func (s *S) TestAddUnitsToNode(c *check.C) {
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
+	app := NewFakeApp("hemispheres", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	err := p.AddUnits(app, 5, "web", nil)
@@ -808,7 +808,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 }
 
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
+	app := NewFakeApp("hemispheres", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -831,7 +831,7 @@ func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
 }
 
 func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
+	app := NewFakeApp("hemispheres", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -843,7 +843,7 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 }
 
 func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
+	app := NewFakeApp("hemispheres", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -857,7 +857,7 @@ func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 }
 
 func (s *S) TestRemoveUnitsUnprovisionedApp(c *check.C) {
-	app := NewFakeApp("tears", "bruce", 0)
+	app := NewFakeApp("tears", "bruce", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.RemoveUnits(app, 1, "web", nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
@@ -874,7 +874,7 @@ func (s *S) TestRemoveUnitsFailure(c *check.C) {
 func (s *S) TestExecuteCommand(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 0)
+	app := NewFakeApp("grand-designs", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -891,7 +891,7 @@ func (s *S) TestExecuteCommand(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
-	app := NewFakeApp("manhattan-project", "rush", 0)
+	app := NewFakeApp("manhattan-project", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -905,7 +905,7 @@ func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
 
 func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 	var buf bytes.Buffer
-	app := NewFakeApp("marathon", "rush", 0)
+	app := NewFakeApp("marathon", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -920,7 +920,7 @@ func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 }
 
 func (s *S) TestExecuteComandTimeout(c *check.C) {
-	app := NewFakeApp("territories", "rush", 0)
+	app := NewFakeApp("territories", "rush", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -934,7 +934,7 @@ func (s *S) TestExecuteComandTimeout(c *check.C) {
 func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 1)
+	app := NewFakeApp("grand-designs", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.PrepareOutput(output)
 	err := p.ExecuteCommandIsolated(&buf, nil, app, "ls", "-l")
@@ -946,7 +946,7 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 }
 
 func (s *S) TestAddr(c *check.C) {
-	app := NewFakeApp("quick", "who", 1)
+	app := NewFakeApp("quick", "who", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -965,7 +965,7 @@ func (s *S) TestAddrFailure(c *check.C) {
 }
 
 func (s *S) TestSetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -976,14 +976,14 @@ func (s *S) TestSetCName(c *check.C) {
 }
 
 func (s *S) TestSetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestSetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("SetCName", errors.New("wut"))
 	err := p.SetCName(app, "cname.com")
@@ -992,7 +992,7 @@ func (s *S) TestSetCNameFailure(c *check.C) {
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1007,14 +1007,14 @@ func (s *S) TestUnsetCName(c *check.C) {
 }
 
 func (s *S) TestUnsetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.UnsetCName(app, "cname.com")
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestUnsetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("UnsetCName", errors.New("wut"))
 	err := p.UnsetCName(app, "cname.com")
@@ -1023,7 +1023,7 @@ func (s *S) TestUnsetCNameFailure(c *check.C) {
 }
 
 func (s *S) TestHasCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
+	app := NewFakeApp("jean", "mj", "test-default", 0)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1038,7 +1038,7 @@ func (s *S) TestHasCName(c *check.C) {
 func (s *S) TestExecuteCommandOnce(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 1)
+	app := NewFakeApp("grand-designs", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.PrepareOutput(output)
 	err := p.ExecuteCommandOnce(&buf, nil, app, "ls", "-l")
@@ -1049,7 +1049,7 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1061,7 +1061,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerUnits(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1072,7 +1072,7 @@ func (s *S) TestFakeProvisionerUnits(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerUnitsAppNotFound(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -1080,7 +1080,7 @@ func (s *S) TestFakeProvisionerUnitsAppNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1095,7 +1095,7 @@ func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1117,7 +1117,7 @@ func (s *S) TestFakeProvisionerSetUnitStatusAppNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
+	app := NewFakeApp("red-sector", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1130,7 +1130,7 @@ func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1147,7 +1147,7 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1157,7 +1157,7 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1176,7 +1176,7 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerShellNoSpecification(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1195,7 +1195,7 @@ func (s *S) TestFakeProvisionerShellNoSpecification(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerShellSpecifying(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1214,7 +1214,7 @@ func (s *S) TestFakeProvisionerShellSpecifying(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerShellUnitNotFound(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1226,7 +1226,7 @@ func (s *S) TestFakeProvisionerShellUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerShellNoUnits(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
@@ -1277,7 +1277,7 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 
 func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	p := NewFakeProvisioner()
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	app.Pool = "mypool"
 	p.Provision(app)
 	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
@@ -1312,10 +1312,10 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 
 func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 	p := NewFakeProvisioner()
-	app1 := NewFakeApp("a1", "diamond", 1)
+	app1 := NewFakeApp("a1", "diamond", "test-default", 1)
 	app1.Pool = "mypool"
 	p.Provision(app1)
-	app2 := NewFakeApp("a2", "diamond", 1)
+	app2 := NewFakeApp("a2", "diamond", "test-default", 1)
 	app2.Pool = "mypool2"
 	p.Provision(app2)
 	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
@@ -1351,7 +1351,7 @@ func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 
 func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 	p := NewFakeProvisioner()
-	app := NewFakeApp("shine-on", "diamond", 1)
+	app := NewFakeApp("shine-on", "diamond", "test-default", 1)
 	app.Pool = "mypool"
 	p.Provision(app)
 	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
@@ -1380,8 +1380,8 @@ func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 }
 
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
+	app1 := NewFakeApp("fairy-tale", "shaman", "test-default", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", "test-default", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app1)
 	c.Assert(err, check.IsNil)
@@ -1402,7 +1402,7 @@ func (s *S) TestGetAppFromUnitID(c *check.C) {
 	list := []provision.Unit{
 		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
 	}
-	app := NewFakeApp("chain-lighting", "rush", 1)
+	app := NewFakeApp("chain-lighting", "rush", "test-default", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app.GetName(): {app: app, units: list},
@@ -1469,7 +1469,7 @@ func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
 }
 
 func (s *S) TestRebuildDeploy(c *check.C) {
-	app := NewFakeApp("myapp", "arch", 1)
+	app := NewFakeApp("myapp", "arch", "test-default", 1)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,

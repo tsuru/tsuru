@@ -410,7 +410,7 @@ func (s *S) TestListContainersStartedContainers(c *check.C) {
 	defer p.Destroy()
 	containers, err := p.StartContainers(StartContainersArgs{
 		Endpoint:  p.Servers()[0].URL(),
-		App:       provisiontest.NewFakeApp("myapp", "plat", 2),
+		App:       provisiontest.NewFakeApp("myapp", "plat", "test-default", 2),
 		Amount:    map[string]int{"web": 2},
 		Image:     "tsuru/python",
 		PullImage: true,
@@ -435,7 +435,7 @@ func (s *S) TestListContainersStartedAndPreparedContainers(c *check.C) {
 	defer p.Destroy()
 	containers, err := p.StartContainers(StartContainersArgs{
 		Endpoint:  p.Servers()[0].URL(),
-		App:       provisiontest.NewFakeApp("myapp", "plat", 2),
+		App:       provisiontest.NewFakeApp("myapp", "plat", "test-default", 2),
 		Amount:    map[string]int{"web": 2},
 		Image:     "tsuru/python",
 		PullImage: true,
@@ -455,7 +455,7 @@ func (s *S) TestListContainersStartedAndPreparedContainers(c *check.C) {
 }
 
 func (s *S) TestStartContainers(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
 	p, err := StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()

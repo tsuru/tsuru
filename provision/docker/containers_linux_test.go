@@ -49,7 +49,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		appName := fmt.Sprintf("myapp-%d", i)
 		err = newFakeImage(p, "tsuru/app-"+appName, nil)
 		c.Assert(err, check.IsNil)
-		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
+		appInstance := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
 		defer p.Destroy(appInstance)
 		p.Provision(appInstance)
 		imageID, aErr := image.AppCurrentImageName(appInstance.GetName())

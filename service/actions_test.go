@@ -295,7 +295,7 @@ func (s *S) TestBindAppDBActionForward(c *check.C) {
 	si := ServiceInstance{Name: "mysql"}
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
 		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
@@ -323,7 +323,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	si := ServiceInstance{Name: "mysql"}
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
 		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
@@ -335,7 +335,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 }
 
 func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	si := ServiceInstance{Name: "mysql", Apps: []string{a.GetName()}}
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
@@ -365,7 +365,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
 		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
@@ -395,7 +395,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	evt := createEvt(c)
 	bwCtx := action.BWContext{
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
@@ -411,7 +411,7 @@ func (s *S) TestSetBoundEnvsActionName(c *check.C) {
 
 func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
@@ -438,7 +438,7 @@ func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	a := provisiontest.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 1)
 	err := a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -473,7 +473,7 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 10)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 10)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for i := range units {
@@ -525,7 +525,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 10)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 10)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for i := range units {
@@ -590,7 +590,7 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
 	args := bindPipelineArgs{
@@ -621,7 +621,7 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 }
 
 func (s *S) TestUnbindAppDBForward(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
@@ -645,7 +645,7 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 }
 
 func (s *S) TestUnbindAppDBBackward(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
@@ -674,7 +674,7 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
@@ -704,7 +704,7 @@ func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer ts.Close()
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
@@ -734,7 +734,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
@@ -757,7 +757,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 }
 
 func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 4)
 	srv := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
