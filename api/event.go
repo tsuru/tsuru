@@ -113,8 +113,9 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/json
 // responses:
-//   200: OK
+//   204: OK
 //   400: Invalid uuid or empty reason
+//   401: Unauthorized
 //   404: Not found
 func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	uuid := r.URL.Query().Get(":uuid")
