@@ -1695,6 +1695,116 @@ paths:
         - event
       security:
         - Bearer: []
+  /1.6/events/webhooks:
+    get:
+      operationId: WebHookList
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: WebHooks list.
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/WebHook'
+        '204':
+          description: No content.
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
+    post:
+      operationId: WebHookCreate
+      consumes:
+        - application/json
+      parameters:
+        - name: webhook
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/WebHook'
+      responses:
+        '200':
+          description: WebHook created.
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '409':
+          description: WebHook already exists.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
+  /1.6/events/webhooks/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: WebHook name.
+    put:
+      operationId: WebHookUpdate
+      consumes:
+        - application/json
+      parameters:
+        - name: webhook
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/WebHook'
+      responses:
+        '200':
+          description: WebHook updated.
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: WebHook not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
+    delete:
+      operationId: WebHookDelete
+      responses:
+        '200':
+          description: WebHook created.
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: WebHook not found.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
 definitions:
   ErrorMessage:
     description: Error message.
@@ -2391,3 +2501,52 @@ definitions:
     properties:
       reason:
         type: string
+  WebHook:
+    type: object
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      team_owner:
+        type: string
+      event_filter:
+        type: object
+        $ref: '#/definitions/WebHookEventFilter'
+      url:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      method:
+        type: string
+      body:
+        type: string
+      insecure:
+        type: boolean
+  WebHookEventFilter:
+    type: object
+    properties:
+      target_types:
+        type: array
+        items:
+          type: string
+      target_values:
+        type: array
+        items:
+          type: string
+      kind_types:
+        type: array
+        items:
+          type: string
+      kind_names:
+        type: array
+        items:
+          type: string
+      error_only:
+        type: boolean
+      success_only:
+        type: boolean
