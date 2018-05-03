@@ -65,8 +65,10 @@ type S struct {
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
 	mockService   struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
+		Team      *authTypes.MockTeamService
+		Plan      *appTypes.MockPlanService
+		AuthQuota *authTypes.MockQuotaService
+		AppQuota  *appTypes.MockQuotaService
 	}
 }
 
@@ -178,8 +180,17 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
+	s.mockService.AuthQuota = &authTypes.MockQuotaService{
+		OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			c.Assert(email, check.Equals, s.user.Email)
+			return &s.user.Quota, nil
+		},
+	}
+	s.mockService.AppQuota = &appTypes.MockQuotaService{}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
+	servicemanager.AuthQuota = s.mockService.AuthQuota
+	servicemanager.AppQuota = s.mockService.AppQuota
 }
 
 func (s *S) TearDownTest(c *check.C) {
