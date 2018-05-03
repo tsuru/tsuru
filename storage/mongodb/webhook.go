@@ -72,7 +72,7 @@ func (s *webhookStorage) FindAllByTeams(teams []string) ([]event.WebHook, error)
 	return s.findQuery(query)
 }
 
-func (s *webhookStorage) FindByEvent(f event.EventFilter, isSuccess bool) ([]event.WebHook, error) {
+func (s *webhookStorage) FindByEvent(f event.WebHookEventFilter, isSuccess bool) ([]event.WebHook, error) {
 	for _, name := range f.KindNames {
 		parts := strings.Split(name, ".")
 		if len(parts) == 0 {
