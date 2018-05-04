@@ -145,7 +145,7 @@ func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) strin
 	}
 
 	if usePoolNamespaces && len(poolName) > 0 {
-		return fmt.Sprintf("%s_%s", prefix, poolName)
+		return fmt.Sprintf("%s-%s", prefix, poolName)
 	}
 	return prefix
 }

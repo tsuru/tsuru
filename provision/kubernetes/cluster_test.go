@@ -166,16 +166,16 @@ func (s *S) TestClusterNamespacePerPool(c *check.C) {
 	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace("mypool"), check.Equals, "x_mypool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "x-mypool")
 	c.Assert(client.Namespace(""), check.Equals, "x")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru_mypool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru-mypool")
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru_mypool")
+	c.Assert(client.Namespace("mypool"), check.Equals, "tsuru-mypool")
 	c.Assert(client.Namespace(""), check.Equals, "tsuru")
 }
 
@@ -200,15 +200,15 @@ func (s *S) TestClusterNamespacesPerPool(c *check.C) {
 	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"x_mypool1", "x_mypool2", "x"})
+	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"x-mypool1", "x-mypool2", "x"})
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"tsuru_mypool1", "tsuru_mypool2"})
+	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"tsuru-mypool1", "tsuru-mypool2"})
 	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"tsuru_mypool1", "tsuru_mypool2", "tsuru"})
+	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"tsuru-mypool1", "tsuru-mypool2", "tsuru"})
 }
 
 func (s *S) TestClusterOvercommitFactor(c *check.C) {
