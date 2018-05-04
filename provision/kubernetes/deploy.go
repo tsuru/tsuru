@@ -332,6 +332,19 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 	}, nil
 }
 
+func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
+	ns := apiv1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: client.Namespace(app.GetPool()),
+		},
+	}
+	_, err := client.CoreV1().Namespaces().Create(&ns)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func ensureServiceAccount(client *ClusterClient, name string, labels *provision.LabelSet, namespace string) error {
 	svcAccount := apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -717,6 +730,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
+	err = ensureNamespaceForApp(m.client, a)
+	if err != nil {
+		return err
+	}
 	err = ensureServiceAccountForApp(m.client, a)
 	if err != nil {
 		return err
@@ -926,7 +943,11 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
-	err := ensureServiceAccountForApp(client, app)
+	err := ensureNamespaceForApp(client, app)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	err = ensureServiceAccountForApp(client, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}

@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -1009,6 +1010,40 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
+func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	var counter int32
+	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		return false, nil, nil
+	})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
+}
+
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	srv, wg := s.mock.CreateDeployReadyServer(c)
 	s.mock.MockfakeNodes(c, srv.URL)
@@ -1443,6 +1478,34 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestExecuteCommandIsolatedEnsureNamespace(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	var counter int32
+	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.Pool))
+		return false, nil, nil
+	})
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
 
 func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {

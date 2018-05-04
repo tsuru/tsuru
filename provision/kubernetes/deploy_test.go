@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -275,6 +276,39 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	var counter int32
+	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		return false, nil, nil
+	})
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	processes := map[string]interface{}{
+		"p1": "cmd1",
+		"p2": "cmd2",
+		"p3": "cmd3",
+	}
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": processes,
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(len(processes)))
 }
 
 func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
