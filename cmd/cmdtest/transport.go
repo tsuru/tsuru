@@ -7,6 +7,7 @@ package cmdtest
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -19,25 +20,18 @@ type Transport struct {
 	Headers map[string][]string
 }
 
-func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	var statusText string
-	if text := http.StatusText(t.Status); text != "" {
-		statusText = fmt.Sprintf("%d %s", t.Status, text)
-	} else {
-		statusText = fmt.Sprintf("%d status code %d", t.Status, t.Status)
+func (t Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	wt := BodyTransport{
+		Body:    ioutil.NopCloser(bytes.NewBufferString(t.Message)),
+		Status:  t.Status,
+		Headers: t.Headers,
 	}
-	resp = &http.Response{
-		Body:       ioutil.NopCloser(bytes.NewBufferString(t.Message)),
-		Status:     statusText,
-		StatusCode: t.Status,
-		Header:     http.Header(t.Headers),
-	}
-	return resp, nil
+	return wt.RoundTrip(req)
 }
 
 type ConditionalTransport struct {
-	Transport
-	CondFunc func(*http.Request) bool
+	Transport http.RoundTripper
+	CondFunc  func(*http.Request) bool
 }
 
 func (t *ConditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -68,4 +62,26 @@ func (m *AnyConditionalTransport) RoundTrip(req *http.Request) (*http.Response, 
 		}
 	}
 	return &http.Response{Body: nil, StatusCode: 500}, errors.New("all conditions failed")
+}
+
+type BodyTransport struct {
+	Body    io.ReadCloser
+	Status  int
+	Headers map[string][]string
+}
+
+func (t *BodyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	var statusText string
+	if text := http.StatusText(t.Status); text != "" {
+		statusText = fmt.Sprintf("%d %s", t.Status, text)
+	} else {
+		statusText = fmt.Sprintf("%d status code %d", t.Status, t.Status)
+	}
+	resp := &http.Response{
+		Body:       t.Body,
+		Status:     statusText,
+		StatusCode: t.Status,
+		Header:     http.Header(t.Headers),
+	}
+	return resp, nil
 }
