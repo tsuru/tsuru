@@ -543,7 +543,11 @@ type runSinglePodArgs struct {
 }
 
 func runPod(args runSinglePodArgs) error {
-	err := ensureServiceAccountForApp(args.client, args.app)
+	err := ensureNamespaceForApp(args.client, args.app)
+	if err != nil {
+		return err
+	}
+	err = ensureServiceAccountForApp(args.client, args.app)
 	if err != nil {
 		return err
 	}
