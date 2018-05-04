@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/shutdown"
@@ -55,6 +54,10 @@ var (
 		Help: "The total number of webhooks calls with error",
 	})
 )
+
+func init() {
+	prometheus.MustRegister(webhooksLatency, webhooksQueue, webhooksTotal, webhooksError)
+}
 
 func WebHookService() (eventTypes.WebHookService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
@@ -109,7 +112,7 @@ func (s *webHookService) run() {
 			webhooksQueue.Set(float64(len(s.evtCh)))
 			err := s.handleEvent(evtID)
 			if err != nil {
-				log.Errorf("[webhooks] error handling webhooks for event %s", evtID)
+				log.Errorf("[webhooks] error handling webhooks for event %q: %v", evtID, err)
 			}
 		case <-s.quitCh:
 			return
@@ -118,7 +121,7 @@ func (s *webHookService) run() {
 }
 
 func (s *webHookService) handleEvent(evtID string) error {
-	evt, err := event.GetByID(bson.ObjectId(evtID))
+	evt, err := event.GetByHexID(evtID)
 	if err != nil {
 		return err
 	}
@@ -139,7 +142,7 @@ func (s *webHookService) handleEvent(evtID string) error {
 	for _, h := range hooks {
 		err = s.doHook(h, evt)
 		if err != nil {
-			log.Errorf("[webhooks] error calling webhook %q: %v", h.Name, err)
+			log.Errorf("[webhooks] error calling webhook %q for event %q: %v", h.Name, evtID, err)
 		}
 	}
 	return nil

@@ -87,7 +87,7 @@ func (s *S) TestWebHookServiceNotify(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(string(evt.UniqueID))
+	s.service.Notify(evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, "ahoy")
 	c.Assert(receivedReq.Method, check.Equals, "PUT")
@@ -140,7 +140,7 @@ func (s *S) TestWebHookServiceNotifyDefaultBody(c *check.C) {
 		URL:  srv.URL,
 	})
 	c.Assert(err, check.IsNil)
-	s.service.Notify(string(evt.UniqueID))
+	s.service.Notify(evt.UniqueID.Hex())
 	<-called
 	c.Assert(string(receivedBody), check.Equals, string(evtData))
 	c.Assert(receivedReq.Method, check.Equals, "POST")
