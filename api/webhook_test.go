@@ -162,6 +162,39 @@ func (s *S) TestWebHookCreate(c *check.C) {
 	})
 }
 
+func (s *S) TestWebHookCreateAutoTeam(c *check.C) {
+	webHook1 := eventTypes.WebHook{
+		Name: "wh1",
+		URL:  "http://me",
+		EventFilter: eventTypes.WebHookEventFilter{
+			KindNames: []string{"app.deploy"},
+		},
+	}
+	bodyData, err := form.EncodeToString(webHook1)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/1.6/events/webhooks", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
+	wh, err := servicemanager.WebHook.Find("wh1")
+	c.Assert(err, check.IsNil)
+	c.Assert(wh, check.DeepEquals, eventTypes.WebHook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		Headers:   http.Header{},
+		EventFilter: eventTypes.WebHookEventFilter{
+			TargetTypes:  []string{},
+			TargetValues: []string{},
+			KindTypes:    []string{},
+			KindNames:    []string{"app.deploy"},
+		},
+	})
+}
+
 func (s *S) TestWebHookCreateConflict(c *check.C) {
 	webHook1 := eventTypes.WebHook{
 		TeamOwner: s.team.Name,

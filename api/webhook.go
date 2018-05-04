@@ -62,6 +62,12 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusBadRequest)
 		return err
 	}
+	if webhook.TeamOwner == "" {
+		webhook.TeamOwner, err = autoTeamOwner(t, permission.PermWebhookCreate)
+		if err != nil {
+			return err
+		}
+	}
 	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookCreate, ctx) {
 		return permission.ErrUnauthorized
