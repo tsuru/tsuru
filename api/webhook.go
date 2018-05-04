@@ -40,7 +40,33 @@ func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(webhooks)
+}
+
+// title: webhook info
+// path: /events/webhooks/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Get webhook
+//   404: Not found
+//   401: Unauthorized
+func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	webhookName := r.URL.Query().Get(":name")
+	webhook, err := servicemanager.WebHook.Find(webhookName)
+	if err != nil {
+		if err == eventTypes.ErrWebHookNotFound {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		return err
+	}
+	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
+	if !permission.Check(t, permission.PermWebhookRead, ctx) {
+		return permission.ErrUnauthorized
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(webhook)
 }
 
 // title: webhook create

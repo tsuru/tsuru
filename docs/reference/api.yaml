@@ -1755,6 +1755,28 @@ paths:
         type: string
         minLength: 1
         description: WebHook name.
+    get:
+      operationId: WebHookInfo
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: WebHook.
+          schema:
+            type: object
+            $ref: '#/definitions/WebHook'
+        '404':
+          description: Not founds.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - event
+      security:
+        - Bearer: []
     put:
       operationId: WebHookUpdate
       consumes:

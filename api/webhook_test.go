@@ -348,3 +348,48 @@ func (s *S) TestWebHookDeleteNotFound(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
+
+func (s *S) TestWebHookInfo(c *check.C) {
+	webHook1 := eventTypes.WebHook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me/xyz",
+		EventFilter: eventTypes.WebHookEventFilter{
+			KindNames: []string{"app.deploy"},
+		},
+	}
+	err := servicemanager.WebHook.Create(webHook1)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/1.6/events/webhooks/wh1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var wh eventTypes.WebHook
+	err = json.Unmarshal(recorder.Body.Bytes(), &wh)
+	c.Assert(err, check.IsNil)
+	c.Assert(wh, check.DeepEquals, eventTypes.WebHook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me/xyz",
+		Headers:   http.Header{},
+		EventFilter: eventTypes.WebHookEventFilter{
+			TargetTypes:  []string{},
+			TargetValues: []string{},
+			KindTypes:    []string{},
+			KindNames:    []string{"app.deploy"},
+		},
+	})
+}
+
+func (s *S) TestWebHookInfoNotFound(c *check.C) {
+	request, err := http.NewRequest("GET", "/1.6/events/webhooks/wh1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}

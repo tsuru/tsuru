@@ -223,6 +223,7 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.6", "Get", "/events/webhooks", AuthorizationRequiredHandler(webhookList))
 	m.Add("1.6", "Post", "/events/webhooks", AuthorizationRequiredHandler(webhookCreate))
+	m.Add("1.6", "Get", "/events/webhooks/{name}", AuthorizationRequiredHandler(webhookInfo))
 	m.Add("1.6", "Put", "/events/webhooks/{name}", AuthorizationRequiredHandler(webhookUpdate))
 	m.Add("1.6", "Delete", "/events/webhooks/{name}", AuthorizationRequiredHandler(webhookDelete))
 

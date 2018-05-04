@@ -610,6 +610,13 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	return &evt, nil
 }
 
+func GetByHexID(hexid string) (*Event, error) {
+	if !bson.IsObjectIdHex(hexid) {
+		return nil, errors.Errorf("receive ID is not a valid event object id: %q", hexid)
+	}
+	return GetByID(bson.ObjectIdHex(hexid))
+}
+
 func GetByID(id bson.ObjectId) (*Event, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -1176,8 +1183,8 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		if err != nil {
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		} else {
-			if servicemanager.WebHook != nil {
-				servicemanager.WebHook.Notify(string(e.UniqueID))
+			if !abort && servicemanager.WebHook != nil {
+				servicemanager.WebHook.Notify(e.UniqueID.Hex())
 			}
 		}
 	}()
