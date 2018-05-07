@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/pkg/errors"
@@ -169,7 +170,17 @@ func (s *webhookService) handleEvent(evtID string) error {
 
 func webhookBody(hook *eventTypes.Webhook, evt *event.Event) (io.Reader, error) {
 	if hook.Body != "" {
-		return strings.NewReader(hook.Body), nil
+		tpl, err := template.New(hook.Name).Parse(hook.Body)
+		if err != nil {
+			log.Errorf("[webhooks] unable to parse hook body for %q as template, using raw string: %v", hook.Name, err)
+			return strings.NewReader(hook.Body), nil
+		}
+		buf := bytes.NewBuffer(nil)
+		err = tpl.Execute(buf, evt)
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewReader(buf.Bytes()), nil
 	}
 	if hook.Method != http.MethodPost &&
 		hook.Method != http.MethodPut &&
