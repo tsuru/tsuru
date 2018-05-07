@@ -33,31 +33,7 @@ var (
 
 	chanBufferSize   = 1000
 	defaultUserAgent = "tsuru-webhook-client/1.0"
-
-	webhooksLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "tsuru_webhooks_latency_seconds",
-		Help: "The latency for webhooks requests in seconds",
-	})
-
-	webhooksQueue = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tsuru_webhooks_event_queue_current",
-		Help: "The current number of queued events waiting for webhooks processing",
-	})
-
-	webhooksTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_webhooks_calls_total",
-		Help: "The total number of webhooks calls",
-	})
-
-	webhooksError = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_webhooks_calls_error",
-		Help: "The total number of webhooks calls with error",
-	})
 )
-
-func init() {
-	prometheus.MustRegister(webhooksLatency, webhooksQueue, webhooksTotal, webhooksError)
-}
 
 func WebhookService() (eventTypes.WebhookService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
@@ -73,6 +49,10 @@ func WebhookService() (eventTypes.WebhookService, error) {
 		quitCh:  make(chan struct{}),
 		doneCh:  make(chan struct{}),
 	}
+	err = s.initMetrics()
+	if err != nil {
+		return nil, err
+	}
 	go s.run()
 	shutdown.Register(s)
 	return s, nil
@@ -83,14 +63,55 @@ type webhookService struct {
 	evtCh   chan string
 	quitCh  chan struct{}
 	doneCh  chan struct{}
+
+	webhooksLatency prometheus.Histogram
+	webhooksTotal   prometheus.Counter
+	webhooksError   prometheus.Counter
+	webhooksQueue   prometheus.Collector
+}
+
+func (s *webhookService) initMetrics() error {
+	s.webhooksLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "tsuru_webhooks_latency_seconds",
+		Help: "The latency for webhooks requests in seconds",
+	})
+	s.webhooksTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_webhooks_calls_total",
+		Help: "The total number of webhooks calls",
+	})
+	s.webhooksError = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_webhooks_calls_error",
+		Help: "The total number of webhooks calls with error",
+	})
+	s.webhooksQueue = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "tsuru_webhooks_event_queue_current",
+		Help: "The current number of queued events waiting for webhooks processing",
+	}, func() float64 {
+		return float64(len(s.evtCh))
+	})
+	for _, c := range []prometheus.Collector{
+		s.webhooksLatency,
+		s.webhooksTotal,
+		s.webhooksError,
+		s.webhooksQueue,
+	} {
+		err := prometheus.Register(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *webhookService) Shutdown(ctx context.Context) error {
-	doneCtx := ctx.Done()
+	prometheus.Unregister(s.webhooksLatency)
+	prometheus.Unregister(s.webhooksTotal)
+	prometheus.Unregister(s.webhooksError)
+	prometheus.Unregister(s.webhooksQueue)
 	close(s.quitCh)
 	select {
 	case <-s.doneCh:
-	case <-doneCtx:
+	case <-ctx.Done():
 		return ctx.Err()
 	}
 	return nil
@@ -101,7 +122,6 @@ func (s *webhookService) Notify(evtID string) {
 	case s.evtCh <- evtID:
 	case <-s.quitCh:
 	}
-	webhooksQueue.Set(float64(len(s.evtCh)))
 }
 
 func (s *webhookService) run() {
@@ -109,7 +129,6 @@ func (s *webhookService) run() {
 	for {
 		select {
 		case evtID := <-s.evtCh:
-			webhooksQueue.Set(float64(len(s.evtCh)))
 			err := s.handleEvent(evtID)
 			if err != nil {
 				log.Errorf("[webhooks] error handling webhooks for event %q: %v", evtID, err)
@@ -167,9 +186,9 @@ func webhookBody(hook *eventTypes.Webhook, evt *event.Event) (io.Reader, error) 
 
 func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err error) {
 	defer func() {
-		webhooksTotal.Inc()
+		s.webhooksTotal.Inc()
 		if err != nil {
-			webhooksError.Inc()
+			s.webhooksError.Inc()
 		}
 	}()
 	hook.Method = strings.ToUpper(hook.Method)
@@ -194,7 +213,7 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	}
 	reqStart := time.Now()
 	rsp, err := client.Do(req)
-	webhooksLatency.Observe(time.Since(reqStart).Seconds())
+	s.webhooksLatency.Observe(time.Since(reqStart).Seconds())
 	if err != nil {
 		return err
 	}
