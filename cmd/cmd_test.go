@@ -5,15 +5,13 @@
 package cmd
 
 import (
-	"syscall"
 	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs"
