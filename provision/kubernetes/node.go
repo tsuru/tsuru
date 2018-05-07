@@ -41,6 +41,11 @@ func (n *kubernetesNodeWrapper) Address() string {
 }
 
 func (n *kubernetesNodeWrapper) Status() string {
+	for _, t := range n.node.Spec.Taints {
+		if t.Key == tsuruNodeDisabledTaint && t.Effect == apiv1.TaintEffectNoSchedule {
+			return "Disabled"
+		}
+	}
 	for _, cond := range n.node.Status.Conditions {
 		if cond.Type == apiv1.NodeReady {
 			if cond.Status == apiv1.ConditionTrue {
