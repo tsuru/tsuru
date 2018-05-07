@@ -9,7 +9,7 @@ import (
 	"gopkg.in/check.v1"
 )
 
-var _ = check.Suite(&storagetest.WebHookSuite{
-	WebHookStorage: &webhookStorage{},
+var _ = check.Suite(&storagetest.WebhookSuite{
+	WebhookStorage: &webhookStorage{},
 	SuiteHooks:     &mongodbBaseTest{},
 })

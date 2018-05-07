@@ -106,7 +106,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.WebHook, err = webhook.WebHookService()
+	servicemanager.Webhook, err = webhook.WebhookService()
 	return err
 }
 
