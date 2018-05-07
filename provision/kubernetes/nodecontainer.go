@@ -39,6 +39,10 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 }
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	err := ensureNamespaceForPool(client, pool)
+	if err != nil {
+		return err
+	}
 	dsName := daemonSetName(config.Name, pool)
 	ns := client.Namespace(pool)
 	oldDs, err := client.AppsV1beta2().DaemonSets(ns).Get(dsName, metav1.GetOptions{})

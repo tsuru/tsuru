@@ -6,15 +6,18 @@ package kubernetes
 
 import (
 	"encoding/json"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
+	apiv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -160,6 +163,42 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	s.mock.MockfakeNodes(c)
+	pool := "mypool"
+	var counter int32
+	s.client.PrependReactor("create", "daemonsets", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		s.client.AppsV1beta2()
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1beta2.DaemonSet)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.Namespace(pool))
+		return false, nil, nil
+	})
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image:      "bsimg",
+			Env:        []string{"a=b"},
+			Entrypoint: []string{"cmd0"},
+			Cmd:        []string{"cmd1"},
+		},
+		HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:ro"},
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
 
 func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
