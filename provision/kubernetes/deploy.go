@@ -212,9 +212,9 @@ func ensureAuthSecret(client *ClusterClient, namespace string) error {
 		},
 		Type: apiv1.SecretTypeDockerConfigJson,
 	}
-	_, err = client.CoreV1().Secrets(client.Namespace(namespace)).Update(secret)
+	_, err = client.CoreV1().Secrets(namespace).Update(secret)
 	if err != nil && k8sErrors.IsNotFound(err) {
-		_, err = client.CoreV1().Secrets(client.Namespace(namespace)).Create(secret)
+		_, err = client.CoreV1().Secrets(namespace).Create(secret)
 	}
 	if err != nil {
 		err = errors.WithStack(err)
@@ -743,14 +743,15 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.AppsV1beta2().Deployments(m.client.Namespace(a.GetPool())).Get(depName, metav1.GetOptions{})
+	ns := m.client.Namespace(a.GetPool())
+	dep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 		dep = nil
 	}
-	events, err := m.client.CoreV1().Events(m.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -764,7 +765,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	err = monitorDeployment(ctx, m.client, dep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.ExtensionsV1beta1().Deployments(m.client.Namespace(a.GetPool())).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -774,10 +775,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	_, err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Create(&apiv1.Service{
+	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
-			Namespace:   m.client.Namespace(a.GetPool()),
+			Namespace:   ns,
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
@@ -797,10 +798,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	labels.SetIsHeadlessService()
-	_, err = m.client.CoreV1().Services(m.client.Namespace(a.GetPool())).Create(&apiv1.Service{
+	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
-			Namespace:   m.client.Namespace(a.GetPool()),
+			Namespace:   ns,
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},

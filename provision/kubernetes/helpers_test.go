@@ -532,7 +532,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	port, err = getServicePort(s.clusterClient, "srv1", ns)
+	port, err := getServicePort(s.clusterClient, "srv1", ns)
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.CoreV1().Services(ns).Create(&apiv1.Service{

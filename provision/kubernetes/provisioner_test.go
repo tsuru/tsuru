@@ -585,7 +585,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 6)
 	c.Assert(listNodesCalls, check.Equals, 1)
-	c.Assert(listPodsCalls, check.Equals, 2)
+	c.Assert(listPodsCalls, check.Equals, 1)
 	sort.Slice(units, func(i, j int) bool {
 		return units[i].ID < units[j].ID
 	})

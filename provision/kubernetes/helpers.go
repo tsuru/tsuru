@@ -478,8 +478,9 @@ func execCommand(opts execOpts) error {
 		return err
 	}
 	var chosenPod *apiv1.Pod
+	ns := client.Namespace(opts.app.GetPool())
 	if opts.unit != "" {
-		chosenPod, err = client.CoreV1().Pods(client.Namespace(opts.app.GetPool())).Get(opts.unit, metav1.GetOptions{})
+		chosenPod, err = client.CoreV1().Pods(ns).Get(opts.unit, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(errors.Cause(err)) {
 				return &provision.UnitNotFoundError{ID: opts.unit}
@@ -509,7 +510,7 @@ func execCommand(opts execOpts) error {
 	req := restCli.Post().
 		Resource("pods").
 		Name(chosenPod.Name).
-		Namespace(client.Namespace(opts.app.GetPool())).
+		Namespace(ns).
 		SubResource("exec").
 		Param("container", containerName)
 	req.VersionedParams(&apiv1.PodExecOptions{
