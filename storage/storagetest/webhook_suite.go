@@ -13,33 +13,33 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type WebHookSuite struct {
+type WebhookSuite struct {
 	SuiteHooks
-	WebHookStorage eventTypes.WebHookStorage
+	WebhookStorage eventTypes.WebhookStorage
 }
 
-func (s *WebHookSuite) TestInsertWebHook(c *check.C) {
-	w := eventTypes.WebHook{
+func (s *WebhookSuite) TestInsertWebhook(c *check.C) {
+	w := eventTypes.Webhook{
 		Name:      "wh1",
 		TeamOwner: "team1",
 		URL:       "http://mysrv.com:123/abc?a=b",
 		Method:    "GET",
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{"app"},
 			TargetValues: []string{"myapp"},
 		},
 	}
-	err := s.WebHookStorage.Insert(w)
+	err := s.WebhookStorage.Insert(w)
 	c.Assert(err, check.IsNil)
-	webHook, err := s.WebHookStorage.FindByName(w.Name)
+	webhook, err := s.WebhookStorage.FindByName(w.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(webHook, check.DeepEquals, &eventTypes.WebHook{
+	c.Assert(webhook, check.DeepEquals, &eventTypes.Webhook{
 		Name:      "wh1",
 		TeamOwner: "team1",
 		URL:       "http://mysrv.com:123/abc?a=b",
 		Method:    "GET",
 		Headers:   http.Header{},
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},
 			TargetTypes:  []string{"app"},
@@ -48,8 +48,8 @@ func (s *WebHookSuite) TestInsertWebHook(c *check.C) {
 	})
 }
 
-func (s *WebHookSuite) TestFindByEvent(c *check.C) {
-	filters := []eventTypes.WebHookEventFilter{
+func (s *WebhookSuite) TestFindByEvent(c *check.C) {
+	filters := []eventTypes.WebhookEventFilter{
 		{TargetTypes: []string{"app"}, TargetValues: []string{"myapp"}},
 		{ErrorOnly: true},
 		{SuccessOnly: true},
@@ -63,23 +63,23 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 		{},
 	}
 	for i, f := range filters {
-		w := eventTypes.WebHook{
+		w := eventTypes.Webhook{
 			Name:        fmt.Sprintf("wh-%d", i),
 			TeamOwner:   "team1",
 			URL:         "http://mysrv.com:123/abc?a=b",
 			Method:      "GET",
 			EventFilter: f,
 		}
-		err := s.WebHookStorage.Insert(w)
+		err := s.WebhookStorage.Insert(w)
 		c.Assert(err, check.IsNil)
 	}
 	tests := []struct {
-		f        eventTypes.WebHookEventFilter
+		f        eventTypes.WebhookEventFilter
 		success  bool
 		expected []string
 	}{
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp"},
 				KindTypes:    []string{"permission"},
@@ -89,7 +89,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-0", "wh-1", "wh-3", "wh-4", "wh-5", "wh-7", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp"},
 				KindTypes:    []string{"permission"},
@@ -99,7 +99,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"otherapp"},
 				KindTypes:    []string{"permission"},
@@ -109,7 +109,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-2", "wh-4", "wh-5", "wh-8", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"anyapp"},
 				KindTypes:    []string{"permission"},
@@ -119,7 +119,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-2", "wh-5", "wh-9", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"node"},
 				TargetValues: []string{"10.0.0.1", "10.0.0.2"},
 				KindTypes:    []string{"internal"},
@@ -129,7 +129,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-2", "wh-6", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp", "otherapp"},
 				KindTypes:    []string{"permission"},
@@ -139,7 +139,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 			expected: []string{"wh-0", "wh-2", "wh-4", "wh-5", "wh-8", "wh-9", "wh-10"},
 		},
 		{
-			f: eventTypes.WebHookEventFilter{
+			f: eventTypes.WebhookEventFilter{
 				TargetTypes:  []string{"app"},
 				TargetValues: []string{"myapp", "otherapp"},
 				KindTypes:    []string{"permission"},
@@ -150,7 +150,7 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 		},
 	}
 	for i, tt := range tests {
-		hooks, err := s.WebHookStorage.FindByEvent(tt.f, tt.success)
+		hooks, err := s.WebhookStorage.FindByEvent(tt.f, tt.success)
 		c.Assert(err, check.IsNil)
 		names := webhooksNames(hooks)
 		sort.Strings(tt.expected)
@@ -158,15 +158,15 @@ func (s *WebHookSuite) TestFindByEvent(c *check.C) {
 	}
 }
 
-func (s *WebHookSuite) TestInsertDuplicateWebHook(c *check.C) {
-	t := eventTypes.WebHook{Name: "WebHookname"}
-	err := s.WebHookStorage.Insert(t)
+func (s *WebhookSuite) TestInsertDuplicateWebhook(c *check.C) {
+	t := eventTypes.Webhook{Name: "Webhookname"}
+	err := s.WebhookStorage.Insert(t)
 	c.Assert(err, check.IsNil)
-	err = s.WebHookStorage.Insert(t)
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookAlreadyExists)
+	err = s.WebhookStorage.Insert(t)
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookAlreadyExists)
 }
 
-func webhooksNames(hooks []eventTypes.WebHook) []string {
+func webhooksNames(hooks []eventTypes.Webhook) []string {
 	var names []string
 	for _, h := range hooks {
 		names = append(names, h.Name)
@@ -175,53 +175,53 @@ func webhooksNames(hooks []eventTypes.WebHook) []string {
 	return names
 }
 
-func (s *WebHookSuite) TestFindAllByTeams(c *check.C) {
-	w1 := eventTypes.WebHook{Name: "wh1", TeamOwner: "t1"}
-	err := s.WebHookStorage.Insert(w1)
+func (s *WebhookSuite) TestFindAllByTeams(c *check.C) {
+	w1 := eventTypes.Webhook{Name: "wh1", TeamOwner: "t1"}
+	err := s.WebhookStorage.Insert(w1)
 	c.Assert(err, check.IsNil)
-	w2 := eventTypes.WebHook{Name: "wh2", TeamOwner: "t2"}
-	err = s.WebHookStorage.Insert(w2)
+	w2 := eventTypes.Webhook{Name: "wh2", TeamOwner: "t2"}
+	err = s.WebhookStorage.Insert(w2)
 	c.Assert(err, check.IsNil)
-	webhooks, err := s.WebHookStorage.FindAllByTeams(nil)
+	webhooks, err := s.WebhookStorage.FindAllByTeams(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1", "wh2"})
-	webhooks, err = s.WebHookStorage.FindAllByTeams([]string{})
+	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.IsNil)
-	webhooks, err = s.WebHookStorage.FindAllByTeams([]string{"t1"})
+	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{"t1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1"})
-	webhooks, err = s.WebHookStorage.FindAllByTeams([]string{"t1", "t2"})
+	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{"t1", "t2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1", "wh2"})
 }
 
-func (s *WebHookSuite) TestDelete(c *check.C) {
-	w := eventTypes.WebHook{Name: "wh1"}
-	err := s.WebHookStorage.Insert(w)
+func (s *WebhookSuite) TestDelete(c *check.C) {
+	w := eventTypes.Webhook{Name: "wh1"}
+	err := s.WebhookStorage.Insert(w)
 	c.Assert(err, check.IsNil)
-	err = s.WebHookStorage.Delete("wh1")
+	err = s.WebhookStorage.Delete("wh1")
 	c.Assert(err, check.IsNil)
-	err = s.WebHookStorage.Delete("wh1")
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
-	_, err = s.WebHookStorage.FindByName("wh1")
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+	err = s.WebhookStorage.Delete("wh1")
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
+	_, err = s.WebhookStorage.FindByName("wh1")
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
-func (s *WebHookSuite) TestUpdate(c *check.C) {
-	w := eventTypes.WebHook{Name: "wh1"}
-	err := s.WebHookStorage.Insert(w)
+func (s *WebhookSuite) TestUpdate(c *check.C) {
+	w := eventTypes.Webhook{Name: "wh1"}
+	err := s.WebhookStorage.Insert(w)
 	c.Assert(err, check.IsNil)
 	w.Method = "GET"
-	err = s.WebHookStorage.Update(w)
+	err = s.WebhookStorage.Update(w)
 	c.Assert(err, check.IsNil)
-	dbW, err := s.WebHookStorage.FindByName("wh1")
+	dbW, err := s.WebhookStorage.FindByName("wh1")
 	c.Assert(err, check.IsNil)
-	c.Assert(dbW, check.DeepEquals, &eventTypes.WebHook{
+	c.Assert(dbW, check.DeepEquals, &eventTypes.Webhook{
 		Name:    "wh1",
 		Method:  "GET",
 		Headers: http.Header{},
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			KindTypes:    []string{},
 			KindNames:    []string{},
 			TargetTypes:  []string{},
@@ -230,12 +230,12 @@ func (s *WebHookSuite) TestUpdate(c *check.C) {
 	})
 }
 
-func (s *WebHookSuite) TestUpdateNotFound(c *check.C) {
-	err := s.WebHookStorage.Update(eventTypes.WebHook{Name: "wh1"})
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+func (s *WebhookSuite) TestUpdateNotFound(c *check.C) {
+	err := s.WebhookStorage.Update(eventTypes.Webhook{Name: "wh1"})
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
-func (s *WebHookSuite) TestFindByNameNotFound(c *check.C) {
-	_, err := s.WebHookStorage.FindByName("wh1")
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+func (s *WebhookSuite) TestFindByNameNotFound(c *check.C) {
+	_, err := s.WebhookStorage.FindByName("wh1")
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }

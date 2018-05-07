@@ -1,4 +1,4 @@
-// Copyright 2017 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -27,7 +27,7 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	service *webHookService
+	service *webhookService
 }
 
 var _ = check.Suite(&S{})
@@ -40,9 +40,9 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Events().Database)
 	c.Assert(err, check.IsNil)
-	svc, err := WebHookService()
+	svc, err := WebhookService()
 	c.Assert(err, check.IsNil)
-	s.service = svc.(*webHookService)
+	s.service = svc.(*webhookService)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -50,7 +50,7 @@ func (s *S) TearDownTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestWebHookServiceNotify(c *check.C) {
+func (s *S) TestWebhookServiceNotify(c *check.C) {
 	evt, err := event.New(&event.Opts{
 		Target: event.Target{Type: "app", Value: "myapp"},
 		ExtraTargets: []event.ExtraTarget{
@@ -77,7 +77,7 @@ func (s *S) TestWebHookServiceNotify(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.WebHook{
+	err = s.service.storage.Insert(eventTypes.Webhook{
 		Name:   "xyz",
 		URL:    srv.URL + "/a/b/c?a=b&c=d",
 		Method: "PUT",
@@ -104,7 +104,7 @@ func (s *S) TestWebHookServiceNotify(c *check.C) {
 	})
 }
 
-func (s *S) TestWebHookServiceNotifyDefaultBody(c *check.C) {
+func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 	evt, err := event.New(&event.Opts{
 		Target: event.Target{Type: "app", Value: "myapp"},
 		ExtraTargets: []event.ExtraTarget{
@@ -135,7 +135,7 @@ func (s *S) TestWebHookServiceNotifyDefaultBody(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	err = s.service.storage.Insert(eventTypes.WebHook{
+	err = s.service.storage.Insert(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  srv.URL,
 	})
@@ -148,29 +148,29 @@ func (s *S) TestWebHookServiceNotifyDefaultBody(c *check.C) {
 	c.Assert(receivedReq.Header.Get("Content-Type"), check.Equals, "application/json")
 }
 
-func (s *S) TestWebHookServiceCreate(c *check.C) {
-	err := s.service.Create(eventTypes.WebHook{
+func (s *S) TestWebhookServiceCreate(c *check.C) {
+	err := s.service.Create(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 		Body: "ahoy",
 		Headers: http.Header{
 			"X-Ahoy": []string{"Errrr"},
 		},
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes: []string{"app"},
 		},
 	})
 	c.Assert(err, check.IsNil)
 	w, err := s.service.Find("xyz")
 	c.Assert(err, check.IsNil)
-	c.Assert(w, check.DeepEquals, eventTypes.WebHook{
+	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 		Body: "ahoy",
 		Headers: http.Header{
 			"X-Ahoy": []string{"Errrr"},
 		},
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{"app"},
 			TargetValues: []string{},
 			KindTypes:    []string{},
@@ -179,51 +179,51 @@ func (s *S) TestWebHookServiceCreate(c *check.C) {
 	})
 }
 
-func (s *S) TestWebHookServiceCreateInvalid(c *check.C) {
-	err := s.service.Create(eventTypes.WebHook{
+func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
+	err := s.service.Create(eventTypes.Webhook{
 		Name: "",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook name must not be empty"})
-	err = s.service.Create(eventTypes.WebHook{
+	err = s.service.Create(eventTypes.Webhook{
 		Name: "_-*x",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "name does not match regex \"^[a-z][a-z0-9-]{0,62}$\""})
-	err = s.service.Create(eventTypes.WebHook{
+	err = s.service.Create(eventTypes.Webhook{
 		Name: "c",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Create(eventTypes.WebHook{
+	err = s.service.Create(eventTypes.Webhook{
 		Name: "c",
 		URL:  "http://a",
 	})
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookAlreadyExists)
-	err = s.service.Create(eventTypes.WebHook{
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookAlreadyExists)
+	err = s.service.Create(eventTypes.Webhook{
 		Name: "d",
 	})
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook url must not be empty"})
 }
 
-func (s *S) TestWebHookServiceUpdate(c *check.C) {
-	err := s.service.Create(eventTypes.WebHook{
+func (s *S) TestWebhookServiceUpdate(c *check.C) {
+	err := s.service.Create(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Update(eventTypes.WebHook{
+	err = s.service.Update(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://b",
 	})
 	c.Assert(err, check.IsNil)
 	w, err := s.service.Find("xyz")
 	c.Assert(err, check.IsNil)
-	c.Assert(w, check.DeepEquals, eventTypes.WebHook{
+	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
 		Name:    "xyz",
 		URL:     "http://b",
 		Headers: http.Header{},
-		EventFilter: eventTypes.WebHookEventFilter{
+		EventFilter: eventTypes.WebhookEventFilter{
 			TargetTypes:  []string{},
 			TargetValues: []string{},
 			KindTypes:    []string{},
@@ -232,16 +232,16 @@ func (s *S) TestWebHookServiceUpdate(c *check.C) {
 	})
 }
 
-func (s *S) TestWebHookServiceUpdateInvalid(c *check.C) {
-	err := s.service.Update(eventTypes.WebHook{
+func (s *S) TestWebhookServiceUpdateInvalid(c *check.C) {
+	err := s.service.Update(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://b",
 	})
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
-func (s *S) TestWebHookServiceDelete(c *check.C) {
-	err := s.service.Create(eventTypes.WebHook{
+func (s *S) TestWebhookServiceDelete(c *check.C) {
+	err := s.service.Create(eventTypes.Webhook{
 		Name: "xyz",
 		URL:  "http://a",
 	})
@@ -249,10 +249,10 @@ func (s *S) TestWebHookServiceDelete(c *check.C) {
 	err = s.service.Delete("xyz")
 	c.Assert(err, check.IsNil)
 	_, err = s.service.Find("xyz")
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
-func (s *S) TestWebHookServiceDeleteNotFound(c *check.C) {
+func (s *S) TestWebhookServiceDeleteNotFound(c *check.C) {
 	err := s.service.Delete("xyz")
-	c.Assert(err, check.Equals, eventTypes.ErrWebHookNotFound)
+	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }

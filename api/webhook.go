@@ -1,3 +1,7 @@
+// Copyright 2018 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package api
 
 import (
@@ -21,7 +25,6 @@ import (
 // responses:
 //   200: List webhooks
 //   204: No content
-//   401: Unauthorized
 func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctxs := permission.ContextsForPermission(t, permission.PermWebhookRead, permission.CtxTeam)
 	var teams []string
@@ -32,7 +35,7 @@ func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		teams = append(teams, c.Value)
 	}
-	webhooks, err := servicemanager.WebHook.List(teams)
+	webhooks, err := servicemanager.Webhook.List(teams)
 	if err != nil {
 		return err
 	}
@@ -54,9 +57,9 @@ func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	webhookName := r.URL.Query().Get(":name")
-	webhook, err := servicemanager.WebHook.Find(webhookName)
+	webhook, err := servicemanager.Webhook.Find(webhookName)
 	if err != nil {
-		if err == eventTypes.ErrWebHookNotFound {
+		if err == eventTypes.ErrWebhookNotFound {
 			w.WriteHeader(http.StatusNotFound)
 		}
 		return err
@@ -82,11 +85,10 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	dec.IgnoreCase(true)
-	var webhook eventTypes.WebHook
+	var webhook eventTypes.Webhook
 	err := dec.DecodeValues(&webhook, r.Form)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse webhook: %v", err)}
 	}
 	if webhook.TeamOwner == "" {
 		webhook.TeamOwner, err = autoTeamOwner(t, permission.PermWebhookCreate)
@@ -99,7 +101,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebHook, Value: webhook.Name},
+		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -111,11 +113,9 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer func() {
 		evt.Done(err)
 	}()
-	err = servicemanager.WebHook.Create(webhook)
-	if err == eventTypes.ErrWebHookAlreadyExists {
+	err = servicemanager.Webhook.Create(webhook)
+	if err == eventTypes.ErrWebhookAlreadyExists {
 		w.WriteHeader(http.StatusConflict)
-	} else if _, ok := err.(*errors.ValidationError); ok {
-		w.WriteHeader(http.StatusBadRequest)
 	}
 	return err
 }
@@ -133,7 +133,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	dec.IgnoreCase(true)
-	var webhook eventTypes.WebHook
+	var webhook eventTypes.Webhook
 	err := dec.DecodeValues(&webhook, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse webhook: %v", err)}
@@ -144,7 +144,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebHook, Value: webhook.Name},
+		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -156,11 +156,9 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer func() {
 		evt.Done(err)
 	}()
-	err = servicemanager.WebHook.Update(webhook)
-	if err == eventTypes.ErrWebHookNotFound {
+	err = servicemanager.Webhook.Update(webhook)
+	if err == eventTypes.ErrWebhookNotFound {
 		w.WriteHeader(http.StatusNotFound)
-	} else if _, ok := err.(*errors.ValidationError); ok {
-		w.WriteHeader(http.StatusBadRequest)
 	}
 	return err
 }
@@ -174,9 +172,9 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Webhook not found
 func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	webhookName := r.URL.Query().Get(":name")
-	webhook, err := servicemanager.WebHook.Find(webhookName)
+	webhook, err := servicemanager.Webhook.Find(webhookName)
 	if err != nil {
-		if err == eventTypes.ErrWebHookNotFound {
+		if err == eventTypes.ErrWebhookNotFound {
 			w.WriteHeader(http.StatusNotFound)
 		}
 		return err
@@ -186,7 +184,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebHook, Value: webhook.Name},
+		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -198,5 +196,5 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer func() {
 		evt.Done(err)
 	}()
-	return servicemanager.WebHook.Delete(webhookName)
+	return servicemanager.Webhook.Delete(webhookName)
 }

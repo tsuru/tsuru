@@ -16,7 +16,7 @@ import (
 
 type webhookStorage struct{}
 
-func webhoookCollection(conn *db.Storage) *dbStorage.Collection {
+func webhookCollection(conn *db.Storage) *dbStorage.Collection {
 	coll := conn.Collection("webhook")
 	coll.EnsureIndex(mgo.Index{
 		Key:    []string{"name"},
@@ -25,46 +25,46 @@ func webhoookCollection(conn *db.Storage) *dbStorage.Collection {
 	return coll
 }
 
-var _ event.WebHookStorage = &webhookStorage{}
+var _ event.WebhookStorage = &webhookStorage{}
 
-func (s *webhookStorage) Insert(w event.WebHook) error {
+func (s *webhookStorage) Insert(w event.Webhook) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = webhoookCollection(conn).Insert(w)
+	err = webhookCollection(conn).Insert(w)
 	if err != nil && mgo.IsDup(err) {
-		err = event.ErrWebHookAlreadyExists
+		err = event.ErrWebhookAlreadyExists
 	}
 	return err
 }
 
-func (s *webhookStorage) Update(w event.WebHook) error {
+func (s *webhookStorage) Update(w event.Webhook) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = webhoookCollection(conn).Update(bson.M{"name": w.Name}, w)
+	err = webhookCollection(conn).Update(bson.M{"name": w.Name}, w)
 	if err == mgo.ErrNotFound {
-		err = event.ErrWebHookNotFound
+		err = event.ErrWebhookNotFound
 	}
 	return err
 }
 
-func (s *webhookStorage) findQuery(query bson.M) ([]event.WebHook, error) {
+func (s *webhookStorage) findQuery(query bson.M) ([]event.Webhook, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var webhooks []event.WebHook
-	err = webhoookCollection(conn).Find(query).All(&webhooks)
+	var webhooks []event.Webhook
+	err = webhookCollection(conn).Find(query).All(&webhooks)
 	return webhooks, err
 }
 
-func (s *webhookStorage) FindAllByTeams(teams []string) ([]event.WebHook, error) {
+func (s *webhookStorage) FindAllByTeams(teams []string) ([]event.Webhook, error) {
 	var query bson.M
 	if teams != nil {
 		query = bson.M{"teamowner": bson.M{"$in": teams}}
@@ -72,12 +72,9 @@ func (s *webhookStorage) FindAllByTeams(teams []string) ([]event.WebHook, error)
 	return s.findQuery(query)
 }
 
-func (s *webhookStorage) FindByEvent(f event.WebHookEventFilter, isSuccess bool) ([]event.WebHook, error) {
+func (s *webhookStorage) FindByEvent(f event.WebhookEventFilter, isSuccess bool) ([]event.Webhook, error) {
 	for _, name := range f.KindNames {
 		parts := strings.Split(name, ".")
-		if len(parts) == 0 {
-			continue
-		}
 		parts = parts[:len(parts)-1]
 		for i := 1; i < len(parts); i++ {
 			parts[i] = parts[i-1] + "." + parts[i]
@@ -98,17 +95,17 @@ func (s *webhookStorage) FindByEvent(f event.WebHookEventFilter, isSuccess bool)
 	return s.findQuery(bson.M{"$and": andBlock})
 }
 
-func (s *webhookStorage) FindByName(name string) (*event.WebHook, error) {
+func (s *webhookStorage) FindByName(name string) (*event.Webhook, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var result event.WebHook
-	err = webhoookCollection(conn).Find(bson.M{"name": name}).One(&result)
+	var result event.Webhook
+	err = webhookCollection(conn).Find(bson.M{"name": name}).One(&result)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = event.ErrWebHookNotFound
+			err = event.ErrWebhookNotFound
 		}
 		return nil, err
 	}
@@ -121,9 +118,9 @@ func (s *webhookStorage) Delete(name string) error {
 		return err
 	}
 	defer conn.Close()
-	err = webhoookCollection(conn).Remove(bson.M{"name": name})
+	err = webhookCollection(conn).Remove(bson.M{"name": name})
 	if err == mgo.ErrNotFound {
-		err = event.ErrWebHookNotFound
+		err = event.ErrWebhookNotFound
 	}
 	return err
 }

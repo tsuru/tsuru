@@ -104,7 +104,7 @@ var (
 	TargetTypeEventBlock      = TargetType("event-block")
 	TargetTypeCluster         = TargetType("cluster")
 	TargetTypeVolume          = TargetType("volume")
-	TargetTypeWebHook         = TargetType("webhook")
+	TargetTypeWebhook         = TargetType("webhook")
 )
 
 const (
@@ -264,7 +264,7 @@ func GetTargetType(t string) (TargetType, error) {
 	case "volume":
 		return TargetTypeVolume, nil
 	case "webhook":
-		return TargetTypeWebHook, nil
+		return TargetTypeWebhook, nil
 	}
 	return TargetType(""), ErrInvalidTargetType
 }
@@ -1183,8 +1183,8 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		if err != nil {
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		} else {
-			if !abort && servicemanager.WebHook != nil {
-				servicemanager.WebHook.Notify(e.UniqueID.Hex())
+			if !abort && servicemanager.Webhook != nil {
+				servicemanager.Webhook.Notify(e.UniqueID.Hex())
 			}
 		}
 	}()

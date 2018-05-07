@@ -32,7 +32,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
-	servicemanager.WebHook, err = webhook.WebHookService()
+	servicemanager.Webhook, err = webhook.WebhookService()
 	c.Assert(err, check.IsNil)
 }
 

@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	_ eventTypes.WebHookService = &webHookService{}
+	_ eventTypes.WebhookService = &webhookService{}
 
 	chanBufferSize   = 1000
 	defaultUserAgent = "tsuru-webhook-client/1.0"
@@ -59,7 +59,7 @@ func init() {
 	prometheus.MustRegister(webhooksLatency, webhooksQueue, webhooksTotal, webhooksError)
 }
 
-func WebHookService() (eventTypes.WebHookService, error) {
+func WebhookService() (eventTypes.WebhookService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -67,8 +67,8 @@ func WebHookService() (eventTypes.WebHookService, error) {
 			return nil, err
 		}
 	}
-	s := &webHookService{
-		storage: dbDriver.WebHookStorage,
+	s := &webhookService{
+		storage: dbDriver.WebhookStorage,
 		evtCh:   make(chan string, chanBufferSize),
 		quitCh:  make(chan struct{}),
 		doneCh:  make(chan struct{}),
@@ -78,14 +78,14 @@ func WebHookService() (eventTypes.WebHookService, error) {
 	return s, nil
 }
 
-type webHookService struct {
-	storage eventTypes.WebHookStorage
+type webhookService struct {
+	storage eventTypes.WebhookStorage
 	evtCh   chan string
 	quitCh  chan struct{}
 	doneCh  chan struct{}
 }
 
-func (s *webHookService) Shutdown(ctx context.Context) error {
+func (s *webhookService) Shutdown(ctx context.Context) error {
 	doneCtx := ctx.Done()
 	close(s.quitCh)
 	select {
@@ -96,7 +96,7 @@ func (s *webHookService) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *webHookService) Notify(evtID string) {
+func (s *webhookService) Notify(evtID string) {
 	select {
 	case s.evtCh <- evtID:
 	case <-s.quitCh:
@@ -104,7 +104,7 @@ func (s *webHookService) Notify(evtID string) {
 	webhooksQueue.Set(float64(len(s.evtCh)))
 }
 
-func (s *webHookService) run() {
+func (s *webhookService) run() {
 	defer close(s.doneCh)
 	for {
 		select {
@@ -120,12 +120,12 @@ func (s *webHookService) run() {
 	}
 }
 
-func (s *webHookService) handleEvent(evtID string) error {
+func (s *webhookService) handleEvent(evtID string) error {
 	evt, err := event.GetByHexID(evtID)
 	if err != nil {
 		return err
 	}
-	filter := eventTypes.WebHookEventFilter{
+	filter := eventTypes.WebhookEventFilter{
 		TargetTypes:  []string{string(evt.Target.Type)},
 		TargetValues: []string{evt.Target.Value},
 		KindTypes:    []string{string(evt.Kind.Type)},
@@ -148,7 +148,7 @@ func (s *webHookService) handleEvent(evtID string) error {
 	return nil
 }
 
-func webhookBody(hook *eventTypes.WebHook, evt *event.Event) (io.Reader, error) {
+func webhookBody(hook *eventTypes.Webhook, evt *event.Event) (io.Reader, error) {
 	if hook.Body != "" {
 		return strings.NewReader(hook.Body), nil
 	}
@@ -165,7 +165,7 @@ func webhookBody(hook *eventTypes.WebHook, evt *event.Event) (io.Reader, error) 
 	return bytes.NewReader(data), nil
 }
 
-func (s *webHookService) doHook(hook eventTypes.WebHook, evt *event.Event) (err error) {
+func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err error) {
 	defer func() {
 		webhooksTotal.Inc()
 		if err != nil {
@@ -219,7 +219,7 @@ func validateURL(u string) error {
 	return nil
 }
 
-func (s *webHookService) Create(w eventTypes.WebHook) error {
+func (s *webhookService) Create(w eventTypes.Webhook) error {
 	if w.Name == "" {
 		return &tsuruErrors.ValidationError{Message: "webhook name must not be empty"}
 	}
@@ -234,7 +234,7 @@ func (s *webHookService) Create(w eventTypes.WebHook) error {
 	return s.storage.Insert(w)
 }
 
-func (s *webHookService) Update(w eventTypes.WebHook) error {
+func (s *webhookService) Update(w eventTypes.Webhook) error {
 	err := validateURL(w.URL)
 	if err != nil {
 		return err
@@ -242,18 +242,18 @@ func (s *webHookService) Update(w eventTypes.WebHook) error {
 	return s.storage.Update(w)
 }
 
-func (s *webHookService) Delete(name string) error {
+func (s *webhookService) Delete(name string) error {
 	return s.storage.Delete(name)
 }
 
-func (s *webHookService) Find(name string) (eventTypes.WebHook, error) {
+func (s *webhookService) Find(name string) (eventTypes.Webhook, error) {
 	w, err := s.storage.FindByName(name)
 	if err != nil {
-		return eventTypes.WebHook{}, err
+		return eventTypes.Webhook{}, err
 	}
 	return *w, nil
 }
 
-func (s *webHookService) List(teams []string) ([]eventTypes.WebHook, error) {
+func (s *webhookService) List(teams []string) ([]eventTypes.Webhook, error) {
 	return s.storage.FindAllByTeams(teams)
 }

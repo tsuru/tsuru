@@ -16,5 +16,5 @@ var (
 	Platform  app.PlatformService
 	Team      auth.TeamService
 	TeamToken auth.TeamTokenService
-	WebHook   event.WebHookService
+	Webhook   event.WebhookService
 )

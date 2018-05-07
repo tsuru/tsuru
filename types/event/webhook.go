@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	ErrWebHookAlreadyExists = errors.New("webhook already exists with the same name")
-	ErrWebHookNotFound      = errors.New("webhook not found")
+	ErrWebhookAlreadyExists = errors.New("webhook already exists with the same name")
+	ErrWebhookNotFound      = errors.New("webhook not found")
 )
 
-type WebHookEventFilter struct {
+type WebhookEventFilter struct {
 	TargetTypes  []string `json:"target_types" form:"target_types"`
 	TargetValues []string `json:"target_values" form:"target_values"`
 	KindTypes    []string `json:"kind_types" form:"kind_types"`
@@ -23,11 +23,11 @@ type WebHookEventFilter struct {
 	SuccessOnly  bool     `json:"success_only" form:"success_only"`
 }
 
-type WebHook struct {
+type Webhook struct {
 	Name        string             `json:"name" form:"name"`
 	Description string             `json:"description" form:"description"`
 	TeamOwner   string             `json:"team_owner" form:"team_owner"`
-	EventFilter WebHookEventFilter `json:"event_filter" form:"event_filter"`
+	EventFilter WebhookEventFilter `json:"event_filter" form:"event_filter"`
 	URL         string             `json:"url" form:"url"`
 	Headers     http.Header        `json:"headers" form:"headers"`
 	Method      string             `json:"method" form:"method"`
@@ -35,20 +35,20 @@ type WebHook struct {
 	Insecure    bool               `json:"insecure" form:"insecure"`
 }
 
-type WebHookService interface {
+type WebhookService interface {
 	Notify(evtID string)
-	Create(WebHook) error
-	Update(WebHook) error
+	Create(Webhook) error
+	Update(Webhook) error
 	Delete(string) error
-	Find(string) (WebHook, error)
-	List([]string) ([]WebHook, error)
+	Find(string) (Webhook, error)
+	List([]string) ([]Webhook, error)
 }
 
-type WebHookStorage interface {
-	Insert(WebHook) error
-	Update(WebHook) error
-	FindAllByTeams([]string) ([]WebHook, error)
-	FindByName(string) (*WebHook, error)
-	FindByEvent(f WebHookEventFilter, isSuccess bool) ([]WebHook, error)
+type WebhookStorage interface {
+	Insert(Webhook) error
+	Update(Webhook) error
+	FindAllByTeams([]string) ([]Webhook, error)
+	FindByName(string) (*Webhook, error)
+	FindByEvent(f WebhookEventFilter, isSuccess bool) ([]Webhook, error)
 	Delete(string) error
 }

@@ -20,7 +20,7 @@ type DbDriver struct {
 	PlanStorage      app.PlanStorage
 	CacheStorage     app.CacheStorage
 	TeamTokenStorage auth.TeamTokenStorage
-	WebHookStorage   event.WebHookStorage
+	WebhookStorage   event.WebhookStorage
 }
 
 var (
