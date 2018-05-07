@@ -524,6 +524,39 @@ func (s *S) TestUnits(c *check.C) {
 	})
 }
 
+func (s *S) TestUnitsSkipTerminating(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	podlist, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 2)
+	for _, p := range podlist.Items {
+		if p.Labels["tsuru.io/app-process"] == "worker" {
+			deadline := int64(10)
+			p.Spec.ActiveDeadlineSeconds = &deadline
+			_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(&p)
+			c.Assert(err, check.IsNil)
+		}
+	}
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
+}
+
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	a1 := provisiontest.NewFakeApp("myapp", "python", 0)
 	a2 := provisiontest.NewFakeApp("otherapp", "python", 0)

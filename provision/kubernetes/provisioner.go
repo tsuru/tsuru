@@ -253,8 +253,11 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	for i, baseNode := range baseNodes {
 		nodeMap[baseNode.Name] = &baseNodes[i]
 	}
-	units := make([]provision.Unit, len(pods))
-	for i, pod := range pods {
+	var units []provision.Unit
+	for _, pod := range pods {
+		if isTerminating(pod) {
+			continue
+		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
 		if !ok && pod.Spec.NodeName != "" {
@@ -303,7 +306,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			}
 			url.Host = fmt.Sprintf("%s:%d", url.Host, port)
 		}
-		units[i] = provision.Unit{
+		units = append(units, provision.Unit{
 			ID:          pod.Name,
 			Name:        pod.Name,
 			AppName:     l.AppName(),
@@ -312,9 +315,15 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			IP:          wrapper.ip(),
 			Status:      stateMap[pod.Status.Phase],
 			Address:     url,
-		}
+		})
 	}
 	return units, nil
+}
+
+// merged from https://github.com/kubernetes/kubernetes/blob/1f69c34478800e150acd022f6313a15e1cb7a97c/pkg/quota/evaluator/core/pods.go#L333
+// and https://github.com/kubernetes/kubernetes/blob/560e15fb9acee4b8391afbc21fc3aea7b771e2c4/pkg/printers/internalversion/printers.go#L606
+func isTerminating(pod apiv1.Pod) bool {
+	return pod.Spec.ActiveDeadlineSeconds != nil && *pod.Spec.ActiveDeadlineSeconds >= int64(0) || pod.DeletionTimestamp != nil
 }
 
 func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error) {
