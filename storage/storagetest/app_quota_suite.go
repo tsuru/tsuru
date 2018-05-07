@@ -19,7 +19,6 @@ type AppQuotaSuite struct {
 func (s *AppQuotaSuite) TestFindByAppName(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: appTypes.UnlimitedQuota}
 	s.AppStorage.Create(app)
-	defer s.AppStorage.Remove(app)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
@@ -35,7 +34,6 @@ func (s *AppQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
 func (s *AppQuotaSuite) TestIncInUse(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
-	defer s.AppStorage.Remove(app)
 	err := s.AppQuotaStorage.IncInUse("myapp", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")
@@ -59,7 +57,6 @@ func (s *AppQuotaSuite) TestIncInUseNotFound(c *check.C) {
 func (s *AppQuotaSuite) TestSetLimit(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
-	defer s.AppStorage.Remove(app)
 	err := s.AppQuotaStorage.SetLimit("myapp", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")
@@ -77,7 +74,6 @@ func (s *AppQuotaSuite) TestSetLimitNotFound(c *check.C) {
 func (s *AppQuotaSuite) TestSetInUse(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
-	defer s.AppStorage.Remove(app)
 	err := s.AppQuotaStorage.SetInUse("myapp", 3)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")

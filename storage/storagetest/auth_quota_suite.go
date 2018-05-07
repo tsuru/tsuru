@@ -20,7 +20,6 @@ type AuthQuotaSuite struct {
 func (s *AuthQuotaSuite) TestFindByUserEmail(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.UnlimitedQuota}
 	s.UserStorage.Create(user)
-	defer s.UserStorage.Remove(user)
 	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
@@ -36,7 +35,6 @@ func (s *AuthQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
 func (s *AuthQuotaSuite) TestIncInUse(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	defer s.UserStorage.Remove(user)
 	err := s.AuthQuotaStorage.IncInUse("example@example.com", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")
@@ -60,7 +58,6 @@ func (s *AuthQuotaSuite) TestIncInUseNotFound(c *check.C) {
 func (s *AuthQuotaSuite) TestSetLimit(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	defer s.UserStorage.Remove(user)
 	err := s.AuthQuotaStorage.SetLimit("example@example.com", 1)
 	c.Assert(err, check.IsNil)
 	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")

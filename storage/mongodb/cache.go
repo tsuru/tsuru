@@ -7,7 +7,7 @@ package mongodb
 import (
 	"time"
 
-	"github.com/globalsign/mgo"
+	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
