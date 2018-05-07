@@ -14,8 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"golang.org/x/sys/unix"
+	"syscall"
 
 	goVersion "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
@@ -244,7 +243,7 @@ func (m *Manager) Run(args []string) {
 	client.Verbosity = verbosity
 	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {
-		signal.Notify(sigChan, unix.SIGINT)
+		signal.Notify(sigChan, syscall.SIGINT)
 		go func(context Context, client *Client) {
 			for range sigChan {
 				fmt.Fprintln(m.stdout, "Attempting command cancellation...")

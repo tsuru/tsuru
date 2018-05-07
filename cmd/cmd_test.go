@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"syscall"
 	"bytes"
 	"fmt"
 	"io"
@@ -913,7 +914,7 @@ func (s *S) TestRunCancel(c *check.C) {
 		<-cmd.running
 		p, err := os.FindProcess(os.Getpid())
 		c.Assert(err, check.IsNil)
-		err = p.Signal(unix.SIGINT)
+		err = p.Signal(syscall.SIGINT)
 		c.Assert(err, check.IsNil)
 	}()
 	globalManager.Register(cmd)
