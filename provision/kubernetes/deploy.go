@@ -333,9 +333,13 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, err
 }
 
 func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
+	return ensureNamespaceForPool(client, app.GetPool())
+}
+
+func ensureNamespaceForPool(client *ClusterClient, pool string) error {
 	ns := apiv1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: client.Namespace(app.GetPool()),
+			Name: client.Namespace(pool),
 		},
 	}
 	_, err := client.CoreV1().Namespaces().Create(&ns)
