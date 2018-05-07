@@ -84,6 +84,8 @@ func getAuthScheme() (string, error) {
 	return name, err
 }
 
+var onceServices sync.Once
+
 func setupServices() error {
 	var err error
 	servicemanager.TeamToken, err = auth.TeamTokenService()
@@ -122,10 +124,12 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		fatal(err)
 	}
-	err = setupServices()
-	if err != nil {
-		fatal(err)
-	}
+	onceServices.Do(func() {
+		err = setupServices()
+		if err != nil {
+			fatal(err)
+		}
+	})
 
 	m := apiRouter.NewRouter()
 
