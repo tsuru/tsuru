@@ -129,4 +129,16 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
+	s.mockService.AuthQuota.OnFindByUserEmail = func(email string) (*authTypes.Quota, error) {
+		c.Assert(email, check.Equals, s.user.Email)
+		return &s.user.Quota, nil
+	}
+	s.mockService.AuthQuota.OnReleaseApp = func(email string) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
+	}
+	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
+	}
 }

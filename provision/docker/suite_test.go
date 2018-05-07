@@ -185,6 +185,14 @@ func (s *S) SetUpTest(c *check.C) {
 			c.Assert(email, check.Equals, s.user.Email)
 			return &s.user.Quota, nil
 		},
+		OnReleaseApp: func(email string) error {
+			c.Assert(email, check.Equals, s.user.Email)
+			return nil
+		},
+		OnReserveApp: func(email string) error {
+			c.Assert(email, check.Equals, s.user.Email)
+			return nil
+		},
 	}
 	s.mockService.AppQuota = &appTypes.MockQuotaService{}
 	servicemanager.Team = s.mockService.Team
