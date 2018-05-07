@@ -91,6 +91,16 @@ func (s *S) TestNodeStatus(c *check.C) {
 		node: &apiv1.Node{},
 	}
 	c.Assert(node.Status(), check.Equals, "Invalid")
+	node = kubernetesNodeWrapper{
+		node: &apiv1.Node{
+			Spec: apiv1.NodeSpec{
+				Taints: []apiv1.Taint{
+					{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
+				},
+			},
+		},
+	}
+	c.Assert(node.Status(), check.Equals, "Disabled")
 }
 
 func (s *S) TestNodeMetadata(c *check.C) {
