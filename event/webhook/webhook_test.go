@@ -202,6 +202,51 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 	})
 }
 
+func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []event.ExtraTarget{
+			{Target: event.Target{Type: "app", Value: "xapp1"}},
+			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		},
+		RawOwner: event.Owner{
+			Type: "user",
+			Name: "me@me.com",
+		},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+	})
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	doneEvt, err := event.GetByID(evt.UniqueID)
+	c.Assert(err, check.IsNil)
+	evtData, err := json.Marshal(doneEvt)
+	c.Assert(err, check.IsNil)
+	called := make(chan struct{})
+	var receivedReq *http.Request
+	var receivedBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer close(called)
+		receivedBody, _ = ioutil.ReadAll(r.Body)
+		receivedReq = r
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	err = s.service.storage.Insert(eventTypes.Webhook{
+		Name:     "xyz",
+		URL:      "http://xyz/",
+		ProxyURL: srv.URL,
+	})
+	c.Assert(err, check.IsNil)
+	s.service.Notify(evt.UniqueID.Hex())
+	<-called
+	c.Assert(string(receivedBody), check.Equals, string(evtData))
+	c.Assert(receivedReq.Method, check.Equals, "POST")
+	c.Assert(receivedReq.RequestURI, check.Equals, "http://xyz/")
+	c.Assert(receivedReq.Header.Get("Content-Type"), check.Equals, "application/json")
+}
+
 func (s *S) TestWebhookServiceCreate(c *check.C) {
 	err := s.service.Create(eventTypes.Webhook{
 		Name: "xyz",
@@ -258,6 +303,17 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 		Name: "d",
 	})
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook url must not be empty"})
+	err = s.service.Create(eventTypes.Webhook{
+		Name: "d",
+		URL:  ":/:x",
+	})
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook url is not valid: parse :/:x: missing protocol scheme"})
+	err = s.service.Create(eventTypes.Webhook{
+		Name:     "d",
+		URL:      "http://valid",
+		ProxyURL: ":/:x",
+	})
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook proxy url is not valid: parse :/:x: missing protocol scheme"})
 }
 
 func (s *S) TestWebhookServiceUpdate(c *check.C) {

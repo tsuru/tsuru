@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -54,4 +55,23 @@ func insecure(client http.Client) http.Client {
 	tlsConfig.InsecureSkipVerify = true
 	client.Transport.(*http.Transport).TLSClientConfig = tlsConfig
 	return client
+}
+
+func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
+	u, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, err
+	}
+	newTransport := http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+	baseTrans, _ := cli.Transport.(*http.Transport)
+	if baseTrans != nil {
+		newTransport.Dial = baseTrans.Dial
+		newTransport.TLSHandshakeTimeout = baseTrans.TLSHandshakeTimeout
+		newTransport.MaxIdleConnsPerHost = baseTrans.MaxIdleConnsPerHost
+		newTransport.TLSClientConfig = baseTrans.TLSClientConfig
+	}
+	cli.Transport = &newTransport
+	return &cli, nil
 }

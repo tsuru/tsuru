@@ -29,6 +29,7 @@ type Webhook struct {
 	TeamOwner   string             `json:"team_owner" form:"team_owner"`
 	EventFilter WebhookEventFilter `json:"event_filter" form:"event_filter"`
 	URL         string             `json:"url" form:"url"`
+	ProxyURL    string             `json:"proxy_url" form:"proxy_url"`
 	Headers     http.Header        `json:"headers" form:"headers"`
 	Method      string             `json:"method" form:"method"`
 	Body        string             `json:"body" form:"body"`
