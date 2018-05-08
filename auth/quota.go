@@ -14,10 +14,7 @@ type authQuotaService struct {
 
 func (s *authQuotaService) checkUserExists(email string) error {
 	_, err := s.storage.FindByUserEmail(email)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // ReserveApp reserves an app for the user, reserving it in the database. It's
