@@ -18,7 +18,7 @@ how each volume that will be associated to this plan will be created by each pro
 The following configuration register a volume plan called ``ebs`` that is supported by swarm and kubernetes using
 different parameters. Each has a own set of parameters that may be set on the configuration file.
 
-.. highlight: yaml
+.. highlight:: yaml
 
 ::
 
@@ -40,8 +40,8 @@ the tsuru client. The behavior is provisioner specific:
 On Kubernetes provisioner
 -------------------------
 
-Creating a volume with a plan that has no storage-class defined will cause tsuru to manually create one PersistentVolume 
-using the plugin specified in the plan with the opt received in the command line. Also, one PersistentVolumeClaim would be created and bound to 
+Creating a volume with a plan that has no storage-class defined will cause tsuru to manually create one PersistentVolume
+using the plugin specified in the plan with the opt received in the command line. Also, one PersistentVolumeClaim would be created and bound to
 the PersistentVolume.
 
 If the plan specifies a storage-class instead of a plugin only the PersistentVolumeClaim will be created using the specified storage-class.
@@ -49,7 +49,7 @@ If the plan specifies a storage-class instead of a plugin only the PersistentVol
 On Swarm provisioner
 --------------------
 
-A new volume would be created (i.e. docker volume create) using the driver informed in the plan and the volume opt would be a merge between 
+A new volume would be created (i.e. docker volume create) using the driver informed in the plan and the volume opt would be a merge between
 the plan opt and command line opt.
 
 Volume binds
@@ -77,3 +77,26 @@ To be able to use this volume from an app, bind to it:
 ::
 
     $ tsuru volume bind myvol /mnt/mountpoint -a my-app
+
+Volumes with Minikube
+=====================
+
+If you're running `minikube <https://github.com/kubernetes/minikube>`_, you can share a `hostPath <https://kubernetes.io/docs/concepts/storage/volumes/#hostpath>`_ volume among your app units. Add the following configuration to tsuru config file:
+
+.. highlight:: yaml
+
+::
+
+    volume-plans:
+      minikube-plan:
+        kubernetes:
+          storage-class: standard
+
+Then, to create a volume and bind it to your app:
+
+.. highlight:: bash
+
+::
+
+    tsuru volume create my-vol minikube-plan -p my-kubernetes-pool -t my-team -o capacity=1Gi -o access-modes=ReadWriteMany
+    tsuru volume bind my-vol /mnt/mountpoint -a my-app
