@@ -222,6 +222,12 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	if hook.Insecure {
 		client = &tsuruNet.Dial5Full60ClientNoKeepAliveInsecure
 	}
+	if hook.ProxyURL != "" {
+		client, err = tsuruNet.WithProxy(*client, hook.ProxyURL)
+		if err != nil {
+			return err
+		}
+	}
 	reqStart := time.Now()
 	rsp, err := client.Do(req)
 	s.webhooksLatency.Observe(time.Since(reqStart).Seconds())
@@ -236,14 +242,22 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	return nil
 }
 
-func validateURL(u string) error {
-	if u == "" {
+func validateURLs(w eventTypes.Webhook) error {
+	if w.URL == "" {
 		return &tsuruErrors.ValidationError{Message: "webhook url must not be empty"}
 	}
-	_, err := url.Parse(u)
+	_, err := url.Parse(w.URL)
 	if err != nil {
 		return &tsuruErrors.ValidationError{
 			Message: fmt.Sprintf("webhook url is not valid: %v", err),
+		}
+	}
+	if w.ProxyURL != "" {
+		_, err = url.Parse(w.ProxyURL)
+		if err != nil {
+			return &tsuruErrors.ValidationError{
+				Message: fmt.Sprintf("webhook proxy url is not valid: %v", err),
+			}
 		}
 	}
 	return nil
@@ -257,7 +271,7 @@ func (s *webhookService) Create(w eventTypes.Webhook) error {
 	if err != nil {
 		return err
 	}
-	err = validateURL(w.URL)
+	err = validateURLs(w)
 	if err != nil {
 		return err
 	}
@@ -265,7 +279,7 @@ func (s *webhookService) Create(w eventTypes.Webhook) error {
 }
 
 func (s *webhookService) Update(w eventTypes.Webhook) error {
-	err := validateURL(w.URL)
+	err := validateURLs(w)
 	if err != nil {
 		return err
 	}

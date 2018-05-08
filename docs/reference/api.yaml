@@ -2533,6 +2533,8 @@ definitions:
         $ref: '#/definitions/WebhookEventFilter'
       url:
         type: string
+      proxy_url:
+        type: string
       headers:
         type: object
         additionalProperties:
