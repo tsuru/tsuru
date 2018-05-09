@@ -14,7 +14,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-func toHealthConfig(hc provision.TsuruYamlHealthcheck, port int) *container.HealthConfig {
+func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthConfig {
+	hc := meta.Healthcheck
 	path := hc.Path
 	method := hc.Method
 	match := hc.Match
@@ -24,26 +25,40 @@ func toHealthConfig(hc provision.TsuruYamlHealthcheck, port int) *container.Heal
 		scheme = provision.DefaultHealthcheckScheme
 	}
 	allowedFailures := hc.AllowedFailures
-	if path == "" {
-		return nil
-	}
-	path = strings.TrimSpace(strings.TrimLeft(path, "/"))
-	if method == "" {
-		method = "GET"
-	}
-	method = strings.ToUpper(method)
-	if status == 0 && match == "" {
-		status = 200
-	}
 	maxWaitTime, _ := config.GetInt("docker:healthcheck:max-time")
 	if maxWaitTime == 0 {
 		maxWaitTime = 120
 	}
-	curlLine := fmt.Sprintf("curl -k -X%s -fsSL %s://localhost:%d/%s", method, scheme, port, strings.TrimPrefix(path, "/"))
-	if match != "" {
-		curlLine = fmt.Sprintf("%s | egrep %q", curlLine, match)
-	} else {
-		curlLine = fmt.Sprintf("%s -o/dev/null -w '%%{http_code}' | grep %d", curlLine, status)
+	var cmdLine string
+	if path != "" {
+		path = strings.TrimSpace(strings.TrimLeft(path, "/"))
+		if method == "" {
+			method = "GET"
+		}
+		method = strings.ToUpper(method)
+		if status == 0 && match == "" {
+			status = 200
+		}
+		cmdLine = fmt.Sprintf("curl -k -X%s -fsSL %s://localhost:%d/%s", method, scheme, port, strings.TrimPrefix(path, "/"))
+		if match != "" {
+			cmdLine = fmt.Sprintf("%s | egrep %q", cmdLine, match)
+		} else {
+			cmdLine = fmt.Sprintf("%s -o/dev/null -w '%%{http_code}' | grep %d", cmdLine, status)
+		}
+	}
+	if len(meta.Hooks.Restart.After) > 0 {
+		restartHooks := fmt.Sprintf(`if [ ! -f %[1]s ]; then %[2]s && touch %[1]s; fi`,
+			"/tmp/restartafterok",
+			strings.Join(meta.Hooks.Restart.After, " && "),
+		)
+		if cmdLine == "" {
+			cmdLine = restartHooks
+		} else {
+			cmdLine = fmt.Sprintf("%s && %s", cmdLine, restartHooks)
+		}
+	}
+	if cmdLine == "" {
+		return nil
 	}
 	return &container.HealthConfig{
 		Interval: 3 * time.Second,
@@ -51,7 +66,7 @@ func toHealthConfig(hc provision.TsuruYamlHealthcheck, port int) *container.Heal
 		Timeout:  time.Duration(maxWaitTime) * time.Second,
 		Test: []string{
 			"CMD-SHELL",
-			curlLine,
+			cmdLine,
 		},
 	}
 }

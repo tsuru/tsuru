@@ -14,16 +14,20 @@ import (
 
 func (s *S) TestToHealthConfig(c *check.C) {
 	tests := []struct {
-		input    provision.TsuruYamlHealthcheck
+		input    provision.TsuruYamlData
 		expected *container.HealthConfig
 	}{
-		{input: provision.TsuruYamlHealthcheck{}, expected: nil},
-		{input: provision.TsuruYamlHealthcheck{
-			Method: "PUT",
+		{input: provision.TsuruYamlData{}, expected: nil},
+		{input: provision.TsuruYamlData{
+			Healthcheck: provision.TsuruYamlHealthcheck{
+				Method: "PUT",
+			},
 		}, expected: nil},
-		{input: provision.TsuruYamlHealthcheck{
-			Path:   "/",
-			Method: "PUT",
+		{input: provision.TsuruYamlData{
+			Healthcheck: provision.TsuruYamlHealthcheck{
+				Path:   "/",
+				Method: "PUT",
+			},
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
@@ -33,10 +37,12 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Interval: 3 * time.Second,
 			Retries:  1,
 		}},
-		{input: provision.TsuruYamlHealthcheck{
-			Path:   "/hc",
-			Status: 201,
-			Scheme: "https",
+		{input: provision.TsuruYamlData{
+			Healthcheck: provision.TsuruYamlHealthcheck{
+				Path:   "/hc",
+				Status: 201,
+				Scheme: "https",
+			},
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
@@ -46,11 +52,13 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Interval: 3 * time.Second,
 			Retries:  1,
 		}},
-		{input: provision.TsuruYamlHealthcheck{
-			Path:            "hc",
-			Status:          201,
-			AllowedFailures: 10,
-			Match:           "WORK.NG[0-9]+",
+		{input: provision.TsuruYamlData{
+			Healthcheck: provision.TsuruYamlHealthcheck{
+				Path:            "hc",
+				Status:          201,
+				AllowedFailures: 10,
+				Match:           "WORK.NG[0-9]+",
+			},
 		}, expected: &container.HealthConfig{
 			Test: []string{
 				"CMD-SHELL",
@@ -59,6 +67,42 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Timeout:  120 * time.Second,
 			Interval: 3 * time.Second,
 			Retries:  11,
+		}},
+		{input: provision.TsuruYamlData{
+			Healthcheck: provision.TsuruYamlHealthcheck{
+				Path:            "hc",
+				Status:          201,
+				AllowedFailures: 10,
+				Match:           "WORK.NG[0-9]+",
+			},
+			Hooks: provision.TsuruYamlHooks{
+				Restart: provision.TsuruYamlRestartHooks{
+					After: []string{"my cmd 1", "my cmd 2"},
+				},
+			},
+		}, expected: &container.HealthConfig{
+			Test: []string{
+				"CMD-SHELL",
+				"curl -k -XGET -fsSL http://localhost:9000/hc | egrep \"WORK.NG[0-9]+\" && if [ ! -f /tmp/restartafterok ]; then my cmd 1 && my cmd 2 && touch /tmp/restartafterok; fi",
+			},
+			Timeout:  120 * time.Second,
+			Interval: 3 * time.Second,
+			Retries:  11,
+		}},
+		{input: provision.TsuruYamlData{
+			Hooks: provision.TsuruYamlHooks{
+				Restart: provision.TsuruYamlRestartHooks{
+					After: []string{"my cmd 1", "my cmd 2"},
+				},
+			},
+		}, expected: &container.HealthConfig{
+			Test: []string{
+				"CMD-SHELL",
+				"if [ ! -f /tmp/restartafterok ]; then my cmd 1 && my cmd 2 && touch /tmp/restartafterok; fi",
+			},
+			Timeout:  120 * time.Second,
+			Interval: 3 * time.Second,
+			Retries:  1,
 		}},
 	}
 	for i, test := range tests {
