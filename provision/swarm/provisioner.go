@@ -359,7 +359,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 
 func findTaskByContainerIdNoWait(tasks []swarm.Task, unitId string) (*swarm.Task, error) {
 	for i, t := range tasks {
-		contID := t.Status.ContainerStatus.ContainerID
+		contID := taskContainerID(&t)
 		if strings.HasPrefix(contID, unitId) {
 			return &tasks[i], nil
 		}
@@ -376,7 +376,7 @@ func findTaskByContainerId(client *clusterClient, taskListOpts docker.ListTasksO
 		}
 		hasEmpty := false
 		for i, t := range tasks {
-			contID := t.Status.ContainerStatus.ContainerID
+			contID := taskContainerID(&t)
 			if contID == "" {
 				hasEmpty = true
 			}
@@ -659,6 +659,14 @@ func (p *swarmProvisioner) CleanImage(appName, imgName string) error {
 	return p.cleanImageInNodes(imgName)
 }
 
+func taskContainerID(task *swarm.Task) string {
+	contStatus := task.Status.ContainerStatus
+	if contStatus == nil {
+		return ""
+	}
+	return contStatus.ContainerID
+}
+
 func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {
 	if !strings.HasSuffix(buildImageID, "-builder") {
 		err := deployProcesses(a, buildImageID, nil)
@@ -687,7 +695,7 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(nodeClient, deployImage, task.Status.ContainerStatus.ContainerID, a)
+	_, err = commitPushBuildImage(nodeClient, deployImage, taskContainerID(task), a)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -723,7 +731,7 @@ func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmds,
-		Container:    tasks[0].Status.ContainerStatus.ContainerID,
+		Container:    taskContainerID(&tasks[0]),
 		Tty:          true,
 	}
 	exec, err := nodeClient.CreateExec(execCreateOpts)
@@ -1062,7 +1070,7 @@ func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, st
 	if err != nil {
 		return createdID, nil, err
 	}
-	contID := tasks[0].Status.ContainerStatus.ContainerID
+	contID := taskContainerID(&tasks[0])
 	attachOpts := docker.AttachToContainerOptions{
 		Container:    contID,
 		OutputStream: stdout,

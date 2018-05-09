@@ -135,7 +135,11 @@ func safeAttachWaitContainer(client *docker.Client, opts docker.AttachToContaine
 var waitForTaskTimeout = 5 * time.Minute
 
 func taskStatusMsg(status swarm.TaskStatus) string {
-	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %d", status.State, status.Err, status.Message, status.ContainerStatus.ExitCode)
+	var exitCode string
+	if status.ContainerStatus != nil {
+		exitCode = strconv.Itoa(status.ContainerStatus.ExitCode)
+	}
+	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %q", status.State, status.Err, status.Message, exitCode)
 }
 
 func waitForTasks(client *clusterClient, serviceID string, wantedStates ...swarm.TaskState) ([]swarm.Task, error) {
@@ -275,7 +279,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		healthConfig = toHealthConfig(yamlData.Healthcheck, portInt)
+		healthConfig = toHealthConfig(yamlData, portInt)
 	}
 	if opts.labels == nil {
 		opts.labels, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
@@ -419,7 +423,7 @@ func execInTaskContainer(c *clusterClient, t *swarm.Task, stdout, stderr io.Writ
 		AttachStderr: true,
 		Tty:          false,
 		Cmd:          cmds,
-		Container:    t.Status.ContainerStatus.ContainerID,
+		Container:    taskContainerID(t),
 	}
 	exec, err := nodeClient.CreateExec(execCreateOpts)
 	if err != nil {
