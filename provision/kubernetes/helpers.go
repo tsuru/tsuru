@@ -429,9 +429,6 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 func getServicePort(client *ClusterClient, srvName string) (int32, error) {
 	srv, err := client.CoreV1().Services(client.Namespace()).Get(srvName, metav1.GetOptions{})
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return 0, nil
-		}
 		return 0, errors.WithStack(err)
 	}
 	if len(srv.Spec.Ports) == 0 {

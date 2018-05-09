@@ -517,8 +517,7 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 
 func (s *S) TestGetServicePort(c *check.C) {
 	port, err := getServicePort(s.clusterClient, "notfound")
-	c.Assert(err, check.IsNil)
-	c.Assert(port, check.Equals, int32(0))
+	c.Assert(err, check.NotNil)
 	_, err = s.client.CoreV1().Services(s.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv1",
