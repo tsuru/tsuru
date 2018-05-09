@@ -377,12 +377,26 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 		return nil, nil, nil, errors.WithStack(err)
 	}
 	portInt := getTargetPortForImage(imageName)
+	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	if err != nil {
+		return nil, nil, nil, errors.WithStack(err)
+	}
+	var lifecycle *apiv1.Lifecycle
+	if len(yamlData.Hooks.Restart.After) > 0 {
+		hookCmds := []string{
+			"sh", "-c",
+			strings.Join(yamlData.Hooks.Restart.After, " && "),
+		}
+		lifecycle = &apiv1.Lifecycle{
+			PostStart: &apiv1.Handler{
+				Exec: &apiv1.ExecAction{
+					Command: hookCmds,
+				},
+			},
+		}
+	}
 	var probe *apiv1.Probe
 	if process == webProcessName {
-		yamlData, errImg := image.GetImageTsuruYamlData(imageName)
-		if errImg != nil {
-			return nil, nil, nil, errors.WithStack(errImg)
-		}
 		probe, err = probeFromHC(yamlData.Healthcheck, portInt)
 		if err != nil {
 			return nil, nil, nil, err
@@ -466,6 +480,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: int32(portInt)},
 							},
+							Lifecycle: lifecycle,
 						},
 					},
 				},
