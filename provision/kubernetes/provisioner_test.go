@@ -1216,7 +1216,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(pods.Items, check.HasLen, 0)
 }
 
-func (s *S) TestShell(c *check.C) {
+func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -1233,12 +1233,16 @@ func (s *S) TestShell(c *check.C) {
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.Shell(provision.ShellOptions{
+	err = s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
-		Conn:   conn,
+		Stdin:  conn,
+		Stdout: conn,
+		Stderr: conn,
 		Width:  99,
 		Height: 42,
 		Term:   "xterm",
+		Units:  []string{"myapp-web-pod-1-1"},
+		Cmds:   []string{"mycmd", "arg1"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
@@ -1249,10 +1253,10 @@ func (s *S) TestShell(c *check.C) {
 	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
 	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
-func (s *S) TestShellSpecificUnit(c *check.C) {
+func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -1269,25 +1273,27 @@ func (s *S) TestShellSpecificUnit(c *check.C) {
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.Shell(provision.ShellOptions{
+	err = s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
-		Conn:   conn,
+		Stdin:  conn,
+		Stdout: conn,
+		Stderr: conn,
 		Width:  99,
 		Height: 42,
-		Unit:   "myapp-web-pod-2-2",
+		Term:   "xterm",
 	})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(s.mock.Stream["myapp-isolated-run"].Stdin, check.Equals, "echo test")
 	var sz remotecommand.TerminalSize
-	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web"].Resize), &sz)
+	err = json.Unmarshal([]byte(s.mock.Stream["myapp-isolated-run"].Resize), &sz)
 	c.Assert(err, check.IsNil)
 	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
 }
 
-func (s *S) TestShellSpecificUnitNotFound(c *check.C) {
+func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -1302,30 +1308,15 @@ func (s *S) TestShellSpecificUnitNotFound(c *check.C) {
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	buf := safe.NewBuffer([]byte("echo test"))
-	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.Shell(provision.ShellOptions{
+	buf := bytes.NewBuffer(nil)
+	err = s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
-		Conn:   conn,
+		Stdout: buf,
 		Width:  99,
 		Height: 42,
-		Unit:   "invalid-unit",
+		Units:  []string{"invalid-unit"},
 	})
 	c.Assert(err, check.DeepEquals, &provision.UnitNotFoundError{ID: "invalid-unit"})
-}
-
-func (s *S) TestShellNoUnits(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	buf := safe.NewBuffer([]byte("echo test"))
-	conn := &provisiontest.FakeConn{Buf: buf}
-	err := s.p.Shell(provision.ShellOptions{
-		App:    a,
-		Conn:   conn,
-		Width:  99,
-		Height: 42,
-	})
-	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestExecuteCommand(c *check.C) {
@@ -1344,7 +1335,13 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommand(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Units:  []string{"myapp-web-pod-1-1", "myapp-web-pod-2-2"},
+		Cmds:   []string{"mycmd", "arg1", "arg2"},
+	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout datastdout data")
@@ -1352,11 +1349,11 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 2)
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
 	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
-	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
-func (s *S) TestExecuteCommandOnce(c *check.C) {
+func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -1372,17 +1369,23 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommandOnce(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Units:  []string{"myapp-web-pod-1-1"},
+		Cmds:   []string{"mycmd", "arg1", "arg2"},
+	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr data")
 	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
-func (s *S) TestExecuteCommandIsolated(c *check.C) {
+func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -1395,7 +1398,12 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Cmds:   []string{"mycmd", "arg1", "arg2"},
+	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(stdout.String(), check.Equals, "stdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr data")
@@ -1419,7 +1427,7 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	})
 }
 
-func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
+func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -1438,7 +1446,12 @@ func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
 	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Cmds:   []string{"mycmd", "arg1", "arg2"},
+	})
 	c.Assert(err, check.ErrorMatches, `(?s)invalid pod phase "Failed".*`)
 }
 

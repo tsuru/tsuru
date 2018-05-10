@@ -1367,53 +1367,18 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 		executed = true
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Units:  []string{container1.ID, container2.ID},
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, true)
 }
 
-func (s *S) TestProvisionerExecuteCommandNoContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("almah", "static", 2)
-	var buf bytes.Buffer
-	err := s.p.ExecuteCommand(&buf, &buf, a, "ls", "-lh")
-	c.Assert(err, check.Equals, provision.ErrEmptyApp)
-}
-
-func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("starbreaker", "python", 1)
-	container1, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
-	c.Assert(err, check.IsNil)
-	container2, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
-	c.Assert(err, check.IsNil)
-	container3, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
-	c.Assert(err, check.IsNil)
-	container4, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
-	c.Assert(err, check.IsNil)
-	container2.SetStatus(s.p.ClusterClient(), provision.StatusCreated, true)
-	container3.SetStatus(s.p.ClusterClient(), provision.StatusBuilding, true)
-	container4.SetStatus(s.p.ClusterClient(), provision.StatusStopped, true)
-	containers := []*container.Container{
-		container1,
-		container2,
-		container3,
-		container4,
-	}
-	coll := s.p.Collection()
-	defer coll.Close()
-	for _, c := range containers {
-		defer s.removeTestContainer(c)
-	}
-	var executed int
-	s.server.PrepareExec("*", func() {
-		executed++
-	})
-	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, a, "echo x")
-	c.Assert(err, check.IsNil)
-	c.Assert(executed, check.Equals, 1)
-}
-
-func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
+func (s *S) TestProvisionerExecuteCommandSingleContainer(c *check.C) {
 	a := provisiontest.NewFakeApp("almah", "static", 1)
 	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
@@ -1426,19 +1391,18 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	s.server.PrepareExec("*", func() {
 		executed = true
 	})
-	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Units:  []string{container.ID},
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, true)
 }
 
-func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("almah", "static", 2)
-	var buf bytes.Buffer
-	err := s.p.ExecuteCommandOnce(&buf, &buf, a, "ls", "-lh")
-	c.Assert(err, check.Equals, provision.ErrEmptyApp)
-}
-
-func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
+func (s *S) TestProvisionerExecuteCommandNoUnitss(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)
@@ -1474,21 +1438,31 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 		fmt.Fprintf(errStream, "errtest")
 		conn.Close()
 	}))
-	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "test")
 	c.Assert(stderr.String(), check.Equals, "errtest")
 	c.Assert(created, check.Equals, true)
 }
 
-func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
+func (s *S) TestProvisionerExecuteCommandNoUnitsNoImage(c *check.C) {
 	s.server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// no actual pull executed
 		w.WriteHeader(http.StatusOK)
 	}))
 	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := s.p.ExecuteCommandIsolated(&buf, &buf, a, "ls", "-lh")
+	err := s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &buf,
+		Stderr: &buf,
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.ErrorMatches, ".*no such image.*")
 }
 
@@ -2224,18 +2198,18 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 	c.Assert(req1, check.DeepEquals, map[string]interface{}{
 		"AttachStdout": true,
 		"AttachStderr": true,
-		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd1"},
+		"Cmd":          []interface{}{"/bin/sh", "-lc", "cmd1"},
 		"Container":    container.ID,
 	})
 	c.Assert(req2, check.DeepEquals, map[string]interface{}{
 		"AttachStdout": true,
 		"AttachStderr": true,
-		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd2"},
+		"Cmd":          []interface{}{"/bin/sh", "-lc", "cmd2"},
 		"Container":    container.ID,
 	})
 }
 
-func (s *S) TestShellToAnAppByContainerID(c *check.C) {
+func (s *S) TestExecuteCommandStdin(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)
@@ -2244,22 +2218,16 @@ func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10, Unit: cont.ID}
-	err = s.p.Shell(opts)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestShellToAnAppByAppName(c *check.C) {
-	err := newFakeImage(s.p, "tsuru/app-almah", nil)
-	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", 1)
-	cont, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	buf := safe.NewBuffer([]byte("echo test"))
-	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10}
-	err = s.p.Shell(opts)
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: conn,
+		Stderr: conn,
+		Stdin:  conn,
+		Width:  10,
+		Height: 10,
+		Units:  []string{cont.ID},
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 }
 

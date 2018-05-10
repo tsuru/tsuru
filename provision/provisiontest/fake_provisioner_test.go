@@ -388,21 +388,6 @@ func (s *S) TestSleeps(c *check.C) {
 	c.Assert(p.Sleeps(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
-func (s *S) TestGetCmds(c *check.C) {
-	app := NewFakeApp("enemy-within", "rush", 1)
-	p := NewFakeProvisioner()
-	p.cmds = []Cmd{
-		{Cmd: "ls -lh", App: app},
-		{Cmd: "ls -lah", App: app},
-	}
-	c.Assert(p.GetCmds("ls -lh", app), check.HasLen, 1)
-	c.Assert(p.GetCmds("l", app), check.HasLen, 0)
-	c.Assert(p.GetCmds("", app), check.HasLen, 2)
-	otherapp := NewFakeApp("enemy-without", "rush", 1)
-	c.Assert(p.GetCmds("ls -lh", otherapp), check.HasLen, 0)
-	c.Assert(p.GetCmds("", otherapp), check.HasLen, 0)
-}
-
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
 		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
@@ -880,12 +865,26 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.AddUnits(app, 2, "web", nil)
 	c.Assert(err, check.IsNil)
+	units := p.GetUnits(app)
 	p.PrepareOutput(output)
 	p.PrepareOutput(output)
-	err = p.ExecuteCommand(&buf, nil, app, "ls", "-l")
+	err = p.ExecuteCommand(provision.ExecOptions{
+		Stdout: &buf,
+		App:    app,
+		Cmds:   []string{"ls", "-l"},
+		Units:  []string{units[0].ID, units[1].ID},
+	})
 	c.Assert(err, check.IsNil)
-	cmds := p.GetCmds("ls", app)
-	c.Assert(cmds, check.HasLen, 1)
+	expectedExecs := []provision.ExecOptions{{
+		Stdout: &buf,
+		App:    app,
+		Cmds:   []string{"ls", "-l"},
+		Units:  []string{units[0].ID, units[1].ID},
+	}}
+	execsUnit0 := p.Execs(units[0].ID)
+	c.Assert(execsUnit0, check.DeepEquals, expectedExecs)
+	execsUnit1 := p.Execs(units[1].ID)
+	c.Assert(execsUnit1, check.DeepEquals, expectedExecs)
 	expected := string(output) + string(output)
 	c.Assert(buf.String(), check.Equals, expected)
 }
@@ -897,8 +896,13 @@ func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
+	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
-	err = p.ExecuteCommand(nil, nil, app, "ls", "-l")
+	err = p.ExecuteCommand(provision.ExecOptions{
+		App:   app,
+		Cmds:  []string{"ls", "-l"},
+		Units: []string{units[0].ID},
+	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to run command.")
 }
@@ -911,9 +915,15 @@ func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
+	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
 	p.PrepareOutput([]byte("myoutput!"))
-	err = p.ExecuteCommand(nil, &buf, app, "ls", "-l")
+	err = p.ExecuteCommand(provision.ExecOptions{
+		App:    app,
+		Stderr: &buf,
+		Cmds:   []string{"ls", "-l"},
+		Units:  []string{units[0].ID},
+	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to run command.")
 	c.Assert(buf.String(), check.Equals, "myoutput!")
@@ -926,21 +936,35 @@ func (s *S) TestExecuteComandTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = p.ExecuteCommand(nil, nil, app, "ls -l")
+	units := p.GetUnits(app)
+	err = p.ExecuteCommand(provision.ExecOptions{
+		App:   app,
+		Cmds:  []string{"ls", "-l"},
+		Units: []string{units[0].ID},
+	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "FakeProvisioner timed out waiting for output.")
 }
 
-func (s *S) TestExecuteCommandIsolated(c *check.C) {
+func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
 	app := NewFakeApp("grand-designs", "rush", 1)
 	p := NewFakeProvisioner()
 	p.PrepareOutput(output)
-	err := p.ExecuteCommandIsolated(&buf, nil, app, "ls", "-l")
+	err := p.ExecuteCommand(provision.ExecOptions{
+		App:    app,
+		Stdout: &buf,
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
-	cmds := p.GetCmds("ls", app)
-	c.Assert(cmds, check.HasLen, 1)
+	expectedExecs := []provision.ExecOptions{{
+		Stdout: &buf,
+		App:    app,
+		Cmds:   []string{"ls", "-l"},
+	}}
+	execsIsolated := p.Execs("isolated")
+	c.Assert(execsIsolated, check.DeepEquals, expectedExecs)
 	expected := string(output)
 	c.Assert(buf.String(), check.Equals, expected)
 }
@@ -1033,19 +1057,6 @@ func (s *S) TestHasCName(c *check.C) {
 	err = p.UnsetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
-}
-
-func (s *S) TestExecuteCommandOnce(c *check.C) {
-	var buf bytes.Buffer
-	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 1)
-	p := NewFakeProvisioner()
-	p.PrepareOutput(output)
-	err := p.ExecuteCommandOnce(&buf, nil, app, "ls", "-l")
-	c.Assert(err, check.IsNil)
-	cmds := p.GetCmds("ls", app)
-	c.Assert(cmds, check.HasLen, 1)
-	c.Assert(buf.String(), check.Equals, string(output))
 }
 
 func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
@@ -1173,66 +1184,6 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units[0].IP, check.Equals, ip+"-updated")
 	c.Assert(p.CustomData(app), check.DeepEquals, data)
-}
-
-func (s *S) TestFakeProvisionerShellNoSpecification(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", ID: "unit/2"}
-	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", ID: "unit/3"}
-	p.AddUnit(app, unit)
-	opts := provision.ShellOptions{App: app}
-	err = p.Shell(opts)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Shells("unit/1"), check.DeepEquals, []provision.ShellOptions{opts})
-	c.Assert(p.Shells("unit/2"), check.HasLen, 0)
-	c.Assert(p.Shells("unit/3"), check.HasLen, 0)
-}
-
-func (s *S) TestFakeProvisionerShellSpecifying(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", ID: "unit/2"}
-	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", ID: "unit/3"}
-	p.AddUnit(app, unit)
-	opts := provision.ShellOptions{App: app, Unit: "unit/3"}
-	err = p.Shell(opts)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Shells("unit/3"), check.DeepEquals, []provision.ShellOptions{opts})
-	c.Assert(p.Shells("unit/1"), check.HasLen, 0)
-	c.Assert(p.Shells("unit/2"), check.HasLen, 0)
-}
-
-func (s *S) TestFakeProvisionerShellUnitNotFound(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	p.AddUnit(app, unit)
-	opts := provision.ShellOptions{App: app, Unit: "unit/12"}
-	err = p.Shell(opts)
-	c.Assert(err.Error(), check.Equals, "unit not found")
-}
-
-func (s *S) TestFakeProvisionerShellNoUnits(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(app)
-	c.Assert(err, check.IsNil)
-	opts := provision.ShellOptions{App: app}
-	err = p.Shell(opts)
-	c.Assert(err.Error(), check.Equals, "app has no units")
 }
 
 func (s *S) TestFakeProvisionerAddNode(c *check.C) {

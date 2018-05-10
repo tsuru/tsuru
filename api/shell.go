@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tsuru/tsuru/api/context"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -152,6 +153,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	buf := &optionalWriterCloser{}
 	var term *terminal.Terminal
 	unitID := r.URL.Query().Get("unit")
+	isolated, _ := strconv.ParseBool(r.URL.Query().Get("isolated"))
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	clientTerm := r.URL.Query().Get("term")
@@ -204,11 +206,14 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 			ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(2*time.Second))
 		}
 	}()
-	opts := provision.ShellOptions{
-		Conn:   &cmdLogger{base: &wsReadWriteCloser{ws}, term: term},
+	conn := &cmdLogger{base: &wsReadWriteCloser{ws}, term: term}
+	opts := provision.ExecOptions{
+		Stdout: conn,
+		Stderr: conn,
+		Stdin:  conn,
 		Width:  width,
 		Height: height,
-		Unit:   unitID,
+		Units:  unitsForShell(a, unitID, isolated),
 		Term:   clientTerm,
 	}
 	err = a.Shell(opts)
@@ -218,6 +223,20 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 			Message: err.Error(),
 		}
 	}
+}
+
+func unitsForShell(a app.App, unitID string, isolated bool) []string {
+	if isolated {
+		return nil
+	}
+	if unitID != "" {
+		return []string{unitID}
+	}
+	appUnits, _ := a.Units()
+	if len(appUnits) > 0 {
+		return []string{appUnits[0].ID}
+	}
+	return nil
 }
 
 type wsReadWriteCloser struct {

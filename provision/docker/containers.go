@@ -309,7 +309,7 @@ func (p *dockerProvisioner) rebalanceContainersByHost(address string, w io.Write
 	return p.moveContainerList(containers, "", w)
 }
 
-func (p *dockerProvisioner) runCommandInContainer(image string, command string, app provision.App, stdout, stderr io.Writer) error {
+func (p *dockerProvisioner) runCommandInContainer(image string, app provision.App, stdin io.Reader, stdout, stderr io.Writer, pty container.Pty, cmds ...string) error {
 	if stdout == nil {
 		stdout = ioutil.Discard
 	}
@@ -320,14 +320,28 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	for _, e := range provision.EnvsForApp(app, "", false) {
 		envs = append(envs, fmt.Sprintf("%s=%s", e.Name, e.Value))
 	}
+	labelSet, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: app,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Provisioner:   provisionerName,
+			IsIsolatedRun: true,
+		},
+	})
+	if err != nil {
+		return err
+	}
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
 			AttachStderr: true,
+			AttachStdin:  stdin != nil,
+			OpenStdin:    stdin != nil,
 			Image:        image,
-			Entrypoint:   []string{"/bin/bash", "-c"},
-			Cmd:          []string{command},
+			Entrypoint:   cmds,
+			Cmd:          []string{},
 			Env:          envs,
+			Tty:          stdin != nil,
+			Labels:       labelSet.ToLabels(),
 		},
 	}
 	cluster := p.Cluster()
@@ -361,9 +375,12 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 		Container:    cont.ID,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
+		InputStream:  stdin,
 		Stream:       true,
 		Stdout:       true,
 		Stderr:       true,
+		Stdin:        stdin != nil,
+		RawTerminal:  stdin != nil,
 		Success:      make(chan struct{}),
 	}
 	waiter, err := cluster.AttachToContainerNonBlocking(attachOptions)
@@ -377,6 +394,9 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	done()
 	if err != nil {
 		return err
+	}
+	if pty.Width != 0 && pty.Height != 0 {
+		cluster.ResizeContainerTTY(cont.ID, pty.Height, pty.Width)
 	}
 	waiter.Wait()
 	return nil

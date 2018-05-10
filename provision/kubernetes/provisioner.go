@@ -46,10 +46,8 @@ type kubernetesProvisioner struct{}
 
 var (
 	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.ShellProvisioner         = &kubernetesProvisioner{}
 	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
 	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
-	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
@@ -806,54 +804,37 @@ func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, wr
 	return err
 }
 
-func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
-	return execCommand(execOpts{
-		app:    opts.App,
-		unit:   opts.Unit,
-		cmds:   []string{"/usr/bin/env", "TERM=" + opts.Term, "bash", "-l"},
-		stdout: opts.Conn,
-		stderr: opts.Conn,
-		stdin:  opts.Conn,
-		termSize: &remotecommand.TerminalSize{
-			Width:  uint16(opts.Width),
-			Height: uint16(opts.Height),
-		},
-		tty: true,
-	})
-}
-
-func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	client, err := clusterForPool(a.GetPool())
+func (p *kubernetesProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
+	client, err := clusterForPool(opts.App.GetPool())
 	if err != nil {
 		return err
 	}
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return errors.WithStack(err)
+	var size *remotecommand.TerminalSize
+	if opts.Width != 0 && opts.Height != 0 {
+		size = &remotecommand.TerminalSize{
+			Width:  uint16(opts.Width),
+			Height: uint16(opts.Height),
+		}
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
-	})
-	if err != nil {
-		return errors.WithStack(err)
+	if opts.Term != "" {
+		opts.Cmds = append([]string{"/usr/bin/env", "TERM=" + opts.Term}, opts.Cmds...)
 	}
-	if len(pods.Items) == 0 {
-		return provision.ErrEmptyApp
+	eOpts := execOpts{
+		client:   client,
+		app:      opts.App,
+		cmds:     opts.Cmds,
+		stdout:   opts.Stdout,
+		stderr:   opts.Stderr,
+		stdin:    opts.Stdin,
+		termSize: size,
+		tty:      opts.Stdin != nil,
 	}
-	for _, pod := range pods.Items {
-		err = execCommand(execOpts{
-			unit:   pod.Name,
-			app:    a,
-			cmds:   append([]string{"/bin/sh", "-lc", cmd}, args...),
-			stdout: stdout,
-			stderr: stderr,
-		})
+	if len(opts.Units) == 0 {
+		return runIsolatedCmdPod(client, eOpts)
+	}
+	for _, u := range opts.Units {
+		eOpts.unit = u
+		err := execCommand(eOpts)
 		if err != nil {
 			return err
 		}
@@ -861,19 +842,10 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provi
 	return nil
 }
 
-func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	return execCommand(execOpts{
-		app:    app,
-		cmds:   append([]string{"/bin/sh", "-lc", cmd}, args...),
-		stdout: stdout,
-		stderr: stderr,
-	})
-}
-
-func runIsolatedCmdPod(client *ClusterClient, a provision.App, out, errW io.Writer, cmds []string) error {
-	baseName := execCommandPodNameForApp(a)
+func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
+	baseName := execCommandPodNameForApp(opts.app)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
+		App: opts.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:        tsuruLabelPrefix,
 			Provisioner:   provisionerName,
@@ -883,35 +855,28 @@ func runIsolatedCmdPod(client *ClusterClient, a provision.App, out, errW io.Writ
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	imgName, err := image.AppCurrentImageName(a.GetName())
+	imgName, err := image.AppCurrentImageName(opts.app.GetName())
 	if err != nil {
 		return err
 	}
-	appEnvs := provision.EnvsForApp(a, "", false)
+	appEnvs := provision.EnvsForApp(opts.app, "", false)
 	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	return runPod(runSinglePodArgs{
-		client: client,
-		stdout: out,
-		stderr: errW,
-		labels: labels,
-		cmd:    strings.Join(cmds, " "),
-		envs:   envs,
-		name:   baseName,
-		image:  imgName,
-		app:    a,
+		client:   client,
+		stdout:   opts.stdout,
+		stderr:   opts.stderr,
+		stdin:    opts.stdin,
+		termSize: opts.termSize,
+		labels:   labels,
+		cmds:     opts.cmds,
+		envs:     envs,
+		name:     baseName,
+		image:    imgName,
+		app:      opts.app,
 	})
-}
-
-func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return err
-	}
-	cmds := append([]string{cmd}, args...)
-	return runIsolatedCmdPod(client, a, stdout, stderr, cmds)
 }
 
 func (p *kubernetesProvisioner) StartupMessage() (string, error) {

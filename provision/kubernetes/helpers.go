@@ -460,6 +460,7 @@ func (q *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 
 type execOpts struct {
+	client   *ClusterClient
 	app      provision.App
 	unit     string
 	cmds     []string
@@ -471,29 +472,13 @@ type execOpts struct {
 }
 
 func execCommand(opts execOpts) error {
-	client, err := clusterForPool(opts.app.GetPool())
+	client := opts.client
+	chosenPod, err := client.CoreV1().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
 	if err != nil {
-		return err
-	}
-	var chosenPod *apiv1.Pod
-	if opts.unit != "" {
-		chosenPod, err = client.CoreV1().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
-		if err != nil {
-			if k8sErrors.IsNotFound(errors.Cause(err)) {
-				return &provision.UnitNotFoundError{ID: opts.unit}
-			}
-			return errors.WithStack(err)
+		if k8sErrors.IsNotFound(errors.Cause(err)) {
+			return &provision.UnitNotFoundError{ID: opts.unit}
 		}
-	} else {
-		var pods *apiv1.PodList
-		pods, err = podsForAppProcess(client, opts.app, "")
-		if err != nil {
-			return err
-		}
-		if len(pods.Items) == 0 {
-			return provision.ErrEmptyApp
-		}
-		chosenPod = &pods.Items[0]
+		return errors.WithStack(err)
 	}
 	restCli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
@@ -542,16 +527,17 @@ func execCommand(opts execOpts) error {
 }
 
 type runSinglePodArgs struct {
-	client     *ClusterClient
-	stdout     io.Writer
-	stderr     io.Writer
-	labels     *provision.LabelSet
-	cmd        string
-	envs       []apiv1.EnvVar
-	name       string
-	image      string
-	app        provision.App
-	dockerSock bool
+	client   *ClusterClient
+	stdout   io.Writer
+	stderr   io.Writer
+	stdin    io.Reader
+	termSize *remotecommand.TerminalSize
+	labels   *provision.LabelSet
+	cmds     []string
+	envs     []apiv1.EnvVar
+	name     string
+	image    string
+	app      provision.App
 }
 
 func runPod(args runSinglePodArgs) error {
@@ -568,6 +554,12 @@ func runPod(args runSinglePodArgs) error {
 		return err
 	}
 	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
+	var tty bool
+	if args.stdin == nil {
+		args.cmds = append([]string{"sh", "-c", "cat >/dev/null && exec $0 \"$@\""}, args.cmds...)
+	} else {
+		tty = true
+	}
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        args.name,
@@ -584,28 +576,14 @@ func runPod(args runSinglePodArgs) error {
 				{
 					Name:      args.name,
 					Image:     args.image,
-					Command:   []string{"sh", "-ec", "cat >/dev/null && " + args.cmd},
+					Command:   args.cmds,
 					Env:       args.envs,
 					Stdin:     true,
 					StdinOnce: true,
+					TTY:       tty,
 				},
 			},
 		},
-	}
-	if args.dockerSock {
-		pod.Spec.Volumes = []apiv1.Volume{
-			{
-				Name: "dockersock",
-				VolumeSource: apiv1.VolumeSource{
-					HostPath: &apiv1.HostPathVolumeSource{
-						Path: dockerSockPath,
-					},
-				},
-			},
-		}
-		pod.Spec.Containers[0].VolumeMounts = []apiv1.VolumeMount{
-			{Name: "dockersock", MountPath: dockerSockPath},
-		}
 	}
 	_, err = args.client.CoreV1().Pods(args.client.Namespace()).Create(pod)
 	if err != nil {
@@ -620,7 +598,10 @@ func runPod(args runSinglePodArgs) error {
 	if err != nil {
 		multiErr.Add(err)
 	}
-	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name, false)
+	if args.stdin == nil {
+		args.stdin = bytes.NewBufferString(".")
+	}
+	err = doAttach(args.client, args.stdin, args.stdout, args.stderr, pod.Name, args.name, tty, args.termSize)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}

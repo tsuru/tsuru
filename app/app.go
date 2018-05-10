@@ -1167,14 +1167,13 @@ func (app *App) Run(cmd string, w io.Writer, args provision.RunArgs) error {
 	logWriter := LogWriter{App: app, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
-	return app.sourced(cmd, io.MultiWriter(w, &logWriter), args)
+	return app.run(cmd, io.MultiWriter(w, &logWriter), args)
 }
 
-func (app *App) sourced(cmd string, w io.Writer, args provision.RunArgs) error {
+func cmdsForExec(cmd string) []string {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := fmt.Sprintf("[ -d %s ] && cd %s", defaultAppDir, defaultAppDir)
-	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
-	return app.run(cmd, w, args)
+	return []string{"/bin/sh", "-c", fmt.Sprintf("%s; %s; %s", source, cd, cmd)}
 }
 
 func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
@@ -1186,13 +1185,24 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 	if !ok {
 		return provision.ProvisionerNotSupported{Prov: prov, Action: "running commands"}
 	}
-	if args.Isolated {
-		return execProv.ExecuteCommandIsolated(w, w, app, cmd)
+	opts := provision.ExecOptions{
+		App:    app,
+		Stdout: w,
+		Stderr: w,
+		Cmds:   cmdsForExec(cmd),
 	}
-	if args.Once {
-		return execProv.ExecuteCommandOnce(w, w, app, cmd)
+	units, err := app.Units()
+	if err != nil {
+		return err
 	}
-	return execProv.ExecuteCommand(w, w, app, cmd)
+	if args.Once && len(units) > 0 {
+		opts.Units = []string{units[0].ID}
+	} else if !args.Isolated {
+		for _, u := range units {
+			opts.Units = append(opts.Units, u.ID)
+		}
+	}
+	return execProv.ExecuteCommand(opts)
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
@@ -2155,17 +2165,18 @@ func (app *App) MetricEnvs() (map[string]string, error) {
 	return envs, nil
 }
 
-func (app *App) Shell(opts provision.ShellOptions) error {
-	opts.App = app
+func (app *App) Shell(opts provision.ExecOptions) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
-	if shellProv, ok := prov.(provision.ShellProvisioner); ok {
-		return shellProv.Shell(opts)
-	} else {
+	execProv, ok := prov.(provision.ExecutableProvisioner)
+	if !ok {
 		return provision.ProvisionerNotSupported{Prov: prov, Action: "running shell"}
 	}
+	opts.App = app
+	opts.Cmds = cmdsForExec("bash -l")
+	return execProv.ExecuteCommand(opts)
 }
 
 func (app *App) SetCertificate(name, certificate, key string) error {

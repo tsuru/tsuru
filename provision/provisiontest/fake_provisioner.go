@@ -342,14 +342,12 @@ type failure struct {
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
 	Name           string
-	cmds           []Cmd
-	cmdMut         sync.Mutex
 	outputs        chan []byte
 	failures       chan failure
 	apps           map[string]provisionedApp
 	mut            sync.RWMutex
-	shells         map[string][]provision.ShellOptions
-	shellMut       sync.Mutex
+	execs          map[string][]provision.ExecOptions
+	execsMut       sync.Mutex
 	nodes          map[string]FakeNode
 	nodeContainers map[string]int
 }
@@ -359,7 +357,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
-	p.shells = make(map[string][]provision.ShellOptions)
+	p.execs = make(map[string][]provision.ExecOptions)
 	p.nodes = make(map[string]FakeNode)
 	p.nodeContainers = make(map[string]int)
 	return &p
@@ -685,27 +683,22 @@ func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
 	return p.apps[app.GetName()].lastData
 }
 
-// Shells return all shell calls to the given unit.
-func (p *FakeProvisioner) Shells(unit string) []provision.ShellOptions {
-	p.shellMut.Lock()
-	defer p.shellMut.Unlock()
-	return p.shells[unit]
+// Execs return all exec calls to the given unit.
+func (p *FakeProvisioner) Execs(unit string) []provision.ExecOptions {
+	p.execsMut.Lock()
+	defer p.execsMut.Unlock()
+	return p.execs[unit]
 }
 
-// Returns the number of calls to restart.
-// GetCmds returns a list of commands executed in an app. If you don't specify
-// the command (an empty string), it will return all commands executed in the
-// given app.
-func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
-	var cmds []Cmd
-	p.cmdMut.Lock()
-	for _, c := range p.cmds {
-		if (cmd == "" || c.Cmd == cmd) && app.GetName() == c.App.GetName() {
-			cmds = append(cmds, c)
-		}
+// AllExecs return all exec calls to all units.
+func (p *FakeProvisioner) AllExecs() map[string][]provision.ExecOptions {
+	p.execsMut.Lock()
+	defer p.execsMut.Unlock()
+	all := map[string][]provision.ExecOptions{}
+	for k, v := range p.execs {
+		all[k] = v[:len(v):len(v)]
 	}
-	p.cmdMut.Unlock()
-	return cmds
+	return all
 }
 
 // Provisioned checks whether the given app has been provisioned.
@@ -761,17 +754,13 @@ func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 // also deletes prepared failures and output. It's like calling
 // NewFakeProvisioner again, without all the allocations.
 func (p *FakeProvisioner) Reset() {
-	p.cmdMut.Lock()
-	p.cmds = nil
-	p.cmdMut.Unlock()
-
 	p.mut.Lock()
 	p.apps = make(map[string]provisionedApp)
 	p.mut.Unlock()
 
-	p.shellMut.Lock()
-	p.shells = make(map[string][]provision.ShellOptions)
-	p.shellMut.Unlock()
+	p.execsMut.Lock()
+	p.execs = make(map[string][]provision.ExecOptions)
+	p.execsMut.Unlock()
 
 	p.mut.Lock()
 	p.nodes = make(map[string]FakeNode)
@@ -1080,124 +1069,6 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string,
 	return nil
 }
 
-// ExecuteCommand will pretend to execute the given command, recording data
-// about it.
-//
-// The output of the command must be prepared with PrepareOutput, and failures
-// must be prepared with PrepareFailure. In case of failure, the prepared
-// output will be sent to the standard error stream, otherwise, it will be sent
-// to the standard error stream.
-//
-// When there is no output nor failure prepared, ExecuteCommand will return a
-// timeout error.
-func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	var (
-		output []byte
-		err    error
-	)
-	command := Cmd{
-		Cmd:  cmd,
-		Args: args,
-		App:  app,
-	}
-	p.cmdMut.Lock()
-	p.cmds = append(p.cmds, command)
-	p.cmdMut.Unlock()
-	units, err := p.Units(app)
-	if err != nil {
-		return err
-	}
-	for range units {
-		select {
-		case output = <-p.outputs:
-			select {
-			case fail := <-p.failures:
-				if fail.method == "ExecuteCommand" {
-					stderr.Write(output)
-					return fail.err
-				}
-				p.failures <- fail
-			default:
-				stdout.Write(output)
-			}
-		case fail := <-p.failures:
-			if fail.method == "ExecuteCommand" {
-				err = fail.err
-				select {
-				case output = <-p.outputs:
-					stderr.Write(output)
-				default:
-				}
-			} else {
-				p.failures <- fail
-			}
-		case <-time.After(2e9):
-			return errors.New("FakeProvisioner timed out waiting for output.")
-		}
-	}
-	return err
-}
-
-func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	var output []byte
-	command := Cmd{
-		Cmd:  cmd,
-		Args: args,
-		App:  app,
-	}
-	p.cmdMut.Lock()
-	p.cmds = append(p.cmds, command)
-	p.cmdMut.Unlock()
-	select {
-	case output = <-p.outputs:
-		stdout.Write(output)
-	case fail := <-p.failures:
-		if fail.method == "ExecuteCommandOnce" {
-			select {
-			case output = <-p.outputs:
-				stderr.Write(output)
-			default:
-			}
-			return fail.err
-		} else {
-			p.failures <- fail
-		}
-	case <-time.After(2e9):
-		return errors.New("FakeProvisioner timed out waiting for output.")
-	}
-	return nil
-}
-
-func (p *FakeProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	var output []byte
-	command := Cmd{
-		Cmd:  cmd,
-		Args: args,
-		App:  app,
-	}
-	p.cmdMut.Lock()
-	p.cmds = append(p.cmds, command)
-	p.cmdMut.Unlock()
-	select {
-	case output = <-p.outputs:
-		stdout.Write(output)
-	case fail := <-p.failures:
-		if fail.method == "ExecuteCommandIsolated" {
-			select {
-			case output = <-p.outputs:
-				stderr.Write(output)
-			default:
-			}
-			return fail.err
-		} else {
-			p.failures <- fail
-		}
-	case <-time.After(2e9):
-		return errors.New("FakeProvisioner timed out waiting for output.")
-	}
-	return nil
-}
-
 func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -1369,31 +1240,44 @@ func (p *FakeProvisioner) RegisterUnit(a provision.App, unitId string, customDat
 	return &provision.UnitNotFoundError{ID: unitId}
 }
 
-func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
-	var unit provision.Unit
-	units, err := p.Units(opts.App)
-	if err != nil {
-		return err
-	}
+func (p *FakeProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
+	p.execsMut.Lock()
+	defer p.execsMut.Unlock()
+	var err error
+	units := opts.Units
 	if len(units) == 0 {
-		return errors.New("app has no units")
-	} else if opts.Unit != "" {
-		for _, u := range units {
-			if u.ID == opts.Unit {
-				unit = u
-				break
+		units = []string{"isolated"}
+	}
+	for _, unitID := range units {
+		p.execs[unitID] = append(p.execs[unitID], opts)
+		select {
+		case output := <-p.outputs:
+			select {
+			case fail := <-p.failures:
+				if fail.method == "ExecuteCommand" {
+					opts.Stderr.Write(output)
+					return fail.err
+				}
+				p.failures <- fail
+			default:
+				opts.Stdout.Write(output)
 			}
+		case fail := <-p.failures:
+			if fail.method == "ExecuteCommand" {
+				err = fail.err
+				select {
+				case output := <-p.outputs:
+					opts.Stderr.Write(output)
+				default:
+				}
+			} else {
+				p.failures <- fail
+			}
+		case <-time.After(2e9):
+			return errors.New("FakeProvisioner timed out waiting for output.")
 		}
-	} else {
-		unit = units[0]
 	}
-	if unit.ID == "" {
-		return errors.New("unit not found")
-	}
-	p.shellMut.Lock()
-	defer p.shellMut.Unlock()
-	p.shells[unit.ID] = append(p.shells[unit.ID], opts)
-	return nil
+	return err
 }
 
 func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {

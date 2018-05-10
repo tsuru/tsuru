@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -228,6 +227,8 @@ type tsuruServiceOpts struct {
 	isIsolatedRun bool
 	labels        *provision.LabelSet
 	replicas      int
+	width         int
+	height        int
 }
 
 func extraRegisterCmds(app provision.App) string {
@@ -410,30 +411,42 @@ func runningTasksForApp(client *clusterClient, a provision.App, taskID string) (
 	return tasks, errors.WithStack(err)
 }
 
-func execInTaskContainer(c *clusterClient, t *swarm.Task, stdout, stderr io.Writer, cmd string, args ...string) error {
+func execInTaskContainer(c *clusterClient, t *swarm.Task, opts provision.ExecOptions) error {
 	nodeClient, err := clientForNode(c, t.NodeID)
 	if err != nil {
 		return err
 	}
-	cmds := []string{"/bin/bash", "-lc", cmd}
-	cmds = append(cmds, args...)
 	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  false,
+		AttachStdin:  opts.Stdin != nil,
 		AttachStdout: true,
 		AttachStderr: true,
-		Tty:          false,
-		Cmd:          cmds,
+		Tty:          opts.Stdin != nil,
+		Cmd:          opts.Cmds,
 		Container:    taskContainerID(t),
 	}
 	exec, err := nodeClient.CreateExec(execCreateOpts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	successCh := make(chan struct{})
 	startExecOptions := docker.StartExecOptions{
-		OutputStream: stdout,
-		ErrorStream:  stderr,
+		OutputStream: opts.Stdout,
+		ErrorStream:  opts.Stderr,
+		InputStream:  opts.Stdin,
+		Tty:          opts.Stdin != nil,
+		RawTerminal:  opts.Stdin != nil,
+		Success:      successCh,
 	}
-	err = nodeClient.StartExec(exec.ID, startExecOptions)
+	errs := make(chan error, 1)
+	go func() {
+		errs <- nodeClient.StartExec(exec.ID, startExecOptions)
+	}()
+	<-successCh
+	close(successCh)
+	if opts.Height != 0 && opts.Width != 0 {
+		nodeClient.ResizeExecTTY(exec.ID, opts.Height, opts.Width)
+	}
+	err = <-errs
 	if err != nil {
 		return errors.WithStack(err)
 	}
