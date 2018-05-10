@@ -229,7 +229,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	// TODO: add a second node after fixing kubernetes FakePods: https://github.com/kubernetes/kubernetes/blob/865321c2d69d249d95079b7f8e2ca99f5430d79e/staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake/fake_pod.go#L67
 	numNodes := 1
 	for i := 1; i <= numNodes; i++ {
-		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+		_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
@@ -247,7 +247,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	for _, a := range []provision.App{app1, app2} {
 		ns := s.client.Namespace(a.GetPool())
 		for i := 1; i <= numNodes; i++ {
-			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+			_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
 					Labels: map[string]string{
