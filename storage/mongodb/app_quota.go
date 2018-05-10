@@ -8,17 +8,17 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/types/app"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ app.QuotaStorage = &AppQuotaStorage{}
+var _ appTypes.QuotaStorage = &AppQuotaStorage{}
 
 type AppQuotaStorage struct{}
 
 // Fake implementation for storage quota.
 type _app struct {
 	name  string
-	Quota app.Quota
+	Quota appTypes.Quota
 }
 
 func (s *AppQuotaStorage) IncInUse(appName string, quantity int) error {
@@ -72,7 +72,7 @@ func (s *AppQuotaStorage) SetInUse(appName string, inUse int) error {
 	return err
 }
 
-func (s *AppQuotaStorage) FindByAppName(appName string) (*app.Quota, error) {
+func (s *AppQuotaStorage) FindByAppName(appName string) (*appTypes.Quota, error) {
 	var a _app
 	conn, err := db.Conn()
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *AppQuotaStorage) FindByAppName(appName string) (*app.Quota, error) {
 	err = conn.Apps().Find(bson.M{"name": appName}).One(&a)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, app.ErrAppNotFound
+			return nil, appTypes.ErrAppNotFound
 		}
 		return nil, err
 	}

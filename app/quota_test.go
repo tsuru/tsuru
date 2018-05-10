@@ -51,7 +51,7 @@ func (s *S) TestReserveUnitsAppNotFound(c *check.C) {
 		},
 	}
 	err := qs.ReleaseUnits(app.Name, 6)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }
 
 func (s *S) TestReserveUnitsQuotaExceeded(c *check.C) {
@@ -172,7 +172,7 @@ func (s *S) TestReleaseUnitsAppNotFound(c *check.C) {
 		},
 	}
 	err := qs.ReleaseUnits(app.Name, 6)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }
 
 func (s *S) TestChangeQuotaLimit(c *check.C) {
@@ -246,5 +246,5 @@ func (s *S) TestChangeQuotaLimitAppNotFound(c *check.C) {
 	}
 	err := qs.ChangeLimit(app.Name, 20)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	apiTypes "github.com/tsuru/tsuru/types/api"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 func validateNodeAddress(address string) error {
@@ -437,7 +438,7 @@ func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	appName := r.URL.Query().Get(":appname")
 	a, err := app.GetByName(appName)
 	if err != nil {
-		if err == app.ErrAppNotFound {
+		if err == appTypes.ErrAppNotFound {
 			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),

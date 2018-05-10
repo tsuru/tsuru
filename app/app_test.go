@@ -61,7 +61,7 @@ func (s *S) TestGetAppByName(c *check.C) {
 
 func (s *S) TestGetAppByNameNotFound(c *check.C) {
 	app, err := GetByName("wat")
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(app, check.IsNil)
 }
 
@@ -91,7 +91,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
 	_, err = GetByName(app.Name)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.AuthQuota.ReserveApp(s.user.Email)
 	c.Assert(err, check.IsNil)
@@ -754,7 +754,7 @@ func (s *S) TestAddUnitsIsAtomic(c *check.C) {
 	err := app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
 	_, err = GetByName(app.Name)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }
 
 func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
@@ -3457,10 +3457,10 @@ func (s *S) TestSetQuotaInUseNotFound(c *check.C) {
 	s.mockService.AppQuota.OnChangeInUse = func(appName string, inUse int) error {
 		c.Assert(appName, check.Equals, app.Name)
 		c.Assert(inUse, check.Equals, 3)
-		return ErrAppNotFound
+		return appTypes.ErrAppNotFound
 	}
 	err := app.SetQuotaInUse(3)
-	c.Assert(err, check.Equals, ErrAppNotFound)
+	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }
 
 func (s *S) TestSetQuotaInUseUnlimited(c *check.C) {

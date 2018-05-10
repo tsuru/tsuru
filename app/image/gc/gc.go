@@ -16,6 +16,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/registry"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const (
@@ -113,7 +114,7 @@ func removeOldImages() error {
 	for appName, appImages := range allAppImages {
 		log.Debugf("[image gc] processing %d images for app %q", len(appImages.BuilderImages)+len(appImages.DeployImages), appName)
 		a, err := app.GetByName(appName)
-		if err != nil && err != app.ErrAppNotFound {
+		if err != nil && err != appTypes.ErrAppNotFound {
 			multi.Add(err)
 			continue
 		}

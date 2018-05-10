@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/net/websocket"
 )
 
@@ -480,7 +481,7 @@ func setupDatabase() error {
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {
 	a, err := app.GetByName(appName)
-	if err == app.ErrAppNotFound {
+	if err == appTypes.ErrAppNotFound {
 		return nil, nil
 	}
 	return a, err

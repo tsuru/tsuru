@@ -552,7 +552,7 @@ func (s *S) TestReserveUnitsToAddAppNotFound(c *check.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "App not found.")
+	c.Assert(err.Error(), check.Equals, "App not found")
 }
 
 func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *check.C) {

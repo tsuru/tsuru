@@ -1701,7 +1701,7 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Matches, "^App not found.\n$")
+	c.Assert(recorder.Body.String(), check.Matches, "^App not found\n$")
 }
 
 func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
@@ -2296,7 +2296,7 @@ func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Check(e.Code, check.Equals, http.StatusNotFound)
-	c.Check(e.Message, check.Equals, "App not found.")
+	c.Check(e.Message, check.Equals, "App not found")
 }
 
 func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {

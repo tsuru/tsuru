@@ -444,7 +444,7 @@ func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, app.ErrAppNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, appTypes.ErrAppNotFound.Error()+"\n")
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {

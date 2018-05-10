@@ -16,9 +16,6 @@ type appQuotaService struct {
 func (s *appQuotaService) ReserveUnits(appName string, quantity int) error {
 	quota, err := s.storage.FindByAppName(appName)
 	if err != nil {
-		if err == appTypes.ErrAppNotFound {
-			return ErrAppNotFound
-		}
 		return err
 	}
 	err = s.CheckAppLimit(quota, quantity)
@@ -43,9 +40,6 @@ func (s *appQuotaService) CheckAppLimit(quota *appTypes.Quota, quantity int) err
 func (s *appQuotaService) ReleaseUnits(appName string, quantity int) error {
 	quota, err := s.storage.FindByAppName(appName)
 	if err != nil {
-		if err == appTypes.ErrAppNotFound {
-			return ErrAppNotFound
-		}
 		return err
 	}
 	err = s.CheckAppUsage(quota, quantity)
@@ -71,9 +65,6 @@ func (s *appQuotaService) CheckAppUsage(quota *appTypes.Quota, quantity int) err
 func (s *appQuotaService) ChangeLimit(appName string, limit int) error {
 	quota, err := s.storage.FindByAppName(appName)
 	if err != nil {
-		if err == appTypes.ErrAppNotFound {
-			return ErrAppNotFound
-		}
 		return err
 	}
 	if limit < 0 {
@@ -90,9 +81,6 @@ func (s *appQuotaService) ChangeLimit(appName string, limit int) error {
 func (s *appQuotaService) ChangeInUse(appName string, inUse int) error {
 	quota, err := s.storage.FindByAppName(appName)
 	if err != nil {
-		if err == appTypes.ErrAppNotFound {
-			return ErrAppNotFound
-		}
 		return err
 	}
 	if inUse < 0 {

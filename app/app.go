@@ -376,7 +376,7 @@ func GetByName(name string) (*App, error) {
 	defer conn.Close()
 	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
 	if err == mgo.ErrNotFound {
-		return nil, ErrAppNotFound
+		return nil, appTypes.ErrAppNotFound
 	}
 	return &app, err
 }

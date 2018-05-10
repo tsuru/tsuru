@@ -29,7 +29,6 @@ import (
 
 var (
 	ErrAppAlreadyExists = errors.New("there is already an app with this name")
-	ErrAppNotFound      = errors.New("App not found.")
 )
 
 // reserveUserApp reserves the app for the user, only if the user has a quota
@@ -353,7 +352,7 @@ var reserveUnitsToAdd = action.Action{
 		defer conn.Close()
 		app, err = GetByName(app.Name)
 		if err != nil {
-			return nil, ErrAppNotFound
+			return nil, appTypes.ErrAppNotFound
 		}
 		err = servicemanager.AppQuota.ReserveUnits(app.Name, n)
 		if err != nil {
