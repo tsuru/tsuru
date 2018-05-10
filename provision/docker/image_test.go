@@ -119,13 +119,11 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.HasLen, 2)
+	sort.Strings(images[0].RepoTags)
+	sort.Strings(images[1].RepoTags)
 	sort.Slice(images, func(i, j int) bool {
 		return strings.Join(images[i].RepoTags, "") < strings.Join(images[j].RepoTags, "")
 	})
-	tags1 := images[0].RepoTags
-	sort.Strings(tags1)
-	tags2 := images[1].RepoTags
-	sort.Strings(tags2)
-	c.Assert(tags1, check.DeepEquals, []string{"localhost:3030/tsuru/app-app1", "localhost:3030/tsuru/app1"})
-	c.Assert(tags2, check.DeepEquals, []string{"localhost:3030/tsuru/app-app2", "localhost:3030/tsuru/app2"})
+	c.Assert(images[0].RepoTags, check.DeepEquals, []string{"localhost:3030/tsuru/app-app1", "localhost:3030/tsuru/app1"})
+	c.Assert(images[1].RepoTags, check.DeepEquals, []string{"localhost:3030/tsuru/app-app2", "localhost:3030/tsuru/app2"})
 }
