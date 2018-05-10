@@ -13,6 +13,8 @@ func init() {
 		PlanStorage:      &PlanStorage{},
 		CacheStorage:     &cacheStorage{},
 		TeamTokenStorage: &teamTokenStorage{},
+		AuthQuotaStorage: &authQuotaStorage{},
+		AppQuotaStorage:  &appQuotaStorage{},
 		WebhookStorage:   &webhookStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)

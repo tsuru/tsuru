@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -15,6 +16,17 @@ type authQuotaService struct {
 func (s *authQuotaService) checkUserExists(email string) error {
 	_, err := s.storage.FindByUserEmail(email)
 	return err
+}
+
+func QuotaService() (authTypes.QuotaService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &authQuotaService{dbDriver.AuthQuotaStorage}, nil
 }
 
 // ReserveApp reserves an app for the user, reserving it in the database. It's

@@ -109,6 +109,14 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
+	servicemanager.AuthQuota, err = auth.QuotaService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AppQuota, err = app.QuotaService()
+	if err != nil {
+		return err
+	}
 	servicemanager.Webhook, err = webhook.WebhookService()
 	return err
 }

@@ -11,9 +11,9 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ appTypes.QuotaStorage = &AppQuotaStorage{}
+var _ appTypes.QuotaStorage = &appQuotaStorage{}
 
-type AppQuotaStorage struct{}
+type appQuotaStorage struct{}
 
 // Fake implementation for storage quota.
 type _app struct {
@@ -21,7 +21,7 @@ type _app struct {
 	Quota appTypes.Quota
 }
 
-func (s *AppQuotaStorage) IncInUse(appName string, quantity int) error {
+func (s *appQuotaStorage) IncInUse(appName string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (s *AppQuotaStorage) IncInUse(appName string, quantity int) error {
 	return err
 }
 
-func (s *AppQuotaStorage) SetLimit(appName string, limit int) error {
+func (s *appQuotaStorage) SetLimit(appName string, limit int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (s *AppQuotaStorage) SetLimit(appName string, limit int) error {
 	return err
 }
 
-func (s *AppQuotaStorage) SetInUse(appName string, inUse int) error {
+func (s *appQuotaStorage) SetInUse(appName string, inUse int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (s *AppQuotaStorage) SetInUse(appName string, inUse int) error {
 	return err
 }
 
-func (s *AppQuotaStorage) FindByAppName(appName string) (*appTypes.Quota, error) {
+func (s *appQuotaStorage) FindByAppName(appName string) (*appTypes.Quota, error) {
 	var a _app
 	conn, err := db.Conn()
 	if err != nil {

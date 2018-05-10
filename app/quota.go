@@ -5,11 +5,23 @@
 package app
 
 import (
+	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type appQuotaService struct {
 	storage appTypes.QuotaStorage
+}
+
+func QuotaService() (appTypes.QuotaService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &appQuotaService{dbDriver.AppQuotaStorage}, nil
 }
 
 // ReserveUnits implements ReserveUnits method from AppQuotaService interface
