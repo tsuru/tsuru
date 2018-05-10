@@ -296,83 +296,42 @@ type Pty struct {
 	Term   string
 }
 
-func (c *Container) Shell(client provision.BuilderDockerClient, stdin io.Reader, stdout, stderr io.Writer, pty Pty) error {
+func (c *Container) Exec(client provision.BuilderDockerClient, stdin io.Reader, stdout, stderr io.Writer, pty Pty, cmds ...string) error {
 	execClient, ok := client.(provision.ExecDockerClient)
 	if !ok {
 		return errors.Errorf("exec is not supported on client %T", client)
 	}
-	cmds := []string{"/usr/bin/env", "TERM=" + pty.Term, "bash", "-l"}
 	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  true,
+		AttachStdin:  stdin != nil,
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmds,
 		Container:    c.ID,
-		Tty:          true,
+		Tty:          stdin != nil,
 	}
 	exec, err := execClient.CreateExec(execCreateOpts)
 	if err != nil {
 		return err
 	}
+	successCh := make(chan struct{})
 	startExecOptions := docker.StartExecOptions{
 		InputStream:  stdin,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
-		Tty:          true,
-		RawTerminal:  true,
+		Tty:          stdin != nil,
+		RawTerminal:  stdin != nil,
+		Success:      successCh,
 	}
 	errs := make(chan error, 1)
 	go func() {
 		errs <- execClient.StartExec(exec.ID, startExecOptions)
 	}()
-	execInfo, err := execClient.InspectExec(exec.ID)
-	for !execInfo.Running && err == nil {
-		select {
-		case startErr := <-errs:
-			return startErr
-		default:
-			execInfo, err = execClient.InspectExec(exec.ID)
-		}
+	<-successCh
+	close(successCh)
+	if pty.Height != 0 && pty.Width != 0 {
+		execClient.ResizeExecTTY(exec.ID, pty.Height, pty.Width)
 	}
-	if err != nil {
-		return err
-	}
-	execClient.ResizeExecTTY(exec.ID, pty.Height, pty.Width)
-	return <-errs
-}
-
-type execErr struct {
-	code int
-}
-
-func (e *execErr) Error() string {
-	return fmt.Sprintf("unexpected exit code: %d", e.code)
-}
-
-func (c *Container) Exec(client provision.BuilderDockerClient, stdout, stderr io.Writer, cmd string, args ...string) error {
-	execClient, ok := client.(provision.ExecDockerClient)
-	if !ok {
-		return errors.Errorf("exec is not supported on client %T", client)
-	}
-	cmds := []string{"/bin/bash", "-lc", cmd}
-	cmds = append(cmds, args...)
-	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  false,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          false,
-		Cmd:          cmds,
-		Container:    c.ID,
-	}
-	exec, err := execClient.CreateExec(execCreateOpts)
-	if err != nil {
-		return err
-	}
-	startExecOptions := docker.StartExecOptions{
-		OutputStream: stdout,
-		ErrorStream:  stderr,
-	}
-	err = execClient.StartExec(exec.ID, startExecOptions)
+	err = <-errs
 	if err != nil {
 		return err
 	}
@@ -384,6 +343,14 @@ func (c *Container) Exec(client provision.BuilderDockerClient, stdout, stderr io
 		return &execErr{code: execData.ExitCode}
 	}
 	return nil
+}
+
+type execErr struct {
+	code int
+}
+
+func (e *execErr) Error() string {
+	return fmt.Sprintf("unexpected exit code: %d", e.code)
 }
 
 // Commits commits the container, creating an image in Docker. It then returns

@@ -616,7 +616,7 @@ func (s *S) TestContainerRemoveStopsContainer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestContainerShell(c *check.C) {
+func (s *S) TestContainerExecWithStdin(c *check.C) {
 	var urls struct {
 		items []url.URL
 		sync.Mutex
@@ -634,7 +634,7 @@ func (s *S) TestContainerShell(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("")
-	err = container.Shell(s.cli, stdin, &stdout, &stderr, Pty{Width: 140, Height: 38, Term: "xterm"})
+	err = container.Exec(s.cli, stdin, &stdout, &stderr, Pty{Width: 140, Height: 38, Term: "xterm"}, "cmd1", "arg1")
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
 	urls.Lock()
@@ -649,14 +649,14 @@ func (s *S) TestContainerShell(c *check.C) {
 	exec, err := client.InspectExec(matches[1])
 	c.Assert(err, check.IsNil)
 	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
-	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+	c.Assert(cmd, check.DeepEquals, []string{"cmd1", "arg1"})
 }
 
 func (s *S) TestContainerExec(c *check.C) {
 	container, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
-	err = container.Exec(s.cli, &stdout, &stderr, "ls", "-lh")
+	err = container.Exec(s.cli, nil, &stdout, &stderr, Pty{}, "ls", "-lh")
 	c.Assert(err, check.IsNil)
 }
 
@@ -668,7 +668,7 @@ func (s *S) TestContainerExecErrorCode(c *check.C) {
 	container, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
-	err = container.Exec(s.cli, &stdout, &stderr, "ls", "-lh")
+	err = container.Exec(s.cli, nil, &stdout, &stderr, Pty{}, "ls", "-lh")
 	c.Assert(err, check.DeepEquals, &execErr{code: 9})
 }
 

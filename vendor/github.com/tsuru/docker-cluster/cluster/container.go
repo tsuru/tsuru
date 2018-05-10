@@ -413,3 +413,11 @@ func (c *Cluster) DownloadFromContainer(containerId string, opts docker.Download
 	}
 	return node.DownloadFromContainer(containerId, opts)
 }
+
+func (c *Cluster) ResizeContainerTTY(containerId string, height, width int) error {
+	node, err := c.getNodeForContainer(containerId)
+	if err != nil {
+		return err
+	}
+	return wrapError(node, node.ResizeContainerTTY(containerId, height, width))
+}

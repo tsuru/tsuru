@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/tsuru/gnuflag"
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/websocket"
 )
@@ -23,17 +24,29 @@ var httpRegexp = regexp.MustCompile(`^http`)
 
 type ShellToContainerCmd struct {
 	GuessingCommand
+	isolated bool
+	fs       *gnuflag.FlagSet
 }
 
 func (c *ShellToContainerCmd) Info() *Info {
 	return &Info{
 		Name:  "app-shell",
-		Usage: "app-shell [unit-id] -a/--app <appname>",
+		Usage: "app-shell [unit-id] -a/--app <appname> [-i/--isolated]",
 		Desc: `Opens a remote shell inside unit, using the API server as a proxy. You
 can access an app unit just giving app name, or specifying the id of the unit.
 You can get the ID of the unit using the app-info command.`,
 		MinArgs: 0,
 	}
+}
+
+func (c *ShellToContainerCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = c.GuessingCommand.Flags()
+		help := "Run shell in a new unit"
+		c.fs.BoolVar(&c.isolated, "isolated", false, help)
+		c.fs.BoolVar(&c.isolated, "i", false, help)
+	}
+	return c.fs
 }
 
 func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
@@ -75,6 +88,7 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 		}
 	}
 	queryString := make(url.Values)
+	queryString.Set("isolated", strconv.FormatBool(c.isolated))
 	queryString.Set("width", strconv.Itoa(width))
 	queryString.Set("height", strconv.Itoa(height))
 	if len(context.Args) > 0 {

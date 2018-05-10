@@ -2612,26 +2612,34 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{Name: "myapp", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", nil)
 	var buf bytes.Buffer
 	args := provision.RunArgs{Once: false, Isolated: false}
 	err = app.Run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "a lot of files")
+	c.Assert(buf.String(), check.Equals, "a lot of filesa lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls -lh"
-	cmds := s.provisioner.GetCmds(expected, &app)
-	c.Assert(cmds, check.HasLen, 1)
+	units, err := app.GetUnits()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 2)
+	c.Assert(allExecs[units[0].GetID()], check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
+	c.Assert(allExecs[units[1].GetID()], check.HasLen, 1)
+	c.Assert(allExecs[units[1].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 	var logs []Applog
 	timeout := time.After(5 * time.Second)
 	for {
 		logs, err = app.LastLogs(10, Applog{})
 		c.Assert(err, check.IsNil)
-		if len(logs) > 1 {
+		if len(logs) > 2 {
 			break
 		}
 		select {
@@ -2642,9 +2650,11 @@ func (s *S) TestRun(c *check.C) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 2)
+	c.Assert(logs, check.HasLen, 3)
 	c.Assert(logs[1].Message, check.Equals, "a lot of files")
 	c.Assert(logs[1].Source, check.Equals, "app-run")
+	c.Assert(logs[2].Message, check.Equals, "a lot of files")
+	c.Assert(logs[2].Source, check.Equals, "app-run")
 }
 
 func (s *S) TestRunOnce(c *check.C) {
@@ -2655,7 +2665,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", nil)
 	var buf bytes.Buffer
 	args := provision.RunArgs{Once: true, Isolated: false}
 	err = app.Run("ls -lh", &buf, args)
@@ -2664,8 +2674,13 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls -lh"
-	cmds := s.provisioner.GetCmds(expected, &app)
-	c.Assert(cmds, check.HasLen, 1)
+	units, err := app.GetUnits()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()], check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 }
 
 func (s *S) TestRunIsolated(c *check.C) {
@@ -2685,8 +2700,10 @@ func (s *S) TestRunIsolated(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls -lh"
-	cmds := s.provisioner.GetCmds(expected, &app)
-	c.Assert(cmds, check.HasLen, 1)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs["isolated"], check.HasLen, 1)
+	c.Assert(allExecs["isolated"][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 }
 
 func (s *S) TestRunWithoutUnits(c *check.C) {
@@ -2716,24 +2733,6 @@ func (s *S) TestRunWithoutUnitsIsolated(c *check.C) {
 	err = app.Run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
-}
-
-func (s *S) TestRunWithoutEnv(c *check.C) {
-	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{
-		Name:      "myapp",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
-	var buf bytes.Buffer
-	args := provision.RunArgs{Once: false, Isolated: false}
-	err = app.run("ls -lh", &buf, args)
-	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "a lot of files")
-	cmds := s.provisioner.GetCmds("ls -lh", &app)
-	c.Assert(cmds, check.HasLen, 1)
 }
 
 func (s *S) TestEnvs(c *check.C) {
@@ -4145,27 +4144,55 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	c.Assert("nonpublic", check.Equals, app.Pool)
 }
 
-func (s *S) TestShellToAnApp(c *check.C) {
+func (s *S) TestShellToUnit(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	s.provisioner.PrepareOutput([]byte("output"))
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
 	unit := units[0]
 	buf := safe.NewBuffer([]byte("echo teste"))
-	opts := provision.ShellOptions{
-		Conn:   &provisiontest.FakeConn{Buf: buf},
+	conn := &provisiontest.FakeConn{Buf: buf}
+	opts := provision.ExecOptions{
+		Stdout: conn,
+		Stderr: conn,
+		Stdin:  conn,
 		Width:  200,
 		Height: 40,
-		Unit:   unit.ID,
+		Units:  []string{unit.ID},
 		Term:   "xterm",
 	}
 	err = a.Shell(opts)
 	c.Assert(err, check.IsNil)
-	expected := []provision.ShellOptions{opts}
-	expected[0].App = &a
-	c.Assert(s.provisioner.Shells(unit.ID), check.DeepEquals, expected)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs[unit.GetID()], check.HasLen, 1)
+	c.Assert(allExecs[unit.GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; bash -l"})
+}
+
+func (s *S) TestShellNoUnits(c *check.C) {
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.PrepareOutput([]byte("output"))
+	buf := safe.NewBuffer([]byte("echo teste"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	opts := provision.ExecOptions{
+		Stdout: conn,
+		Stderr: conn,
+		Stdin:  conn,
+		Width:  200,
+		Height: 40,
+		Term:   "xterm",
+	}
+	err = a.Shell(opts)
+	c.Assert(err, check.IsNil)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs["isolated"], check.HasLen, 1)
+	c.Assert(allExecs["isolated"][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; bash -l"})
 }
 
 func (s *S) TestSetCertificateForApp(c *check.C) {

@@ -41,7 +41,6 @@ type swarmProvisioner struct{}
 
 var (
 	_ provision.Provisioner               = &swarmProvisioner{}
-	_ provision.ShellProvisioner          = &swarmProvisioner{}
 	_ provision.ExecutableProvisioner     = &swarmProvisioner{}
 	_ provision.MessageProvisioner        = &swarmProvisioner{}
 	_ provision.InitializableProvisioner  = &swarmProvisioner{}
@@ -706,125 +705,46 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	return deployImage, nil
 }
 
-func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
+func (p *swarmProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
 	client, err := clusterForPool(opts.App.GetPool())
 	if err != nil {
 		return err
 	}
-	tasks, err := runningTasksForApp(client, opts.App, opts.Unit)
-	if err != nil {
-		return err
+	if opts.Term != "" {
+		opts.Cmds = append([]string{"/usr/bin/env", "TERM=" + opts.Term}, opts.Cmds...)
 	}
-	if len(tasks) == 0 {
-		if opts.Unit != "" {
-			return &provision.UnitNotFoundError{ID: opts.Unit}
+	if len(opts.Units) == 0 {
+		img, err := image.AppCurrentImageName(opts.App.GetName())
+		if err != nil {
+			return err
 		}
-		return provision.ErrEmptyApp
-	}
-	nodeClient, err := clientForNode(client, tasks[0].NodeID)
-	if err != nil {
-		return err
-	}
-	cmds := []string{"/usr/bin/env", "TERM=" + opts.Term, "bash", "-l"}
-	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Cmd:          cmds,
-		Container:    taskContainerID(&tasks[0]),
-		Tty:          true,
-	}
-	exec, err := nodeClient.CreateExec(execCreateOpts)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	startExecOptions := docker.StartExecOptions{
-		InputStream:  opts.Conn,
-		OutputStream: opts.Conn,
-		ErrorStream:  opts.Conn,
-		Tty:          true,
-		RawTerminal:  true,
-	}
-	errs := make(chan error, 1)
-	go func() {
-		errs <- nodeClient.StartExec(exec.ID, startExecOptions)
-	}()
-	execInfo, err := nodeClient.InspectExec(exec.ID)
-	for !execInfo.Running && err == nil {
-		select {
-		case startErr := <-errs:
-			return startErr
-		default:
-			execInfo, err = nodeClient.InspectExec(exec.ID)
+		serviceOpts := tsuruServiceOpts{
+			app:           opts.App,
+			image:         img,
+			isIsolatedRun: true,
+			width:         opts.Width,
+			height:        opts.Height,
 		}
-	}
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	nodeClient.ResizeExecTTY(exec.ID, opts.Height, opts.Width)
-	return <-errs
-}
-
-func (p *swarmProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
+		serviceID, _, err := runOnceCmds(client, serviceOpts, opts.Cmds, opts.Stdin, opts.Stdout, opts.Stderr)
+		if serviceID != "" {
+			removeServiceAndLog(client, serviceID)
+		}
 		return err
 	}
-	tasks, err := runningTasksForApp(client, a, "")
-	if err != nil {
-		return err
-	}
-	if len(tasks) == 0 {
-		return provision.ErrEmptyApp
-	}
-	for _, t := range tasks {
-		err := execInTaskContainer(client, &t, stdout, stderr, cmd, args...)
+	for _, u := range opts.Units {
+		tasks, err := runningTasksForApp(client, opts.App, u)
+		if err != nil {
+			return err
+		}
+		if len(tasks) == 0 {
+			return &provision.UnitNotFoundError{ID: u}
+		}
+		err = execInTaskContainer(client, &tasks[0], opts)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (p *swarmProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return err
-	}
-	tasks, err := runningTasksForApp(client, a, "")
-	if err != nil {
-		return err
-	}
-	if len(tasks) == 0 {
-		return provision.ErrEmptyApp
-	}
-	return execInTaskContainer(client, &tasks[0], stdout, stderr, cmd, args...)
-}
-
-func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	if a.GetDeploys() == 0 {
-		return errors.New("commands can only be executed after the first deploy")
-	}
-	img, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return err
-	}
-	client, err := clusterForPool(a.GetPool())
-	if err != nil {
-		return err
-	}
-	opts := tsuruServiceOpts{
-		app:           a,
-		image:         img,
-		isIsolatedRun: true,
-	}
-	cmds := []string{"/bin/bash", "-lc", cmd}
-	cmds = append(cmds, args...)
-	serviceID, _, err := runOnceCmds(client, opts, cmds, stdout, stderr)
-	if serviceID != "" {
-		removeServiceAndLog(client, serviceID)
-	}
-	return err
 }
 
 type nodeContainerManager struct{}
@@ -1045,14 +965,16 @@ func runOnceBuildCmds(client *clusterClient, a provision.App, cmds []string, img
 		isDeploy:   true,
 		buildImage: buildingImage,
 	}
-	return runOnceCmds(client, opts, cmds, w, w)
+	return runOnceCmds(client, opts, cmds, nil, w, w)
 }
 
-func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, stdout, stderr io.Writer) (string, *swarm.Task, error) {
+func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, stdin io.Reader, stdout, stderr io.Writer) (string, *swarm.Task, error) {
 	spec, err := serviceSpecForApp(opts)
 	if err != nil {
 		return "", nil, err
 	}
+	spec.TaskTemplate.ContainerSpec.OpenStdin = stdin != nil
+	spec.TaskTemplate.ContainerSpec.TTY = stdin != nil
 	spec.TaskTemplate.ContainerSpec.Command = cmds
 	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
 	srv, err := client.CreateService(docker.CreateServiceOptions{
@@ -1071,13 +993,19 @@ func runOnceCmds(client *clusterClient, opts tsuruServiceOpts, cmds []string, st
 		return createdID, nil, err
 	}
 	contID := taskContainerID(&tasks[0])
+	if opts.width != 0 && opts.height != 0 {
+		nodeClient.ResizeContainerTTY(contID, opts.height, opts.width)
+	}
 	attachOpts := docker.AttachToContainerOptions{
 		Container:    contID,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
+		InputStream:  stdin,
 		Logs:         true,
 		Stdout:       true,
 		Stderr:       true,
+		Stdin:        stdin != nil,
+		RawTerminal:  stdin != nil,
 		Stream:       true,
 	}
 	exitCode, err := safeAttachWaitContainer(nodeClient, attachOpts)

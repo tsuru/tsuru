@@ -1235,7 +1235,7 @@ func (s *S) TestDestroyServiceNotFound(c *check.C) {
 	c.Assert(units, check.HasLen, 0)
 }
 
-func (s *S) TestShellToAnAppByAppName(c *check.C) {
+func (s *S) TestExecuteCommandWithStdinToUnit(c *check.C) {
 	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
 	err := app.CreateApp(a, s.user)
@@ -1253,7 +1253,6 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Term: "xterm"}
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	client, _ := docker.NewClient(s.clusterSrv.URL())
@@ -1267,14 +1266,24 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 		sync.Mutex
 	}
 	s.clusterSrv.PrepareExec("*", func() {
-		time.Sleep(500e6)
+		time.Sleep(time.Second)
 	})
 	s.clusterSrv.SetHook(func(r *http.Request) {
 		urls.Lock()
 		urls.items = append(urls.items, *r.URL)
 		urls.Unlock()
 	})
-	err = s.p.Shell(opts)
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: conn,
+		Stdin:  conn,
+		Stderr: conn,
+		Width:  140,
+		Height: 38,
+		Term:   "xterm",
+		Units:  []string{units[0].ID},
+		Cmds:   []string{"cmd1", "arg1"},
+	})
 	c.Assert(err, check.IsNil)
 	urls.Lock()
 	resizeURL := urls.items[len(urls.items)-2]
@@ -1287,10 +1296,10 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	exec, err := client.InspectExec(matches[1])
 	c.Assert(err, check.IsNil)
 	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
-	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "cmd1", "arg1"})
 }
 
-func (s *S) TestShellToAnAppByTaskID(c *check.C) {
+func (s *S) TestExecuteCommandWithStdinNoUnit(c *check.C) {
 	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
 	err := app.CreateApp(a, s.user)
@@ -1310,7 +1319,6 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Unit: units[1].ID, Term: "xterm"}
 	client, _ := docker.NewClient(s.clusterSrv.URL())
 	task, err := client.InspectTask(units[1].ID)
 	c.Assert(err, check.IsNil)
@@ -1321,29 +1329,45 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 		items []url.URL
 		sync.Mutex
 	}
-	s.clusterSrv.PrepareExec("*", func() {
-		time.Sleep(500e6)
-	})
-	s.clusterSrv.SetHook(func(r *http.Request) {
+	hook := func(r *http.Request) {
 		urls.Lock()
 		urls.items = append(urls.items, *r.URL)
 		urls.Unlock()
+	}
+	s.clusterSrv.SetHook(hook)
+	attached := s.attachRegisterHook(c, s.clusterSrv, false, a, hook)
+	var service *swarm.Service
+	s.clusterSrv.CustomHandler("/services/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.clusterSrv.DefaultHandler().ServeHTTP(w, r)
+		service, err = client.InspectService("myapp-isolated-run")
+		c.Assert(err, check.IsNil)
+	}))
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: conn,
+		Stdin:  conn,
+		Stderr: conn,
+		Width:  140,
+		Height: 38,
+		Term:   "xterm",
+		Cmds:   []string{"cmd1", "arg1"},
 	})
-	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
+	c.Assert(<-attached, check.Equals, true)
+	_, err = client.InspectService("myapp-isolated-run")
+	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
+	l := provision.LabelSet{Labels: service.Spec.Labels, Prefix: tsuruLabelPrefix}
+	c.Assert(l.IsIsolatedRun(), check.Equals, true)
 	urls.Lock()
-	resizeURL := urls.items[len(urls.items)-2]
+	resizeURL := urls.items[3]
 	urls.Unlock()
-	execResizeRegexp := regexp.MustCompile(`^.*/exec/(.*)/resize$`)
+	execResizeRegexp := regexp.MustCompile(`^.*/containers/(.*)/resize$`)
 	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
 	c.Assert(matches, check.HasLen, 2)
 	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
 	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
-	exec, err := client.InspectExec(matches[1])
-	c.Assert(err, check.IsNil)
-	c.Assert(exec.ContainerID, check.Equals, task.Status.ContainerStatus.ContainerID)
-	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
-	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+	c.Assert(matches[1], check.Not(check.Equals), task.Status.ContainerStatus.ContainerID)
+	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "cmd1", "arg1"})
 }
 
 func (s *S) TestExecuteCommand(c *check.C) {
@@ -1377,38 +1401,25 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var executed int
 	s.clusterSrv.SetHook(func(r *http.Request) {
-		s.clusterSrv.PrepareExec("*", func() {
-			executed++
-		})
+		if strings.HasSuffix(r.URL.Path, "/exec") {
+			s.clusterSrv.PrepareExec("*", func() {
+				executed++
+			})
+		}
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Units:  []string{units[0].ID, units[2].ID},
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, 2)
 }
 
-func (s *S) TestExecuteCommandNoRunningTask(c *check.C) {
-	s.addCluster(c)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 3, "web", nil)
-	c.Assert(err, check.IsNil)
-	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
-	c.Assert(err, check.DeepEquals, provision.ErrEmptyApp)
-}
-
-func (s *S) TestExecuteCommandOnce(c *check.C) {
+func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
 	err := app.CreateApp(a, s.user)
@@ -1445,39 +1456,18 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 		})
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Units:  []string{units[0].ID},
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, 1)
 }
 
-func (s *S) TestExecuteCommandOnceNoRunningTask(c *check.C) {
-	s.addCluster(c)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 3, "web", nil)
-	c.Assert(err, check.IsNil)
-	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
-	c.Assert(err, check.DeepEquals, provision.ErrEmptyApp)
-}
-
-func (s *S) TestExecuteCommandIsolated(c *check.C) {
-	// containerChan := make(chan *docker.Container, 1)
-	// srv, err := testing.NewServer("127.0.0.1:0", containerChan, nil)
-	// c.Assert(err, check.IsNil)
-	// defer srv.Stop()
-	// err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
-	// c.Assert(err, check.IsNil)
+func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	s.addCluster(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
 	err := app.CreateApp(a, s.user)
@@ -1500,25 +1490,18 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 		service, err = client.InspectService("myapp-isolated-run")
 		c.Assert(err, check.IsNil)
 	}))
-	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Cmds:   []string{"ls", "-l"},
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
-	// cont := <-containerChan
-	// c.Assert(cont.Image, check.Equals, "myapp:v1")
 	_, err = client.InspectService("myapp-isolated-run")
 	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
 	l := provision.LabelSet{Labels: service.Spec.Labels, Prefix: tsuruLabelPrefix}
 	c.Assert(l.IsIsolatedRun(), check.Equals, true)
-}
-
-func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
-	s.addCluster(c)
-	a := &app.App{Name: "myapp-2", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
-	c.Assert(err, check.ErrorMatches, "*deploy*")
 }
 
 func (s *S) TestUpgradeNodeContainerCreatesBaseService(c *check.C) {
@@ -1695,6 +1678,10 @@ func (s *S) TestNodeForNodeDataNoCluster(c *check.C) {
 }
 
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
+	return s.attachRegisterHook(c, srv, register, a, nil)
+}
+
+func (s *S) attachRegisterHook(c *check.C, srv *testing.DockerServer, register bool, a provision.App, hook func(r *http.Request)) <-chan bool {
 	chAttached := make(chan bool, 1)
 	srv.CustomHandler("/containers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
@@ -1711,6 +1698,9 @@ func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool,
 			chAttached <- true
 		}
 		srv.DefaultHandler().ServeHTTP(w, r)
+		if hook != nil {
+			hook(r)
+		}
 	}))
 	return chAttached
 }

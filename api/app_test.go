@@ -2683,8 +2683,13 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	cmds := s.provisioner.GetCmds(expected, &a)
-	c.Assert(cmds, check.HasLen, 1)
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()], check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -2715,8 +2720,13 @@ func (s *S) TestRun(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	cmds := s.provisioner.GetCmds(expected, &a)
-	c.Assert(cmds, check.HasLen, 1)
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()], check.HasLen, 1)
+	c.Assert(allExecs[units[0].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -2747,8 +2757,10 @@ func (s *S) TestRunIsolated(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	cmds := s.provisioner.GetCmds(expected, &a)
-	c.Assert(cmds, check.HasLen, 1)
+	allExecs := s.provisioner.AllExecs()
+	c.Assert(allExecs, check.HasLen, 1)
+	c.Assert(allExecs["isolated"], check.HasLen, 1)
+	c.Assert(allExecs["isolated"][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),

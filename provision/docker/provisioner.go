@@ -78,7 +78,6 @@ type dockerProvisioner struct {
 var (
 	_ provision.Provisioner               = &dockerProvisioner{}
 	_ provision.RollbackableDeployer      = &dockerProvisioner{}
-	_ provision.ShellProvisioner          = &dockerProvisioner{}
 	_ provision.ExecutableProvisioner     = &dockerProvisioner{}
 	_ provision.SleepableProvisioner      = &dockerProvisioner{}
 	_ provision.MessageProvisioner        = &dockerProvisioner{}
@@ -510,7 +509,7 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io
 	}
 	cmds := yamlData.Hooks.Restart.After
 	for _, cmd := range cmds {
-		err := cont.Exec(p.ClusterClient(), w, w, cmd)
+		err := cont.Exec(p.ClusterClient(), nil, w, w, container.Pty{}, "/bin/sh", "-lc", cmd)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't execute restart:after hook %q(%s)", cmd, cont.ShortID())
 		}
@@ -706,40 +705,36 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	return p.checkContainer(cont)
 }
 
-func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := p.listRunnableContainersByApp(app.GetName())
-	if err != nil {
-		return err
+func (p *dockerProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
+	if opts.Term != "" {
+		opts.Cmds = append([]string{"/usr/bin/env", "TERM=" + opts.Term}, opts.Cmds...)
 	}
-	if len(containers) == 0 {
-		return provision.ErrEmptyApp
+	pty := container.Pty{
+		Width:  opts.Width,
+		Height: opts.Height,
+		Term:   opts.Term,
 	}
-	return containers[0].Exec(p.ClusterClient(), stdout, stderr, cmd, args...)
-}
-
-func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := p.listRunnableContainersByApp(app.GetName())
-	if err != nil {
-		return err
+	if len(opts.Units) == 0 {
+		imageID, err := image.AppCurrentImageName(opts.App.GetName())
+		if err != nil {
+			return err
+		}
+		return p.runCommandInContainer(imageID, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
 	}
-	if len(containers) == 0 {
-		return provision.ErrEmptyApp
-	}
-	for _, c := range containers {
-		err = c.Exec(p.ClusterClient(), stdout, stderr, cmd, args...)
+	for _, u := range opts.Units {
+		cont, err := p.GetContainer(u)
+		if err != nil {
+			return err
+		}
+		if cont.AppName != opts.App.GetName() {
+			return errors.Errorf("container %q does not belong to app %q", cont.ID, opts.App.GetName())
+		}
+		err = cont.Exec(p.ClusterClient(), opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (p *dockerProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	imageID, err := image.AppCurrentImageName(app.GetName())
-	if err != nil {
-		return err
-	}
-	return p.runCommandInContainer(imageID, cmd, app, stdout, stderr)
 }
 
 func (p *dockerProvisioner) Collection() *storage.Collection {
@@ -819,22 +814,6 @@ func (p *dockerProvisioner) RegisterUnit(a provision.App, unitId string, customD
 		return err
 	}
 	return p.checkContainer(cont)
-}
-
-func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
-	var (
-		c   *container.Container
-		err error
-	)
-	if opts.Unit != "" {
-		c, err = p.GetContainer(opts.Unit)
-	} else {
-		c, err = p.getOneContainerByAppName(opts.App.GetName())
-	}
-	if err != nil {
-		return err
-	}
-	return c.Shell(p.ClusterClient(), opts.Conn, opts.Conn, opts.Conn, container.Pty{Width: opts.Width, Height: opts.Height, Term: opts.Term})
 }
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {

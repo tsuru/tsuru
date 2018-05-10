@@ -72,7 +72,7 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	return remotecommand.NewSPDYExecutorForTransports(wrapper, upgradeRoundTripper, method, url)
 }
 
-func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool) error {
+func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -97,11 +97,14 @@ func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 	}
 	var sizeQueue remotecommand.TerminalSizeQueue
 	if tty {
-		sizeQueue = &fixedSizeQueue{
-			sz: &remotecommand.TerminalSize{
+		if size == nil {
+			size = &remotecommand.TerminalSize{
 				Width:  1000,
 				Height: 1000,
-			},
+			}
+		}
+		sizeQueue = &fixedSizeQueue{
+			sz: size,
 		}
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
@@ -270,7 +273,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		return err
 	}
 	if params.attachInput != nil {
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, commitContainer, false)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, commitContainer, false, nil)
 		if err != nil {
 			return fmt.Errorf("error attaching to %s/%s: %v", pod.Name, commitContainer, err)
 		}
@@ -936,7 +939,7 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
-	err = doAttach(params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false)
+	err = doAttach(params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
