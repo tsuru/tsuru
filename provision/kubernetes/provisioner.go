@@ -29,6 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -298,7 +300,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			srvName := deploymentNameForApp(podApp, webProcessName)
 			port, ok := portMap[srvName]
 			if !ok {
-				port, err = getServicePort(client, srvName)
+				port, err = getServicePort(client, srvName, pod.ObjectMeta.Namespace)
 				if err != nil {
 					return nil, err
 				}
@@ -404,9 +406,17 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		}
 		sel = sel.Add(*req)
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: sel.String(),
-	})
+	restCli, err := rest.RESTClientFor(client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	opts := metav1.ListOptions{LabelSelector: sel.String()}
+	var pods apiv1.PodList
+	err = restCli.Get().
+		Resource("pods").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Do().
+		Into(&pods)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +443,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName)
+	pubPort, err := getServicePort(client, srvName, client.Namespace(a.GetPool()))
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +473,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -614,15 +624,16 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			return errors.WithStack(err)
 		}
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name, "")
+		pods, err = podsFromNode(client, node.Name, tsuruLabelPrefix+provision.LabelAppPool)
 		if err != nil {
 			return err
 		}
+		ns := client.Namespace(nodeWrapper.Pool())
 		for _, pod := range pods {
-			err = client.CoreV1().Pods(client.Namespace()).Evict(&policy.Eviction{
+			err = client.CoreV1().Pods(ns).Evict(&policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
-					Namespace: client.Namespace(),
+					Namespace: ns,
 				},
 			})
 			if err != nil {
@@ -735,7 +746,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName)
+		defer cleanupPod(client, deployPodName, client.Namespace(a.GetPool()))
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -837,7 +848,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provi
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
@@ -948,5 +959,5 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName)
+	return deleteVolume(client, volumeName, client.Namespace(pool))
 }

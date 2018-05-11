@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -100,9 +101,20 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: s.client.Namespace()},
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-pool")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}))
+	defer srv.Close()
+	s.mock.MockfakeNodes(c, srv.URL)
+	ns := s.client.Namespace("")
+	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: ns},
 	})
 	c.Assert(err, check.IsNil)
 	evictionCalled := false
@@ -473,7 +485,7 @@ func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
-	_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
+	_, err := s.client.CoreV1().Pods("default").Create(&apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: "non-app-pod",
 	}})
 	c.Assert(err, check.IsNil)
@@ -524,46 +536,19 @@ func (s *S) TestUnits(c *check.C) {
 	})
 }
 
-func (s *S) TestUnitsSkipTerminating(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "myworker",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
-	c.Assert(err, check.IsNil)
-	wait()
-	podlist, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(podlist.Items), check.Equals, 2)
-	for _, p := range podlist.Items {
-		if p.Labels["tsuru.io/app-process"] == "worker" {
-			deadline := int64(10)
-			p.Spec.ActiveDeadlineSeconds = &deadline
-			_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(&p)
-			c.Assert(err, check.IsNil)
-		}
-	}
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
-}
-
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
-	a1 := provisiontest.NewFakeApp("myapp", "python", 0)
-	a2 := provisiontest.NewFakeApp("otherapp", "python", 0)
+	a1 := provisiontest.NewFakeAppWithPool("myapp", "python", "pool1", 0)
+	a2 := provisiontest.NewFakeAppWithPool("otherapp", "python", "pool2", 0)
 	nNodes := 3
+	poolIndex := 1
 	for i := 1; i <= nNodes; i++ {
 		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("n%d", i)},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("n%d", i),
+				Labels: map[string]string{
+					"tsuru.io/pool": fmt.Sprintf("pool%d", poolIndex),
+				},
+			},
 			Status: apiv1.NodeStatus{
 				Addresses: []apiv1.NodeAddress{
 					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
@@ -571,12 +556,18 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			},
 		})
 		c.Assert(err, check.IsNil)
+		if poolIndex <= 2 {
+			poolIndex++
+		} else {
+			poolIndex = 1
+		}
 	}
 	for _, a := range []provision.App{a1, a2} {
+		ns := s.client.Namespace(a.GetPool())
 		for i := 1; i <= nNodes; i++ {
-			_, err := s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("p1-%s-%d", a.GetName(), i),
+					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
 					Labels: map[string]string{
 						"tsuru.io/app-name":     a.GetName(),
 						"tsuru.io/app-process":  "web",
@@ -602,7 +593,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	})
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 6)
+	c.Assert(units, check.HasLen, 6)
 	c.Assert(listNodesCalls, check.Equals, 1)
 	c.Assert(listPodsCalls, check.Equals, 1)
 	sort.Slice(units, func(i, j int) bool {
@@ -610,8 +601,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	})
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
-			ID:          "p1-myapp-1",
-			Name:        "p1-myapp-1",
+			ID:          "myapp-1",
+			Name:        "myapp-1",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -620,8 +611,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
 		},
 		{
-			ID:          "p1-myapp-2",
-			Name:        "p1-myapp-2",
+			ID:          "myapp-2",
+			Name:        "myapp-2",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -630,8 +621,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
 		},
 		{
-			ID:          "p1-myapp-3",
-			Name:        "p1-myapp-3",
+			ID:          "myapp-3",
+			Name:        "myapp-3",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -640,8 +631,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
 		},
 		{
-			ID:          "p1-otherapp-1",
-			Name:        "p1-otherapp-1",
+			ID:          "otherapp-1",
+			Name:        "otherapp-1",
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -650,8 +641,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
 		},
 		{
-			ID:          "p1-otherapp-2",
-			Name:        "p1-otherapp-2",
+			ID:          "otherapp-2",
+			Name:        "otherapp-2",
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -660,8 +651,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
 		},
 		{
-			ID:          "p1-otherapp-3",
-			Name:        "p1-otherapp-3",
+			ID:          "otherapp-3",
+			Name:        "otherapp-3",
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -672,8 +663,57 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	})
 }
 
+func (s *S) TestUnitsSkipTerminating(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+			{"metadata": {"name": "myapp", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	ns := s.client.Namespace(a.GetPool())
+	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 2)
+	for _, p := range podlist.Items {
+		if p.Labels["tsuru.io/app-process"] == "worker" {
+			deadline := int64(10)
+			p.Spec.ActiveDeadlineSeconds = &deadline
+			_, err = s.client.CoreV1().Pods(ns).Update(&p)
+			c.Assert(err, check.IsNil)
+		}
+	}
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
+}
+
 func (s *S) TestUnitsEmpty(c *check.C) {
-	s.mock.MockfakeNodes(c)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": []}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}))
+	defer srv.Close()
+	s.mock.MockfakeNodes(c, srv.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -695,7 +735,16 @@ func (s *S) TestUnitsTimeoutShort(c *check.C) {
 	defer config.Unset("kubernetes")
 	block := make(chan bool)
 	blackhole := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block
+		if r.URL.Path == "/api/v1/pods" {
+			c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+			output := `{"items": [
+				{"metadata": {"name": "myapp"}}
+			]}`
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(output))
+		} else {
+			<-block
+		}
 	}))
 	defer func() { close(block); blackhole.Close() }()
 	ClientForConfig = defaultClientForConfig
@@ -732,6 +781,14 @@ func (s *S) TestGetNodeWithoutCluster(c *check.C) {
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+		{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+	]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -779,6 +836,16 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 }
 
 func (s *S) TestAddUnits(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-3-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -903,16 +970,16 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	services, err := s.client.CoreV1().Services(s.client.Namespace()).List(metav1.ListOptions{})
+	services, err := s.client.CoreV1().Services(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
 }
@@ -979,7 +1046,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -993,6 +1060,40 @@ func (s *S) TestDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	var counter int32
+	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		return false, nil, nil
+	})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
 
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
@@ -1092,7 +1193,7 @@ func (s *S) TestRollback(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1154,6 +1255,8 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 }
 
 func (s *S) TestUpgradeNodeContainer(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -1178,24 +1281,34 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+
+	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace("")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 3)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace("p1")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.Namespace("p2")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
 }
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
-	_, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).Create(&v1beta2.DaemonSet{
+	ns := s.client.Namespace("p1")
+	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
-			Namespace: s.client.Namespace(),
+			Namespace: ns,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(s.client.Namespace()).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: s.client.Namespace(),
+			Namespace: ns,
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-node-container":   "true",
@@ -1208,10 +1321,10 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -1401,15 +1514,15 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "stderr data")
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace()).Get("app-myapp", metav1.GetOptions{})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.Pool)).Get("app-myapp", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app-myapp",
-			Namespace: s.client.Namespace(),
+			Namespace: s.client.Namespace(a.Pool),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/app-name":    "myapp",
@@ -1417,6 +1530,34 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestExecuteCommandIsolatedEnsureNamespace(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	var counter int32
+	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		atomic.AddInt32(&counter, 1)
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.Pool))
+		return false, nil, nil
+	})
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
 
 func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {

@@ -39,8 +39,13 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 }
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	err := ensureNamespaceForPool(client, pool)
+	if err != nil {
+		return err
+	}
 	dsName := daemonSetName(config.Name, pool)
-	oldDs, err := client.AppsV1beta2().DaemonSets(client.Namespace()).Get(dsName, metav1.GetOptions{})
+	ns := client.Namespace(pool)
+	oldDs, err := client.AppsV1beta2().DaemonSets(ns).Get(dsName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -87,7 +92,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		}
 		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
 		oldDs.Spec.Template.Spec.Affinity = affinity
-		_, err = client.AppsV1beta2().DaemonSets(client.Namespace()).Update(oldDs)
+		_, err = client.AppsV1beta2().DaemonSets(ns).Update(oldDs)
 		return errors.WithStack(err)
 	}
 	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
@@ -157,7 +162,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		Provisioner:       provisionerName,
 		Prefix:            tsuruLabelPrefix,
 	})
-	err = ensureServiceAccount(client, serviceAccountName, accountLabels)
+	err = ensureServiceAccount(client, serviceAccountName, accountLabels, ns)
 	if err != nil {
 		return err
 	}
@@ -168,7 +173,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	ds := &v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
-			Namespace: client.Namespace(),
+			Namespace: ns,
 			Labels:    ls.ToLabels(),
 		},
 		Spec: v1beta2.DaemonSetSpec{
@@ -217,9 +222,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		},
 	}
 	if oldDs != nil {
-		_, err = client.AppsV1beta2().DaemonSets(client.Namespace()).Update(ds)
+		_, err = client.AppsV1beta2().DaemonSets(ns).Update(ds)
 	} else {
-		_, err = client.AppsV1beta2().DaemonSets(client.Namespace()).Create(ds)
+		_, err = client.AppsV1beta2().DaemonSets(ns).Create(ds)
 	}
 	return errors.WithStack(err)
 }

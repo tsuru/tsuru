@@ -45,24 +45,26 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	Namespace() string
+	Namespace(string) string
 	GetCluster() *cluster.Cluster
 }
 
 type KubeMock struct {
-	client  *ClientWrapper
-	Stream  map[string]StreamResult
-	LogHook func(w io.Writer, r *http.Request)
-	p       provision.Provisioner
+	client      *ClientWrapper
+	Stream      map[string]StreamResult
+	LogHook     func(w io.Writer, r *http.Request)
+	DefaultHook func(w http.ResponseWriter, r *http.Request)
+	p           provision.Provisioner
 }
 
 func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
-		client:  cluster,
-		Stream:  stream,
-		LogHook: nil,
-		p:       p,
+		client:      cluster,
+		Stream:      stream,
+		LogHook:     nil,
+		DefaultHook: nil,
+		p:           p,
 	}
 }
 
@@ -93,7 +95,7 @@ type clientPodsWrapper struct {
 
 func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *rest.Request {
 	cli, _ := rest.RESTClientFor(c.cluster.RestConfig())
-	return cli.Get().Namespace(c.cluster.Namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, scheme.ParameterCodec)
+	return cli.Get().Namespace(c.cluster.Namespace("")).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, scheme.ParameterCodec)
 }
 
 type StreamResult struct {
@@ -239,6 +241,8 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			}
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "my log message")
+		} else if s.DefaultHook != nil {
+			s.DefaultHook(w, r)
 		}
 	}))
 	return srv, &wg
@@ -317,7 +321,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(pod)
+				_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
@@ -373,7 +377,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Spec.NodeName = "n1"
 			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
-			})
+			}, dep.Namespace)
 			c.Assert(err, check.IsNil)
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
@@ -386,13 +390,13 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 	}, &wg
 }
 
-func cleanupPods(client ClusterInterface, opts metav1.ListOptions) error {
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(opts)
+func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string) error {
+	pods, err := client.CoreV1().Pods(namespace).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.CoreV1().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
+		err = client.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}

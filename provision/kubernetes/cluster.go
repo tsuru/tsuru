@@ -5,11 +5,13 @@
 package kubernetes
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -128,11 +130,42 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) Namespace() string {
-	if c.CustomData == nil || c.CustomData[namespaceClusterKey] == "" {
-		return "default"
+func (c *ClusterClient) Namespace(poolName string) string {
+	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
+	return c.namespace(poolName, usePoolNamespaces)
+}
+
+func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) string {
+	prefix := "default"
+	if usePoolNamespaces {
+		prefix = "tsuru"
 	}
-	return c.CustomData[namespaceClusterKey]
+	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
+		prefix = c.CustomData[namespaceClusterKey]
+	}
+
+	if usePoolNamespaces && len(poolName) > 0 {
+		return fmt.Sprintf("%s-%s", prefix, poolName)
+	}
+	return prefix
+}
+
+func (c *ClusterClient) Namespaces(poolNames []string) []string {
+	if len(poolNames) == 0 {
+		return nil
+	}
+
+	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
+	namespaces := []string{}
+	nsMap := map[string]struct{}{}
+	for _, poolName := range poolNames {
+		ns := c.namespace(poolName, usePoolNamespaces)
+		if _, ok := nsMap[ns]; !ok {
+			namespaces = append(namespaces, ns)
+			nsMap[ns] = struct{}{}
+		}
+	}
+	return namespaces
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
