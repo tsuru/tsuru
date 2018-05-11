@@ -664,6 +664,14 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 }
 
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+			{"metadata": {"name": "myapp", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -698,7 +706,14 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 }
 
 func (s *S) TestUnitsEmpty(c *check.C) {
-	s.mock.MockfakeNodes(c)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": []}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}))
+	defer srv.Close()
+	s.mock.MockfakeNodes(c, srv.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -720,7 +735,16 @@ func (s *S) TestUnitsTimeoutShort(c *check.C) {
 	defer config.Unset("kubernetes")
 	block := make(chan bool)
 	blackhole := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block
+		if r.URL.Path == "/api/v1/pods" {
+			c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+			output := `{"items": [
+				{"metadata": {"name": "myapp"}}
+			]}`
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(output))
+		} else {
+			<-block
+		}
 	}))
 	defer func() { close(block); blackhole.Close() }()
 	ClientForConfig = defaultClientForConfig
@@ -757,6 +781,14 @@ func (s *S) TestGetNodeWithoutCluster(c *check.C) {
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+		{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+	]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
@@ -804,6 +836,16 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 }
 
 func (s *S) TestAddUnits(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-3-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
