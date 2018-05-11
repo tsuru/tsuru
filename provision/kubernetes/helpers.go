@@ -409,23 +409,35 @@ func cleanupPod(client *ClusterClient, podName, namespace string) error {
 	return nil
 }
 
-func podsFromNode(client *ClusterClient, nodeName, labelFilter, namespace string) ([]apiv1.Pod, error) {
-	podList, err := client.CoreV1().Pods(namespace).List(metav1.ListOptions{
+func podsFromNode(client *ClusterClient, nodeName, labelFilter string) ([]apiv1.Pod, error) {
+	restCli, err := rest.RESTClientFor(client.restConfig)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	opts := metav1.ListOptions{
 		LabelSelector: labelFilter,
 		FieldSelector: fields.SelectorFromSet(fields.Set{
 			"spec.nodeName": nodeName,
 		}).String(),
-	})
+	}
+	var podList apiv1.PodList
+	err = restCli.Get().
+		Resource("pods").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Do().
+		Into(&podList)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return podList.Items, nil
 }
 
-func appPodsFromNode(client *ClusterClient, nodeName, namespace string) ([]apiv1.Pod, error) {
+func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error) {
 	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	l.SetIsService()
-	return podsFromNode(client, nodeName, fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String(), namespace)
+	serviceSelector := fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String()
+	labelFilter := fmt.Sprintf("%s,%s%s", serviceSelector, tsuruLabelPrefix, provision.LabelAppPool)
+	return podsFromNode(client, nodeName, labelFilter)
 }
 
 func getServicePort(client *ClusterClient, srvName, namespace string) (int32, error) {

@@ -6,6 +6,8 @@ package kubernetes
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 
 	"github.com/tsuru/config"
@@ -19,6 +21,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -159,6 +162,15 @@ func (s *S) TestNodeProvisioner(c *check.C) {
 }
 
 func (s *S) TestNodeUnits(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/is-service=true,tsuru.io/app-pool")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	routertest.FakeRouter.Reset()
@@ -189,9 +201,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
+			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			Address:     &url.URL{Scheme: "http", Host: ":30000"},
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -199,9 +211,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "worker",
 			Type:        "python",
-			IP:          "192.168.99.1",
+			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			Address:     &url.URL{Scheme: "http", Host: ""},
 		},
 	})
 }
@@ -210,6 +222,17 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/is-service=true,tsuru.io/app-pool")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "otherapp-1", "labels": {"tsuru.io/app-name": "otherapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}))
+	defer srv.Close()
+	s.mock.MockfakeNodes(c, srv.URL)
 	p1 := provisiontest.NewFakeProvisioner()
 	p1.Name = "fakeprov"
 	provision.Register(p1.Name, func() (provision.Provisioner, error) {
@@ -229,19 +252,10 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	// TODO: add a second node after fixing kubernetes FakePods: https://github.com/kubernetes/kubernetes/blob/865321c2d69d249d95079b7f8e2ca99f5430d79e/staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake/fake_pod.go#L67
 	numNodes := 1
 	for i := 1; i <= numNodes; i++ {
-		_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("n%d", i),
-				Labels: map[string]string{
-					"tsuru.io/pool": fmt.Sprintf("pool%d", i),
-				},
-			},
-			Status: apiv1.NodeStatus{
-				Addresses: []apiv1.NodeAddress{
-					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
-				},
-			},
-		})
+		node, err := s.client.CoreV1().Nodes().Get(fmt.Sprintf("n%d", i), metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		node.ObjectMeta.Labels["tsuru.io/pool"] = fmt.Sprintf("pool%d", i)
+		_, err = s.client.CoreV1().Nodes().Update(node)
 		c.Assert(err, check.IsNil)
 	}
 	for _, a := range []provision.App{app1, app2} {
@@ -275,7 +289,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 		return false, nil, nil
 	})
 
-	node, err := s.p.GetNode("192.168.55.1")
+	node, err := s.p.GetNode("192.168.99.1")
 	c.Assert(err, check.IsNil)
 	units, err := node.Units()
 	c.Assert(err, check.IsNil)
@@ -287,9 +301,9 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			IP:          "",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: ""},
 		},
 		{
 			ID:          "otherapp-1",
@@ -297,14 +311,23 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			IP:          "",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: ""},
 		},
 	})
 }
 
 func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/is-service=true,tsuru.io/app-pool")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
 	ns := s.client.Namespace("")
 	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -347,9 +370,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.99.1",
+			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			Address:     &url.URL{Scheme: "http", Host: ":30000"},
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -357,9 +380,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "worker",
 			Type:        "python",
-			IP:          "192.168.99.1",
+			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			Address:     &url.URL{Scheme: "http", Host: ""},
 		},
 	})
 }

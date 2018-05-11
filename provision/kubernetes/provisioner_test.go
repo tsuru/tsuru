@@ -101,7 +101,17 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
-	s.mock.MockfakeNodes(c)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-pool")
+		output := `{"items": [
+			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
+			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}))
+	defer srv.Close()
+	s.mock.MockfakeNodes(c, srv.URL)
 	ns := s.client.Namespace("")
 	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: ns},

@@ -7,7 +7,6 @@ package kubernetes
 import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/pool"
 	apiv1 "k8s.io/api/core/v1"
 )
 
@@ -75,25 +74,10 @@ func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
-	pools, err := pool.ListAllPools()
+	pods, err := appPodsFromNode(n.cluster, n.node.Name)
 	if err != nil {
 		return nil, err
 	}
-	poolNames := make([]string, len(pools))
-	for i, pool := range pools {
-		poolNames[i] = pool.Name
-	}
-	namespaces := n.cluster.Namespaces(poolNames)
-
-	pods := []apiv1.Pod{}
-	for _, ns := range namespaces {
-		p, err := appPodsFromNode(n.cluster, n.node.Name, ns)
-		if err != nil {
-			return nil, err
-		}
-		pods = append(pods, p...)
-	}
-
 	return n.prov.podsToUnits(n.cluster, pods, nil, n.node)
 }
 

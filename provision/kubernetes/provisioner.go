@@ -620,12 +620,12 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		ns := client.Namespace(nodeWrapper.Pool())
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name, "", ns)
+		pods, err = podsFromNode(client, node.Name, tsuruLabelPrefix+provision.LabelAppPool)
 		if err != nil {
 			return err
 		}
+		ns := client.Namespace(nodeWrapper.Pool())
 		for _, pod := range pods {
 			err = client.CoreV1().Pods(ns).Evict(&policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
