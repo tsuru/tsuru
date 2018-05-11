@@ -11,6 +11,6 @@ import (
 
 var _ = check.Suite(&storagetest.AuthQuotaSuite{
 	UserStorage:      &UserStorage{},
-	AuthQuotaStorage: &AuthQuotaStorage{},
+	AuthQuotaStorage: &authQuotaStorage{},
 	SuiteHooks:       &mongodbBaseTest{},
 })
