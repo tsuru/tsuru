@@ -66,7 +66,7 @@ func (s *S) SetUpTest(c *check.C) {
 	queue.ResetQueue()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := app.GetByName(appName)
-		if err ==  appTypes.ErrAppNotFound {
+		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
 		return a, err

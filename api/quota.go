@@ -55,8 +55,8 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Quota updated
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Limit lower than allocated value
 //   404: User not found
-//   412: Limit lower than allocated value
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	email := r.URL.Query().Get(":email")
@@ -94,7 +94,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	err = servicemanager.AuthQuota.ChangeLimit(user.Email, limit)
 	if err == authTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
-			Code:    http.StatusPreconditionFailed,
+			Code:    http.StatusForbidden,
 			Message: "Limit lower than allocated value",
 		}
 	}
@@ -130,8 +130,8 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Quota updated
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Limit lower than allocated
 //   404: Application not found
-//   412: Limit lower than allocated
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	appName := r.URL.Query().Get(":appname")
@@ -164,7 +164,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	err = a.SetQuotaLimit(limit)
 	if err == appTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
-			Code:    http.StatusPreconditionFailed,
+			Code:    http.StatusForbidden,
 			Message: "Limit lower than allocated",
 		}
 	}

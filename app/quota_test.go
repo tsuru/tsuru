@@ -31,6 +31,7 @@ func (s *S) TestReserveUnits(c *check.C) {
 	}
 	expected := appTypes.Quota{Limit: 7, InUse: 6}
 	err := qs.ReserveUnits(app.Name, 6)
+	c.Assert(err, check.IsNil)
 	quota, err := qs.FindByAppName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)

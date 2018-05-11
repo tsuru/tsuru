@@ -1283,7 +1283,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 				InstanceName: "si1",
 			},
 		},
-		Quota: appTypes.Quota{Limit: 10},
+		Quota:     appTypes.Quota{Limit: 10},
 		TeamOwner: s.team.Name,
 	}
 	s.provisioner.PrepareOutput([]byte("exported"))
@@ -1326,7 +1326,7 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 				Public: true,
 			},
 		},
-		Quota: appTypes.Quota{Limit: 10},
+		Quota:     appTypes.Quota{Limit: 10},
 		TeamOwner: s.team.Name,
 	}
 	s.provisioner.PrepareOutput([]byte("exported"))
@@ -3324,9 +3324,9 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	appNames := []string{"ta1", "ta2", "ta3"}
 	for _, name := range appNames {
 		a := App{
-			Name:  name,
-			Teams: []string{s.team.Name},
-			Quota: appTypes.Quota{Limit: 10},
+			Name:      name,
+			Teams:     []string{s.team.Name},
+			Quota:     appTypes.Quota{Limit: 10},
 			TeamOwner: s.team.Name,
 			Routers:   []appTypes.AppRouter{{Name: "fake"}},
 		}
