@@ -688,7 +688,7 @@ func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
 			"CMD-SHELL",
 			"curl -k -XGET -fsSL http://localhost:8888/hc -o/dev/null -w '%{http_code}' | grep 200",
 		},
-		Timeout:  120 * time.Second,
+		Timeout:  60 * time.Second,
 		Retries:  1,
 		Interval: 3 * time.Second,
 	})
