@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -306,29 +307,67 @@ func extraRegisterCmds(a provision.App) string {
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
 }
 
-func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, error) {
+type hcResult struct {
+	liveness     *apiv1.Probe
+	readiness    *apiv1.Probe
+	postStartCmd string
+}
+
+func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
+	var result hcResult
 	if hc.Path == "" {
-		return nil, nil
+		return result, nil
 	}
-	scheme := hc.Scheme
-	if scheme == "" {
-		scheme = provision.DefaultHealthcheckScheme
+	if hc.Scheme == "" {
+		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
-	scheme = strings.ToUpper(scheme)
-	method := strings.ToUpper(hc.Method)
-	if method != "" && method != "GET" {
-		return nil, errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
+	hc.Method = strings.ToUpper(hc.Method)
+	if hc.Method == "" {
+		hc.Method = http.MethodGet
 	}
-	return &apiv1.Probe{
+	if hc.IntervalSeconds == 0 {
+		hc.IntervalSeconds = 10
+	}
+	if hc.TimeoutSeconds == 0 {
+		hc.TimeoutSeconds = 60
+	}
+	if !hc.UseInRouter {
+		url := fmt.Sprintf("%s://localhost:%d/%s", hc.Scheme, port, strings.TrimPrefix(hc.Path, "/"))
+		// Use postStart lifecycle hook executing curl in a while loop. We do
+		// this because we only want this healthcheck to be called once the
+		// container is started however we must still retry it on connection
+		// errors or after a HTTP error if AllowedFailures is > 1. This is the
+		// reason why we only increment the counter if curl returns status code
+		// 22 (response code >= 400 according to curl docs)
+		result.postStartCmd = fmt.Sprintf(`i=0
+while [ $i -lt %[1]d ] && ! curl -sSf -X%[2]s -o /dev/null -m %[3]d %[4]s; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
+[ $i -lt %[1]d ]`, hc.AllowedFailures+1, hc.Method, hc.TimeoutSeconds, url)
+		return result, nil
+	}
+	if hc.Method != http.MethodGet {
+		return result, errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+	}
+	if hc.AllowedFailures == 0 {
+		hc.AllowedFailures = 3
+	}
+	hc.Scheme = strings.ToUpper(hc.Scheme)
+	probe := &apiv1.Probe{
 		FailureThreshold: int32(hc.AllowedFailures),
+		PeriodSeconds:    int32(hc.IntervalSeconds),
+		TimeoutSeconds:   int32(hc.TimeoutSeconds),
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
 				Path:   hc.Path,
 				Port:   intstr.FromInt(port),
-				Scheme: apiv1.URIScheme(scheme),
+				Scheme: apiv1.URIScheme(hc.Scheme),
 			},
 		},
-	}, nil
+	}
+	result.readiness = probe
+	if hc.ForceRestart {
+		result.liveness = probe
+	}
+	return result, nil
 }
 
 func ensureServiceAccount(client *ClusterClient, name string, labels *provision.LabelSet) error {
@@ -381,11 +420,25 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	var lifecycle *apiv1.Lifecycle
+	var hcData hcResult
+	if process == webProcessName {
+		hcData, err = probesFromHC(yamlData.Healthcheck, portInt)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	var postStartCmds []string
+	if hcData.postStartCmd != "" {
+		postStartCmds = append(postStartCmds, hcData.postStartCmd)
+	}
 	if len(yamlData.Hooks.Restart.After) > 0 {
+		postStartCmds = append(postStartCmds, yamlData.Hooks.Restart.After...)
+	}
+	var lifecycle *apiv1.Lifecycle
+	if len(postStartCmds) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
-			strings.Join(yamlData.Hooks.Restart.After, " && "),
+			strings.Join(postStartCmds, " && "),
 		}
 		lifecycle = &apiv1.Lifecycle{
 			PostStart: &apiv1.Handler{
@@ -393,13 +446,6 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 					Command: hookCmds,
 				},
 			},
-		}
-	}
-	var probe *apiv1.Probe
-	if process == webProcessName {
-		probe, err = probeFromHC(yamlData.Healthcheck, portInt)
-		if err != nil {
-			return nil, nil, nil, err
 		}
 	}
 	maxSurge := intstr.FromString("100%")
@@ -470,8 +516,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 							Image:          imageName,
 							Command:        cmds,
 							Env:            envs,
-							ReadinessProbe: probe,
-							LivenessProbe:  probe,
+							ReadinessProbe: hcData.readiness,
+							LivenessProbe:  hcData.liveness,
 							Resources: apiv1.ResourceRequirements{
 								Limits:   resourceLimits,
 								Requests: resourceRequests,

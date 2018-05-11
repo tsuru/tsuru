@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -481,36 +482,142 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cm1",
-			"p2":  "cmd2",
+	tests := []struct {
+		hc                provision.TsuruYamlHealthcheck
+		expectedLiveness  *apiv1.Probe
+		expectedReadiness *apiv1.Probe
+		expectedLifecycle *apiv1.Lifecycle
+	}{
+		{},
+		{
+			hc: provision.TsuruYamlHealthcheck{
+				Path:           "/hc",
+				TimeoutSeconds: 10,
+			},
+			expectedLifecycle: &apiv1.Lifecycle{PostStart: &apiv1.Handler{
+				Exec: &apiv1.ExecAction{Command: []string{"sh", "-c", `i=0
+while [ $i -lt 1 ] && ! curl -sSf -XGET -o /dev/null -m 10 http://localhost:8888/hc; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
+[ $i -lt 1 ]`}},
+			}},
 		},
-		"healthcheck": provision.TsuruYamlHealthcheck{
-			Path:   "/hc",
-			Scheme: "https",
+		{
+			hc: provision.TsuruYamlHealthcheck{
+				Path:            "/hc",
+				Scheme:          "https",
+				AllowedFailures: 2,
+				Method:          "POST",
+			},
+			expectedLifecycle: &apiv1.Lifecycle{PostStart: &apiv1.Handler{
+				Exec: &apiv1.ExecAction{Command: []string{"sh", "-c", `i=0
+while [ $i -lt 3 ] && ! curl -sSf -XPOST -o /dev/null -m 60 https://localhost:8888/hc; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
+[ $i -lt 3 ]`}},
+			}},
 		},
-	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
-		"web": servicecommon.ProcessState{Start: true},
-		"p2":  servicecommon.ProcessState{Start: true},
-	}, nil)
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &apiv1.Probe{
-		Handler: apiv1.Handler{
-			HTTPGet: &apiv1.HTTPGetAction{
-				Path:   "/hc",
-				Port:   intstr.FromInt(8888),
-				Scheme: apiv1.URISchemeHTTPS,
+		{
+			hc: provision.TsuruYamlHealthcheck{
+				Path:        "/hc",
+				Scheme:      "https",
+				UseInRouter: true,
+				// IntervalSeconds: 9,
+				// TimeoutSeconds: 2,
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
+				TimeoutSeconds:   60,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:   "/hc",
+						Port:   intstr.FromInt(8888),
+						Scheme: apiv1.URISchemeHTTPS,
+					},
+				},
 			},
 		},
-	})
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+		{
+			hc: provision.TsuruYamlHealthcheck{
+				Path:            "/hc",
+				Scheme:          "https",
+				UseInRouter:     true,
+				IntervalSeconds: 9,
+				TimeoutSeconds:  2,
+				AllowedFailures: 4,
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    9,
+				FailureThreshold: 4,
+				TimeoutSeconds:   2,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:   "/hc",
+						Port:   intstr.FromInt(8888),
+						Scheme: apiv1.URISchemeHTTPS,
+					},
+				},
+			},
+		},
+		{
+			hc: provision.TsuruYamlHealthcheck{
+				Path:            "/hc",
+				Scheme:          "https",
+				UseInRouter:     true,
+				IntervalSeconds: 9,
+				TimeoutSeconds:  2,
+				AllowedFailures: 4,
+				ForceRestart:    true,
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    9,
+				FailureThreshold: 4,
+				TimeoutSeconds:   2,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:   "/hc",
+						Port:   intstr.FromInt(8888),
+						Scheme: apiv1.URISchemeHTTPS,
+					},
+				},
+			},
+			expectedLiveness: &apiv1.Probe{
+				PeriodSeconds:    9,
+				FailureThreshold: 4,
+				TimeoutSeconds:   2,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:   "/hc",
+						Port:   intstr.FromInt(8888),
+						Scheme: apiv1.URISchemeHTTPS,
+					},
+				},
+			},
+		},
+	}
+	for i, tt := range tests {
+		img := fmt.Sprintf("myimg-%d", i)
+		err = image.SaveImageCustomData(img, map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "cm1",
+				"p2":  "cmd2",
+			},
+			"healthcheck": tt.hc,
+		})
+		c.Assert(err, check.IsNil)
+		err = servicecommon.RunServicePipeline(&m, a, img, servicecommon.ProcessSpec{
+			"web": servicecommon.ProcessState{Start: true},
+			"p2":  servicecommon.ProcessState{Start: true},
+		}, nil)
+		c.Assert(err, check.IsNil)
+		dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, tt.expectedReadiness)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, tt.expectedLiveness)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLifecycle)
+		dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.IsNil)
+	}
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
@@ -557,6 +664,56 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc2$`)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithHCAndRestartHooks(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "proc1",
+			"p2":  "proc2",
+		},
+		"hooks": provision.TsuruYamlHooks{
+			Restart: provision.TsuruYamlRestartHooks{
+				After: []string{"after cmd1", "after cmd2"},
+			},
+		},
+		"healthcheck": provision.TsuruYamlHealthcheck{Path: "/"},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedHC := `i=0
+while [ $i -lt 1 ] && ! curl -sSf -XGET -o /dev/null -m 60 http://localhost:8888/; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
+[ $i -lt 1 ]`
+	webLifeCycle := &apiv1.Lifecycle{
+		PostStart: &apiv1.Handler{
+			Exec: &apiv1.ExecAction{
+				Command: []string{"sh", "-c", expectedHC + " && after cmd1 && after cmd2"},
+			},
+		},
+	}
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, webLifeCycle)
+	p2LifeCycle := &apiv1.Lifecycle{
+		PostStart: &apiv1.Handler{
+			Exec: &apiv1.ExecAction{
+				Command: []string{"sh", "-c", "after cmd1 && after cmd2"},
+			},
+		},
+	}
+	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, p2LifeCycle)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
@@ -760,15 +917,16 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 			"p2":  "cmd2",
 		},
 		"healthcheck": provision.TsuruYamlHealthcheck{
-			Path:   "/hc",
-			Method: "POST",
+			Path:        "/hc",
+			Method:      "POST",
+			UseInRouter: true,
 		},
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
+	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
 }
 
 func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
