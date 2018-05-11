@@ -130,7 +130,7 @@ func (m *recordManager) RemoveService(a provision.App, processName string) error
 
 func (s *S) TestRunServicePipeline(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	err := image.SaveImageCustomData("oldImage", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":     "python web1",
@@ -176,7 +176,7 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 
 func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	err := image.SaveImageCustomData("oldImage", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":     "python web1",
@@ -219,7 +219,7 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 
 func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	err := image.SaveImageCustomData("oldImage", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":     "python web1",
@@ -254,7 +254,7 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 
 func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -280,7 +280,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 
 func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -316,7 +316,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	m := &recordManager{
 		deployErrMap: map[string]error{"worker2": expectedError},
 	}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -358,7 +358,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 	m := &recordManager{
 		deployErrMap: map[string]error{"worker2": expectedError},
 	}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -391,7 +391,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 
 func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -417,7 +417,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 }
 
 func (s *S) TestUpdateImageInDBForward(c *check.C) {
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		app:      fakeApp,
 		newImage: "newImage",
@@ -431,7 +431,7 @@ func (s *S) TestUpdateImageInDBForward(c *check.C) {
 
 func (s *S) TestRemoveOldServicesForward(c *check.C) {
 	m := &recordManager{}
-	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	args := &pipelineArgs{
 		manager:          m,
 		app:              fakeApp,
@@ -449,7 +449,7 @@ func (s *S) TestRemoveOldServicesForward(c *check.C) {
 
 func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 	m := &recordManager{}
-	a := provisiontest.NewFakeApp("myapp", "whitespace", "test-default", 1)
+	a := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	err := image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",

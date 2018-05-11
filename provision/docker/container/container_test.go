@@ -78,7 +78,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
@@ -155,7 +155,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 func (s *S) TestContainerCreateCustomLog(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	app.Pool = "mypool"
 	img := "tsuru/brainfuck:latest"
 	s.cli.PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
@@ -213,7 +213,7 @@ func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
@@ -255,7 +255,7 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	}))
 	config.Set("docker:security-opts", []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
 	defer config.Unset("docker:security-opts")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
@@ -293,7 +293,7 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 		j, _ := json.Marshal(response)
 		w.Write(j)
 	}))
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
@@ -343,7 +343,7 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
 	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(app)
@@ -390,7 +390,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	config.Unset("docker:user")
 	img := "tsuru/python:latest"
 	s.cli.PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	app := provisiontest.NewFakeApp("app-name", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := Container{Container: types.Container{
@@ -425,7 +425,7 @@ func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
 	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	img := "tsuru/brainfuck:latest"
 	s.cli.PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
 	cont := Container{Container: types.Container{
@@ -812,7 +812,7 @@ func (s *S) TestContainerSleep(c *check.C) {
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	err = cont.Start(&StartArgs{
 		Client:  s.cli,
 		Limiter: s.limiter,
@@ -855,7 +855,7 @@ func (s *S) TestContainerStart(c *check.C) {
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	err = cont.Start(&StartArgs{
 		Client:  s.cli,
 		Limiter: s.limiter,
@@ -876,7 +876,7 @@ func (s *S) TestContainerStartDeployContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
 	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	err = cont.Start(&StartArgs{Client: s.cli, Limiter: s.limiter, App: app, Deploy: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Status, check.Equals, "building")
@@ -886,7 +886,7 @@ func (s *S) TestContainerStartDeployContainer(c *check.C) {
 }
 
 func (s *S) TestContainerStartStartedUnits(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
@@ -898,7 +898,7 @@ func (s *S) TestContainerStartStartedUnits(c *check.C) {
 }
 
 func (s *S) TestContainerLogsAlreadyStopped(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	args := StartArgs{Client: s.cli, Limiter: s.limiter, App: app}
@@ -915,7 +915,7 @@ func (s *S) TestContainerLogsAlreadyStopped(c *check.C) {
 }
 
 func (s *S) TestContainerAsUnit(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	expected := provision.Unit{
 		ID:          "c-id",
 		Name:        "c-name",
@@ -944,7 +944,7 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 }
 
 func (s *S) TestSafeAttachWaitContainerStopped(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	args := StartArgs{Client: s.cli, Limiter: s.limiter, App: app}

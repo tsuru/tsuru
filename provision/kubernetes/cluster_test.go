@@ -247,13 +247,13 @@ func (s *S) TestClustersForApps(c *check.C) {
 	}
 	err = c2.Save()
 	c.Assert(err, check.IsNil)
-	a1 := provisiontest.NewFakeApp("myapp1", "python", "test-default", 0)
+	a1 := provisiontest.NewFakeApp("myapp1", "python", 0)
 	a1.Pool = "xyz"
-	a2 := provisiontest.NewFakeApp("myapp2", "python", "test-default", 0)
+	a2 := provisiontest.NewFakeApp("myapp2", "python", 0)
 	a2.Pool = "p1"
-	a3 := provisiontest.NewFakeApp("myapp3", "python", "test-default", 0)
+	a3 := provisiontest.NewFakeApp("myapp3", "python", 0)
 	a3.Pool = "p2"
-	a4 := provisiontest.NewFakeApp("myapp4", "python", "test-default", 0)
+	a4 := provisiontest.NewFakeApp("myapp4", "python", 0)
 	a4.Pool = "abc"
 	cApps, err := clustersForApps([]provision.App{a1, a2, a3, a4})
 	c.Assert(err, check.IsNil)

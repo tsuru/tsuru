@@ -49,7 +49,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestArchiveBuildCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
@@ -66,7 +66,7 @@ func (s *S) TestArchiveBuildCmds(c *check.C) {
 }
 
 func (s *S) TestArchiveDeployCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
@@ -83,7 +83,7 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 }
 
 func (s *S) TestDeployCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
@@ -139,7 +139,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	customData := map[string]interface{}{}
 	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("app-name", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{

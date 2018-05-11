@@ -18,7 +18,7 @@ import (
 func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -131,7 +131,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "emptyDir")
 	defer config.Unset("volume-plans")
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -188,7 +188,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:capacity", "20Gi")
 	config.Set("volume-plans:p1:kubernetes:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name:      "v1",
 		Plan:      volume.VolumePlan{Name: "p1"},
@@ -256,7 +256,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 func (s *S) TestDeleteVolume(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{

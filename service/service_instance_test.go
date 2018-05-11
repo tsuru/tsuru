@@ -146,7 +146,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		},
 	}
 	var si ServiceInstance
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	err := si.BindApp(a, true, &buf, evt, "")
@@ -768,7 +768,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -835,7 +835,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -911,7 +911,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -975,7 +975,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -1046,7 +1046,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	err = si.BindApp(a, true, &buf, evt, "")
@@ -1098,7 +1098,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	for i := 0; i < 100; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
 		expectedNames = append(expectedNames, name)
-		apps = append(apps, provisiontest.NewFakeApp(name, "static", "test-default", 2))
+		apps = append(apps, provisiontest.NewFakeApp(name, "static", 2))
 	}
 	evt := createEvt(c)
 	wg := sync.WaitGroup{}
@@ -1148,7 +1148,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	evt := createEvt(c)
 	for i := 0; i < 20; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
-		app := provisiontest.NewFakeApp(name, "static", "test-default", 2)
+		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
 		err = si.BindApp(app, true, &buf, evt, "")

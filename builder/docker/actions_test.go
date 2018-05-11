@@ -42,7 +42,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	cmds := []string{"ps", "-ef"}
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	app.SetEnv(bind.EnvVar{
 		Name:  "env1",
 		Value: "val1",
@@ -107,7 +107,7 @@ func (s *S) TestUploadToContainerForward(c *check.C) {
 	imgFile := bytes.NewBufferString("file data")
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
-		app:         provisiontest.NewFakeApp("myapp", "python", "test-default", 1),
+		app:         provisiontest.NewFakeApp("myapp", "python", 1),
 		client:      builderClient(client),
 		tarFile:     imgFile,
 	}}}
@@ -130,7 +130,7 @@ func (s *S) TestStartContainerForward(c *check.C) {
 	cont := *conta
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
-		app:         provisiontest.NewFakeApp("myapp", "python", "test-default", 1),
+		app:         provisiontest.NewFakeApp("myapp", "python", 1),
 		client:      builderClient(client),
 	}}}
 	r, err := startContainer.Forward(context)
@@ -170,7 +170,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("mightyapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
@@ -200,7 +200,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
@@ -227,7 +227,7 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	defer s.server.ResetFailure("failed to wait for the container")
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
@@ -260,7 +260,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("mightyapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}

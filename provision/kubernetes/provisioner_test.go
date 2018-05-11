@@ -527,8 +527,8 @@ func (s *S) TestUnits(c *check.C) {
 }
 
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
-	a1 := provisiontest.NewFakeApp("myapp", "python", "pool1", 0)
-	a2 := provisiontest.NewFakeApp("otherapp", "python", "pool2", 0)
+	a1 := provisiontest.NewFakeAppWithPool("myapp", "python", "pool1", 0)
+	a2 := provisiontest.NewFakeAppWithPool("otherapp", "python", "pool2", 0)
 	nNodes := 3
 	poolIndex := 1
 	for i := 1; i <= nNodes; i++ {
@@ -934,7 +934,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 
 func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
 	s.mock.MockfakeNodes(c)
-	a := provisiontest.NewFakeApp("myapp", "plat", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "plat", 0)
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 }
@@ -1049,7 +1049,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	s.mock.MockfakeNodes(c, srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	deploy := make(chan struct{})
 	attach := make(chan struct{})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
