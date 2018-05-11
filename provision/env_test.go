@@ -25,7 +25,7 @@ func (s *S) TestWebProcessDefaultPortWithConfig(c *check.C) {
 }
 
 func (s *S) TestEnvsForApp(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "crystal", "test-default", 1)
+	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
 	a.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 	envs := provision.EnvsForApp(a, "p1", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
@@ -46,7 +46,7 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 	config.Set("docker:run-cmd:port", "8989")
 	defer config.Unset("host")
 	defer config.Unset("docker:run-cmd:port")
-	a := provisiontest.NewFakeApp("myapp", "crystal", "test-default", 1)
+	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
 	a.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 	envs := provision.EnvsForApp(a, "p1", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{

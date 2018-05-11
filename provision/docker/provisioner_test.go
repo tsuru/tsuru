@@ -61,14 +61,14 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 }
 
 func (s *S) TestProvisionerProvision(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	err := s.p.Provision(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, true)
 }
 
 func (s *S) TestProvisionerRestart(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -120,7 +120,7 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 }
 
 func (s *S) TestProvisionerRestartStoppedContainer(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -178,7 +178,7 @@ func (l containerByProcessList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l containerByProcessList) Less(i, j int) bool { return l[i].ProcessName < l[j].ProcessName }
 
 func (s *S) TestProvisionerRestartProcess(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -480,7 +480,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 func (s *S) TestDeployCanceledEvent(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	evt, err := event.New(&event.Opts{
@@ -554,7 +554,7 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 		go func(i int) {
 			defer wg.Done()
 			name := fmt.Sprintf("myapp-%d", i)
-			app := provisiontest.NewFakeApp(name, "python", "test-default", 1)
+			app := provisiontest.NewFakeApp(name, "python", 1)
 			routertest.FakeRouter.AddBackend(app)
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
 			img, err := p.deployPipeline(app, image.GetBuildImage(app), []string{"/bin/test"}, nil)
@@ -753,7 +753,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp(cont.AppName, "python", "test-default", 1)
+	a := provisiontest.NewFakeApp(cont.AppName, "python", 1)
 	unit := cont.AsUnit(a)
 	a.BindUnit(&unit)
 	s.p.Provision(a)
@@ -769,7 +769,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(a)
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
@@ -778,7 +778,7 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
 func (s *S) TestProvisionerAddUnits(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
 	s.p.Provision(a)
 	_, err = s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
@@ -798,7 +798,7 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
 	s.p.Provision(a)
 	_, err = s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
@@ -821,7 +821,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(a)
 	coll := s.p.Collection()
 	defer coll.Close()
@@ -836,7 +836,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
 	s.p.Provision(a)
 	coll := s.p.Collection()
@@ -848,7 +848,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddUnitsWithNoDeploys(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	s.p.Provision(a)
 	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.NotNil)
@@ -860,7 +860,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(a)
 	coll := p.Collection()
 	defer coll.Close()
@@ -885,7 +885,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(a)
 	imageID, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
@@ -952,7 +952,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
-	papp := provisiontest.NewFakeApp(a1.Name, "python", "test-default", 0)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
@@ -1019,7 +1019,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
-	papp := provisiontest.NewFakeApp(a1.Name, "python", "test-default", 0)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
@@ -1076,7 +1076,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, &opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: "web"})
 	c.Assert(err, check.IsNil)
-	papp := provisiontest.NewFakeApp(a1.Name, "python", "test-default", 0)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(papp, 1, "", nil)
@@ -1092,7 +1092,7 @@ func (s *S) TestProvisionerRemoveUnitsNotFound(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
-	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", "test-default", 0), 0, "web", nil)
+	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cannot remove zero units")
 }
@@ -1136,7 +1136,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 		},
 	}
 	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
-	papp := provisiontest.NewFakeApp(a1.Name, "python", "test-default", 0)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(papp, 4, "web", nil)
@@ -1181,7 +1181,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 		},
 	}
 	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
-	papp := provisiontest.NewFakeApp(a1.Name, "python", "test-default", 0)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(papp, 1, "worker", nil)
@@ -1351,7 +1351,7 @@ func (s *S) TestProvisionerSetUnitStatusUnexpectedStarted(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *check.C) {
-	a := provisiontest.NewFakeApp("starbreaker", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container1)
@@ -1373,14 +1373,14 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := s.p.ExecuteCommand(&buf, &buf, a, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("starbreaker", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	container2, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
@@ -1414,7 +1414,7 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -1432,7 +1432,7 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := s.p.ExecuteCommandOnce(&buf, &buf, a, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
@@ -1441,7 +1441,7 @@ func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
 func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	a.SetEnv(bind.EnvVar{Name: "ENV", Value: "OK"})
 	var stdout, stderr bytes.Buffer
 	var created bool
@@ -1486,7 +1486,7 @@ func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
 		// no actual pull executed
 		w.WriteHeader(http.StatusOK)
 	}))
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := s.p.ExecuteCommandIsolated(&buf, &buf, a, "ls", "-lh")
 	c.Assert(err, check.ErrorMatches, ".*no such image.*")
@@ -1530,7 +1530,7 @@ func (s *S) TestProvisionerCollectionErrorConfig(c *check.C) {
 }
 
 func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
-	a := provisiontest.NewFakeApp("otherapp", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("otherapp", "python", 1)
 	_, err := s.p.Rollback(a, "inexist", nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*image.ImageNotFoundErr)
@@ -1542,7 +1542,7 @@ func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
 func (s *S) TestProvisionerStart(c *check.C) {
 	err := s.conn.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1600,7 +1600,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 func (s *S) TestProvisionerStartProcess(c *check.C) {
 	err := s.conn.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1650,7 +1650,7 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 
 func (s *S) TestProvisionerStop(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1695,7 +1695,7 @@ func (s *S) TestProvisionerStop(c *check.C) {
 
 func (s *S) TestProvisionerStopProcess(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1740,7 +1740,7 @@ func (s *S) TestProvisionerStopProcess(c *check.C) {
 
 func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -1772,7 +1772,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 func (s *S) TestProvisionerSleep(c *check.C) {
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1829,7 +1829,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 
 func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -2238,7 +2238,7 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
@@ -2252,7 +2252,7 @@ func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("almah", "static", "test-default", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
@@ -2266,7 +2266,7 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 func (s *S) TestDryMode(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -2292,7 +2292,7 @@ func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 		},
 	}
 	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	err := newFakeImage(s.p, "tsuru/app-"+appName, customData)
 	c.Assert(err, check.IsNil)
 	s.p.Provision(fakeApp)
@@ -2326,7 +2326,7 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 
 func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
 	tests := []struct {
 		envs     []string
@@ -2378,7 +2378,7 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 
 func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
 	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
 	logConf := container.DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "x"}}
 	err := logConf.Save("")
@@ -2398,7 +2398,7 @@ func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
 
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	routes, err := s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []url.URL{})
@@ -2430,7 +2430,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 
 func (s *S) TestProvisionerRoutableAddressesInvalidContainers(c *check.C) {
 	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", "test-default", 0)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	err := image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
 	err = newFakeImage(s.p, "myimg", nil)
@@ -2459,8 +2459,8 @@ func (s *S) TestProvisionerRoutableAddressesInvalidContainers(c *check.C) {
 }
 
 func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
-	app1 := provisiontest.NewFakeApp("app1", "python", "test-default", 0)
-	app2 := provisiontest.NewFakeApp("app2", "python", "test-default", 0)
+	app1 := provisiontest.NewFakeApp("app1", "python", 0)
+	app2 := provisiontest.NewFakeApp("app2", "python", 0)
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName: app1.GetName(),
 		Status:  "stopped",
@@ -2670,7 +2670,7 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -2731,7 +2731,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	c.Assert(units, check.DeepEquals, []provision.Unit{})
 	err = newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = s.p.Provision(appInstance)
 	c.Assert(err, check.IsNil)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
@@ -2881,7 +2881,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -2932,7 +2932,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 func (s *S) TestNodeForNodeData(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -2974,7 +2974,7 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -3028,7 +3028,7 @@ func (s *S) TestRebalanceNodesCancel(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -3087,7 +3087,7 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -3138,7 +3138,7 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -3190,7 +3190,7 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 	mainDockerProvisioner = p
 	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
 	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)

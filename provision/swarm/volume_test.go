@@ -16,7 +16,7 @@ func (s *S) TestMountsForApp(c *check.C) {
 	config.Set("volume-plans:p1:swarm:driver", "local")
 	config.Set("volume-plans:p1:swarm:opts", []string{"type=nfs"})
 	defer config.Unset("volume-plans")
-	a := provisiontest.NewFakeApp("myapp", "pyton", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "pyton", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{

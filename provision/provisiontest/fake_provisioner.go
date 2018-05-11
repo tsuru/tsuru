@@ -74,7 +74,11 @@ type FakeApp struct {
 	quota.Quota
 }
 
-func NewFakeApp(name, platform, pool string, units int) *FakeApp {
+func NewFakeApp(name, platform string, units int) *FakeApp {
+	return NewFakeAppWithPool(name, platform, "test-default", units)
+}
+
+func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 	app := FakeApp{
 		name:     name,
 		platform: platform,

@@ -302,7 +302,7 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 
 func (s *S) TestBindAppEndpointDown(c *check.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
@@ -315,7 +315,7 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
@@ -355,7 +355,7 @@ func (s *S) TestBindAppBackwardCompatible(c *check.C) {
 		"MYSQL_PORT":          "3306",
 	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	env, err := client.BindApp(&instance, a, evt, "")
@@ -374,7 +374,7 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	env, err := client.BindApp(&instance, a, evt, "")
@@ -386,7 +386,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
@@ -401,7 +401,7 @@ func (s *S) TestBindAppInstanceNotReady(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
@@ -415,7 +415,7 @@ func (s *S) TestBindAppInstanceNotFound(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
@@ -427,7 +427,7 @@ func (s *S) TestBindUnit(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -450,7 +450,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -467,7 +467,7 @@ func (s *S) TestBindUnitInstanceNotReady(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -482,7 +482,7 @@ func (s *S) TestBindUnitInstanceNotFound(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -495,7 +495,7 @@ func (s *S) TestUnbindApp(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
@@ -521,7 +521,7 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
@@ -536,7 +536,7 @@ func (s *S) TestUnbindAppInstanceNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
@@ -548,7 +548,7 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -571,7 +571,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -587,7 +587,7 @@ func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", "test-default", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)

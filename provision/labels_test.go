@@ -46,7 +46,7 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 func (s *S) TestProcessLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
-	a := provisiontest.NewFakeApp("myapp", "cobol", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	opts := provision.ProcessLabelsOpts{
 		App:         a,
 		Process:     "p1",
@@ -74,7 +74,7 @@ func (s *S) TestProcessLabels(c *check.C) {
 func (s *S) TestServiceLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
-	a := provisiontest.NewFakeApp("myapp", "cobol", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	opts := provision.ServiceLabelsOpts{
 		App:      a,
 		Replicas: 3,
@@ -156,7 +156,7 @@ func (s *S) TestNodeLabels(c *check.C) {
 func (s *S) TestLabelSet_WithoutAppReplicas(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
-	a := provisiontest.NewFakeApp("myapp", "cobol", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	opts := provision.ServiceLabelsOpts{
 		App:      a,
 		Replicas: 3,

@@ -105,7 +105,7 @@ type StreamResult struct {
 func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	servReaction := s.serviceWithPortReaction(c)
