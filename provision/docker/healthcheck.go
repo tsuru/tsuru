@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,12 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/tsuru/provision"
-
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
@@ -68,6 +68,11 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 		req, err := http.NewRequest(method, url, nil)
 		if err != nil {
 			return err
+		}
+		if yamlData.Healthcheck.TimeoutSeconds > 0 {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(yamlData.Healthcheck.TimeoutSeconds))
+			defer cancel()
+			req = req.WithContext(ctx)
 		}
 		rsp, err := net.Dial5Full60ClientNoKeepAliveNoRedirectInsecure.Do(req)
 		if err != nil {

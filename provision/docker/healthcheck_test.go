@@ -53,6 +53,34 @@ func (s *S) TestHealthcheck(c *check.C) {
 	c.Assert(buf.String(), check.Equals, " ---> healthcheck successful()\n")
 }
 
+func (s *S) TestHealthcheckShortTimeout(c *check.C) {
+	config.Set("docker:healthcheck:max-time", 2)
+	defer config.Unset("docker:healthcheck:max-time")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":            "/x/y",
+			"timeout_seconds": 1,
+		},
+	}
+	err := image.SaveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	buf := bytes.Buffer{}
+	err = runHealthcheck(&cont, &buf)
+	c.Assert(err, check.ErrorMatches, ".*context deadline exceeded")
+}
+
 func (s *S) TestHealthcheckHTTPS(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
