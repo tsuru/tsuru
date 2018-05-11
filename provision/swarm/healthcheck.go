@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -25,9 +24,8 @@ func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthCon
 		scheme = provision.DefaultHealthcheckScheme
 	}
 	allowedFailures := hc.AllowedFailures
-	maxWaitTime, _ := config.GetInt("docker:healthcheck:max-time")
-	if maxWaitTime == 0 {
-		maxWaitTime = 120
+	if hc.TimeoutSeconds == 0 {
+		hc.TimeoutSeconds = 60
 	}
 	var cmdLine string
 	if path != "" {
@@ -63,7 +61,7 @@ func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthCon
 	return &container.HealthConfig{
 		Interval: 3 * time.Second,
 		Retries:  allowedFailures + 1,
-		Timeout:  time.Duration(maxWaitTime) * time.Second,
+		Timeout:  time.Duration(hc.TimeoutSeconds) * time.Second,
 		Test: []string{
 			"CMD-SHELL",
 			cmdLine,
