@@ -30,6 +30,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -403,21 +405,21 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		}
 		sel = sel.Add(*req)
 	}
-	poolNames := make([]string, len(apps))
-	for i, app := range apps {
-		poolNames[i] = app.GetPool()
+	restCli, err := rest.RESTClientFor(client.restConfig)
+	if err != nil {
+		return nil, err
 	}
-	pods := []apiv1.Pod{}
-	for _, ns := range client.Namespaces(poolNames) {
-		podList, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
-			LabelSelector: sel.String(),
-		})
-		if err != nil {
-			return nil, err
-		}
-		pods = append(pods, podList.Items...)
+	opts := metav1.ListOptions{LabelSelector: sel.String()}
+	var pods apiv1.PodList
+	err = restCli.Get().
+		Resource("pods").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Do().
+		Into(&pods)
+	if err != nil {
+		return nil, err
 	}
-	return pods, nil
+	return pods.Items, nil
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
