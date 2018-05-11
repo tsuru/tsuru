@@ -694,7 +694,10 @@ type TsuruYamlHealthcheck struct {
 	Match           string `bson:",omitempty"`
 	RouterBody      string `json:"router_body" yaml:"router_body" bson:"router_body,omitempty"`
 	UseInRouter     bool   `json:"use_in_router" yaml:"use_in_router" bson:"use_in_router,omitempty"`
+	ForceRestart    bool   `json:"force_restart" yaml:"force_restart" bson:"force_restart,omitempty"`
 	AllowedFailures int    `json:"allowed_failures" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
+	IntervalSeconds int    `json:"interval_seconds" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
+	TimeoutSeconds  int    `json:"timeout_seconds" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
 }
 
 func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {
