@@ -50,19 +50,21 @@ type ClusterInterface interface {
 }
 
 type KubeMock struct {
-	client  *ClientWrapper
-	Stream  map[string]StreamResult
-	LogHook func(w io.Writer, r *http.Request)
-	p       provision.Provisioner
+	client      *ClientWrapper
+	Stream      map[string]StreamResult
+	LogHook     func(w io.Writer, r *http.Request)
+	DefaultHook func(w http.ResponseWriter, r *http.Request)
+	p           provision.Provisioner
 }
 
 func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
-		client:  cluster,
-		Stream:  stream,
-		LogHook: nil,
-		p:       p,
+		client:      cluster,
+		Stream:      stream,
+		LogHook:     nil,
+		DefaultHook: nil,
+		p:           p,
 	}
 }
 
@@ -239,6 +241,8 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			}
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "my log message")
+		} else if s.DefaultHook != nil {
+			s.DefaultHook(w, r)
 		}
 	}))
 	return srv, &wg

@@ -27,7 +27,7 @@ var (
 	labelAppName            = "app-name"
 	labelAppProcess         = "app-process"
 	labelAppProcessReplicas = "app-process-replicas"
-	labelAppPool            = "app-pool"
+	LabelAppPool            = "app-pool"
 	labelAppPlatform        = "app-platform"
 
 	labelNodeContainerName = "node-container-name"
@@ -341,7 +341,7 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 			labelAppName:     opts.App.GetName(),
 			labelAppProcess:  opts.Process,
 			labelAppPlatform: opts.App.GetPlatform(),
-			labelAppPool:     opts.App.GetPool(),
+			LabelAppPool:     opts.App.GetPool(),
 			labelRouterName:  strings.Join(routerNames, ","),
 			labelRouterType:  strings.Join(routerTypes, ","),
 			labelProvisioner: opts.Provisioner,
