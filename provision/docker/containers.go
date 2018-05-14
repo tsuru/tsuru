@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/rebuild"
 )
 
@@ -334,7 +335,16 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 		AppName:       app.GetName(),
 		ActionLimiter: p.ActionLimiter(),
 	}
-	addr, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, schedOpts, net.StreamInactivityTimeout)
+	pullOpts := docker.PullImageOptions{
+		Repository:        createOptions.Config.Image,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	addr, cont, err := cluster.CreateContainerPullOptsSchedulerOpts(
+		createOptions,
+		pullOpts,
+		dockercommon.RegistryAuthConfig(createOptions.Config.Image),
+		schedOpts,
+	)
 	hostAddr := net.URLToHost(addr)
 	if schedOpts.LimiterDone != nil {
 		schedOpts.LimiterDone()

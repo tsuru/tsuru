@@ -292,7 +292,7 @@ func (s *S) TestDeploy(c *check.C) {
 		Repository: s.team.Name + "/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	imgID, err := s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
@@ -354,7 +354,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
@@ -410,7 +410,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	imgID, err := s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
@@ -464,7 +464,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.NotNil)
@@ -499,7 +499,7 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 		Repository: "tsuru/app-" + app.GetName(),
 		Tag:        "v1-builder",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	done := make(chan bool)
 	go func() {
@@ -727,7 +727,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)

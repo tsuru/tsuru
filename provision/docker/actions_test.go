@@ -1293,7 +1293,7 @@ func (s *S) TestUpdateAppImageForward(c *check.C) {
 		Repository: registry.Addr() + "/tsuru/app-mightyapp",
 		Tag:        "v1",
 	}
-	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig())
+	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(registry.Addr()))
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{app: app, writer: buf, provisioner: s.p, imageID: nextImgName}
 	context := action.FWContext{Params: []interface{}{args}, Previous: &cont}

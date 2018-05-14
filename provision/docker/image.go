@@ -53,7 +53,7 @@ func MigrateImages() error {
 				Name:              newImage,
 				InactivityTimeout: net.StreamInactivityTimeout,
 			}
-			err = dcluster.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
+			err = dcluster.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newImage))
 			if err != nil {
 				return err
 			}

@@ -427,7 +427,7 @@ func (c *Container) Commit(client provision.BuilderDockerClient, limiter provisi
 			maxTry = 3
 		}
 		for i := 0; i < maxTry; i++ {
-			err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+			err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig(repository))
 			if err != nil {
 				fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
 				log.Errorf("error in push image %s: %s", c.BuildingImage, err)

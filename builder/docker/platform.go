@@ -91,7 +91,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		OutputStream:      &buf,
 		InactivityTimeout: net.StreamInactivityTimeout,
 	}
-	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(imageName))
 	if err != nil {
 		log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 		return err

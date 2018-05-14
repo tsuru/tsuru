@@ -183,7 +183,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newImage))
 	if err != nil {
 		return "", err
 	}
