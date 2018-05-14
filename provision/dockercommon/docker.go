@@ -6,6 +6,7 @@ package dockercommon
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"context"
@@ -47,7 +48,7 @@ func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainer
 		InactivityTimeout: tsuruNet.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err := c.Client.PullImage(pullOpts, RegistryAuthConfig())
+	err := c.Client.PullImage(pullOpts, RegistryAuthConfig(opts.Config.Image))
 	if err != nil {
 		return nil, "", err
 	}
@@ -127,7 +128,7 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 			InactivityTimeout: net.StreamInactivityTimeout,
 		}
 		if authconfig == (docker.AuthConfiguration{}) {
-			authconfig = RegistryAuthConfig()
+			authconfig = RegistryAuthConfig(name)
 		}
 		err = client.PushImage(pushOpts, authconfig)
 		if err != nil {
@@ -138,12 +139,16 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 	return nil
 }
 
-func RegistryAuthConfig() docker.AuthConfiguration {
+func RegistryAuthConfig(image string) docker.AuthConfiguration {
 	var authConfig docker.AuthConfiguration
+	addr, _ := config.GetString("docker:registry")
+	if !strings.HasPrefix(image, addr) {
+		return authConfig
+	}
+	authConfig.ServerAddress = addr
 	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
 	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
 	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
-	authConfig.ServerAddress, _ = config.GetString("docker:registry")
 	return authConfig
 }
 

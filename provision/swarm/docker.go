@@ -203,7 +203,7 @@ func commitPushBuildImage(client *docker.Client, img, contID string, app provisi
 		}
 	}
 	for _, tag := range tags {
-		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
+		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig(repository))
 		if err != nil {
 			return "", err
 		}

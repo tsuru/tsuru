@@ -64,7 +64,7 @@ func (s *S) TestNewFakeDockerProvisioner(c *check.C) {
 	_, err = p.storage.RetrieveNode(server.URL())
 	c.Assert(err, check.IsNil)
 	opts := docker.PullImageOptions{Repository: "tsuru/bs"}
-	err = p.Cluster().PullImage(opts, dockercommon.RegistryAuthConfig())
+	err = p.Cluster().PullImage(opts, dockercommon.RegistryAuthConfig(opts.Repository))
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -75,7 +75,8 @@ func (s *S) TestNewFakeDockerProvisioner(c *check.C) {
 func (s *S) TestStartMultipleServersCluster(c *check.C) {
 	p, err := StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, dockercommon.RegistryAuthConfig())
+	opts := docker.PullImageOptions{Repository: "tsuru/bs"}
+	err = p.Cluster().PullImage(opts, dockercommon.RegistryAuthConfig(opts.Repository))
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -87,7 +88,8 @@ func (s *S) TestDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.Destroy()
 	c.Assert(p.servers, check.IsNil)
-	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, dockercommon.RegistryAuthConfig())
+	opts := docker.PullImageOptions{Repository: "tsuru/bs"}
+	err = p.Cluster().PullImage(opts, dockercommon.RegistryAuthConfig(opts.Repository))
 	c.Assert(err, check.NotNil)
 	e, ok := err.(cluster.DockerNodeError)
 	c.Assert(ok, check.Equals, true)

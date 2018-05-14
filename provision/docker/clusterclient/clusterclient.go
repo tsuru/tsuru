@@ -44,13 +44,26 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 	if opts.Context != nil {
 		dbCont, _ = opts.Context.Value(container.ContainerCtxKey{}).(*container.Container)
 	}
+	pullOpts := docker.PullImageOptions{
+		Repository:        opts.Config.Image,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	if w != nil {
+		pullOpts.OutputStream = &tsuruIo.DockerErrorCheckWriter{W: w}
+		pullOpts.RawJSONStream = true
+	}
 	if dbCont == nil {
 		// No need to register in db as BS won't associate this container with
 		// tsuru.
 		schedulerOpts := &container.SchedulerOpts{
 			FilterNodes: c.PossibleNodes,
 		}
-		hostAddr, cont, err = c.Cluster.CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout)
+		hostAddr, cont, err = c.Cluster.CreateContainerPullOptsSchedulerOpts(
+			opts,
+			pullOpts,
+			dockercommon.RegistryAuthConfig(opts.Config.Image),
+			schedulerOpts,
+		)
 		hostAddr = net.URLToHost(hostAddr)
 		return cont, hostAddr, err
 	}
@@ -92,14 +105,6 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 		FilterNodes:   c.PossibleNodes,
 	}
 	var addr string
-	pullOpts := docker.PullImageOptions{
-		Repository:        opts.Config.Image,
-		InactivityTimeout: net.StreamInactivityTimeout,
-	}
-	if w != nil {
-		pullOpts.OutputStream = &tsuruIo.DockerErrorCheckWriter{W: w}
-		pullOpts.RawJSONStream = true
-	}
 	var nodes []string
 	if dbCont.HostAddr != "" {
 		var node cluster.Node
@@ -112,7 +117,7 @@ func (c *ClusterClient) PullAndCreateContainer(opts docker.CreateContainerOption
 	addr, cont, err = c.Cluster.CreateContainerPullOptsSchedulerOpts(
 		opts,
 		pullOpts,
-		dockercommon.RegistryAuthConfig(),
+		dockercommon.RegistryAuthConfig(opts.Config.Image),
 		schedulerOpts,
 		nodes...,
 	)

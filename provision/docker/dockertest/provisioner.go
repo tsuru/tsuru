@@ -344,7 +344,7 @@ type StartContainersArgs struct {
 // will be both returned and stored internally.
 func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]container.Container, error) {
 	if args.PullImage {
-		err := p.Cluster().PullImage(docker.PullImageOptions{Repository: args.Image}, dockercommon.RegistryAuthConfig(), args.Endpoint)
+		err := p.Cluster().PullImage(docker.PullImageOptions{Repository: args.Image}, dockercommon.RegistryAuthConfig(args.Image), args.Endpoint)
 		if err != nil {
 			return nil, err
 		}
