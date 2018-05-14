@@ -137,9 +137,9 @@ installation. To generate these files with the default values, run this command:
 
 This will generate two files in the current directory: ``install-config.yml`` and
 ``install-compose.yml``. In the first one you can set the docker-machine driver
-and configurations like the machine CPU and memory, and tsuru specifi configurations,
+and configurations like the machine CPU and memory, and tsuru specific configurations,
 like the default provisioner, HTTP/HTTPS ports, users quotas and enable or disable
-the dashboard. The seconf file includes configurations for each tsuru component,
+the dashboard. The second file includes configurations for each tsuru component,
 like redis and gandalf. You can change configurations like version, port and mounts
 for each one.
 
@@ -179,13 +179,13 @@ And pass it to the install command as:
 Examples
 ========
 
-This section cover some examples to show some of the capabilities of the installer.
+This section covers some examples to show some of the capabilities of the installer.
 
 Multi-host provisioning and installation on AWS
 -----------------------------------------------
 
 The following configuration will provision 3 virtual machines on AWS to run tsuru
-core components and other 3 machines to host tsuru applications. Additionaly,
+core components and other 3 machines to host tsuru applications. Additionally,
 it will use an external mongoDB instead of installing it.
 
 .. highlight:: yaml
@@ -339,7 +339,7 @@ Number of machines to be registered as docker nodes to host tsuru apps. Default 
 hosts:apps:dedicated
 --------------------
 
-Boolean flag to indicated if apps hosts are dedicated or if they can be used
+Boolean flag to indicate if apps hosts are dedicated or if they can be used
 to run tsuru core components. Defaults to true.
 
 hosts:apps:driver:options
@@ -374,6 +374,6 @@ driver:options
 --------------
 
 Under this namespace every driver parameters can be set. Refer to the driver
-configuration for more information on what parameter are available. For exemple,
+configuration for more information on what parameter are available. For example,
 the AWS docker machine driver accepts the ``--amazonec2-secret-key`` argument and
 this can be set using ``driver:options:amazonec2-secret-key`` entry.
