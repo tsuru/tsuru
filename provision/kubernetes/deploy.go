@@ -308,9 +308,8 @@ func extraRegisterCmds(a provision.App) string {
 }
 
 type hcResult struct {
-	liveness     *apiv1.Probe
-	readiness    *apiv1.Probe
-	postStartCmd string
+	liveness  *apiv1.Probe
+	readiness *apiv1.Probe
 }
 
 func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
@@ -333,15 +332,20 @@ func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error)
 	}
 	if !hc.UseInRouter {
 		url := fmt.Sprintf("%s://localhost:%d/%s", hc.Scheme, port, strings.TrimPrefix(hc.Path, "/"))
-		// Use postStart lifecycle hook executing curl in a while loop. We do
-		// this because we only want this healthcheck to be called once the
-		// container is started however we must still retry it on connection
-		// errors or after a HTTP error if AllowedFailures is > 1. This is the
-		// reason why we only increment the counter if curl returns status code
-		// 22 (response code >= 400 according to curl docs)
-		result.postStartCmd = fmt.Sprintf(`i=0
-while [ $i -lt %[1]d ] && ! curl -sSf -X%[2]s -o /dev/null -m %[3]d %[4]s; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
-[ $i -lt %[1]d ]`, hc.AllowedFailures+1, hc.Method, hc.TimeoutSeconds, url)
+		result.readiness = &apiv1.Probe{
+			FailureThreshold: int32(hc.AllowedFailures),
+			PeriodSeconds:    int32(3),
+			TimeoutSeconds:   int32(hc.TimeoutSeconds),
+			Handler: apiv1.Handler{
+				Exec: &apiv1.ExecAction{
+					Command: []string{
+						"sh", "-c",
+						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -X%[1]s -o /dev/null %[2]s && touch /tmp/onetimeprobesuccessful; fi`,
+							hc.Method, url),
+					},
+				},
+			},
+		}
 		return result, nil
 	}
 	if hc.Method != http.MethodGet {
@@ -427,18 +431,11 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 			return nil, nil, nil, err
 		}
 	}
-	var postStartCmds []string
-	if hcData.postStartCmd != "" {
-		postStartCmds = append(postStartCmds, hcData.postStartCmd)
-	}
-	if len(yamlData.Hooks.Restart.After) > 0 {
-		postStartCmds = append(postStartCmds, yamlData.Hooks.Restart.After...)
-	}
 	var lifecycle *apiv1.Lifecycle
-	if len(postStartCmds) > 0 {
+	if len(yamlData.Hooks.Restart.After) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
-			strings.Join(postStartCmds, " && "),
+			strings.Join(yamlData.Hooks.Restart.After, " && "),
 		}
 		lifecycle = &apiv1.Lifecycle{
 			PostStart: &apiv1.Handler{

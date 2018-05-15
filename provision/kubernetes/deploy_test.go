@@ -494,11 +494,19 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				Path:           "/hc",
 				TimeoutSeconds: 10,
 			},
-			expectedLifecycle: &apiv1.Lifecycle{PostStart: &apiv1.Handler{
-				Exec: &apiv1.ExecAction{Command: []string{"sh", "-c", `i=0
-while [ $i -lt 1 ] && ! curl -sSf -XGET -o /dev/null -m 10 http://localhost:8888/hc; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
-[ $i -lt 1 ]`}},
-			}},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    3,
+				FailureThreshold: 0,
+				TimeoutSeconds:   10,
+				Handler: apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{
+							"sh", "-c",
+							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -XGET -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+						},
+					},
+				},
+			},
 		},
 		{
 			hc: provision.TsuruYamlHealthcheck{
@@ -507,19 +515,25 @@ while [ $i -lt 1 ] && ! curl -sSf -XGET -o /dev/null -m 10 http://localhost:8888
 				AllowedFailures: 2,
 				Method:          "POST",
 			},
-			expectedLifecycle: &apiv1.Lifecycle{PostStart: &apiv1.Handler{
-				Exec: &apiv1.ExecAction{Command: []string{"sh", "-c", `i=0
-while [ $i -lt 3 ] && ! curl -sSf -XPOST -o /dev/null -m 60 https://localhost:8888/hc; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
-[ $i -lt 3 ]`}},
-			}},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    3,
+				FailureThreshold: 2,
+				TimeoutSeconds:   60,
+				Handler: apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{
+							"sh", "-c",
+							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -XPOST -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+						},
+					},
+				},
+			},
 		},
 		{
 			hc: provision.TsuruYamlHealthcheck{
 				Path:        "/hc",
 				Scheme:      "https",
 				UseInRouter: true,
-				// IntervalSeconds: 9,
-				// TimeoutSeconds: 2,
 			},
 			expectedReadiness: &apiv1.Probe{
 				PeriodSeconds:    10,
@@ -664,56 +678,6 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc2$`)
-}
-
-func (s *S) TestServiceManagerDeployServiceWithHCAndRestartHooks(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "proc1",
-			"p2":  "proc2",
-		},
-		"hooks": provision.TsuruYamlHooks{
-			Restart: provision.TsuruYamlRestartHooks{
-				After: []string{"after cmd1", "after cmd2"},
-			},
-		},
-		"healthcheck": provision.TsuruYamlHealthcheck{Path: "/"},
-	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
-		"web": servicecommon.ProcessState{Start: true},
-		"p2":  servicecommon.ProcessState{Start: true},
-	}, nil)
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	expectedHC := `i=0
-while [ $i -lt 1 ] && ! curl -sSf -XGET -o /dev/null -m 60 http://localhost:8888/; do [ $? -eq 22 ] && let i=i+1; sleep 3; done
-[ $i -lt 1 ]`
-	webLifeCycle := &apiv1.Lifecycle{
-		PostStart: &apiv1.Handler{
-			Exec: &apiv1.ExecAction{
-				Command: []string{"sh", "-c", expectedHC + " && after cmd1 && after cmd2"},
-			},
-		},
-	}
-	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, webLifeCycle)
-	p2LifeCycle := &apiv1.Lifecycle{
-		PostStart: &apiv1.Handler{
-			Exec: &apiv1.ExecAction{
-				Command: []string{"sh", "-c", "after cmd1 && after cmd2"},
-			},
-		},
-	}
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, p2LifeCycle)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
