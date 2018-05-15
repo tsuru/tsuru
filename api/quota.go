@@ -95,7 +95,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err == authTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
-			Message: "Limit lower than allocated value",
+			Message: err.Error(),
 		}
 	}
 	return err
@@ -165,7 +165,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err == appTypes.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
-			Message: "Limit lower than allocated",
+			Message: err.Error(),
 		}
 	}
 	return err

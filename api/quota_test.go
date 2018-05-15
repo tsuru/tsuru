@@ -243,7 +243,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
@@ -253,7 +253,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 			{"name": ":email", "value": user.Email},
 			{"name": "limit", "value": "3"},
 		},
-		ErrorMatches: `Limit lower than allocated value`,
+		ErrorMatches: `New limit is lesser than the current allocated value`,
 	}, eventtest.HasEvent)
 }
 
@@ -471,7 +471,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
@@ -480,6 +480,6 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 			{"name": ":appname", "value": a.Name},
 			{"name": "limit", "value": "3"},
 		},
-		ErrorMatches: `Limit lower than allocated`,
+		ErrorMatches: `New limit is lesser than the current allocated value`,
 	}, eventtest.HasEvent)
 }

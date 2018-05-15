@@ -40,5 +40,5 @@ func (err *QuotaExceededError) Error() string {
 
 var (
 	ErrCantRelease             = errors.New("Cannot release unreserved app")
-	ErrLimitLowerThanAllocated = errors.New("new limit is lesser than the current allocated value")
+	ErrLimitLowerThanAllocated = errors.New("New limit is lesser than the current allocated value")
 )

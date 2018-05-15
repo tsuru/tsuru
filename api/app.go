@@ -577,8 +577,8 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   200: Units removed
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Not enough reserved units
 //   404: App not found
-//   409: Not enough reserved units
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
 	if err != nil {
@@ -614,7 +614,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	err = a.RemoveUnits(n, processName, writer)
 	if err == appTypes.ErrNoReservedUnits {
 		return &errors.HTTP{
-			Code:    http.StatusConflict,
+			Code:    http.StatusForbidden,
 			Message: err.Error(),
 		}
 	}

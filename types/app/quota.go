@@ -49,7 +49,7 @@ func (err *QuotaExceededError) Error() string {
 
 var (
 	ErrNoReservedUnits         = errors.New("Not enough reserved units")
-	ErrLimitLowerThanAllocated = errors.New("new limit is lesser than the current allocated value")
-	ErrLesserThanZero          = errors.New("invalid value, cannot be lesser than 0")
+	ErrLimitLowerThanAllocated = errors.New("New limit is lesser than the current allocated value")
+	ErrLesserThanZero          = errors.New("Invalid value, cannot be lesser than 0")
 	ErrAppNotFound             = errors.New("App not found")
 )

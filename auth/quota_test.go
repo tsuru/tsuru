@@ -280,7 +280,7 @@ func (s *S) TestChangeQuotaLimitLessThanInUse(c *check.C) {
 	}
 	err := qs.ChangeLimit(user.Email, 3)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "new limit is lesser than the current allocated value")
+	c.Assert(err.Error(), check.Equals, "New limit is lesser than the current allocated value")
 }
 
 func (s *S) TestChangeQuotaLimitUserNotFound(c *check.C) {

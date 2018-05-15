@@ -2209,7 +2209,7 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {
 	}
 }
 
-func (s *S) TestRemoveUnitsReturns409IfNotEnoughReservedUnits(c *check.C) {
+func (s *S) TestRemoveUnitsReturns403IfNotEnoughReservedUnits(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -2228,7 +2228,7 @@ func (s *S) TestRemoveUnitsReturns409IfNotEnoughReservedUnits(c *check.C) {
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 0)
 	c.Assert(recorder.Body.String(), check.Equals, `Not enough reserved units`+"\n")
 }
