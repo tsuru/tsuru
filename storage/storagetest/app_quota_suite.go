@@ -10,9 +10,14 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+type appStorage interface {
+	Create(*app.App) error
+	Remove(*app.App) error
+}
+
 type AppQuotaSuite struct {
 	SuiteHooks
-	AppStorage      appTypes.AppStorage
+	AppStorage      appStorage
 	AppQuotaStorage appTypes.QuotaStorage
 }
 

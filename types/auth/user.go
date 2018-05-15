@@ -28,11 +28,6 @@ type ErrTeamStillUsed struct {
 	ServiceInstances []string
 }
 
-type UserStorage interface {
-	Create(interface{}) error
-	Remove(interface{}) error
-}
-
 var (
 	ErrUserNotFound = errors.New("user not found")
 	ErrInvalidKey   = errors.New("invalid key")

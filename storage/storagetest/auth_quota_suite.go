@@ -10,9 +10,14 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+type userStorage interface {
+	Create(*auth.User) error
+	Remove(*auth.User) error
+}
+
 type AuthQuotaSuite struct {
 	SuiteHooks
-	UserStorage      authTypes.UserStorage
+	UserStorage      userStorage
 	AuthQuotaStorage authTypes.QuotaStorage
 	AuthQuotaService authTypes.QuotaService
 }
