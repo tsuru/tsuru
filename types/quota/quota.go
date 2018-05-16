@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package app
+package quota
 
 import (
 	"errors"
@@ -21,7 +21,14 @@ func (q *Quota) IsUnlimited() bool {
 	return -1 == q.Limit
 }
 
-type QuotaService interface {
+type UserQuotaService interface {
+	ReserveApp(email string) error
+	ReleaseApp(email string) error
+	ChangeLimit(email string, limit int) error
+	FindByUserEmail(email string) (*Quota, error)
+}
+
+type AppQuotaService interface {
 	CheckAppUsage(quota *Quota, quantity int) error
 	CheckAppLimit(quota *Quota, quantity int) error
 	ReserveUnits(appName string, quantity int) error
@@ -31,7 +38,13 @@ type QuotaService interface {
 	FindByAppName(appName string) (*Quota, error)
 }
 
-type QuotaStorage interface {
+type UserQuotaStorage interface {
+	IncInUse(email string, quantity int) error
+	SetLimit(email string, limit int) error
+	FindByUserEmail(email string) (*Quota, error)
+}
+
+type AppQuotaStorage interface {
 	IncInUse(appName string, quantity int) error
 	SetLimit(appName string, limit int) error
 	SetInUse(appName string, inUse int) error
@@ -51,5 +64,5 @@ var (
 	ErrNoReservedUnits         = errors.New("Not enough reserved units")
 	ErrLimitLowerThanAllocated = errors.New("New limit is lesser than the current allocated value")
 	ErrLesserThanZero          = errors.New("Invalid value, cannot be lesser than 0")
-	ErrAppNotFound             = errors.New("App not found")
+	ErrCantRelease             = errors.New("Cannot release unreserved app")
 )
