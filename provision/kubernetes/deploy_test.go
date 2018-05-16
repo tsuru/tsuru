@@ -502,7 +502,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -XGET -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XGET -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
 						},
 					},
 				},
@@ -523,7 +523,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -XPOST -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XPOST -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
 						},
 					},
 				},

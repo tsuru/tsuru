@@ -340,7 +340,7 @@ func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error)
 				Exec: &apiv1.ExecAction{
 					Command: []string{
 						"sh", "-c",
-						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -sSf -X%[1]s -o /dev/null %[2]s && touch /tmp/onetimeprobesuccessful; fi`,
+						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X%[1]s -o /dev/null %[2]s && touch /tmp/onetimeprobesuccessful; fi`,
 							hc.Method, url),
 					},
 				},
