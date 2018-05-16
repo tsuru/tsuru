@@ -93,7 +93,7 @@ func (s *S) TestDelete(c *check.C) {
 	_, err = GetByName(app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
-	err = servicemanager.AuthQuota.ReserveApp(s.user.Email)
+	err = servicemanager.UserQuota.ReserveApp(s.user.Email)
 	c.Assert(err, check.IsNil)
 	count, err := s.logConn.Logs(app.Name).Count()
 	c.Assert(err, check.IsNil)
@@ -267,7 +267,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		TeamOwner: s.team.Name,
 		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, s.user.Email)
 		return nil
 	}
@@ -373,7 +373,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
 	)
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, s.user.Email)
 		return &authTypes.QuotaExceededError{Available: 0, Requested: 1}
 	}

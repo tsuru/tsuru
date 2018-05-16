@@ -704,7 +704,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = servicemanager.AuthQuota.ReleaseApp(owner.Email)
+		err = servicemanager.UserQuota.ReleaseApp(owner.Email)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)

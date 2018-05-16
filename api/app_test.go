@@ -870,7 +870,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, token.GetUserName())
 		return nil
 	}
@@ -1347,7 +1347,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, token.GetUserName())
 		return &authTypes.QuotaExceededError{Available: 0, Requested: 1}
 	}

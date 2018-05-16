@@ -13,7 +13,7 @@ func init() {
 		PlanStorage:      &PlanStorage{},
 		CacheStorage:     &cacheStorage{},
 		TeamTokenStorage: &teamTokenStorage{},
-		AuthQuotaStorage: &authQuotaStorage{},
+		UserQuotaStorage: &userQuotaStorage{},
 		AppQuotaStorage:  &appQuotaStorage{},
 		WebhookStorage:   &webhookStorage{},
 	}

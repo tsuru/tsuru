@@ -57,7 +57,7 @@ var reserveUserApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if err := servicemanager.AuthQuota.ReserveApp(usr.Email); err != nil {
+		if err := servicemanager.UserQuota.ReserveApp(usr.Email); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
@@ -65,7 +65,7 @@ var reserveUserApp = action.Action{
 	Backward: func(ctx action.BWContext) {
 		m := ctx.FWResult.(map[string]string)
 		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
-			servicemanager.AuthQuota.ReleaseApp(user.Email)
+			servicemanager.UserQuota.ReleaseApp(user.Email)
 		}
 	},
 	MinParams: 2,

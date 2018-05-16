@@ -11,16 +11,16 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-var _ authTypes.QuotaStorage = &authQuotaStorage{}
+var _ authTypes.QuotaStorage = &userQuotaStorage{}
 
-type authQuotaStorage struct{}
+type userQuotaStorage struct{}
 
 type _user struct {
 	email string          `bson:"_id"`
 	Quota authTypes.Quota `bson:"quota"`
 }
 
-func (s *authQuotaStorage) IncInUse(email string, quantity int) error {
+func (s *userQuotaStorage) IncInUse(email string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func (s *authQuotaStorage) IncInUse(email string, quantity int) error {
 	return err
 }
 
-func (s *authQuotaStorage) SetLimit(email string, quantity int) error {
+func (s *userQuotaStorage) SetLimit(email string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (s *authQuotaStorage) SetLimit(email string, quantity int) error {
 	return err
 }
 
-func (s *authQuotaStorage) FindByUserEmail(email string) (*authTypes.Quota, error) {
+func (s *userQuotaStorage) FindByUserEmail(email string) (*authTypes.Quota, error) {
 	var user _user
 	conn, err := db.Conn()
 	if err != nil {

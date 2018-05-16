@@ -140,7 +140,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		Password: "qwe123",
 		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.AuthQuota.OnChangeLimit = func(email string, limit int) error {
+	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 40)
 		return nil
@@ -228,7 +228,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		Password: "qwe123",
 		Quota:    authTypes.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.AuthQuota.OnChangeLimit = func(email string, limit int) error {
+	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 3)
 		return authTypes.ErrLimitLowerThanAllocated

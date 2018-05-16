@@ -9,11 +9,11 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-type authQuotaService struct {
+type userQuotaService struct {
 	storage authTypes.QuotaStorage
 }
 
-func (s *authQuotaService) checkUserExists(email string) error {
+func (s *userQuotaService) checkUserExists(email string) error {
 	_, err := s.storage.FindByUserEmail(email)
 	return err
 }
@@ -26,13 +26,13 @@ func QuotaService() (authTypes.QuotaService, error) {
 			return nil, err
 		}
 	}
-	return &authQuotaService{dbDriver.AuthQuotaStorage}, nil
+	return &userQuotaService{dbDriver.UserQuotaStorage}, nil
 }
 
 // ReserveApp reserves an app for the user, reserving it in the database. It's
 // used to reserve the app in the user quota, returning an error when there
 // isn't any space available.
-func (s *authQuotaService) ReserveApp(email string) error {
+func (s *userQuotaService) ReserveApp(email string) error {
 	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (s *authQuotaService) ReserveApp(email string) error {
 
 // ReleaseApp releases an app from the user list, releasing the quota spot for
 // another app.
-func (s *authQuotaService) ReleaseApp(email string) error {
+func (s *userQuotaService) ReleaseApp(email string) error {
 	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (s *authQuotaService) ReleaseApp(email string) error {
 // than or equal to the current number of apps of the user. The new limit maybe
 // smaller than 0, which mean that the user should have an unlimited number of
 // apps.
-func (s *authQuotaService) ChangeLimit(email string, limit int) error {
+func (s *userQuotaService) ChangeLimit(email string, limit int) error {
 	quota, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
@@ -90,6 +90,6 @@ func (s *authQuotaService) ChangeLimit(email string, limit int) error {
 	return err
 }
 
-func (s *authQuotaService) FindByUserEmail(email string) (*authTypes.Quota, error) {
+func (s *userQuotaService) FindByUserEmail(email string) (*authTypes.Quota, error) {
 	return s.storage.FindByUserEmail(email)
 }

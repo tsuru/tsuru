@@ -16,7 +16,7 @@ type MockService struct {
 	Plan      *app.MockPlanService
 	Platform  *app.MockPlatformService
 	Team      *auth.MockTeamService
-	AuthQuota *auth.MockQuotaService
+	UserQuota *auth.MockQuotaService
 	AppQuota  *app.MockQuotaService
 }
 
@@ -26,13 +26,13 @@ func SetMockService(m *MockService) {
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.Team = &auth.MockTeamService{}
-	m.AuthQuota = &auth.MockQuotaService{}
+	m.UserQuota = &auth.MockQuotaService{}
 	m.AppQuota = &app.MockQuotaService{}
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
 	servicemanager.Team = m.Team
-	servicemanager.AuthQuota = m.AuthQuota
+	servicemanager.UserQuota = m.UserQuota
 	servicemanager.AppQuota = m.AppQuota
 }
 
@@ -66,10 +66,10 @@ func (m *MockService) ResetTeam() {
 	m.Team.OnFindByNames = nil
 }
 
-func (m *MockService) ResetAuthQuota() {
-	m.AuthQuota.OnChangeLimit = nil
-	m.AuthQuota.OnReleaseApp = nil
-	m.AuthQuota.OnReserveApp = nil
+func (m *MockService) ResetUserQuota() {
+	m.UserQuota.OnChangeLimit = nil
+	m.UserQuota.OnReleaseApp = nil
+	m.UserQuota.OnReserveApp = nil
 }
 
 func (m *MockService) ResetAppQuota() {

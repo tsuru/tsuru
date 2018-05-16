@@ -15,64 +15,64 @@ type userStorage interface {
 	Remove(*auth.User) error
 }
 
-type AuthQuotaSuite struct {
+type UserQuotaSuite struct {
 	SuiteHooks
 	UserStorage      userStorage
-	AuthQuotaStorage authTypes.QuotaStorage
-	AuthQuotaService authTypes.QuotaService
+	UserQuotaStorage authTypes.QuotaStorage
+	UserQuotaService authTypes.QuotaService
 }
 
-func (s *AuthQuotaSuite) TestFindByUserEmail(c *check.C) {
+func (s *UserQuotaSuite) TestFindByUserEmail(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.UnlimitedQuota}
 	s.UserStorage.Create(user)
-	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, -1)
 }
 
-func (s *AuthQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
-	_, err := s.AuthQuotaStorage.FindByUserEmail("myapp")
+func (s *UserQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
+	_, err := s.UserQuotaStorage.FindByUserEmail("myapp")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
-func (s *AuthQuotaSuite) TestIncInUse(c *check.C) {
+func (s *UserQuotaSuite) TestIncInUse(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	err := s.AuthQuotaStorage.IncInUse("example@example.com", 1)
+	err := s.UserQuotaStorage.IncInUse("example@example.com", 1)
 	c.Assert(err, check.IsNil)
-	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 1)
 	c.Assert(quota.Limit, check.Equals, 5)
-	err = s.AuthQuotaStorage.IncInUse("example@example.com", 2)
+	err = s.UserQuotaStorage.IncInUse("example@example.com", 2)
 	c.Assert(err, check.IsNil)
-	quota, err = s.AuthQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err = s.UserQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 3)
 	c.Assert(quota.Limit, check.Equals, 5)
 }
 
-func (s *AuthQuotaSuite) TestIncInUseNotFound(c *check.C) {
-	err := s.AuthQuotaStorage.IncInUse("myapp", 1)
+func (s *UserQuotaSuite) TestIncInUseNotFound(c *check.C) {
+	err := s.UserQuotaStorage.IncInUse("myapp", 1)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
-func (s *AuthQuotaSuite) TestSetLimit(c *check.C) {
+func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	err := s.AuthQuotaStorage.SetLimit("example@example.com", 1)
+	err := s.UserQuotaStorage.SetLimit("example@example.com", 1)
 	c.Assert(err, check.IsNil)
-	quota, err := s.AuthQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, 1)
 }
 
-func (s *AuthQuotaSuite) TestSetLimitNotFound(c *check.C) {
-	err := s.AuthQuotaStorage.SetLimit("myapp", 1)
+func (s *UserQuotaSuite) TestSetLimitNotFound(c *check.C) {
+	err := s.UserQuotaStorage.SetLimit("myapp", 1)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }

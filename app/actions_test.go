@@ -351,7 +351,7 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: authTypes.Quota{Limit: 1},
 	}
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -372,7 +372,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: authTypes.Quota{Limit: 1},
 	}
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -393,7 +393,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: authTypes.Quota{Limit: 1},
 	}
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -433,7 +433,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: authTypes.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.AuthQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
 		c.Assert(email, check.Equals, user.Email)
 		return &authTypes.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -456,7 +456,7 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: authTypes.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.AuthQuota.OnReleaseApp = func(email string) error {
+	s.mockService.UserQuota.OnReleaseApp = func(email string) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}

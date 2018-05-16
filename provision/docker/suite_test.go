@@ -67,7 +67,7 @@ type S struct {
 	mockService   struct {
 		Team      *authTypes.MockTeamService
 		Plan      *appTypes.MockPlanService
-		AuthQuota *authTypes.MockQuotaService
+		UserQuota *authTypes.MockQuotaService
 		AppQuota  *appTypes.MockQuotaService
 	}
 }
@@ -180,7 +180,7 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
-	s.mockService.AuthQuota = &authTypes.MockQuotaService{
+	s.mockService.UserQuota = &authTypes.MockQuotaService{
 		OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
 			c.Assert(email, check.Equals, s.user.Email)
 			return &s.user.Quota, nil
@@ -197,7 +197,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.AppQuota = &appTypes.MockQuotaService{}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
-	servicemanager.AuthQuota = s.mockService.AuthQuota
+	servicemanager.UserQuota = s.mockService.UserQuota
 	servicemanager.AppQuota = s.mockService.AppQuota
 }
 
