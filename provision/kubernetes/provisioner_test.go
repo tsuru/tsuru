@@ -539,32 +539,9 @@ func (s *S) TestUnits(c *check.C) {
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	a1 := provisiontest.NewFakeAppWithPool("myapp", "python", "pool1", 0)
 	a2 := provisiontest.NewFakeAppWithPool("otherapp", "python", "pool2", 0)
-	nNodes := 3
-	poolIndex := 1
-	for i := 1; i <= nNodes; i++ {
-		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("n%d", i),
-				Labels: map[string]string{
-					"tsuru.io/pool": fmt.Sprintf("pool%d", poolIndex),
-				},
-			},
-			Status: apiv1.NodeStatus{
-				Addresses: []apiv1.NodeAddress{
-					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
-				},
-			},
-		})
-		c.Assert(err, check.IsNil)
-		if poolIndex <= 2 {
-			poolIndex++
-		} else {
-			poolIndex = 1
-		}
-	}
 	for _, a := range []provision.App{a1, a2} {
-		ns := s.client.Namespace(a.GetPool())
-		for i := 1; i <= nNodes; i++ {
+		ns := s.client.Namespace(a.GetName())
+		for i := 1; i <= 2; i++ {
 			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
@@ -581,19 +558,22 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 	}
-	listPodsCalls := 0
-	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
-		listPodsCalls++
-		return false, nil, nil
-	})
 	listNodesCalls := 0
 	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
 		listNodesCalls++
 		return false, nil, nil
 	})
+	listPodsCalls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/pods" {
+			listPodsCalls++
+			s.mock.ListPodsHandler(c)(w, r)
+		}
+	}))
+	s.mock.MockfakeNodes(c, srv.URL)
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 6)
+	c.Assert(units, check.HasLen, 4)
 	c.Assert(listNodesCalls, check.Equals, 1)
 	c.Assert(listPodsCalls, check.Equals, 1)
 	sort.Slice(units, func(i, j int) bool {
@@ -606,9 +586,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
+			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
 		},
 		{
 			ID:          "myapp-2",
@@ -616,19 +596,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.2",
+			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "myapp-3",
-			Name:        "myapp-3",
-			AppName:     "myapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
 		},
 		{
 			ID:          "otherapp-1",
@@ -636,9 +606,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
+			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
 		},
 		{
 			ID:          "otherapp-2",
@@ -646,19 +616,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.2",
+			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "otherapp-3",
-			Name:        "otherapp-3",
-			AppName:     "otherapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
 		},
 	})
 }
@@ -687,7 +647,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()
-	ns := s.client.Namespace(a.GetPool())
+	ns := s.client.Namespace(a.GetName())
 	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 2)
@@ -970,16 +930,16 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	services, err := s.client.CoreV1().Services(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	services, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
 }
@@ -1046,7 +1006,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1072,7 +1032,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetName()))
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
@@ -1193,7 +1153,7 @@ func (s *S) TestRollback(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1514,15 +1474,15 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "stderr data")
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.Pool)).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.Pool)).Get("app-myapp", metav1.GetOptions{})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.GetName())).Get("app-myapp", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app-myapp",
-			Namespace: s.client.Namespace(a.Pool),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/app-name":    "myapp",
@@ -1542,7 +1502,7 @@ func (s *S) TestExecuteCommandIsolatedEnsureNamespace(c *check.C) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.Pool))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetName()))
 		return false, nil, nil
 	})
 	imgName := "myapp:v1"

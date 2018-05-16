@@ -153,7 +153,7 @@ func podsForAppProcess(client *ClusterClient, a provision.App, process string) (
 	} else {
 		selector = l.ToSelector()
 	}
-	podList, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).List(metav1.ListOptions{
+	podList, err := client.CoreV1().Pods(client.Namespace(a.GetName())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
 	if err != nil {
@@ -175,7 +175,7 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, g
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	replicaSets, err := client.AppsV1beta2().ReplicaSets(client.Namespace(a.GetPool())).List(metav1.ListOptions{
+	replicaSets, err := client.AppsV1beta2().ReplicaSets(client.Namespace(a.GetName())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
@@ -232,7 +232,7 @@ podsLoop:
 		}
 	}
 	var messages []string
-	ns := client.Namespace(a.GetPool())
+	ns := client.Namespace(a.GetName())
 	for _, pod := range podsForEvts {
 		err = newInvalidPodPhaseError(client, pod, ns)
 		messages = append(messages, fmt.Sprintf("Pod %s: %v", pod.Name, err))
@@ -355,7 +355,7 @@ func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions, namespace s
 
 func cleanupDeployment(client *ClusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
-	ns := client.Namespace(a.GetPool())
+	ns := client.Namespace(a.GetName())
 	err := client.AppsV1beta2().Deployments(ns).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})

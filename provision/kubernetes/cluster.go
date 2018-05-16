@@ -130,12 +130,13 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) Namespace(poolName string) string {
+// Namespace returns the namespace for a given app.
+func (c *ClusterClient) Namespace(appName string) string {
 	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	return c.namespace(poolName, usePoolNamespaces)
+	return c.namespace(appName, usePoolNamespaces)
 }
 
-func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) string {
+func (c *ClusterClient) namespace(appName string, usePoolNamespaces bool) string {
 	prefix := "default"
 	if usePoolNamespaces {
 		prefix = "tsuru"
@@ -143,29 +144,10 @@ func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) strin
 	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
-
-	if usePoolNamespaces && len(poolName) > 0 {
-		return fmt.Sprintf("%s-%s", prefix, poolName)
+	if usePoolNamespaces && len(appName) > 0 {
+		return fmt.Sprintf("%s-%s", prefix, appName)
 	}
 	return prefix
-}
-
-func (c *ClusterClient) Namespaces(poolNames []string) []string {
-	if len(poolNames) == 0 {
-		return nil
-	}
-
-	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	namespaces := []string{}
-	nsMap := map[string]struct{}{}
-	for _, poolName := range poolNames {
-		ns := c.namespace(poolName, usePoolNamespaces)
-		if _, ok := nsMap[ns]; !ok {
-			namespaces = append(namespaces, ns)
-			nsMap[ns] = struct{}{}
-		}
-	}
-	return namespaces
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

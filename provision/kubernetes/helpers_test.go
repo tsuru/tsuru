@@ -391,7 +391,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/router-name":          "fake",
 		"tsuru.io/provisioner":          "kubernetes",
 	}
-	ns := s.client.Namespace(a.Pool)
+	ns := s.client.Namespace(a.GetName())
 	_, err := s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",

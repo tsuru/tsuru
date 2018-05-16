@@ -69,7 +69,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -105,7 +105,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(dep, check.DeepEquals, &v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
-			Namespace:   s.client.Namespace(a.GetPool()),
+			Namespace:   s.client.Namespace(a.GetName()),
 			Labels:      depLabels,
 			Annotations: annotations,
 		},
@@ -175,12 +175,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 		},
 	})
-	srv, err := s.client.CoreV1().Services(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
@@ -218,12 +218,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Type: apiv1.ServiceTypeNodePort,
 		},
 	})
-	srvHeadless, err := s.client.CoreV1().Services(s.client.Namespace(a.GetPool())).Get("myapp-p1-units", metav1.GetOptions{})
+	srvHeadless, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).Get("myapp-p1-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvHeadless, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-units",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
@@ -263,12 +263,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Type:      apiv1.ServiceTypeClusterIP,
 		},
 	})
-	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.GetPool())).Get("app-myapp", metav1.GetOptions{})
+	account, err := s.client.CoreV1().ServiceAccounts(s.client.Namespace(a.GetName())).Get("app-myapp", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app-myapp",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":    "true",
 				"tsuru.io/app-name":    "myapp",
@@ -290,7 +290,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetName()))
 		return false, nil, nil
 	})
 	err := app.CreateApp(a, s.user)
@@ -329,12 +329,12 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	srv, err := s.client.CoreV1().Services(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
@@ -497,7 +497,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 		var dep *v1beta2.Deployment
-		dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
@@ -531,7 +531,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &apiv1.Probe{
 		Handler: apiv1.Handler{
@@ -542,7 +542,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 	})
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 }
@@ -572,7 +572,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace(a.GetPool())
+	ns := s.client.Namespace(a.GetName())
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
@@ -616,12 +616,12 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "registry-myreg.com"},
 	})
-	secrets, err := s.client.CoreV1().Secrets(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	secrets, err := s.client.CoreV1().Secrets(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
 		{
@@ -679,7 +679,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 			<-watchCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
-			s.client.AppsV1beta2().Deployments(s.clusterClient.Namespace(a.GetPool())).Update(&depCopy)
+			s.client.AppsV1beta2().Deployments(s.clusterClient.Namespace(a.GetName())).Update(&depCopy)
 		}()
 		return false, nil, nil
 	})
@@ -699,7 +699,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
@@ -746,7 +746,7 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*? ---> context canceled <---.*`)
 }
@@ -776,10 +776,10 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep, check.NotNil)
-	daemon, err := s.client.Clientset.AppsV1beta2().DaemonSets(s.client.Namespace(a.GetPool())).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.Clientset.AppsV1beta2().DaemonSets(s.client.Namespace(a.GetName())).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon, check.NotNil)
 }
@@ -825,7 +825,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &apiv1.PodSecurityContext{
@@ -851,7 +851,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
@@ -883,7 +883,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
@@ -917,7 +917,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
@@ -942,7 +942,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		inputFile:         "/home/application/archive.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1001,7 +1001,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1010,7 +1010,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-v1-deploy",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-deploy":            "false",
 				"tsuru.io/is-stopped":           "false",
@@ -1117,7 +1117,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1126,7 +1126,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-v1-deploy",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-deploy":            "false",
 				"tsuru.io/is-stopped":           "false",
@@ -1235,7 +1235,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 			<-watchCalled
 			time.Sleep(time.Second)
 			podCopy.Status.ContainerStatuses = nil
-			s.clusterClient.CoreV1().Pods(s.clusterClient.Namespace(a.GetPool())).Update(&podCopy)
+			s.clusterClient.CoreV1().Pods(s.clusterClient.Namespace(a.GetName())).Update(&podCopy)
 		}()
 		return false, nil, nil
 	})
@@ -1255,7 +1255,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	<-podReactorDone
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(buf.String(), check.Matches, `(?s).*stdout data.*`)
@@ -1274,7 +1274,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 		inputFile:         "/dev/null",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1283,7 +1283,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-v1-deploy",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels: map[string]string{
 				"tsuru.io/is-deploy":            "false",
 				"tsuru.io/is-stopped":           "false",
@@ -1410,7 +1410,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -1479,10 +1479,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
 	cleanupDeployment(s.clusterClient, a, "p1")
-	_, err = s.client.CoreV1().Events(s.client.Namespace(a.GetPool())).Create(&apiv1.Event{
+	_, err = s.client.CoreV1().Events(s.client.Namespace(a.GetName())).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 		},
 		Reason:  "Unhealthy",
 		Message: "my evt message",
@@ -1528,7 +1528,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetPool())).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetName())).Create(&v1beta2.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -1562,10 +1562,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting healthcheck after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
 	cleanupDeployment(s.clusterClient, a, "p1")
-	_, err = s.client.CoreV1().Events(s.client.Namespace(a.GetPool())).Create(&apiv1.Event{
+	_, err = s.client.CoreV1().Events(s.client.Namespace(a.GetName())).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 		},
 		Reason:  "Unhealthy",
 		Message: "my evt message",
@@ -1610,7 +1610,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetPool())).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetName())).Create(&v1beta2.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -1677,34 +1677,34 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/provisioner":          provisionerName,
 		"tsuru.io/builder":              "",
 	}
-	_, err = s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetPool())).Create(&v1beta2.ReplicaSet{
+	_, err = s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetName())).Create(&v1beta2.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
-			Namespace: s.client.Namespace(a.GetPool()),
+			Namespace: s.client.Namespace(a.GetName()),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	srvs, err := s.client.CoreV1().Services(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	srvs, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	replicas, err := s.client.Clientset.AppsV1beta2().ReplicaSets(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
@@ -1730,10 +1730,10 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	})
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
-	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1beta2().Deployments(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	srvs, err := s.client.CoreV1().Services(s.client.Namespace(a.GetPool())).List(metav1.ListOptions{})
+	srvs, err := s.client.CoreV1().Services(s.client.Namespace(a.GetName())).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
 }

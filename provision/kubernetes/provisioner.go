@@ -443,7 +443,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName, client.Namespace(a.GetPool()))
+	pubPort, err := getServicePort(client, srvName, client.Namespace(a.GetName()))
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +473,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(client.Namespace(a.GetName())).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -746,7 +746,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName, client.Namespace(a.GetPool()))
+		defer cleanupPod(client, deployPodName, client.Namespace(a.GetName()))
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -848,7 +848,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provi
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace(a.GetPool())).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(client.Namespace(a.GetName())).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {

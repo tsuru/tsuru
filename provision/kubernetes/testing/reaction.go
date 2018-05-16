@@ -6,6 +6,7 @@ package testing
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -243,9 +244,38 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			fmt.Fprint(w, "my log message")
 		} else if s.DefaultHook != nil {
 			s.DefaultHook(w, r)
+		} else if r.URL.Path == "/api/v1/pods" {
+			s.ListPodsHandler(c)(w, r)
 		}
 	}))
 	return srv, &wg
+}
+
+func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Path, check.Equals, "/api/v1/pods")
+		for _, f := range funcs {
+			f(r)
+		}
+		nlist, err := s.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		c.Assert(err, check.IsNil)
+		response := apiv1.PodList{}
+		namespaces := []string{}
+		if len(nlist.Items) == 0 {
+			namespaces = []string{"default"}
+		}
+		for _, n := range nlist.Items {
+			namespaces = append(namespaces, n.GetName())
+		}
+		for _, n := range namespaces {
+			podlist, err := s.client.CoreV1().Pods(n).List(metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
+			c.Assert(err, check.IsNil)
+			response.Items = append(response.Items, podlist.Items...)
+		}
+		w.Header().Add("Content-type", "application/json")
+		err = json.NewEncoder(w).Encode(response)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
@@ -321,7 +351,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetPool())).Update(pod)
+				_, err = s.client.CoreV1().Pods(s.client.Namespace(a.GetName())).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
