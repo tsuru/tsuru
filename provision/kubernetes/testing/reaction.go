@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -92,11 +91,6 @@ func (c *clientCoreWrapper) Pods(namespace string) v1core.PodInterface {
 type clientPodsWrapper struct {
 	v1core.PodInterface
 	cluster ClusterInterface
-}
-
-func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *rest.Request {
-	cli, _ := rest.RESTClientFor(c.cluster.RestConfig())
-	return cli.Get().Namespace(c.cluster.Namespace("")).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, scheme.ParameterCodec)
 }
 
 type StreamResult struct {
