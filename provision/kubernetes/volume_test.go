@@ -92,7 +92,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 		},
 	})
-	ns := s.client.Namespace(a.Pool)
+	ns := s.client.AppNamespace(a)
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	emptyStr := ""
@@ -175,7 +175,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.Namespace(a.Pool)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.AppNamespace(a)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -222,7 +222,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	expectedClass := "my-class"
 	expectedCap, err := resource.ParseQuantity("20Gi")
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace(a.Pool)
+	ns := s.client.AppNamespace(a)
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
@@ -275,7 +275,7 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace(a.Pool)
+	ns := s.client.AppNamespace(a)
 	err = deleteVolume(s.clusterClient, "v1", ns)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
@@ -290,7 +290,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 	exists, err := volumeExists(s.clusterClient, "v1", "test-default")
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, false)
-	a := provisiontest.NewFakeApp("myapp", "python", "test-default", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -309,7 +309,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
-	exists, err = volumeExists(s.clusterClient, "v1", "test-default")
+	exists, err = volumeExists(s.clusterClient, "v1", s.clusterClient.AppNamespace(a))
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, true)
 }

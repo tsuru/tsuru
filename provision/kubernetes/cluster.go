@@ -130,9 +130,13 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) Namespace(poolName string) string {
+func (c *ClusterClient) AppNamespace(app provision.App) string {
+	return c.Namespace(app.GetPool())
+}
+
+func (c *ClusterClient) Namespace(pool string) string {
 	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	return c.namespace(poolName, usePoolNamespaces)
+	return c.namespace(pool, usePoolNamespaces)
 }
 
 func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) string {

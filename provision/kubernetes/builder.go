@@ -35,7 +35,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	if err != nil {
 		return "", err
 	}
-	defer cleanupPod(client, buildPodName, client.Namespace(a.GetPool()))
+	defer cleanupPod(client, buildPodName, client.AppNamespace(a))
 	params := createPodParams{
 		app:               a,
 		client:            client,

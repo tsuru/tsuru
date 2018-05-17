@@ -259,7 +259,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 		c.Assert(errGet, check.IsNil)
 	}
 	for _, a := range []provision.App{app1, app2} {
-		ns := s.client.Namespace(a.GetPool())
+		ns := s.client.AppNamespace(a)
 		for i := 1; i <= numNodes; i++ {
 			_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{

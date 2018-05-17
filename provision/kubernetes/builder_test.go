@@ -26,7 +26,7 @@ import (
 func (s *S) TestBuildPod(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace(a.Pool)).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -72,10 +72,10 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
 		return false, nil, nil
 	})
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace(a.Pool)).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -150,7 +150,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace(a.GetPool()))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
 		return false, nil, nil
 	})
 	client := KubeClient{}
@@ -177,7 +177,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace(a.Pool)).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -231,7 +231,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace(a.Pool)).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
