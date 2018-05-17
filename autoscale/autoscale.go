@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/safe"
 )
 
@@ -409,25 +410,18 @@ func (a *Config) removeMultipleNodes(evt *event.Event, prov provision.NodeProvis
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			node := chosenNodes[i]
+			n := chosenNodes[i]
 			buf := safe.NewBuffer(nil)
-			err := prov.RemoveNode(provision.RemoveNodeOptions{
-				Address:   node.Address,
-				Writer:    buf,
-				Rebalance: true,
+			err := node.RemoveNode(node.RemoveNodeArgs{
+				Prov:       prov,
+				Address:    n.Address,
+				Writer:     buf,
+				Rebalance:  true,
+				RemoveIaaS: true,
 			})
 			if err != nil {
-				errCh <- errors.Wrapf(err, "unable to unregister node %s for removal", node.Address)
+				errCh <- errors.Wrapf(err, "unable to unregister node %s for removal", n.Address)
 				return
-			}
-			m, err := iaas.FindMachineByIdOrAddress(node.IaaSID, net.URLToHost(node.Address))
-			if err != nil {
-				evt.Logf("unable to find machine for removal in iaas: %s", err)
-				return
-			}
-			err = m.Destroy()
-			if err != nil {
-				evt.Logf("unable to destroy machine in IaaS: %s", err)
 			}
 		}(i)
 	}
@@ -468,7 +462,7 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 	if len(nodes) == 1 {
 		return false, nil
 	}
-	exclusiveList, _, err := provision.NodeList(nodes).SplitMetadata()
+	exclusiveList, _, err := node.NodeList(nodes).SplitMetadata()
 	if err != nil {
 		return false, err
 	}
@@ -496,7 +490,7 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 }
 
 func chooseMetadataFromNodes(modelNodes []provision.Node) (map[string]string, error) {
-	exclusiveList, baseMetadata, err := provision.NodeList(modelNodes).SplitMetadata()
+	exclusiveList, baseMetadata, err := node.NodeList(modelNodes).SplitMetadata()
 	if err != nil {
 		return nil, err
 	}

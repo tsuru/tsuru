@@ -2,25 +2,23 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package provision
+package node
 
 import (
+	"io"
 	"sort"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/healer"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
-)
-
-const (
-	PoolMetadataName   = "pool"
-	IaaSIDMetadataName = "iaas-id"
-	IaaSMetadataName   = "iaas"
+	"github.com/tsuru/tsuru/provision"
 )
 
 type MetaWithFrequency struct {
 	Metadata map[string]string
-	Nodes    []Node
+	Nodes    []provision.Node
 }
 
 type MetaWithFrequencyList []MetaWithFrequency
@@ -29,10 +27,10 @@ func (l MetaWithFrequencyList) Len() int           { return len(l) }
 func (l MetaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l MetaWithFrequencyList) Less(i, j int) bool { return len(l[i].Nodes) < len(l[j].Nodes) }
 
-type NodeList []Node
+type NodeList []provision.Node
 
-func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
-	nodeAddrMap := map[string]Node{}
+func FindNodeByAddrs(p provision.NodeProvisioner, addrs []string) (provision.Node, error) {
+	nodeAddrMap := map[string]provision.Node{}
 	nodes, err := p.ListNodes(nil)
 	if err != nil {
 		return nil, err
@@ -40,7 +38,7 @@ func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
 	for i, n := range nodes {
 		nodeAddrMap[net.URLToHost(n.Address())] = nodes[i]
 	}
-	var node Node
+	var node provision.Node
 	for _, addr := range addrs {
 		n := nodeAddrMap[net.URLToHost(addr)]
 		if n != nil {
@@ -51,13 +49,13 @@ func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
 		}
 	}
 	if node == nil {
-		return nil, ErrNodeNotFound
+		return nil, provision.ErrNodeNotFound
 	}
 	return node, nil
 }
 
-func FindNodeSkipProvisioner(address string, skipProv string) (Provisioner, Node, error) {
-	provisioners, err := Registry()
+func FindNodeSkipProvisioner(address string, skipProv string) (provision.Provisioner, provision.Node, error) {
+	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,12 +64,12 @@ func FindNodeSkipProvisioner(address string, skipProv string) (Provisioner, Node
 		if skipProv != "" && prov.GetName() == skipProv {
 			continue
 		}
-		nodeProv, ok := prov.(NodeProvisioner)
+		nodeProv, ok := prov.(provision.NodeProvisioner)
 		if !ok {
 			continue
 		}
 		node, err := nodeProv.GetNode(address)
-		if err == ErrNodeNotFound {
+		if err == provision.ErrNodeNotFound {
 			continue
 		}
 		if err != nil {
@@ -83,18 +81,69 @@ func FindNodeSkipProvisioner(address string, skipProv string) (Provisioner, Node
 	if provErrors.Len() > 0 {
 		return nil, nil, provErrors
 	}
-	return nil, nil, ErrNodeNotFound
+	return nil, nil, provision.ErrNodeNotFound
 }
 
-func FindNode(address string) (Provisioner, Node, error) {
+func FindNode(address string) (provision.Provisioner, provision.Node, error) {
 	return FindNodeSkipProvisioner(address, "")
 }
 
-func metadataNoIaasID(n Node) map[string]string {
+type RemoveNodeArgs struct {
+	Node       provision.Node
+	Prov       provision.NodeProvisioner
+	Address    string
+	Writer     io.Writer
+	Rebalance  bool
+	RemoveIaaS bool
+}
+
+func RemoveNode(args RemoveNodeArgs) error {
+	var err error
+	if args.Node == nil {
+		if args.Prov == nil {
+			return errors.New("arg Prov is required if Node is nil")
+		}
+		args.Node, err = args.Prov.GetNode(args.Address)
+		if err != nil {
+			return err
+		}
+	}
+	return removeNodeWithNode(args.Node, provision.RemoveNodeOptions{
+		Address:   args.Node.Address(),
+		Rebalance: args.Rebalance,
+		Writer:    args.Writer,
+	}, args.RemoveIaaS)
+}
+
+func removeNodeWithNode(node provision.Node, opts provision.RemoveNodeOptions, removeIaaS bool) error {
+	prov := node.Provisioner()
+	err := prov.RemoveNode(opts)
+	if err != nil {
+		return err
+	}
+	multi := tsuruErrors.NewMultiError()
+	err = healer.HealerInstance.RemoveNode(node)
+	if err != nil {
+		multi.Add(errors.Wrapf(err, "unable to remove healer data"))
+	}
+	if removeIaaS {
+		var m iaas.Machine
+		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(opts.Address))
+		if err == nil {
+			err = m.Destroy()
+		}
+		if err != nil && err != iaas.ErrMachineNotFound {
+			multi.Add(errors.Wrapf(err, "unable to destroy machine in iaas"))
+		}
+	}
+	return multi.ToError()
+}
+
+func metadataNoIaasID(n provision.Node) map[string]string {
 	// iaas-id is ignored because it wasn't created in previous tsuru versions
 	// and having nodes with and without it would cause unbalanced metadata
 	// errors.
-	ignoredMetadata := []string{IaaSIDMetadataName}
+	ignoredMetadata := []string{provision.IaaSIDMetadataName}
 	metadata := map[string]string{}
 	for k, v := range n.MetadataNoPrefix() {
 		metadata[k] = v
@@ -135,7 +184,7 @@ func (nodes NodeList) SplitMetadata() (MetaWithFrequencyList, map[string]string,
 	var group MetaWithFrequencyList
 	sameMap := make(map[int]bool)
 	for i := range exclusive {
-		groupNodes := []Node{nodes[i]}
+		groupNodes := []provision.Node{nodes[i]}
 		for j := range exclusive {
 			if i == j {
 				continue

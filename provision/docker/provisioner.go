@@ -38,6 +38,7 @@ import (
 	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	_ "github.com/tsuru/tsuru/router/api"
@@ -102,10 +103,6 @@ func (h hookHealer) HandleError(node *cluster.Node) time.Duration {
 	return tsuruHealer.HealerInstance.HandleError(&clusterNodeWrapper{Node: node, prov: h.p})
 }
 
-func (h hookHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
-	return tsuruHealer.HealerInstance.RemoveNode(&clusterNodeWrapper{Node: node, prov: h.p})
-}
-
 func (p *dockerProvisioner) initDockerCluster() error {
 	debug, _ := config.GetBool("debug")
 	clusterLog.SetDebug(debug)
@@ -145,7 +142,6 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if tsuruHealer.HealerInstance != nil {
 		healer := hookHealer{p: p}
 		p.cluster.Healer = healer
-		p.cluster.AddHook(cluster.HookEventBeforeNodeUnregister, healer)
 	}
 	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
@@ -1041,20 +1037,20 @@ func (p *dockerProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (
 	if err != nil {
 		return nil, err
 	}
-	var node *cluster.Node
+	var chosenNode *cluster.Node
 	for _, c := range containersForNode {
 		n := nodeSet[c.HostAddr]
 		if n != nil {
-			if node != nil && node.Address != n.Address {
-				return nil, errors.Errorf("containers match multiple nodes: %s and %s", node.Address, n.Address)
+			if chosenNode != nil && chosenNode.Address != n.Address {
+				return nil, errors.Errorf("containers match multiple nodes: %s and %s", chosenNode.Address, n.Address)
 			}
-			node = n
+			chosenNode = n
 		}
 	}
-	if node != nil {
-		return &clusterNodeWrapper{Node: node, prov: p}, nil
+	if chosenNode != nil {
+		return &clusterNodeWrapper{Node: chosenNode, prov: p}, nil
 	}
-	return provision.FindNodeByAddrs(p, nodeData.Addrs)
+	return node.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *dockerProvisioner) GetName() string {

@@ -25,6 +25,10 @@ import (
 const (
 	defaultDockerProvisioner = "docker"
 	DefaultHealthcheckScheme = "http"
+
+	PoolMetadataName   = "pool"
+	IaaSIDMetadataName = "iaas-id"
+	IaaSMetadataName   = "iaas"
 )
 
 var (

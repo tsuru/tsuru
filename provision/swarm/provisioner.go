@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 )
@@ -506,7 +507,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 			return &swarmNodeWrapper{Node: node, provisioner: p, client: client}, nil
 		}
 	}
-	return provision.FindNodeByAddrs(p, nodeData.Addrs)
+	return node.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {

@@ -19,8 +19,8 @@ import (
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/node"
 )
 
 type segregatedScheduler struct {
@@ -328,7 +328,7 @@ func appGroupCount(hostGroups map[string]int, appCountHost map[string]int) map[s
 // (good to remove a container) value for the pair [(number of containers for
 // app-process), (number of containers in host)]
 func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process string) (string, string, error) {
-	nodesList := make(provision.NodeList, len(nodes))
+	nodesList := make(node.NodeList, len(nodes))
 	for i := range nodes {
 		nodesList[i] = &clusterNodeWrapper{Node: &nodes[i], prov: s.provisioner}
 	}
