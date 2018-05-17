@@ -179,38 +179,6 @@ func (s *S) TestClusterNamespacePerPool(c *check.C) {
 	c.Assert(client.Namespace(""), check.Equals, "tsuru")
 }
 
-func (s *S) TestClusterNamespaces(c *check.C) {
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"x"})
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"default"})
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"default"})
-}
-
-func (s *S) TestClusterNamespacesPerPool(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"x-mypool1", "x-mypool2", "x"})
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2"}), check.DeepEquals, []string{"tsuru-mypool1", "tsuru-mypool2"})
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
-	client, err = NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	c.Assert(client.Namespaces([]string{"mypool1", "mypool2", ""}), check.DeepEquals, []string{"tsuru-mypool1", "tsuru-mypool2", "tsuru"})
-}
-
 func (s *S) TestClusterOvercommitFactor(c *check.C) {
 	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
 		"overcommit-factor":         "2",

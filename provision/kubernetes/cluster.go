@@ -150,24 +150,6 @@ func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) strin
 	return prefix
 }
 
-func (c *ClusterClient) Namespaces(poolNames []string) []string {
-	if len(poolNames) == 0 {
-		return nil
-	}
-
-	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	namespaces := []string{}
-	nsMap := map[string]struct{}{}
-	for _, poolName := range poolNames {
-		ns := c.namespace(poolName, usePoolNamespaces)
-		if _, ok := nsMap[ns]; !ok {
-			namespaces = append(namespaces, ns)
-			nsMap[ns] = struct{}{}
-		}
-	}
-	return namespaces
-}
-
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 	if c.CustomData == nil {
 		return 1, nil
