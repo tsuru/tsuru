@@ -63,10 +63,7 @@ paths:
         '200':
           description: Service instance
           schema:
-            type: array
-            items:
-              type: object
-              $ref: '#/definitions/ServiceInstanceInfo'
+            $ref: '#/definitions/ServiceInstanceInfo'
         '401':
           description: Unauthorized
           schema:
