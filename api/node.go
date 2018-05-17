@@ -22,9 +22,9 @@ import (
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/pool"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 )
@@ -66,7 +66,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		params.IaaSID = m.Id
 	}
 	delete(params.Metadata, provision.PoolMetadataName)
-	prov, _, err := provision.FindNodeSkipProvisioner(address, p.GetName())
+	prov, _, err := node.FindNodeSkipProvisioner(address, p.GetName())
 	if err != provision.ErrNodeNotFound {
 		if err == nil {
 			return "", nil, errors.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
@@ -178,7 +178,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if address == "" {
 		return errors.Errorf("Node address is required.")
 	}
-	prov, node, err := provision.FindNode(address)
+	_, n, err := node.FindNode(address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -188,8 +188,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		}
 		return err
 	}
-	nodeProv := prov.(provision.NodeProvisioner)
-	pool := node.Pool()
+	pool := n.Pool()
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
 		permission.Context(permission.CtxPool, pool),
 	)
@@ -197,7 +196,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address()},
+		Target:     event.Target{Type: event.TargetTypeNode, Value: n.Address()},
 		Kind:       permission.PermNodeDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -208,24 +207,13 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(err) }()
 	noRebalance, _ := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
-	err = nodeProv.RemoveNode(provision.RemoveNodeOptions{
-		Address:   address,
-		Rebalance: !noRebalance,
-		Writer:    w,
-	})
-	if err != nil {
-		return err
-	}
 	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
-	if removeIaaS {
-		var m iaas.Machine
-		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(address))
-		if err != nil && err != iaas.ErrMachineNotFound {
-			return nil
-		}
-		return m.Destroy()
-	}
-	return nil
+	return node.RemoveNode(node.RemoveNodeArgs{
+		Node:       n,
+		Rebalance:  !noRebalance,
+		Writer:     w,
+		RemoveIaaS: removeIaaS,
+	})
 }
 
 // title: list nodes
@@ -340,7 +328,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if params.Address == "" {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
-	prov, node, err := provision.FindNode(params.Address)
+	prov, node, err := node.FindNode(params.Address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -397,7 +385,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   404: Not found
 func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
-	_, node, err := provision.FindNode(address)
+	_, node, err := node.FindNode(address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -685,7 +673,7 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if address == "" {
 		return errors.Errorf("Node address is required.")
 	}
-	_, node, err := provision.FindNode(address)
+	_, node, err := node.FindNode(address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{

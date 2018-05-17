@@ -12,6 +12,10 @@ import (
 	"gopkg.in/check.v1"
 )
 
+type S struct{}
+
+var _ = check.Suite(&S{})
+
 func (s *S) TestWebProcessDefaultPort(c *check.C) {
 	port := provision.WebProcessDefaultPort()
 	c.Assert(port, check.Equals, "8888")

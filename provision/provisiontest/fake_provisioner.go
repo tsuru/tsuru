@@ -568,7 +568,25 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 }
 
 func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
-	return provision.FindNodeByAddrs(p, nodeData.Addrs)
+	nodeAddrMap := map[string]provision.Node{}
+	for addr, n := range p.nodes {
+		n := n
+		nodeAddrMap[net.URLToHost(addr)] = &n
+	}
+	var node provision.Node
+	for _, addr := range nodeData.Addrs {
+		n := nodeAddrMap[net.URLToHost(addr)]
+		if n != nil {
+			if node != nil {
+				return nil, errors.Errorf("addrs match multiple nodes: %v", nodeData.Addrs)
+			}
+			node = n
+		}
+	}
+	if node == nil {
+		return nil, provision.ErrNodeNotFound
+	}
+	return node, nil
 }
 
 func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
