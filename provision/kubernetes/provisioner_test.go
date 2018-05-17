@@ -539,32 +539,18 @@ func (s *S) TestUnits(c *check.C) {
 func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	a1 := provisiontest.NewFakeAppWithPool("myapp", "python", "pool1", 0)
 	a2 := provisiontest.NewFakeAppWithPool("otherapp", "python", "pool2", 0)
-	nNodes := 3
-	poolIndex := 1
-	for i := 1; i <= nNodes; i++ {
-		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("n%d", i),
-				Labels: map[string]string{
-					"tsuru.io/pool": fmt.Sprintf("pool%d", poolIndex),
-				},
-			},
-			Status: apiv1.NodeStatus{
-				Addresses: []apiv1.NodeAddress{
-					{Type: apiv1.NodeInternalIP, Address: fmt.Sprintf("192.168.55.%d", i)},
-				},
-			},
-		})
-		c.Assert(err, check.IsNil)
-		if poolIndex <= 2 {
-			poolIndex++
-		} else {
-			poolIndex = 1
+	listPodsCalls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/pods" {
+			listPodsCalls++
+			s.mock.ListPodsHandler(c)(w, r)
+			return
 		}
-	}
+	}))
+	s.mock.MockfakeNodes(c, srv.URL)
 	for _, a := range []provision.App{a1, a2} {
 		ns := s.client.Namespace(a.GetPool())
-		for i := 1; i <= nNodes; i++ {
+		for i := 1; i <= 2; i++ {
 			_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
@@ -581,11 +567,6 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 	}
-	listPodsCalls := 0
-	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
-		listPodsCalls++
-		return false, nil, nil
-	})
 	listNodesCalls := 0
 	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
 		listNodesCalls++
@@ -593,7 +574,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	})
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 6)
+	c.Assert(units, check.HasLen, 4)
 	c.Assert(listNodesCalls, check.Equals, 1)
 	c.Assert(listPodsCalls, check.Equals, 1)
 	sort.Slice(units, func(i, j int) bool {
@@ -606,9 +587,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
+			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
 		},
 		{
 			ID:          "myapp-2",
@@ -616,19 +597,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.2",
+			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "myapp-3",
-			Name:        "myapp-3",
-			AppName:     "myapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
 		},
 		{
 			ID:          "otherapp-1",
@@ -636,9 +607,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.1",
+			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
 		},
 		{
 			ID:          "otherapp-2",
@@ -646,19 +617,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			AppName:     "otherapp",
 			ProcessName: "web",
 			Type:        "python",
-			IP:          "192.168.55.2",
+			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.2"},
-		},
-		{
-			ID:          "otherapp-3",
-			Name:        "otherapp-3",
-			AppName:     "otherapp",
-			ProcessName: "web",
-			Type:        "python",
-			IP:          "192.168.55.3",
-			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.55.3"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
 		},
 	})
 }
