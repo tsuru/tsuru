@@ -252,11 +252,11 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	// TODO: add a second node after fixing kubernetes FakePods: https://github.com/kubernetes/kubernetes/blob/865321c2d69d249d95079b7f8e2ca99f5430d79e/staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake/fake_pod.go#L67
 	numNodes := 1
 	for i := 1; i <= numNodes; i++ {
-		node, err := s.client.CoreV1().Nodes().Get(fmt.Sprintf("n%d", i), metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
+		node, errGet := s.client.CoreV1().Nodes().Get(fmt.Sprintf("n%d", i), metav1.GetOptions{})
+		c.Assert(errGet, check.IsNil)
 		node.ObjectMeta.Labels["tsuru.io/pool"] = fmt.Sprintf("pool%d", i)
-		_, err = s.client.CoreV1().Nodes().Update(node)
-		c.Assert(err, check.IsNil)
+		_, errGet = s.client.CoreV1().Nodes().Update(node)
+		c.Assert(errGet, check.IsNil)
 	}
 	for _, a := range []provision.App{app1, app2} {
 		ns := s.client.Namespace(a.GetPool())

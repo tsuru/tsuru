@@ -262,8 +262,8 @@ func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) f
 			namespaces = append(namespaces, n.GetName())
 		}
 		for _, n := range namespaces {
-			podlist, err := s.client.CoreV1().Pods(n).List(metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
-			c.Assert(err, check.IsNil)
+			podlist, errList := s.client.CoreV1().Pods(n).List(metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
+			c.Assert(errList, check.IsNil)
 			response.Items = append(response.Items, podlist.Items...)
 		}
 		w.Header().Add("Content-type", "application/json")
