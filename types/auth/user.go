@@ -8,10 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 type User struct {
-	Quota    Quota
+	Quota    quota.Quota
 	Email    string
 	Password string
 	APIKey   string

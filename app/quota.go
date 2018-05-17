@@ -6,14 +6,14 @@ package app
 
 import (
 	"github.com/tsuru/tsuru/storage"
-	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 type appQuotaService struct {
-	storage appTypes.QuotaStorage
+	storage quota.AppQuotaStorage
 }
 
-func QuotaService() (appTypes.QuotaService, error) {
+func QuotaService() (quota.AppQuotaService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -38,10 +38,10 @@ func (s *appQuotaService) ReserveUnits(appName string, quantity int) error {
 }
 
 // CheckAppLimit implements CheckAppLimit method from AppQuotaService interface
-func (s *appQuotaService) CheckAppLimit(quota *appTypes.Quota, quantity int) error {
-	if !quota.IsUnlimited() && quota.InUse+quantity > quota.Limit {
-		return &appTypes.QuotaExceededError{
-			Available: uint(quota.Limit - quota.InUse),
+func (s *appQuotaService) CheckAppLimit(q *quota.Quota, quantity int) error {
+	if !q.IsUnlimited() && q.InUse+quantity > q.Limit {
+		return &quota.QuotaExceededError{
+			Available: uint(q.Limit - q.InUse),
 			Requested: uint(quantity),
 		}
 	}
@@ -62,9 +62,9 @@ func (s *appQuotaService) ReleaseUnits(appName string, quantity int) error {
 }
 
 // CheckAppUsage implements CheckAppUsage method from AppQuotaService interface
-func (s *appQuotaService) CheckAppUsage(quota *appTypes.Quota, quantity int) error {
-	if quota.InUse-quantity < 0 {
-		return appTypes.ErrNoReservedUnits
+func (s *appQuotaService) CheckAppUsage(q *quota.Quota, quantity int) error {
+	if q.InUse-quantity < 0 {
+		return quota.ErrNoReservedUnits
 	}
 	return nil
 }
@@ -75,14 +75,14 @@ func (s *appQuotaService) CheckAppUsage(quota *appTypes.Quota, quantity int) err
 // units.
 // ChangeLimit implements ChangeLimit method from AppQuotaService interface
 func (s *appQuotaService) ChangeLimit(appName string, limit int) error {
-	quota, err := s.storage.FindByAppName(appName)
+	q, err := s.storage.FindByAppName(appName)
 	if err != nil {
 		return err
 	}
 	if limit < 0 {
 		limit = -1
-	} else if limit < quota.InUse {
-		return appTypes.ErrLimitLowerThanAllocated
+	} else if limit < q.InUse {
+		return quota.ErrLimitLowerThanAllocated
 	}
 	return s.storage.SetLimit(appName, limit)
 }
@@ -91,23 +91,23 @@ func (s *appQuotaService) ChangeLimit(appName string, limit int) error {
 // than or equal to the current limit of the app. It also must be a non negative number.
 // ChangeInUse implements ChangeInUse method from AppQuotaService interface
 func (s *appQuotaService) ChangeInUse(appName string, inUse int) error {
-	quota, err := s.storage.FindByAppName(appName)
+	q, err := s.storage.FindByAppName(appName)
 	if err != nil {
 		return err
 	}
 	if inUse < 0 {
-		return appTypes.ErrLesserThanZero
+		return quota.ErrLesserThanZero
 	}
-	if !quota.IsUnlimited() && inUse > quota.Limit {
-		return &appTypes.QuotaExceededError{
+	if !q.IsUnlimited() && inUse > q.Limit {
+		return &quota.QuotaExceededError{
 			Requested: uint(inUse),
-			Available: uint(quota.Limit),
+			Available: uint(q.Limit),
 		}
 	}
 	return s.storage.SetInUse(appName, inUse)
 }
 
 // FindByAppName implements FindByAppName method from AppQuotaService interface
-func (s *appQuotaService) FindByAppName(appName string) (*appTypes.Quota, error) {
+func (s *appQuotaService) FindByAppName(appName string) (*quota.Quota, error) {
 	return s.storage.FindByAppName(appName)
 }

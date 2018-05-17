@@ -7,6 +7,7 @@ package storagetest
 import (
 	"github.com/tsuru/tsuru/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
@@ -18,11 +19,11 @@ type appStorage interface {
 type AppQuotaSuite struct {
 	SuiteHooks
 	AppStorage      appStorage
-	AppQuotaStorage appTypes.QuotaStorage
+	AppQuotaStorage quota.AppQuotaStorage
 }
 
 func (s *AppQuotaSuite) TestFindByAppName(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: appTypes.UnlimitedQuota}
+	app := &app.App{Name: "myapp", Quota: quota.UnlimitedQuota}
 	s.AppStorage.Create(app)
 	quota, err := s.AppQuotaStorage.FindByAppName("myapp")
 	c.Assert(err, check.IsNil)
@@ -37,7 +38,7 @@ func (s *AppQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
 }
 
 func (s *AppQuotaSuite) TestIncInUse(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
+	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
 	err := s.AppQuotaStorage.IncInUse("myapp", 1)
 	c.Assert(err, check.IsNil)
@@ -60,7 +61,7 @@ func (s *AppQuotaSuite) TestIncInUseNotFound(c *check.C) {
 }
 
 func (s *AppQuotaSuite) TestSetLimit(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
+	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
 	err := s.AppQuotaStorage.SetLimit("myapp", 1)
 	c.Assert(err, check.IsNil)
@@ -77,7 +78,7 @@ func (s *AppQuotaSuite) TestSetLimitNotFound(c *check.C) {
 }
 
 func (s *AppQuotaSuite) TestSetInUse(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: appTypes.Quota{Limit: 5, InUse: 0}}
+	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)
 	err := s.AppQuotaStorage.SetInUse("myapp", 3)
 	c.Assert(err, check.IsNil)

@@ -27,7 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -40,7 +40,7 @@ type PlatformSuite struct {
 var _ = check.Suite(&PlatformSuite{})
 
 func createToken(c *check.C) auth.Token {
-	user := &auth.User{Email: "platform-admin" + "@groundcontrol.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
+	user := &auth.User{Email: "platform-admin" + "@groundcontrol.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme.Remove(user)
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)

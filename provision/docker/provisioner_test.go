@@ -43,7 +43,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -308,7 +308,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
-	c.Assert(a.Quota, check.DeepEquals, appTypes.Quota{Limit: -1, InUse: 1})
+	c.Assert(a.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
 	cont, err := s.p.Cluster().InspectContainer(units[0].GetID())
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Cmd, check.DeepEquals, []string{
@@ -445,7 +445,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	s.mockService.AppQuota.OnChangeInUse = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, "otherapp")
 		c.Assert(quantity, check.Equals, 2)
-		return &appTypes.QuotaExceededError{Available: 1, Requested: 2}
+		return &quota.QuotaExceededError{Available: 1, Requested: 2}
 	}
 	c.Assert(err, check.IsNil)
 	err = a.SetQuotaLimit(1)
@@ -486,7 +486,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	compErr, ok := err.(*errors.CompositeError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(compErr.Message, check.Equals, "Cannot start application units")
-	e, ok := compErr.Base.(*appTypes.QuotaExceededError)
+	e, ok := compErr.Base.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(1))
 	c.Assert(e.Requested, check.Equals, uint(2))
@@ -586,7 +586,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
-	a.Quota = appTypes.UnlimitedQuota
+	a.Quota = quota.UnlimitedQuota
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))

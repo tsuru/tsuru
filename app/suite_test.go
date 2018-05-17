@@ -28,6 +28,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -79,7 +80,7 @@ var Greater check.Checker = &greaterChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
-		Quota: authTypes.UnlimitedQuota,
+		Quota: quota.UnlimitedQuota,
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)

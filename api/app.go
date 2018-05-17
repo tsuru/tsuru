@@ -35,7 +35,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 func appTarget(appName string) event.Target {
@@ -312,7 +312,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
 		Tags:        ia.Tags,
-		Quota:       appTypes.UnlimitedQuota,
+		Quota:       quota.UnlimitedQuota,
 	}
 	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {
@@ -368,7 +368,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
-			if _, ok := e.Err.(*authTypes.QuotaExceededError); ok {
+			if _, ok := e.Err.(*quota.QuotaExceededError); ok {
 				return &errors.HTTP{
 					Code:    http.StatusForbidden,
 					Message: "Quota exceeded",
@@ -612,7 +612,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.RemoveUnits(n, processName, writer)
-	if err == appTypes.ErrNoReservedUnits {
+	if err == quota.ErrNoReservedUnits {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
 			Message: err.Error(),

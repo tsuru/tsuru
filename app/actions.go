@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -90,8 +91,8 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		if app.Quota == (appTypes.Quota{}) {
-			app.Quota = appTypes.UnlimitedQuota
+		if app.Quota == (quota.Quota{}) {
+			app.Quota = quota.UnlimitedQuota
 		}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {

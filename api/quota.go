@@ -10,8 +10,8 @@ import (
 	"strconv"
 
 	"github.com/tsuru/tsuru/servicemanager"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -92,7 +92,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		}
 	}
 	err = servicemanager.UserQuota.ChangeLimit(user.Email, limit)
-	if err == authTypes.ErrLimitLowerThanAllocated {
+	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
 			Message: err.Error(),
@@ -162,7 +162,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		}
 	}
 	err = a.SetQuotaLimit(limit)
-	if err == appTypes.ErrLimitLowerThanAllocated {
+	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
 			Message: err.Error(),

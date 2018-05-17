@@ -26,6 +26,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -78,7 +79,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.p = &swarmProvisioner{}
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
-	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
+	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
@@ -108,7 +109,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
-	s.mockService.UserQuota.OnFindByUserEmail = func(email string) (*authTypes.Quota, error) {
+	s.mockService.UserQuota.OnFindByUserEmail = func(email string) (*quota.Quota, error) {
 		c.Assert(email, check.Equals, s.user.Email)
 		return &s.user.Quota, nil
 	}

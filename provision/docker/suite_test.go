@@ -40,6 +40,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -67,8 +68,8 @@ type S struct {
 	mockService   struct {
 		Team      *authTypes.MockTeamService
 		Plan      *appTypes.MockPlanService
-		UserQuota *authTypes.MockQuotaService
-		AppQuota  *appTypes.MockQuotaService
+		UserQuota *quota.MockUserQuotaService
+		AppQuota  *quota.MockAppQuotaService
 	}
 }
 
@@ -113,7 +114,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	repositorytest.Reset()
-	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: authTypes.UnlimitedQuota}
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nScheme
 	_, err = nScheme.Create(s.user)
@@ -180,8 +181,8 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
-	s.mockService.UserQuota = &authTypes.MockQuotaService{
-		OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+	s.mockService.UserQuota = &quota.MockUserQuotaService{
+		OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 			c.Assert(email, check.Equals, s.user.Email)
 			return &s.user.Quota, nil
 		},
@@ -194,7 +195,7 @@ func (s *S) SetUpTest(c *check.C) {
 			return nil
 		},
 	}
-	s.mockService.AppQuota = &appTypes.MockQuotaService{}
+	s.mockService.AppQuota = &quota.MockAppQuotaService{}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
 	servicemanager.UserQuota = s.mockService.UserQuota

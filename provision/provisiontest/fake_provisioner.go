@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 var (
@@ -70,7 +71,7 @@ type FakeApp struct {
 	UpdatePlatform bool
 	TeamOwner      string
 	Teams          []string
-	Quota          appTypes.Quota
+	Quota          quota.Quota
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -78,7 +79,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		name:     name,
 		platform: platform,
 		units:    make([]provision.Unit, units),
-		Quota:    appTypes.UnlimitedQuota,
+		Quota:    quota.UnlimitedQuota,
 		Pool:     "test-default",
 	}
 	routertest.FakeRouter.AddBackend(&app)
@@ -151,13 +152,13 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 	return nil
 }
 
-func (a *FakeApp) GetQuota() appTypes.Quota {
+func (a *FakeApp) GetQuota() quota.Quota {
 	return a.Quota
 }
 
 func (a *FakeApp) SetQuotaInUse(inUse int) error {
 	if !a.Quota.IsUnlimited() && inUse > a.Quota.Limit {
-		return &appTypes.QuotaExceededError{
+		return &quota.QuotaExceededError{
 			Requested: uint(inUse),
 			Available: uint(a.Quota.Limit),
 		}

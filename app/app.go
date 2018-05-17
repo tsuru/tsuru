@@ -41,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -148,7 +149,7 @@ type App struct {
 	Error          string
 	Routers        []appTypes.AppRouter
 
-	Quota       appTypes.Quota
+	Quota       quota.Quota
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -1344,7 +1345,7 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuota() appTypes.Quota {
+func (app *App) GetQuota() quota.Quota {
 	return app.Quota
 }
 

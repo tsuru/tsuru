@@ -7,6 +7,7 @@ package storagetest
 import (
 	"github.com/tsuru/tsuru/auth"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
@@ -18,12 +19,12 @@ type userStorage interface {
 type UserQuotaSuite struct {
 	SuiteHooks
 	UserStorage      userStorage
-	UserQuotaStorage authTypes.QuotaStorage
-	UserQuotaService authTypes.QuotaService
+	UserQuotaStorage quota.UserQuotaStorage
+	UserQuotaService quota.UserQuotaService
 }
 
 func (s *UserQuotaSuite) TestFindByUserEmail(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.UnlimitedQuota}
+	user := &auth.User{Email: "example@example.com", Quota: quota.UnlimitedQuota}
 	s.UserStorage.Create(user)
 	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
 	c.Assert(err, check.IsNil)
@@ -38,7 +39,7 @@ func (s *UserQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
 }
 
 func (s *UserQuotaSuite) TestIncInUse(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
+	user := &auth.User{Email: "example@example.com", Quota: quota.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
 	err := s.UserQuotaStorage.IncInUse("example@example.com", 1)
 	c.Assert(err, check.IsNil)
@@ -61,7 +62,7 @@ func (s *UserQuotaSuite) TestIncInUseNotFound(c *check.C) {
 }
 
 func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
-	user := &auth.User{Email: "example@example.com", Quota: authTypes.Quota{Limit: 5}}
+	user := &auth.User{Email: "example@example.com", Quota: quota.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
 	err := s.UserQuotaStorage.SetLimit("example@example.com", 1)
 	c.Assert(err, check.IsNil)

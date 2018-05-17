@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 // MockService is a struct to use in tests
@@ -16,8 +17,8 @@ type MockService struct {
 	Plan      *app.MockPlanService
 	Platform  *app.MockPlatformService
 	Team      *auth.MockTeamService
-	UserQuota *auth.MockQuotaService
-	AppQuota  *app.MockQuotaService
+	UserQuota *quota.MockUserQuotaService
+	AppQuota  *quota.MockAppQuotaService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -26,8 +27,8 @@ func SetMockService(m *MockService) {
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.Team = &auth.MockTeamService{}
-	m.UserQuota = &auth.MockQuotaService{}
-	m.AppQuota = &app.MockQuotaService{}
+	m.UserQuota = &quota.MockUserQuotaService{}
+	m.AppQuota = &quota.MockAppQuotaService{}
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform

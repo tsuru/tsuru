@@ -6,11 +6,11 @@ package auth
 
 import (
 	"github.com/tsuru/tsuru/storage"
-	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 type userQuotaService struct {
-	storage authTypes.QuotaStorage
+	storage quota.UserQuotaStorage
 }
 
 func (s *userQuotaService) checkUserExists(email string) error {
@@ -18,7 +18,7 @@ func (s *userQuotaService) checkUserExists(email string) error {
 	return err
 }
 
-func QuotaService() (authTypes.QuotaService, error) {
+func QuotaService() (quota.UserQuotaService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -33,12 +33,12 @@ func QuotaService() (authTypes.QuotaService, error) {
 // used to reserve the app in the user quota, returning an error when there
 // isn't any space available.
 func (s *userQuotaService) ReserveApp(email string) error {
-	quota, err := s.storage.FindByUserEmail(email)
+	q, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
-	if quota.Limit == quota.InUse {
-		return &authTypes.QuotaExceededError{
+	if q.Limit == q.InUse {
+		return &quota.QuotaExceededError{
 			Available: 0, Requested: 1,
 		}
 	}
@@ -46,25 +46,25 @@ func (s *userQuotaService) ReserveApp(email string) error {
 	if err != nil {
 		return err
 	}
-	quota.InUse += 1
+	q.InUse++
 	return nil
 }
 
 // ReleaseApp releases an app from the user list, releasing the quota spot for
 // another app.
 func (s *userQuotaService) ReleaseApp(email string) error {
-	quota, err := s.storage.FindByUserEmail(email)
+	q, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
-	if quota.InUse == 0 {
-		return authTypes.ErrCantRelease
+	if q.InUse == 0 {
+		return quota.ErrCantRelease
 	}
 	err = s.storage.IncInUse(email, -1)
 	if err != nil {
 		return err
 	}
-	quota.InUse -= 1
+	q.InUse--
 	return err
 }
 
@@ -73,23 +73,23 @@ func (s *userQuotaService) ReleaseApp(email string) error {
 // smaller than 0, which mean that the user should have an unlimited number of
 // apps.
 func (s *userQuotaService) ChangeLimit(email string, limit int) error {
-	quota, err := s.storage.FindByUserEmail(email)
+	q, err := s.storage.FindByUserEmail(email)
 	if err != nil {
 		return err
 	}
 	if limit < 0 {
 		limit = -1
-	} else if limit < quota.InUse {
-		return authTypes.ErrLimitLowerThanAllocated
+	} else if limit < q.InUse {
+		return quota.ErrLimitLowerThanAllocated
 	}
 	err = s.storage.SetLimit(email, limit)
 	if err != nil {
 		return err
 	}
-	quota.Limit = limit
+	q.Limit = limit
 	return err
 }
 
-func (s *userQuotaService) FindByUserEmail(email string) (*authTypes.Quota, error) {
+func (s *userQuotaService) FindByUserEmail(email string) (*quota.Quota, error) {
 	return s.storage.FindByUserEmail(email)
 }

@@ -6,6 +6,7 @@ package auth
 
 import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -13,23 +14,23 @@ func (s *S) TestReserveApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4},
+		Quota: quota.Quota{Limit: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnIncInUse: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, user.Email)
 				c.Assert(quantity, check.Equals, 1)
 				user.Quota.InUse++
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.InUse, InUse: user.Quota.Limit}, nil
+				return &quota.Quota{Limit: user.Quota.InUse, InUse: user.Quota.Limit}, nil
 			},
 		},
 	}
-	expected := authTypes.Quota{Limit: 4, InUse: 1}
+	expected := quota.Quota{Limit: 4, InUse: 1}
 	err := qs.ReserveApp(user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota, check.Equals, expected)
@@ -38,8 +39,8 @@ func (s *S) TestReserveApp(c *check.C) {
 func (s *S) TestReserveAppUserNotFound(c *check.C) {
 	user := User{Email: "hills@waaaat.com"}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
 				return nil, authTypes.ErrUserNotFound
 			},
@@ -53,13 +54,13 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 1},
+		Quota: quota.Quota{Limit: 4, InUse: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnIncInUse: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, user.Email)
 				c.Assert(quantity, check.Equals, 1)
@@ -69,11 +70,11 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
 				user.Update()
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
 				user, err = GetUserByEmail(email)
 				c.Assert(err, check.IsNil)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -89,18 +90,18 @@ func (s *S) TestReserveAppQuotaExceeded(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 4},
+		Quota: quota.Quota{Limit: 4, InUse: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
 	err := qs.ReserveApp(user.Email)
-	e, ok := err.(*authTypes.QuotaExceededError)
+	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(0))
 	c.Assert(e.Requested, check.Equals, uint(1))
@@ -110,18 +111,18 @@ func (s *S) TestReleaseApp(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4},
+		Quota: quota.Quota{Limit: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnIncInUse: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, user.Email)
 				user.Quota.InUse += quantity
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -139,11 +140,11 @@ func (s *S) TestReleaseAppUserNotFound(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4},
+		Quota: quota.Quota{Limit: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
 				return nil, authTypes.ErrUserNotFound
 			},
@@ -157,13 +158,13 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 1},
+		Quota: quota.Quota{Limit: 4, InUse: 1},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnIncInUse: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, user.Email)
 				user, err = GetUserByEmail(user.Email)
@@ -173,11 +174,11 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {
 				user.Update()
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
 				user, err = GetUserByEmail(user.Email)
 				c.Assert(err, check.IsNil)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -193,13 +194,13 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 	email := "seven@corp.globo.com"
 	user := &User{
 		Email: email, Password: "123456",
-		Quota: authTypes.Quota{Limit: 4},
+		Quota: quota.Quota{Limit: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -211,22 +212,22 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 func (s *S) TestChangeQuotaLimit(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 3},
+		Quota: quota.Quota{Limit: 4, InUse: 3},
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnSetLimit: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, "seven@corp.globo.com")
 				c.Assert(quantity, check.Equals, 40)
 				user.Quota.Limit = 40
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -241,19 +242,19 @@ func (s *S) TestChangeQuotaLimit(c *check.C) {
 func (s *S) TestChangeQuotaLimitUnlimited(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 3},
+		Quota: quota.Quota{Limit: 4, InUse: 3},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
+		storage: &quota.MockUserQuotaStorage{
 			OnSetLimit: func(email string, quantity int) error {
 				c.Assert(email, check.Equals, "seven@corp.globo.com")
 				c.Assert(quantity, check.Equals, -1)
 				user.Quota.Limit = -1
 				return nil
 			},
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -268,13 +269,13 @@ func (s *S) TestChangeQuotaLimitUnlimited(c *check.C) {
 func (s *S) TestChangeQuotaLimitLessThanInUse(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 4},
+		Quota: quota.Quota{Limit: 4, InUse: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
-				return &authTypes.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
+				return &quota.Quota{Limit: user.Quota.Limit, InUse: user.Quota.InUse}, nil
 			},
 		},
 	}
@@ -286,11 +287,11 @@ func (s *S) TestChangeQuotaLimitLessThanInUse(c *check.C) {
 func (s *S) TestChangeQuotaLimitUserNotFound(c *check.C) {
 	user := &User{
 		Email: "seven@corp.globo.com", Password: "123456",
-		Quota: authTypes.Quota{Limit: 4, InUse: 4},
+		Quota: quota.Quota{Limit: 4, InUse: 4},
 	}
 	qs := &userQuotaService{
-		storage: &authTypes.MockQuotaStorage{
-			OnFindByUserEmail: func(email string) (*authTypes.Quota, error) {
+		storage: &quota.MockUserQuotaStorage{
+			OnFindByUserEmail: func(email string) (*quota.Quota, error) {
 				c.Assert(email, check.Equals, user.Email)
 				return nil, authTypes.ErrUserNotFound
 			},

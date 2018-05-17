@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/event"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 var (
@@ -17,6 +18,6 @@ var (
 	Team      auth.TeamService
 	TeamToken auth.TeamTokenService
 	Webhook   event.WebhookService
-	AppQuota  app.QuotaService
-	UserQuota auth.QuotaService
+	AppQuota  quota.AppQuotaService
+	UserQuota quota.UserQuotaService
 )
