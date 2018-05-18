@@ -9,12 +9,12 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
 func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, perm ...permission.Permission) (*auth.User, auth.Token) {
-	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	_, err := scheme.Create(user)
 	c.Assert(err, check.IsNil)
 	return user, ExistingUserWithPermission(c, scheme, user, perm...)

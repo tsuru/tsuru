@@ -689,7 +689,7 @@ func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	message := recorder.Body.String()
-	c.Assert(message, check.Equals, "App not found.\n")
+	c.Assert(message, check.Equals, "App not found\n")
 }
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessToApp(c *check.C) {

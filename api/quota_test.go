@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/globalsign/mgo/bson"
@@ -24,17 +26,17 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 )
 
 type QuotaSuite struct {
-	team       *authTypes.Team
-	user       *auth.User
-	token      auth.Token
-	testServer http.Handler
+	team        *authTypes.Team
+	user        *auth.User
+	token       auth.Token
+	testServer  http.Handler
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&QuotaSuite{})
@@ -66,6 +68,7 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
+	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *QuotaSuite) TearDownSuite(c *check.C) {
@@ -138,6 +141,11 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
+	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
+		c.Assert(email, check.Equals, "radio@gaga.com")
+		c.Assert(limit, check.Equals, 40)
+		return nil
+	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -149,10 +157,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	user, err = auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota.Limit, check.Equals, 40)
-	c.Assert(user.Quota.InUse, check.Equals, 2)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
 		Owner:  s.token.GetUserName(),
@@ -215,6 +220,44 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 	}
 }
 
+func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+		Quota:    quota.Quota{Limit: 4, InUse: 2},
+	}
+	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
+		c.Assert(email, check.Equals, "radio@gaga.com")
+		c.Assert(limit, check.Equals, 3)
+		return quota.ErrLimitLowerThanAllocated
+	}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	body := bytes.NewBufferString("limit=3")
+	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(err, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.update.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":email", "value": user.Email},
+			{"name": "limit", "value": "3"},
+		},
+		ErrorMatches: `New limit is lesser than the current allocated value`,
+	}, eventtest.HasEvent)
+}
+
 func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 	body := bytes.NewBufferString("limit=2")
 	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
@@ -259,13 +302,14 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	app := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
@@ -303,6 +347,11 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
+	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+		c.Assert(appName, check.Equals, a.Name)
+		c.Assert(limit, check.Equals, 40)
+		return nil
+	}
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
@@ -314,10 +363,6 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	a, err = app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Quota.InUse, check.Equals, 2)
-	c.Assert(a.Quota.Limit, check.Equals, 40)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
@@ -400,5 +445,42 @@ func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, app.ErrAppNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, appTypes.ErrAppNotFound.Error()+"\n")
+}
+
+func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	a := &app.App{
+		Name:  "shangrila",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+		Teams: []string{s.team.Name},
+	}
+	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+		c.Assert(appName, check.Equals, a.Name)
+		c.Assert(limit, check.Equals, 3)
+		return quota.ErrLimitLowerThanAllocated
+	}
+	err = conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	body := bytes.NewBufferString("limit=3")
+	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.admin.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "limit", "value": "3"},
+		},
+		ErrorMatches: `New limit is lesser than the current allocated value`,
+	}, eventtest.HasEvent)
 }

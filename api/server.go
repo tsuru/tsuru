@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/net/websocket"
 )
 
@@ -105,6 +106,14 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Platform, err = app.PlatformService()
+	if err != nil {
+		return err
+	}
+	servicemanager.UserQuota, err = auth.QuotaService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AppQuota, err = app.QuotaService()
 	if err != nil {
 		return err
 	}
@@ -480,7 +489,7 @@ func setupDatabase() error {
 
 func appFinder(appName string) (rebuild.RebuildApp, error) {
 	a, err := app.GetByName(appName)
-	if err == app.ErrAppNotFound {
+	if err == appTypes.ErrAppNotFound {
 		return nil, nil
 	}
 	return a, err

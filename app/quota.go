@@ -5,114 +5,109 @@
 package app
 
 import (
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
-func reserveUnits(app *App, quantity int) error {
-	app, err := checkAppLimit(app.Name, quantity)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-	)
-	for err == mgo.ErrNotFound {
-		app, err = checkAppLimit(app.Name, quantity)
-		if err != nil {
-			return err
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-		)
-	}
-	return err
+type appQuotaService struct {
+	storage quota.AppQuotaStorage
 }
 
-func checkAppLimit(name string, quantity int) (*App, error) {
-	app, err := GetByName(name)
+func QuotaService() (quota.AppQuotaService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
-		return nil, err
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
 	}
-	if !app.Quota.Unlimited() && app.Quota.InUse+quantity > app.Quota.Limit {
-		return nil, &quota.QuotaExceededError{
-			Available: uint(app.Quota.Limit - app.Quota.InUse),
+	return &appQuotaService{dbDriver.AppQuotaStorage}, nil
+}
+
+// ReserveUnits implements ReserveUnits method from AppQuotaService interface
+func (s *appQuotaService) ReserveUnits(appName string, quantity int) error {
+	quota, err := s.storage.FindByAppName(appName)
+	if err != nil {
+		return err
+	}
+	err = s.CheckAppLimit(quota, quantity)
+	if err != nil {
+		return err
+	}
+	return s.storage.IncInUse(appName, quantity)
+}
+
+// CheckAppLimit implements CheckAppLimit method from AppQuotaService interface
+func (s *appQuotaService) CheckAppLimit(q *quota.Quota, quantity int) error {
+	if !q.IsUnlimited() && q.InUse+quantity > q.Limit {
+		return &quota.QuotaExceededError{
+			Available: uint(q.Limit - q.InUse),
 			Requested: uint(quantity),
 		}
 	}
-	return app, nil
+	return nil
 }
 
-func releaseUnits(app *App, quantity int) error {
-	app, err := checkAppUsage(app.Name, quantity)
+// ReleaseUnits implements ReleaseUnits method from AppQuotaService interface
+func (s *appQuotaService) ReleaseUnits(appName string, quantity int) error {
+	quota, err := s.storage.FindByAppName(appName)
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	err = s.CheckAppUsage(quota, quantity)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-		bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
-	)
-	for err == mgo.ErrNotFound {
-		app, err = checkAppUsage(app.Name, quantity)
-		if err != nil {
-			return err
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
-			bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
-		)
-	}
-	return err
+	return s.storage.IncInUse(appName, -1*quantity)
 }
 
-func checkAppUsage(name string, quantity int) (*App, error) {
-	app, err := GetByName(name)
-	if err != nil {
-		return nil, err
+// CheckAppUsage implements CheckAppUsage method from AppQuotaService interface
+func (s *appQuotaService) CheckAppUsage(q *quota.Quota, quantity int) error {
+	if q.InUse-quantity < 0 {
+		return quota.ErrNoReservedUnits
 	}
-	if app.Quota.InUse-quantity < 0 {
-		return nil, errors.New("Not enough reserved units")
-	}
-	return app, nil
+	return nil
 }
 
-// ChangeQuota redefines the limit of the app. The new limit must be bigger
+// ChangeLimit redefines the limit of the app. The new limit must be bigger
 // than or equal to the current number of units in the app. The new limit may be
 // smaller than 0, which means that the app should have an unlimited number of
 // units.
-func ChangeQuota(app *App, limit int) error {
+// ChangeLimit implements ChangeLimit method from AppQuotaService interface
+func (s *appQuotaService) ChangeLimit(appName string, limit int) error {
+	q, err := s.storage.FindByAppName(appName)
+	if err != nil {
+		return err
+	}
 	if limit < 0 {
 		limit = -1
-	} else if limit < app.Quota.InUse {
-		return errors.New("new limit is lesser than the current allocated value")
+	} else if limit < q.InUse {
+		return quota.ErrLimitLowerThanAllocated
 	}
-	conn, err := db.Conn()
+	return s.storage.SetLimit(appName, limit)
+}
+
+// ChangeInUse redefines the inuse units of the app. This new value must be smaller
+// than or equal to the current limit of the app. It also must be a non negative number.
+// ChangeInUse implements ChangeInUse method from AppQuotaService interface
+func (s *appQuotaService) ChangeInUse(appName string, inUse int) error {
+	q, err := s.storage.FindByAppName(appName)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"quota.limit": limit}},
-	)
-	if err != nil {
-		return err
+	if inUse < 0 {
+		return quota.ErrLesserThanZero
 	}
-	app.Quota.Limit = limit
-	return nil
+	if !q.IsUnlimited() && inUse > q.Limit {
+		return &quota.QuotaExceededError{
+			Requested: uint(inUse),
+			Available: uint(q.Limit),
+		}
+	}
+	return s.storage.SetInUse(appName, inUse)
+}
+
+// FindByAppName implements FindByAppName method from AppQuotaService interface
+func (s *appQuotaService) FindByAppName(appName string) (*quota.Quota, error) {
+	return s.storage.FindByAppName(appName)
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const (
@@ -199,7 +200,7 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 		}
 	}
 	_, err := app.GetByName(appName)
-	if err == app.ErrAppNotFound {
+	if err == appTypes.ErrAppNotFound {
 		context.AddRequestError(r, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()})
 		return
 	}
@@ -219,7 +220,7 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 	}
 	a, err := app.GetByName(appName)
 	if err != nil {
-		if err == app.ErrAppNotFound {
+		if err == appTypes.ErrAppNotFound {
 			err = &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		} else {
 			err = errors.Wrap(err, "Error to get application")

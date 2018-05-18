@@ -33,7 +33,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
@@ -42,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -149,7 +149,7 @@ type App struct {
 	Error          string
 	Routers        []appTypes.AppRouter
 
-	quota.Quota
+	Quota       quota.Quota
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -377,7 +377,7 @@ func GetByName(name string) (*App, error) {
 	defer conn.Close()
 	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
 	if err == mgo.ErrNotFound {
-		return nil, ErrAppNotFound
+		return nil, appTypes.ErrAppNotFound
 	}
 	return &app, err
 }
@@ -705,7 +705,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = auth.ReleaseApp(owner)
+		err = servicemanager.UserQuota.ReleaseApp(owner.Email)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)
@@ -808,16 +808,16 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 		return err
 	}
 	w = app.withLogWriter(w)
+	err = servicemanager.AppQuota.ReleaseUnits(app.Name, int(n))
+	if err != nil {
+		return err
+	}
 	err = prov.RemoveUnits(app, n, process, w)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	if err != nil {
 		return err
 	}
-	units, err := app.Units()
-	if err != nil {
-		return err
-	}
-	return app.SetQuotaInUse(len(units))
+	return nil
 }
 
 // SetUnitStatus changes the status of the given unit.
@@ -1360,25 +1360,11 @@ func (app *App) GetQuota() quota.Quota {
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	if inUse < 0 {
-		return errors.New("invalid value, cannot be lesser than 0")
-	}
-	if !app.Quota.Unlimited() && inUse > app.Quota.Limit {
-		return &quota.QuotaExceededError{
-			Requested: uint(inUse),
-			Available: uint(app.Quota.Limit),
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"quota.inuse": inUse}})
-	if err == mgo.ErrNotFound {
-		return ErrAppNotFound
-	}
-	return err
+	return servicemanager.AppQuota.ChangeInUse(app.Name, inUse)
+}
+
+func (app *App) SetQuotaLimit(limit int) error {
+	return servicemanager.AppQuota.ChangeLimit(app.Name, limit)
 }
 
 // GetCname returns the cnames of the app.

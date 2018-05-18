@@ -20,8 +20,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -170,7 +170,7 @@ func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
 
 func (s *S) TestFakeAppGetQuota(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	c.Assert(app.GetQuota(), check.DeepEquals, quota.Unlimited)
+	c.Assert(app.GetQuota(), check.DeepEquals, quota.UnlimitedQuota)
 	q := quota.Quota{Limit: 10, InUse: 3}
 	app.Quota = q
 	c.Assert(app.GetQuota(), check.DeepEquals, q)

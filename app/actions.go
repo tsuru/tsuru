@@ -9,6 +9,10 @@ import (
 	"io"
 	"regexp"
 
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -20,14 +24,12 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 )
 
 var (
 	ErrAppAlreadyExists = errors.New("there is already an app with this name")
-	ErrAppNotFound      = errors.New("App not found.")
 )
 
 // reserveUserApp reserves the app for the user, only if the user has a quota
@@ -56,7 +58,7 @@ var reserveUserApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if err := auth.ReserveApp(usr); err != nil {
+		if err := servicemanager.UserQuota.ReserveApp(usr.Email); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
@@ -64,7 +66,7 @@ var reserveUserApp = action.Action{
 	Backward: func(ctx action.BWContext) {
 		m := ctx.FWResult.(map[string]string)
 		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
-			auth.ReleaseApp(user)
+			servicemanager.UserQuota.ReleaseApp(user.Email)
 		}
 	},
 	MinParams: 2,
@@ -89,7 +91,9 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app.Quota = quota.Unlimited
+		if app.Quota == (quota.Quota{}) {
+			app.Quota = quota.UnlimitedQuota
+		}
 		var limit int
 		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
@@ -349,9 +353,9 @@ var reserveUnitsToAdd = action.Action{
 		defer conn.Close()
 		app, err = GetByName(app.Name)
 		if err != nil {
-			return nil, ErrAppNotFound
+			return nil, appTypes.ErrAppNotFound
 		}
-		err = reserveUnits(app, n)
+		err = servicemanager.AppQuota.ReserveUnits(app.Name, n)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +368,7 @@ var reserveUnitsToAdd = action.Action{
 			app = ctx.Params[0].(*App)
 		}
 		qty := ctx.FWResult.(int)
-		err := releaseUnits(app, qty)
+		err := servicemanager.AppQuota.ReleaseUnits(app.Name, qty)
 		if err != nil {
 			log.Errorf("Failed to rollback reserveUnitsToAdd: %s", err)
 		}

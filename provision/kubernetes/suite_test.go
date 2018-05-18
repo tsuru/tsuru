@@ -17,12 +17,12 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/kubernetes"
@@ -101,7 +101,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p = &kubernetesProvisioner{}
 	s.mock = kTesting.NewKubeMock(s.client, s.p)
-	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.Unlimited}
+	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
@@ -129,5 +129,17 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
+	}
+	s.mockService.UserQuota.OnFindByUserEmail = func(email string) (*quota.Quota, error) {
+		c.Assert(email, check.Equals, s.user.Email)
+		return &s.user.Quota, nil
+	}
+	s.mockService.UserQuota.OnReleaseApp = func(email string) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
+	}
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
 	}
 }

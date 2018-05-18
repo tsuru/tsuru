@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -29,6 +28,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -80,7 +80,7 @@ var Greater check.Checker = &greaterChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
-		Quota: quota.Unlimited,
+		Quota: quota.UnlimitedQuota,
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
@@ -135,7 +135,7 @@ func (s *S) SetUpTest(c *check.C) {
 	pool.ResetCache()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
-		if err == ErrAppNotFound {
+		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
 		return a, err

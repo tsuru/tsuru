@@ -18,14 +18,14 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 )
 
 type User struct {
-	quota.Quota
+	Quota    quota.Quota
 	Email    string
 	Password string
 	APIKey   string
@@ -103,7 +103,7 @@ func (u *User) Create() error {
 	}
 	defer conn.Close()
 	if u.Quota.Limit == 0 {
-		u.Quota = quota.Unlimited
+		u.Quota = quota.UnlimitedQuota
 		var limit int
 		if limit, err = config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
 			u.Quota.Limit = limit

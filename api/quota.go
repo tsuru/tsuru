@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -54,6 +55,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Quota updated
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Limit lower than allocated value
 //   404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
@@ -89,7 +91,14 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	return auth.ChangeQuota(user, limit)
+	err = servicemanager.UserQuota.ChangeLimit(user.Email, limit)
+	if err == quota.ErrLimitLowerThanAllocated {
+		return &errors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
 
 // title: application quota
@@ -121,6 +130,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Quota updated
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Limit lower than allocated
 //   404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
@@ -151,5 +161,12 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	return app.ChangeQuota(&a, limit)
+	err = a.SetQuotaLimit(limit)
+	if err == quota.ErrLimitLowerThanAllocated {
+		return &errors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: err.Error(),
+		}
+	}
+	return err
 }

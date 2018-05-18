@@ -30,7 +30,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -38,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -124,7 +124,7 @@ func (s *AuthSuite) TestCreateUser(c *check.C) {
 		Owner:  "nobody@globo.com",
 		Kind:   "user.create",
 	}, eventtest.HasEvent)
-	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
+	c.Assert(user.Quota, check.DeepEquals, quota.UnlimitedQuota)
 }
 
 func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
@@ -139,8 +139,7 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota.Limit, check.Equals, 1)
-	c.Assert(user.Quota.InUse, check.Equals, 0)
+	c.Assert(user.Quota, check.DeepEquals, quota.Quota{Limit: 1, InUse: 0})
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
@@ -153,7 +152,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
+	c.Assert(user.Quota, check.DeepEquals, quota.UnlimitedQuota)
 }
 
 func (s *AuthSuite) TestCreateUserEmailAlreadyExists(c *check.C) {
@@ -1366,7 +1365,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
-	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.Unlimited}
+	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	_, err = nativeScheme.Create(otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)
@@ -1397,7 +1396,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
-	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.Unlimited}
+	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	_, err = nativeScheme.Create(otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)

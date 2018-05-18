@@ -4,6 +4,8 @@
 
 package app
 
+import "errors"
+
 type AppRouter struct {
 	Name         string            `json:"name"`
 	Opts         map[string]string `json:"opts"`
@@ -12,3 +14,7 @@ type AppRouter struct {
 	Status       string            `json:"status,omitempty" bson:"-"`
 	StatusDetail string            `json:"status-detail,omitempty" bson:"-"`
 }
+
+var (
+	ErrAppNotFound = errors.New("App not found")
+)

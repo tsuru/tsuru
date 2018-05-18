@@ -31,7 +31,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -41,6 +40,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -66,8 +66,10 @@ type S struct {
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
 	mockService   struct {
-		Team *authTypes.MockTeamService
-		Plan *appTypes.MockPlanService
+		Team      *authTypes.MockTeamService
+		Plan      *appTypes.MockPlanService
+		UserQuota *quota.MockUserQuotaService
+		AppQuota  *quota.MockAppQuotaService
 	}
 }
 
@@ -112,7 +114,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	repositorytest.Reset()
-	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nScheme
 	_, err = nScheme.Create(s.user)
@@ -179,8 +181,25 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
+	s.mockService.UserQuota = &quota.MockUserQuotaService{
+		OnFindByUserEmail: func(email string) (*quota.Quota, error) {
+			c.Assert(email, check.Equals, s.user.Email)
+			return &s.user.Quota, nil
+		},
+		OnReleaseApp: func(email string) error {
+			c.Assert(email, check.Equals, s.user.Email)
+			return nil
+		},
+		OnReserveApp: func(email string) error {
+			c.Assert(email, check.Equals, s.user.Email)
+			return nil
+		},
+	}
+	s.mockService.AppQuota = &quota.MockAppQuotaService{}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
+	servicemanager.UserQuota = s.mockService.UserQuota
+	servicemanager.AppQuota = s.mockService.AppQuota
 }
 
 func (s *S) TearDownTest(c *check.C) {

@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -36,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 func appTarget(appName string) event.Target {
@@ -312,6 +312,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
 		Tags:        ia.Tags,
+		Quota:       quota.UnlimitedQuota,
 	}
 	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
 	if a.TeamOwner == "" {
@@ -576,6 +577,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   200: Units removed
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Not enough reserved units
 //   404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
@@ -609,7 +611,14 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.RemoveUnits(n, processName, writer)
+	err = a.RemoveUnits(n, processName, writer)
+	if err == quota.ErrNoReservedUnits {
+		return &errors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
 
 // title: set unit status

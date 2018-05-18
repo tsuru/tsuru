@@ -33,6 +33,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -153,6 +154,15 @@ func (s *S) setupMocks() {
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
+	}
+	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+		return nil
+	}
+	s.mockService.UserQuota.OnReleaseApp = func(email string) error {
+		return nil
+	}
+	s.mockService.UserQuota.OnFindByUserEmail = func(email string) (*quota.Quota, error) {
+		return &s.user.Quota, nil
 	}
 }
 

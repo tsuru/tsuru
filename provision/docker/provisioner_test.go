@@ -41,9 +41,9 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -265,6 +265,12 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := s.newApp("myapp")
 	err = app.CreateApp(&a, s.user)
+	s.mockService.AppQuota.OnChangeInUse = func(appName string, inUse int) error {
+		c.Assert(appName, check.Equals, "myapp")
+		c.Assert(inUse, check.Equals, 1)
+		a.Quota.InUse = 1
+		return nil
+	}
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
@@ -302,9 +308,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
+	c.Assert(a.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
 	cont, err := s.p.Cluster().InspectContainer(units[0].GetID())
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Cmd, check.DeepEquals, []string{
@@ -432,8 +436,19 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
+	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+		c.Assert(appName, check.Equals, "otherapp")
+		c.Assert(limit, check.Equals, 1)
+		a.Quota.Limit = 1
+		return nil
+	}
+	s.mockService.AppQuota.OnChangeInUse = func(appName string, quantity int) error {
+		c.Assert(appName, check.Equals, "otherapp")
+		c.Assert(quantity, check.Equals, 2)
+		return &quota.QuotaExceededError{Available: 1, Requested: 2}
+	}
 	c.Assert(err, check.IsNil)
-	err = app.ChangeQuota(&a, 1)
+	err = a.SetQuotaLimit(1)
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +586,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
-	a.Quota = quota.Unlimited
+	a.Quota = quota.UnlimitedQuota
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
