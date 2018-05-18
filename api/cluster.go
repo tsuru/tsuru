@@ -185,7 +185,7 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 
 // title: delete provisioner cluster
 // path: /provisioner/clusters/{name}
-// method: GET
+// method: DELETE
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
