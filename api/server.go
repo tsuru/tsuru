@@ -403,7 +403,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(createCluster))
-	m.Add("1.4", "POST", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(updateCluster))
+	m.Add("1.4", "PUT", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(updateCluster))
 	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
 	m.Add("1.3", "DELETE", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(deleteCluster))
 
