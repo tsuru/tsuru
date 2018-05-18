@@ -24,6 +24,9 @@ import (
 	"strconv"
 	"strings"
 
+	openapi "k8s.io/kube-openapi/pkg/common"
+
+	"github.com/go-openapi/spec"
 	"github.com/golang/glog"
 	"github.com/google/gofuzz"
 )
@@ -117,15 +120,16 @@ func (intstr IntOrString) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// OpenAPISchemaType is used by the kube-openapi generator when constructing
-// the OpenAPI spec of this type.
-//
-// See: https://github.com/kubernetes/kube-openapi/tree/master/pkg/generators
-func (_ IntOrString) OpenAPISchemaType() []string { return []string{"string"} }
-
-// OpenAPISchemaFormat is used by the kube-openapi generator when constructing
-// the OpenAPI spec of this type.
-func (_ IntOrString) OpenAPISchemaFormat() string { return "int-or-string" }
+func (_ IntOrString) OpenAPIDefinition() openapi.OpenAPIDefinition {
+	return openapi.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type:   []string{"string"},
+				Format: "int-or-string",
+			},
+		},
+	}
+}
 
 func (intstr *IntOrString) Fuzz(c fuzz.Continue) {
 	if intstr == nil {
