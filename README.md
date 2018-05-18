@@ -21,7 +21,7 @@ Links:
 
 ## Quick Start
 
-With the purpose of testing tsuru and/or for development, you can use the [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. The installer is an experimental feature.
+With the purpose of testing tsuru and/or for development, you can use the [installer](https://docs.tsuru.io/stable/installing/using-tsuru-installer.html) to have tsuru up and running. The installer is an experimental feature.
 
 ### From Binary
 
