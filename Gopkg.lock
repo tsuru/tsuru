@@ -174,6 +174,12 @@
   version = "v0.2.0"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
   revision = "01aeca54ebda6e0fbfafd0a524d234159c05ec20"
@@ -458,6 +464,14 @@
   name = "github.com/hashicorp/go-version"
   packages = ["."]
   revision = "0181db47023708a38c2d20d2fe25a5fa034d5743"
+
+[[projects]]
+  name = "github.com/hashicorp/golang-lru"
+  packages = [
+    ".",
+    "simplelru"
+  ]
+  revision = "a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4"
 
 [[projects]]
   name = "github.com/howeyc/fsnotify"
@@ -1060,6 +1074,18 @@
   revision = "9273ee02527c608cecc74969b3e489f5dba686da"
 
 [[projects]]
+  branch = "master"
+  name = "k8s.io/apiextensions-apiserver"
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
+  ]
+  revision = "4efc6f1b8d5f71558d1c385a49f960ea23f0bbbf"
+
+[[projects]]
   branch = "release-1.9"
   name = "k8s.io/apimachinery"
   packages = [
@@ -1068,6 +1094,7 @@
     "pkg/api/resource",
     "pkg/apimachinery",
     "pkg/apimachinery/registered",
+    "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
     "pkg/apis/meta/v1alpha1",
@@ -1085,7 +1112,9 @@
     "pkg/runtime/serializer/versioning",
     "pkg/selection",
     "pkg/types",
+    "pkg/util/cache",
     "pkg/util/clock",
+    "pkg/util/diff",
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/httpstream",
@@ -1175,12 +1204,15 @@
     "rest",
     "rest/watch",
     "testing",
+    "tools/cache",
     "tools/clientcmd/api",
     "tools/metrics",
+    "tools/pager",
     "tools/reference",
     "tools/remotecommand",
     "transport",
     "transport/spdy",
+    "util/buffer",
     "util/cert",
     "util/exec",
     "util/flowcontrol",
@@ -1239,6 +1271,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "02682182d48ad18f35b74b8794b3fefd3b000a7377500c9a74de9345c51acc7f"
+  inputs-digest = "1c7bc48a222b491640fadd0d4bcf5297dfd3b30f18b5393e0f0b756b3be9f97f"
   solver-name = "gps-cdcl"
   solver-version = 1
