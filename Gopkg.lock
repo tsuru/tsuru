@@ -645,7 +645,7 @@
     "storage",
     "storage/mongodb"
   ]
-  revision = "445d012702502bedd69118fc09574317f9f91936"
+  revision = "30c525813c205715943ccbf01a6e3dcbc7b653df"
 
 [[projects]]
   branch = "master"

@@ -53,6 +53,9 @@ func (c *Cluster) RemoveImage(name string) error {
 		imgIds, _ := idMap[n.addr]
 		err = n.RemoveImage(name)
 		_, isNetErr := err.(net.Error)
+		if err == docker.ErrConnectionRefused {
+			isNetErr = true
+		}
 		if err != nil && err != docker.ErrNoSuchImage && !isNetErr {
 			return nil, err
 		}
