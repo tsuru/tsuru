@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	v1alpha1 "github.com/containerbuilding/cbi/pkg/apis/cbi/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -319,6 +320,47 @@ func waitForPod(ctx context.Context, client *ClusterClient, podName string, retu
 	})
 }
 
+func waitForJob(ctx context.Context, client *ClusterClient, jobName string, returnOnRunning bool) error {
+	return waitFor(ctx, func() (bool, error) {
+		bjob, err := client.BuildJobs(client.Namespace()).Get(jobName, metav1.GetOptions{IncludeUninitialized: true})
+		if err != nil {
+			return true, errors.WithStack(err)
+		}
+		if bjob.Status.Job == "" {
+			return false, nil
+		}
+		job, err := client.BatchV1().Jobs(client.Namespace()).Get(bjob.Status.Job, metav1.GetOptions{})
+		if err != nil {
+			return true, errors.WithStack(err)
+		}
+		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
+			return false, nil
+		}
+		if job.Status.Active > 0 {
+			if !returnOnRunning {
+				return false, nil
+			}
+		}
+		if job.Status.Failed > 0 {
+			return true, errors.Errorf("%s - %s", job.Status.Conditions[0].Reason, job.Status.Conditions[0].Message)
+		}
+		return true, nil
+	}, func() error {
+		bjob, err := client.BuildJobs(client.Namespace()).Get(jobName, metav1.GetOptions{IncludeUninitialized: true})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if bjob.Status.Job == "" {
+			return nil
+		}
+		job, err := client.BatchV1().Jobs(client.Namespace()).Get(bjob.Status.Job, metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return errors.Errorf("%s - %s", job.Status.Conditions[0].Reason, job.Status.Conditions[0].Message)
+	})
+}
+
 func cleanupPods(client *ClusterClient, opts metav1.ListOptions) error {
 	pods, err := client.CoreV1().Pods(client.Namespace()).List(opts)
 	if err != nil {
@@ -399,6 +441,17 @@ func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 func cleanupPod(client *ClusterClient, podName string) error {
 	noWait := int64(0)
 	err := client.CoreV1().Pods(client.Namespace()).Delete(podName, &metav1.DeleteOptions{
+		GracePeriodSeconds: &noWait,
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func cleanupBuildJob(client *ClusterClient, jobName string) error {
+	noWait := int64(0)
+	err := client.BuildJobs(client.Namespace()).Delete(jobName, &metav1.DeleteOptions{
 		GracePeriodSeconds: &noWait,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -538,6 +591,7 @@ type runSinglePodArgs struct {
 	name     string
 	image    string
 	app      provision.App
+	context  string
 }
 
 func runPod(args runSinglePodArgs) error {
@@ -611,6 +665,67 @@ func runPod(args runSinglePodArgs) error {
 	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
 	defer cancel()
 	return waitForPod(ctx, args.client, pod.Name, false)
+}
+
+func runBuildJob(args runSinglePodArgs) error {
+	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
+	pullSecrets, err := getImagePullSecrets(args.client, args.image)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	var secretRef apiv1.LocalObjectReference
+	if len(pullSecrets) > 0 {
+		secretRef = pullSecrets[0]
+	}
+	job := &v1alpha1.BuildJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        args.name,
+			Namespace:   args.client.Namespace(),
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
+		},
+		Spec: v1alpha1.BuildJobSpec{
+			PluginSelector: "plugin.name=docker",
+			Registry: v1alpha1.Registry{
+				Target:    args.image,
+				Push:      true,
+				SecretRef: secretRef,
+			},
+			Language: v1alpha1.Language{
+				Kind: v1alpha1.LanguageKindDockerfile,
+			},
+			Context: v1alpha1.Context{
+				Kind: v1alpha1.ContextKindConfigMap,
+				ConfigMapRef: apiv1.LocalObjectReference{
+					Name: args.context,
+				},
+			},
+		},
+	}
+	_, err = args.client.BuildJobs(args.client.Namespace()).Create(job)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer cleanupBuildJob(args.client, job.Name)
+	kubeConf := getKubeConfig()
+	multiErr := tsuruErrors.NewMultiError()
+	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+	err = waitForJob(ctx, args.client, job.Name, true)
+	cancel()
+	if err != nil {
+		multiErr.Add(err)
+	}
+	//	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name, false)
+	//	if err != nil {
+	//		multiErr.Add(errors.WithStack(err))
+	//	}
+	//	if multiErr.Len() > 0 {
+	//		return multiErr
+	//	}
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
+	//ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+	defer cancel()
+	return waitForJob(ctx, args.client, job.Name, false)
 }
 
 func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {

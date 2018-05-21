@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"io"
 
@@ -21,6 +22,8 @@ type PlatformOptions struct {
 	Args   map[string]string
 	Input  io.Reader
 	Output io.Writer
+	Data   []byte
+	Ctx    context.Context
 }
 
 type PlatformService interface {

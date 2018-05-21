@@ -5,12 +5,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
@@ -30,8 +33,13 @@ import (
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	name := r.FormValue("name")
 	file, _, _ := r.FormFile("dockerfile_content")
-	if file != nil {
-		defer file.Close()
+	defer file.Close()
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return errors.New("Missing file content")
 	}
 	args := make(map[string]string)
 	for key, values := range r.Form {
@@ -56,12 +64,15 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(context.Background())
 	err = servicemanager.Platform.Create(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
-		Input:  file,
+		Data:   data,
 		Output: writer,
+		Ctx:    ctx,
 	})
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -107,14 +118,17 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(context.Background())
 	err = servicemanager.Platform.Update(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
 		Output: writer,
+		Ctx:    ctx,
 	})
+	cancel()
 	if err == appTypes.ErrPlatformNotFound {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if err != nil {
 		return err
@@ -150,7 +164,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(err) }()
 	err = servicemanager.Platform.Remove(name)
 	if err == appTypes.ErrPlatformNotFound {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
 }
