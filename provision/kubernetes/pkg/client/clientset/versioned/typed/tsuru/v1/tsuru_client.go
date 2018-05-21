@@ -1,31 +1,31 @@
 // Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-package v1alpha1
+package v1
 
 import (
-	v1alpha1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1alpha1"
+	v1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
-type TsuruV1alpha1Interface interface {
+type TsuruV1Interface interface {
 	RESTClient() rest.Interface
 	AppsGetter
 }
 
-// TsuruV1alpha1Client is used to interact with features provided by the tsuru.io group.
-type TsuruV1alpha1Client struct {
+// TsuruV1Client is used to interact with features provided by the tsuru.io group.
+type TsuruV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *TsuruV1alpha1Client) Apps(namespace string) AppInterface {
+func (c *TsuruV1Client) Apps(namespace string) AppInterface {
 	return newApps(c, namespace)
 }
 
-// NewForConfig creates a new TsuruV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*TsuruV1alpha1Client, error) {
+// NewForConfig creates a new TsuruV1Client for the given config.
+func NewForConfig(c *rest.Config) (*TsuruV1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -34,12 +34,12 @@ func NewForConfig(c *rest.Config) (*TsuruV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &TsuruV1alpha1Client{client}, nil
+	return &TsuruV1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new TsuruV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new TsuruV1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *TsuruV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *TsuruV1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -47,13 +47,13 @@ func NewForConfigOrDie(c *rest.Config) *TsuruV1alpha1Client {
 	return client
 }
 
-// New creates a new TsuruV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *TsuruV1alpha1Client {
-	return &TsuruV1alpha1Client{c}
+// New creates a new TsuruV1Client for the given RESTClient.
+func New(c rest.Interface) *TsuruV1Client {
+	return &TsuruV1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
-	gv := v1alpha1.SchemeGroupVersion
+	gv := v1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
@@ -67,7 +67,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *TsuruV1alpha1Client) RESTClient() rest.Interface {
+func (c *TsuruV1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

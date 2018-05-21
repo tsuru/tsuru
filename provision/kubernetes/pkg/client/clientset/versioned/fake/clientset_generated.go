@@ -5,8 +5,8 @@ package fake
 
 import (
 	clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
-	tsuruv1alpha1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1alpha1"
-	faketsuruv1alpha1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1alpha1/fake"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
+	faketsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -47,12 +47,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// TsuruV1alpha1 retrieves the TsuruV1alpha1Client
-func (c *Clientset) TsuruV1alpha1() tsuruv1alpha1.TsuruV1alpha1Interface {
-	return &faketsuruv1alpha1.FakeTsuruV1alpha1{Fake: &c.Fake}
+// TsuruV1 retrieves the TsuruV1Client
+func (c *Clientset) TsuruV1() tsuruv1.TsuruV1Interface {
+	return &faketsuruv1.FakeTsuruV1{Fake: &c.Fake}
 }
 
-// Tsuru retrieves the TsuruV1alpha1Client
-func (c *Clientset) Tsuru() tsuruv1alpha1.TsuruV1alpha1Interface {
-	return &faketsuruv1alpha1.FakeTsuruV1alpha1{Fake: &c.Fake}
+// Tsuru retrieves the TsuruV1Client
+func (c *Clientset) Tsuru() tsuruv1.TsuruV1Interface {
+	return &faketsuruv1.FakeTsuruV1{Fake: &c.Fake}
 }

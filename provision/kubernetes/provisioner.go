@@ -21,6 +21,8 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
@@ -138,8 +140,20 @@ func (p *kubernetesProvisioner) GetName() string {
 	return provisionerName
 }
 
-func (p *kubernetesProvisioner) Provision(provision.App) error {
-	return nil
+func (p *kubernetesProvisioner) Provision(a provision.App) error {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return err
+	}
+	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
+		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
+	})
+	return err
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
@@ -168,7 +182,11 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if multiErrors.Len() > 0 {
 		return multiErrors
 	}
-	return nil
+	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	return tclient.TsuruV1().Apps(client.Namespace("")).Delete(a.GetName(), &metav1.DeleteOptions{})
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {

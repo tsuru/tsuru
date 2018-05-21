@@ -9,5 +9,5 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-ge
 
 vendor/k8s.io/code-generator/generate-groups.sh all \
   github.com/tsuru/tsuru/provision/kubernetes/pkg/client github.com/tsuru/tsuru/provision/kubernetes/pkg/apis \
-  tsuru:v1alpha1 \
+  tsuru:v1 \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt

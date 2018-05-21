@@ -15,6 +15,9 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
@@ -131,7 +134,19 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *ClusterClient) AppNamespace(app provision.App) string {
-	return c.Namespace(app.GetPool())
+	tclient, err := tsuruv1clientset.NewForConfig(c.restConfig)
+	if err != nil {
+		return c.Namespace(app.GetPool()) // TODO: fail here?
+	}
+	a, err := tclient.TsuruV1().Apps(c.Namespace("")).Get(app.GetName(), metav1.GetOptions{})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			// this app was created before we introduced CRDs, fallback to the configuration.
+			return c.Namespace(app.GetPool())
+		}
+		return c.Namespace(app.GetPool()) // TODO: fail here?
+	}
+	return a.Spec.NamespaceName
 }
 
 func (c *ClusterClient) Namespace(pool string) string {
