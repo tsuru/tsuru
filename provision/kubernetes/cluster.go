@@ -141,7 +141,6 @@ func (c *ClusterClient) AppNamespace(app provision.App) string {
 	a, err := tclient.TsuruV1().Apps(c.Namespace("")).Get(app.GetName(), metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			// this app was created before we introduced CRDs, fallback to the configuration.
 			return c.Namespace(app.GetPool())
 		}
 		return c.Namespace(app.GetPool()) // TODO: fail here?

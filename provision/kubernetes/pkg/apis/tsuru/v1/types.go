@@ -21,8 +21,9 @@ type App struct {
 
 // AppSpec is the spec for a App resource
 type AppSpec struct {
-	DeploymentName string `json:"deploymentName"`
-	NamespaceName  string `json:"namespaceName"`
+	NamespaceName string   `json:"namespaceName"`
+	Deployments   []string `json:"deployments"`
+	Services      []string `json:"services"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -28,6 +28,8 @@ import (
 	"github.com/tsuru/tsuru/set"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
+	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -145,15 +147,7 @@ func (p *kubernetesProvisioner) Provision(a provision.App) error {
 	if err != nil {
 		return err
 	}
-	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
-	if err != nil {
-		return err
-	}
-	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
-		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
-	})
-	return err
+	return ensureAppCustomResource(client, a)
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
@@ -788,7 +782,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return newImage, nil
+	return newImage, ensureAppCustomResourceSynced(client, a)
 }
 
 func (p *kubernetesProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
@@ -951,4 +945,122 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 		return false, err
 	}
 	return volumeExists(client, volumeName, client.Namespace(pool))
+}
+
+func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
+	label, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResource(client, a)
+	if err != nil {
+		return err
+	}
+	sList, err := client.CoreV1().Services(client.AppNamespace(a)).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
+	})
+	if err != nil {
+		return err
+	}
+	var services []string
+	for _, s := range sList.Items {
+		services = append(services, s.GetName())
+	}
+	dList, err := client.AppsV1().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
+	})
+	if err != nil {
+		return err
+	}
+	var deployments []string
+	for _, d := range dList.Items {
+		deployments = append(deployments, d.GetName())
+	}
+	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	appCRD, err := tclient.TsuruV1().Apps(client.Namespace("")).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	appCRD.Spec.Services = services
+	appCRD.Spec.Deployments = deployments
+	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Update(appCRD)
+	return err
+}
+
+func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
+	err := ensureCustomResourceDefinitions(client)
+	if err != nil {
+		return err
+	}
+	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
+		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
+	})
+	if k8sErrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
+}
+
+func ensureCustomResourceDefinitions(client *ClusterClient) error {
+	apiextensionsClient, err := apiextensionsclientset.NewForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	createdCRD, err := apiextensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(appCustomResourceDefinition())
+	if err != nil {
+		if k8sErrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+	timeout := time.After(time.Minute)
+loop:
+	for {
+		crd, errGet := apiextensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(createdCRD.Name, metav1.GetOptions{})
+		if errGet != nil {
+			return errGet
+		}
+		for _, c := range crd.Status.Conditions {
+			if c.Type == v1beta1.Established && c.Status == v1beta1.ConditionTrue {
+				break loop
+			}
+		}
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout waiting for custom resource definition creation")
+		case <-time.After(time.Second):
+			break loop
+		}
+	}
+	return nil
+}
+
+func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
+	return &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "apps.tsuru.io"},
+		Spec: v1beta1.CustomResourceDefinitionSpec{
+			Group:   "tsuru.io",
+			Version: "v1",
+			Names: v1beta1.CustomResourceDefinitionNames{
+				Plural:   "apps",
+				Singular: "app",
+				Kind:     "App",
+				ListKind: "AppList",
+			},
+		},
+	}
 }
