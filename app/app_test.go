@@ -769,9 +769,15 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 
 		return nil
 	}
+	setCalls := 0
 	s.mockService.AppQuota.OnChangeInUse = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
-		c.Assert(quantity, check.Equals, 6)
+		setCalls++
+		if setCalls == 1 {
+			c.Assert(quantity, check.Equals, 6)
+		} else {
+			c.Assert(quantity, check.Equals, 2)
+		}
 		return nil
 	}
 	s.mockService.AppQuota.OnReleaseUnits = func(appName string, quantity int) error {
@@ -798,6 +804,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 		return quota.InUse == 2
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(setCalls, check.Equals, 2)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {

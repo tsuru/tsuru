@@ -794,7 +794,11 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 		&provisionAddUnits,
 	).Execute(app, n, w, process)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
-	return err
+	quotaErr := app.fixQuota()
+	if err != nil {
+		return err
+	}
+	return quotaErr
 }
 
 // RemoveUnits removes n units from the app. It's a process composed of
@@ -808,16 +812,29 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 		return err
 	}
 	w = app.withLogWriter(w)
-	err = servicemanager.AppQuota.ReleaseUnits(app.Name, int(n))
-	if err != nil {
-		return err
-	}
 	err = prov.RemoveUnits(app, n, process, w)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	quotaErr := app.fixQuota()
 	if err != nil {
 		return err
 	}
-	return nil
+	return quotaErr
+}
+
+func (app *App) fixQuota() error {
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	var count int
+	for _, u := range units {
+		if u.Status == provision.StatusBuilding ||
+			u.Status == provision.StatusCreated {
+			continue
+		}
+		count++
+	}
+	return app.SetQuotaInUse(count)
 }
 
 // SetUnitStatus changes the status of the given unit.
