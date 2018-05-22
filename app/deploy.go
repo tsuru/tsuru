@@ -274,6 +274,10 @@ func Deploy(opts DeployOptions) (string, error) {
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(&opts, opts.Event)
 	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
+	quotaErr := opts.App.fixQuota()
+	if quotaErr != nil {
+		log.Errorf("WARNING: unable to ensure quota is up-to-date after deploy: %v", quotaErr)
+	}
 	if err != nil {
 		var logLines []Applog
 		if provision.IsStartupError(err) {

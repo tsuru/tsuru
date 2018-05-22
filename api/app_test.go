@@ -2210,30 +2210,6 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {
 	}
 }
 
-func (s *S) TestRemoveUnitsReturns403IfNotEnoughReservedUnits(c *check.C) {
-	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReleaseUnits = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, a.Name)
-		c.Assert(quantity, check.Equals, 2)
-		return quota.ErrNoReservedUnits
-	}
-	request, err := http.NewRequest("DELETE", "/apps/velha/units?units=2&process=web", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 0)
-	c.Assert(recorder.Body.String(), check.Equals, `Not enough reserved units`+"\n")
-}
-
 func (s *S) TestSetUnitStatus(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)

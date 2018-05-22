@@ -611,14 +611,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.RemoveUnits(n, processName, writer)
-	if err == quota.ErrNoReservedUnits {
-		return &errors.HTTP{
-			Code:    http.StatusForbidden,
-			Message: err.Error(),
-		}
-	}
-	return err
+	return a.RemoveUnits(n, processName, writer)
 }
 
 // title: set unit status
