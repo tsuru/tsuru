@@ -1353,6 +1353,15 @@ event:throttling:[]:all-targets
 Boolean value describing whether the throttling will apply to all events target
 values or to individual values.
 
+Volume plans configuration
+--------------------------
+
+volume-plans:<plan-name>:<provisioner>
+++++++++++++++++++++++++++++++++++++++
+
+Provisioner specific configuration entries for the volume plan. See
+:doc:`managing volumes </managing/volumes>`.
+
 .. _config_common_redis:
 
 Common redis configuration options

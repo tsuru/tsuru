@@ -1,5 +1,4 @@
-docutils<0.13.1
-Sphinx==1.6.5
-sphinx-rtd-theme==0.1.9
+Sphinx==1.7.4
+sphinx-rtd-theme==0.3.1
 tsuru-sphinx==0.1.4
 sphinxcontrib-openapi==0.3.2
