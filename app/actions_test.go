@@ -351,7 +351,7 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -372,7 +372,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -393,7 +393,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -433,7 +433,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, user.Email)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -456,7 +456,7 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.UserQuota.OnReleaseApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, user.Email)
 		return nil
 	}
@@ -486,7 +486,7 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
@@ -505,7 +505,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
@@ -524,7 +524,7 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		Quota:    quota.Quota{Limit: 1, InUse: 1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
@@ -569,9 +569,9 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		Quota:    quota.Quota{Limit: 5, InUse: 4},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnReleaseUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(quantity, check.Equals, 3)
+		c.Assert(quantity, check.Equals, -3)
 		return nil
 	}
 	err := s.conn.Apps().Insert(app)

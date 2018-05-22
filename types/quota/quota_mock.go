@@ -5,144 +5,64 @@
 package quota
 
 var (
-	_ UserQuotaStorage = &MockUserQuotaStorage{}
-	_ UserQuotaService = &MockUserQuotaService{}
-	_ AppQuotaStorage  = &MockAppQuotaStorage{}
-	_ AppQuotaService  = &MockAppQuotaService{}
+	_ QuotaStorage = &MockQuotaStorage{}
+	_ QuotaService = &MockQuotaService{}
 )
 
-type MockUserQuotaStorage struct {
-	OnIncInUse        func(string, int) error
-	OnSetLimit        func(string, int) error
-	OnFindByUserEmail func(string) (*Quota, error)
+type MockQuotaStorage struct {
+	OnInc      func(string, int) error
+	OnSet      func(string, int) error
+	OnSetLimit func(string, int) error
+	OnGet      func(string) (*Quota, error)
 }
 
-func (m *MockUserQuotaStorage) IncInUse(email string, quantity int) error {
-	return m.OnIncInUse(email, quantity)
+func (m *MockQuotaStorage) Inc(name string, quantity int) error {
+	return m.OnInc(name, quantity)
 }
 
-func (m *MockUserQuotaStorage) SetLimit(email string, limit int) error {
-	return m.OnSetLimit(email, limit)
+func (m *MockQuotaStorage) Set(name string, limit int) error {
+	return m.OnSet(name, limit)
 }
 
-func (m *MockUserQuotaStorage) FindByUserEmail(email string) (*Quota, error) {
-	return m.OnFindByUserEmail(email)
+func (m *MockQuotaStorage) SetLimit(name string, limit int) error {
+	return m.OnSetLimit(name, limit)
 }
 
-type MockAppQuotaStorage struct {
-	OnIncInUse      func(string, int) error
-	OnSetLimit      func(string, int) error
-	OnSetInUse      func(string, int) error
-	OnFindByAppName func(string) (*Quota, error)
+func (m *MockQuotaStorage) Get(name string) (*Quota, error) {
+	return m.OnGet(name)
 }
 
-func (m *MockAppQuotaStorage) IncInUse(appName string, quantity int) error {
-	return m.OnIncInUse(appName, quantity)
+type MockQuotaService struct {
+	OnInc      func(string, int) error
+	OnSet      func(string, int) error
+	OnSetLimit func(string, int) error
+	OnGet      func(string) (*Quota, error)
 }
 
-func (m *MockAppQuotaStorage) SetLimit(appName string, limit int) error {
-	return m.OnSetLimit(appName, limit)
-}
-
-func (m *MockAppQuotaStorage) SetInUse(appName string, inUse int) error {
-	return m.OnSetInUse(appName, inUse)
-}
-
-func (m *MockAppQuotaStorage) FindByAppName(appName string) (*Quota, error) {
-	return m.OnFindByAppName(appName)
-}
-
-type MockUserQuotaService struct {
-	OnReserveApp      func(string) error
-	OnReleaseApp      func(string) error
-	OnChangeLimit     func(string, int) error
-	OnFindByUserEmail func(string) (*Quota, error)
-}
-
-func (m *MockUserQuotaService) ReserveApp(email string) error {
-	if m.OnReserveApp == nil {
+func (m *MockQuotaService) Inc(name string, delta int) error {
+	if m.OnInc == nil {
 		return nil
 	}
-	return m.OnReserveApp(email)
+	return m.OnInc(name, delta)
 }
 
-func (m *MockUserQuotaService) ReleaseApp(email string) error {
-	if m.OnReleaseApp == nil {
+func (m *MockQuotaService) SetLimit(name string, limit int) error {
+	if m.OnSetLimit == nil {
 		return nil
 	}
-	return m.OnReleaseApp(email)
+	return m.OnSetLimit(name, limit)
 }
 
-func (m *MockUserQuotaService) ChangeLimit(email string, quantity int) error {
-	if m.OnChangeLimit == nil {
+func (m *MockQuotaService) Set(name string, quantity int) error {
+	if m.OnSet == nil {
 		return nil
 	}
-	return m.OnChangeLimit(email, quantity)
+	return m.OnSet(name, quantity)
 }
 
-func (m *MockUserQuotaService) FindByUserEmail(email string) (*Quota, error) {
-	if m.OnFindByUserEmail == nil {
+func (m *MockQuotaService) Get(name string) (*Quota, error) {
+	if m.OnGet == nil {
 		return nil, nil
 	}
-	return m.OnFindByUserEmail(email)
-}
-
-type MockAppQuotaService struct {
-	OnCheckAppUsage  func(*Quota, int) error
-	OnCheckAppLimit  func(*Quota, int) error
-	OnReserveUnits   func(string, int) error
-	OnReleaseUnits   func(string, int) error
-	OnChangeLimit    func(string, int) error
-	OnChangeInUse    func(string, int) error
-	OnFindByAppName  func(string) (*Quota, error)
-	OnCheckAppExists func(string) error
-}
-
-func (m *MockAppQuotaService) CheckAppUsage(quota *Quota, quantity int) error {
-	if m.OnCheckAppUsage == nil {
-		return nil
-	}
-	return m.OnCheckAppUsage(quota, quantity)
-}
-
-func (m *MockAppQuotaService) CheckAppLimit(quota *Quota, quantity int) error {
-	if m.OnCheckAppLimit == nil {
-		return nil
-	}
-	return m.OnCheckAppLimit(quota, quantity)
-}
-
-func (m *MockAppQuotaService) ReserveUnits(appName string, quantity int) error {
-	if m.OnReserveUnits == nil {
-		return nil
-	}
-	return m.OnReserveUnits(appName, quantity)
-}
-
-func (m *MockAppQuotaService) ReleaseUnits(appName string, quantity int) error {
-	if m.OnReleaseUnits == nil {
-		return nil
-	}
-	return m.OnReleaseUnits(appName, quantity)
-}
-
-func (m *MockAppQuotaService) ChangeLimit(appName string, quantity int) error {
-	if m.OnChangeLimit == nil {
-		return nil
-	}
-	return m.OnChangeLimit(appName, quantity)
-}
-
-func (m *MockAppQuotaService) ChangeInUse(appName string, quantity int) error {
-	if m.OnChangeInUse == nil {
-		return nil
-	}
-	return m.OnChangeInUse(appName, quantity)
-}
-
-func (m *MockAppQuotaService) FindByAppName(appName string) (*Quota, error) {
-	if m.OnFindByAppName == nil {
-		return nil, nil
-	}
-	return m.OnFindByAppName(appName)
+	return m.OnGet(name)
 }

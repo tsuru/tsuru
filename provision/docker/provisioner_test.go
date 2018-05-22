@@ -265,7 +265,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := s.newApp("myapp")
 	err = app.CreateApp(&a, s.user)
-	s.mockService.AppQuota.OnChangeInUse = func(appName string, inUse int) error {
+	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
 		c.Assert(appName, check.Equals, "myapp")
 		c.Assert(inUse, check.Equals, 1)
 		a.Quota.InUse = 1
@@ -436,13 +436,13 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
-	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
 		c.Assert(appName, check.Equals, "otherapp")
 		c.Assert(limit, check.Equals, 1)
 		a.Quota.Limit = 1
 		return nil
 	}
-	s.mockService.AppQuota.OnChangeInUse = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnSet = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, "otherapp")
 		c.Assert(quantity, check.Equals, 2)
 		return &quota.QuotaExceededError{Available: 1, Requested: 2}

@@ -705,7 +705,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = servicemanager.UserQuota.ReleaseApp(owner.Email)
+		err = servicemanager.UserQuota.Inc(owner.Email, -1)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)
@@ -1377,11 +1377,11 @@ func (app *App) GetQuota() quota.Quota {
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	return servicemanager.AppQuota.ChangeInUse(app.Name, inUse)
+	return servicemanager.AppQuota.Set(app.Name, inUse)
 }
 
 func (app *App) SetQuotaLimit(limit int) error {
-	return servicemanager.AppQuota.ChangeLimit(app.Name, limit)
+	return servicemanager.AppQuota.SetLimit(app.Name, limit)
 }
 
 // GetCname returns the cnames of the app.

@@ -21,34 +21,22 @@ func (q *Quota) IsUnlimited() bool {
 	return -1 == q.Limit
 }
 
-type UserQuotaService interface {
-	ReserveApp(email string) error
-	ReleaseApp(email string) error
-	ChangeLimit(email string, limit int) error
-	FindByUserEmail(email string) (*Quota, error)
+type QuotaService interface {
+	Inc(name string, delta int) error
+	Set(name string, quantity int) error
+	SetLimit(name string, limit int) error
+	Get(name string) (*Quota, error)
 }
 
-type AppQuotaService interface {
-	CheckAppUsage(quota *Quota, quantity int) error
-	CheckAppLimit(quota *Quota, quantity int) error
-	ReserveUnits(appName string, quantity int) error
-	ReleaseUnits(appName string, quantity int) error
-	ChangeLimit(appName string, limit int) error
-	ChangeInUse(appName string, inUse int) error
-	FindByAppName(appName string) (*Quota, error)
+type QuotaStorage interface {
+	Inc(name string, delta int) error
+	SetLimit(name string, limit int) error
+	Get(name string) (*Quota, error)
 }
 
-type UserQuotaStorage interface {
-	IncInUse(email string, quantity int) error
-	SetLimit(email string, limit int) error
-	FindByUserEmail(email string) (*Quota, error)
-}
-
-type AppQuotaStorage interface {
-	IncInUse(appName string, quantity int) error
-	SetLimit(appName string, limit int) error
-	SetInUse(appName string, inUse int) error
-	FindByAppName(appName string) (*Quota, error)
+type QuotaStorageWithSet interface {
+	QuotaStorage
+	Set(name string, quantity int) error
 }
 
 type QuotaExceededError struct {
@@ -61,8 +49,7 @@ func (err *QuotaExceededError) Error() string {
 }
 
 var (
-	ErrNoReservedUnits         = errors.New("Not enough reserved units")
-	ErrLimitLowerThanAllocated = errors.New("New limit is lesser than the current allocated value")
-	ErrLesserThanZero          = errors.New("Invalid value, cannot be lesser than 0")
-	ErrCantRelease             = errors.New("Cannot release unreserved app")
+	ErrNotEnoughReserved       = errors.New("Not enough reserved items")
+	ErrLimitLowerThanAllocated = errors.New("New limit is less than the current allocated value")
+	ErrLessThanZero            = errors.New("Invalid value, cannot be less than 0")
 )

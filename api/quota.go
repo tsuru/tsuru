@@ -91,7 +91,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	err = servicemanager.UserQuota.ChangeLimit(user.Email, limit)
+	err = servicemanager.UserQuota.SetLimit(user.Email, limit)
 	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,

@@ -141,7 +141,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
+	s.mockService.UserQuota.OnSetLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 40)
 		return nil
@@ -229,7 +229,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.UserQuota.OnChangeLimit = func(email string, limit int) error {
+	s.mockService.UserQuota.OnSetLimit = func(email string, limit int) error {
 		c.Assert(email, check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
@@ -254,7 +254,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 			{"name": ":email", "value": user.Email},
 			{"name": "limit", "value": "3"},
 		},
-		ErrorMatches: `New limit is lesser than the current allocated value`,
+		ErrorMatches: `New limit is less than the current allocated value`,
 	}, eventtest.HasEvent)
 }
 
@@ -347,7 +347,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 40)
 		return nil
@@ -457,7 +457,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnChangeLimit = func(appName string, limit int) error {
+	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
@@ -481,6 +481,6 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 			{"name": ":appname", "value": a.Name},
 			{"name": "limit", "value": "3"},
 		},
-		ErrorMatches: `New limit is lesser than the current allocated value`,
+		ErrorMatches: `New limit is less than the current allocated value`,
 	}, eventtest.HasEvent)
 }

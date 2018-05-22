@@ -871,7 +871,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, token.GetUserName())
 		return nil
 	}
@@ -1348,7 +1348,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	s.mockService.UserQuota.OnReserveApp = func(email string) error {
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, token.GetUserName())
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -1901,7 +1901,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 10, InUse: 0}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
@@ -1932,7 +1932,7 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
@@ -2009,7 +2009,7 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
@@ -2057,7 +2057,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 2, InUse: 0}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReserveUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return &quota.QuotaExceededError{Available: 2, Requested: 3}
@@ -2083,7 +2083,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReleaseUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
@@ -2161,7 +2161,7 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.AppQuota.OnReleaseUnits = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
