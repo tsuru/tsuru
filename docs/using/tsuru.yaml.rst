@@ -83,23 +83,33 @@ Here is how you can configure a health check in your yaml file:
       use_in_router: false
       router_body: content
 
-* ``healthcheck:path``: Which path to call in your application. This path will be
-  called for each unit. It is the only mandatory field, if it's not set your
+* ``healthcheck:path``: Which path to call in your application. This path will
+  be called for each unit. It is the only mandatory field, if it's not set your
   health check will be ignored.
 * ``healthcheck:scheme``: Which scheme to use. Defaults to http.
 * ``healthcheck:method``: The method used to make the http request. Defaults to
   GET.
-* ``healthcheck:status``: The expected response code for the request. Defaults to
-  200.
+* ``healthcheck:status``: The expected response code for the request. Defaults
+  to 200.
 * ``healthcheck:match``: A regular expression to be matched against the request
   body. If it's not set the body won't be read and only the status code will be
   checked. This regular expression uses `Go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
-* ``healthcheck:allowed_failures``: The number of allowed failures before that the
-  health check consider the application as unhealthy. Defaults to 0.
+* ``healthcheck:allowed_failures``: The number of allowed failures before that
+  the health check consider the application as unhealthy. Defaults to 0.
 * ``healthcheck:use_in_router``: Whether this health check path should also be
   registered in the router. Please, ensure that the check is consistent to
-  prevent units being disabled by the router. Defaults to false. When an app has
-  no explicit healthcheck or use_in_router is false a default healthcheck is configured.
-* ``healthcheck:router_body``: body passed to the router when ``use_in_router`` is true.
+  prevent units being disabled by the router. Defaults to false. When an app
+  has no explicit healthcheck or use_in_router is false a default healthcheck
+  is configured.
+* ``healthcheck:router_body``: body passed to the router when ``use_in_router``
+  is true.
+* ``healthcheck:timeout_seconds``: The timeout for each healthcheck call in
+  seconds. Defaults to 60 seconds.
+* ``healthcheck:interval_seconds``: Exclusive to the ``kubernetes``
+  provisioner. The interval in seconds between each active healthcheck call if
+  ``use_in_router`` is set to true. Defaults to 10 seconds.
+* ``healthcheck:force_restart``: Exclusive to the ``kubernetes``
+  provisioner. Whether the unit should be restarted after ``allowed_failures``
+  consecutive healthcheck failures. (Sets the liveness probe in the Pod.)
