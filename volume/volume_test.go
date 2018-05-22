@@ -66,6 +66,7 @@ type volumeProvisioner struct {
 	*provisiontest.FakeProvisioner
 	deleteCallVolume string
 	deleteCallPool   string
+	isProvisioned    bool
 }
 
 func (p *volumeProvisioner) GetName() string {
@@ -76,6 +77,10 @@ func (p *volumeProvisioner) DeleteVolume(volName, pool string) error {
 	p.deleteCallVolume = volName
 	p.deleteCallPool = pool
 	return nil
+}
+
+func (p *volumeProvisioner) IsVolumeProvisioned(name, pool string) (bool, error) {
+	return p.isProvisioned, nil
 }
 
 func (s *S) SetUpSuite(c *check.C) {
@@ -442,6 +447,36 @@ func (s *S) TestVolumeDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = Load(v.Name)
 	c.Assert(err, check.Equals, ErrVolumeNotFound)
+}
+
+func (s *S) TestVolumeUpdateAlreadyProvisioned(c *check.C) {
+	updateConfig(`
+volume-plans:
+  p1:
+    volumeprov:
+       driver: local
+`)
+	volumeProv := volumeProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("volumeprov", func() (provision.Provisioner, error) {
+		return &volumeProv, nil
+	})
+	defer provision.Unregister("volumeprov")
+	err := pool.AddPool(pool.AddPoolOptions{
+		Name:        "volumepool",
+		Provisioner: "volumeprov",
+	})
+	c.Assert(err, check.IsNil)
+	v := Volume{
+		Name:      "v1",
+		Plan:      VolumePlan{Name: "p1"},
+		Pool:      "volumepool",
+		TeamOwner: "myteam",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	volumeProv.isProvisioned = true
+	err = v.Save()
+	c.Assert(err, check.Equals, ErrVolumeAlreadyProvisioned)
 }
 
 func (s *S) TestVolumeDeleteWithVolumeProvisioner(c *check.C) {

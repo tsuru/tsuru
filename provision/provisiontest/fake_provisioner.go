@@ -1330,6 +1330,14 @@ func (p *FakeProvisioner) HasNodeContainer(name string, pool string) bool {
 	return p.nodeContainers[name+"-"+pool] > 0
 }
 
+func (p *FakeProvisioner) DeleteVolume(volName, pool string) error {
+	return nil
+}
+
+func (p *FakeProvisioner) IsVolumeProvisioned(name, pool string) (bool, error) {
+	return false, nil
+}
+
 func stringInArray(value string, array []string) bool {
 	for _, str := range array {
 		if str == value {

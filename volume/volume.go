@@ -22,9 +22,10 @@ import (
 )
 
 var (
-	ErrVolumeNotFound     = errors.New("volume not found")
-	ErrVolumeAlreadyBound = errors.New("volume already bound in mountpoint")
-	ErrVolumeBindNotFound = errors.New("volume bind not found")
+	ErrVolumeNotFound           = errors.New("volume not found")
+	ErrVolumeAlreadyBound       = errors.New("volume already bound in mountpoint")
+	ErrVolumeBindNotFound       = errors.New("volume bind not found")
+	ErrVolumeAlreadyProvisioned = errors.New("updating a volume already provisioned is not supported, a new volume must be created and the old one deleted if necessary")
 )
 
 type VolumePlan struct {
@@ -100,6 +101,13 @@ func (v *Volume) Save() error {
 	if err != nil {
 		return err
 	}
+	isProv, err := v.isProvisioned()
+	if err != nil {
+		return err
+	}
+	if isProv {
+		return ErrVolumeAlreadyProvisioned
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return errors.WithStack(err)
@@ -107,6 +115,26 @@ func (v *Volume) Save() error {
 	defer conn.Close()
 	_, err = conn.Volumes().UpsertId(v.Name, v)
 	return errors.WithStack(err)
+}
+
+func (v *Volume) isProvisioned() (bool, error) {
+	p, err := pool.GetPoolByName(v.Pool)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	prov, err := p.GetProvisioner()
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	volProv, ok := prov.(provision.VolumeProvisioner)
+	if !ok {
+		return false, errors.New("provisioner is not a volume provisioner")
+	}
+	isProv, err := volProv.IsVolumeProvisioned(v.Name, v.Pool)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	return isProv, nil
 }
 
 func (v *Volume) BindApp(appName, mountPoint string, readOnly bool) error {

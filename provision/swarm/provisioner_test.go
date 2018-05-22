@@ -1812,6 +1812,29 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestIsVolumeProvisioned(c *check.C) {
+	s.addCluster(c)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	isProv, err := s.p.IsVolumeProvisioned("myvol", "pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(isProv, check.Equals, false)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	client, err := docker.NewClient(s.clusterSrv.URL())
+	c.Assert(err, check.IsNil)
+	client2, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	_, err = client.CreateVolume(docker.CreateVolumeOptions{Name: "myvol"})
+	c.Assert(err, check.IsNil)
+	_, err = client2.CreateVolume(docker.CreateVolumeOptions{Name: "myvol"})
+	c.Assert(err, check.IsNil)
+	isProv, err = s.p.IsVolumeProvisioned("myvol", "pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(isProv, check.Equals, true)
+}
+
 func (s *S) TestInitializeCluster(c *check.C) {
 	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

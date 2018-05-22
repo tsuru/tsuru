@@ -484,6 +484,7 @@ type AppFilterProvisioner interface {
 }
 
 type VolumeProvisioner interface {
+	IsVolumeProvisioned(volumeName, pool string) (bool, error)
 	DeleteVolume(volumeName, pool string) error
 }
 
