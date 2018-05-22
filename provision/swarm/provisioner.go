@@ -803,32 +803,52 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *swarmProvisioner) DeleteVolume(volumeName, pool string) error {
-	clusters, err := allClusters()
+	client, err := clusterForPool(pool)
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
-			return nil
-		}
 		return err
 	}
-	for _, client := range clusters {
-		nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	if err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		nodeClient, err := clientForNode(client, n.ID)
 		if err != nil {
 			return err
 		}
-		for _, n := range nodes {
-			nodeClient, err := clientForNode(client, n.ID)
-			if err != nil {
-				return err
-			}
-			err = nodeClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{
-				Name: volumeName,
-			})
-			if err != docker.ErrNoSuchVolume && err != nil {
-				return err
-			}
+		err = nodeClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{
+			Name: volumeName,
+		})
+		if err != docker.ErrNoSuchVolume && err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (p *swarmProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
+	client, err := clusterForPool(pool)
+	if err != nil {
+		return false, err
+	}
+	nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	if err != nil {
+		return false, err
+	}
+	for _, n := range nodes {
+		nodeClient, err := clientForNode(client, n.ID)
+		if err != nil {
+			return false, err
+		}
+		_, err = nodeClient.InspectVolume(volumeName)
+		if err != docker.ErrNoSuchVolume && err != nil {
+			return false, err
+		}
+		if err == nil {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {

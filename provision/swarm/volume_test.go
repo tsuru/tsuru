@@ -13,6 +13,7 @@ import (
 )
 
 func (s *S) TestMountsForApp(c *check.C) {
+	s.addCluster(c)
 	config.Set("volume-plans:p1:swarm:driver", "local")
 	config.Set("volume-plans:p1:swarm:opts", []string{"type=nfs"})
 	defer config.Unset("volume-plans")

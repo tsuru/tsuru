@@ -191,7 +191,6 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 	for _, am := range strings.Split(opts.AccessModes, ",") {
 		pvSpec.AccessModes = append(pvSpec.AccessModes, apiv1.PersistentVolumeAccessMode(am))
 	}
-	var storageClass *string
 	var volName string
 	var selector *metav1.LabelSelector
 	if opts.Plugin != "" {
@@ -202,23 +201,14 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 			},
 			Spec: pvSpec,
 		}
-		_, err = client.CoreV1().PersistentVolumes().Update(pv)
-		if err != nil {
-			if !k8sErrors.IsNotFound(err) {
-				return err
-			}
-			_, err = client.CoreV1().PersistentVolumes().Create(pv)
-			if err != nil {
-				return err
-			}
+		_, err = client.CoreV1().PersistentVolumes().Create(pv)
+		if err != nil && !k8sErrors.IsAlreadyExists(err) {
+			return err
 		}
 		selector = &metav1.LabelSelector{
 			MatchLabels: labelSet.ToVolumeSelector(),
 		}
 		volName = volumeName(v.Name)
-	}
-	if opts.StorageClass != "" {
-		storageClass = &opts.StorageClass
 	}
 	pvc := &apiv1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -232,18 +222,27 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions) 
 			AccessModes:      pvSpec.AccessModes,
 			Selector:         selector,
 			VolumeName:       volName,
-			StorageClassName: storageClass,
+			StorageClassName: &opts.StorageClass,
 		},
 	}
-	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Update(pvc)
-	if err != nil {
-		if !k8sErrors.IsNotFound(err) {
-			return err
-		}
-		_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(pvc)
-		if err != nil {
-			return err
-		}
+	_, err = client.CoreV1().PersistentVolumeClaims(client.Namespace()).Create(pvc)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return err
 	}
 	return nil
+}
+
+func volumeExists(client *ClusterClient, name string) (bool, error) {
+	_, pvErr := client.CoreV1().PersistentVolumes().Get(volumeName(name), metav1.GetOptions{})
+	_, pvcErr := client.CoreV1().PersistentVolumeClaims(client.Namespace()).Get(volumeClaimName(name), metav1.GetOptions{})
+	if k8sErrors.IsNotFound(pvErr) && k8sErrors.IsNotFound(pvcErr) {
+		return false, nil
+	}
+	if pvErr != nil {
+		return false, pvErr
+	}
+	if pvcErr != nil {
+		return false, pvcErr
+	}
+	return true, nil
 }

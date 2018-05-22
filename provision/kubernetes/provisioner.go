@@ -916,3 +916,11 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	}
 	return deleteVolume(client, volumeName)
 }
+
+func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
+	client, err := clusterForPool(pool)
+	if err != nil {
+		return false, err
+	}
+	return volumeExists(client, volumeName)
+}
