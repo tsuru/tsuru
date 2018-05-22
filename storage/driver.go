@@ -21,8 +21,8 @@ type DbDriver struct {
 	PlanStorage      app.PlanStorage
 	CacheStorage     app.CacheStorage
 	TeamTokenStorage auth.TeamTokenStorage
-	UserQuotaStorage quota.UserQuotaStorage
-	AppQuotaStorage  quota.AppQuotaStorage
+	UserQuotaStorage quota.QuotaStorage
+	AppQuotaStorage  quota.QuotaStorageWithSet
 	WebhookStorage   event.WebhookStorage
 }
 

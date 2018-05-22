@@ -19,44 +19,44 @@ type userStorage interface {
 type UserQuotaSuite struct {
 	SuiteHooks
 	UserStorage      userStorage
-	UserQuotaStorage quota.UserQuotaStorage
-	UserQuotaService quota.UserQuotaService
+	UserQuotaStorage quota.QuotaStorage
+	UserQuotaService quota.QuotaService
 }
 
-func (s *UserQuotaSuite) TestFindByUserEmail(c *check.C) {
+func (s *UserQuotaSuite) TestGet(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: quota.UnlimitedQuota}
 	s.UserStorage.Create(user)
-	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.Get("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, -1)
 }
 
-func (s *UserQuotaSuite) TestFindByAppNameNotFound(c *check.C) {
-	_, err := s.UserQuotaStorage.FindByUserEmail("myapp")
+func (s *UserQuotaSuite) TestGetNotFound(c *check.C) {
+	_, err := s.UserQuotaStorage.Get("myapp")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
-func (s *UserQuotaSuite) TestIncInUse(c *check.C) {
+func (s *UserQuotaSuite) TestInc(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: quota.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	err := s.UserQuotaStorage.IncInUse("example@example.com", 1)
+	err := s.UserQuotaStorage.Inc("example@example.com", 1)
 	c.Assert(err, check.IsNil)
-	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.Get("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 1)
 	c.Assert(quota.Limit, check.Equals, 5)
-	err = s.UserQuotaStorage.IncInUse("example@example.com", 2)
+	err = s.UserQuotaStorage.Inc("example@example.com", 2)
 	c.Assert(err, check.IsNil)
-	quota, err = s.UserQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err = s.UserQuotaStorage.Get("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 3)
 	c.Assert(quota.Limit, check.Equals, 5)
 }
 
-func (s *UserQuotaSuite) TestIncInUseNotFound(c *check.C) {
-	err := s.UserQuotaStorage.IncInUse("myapp", 1)
+func (s *UserQuotaSuite) TestIncNotFound(c *check.C) {
+	err := s.UserQuotaStorage.Inc("myapp", 1)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
@@ -66,7 +66,7 @@ func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
 	s.UserStorage.Create(user)
 	err := s.UserQuotaStorage.SetLimit("example@example.com", 1)
 	c.Assert(err, check.IsNil)
-	quota, err := s.UserQuotaStorage.FindByUserEmail("example@example.com")
+	quota, err := s.UserQuotaStorage.Get("example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, 1)

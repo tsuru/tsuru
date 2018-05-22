@@ -68,8 +68,8 @@ type S struct {
 	mockService   struct {
 		Team      *authTypes.MockTeamService
 		Plan      *appTypes.MockPlanService
-		UserQuota *quota.MockUserQuotaService
-		AppQuota  *quota.MockAppQuotaService
+		UserQuota *quota.MockQuotaService
+		AppQuota  *quota.MockQuotaService
 	}
 }
 
@@ -181,21 +181,17 @@ func (s *S) SetUpTest(c *check.C) {
 			return &defaultPlan, nil
 		},
 	}
-	s.mockService.UserQuota = &quota.MockUserQuotaService{
-		OnFindByUserEmail: func(email string) (*quota.Quota, error) {
+	s.mockService.UserQuota = &quota.MockQuotaService{
+		OnGet: func(email string) (*quota.Quota, error) {
 			c.Assert(email, check.Equals, s.user.Email)
 			return &s.user.Quota, nil
 		},
-		OnReleaseApp: func(email string) error {
-			c.Assert(email, check.Equals, s.user.Email)
-			return nil
-		},
-		OnReserveApp: func(email string) error {
+		OnInc: func(email string, n int) error {
 			c.Assert(email, check.Equals, s.user.Email)
 			return nil
 		},
 	}
-	s.mockService.AppQuota = &quota.MockAppQuotaService{}
+	s.mockService.AppQuota = &quota.MockQuotaService{}
 	servicemanager.Team = s.mockService.Team
 	servicemanager.Plan = s.mockService.Plan
 	servicemanager.UserQuota = s.mockService.UserQuota

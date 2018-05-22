@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-var _ quota.UserQuotaStorage = &userQuotaStorage{}
+var _ quota.QuotaStorage = &userQuotaStorage{}
 
 type userQuotaStorage struct{}
 
@@ -21,13 +21,13 @@ type _user struct {
 	Quota quota.Quota `bson:"quota"`
 }
 
-func (s *userQuotaStorage) IncInUse(email string, quantity int) error {
+func (s *userQuotaStorage) Inc(email string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByUserEmail(email)
+	_, err = s.Get(email)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (s *userQuotaStorage) SetLimit(email string, quantity int) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByUserEmail(email)
+	_, err = s.Get(email)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (s *userQuotaStorage) SetLimit(email string, quantity int) error {
 	return err
 }
 
-func (s *userQuotaStorage) FindByUserEmail(email string) (*quota.Quota, error) {
+func (s *userQuotaStorage) Get(email string) (*quota.Quota, error) {
 	var user _user
 	conn, err := db.Conn()
 	if err != nil {

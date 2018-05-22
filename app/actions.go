@@ -58,7 +58,7 @@ var reserveUserApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if err := servicemanager.UserQuota.ReserveApp(usr.Email); err != nil {
+		if err := servicemanager.UserQuota.Inc(usr.Email, 1); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
@@ -66,7 +66,7 @@ var reserveUserApp = action.Action{
 	Backward: func(ctx action.BWContext) {
 		m := ctx.FWResult.(map[string]string)
 		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
-			servicemanager.UserQuota.ReleaseApp(user.Email)
+			servicemanager.UserQuota.Inc(user.Email, -1)
 		}
 	},
 	MinParams: 2,
@@ -355,7 +355,7 @@ var reserveUnitsToAdd = action.Action{
 		if err != nil {
 			return nil, appTypes.ErrAppNotFound
 		}
-		err = servicemanager.AppQuota.ReserveUnits(app.Name, n)
+		err = servicemanager.AppQuota.Inc(app.Name, n)
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +368,7 @@ var reserveUnitsToAdd = action.Action{
 			app = ctx.Params[0].(*App)
 		}
 		qty := ctx.FWResult.(int)
-		err := servicemanager.AppQuota.ReleaseUnits(app.Name, qty)
+		err := servicemanager.AppQuota.Inc(app.Name, -qty)
 		if err != nil {
 			log.Errorf("Failed to rollback reserveUnitsToAdd: %s", err)
 		}

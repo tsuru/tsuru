@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-var _ quota.AppQuotaStorage = &appQuotaStorage{}
+var _ quota.QuotaStorage = &appQuotaStorage{}
 
 type appQuotaStorage struct{}
 
@@ -22,13 +22,13 @@ type _app struct {
 	Quota quota.Quota
 }
 
-func (s *appQuotaStorage) IncInUse(appName string, quantity int) error {
+func (s *appQuotaStorage) Inc(appName string, quantity int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByAppName(appName)
+	_, err = s.Get(appName)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (s *appQuotaStorage) SetLimit(appName string, limit int) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByAppName(appName)
+	_, err = s.Get(appName)
 	if err != nil {
 		return err
 	}
@@ -56,13 +56,13 @@ func (s *appQuotaStorage) SetLimit(appName string, limit int) error {
 	return err
 }
 
-func (s *appQuotaStorage) SetInUse(appName string, inUse int) error {
+func (s *appQuotaStorage) Set(appName string, inUse int) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByAppName(appName)
+	_, err = s.Get(appName)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (s *appQuotaStorage) SetInUse(appName string, inUse int) error {
 	return err
 }
 
-func (s *appQuotaStorage) FindByAppName(appName string) (*quota.Quota, error) {
+func (s *appQuotaStorage) Get(appName string) (*quota.Quota, error) {
 	var a _app
 	conn, err := db.Conn()
 	if err != nil {

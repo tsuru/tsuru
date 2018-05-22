@@ -18,6 +18,6 @@ var (
 	Team      auth.TeamService
 	TeamToken auth.TeamTokenService
 	Webhook   event.WebhookService
-	AppQuota  quota.AppQuotaService
-	UserQuota quota.UserQuotaService
+	AppQuota  quota.QuotaService
+	UserQuota quota.QuotaService
 )
