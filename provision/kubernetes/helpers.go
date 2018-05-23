@@ -668,7 +668,7 @@ func runPod(args runSinglePodArgs) error {
 }
 
 func runBuildJob(args runSinglePodArgs) error {
-	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
+	lbls, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
 	pullSecrets, err := getImagePullSecrets(args.client, args.image)
 	if err != nil {
 		return errors.WithStack(err)
@@ -677,11 +677,11 @@ func runBuildJob(args runSinglePodArgs) error {
 	if len(pullSecrets) > 0 {
 		secretRef = pullSecrets[0]
 	}
-	job := &v1alpha1.BuildJob{
+	bjob := &v1alpha1.BuildJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        args.name,
 			Namespace:   args.client.Namespace(),
-			Labels:      labels.ToLabels(),
+			Labels:      lbls.ToLabels(),
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: v1alpha1.BuildJobSpec{
@@ -702,30 +702,51 @@ func runBuildJob(args runSinglePodArgs) error {
 			},
 		},
 	}
-	_, err = args.client.BuildJobs(args.client.Namespace()).Create(job)
+	_, err = args.client.BuildJobs(args.client.Namespace()).Create(bjob)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer cleanupBuildJob(args.client, job.Name)
+	defer cleanupBuildJob(args.client, bjob.Name)
 	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
 	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForJob(ctx, args.client, job.Name, true)
+	err = waitForJob(ctx, args.client, bjob.Name, true)
 	cancel()
 	if err != nil {
 		multiErr.Add(err)
 	}
-	//	err = doAttach(args.client, bytes.NewBufferString("."), args.stdout, args.stderr, pod.Name, args.name, false)
-	//	if err != nil {
-	//		multiErr.Add(errors.WithStack(err))
-	//	}
-	//	if multiErr.Len() > 0 {
-	//		return multiErr
-	//	}
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
-	//ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+
+	bjob, err = args.client.BuildJobs(args.client.Namespace()).Get(bjob.Name, metav1.GetOptions{IncludeUninitialized: true})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	job, err := args.client.BatchV1().Jobs(args.client.Namespace()).Get(bjob.Status.Job, metav1.GetOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	selector := map[string]string{"controller-uid": string(job.ObjectMeta.UID)}
+	podList, err := args.client.CoreV1().Pods(args.client.Namespace()).List(metav1.ListOptions{
+		LabelSelector:        labels.SelectorFromSet(labels.Set(selector)).String(),
+		IncludeUninitialized: true,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = waitForPodContainersRunning(context.Background(), args.client, podList.Items[0].Name)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = doAttach(args.client, nil, args.stdout, args.stderr, podList.Items[0].Name, "docker-job", false, nil)
+	if err != nil {
+		multiErr.Add(errors.WithStack(err))
+	}
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForJob(ctx, args.client, job.Name, false)
+	return waitForJob(ctx, args.client, bjob.Name, false)
 }
 
 func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {

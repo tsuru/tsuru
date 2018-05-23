@@ -1,0 +1,6 @@
+dist: trusty
+sudo: required
+language: go
+go_import_path: github.com/containerbuilding/cbi
+script:
+  - ./hack/test/travis.sh

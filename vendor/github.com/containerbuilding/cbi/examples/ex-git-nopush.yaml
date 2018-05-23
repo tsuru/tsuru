@@ -1,0 +1,14 @@
+apiVersion: cbi.containerbuilding.github.io/v1alpha1
+kind: BuildJob
+metadata:
+  name: ex-git-nopush
+spec:
+  registry:
+    target: example.com/foo/ex-git-nopush
+    push: false
+  language:
+    kind: Dockerfile
+  context:
+    kind: Git
+    git:
+      url: git://github.com/AkihiroSuda/fowaadaa
