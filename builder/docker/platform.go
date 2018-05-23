@@ -9,8 +9,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
-	"net/url"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app/image"
@@ -28,52 +26,54 @@ import (
 var _ builder.Builder = &dockerBuilder{}
 
 func (b *dockerBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
+	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data)
 }
 
 func (b *dockerBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
+	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data)
 }
 
-func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.Writer, r io.Reader) error {
-	var inputStream io.Reader
-	var dockerfileURL string
-	if r != nil {
-		data, err := ioutil.ReadAll(r)
-		if err != nil {
-			return err
-		}
-		var buf bytes.Buffer
-		writer := tar.NewWriter(&buf)
-		writer.WriteHeader(&tar.Header{
-			Name: "Dockerfile",
-			Mode: 0644,
-			Size: int64(len(data)),
-		})
-		writer.Write(data)
-		writer.Close()
-		inputStream = &buf
-	} else {
-		dockerfileURL = args["dockerfile"]
-		if dockerfileURL == "" {
-			return errors.New("Dockerfile is required")
-		}
-		if _, err := url.ParseRequestURI(dockerfileURL); err != nil {
-			return errors.New("Dockerfile parameter must be a URL")
-		}
-	}
-	imageName := image.PlatformImageName(name)
+func (b *dockerBuilder) PlatformRemove(name string) error {
 	client, err := getDockerClient()
 	if err != nil {
 		return err
 	}
+	img, err := client.InspectImage(image.PlatformImageName(name))
+	if err != nil {
+		return err
+	}
+	err = client.RemoveImage(img.ID)
+	if err != nil && err == docker.ErrNoSuchImage {
+		log.Errorf("error removing image %s from Docker: no such image", name)
+		return nil
+	}
+	return err
+}
+
+func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.Writer, data []byte) error {
+	client, err := getDockerClient()
+	if err != nil {
+		return err
+	}
+	var inputStream io.Reader
+	var buf bytes.Buffer
+	writer := tar.NewWriter(&buf)
+	writer.WriteHeader(&tar.Header{
+		Name: "Dockerfile",
+		Mode: 0644,
+		Size: int64(len(data)),
+	})
+	writer.Write(data)
+	writer.Close()
+	inputStream = &buf
+
+	imageName := image.PlatformImageName(name)
 	client.SetTimeout(0)
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
 		Pull:              true,
 		NoCache:           true,
 		RmTmpContainer:    true,
-		Remote:            dockerfileURL,
 		InputStream:       inputStream,
 		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
 		InactivityTimeout: net.StreamInactivityTimeout,
@@ -84,16 +84,16 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		return err
 	}
 	imageName, tag := image.SplitImageName(imageName)
-	var buf safe.Buffer
+	var tbuf safe.Buffer
 	pushOpts := docker.PushImageOptions{
 		Name:              imageName,
 		Tag:               tag,
-		OutputStream:      &buf,
+		OutputStream:      &tbuf,
 		InactivityTimeout: net.StreamInactivityTimeout,
 	}
 	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(imageName))
 	if err != nil {
-		log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
+		log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, tbuf.String())
 		return err
 	}
 	return nil
@@ -120,21 +120,4 @@ func getDockerClient() (provision.BuilderDockerClient, error) {
 		return nil, multiErr
 	}
 	return nil, errors.New("No Docker nodes available")
-}
-
-func (b *dockerBuilder) PlatformRemove(name string) error {
-	client, err := getDockerClient()
-	if err != nil {
-		return err
-	}
-	img, err := client.InspectImage(image.PlatformImageName(name))
-	if err != nil {
-		return err
-	}
-	err = client.RemoveImage(img.ID)
-	if err != nil && err == docker.ErrNoSuchImage {
-		log.Errorf("error removing image %s from Docker: no such image", name)
-		return nil
-	}
-	return err
 }
