@@ -35,6 +35,6 @@ func (s *userStorage) Remove(user *auth.User) error {
 
 var _ = check.Suite(&storagetest.UserQuotaSuite{
 	UserStorage:      &userStorage{},
-	UserQuotaStorage: &userQuotaStorage{},
+	UserQuotaStorage: authQuotaStorage(),
 	SuiteHooks:       &mongodbBaseTest{},
 })

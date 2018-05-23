@@ -35,6 +35,6 @@ func (s *appStorage) Remove(app *app.App) error {
 
 var _ = check.Suite(&storagetest.AppQuotaSuite{
 	AppStorage:      &appStorage{},
-	AppQuotaStorage: &appQuotaStorage{},
+	AppQuotaStorage: appQuotaStorage(),
 	SuiteHooks:      &mongodbBaseTest{},
 })

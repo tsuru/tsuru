@@ -32,10 +32,6 @@ type QuotaStorage interface {
 	Inc(name string, delta int) error
 	SetLimit(name string, limit int) error
 	Get(name string) (*Quota, error)
-}
-
-type QuotaStorageWithSet interface {
-	QuotaStorage
 	Set(name string, quantity int) error
 }
 
@@ -52,4 +48,5 @@ var (
 	ErrNotEnoughReserved       = errors.New("Not enough reserved items")
 	ErrLimitLowerThanAllocated = errors.New("New limit is less than the current allocated value")
 	ErrLessThanZero            = errors.New("Invalid value, cannot be less than 0")
+	ErrQuotaNotFound           = errors.New("quota not found")
 )
