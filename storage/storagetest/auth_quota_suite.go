@@ -6,7 +6,6 @@ package storagetest
 
 import (
 	"github.com/tsuru/tsuru/auth"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -35,7 +34,7 @@ func (s *UserQuotaSuite) TestGet(c *check.C) {
 func (s *UserQuotaSuite) TestGetNotFound(c *check.C) {
 	_, err := s.UserQuotaStorage.Get("myapp")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
+	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }
 
 func (s *UserQuotaSuite) TestInc(c *check.C) {
@@ -58,7 +57,7 @@ func (s *UserQuotaSuite) TestInc(c *check.C) {
 func (s *UserQuotaSuite) TestIncNotFound(c *check.C) {
 	err := s.UserQuotaStorage.Inc("myapp", 1)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
+	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }
 
 func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
@@ -75,5 +74,5 @@ func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
 func (s *UserQuotaSuite) TestSetLimitNotFound(c *check.C) {
 	err := s.UserQuotaStorage.SetLimit("myapp", 1)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
+	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }

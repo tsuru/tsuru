@@ -5,8 +5,6 @@
 package quota
 
 import (
-	"errors"
-
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -62,10 +60,6 @@ func (s *QuotaService) SetLimit(appName string, limit int) error {
 // than or equal to the current limit of the app. It also must be a non negative number.
 // Set implements Set method from QuotaService interface
 func (s *QuotaService) Set(appName string, inUse int) error {
-	storageWithSet, ok := s.Storage.(quota.QuotaStorageWithSet)
-	if !ok {
-		return errors.New("storage does not support set operation")
-	}
 	q, err := s.Storage.Get(appName)
 	if err != nil {
 		return err
@@ -79,7 +73,7 @@ func (s *QuotaService) Set(appName string, inUse int) error {
 			Available: uint(q.Limit),
 		}
 	}
-	return storageWithSet.Set(appName, inUse)
+	return s.Storage.Set(appName, inUse)
 }
 
 // Get implements Get method from QuotaService interface

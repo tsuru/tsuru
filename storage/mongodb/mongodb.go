@@ -4,7 +4,9 @@
 
 package mongodb
 
-import "github.com/tsuru/tsuru/storage"
+import (
+	"github.com/tsuru/tsuru/storage"
+)
 
 func init() {
 	mongodbDriver := storage.DbDriver{
@@ -13,8 +15,8 @@ func init() {
 		PlanStorage:      &PlanStorage{},
 		CacheStorage:     &cacheStorage{},
 		TeamTokenStorage: &teamTokenStorage{},
-		UserQuotaStorage: &userQuotaStorage{},
-		AppQuotaStorage:  &appQuotaStorage{},
+		UserQuotaStorage: authQuotaStorage(),
+		AppQuotaStorage:  appQuotaStorage(),
 		WebhookStorage:   &webhookStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
