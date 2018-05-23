@@ -22,14 +22,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -176,7 +174,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if multiErrors.Len() > 0 {
 		return multiErrors
 	}
-	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	tclient, err := tsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -982,7 +980,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	for _, d := range dList.Items {
 		deployments = append(deployments, d.GetName())
 	}
-	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	tclient, err := tsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -1001,7 +999,7 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	if err != nil {
 		return err
 	}
-	tclient, err := tsuruv1clientset.NewForConfig(client.restConfig)
+	tclient, err := tsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -1016,21 +1014,19 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 }
 
 func ensureCustomResourceDefinitions(client *ClusterClient) error {
-	apiextensionsClient, err := apiextensionsclientset.NewForConfig(client.restConfig)
+	extClient, err := extensionsClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
-	createdCRD, err := apiextensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(appCustomResourceDefinition())
-	if err != nil {
-		if k8sErrors.IsAlreadyExists(err) {
-			return nil
-		}
+	toCreate := appCustomResourceDefinition()
+	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(toCreate)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return err
 	}
 	timeout := time.After(time.Minute)
 loop:
 	for {
-		crd, errGet := apiextensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(createdCRD.Name, metav1.GetOptions{})
+		crd, errGet := extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(toCreate.GetName(), metav1.GetOptions{})
 		if errGet != nil {
 			return errGet
 		}
@@ -1043,7 +1039,6 @@ loop:
 		case <-timeout:
 			return fmt.Errorf("timeout waiting for custom resource definition creation")
 		case <-time.After(time.Second):
-			break loop
 		}
 	}
 	return nil

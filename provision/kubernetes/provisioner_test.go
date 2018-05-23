@@ -943,13 +943,9 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	services, err := s.client.CoreV1().Services(s.client.AppNamespace(a)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
-}
-
-func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	a := provisiontest.NewFakeApp("myapp", "plat", 0)
-	err := s.p.Destroy(a)
+	appList, err := s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 0)
 }
 
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
@@ -1112,7 +1108,6 @@ func (s *S) TestRollback(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",
@@ -1121,26 +1116,20 @@ func (s *S) TestRollback(c *check.C) {
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
 	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", deployEvt)
-
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-
 	customData = map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg2",
 		},
 	}
-
 	err = image.SaveImageCustomData("tsuru/app-myapp:v2", customData)
 	c.Assert(err, check.IsNil)
 	img, err = s.p.Deploy(a, "tsuru/app-myapp:v2", deployEvt)
-
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
-
 	deployEvt.Done(err)
 	c.Assert(err, check.IsNil)
-
 	rollbackEvt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeployRollback,
@@ -1148,9 +1137,7 @@ func (s *S) TestRollback(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeployRollback),
 	})
 	c.Assert(err, check.IsNil)
-
 	img, err = s.p.Rollback(a, "tsuru/app-myapp:v1", rollbackEvt)
-
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1606,4 +1593,20 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 		PodRunningTimeout:         10 * time.Minute,
 		DeploymentProgressTimeout: 10 * time.Minute,
 	})
+}
+
+func (s *S) TestProvisionerProvision(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	a = provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	crdList, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(crdList.Items[0].GetName(), check.DeepEquals, "apps.tsuru.io")
+	appList, err := s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "default")
 }

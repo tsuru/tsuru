@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,6 +36,14 @@ const (
 
 var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
+}
+
+var extensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
+	return apiextensionsclientset.NewForConfig(conf)
+}
+
+var tsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
+	return tsuruv1clientset.NewForConfig(conf)
 }
 
 type ClusterClient struct {
@@ -133,8 +142,8 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(app provision.App) string {
-	tclient, err := tsuruv1clientset.NewForConfig(c.restConfig)
+func (c *ClusterClient) AppNamespace(app provision.App) (name string) {
+	tclient, err := tsuruClientForConfig(c.restConfig)
 	if err != nil {
 		return c.Namespace(app.GetPool()) // TODO: fail here?
 	}
@@ -161,7 +170,6 @@ func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) strin
 	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
-
 	if usePoolNamespaces && len(poolName) > 0 {
 		return fmt.Sprintf("%s-%s", prefix, poolName)
 	}

@@ -21,11 +21,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
+	tsuruv1client "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -71,7 +77,17 @@ func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
 
 type ClientWrapper struct {
 	*fake.Clientset
+	ApiExtensionsClientset *fakeapiextensions.Clientset
+	TsuruClientset         *faketsuru.Clientset
 	ClusterInterface
+}
+
+func (c *ClientWrapper) TsuruV1() tsuruv1client.TsuruV1Interface {
+	return c.TsuruClientset.TsuruV1()
+}
+
+func (c *ClientWrapper) ApiextensionsV1beta1() apiextensionsv1beta1.ApiextensionsV1beta1Interface {
+	return c.ApiExtensionsClientset.ApiextensionsV1beta1()
 }
 
 func (c *ClientWrapper) CoreV1() v1core.CoreV1Interface {
@@ -110,6 +126,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
+	s.client.TsuruClientset.PrependReactor("create", "apps", s.appReaction(a, c))
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
@@ -302,6 +319,24 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 			},
 		})
 		c.Assert(err, check.IsNil)
+	}
+}
+
+func (s *KubeMock) appReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
+		c.Assert(app.GetName(), check.Equals, a.GetName())
+		return false, nil, nil
+	}
+}
+
+func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		crd := action.(ktesting.CreateAction).GetObject().(*v1beta1.CustomResourceDefinition)
+		crd.Status.Conditions = []v1beta1.CustomResourceDefinitionCondition{
+			{Type: v1beta1.Established, Status: v1beta1.ConditionTrue},
+		}
+		return false, nil, nil
 	}
 }
 
