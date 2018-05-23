@@ -1,0 +1,15 @@
+apiVersion: cbi.containerbuilding.github.io/v1alpha1
+kind: BuildJob
+metadata:
+  name: ex-http-nopush
+spec:
+  registry:
+    target: example.com/foo/ex-http-nopush
+    push: false
+  language:
+    kind: Dockerfile
+  context:
+    kind: HTTP
+    http:
+      url: https://github.com/AkihiroSuda/fowaadaa/archive/master.tar.gz
+      subPath: fowaadaa-master

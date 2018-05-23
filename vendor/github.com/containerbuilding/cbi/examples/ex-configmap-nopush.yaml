@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ex-configmap-nopush-configmap
+data:
+  Dockerfile: |-
+    FROM busybox
+    ADD hello /
+    RUN cat /hello
+  hello: "hello, world"
+
+---
+
+apiVersion: cbi.containerbuilding.github.io/v1alpha1
+kind: BuildJob
+metadata:
+  name: ex-configmap-nopush
+spec:
+  registry:
+    target: example.com/foo/ex-configmap-nopush
+    push: false
+  language:
+    kind: Dockerfile
+  context:
+    kind: ConfigMap
+    configMapRef:
+      name: ex-configmap-nopush-configmap

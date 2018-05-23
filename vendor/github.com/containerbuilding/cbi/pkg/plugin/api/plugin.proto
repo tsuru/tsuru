@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package cbi.plugin.v1;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.sizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+service Plugin {
+	rpc Info(InfoRequest) returns (InfoResponse);
+	rpc Spec(SpecRequest) returns (SpecResponse);
+}
+
+message InfoRequest {
+}
+
+message InfoResponse {
+  // Plugin labels.
+  // This has nothing to do the labels of k8s objects of the pod.
+  // e.g. pods, deployments, and services.
+  //
+  // However, it is still valid to implement a plugin that loads its labels from
+  // k8s objects.
+  //
+  // See labels.go for the predefined labels.
+  map<string, string> labels = 1;
+}
+
+message SpecRequest {
+	// JSON representation of CBI CRD BuildJob
+	bytes build_job_json = 1;
+}
+
+message SpecResponse {
+	// JSON representation of Kubernetes PodTemplateSpec
+	bytes pod_template_spec_json = 1;
+}

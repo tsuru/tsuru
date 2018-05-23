@@ -1,0 +1,13 @@
+# https://github.com/Mirantis/kubeadm-dind-cluster/pull/112
+# FIXME: in addition to script, we also need to pin images
+DIND_CLUSTER_SH_URL=https://raw.githubusercontent.com/AkihiroSuda/kubeadm-dind-cluster/6318b70e145f54af49442865aa852f35952d7372/fixed/dind-cluster-v1.9.sh
+DIND_CLUSTER_SH=/tmp/dind-cluster-v1.9.sh
+
+# hardcoded in DIND_CLUSTER_SH
+DIND_NET=kubeadm-dind-net
+
+CBI_REGISTRY=cbi-registry
+CBI_REGISTRY_IMAGE=registry:2
+CBI_BOOTSTRAP_DOCKER=cbi-bootstrap-docker
+CBI_BOOTSTRAP_DOCKER_IMAGE=docker:18.03-dind
+CBI_BOOTSTRAP_DOCKER_EXPOSE=62375

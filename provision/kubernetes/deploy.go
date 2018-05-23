@@ -176,9 +176,12 @@ func getImagePullSecrets(client *ClusterClient, images ...string) ([]apiv1.Local
 	if !useSecret {
 		return nil, nil
 	}
-	err := ensureAuthSecret(client)
+	hasSecret, err := ensureAuthSecret(client)
 	if err != nil {
 		return nil, err
+	}
+	if !hasSecret {
+		return nil, nil
 	}
 	secretName := registrySecretName(registry)
 	return []apiv1.LocalObjectReference{
@@ -186,12 +189,12 @@ func getImagePullSecrets(client *ClusterClient, images ...string) ([]apiv1.Local
 	}, nil
 }
 
-func ensureAuthSecret(client *ClusterClient) error {
+func ensureAuthSecret(client *ClusterClient) (bool, error) {
 	registry, _ := config.GetString("docker:registry")
 	username, _ := config.GetString("docker:registry-auth:username")
 	password, _ := config.GetString("docker:registry-auth:password")
 	if len(username) == 0 && len(password) == 0 {
-		return nil
+		return false, nil
 	}
 	authEncoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	conf := map[string]map[string]dockerTypes.AuthConfig{
@@ -205,7 +208,7 @@ func ensureAuthSecret(client *ClusterClient) error {
 	}
 	serializedConf, err := json.Marshal(conf)
 	if err != nil {
-		return err
+		return true, err
 	}
 	secret := &apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -223,7 +226,7 @@ func ensureAuthSecret(client *ClusterClient) error {
 	if err != nil {
 		err = errors.WithStack(err)
 	}
-	return err
+	return true, err
 }
 
 func createPod(ctx context.Context, params createPodParams) error {

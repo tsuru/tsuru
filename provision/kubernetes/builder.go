@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -13,7 +14,11 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var _ provision.BuilderKubeClient = &KubeClient{}
 
 func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKubeClient, error) {
 	return &KubeClient{}, nil
@@ -65,4 +70,49 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 		return nil, "", nil, err
 	}
 	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
+}
+
+func (c *KubeClient) BuildImage(name string, image string, fileContent string, output io.Writer, ctx context.Context) error {
+	buildJobName := fmt.Sprintf("%s-image-build", name)
+	client, err := clusterForPool("")
+	if err != nil {
+		return err
+	}
+	args := runSinglePodArgs{
+		client: client,
+		name:   buildJobName,
+		stdout: output,
+		stderr: output,
+	}
+	err = createImageBuildJob(ctx, image, fileContent, args)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createImageBuildJob(ctx context.Context, image string, fileContent string, args runSinglePodArgs) error {
+	configMapName := fmt.Sprintf("%s-cm-dockerfile", args.name)
+	configMap := &apiv1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configMapName,
+		},
+		Data: map[string]string{
+			"Dockerfile": fileContent,
+		},
+	}
+	args.context = configMapName
+	_, err := args.client.CoreV1().ConfigMaps(args.client.Namespace()).Create(configMap)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer args.client.CoreV1().ConfigMaps(args.client.Namespace()).Delete(configMapName, &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	args.labels = provision.ImageBuildLabels(provision.ImageBuildLabelsOpts{
+		Prefix:      tsuruLabelPrefix,
+		Provisioner: provisionerName,
+	})
+	args.image = image
+	return runBuildJob(args)
 }

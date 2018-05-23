@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	cbiv1alpha1 "github.com/containerbuilding/cbi/pkg/client/clientset/versioned/typed/cbi/v1alpha1"
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -33,7 +34,8 @@ var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 }
 
 type ClusterClient struct {
-	kubernetes.Interface `json:"-" bson:"-"`
+	kubernetes.Interface             `json:"-" bson:"-"`
+	cbiv1alpha1.CbiV1alpha1Interface `json:"-" bson:"-"`
 	*cluster.Cluster
 	restConfig *rest.Config
 }
@@ -111,10 +113,15 @@ func NewClusterClient(clust *cluster.Cluster) (*ClusterClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	cbiclient, err := cbiv1alpha1.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return &ClusterClient{
-		Cluster:    clust,
-		Interface:  client,
-		restConfig: cfg,
+		Cluster:              clust,
+		Interface:            client,
+		CbiV1alpha1Interface: cbiclient,
+		restConfig:           cfg,
 	}, nil
 }
 
