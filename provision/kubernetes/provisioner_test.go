@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
@@ -1017,6 +1018,14 @@ func (s *S) TestDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
+	appList, err := s.client.TsuruV1().Apps("").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName: "default",
+		Deployments:   []string{"myapp-web"},
+		Services:      []string{"myapp-web", "myapp-web-units"},
+	})
 }
 
 func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
@@ -1051,6 +1060,14 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
+	appList, err := s.client.TsuruV1().Apps("").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName: "tsuru-test-default",
+		Deployments:   []string{"myapp-web"},
+		Services:      []string{"myapp-web", "myapp-web-units"},
+	})
 }
 
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {

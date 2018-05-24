@@ -970,7 +970,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	for _, s := range sList.Items {
 		services = append(services, s.GetName())
 	}
-	dList, err := client.AppsV1().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
+	dList, err := client.AppsV1beta2().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
 	})
 	if err != nil {
