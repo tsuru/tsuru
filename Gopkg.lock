@@ -920,6 +920,16 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/tools"
+  packages = [
+    "go/ast/astutil",
+    "imports",
+    "internal/fastwalk"
+  ]
+  revision = "1937f90a1bb43667aff4059b1bab13eb15121e8e"
+
+[[projects]]
+  branch = "master"
   name = "google.golang.org/api"
   packages = [
     "compute/v1",
@@ -1259,7 +1269,7 @@
     "parser",
     "types"
   ]
-  revision = "b58fc7edb82e0c6ffc9b8aef61813c7261b785d4"
+  revision = "ff07baa94012248e1ff712d34c3673bea92cd788"
 
 [[projects]]
   branch = "master"
@@ -1273,6 +1283,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "570779934b80533ce43d6f137cafa70704d4a9fb348973c1d7926a5d0e30ee21"
+  inputs-digest = "f34ee58a265372fdb39717d1af9d360b51bcfc90c8d53bde376ba9e200dd1e5a"
   solver-name = "gps-cdcl"
   solver-version = 1

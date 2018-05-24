@@ -43,7 +43,7 @@ required = [
   branch = "release-1.9"
 [[override]]
   name = "k8s.io/gengo"
-  revision = "b58fc7edb82e0c6ffc9b8aef61813c7261b785d4"
+  revision = "ff07baa94012248e1ff712d34c3673bea92cd788"
 # END Kube specific overrides
 
 [[override]]
