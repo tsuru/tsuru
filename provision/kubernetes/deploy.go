@@ -379,13 +379,17 @@ func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error)
 }
 
 func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
-	return ensureNamespaceForPool(client, app.GetPool())
+	return ensureNamespace(client, client.AppNamespace(app))
 }
 
 func ensureNamespaceForPool(client *ClusterClient, pool string) error {
+	return ensureNamespace(client, client.Namespace(pool))
+}
+
+func ensureNamespace(client *ClusterClient, namespace string) error {
 	ns := apiv1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: client.Namespace(pool),
+			Name: namespace,
 		},
 	}
 	_, err := client.CoreV1().Namespaces().Create(&ns)
