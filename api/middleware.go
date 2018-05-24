@@ -274,7 +274,11 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 	l.logger.Printf("%s %s %s %d in %0.6fms%s", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond), requestID)
 }
 
-func contentHijacker(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+type contentHijackMiddleware struct {
+	excludedHandlers []http.Handler
+}
+
+func (m *contentHijackMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	defer next(w, r)
 	if r.Body == nil {
 		return
@@ -282,6 +286,15 @@ func contentHijacker(w http.ResponseWriter, r *http.Request, next http.HandlerFu
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		return
+	}
+	currentHandler := context.GetDelayedHandler(r)
+	if currentHandler != nil {
+		currentHandlerPtr := reflect.ValueOf(currentHandler).Pointer()
+		for _, h := range m.excludedHandlers {
+			if reflect.ValueOf(h).Pointer() == currentHandlerPtr {
+				return
+			}
+		}
 	}
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {

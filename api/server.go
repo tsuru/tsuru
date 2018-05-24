@@ -162,8 +162,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Put", "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceGrantTeam))
 	m.Add("1.0", "Delete", "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceRevokeTeam))
 
-	m.AddAll("1.0", "/services/{service}/proxy/{instance}", AuthorizationRequiredHandler(serviceInstanceProxy))
-	m.AddAll("1.0", "/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))
+	proxyInstanceHandler := AuthorizationRequiredHandler(serviceInstanceProxy)
+	proxyServiceHandler := AuthorizationRequiredHandler(serviceProxy)
+	m.AddAll("1.0", "/services/{service}/proxy/{instance}", proxyInstanceHandler)
+	m.AddAll("1.0", "/services/proxy/service/{service}", proxyServiceHandler)
 
 	m.Add("1.0", "Get", "/services", AuthorizationRequiredHandler(serviceList))
 	m.Add("1.0", "Post", "/services", AuthorizationRequiredHandler(serviceCreate))
@@ -439,7 +441,10 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-	n.Use(negroni.HandlerFunc(contentHijacker))
+	n.Use(&contentHijackMiddleware{excludedHandlers: []http.Handler{
+		proxyInstanceHandler,
+		proxyServiceHandler,
+	}})
 	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
 		logPostHandler,
 		runHandler,
