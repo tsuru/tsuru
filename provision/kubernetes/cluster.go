@@ -38,11 +38,11 @@ var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
 }
 
-var extensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
+var ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 	return apiextensionsclientset.NewForConfig(conf)
 }
 
-var tsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
+var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
 	return tsuruv1clientset.NewForConfig(conf)
 }
 
@@ -143,7 +143,7 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *ClusterClient) AppNamespace(app provision.App) (name string) {
-	tclient, err := tsuruClientForConfig(c.restConfig)
+	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
 		return c.Namespace(app.GetPool()) // TODO: fail here?
 	}

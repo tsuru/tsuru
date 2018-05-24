@@ -604,7 +604,7 @@ func runPod(args runSinglePodArgs) error {
 			},
 		},
 	}
-	_, err = args.client.CoreV1().Pods(args.client.Namespace(args.app.GetPool())).Create(pod)
+	_, err = args.client.CoreV1().Pods(ns).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -97,10 +97,10 @@ func (s *S) SetUpTest(c *check.C) {
 	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		return s.client, nil
 	}
-	tsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
+	TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
 		return s.client.TsuruClientset, nil
 	}
-	extensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
+	ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil
 	}
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))

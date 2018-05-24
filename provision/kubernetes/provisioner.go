@@ -174,7 +174,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if multiErrors.Len() > 0 {
 		return multiErrors
 	}
-	tclient, err := tsuruClientForConfig(client.restConfig)
+	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -980,7 +980,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	for _, d := range dList.Items {
 		deployments = append(deployments, d.GetName())
 	}
-	tclient, err := tsuruClientForConfig(client.restConfig)
+	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -999,7 +999,7 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	if err != nil {
 		return err
 	}
-	tclient, err := tsuruClientForConfig(client.restConfig)
+	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
@@ -1014,7 +1014,7 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 }
 
 func ensureCustomResourceDefinitions(client *ClusterClient) error {
-	extClient, err := extensionsClientForConfig(client.restConfig)
+	extClient, err := ExtensionsClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
