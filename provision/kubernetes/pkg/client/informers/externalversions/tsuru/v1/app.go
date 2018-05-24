@@ -7,6 +7,8 @@
 package v1
 
 import (
+	time "time"
+
 	tsuru_v1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	versioned "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/informers/externalversions/internalinterfaces"
@@ -15,7 +17,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	time "time"
 )
 
 // AppInformer provides access to a shared informer and lister for

@@ -7,6 +7,10 @@
 package externalversions
 
 import (
+	reflect "reflect"
+	sync "sync"
+	time "time"
+
 	versioned "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/informers/externalversions/internalinterfaces"
 	tsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/informers/externalversions/tsuru"
@@ -14,9 +18,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	reflect "reflect"
-	sync "sync"
-	time "time"
 )
 
 type sharedInformerFactory struct {

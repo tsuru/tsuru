@@ -11,3 +11,5 @@ vendor/k8s.io/code-generator/generate-groups.sh all \
   github.com/tsuru/tsuru/provision/kubernetes/pkg/client github.com/tsuru/tsuru/provision/kubernetes/pkg/apis \
   tsuru:v1 \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt
+
+goimports -w provision/kubernetes/pkg
