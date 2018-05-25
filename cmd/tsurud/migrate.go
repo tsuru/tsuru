@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
 	"github.com/tsuru/tsuru/provision/docker/healer"
+	kubeMigrate "github.com/tsuru/tsuru/provision/kubernetes/migrate"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
@@ -90,6 +91,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.RegisterOptional("migrate-roles", migrateRoles)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.Register("migrate-apps-kubernetes-crd", kubeMigrate.MigrateAppsCRDs)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
