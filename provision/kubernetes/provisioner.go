@@ -342,21 +342,18 @@ func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error)
 	for _, p := range pods {
 		nodeSet[p.Spec.NodeName] = struct{}{}
 	}
-	nodeNames := make([]string, 0, len(nodeSet))
-	for nodeName := range nodeSet {
-		nodeNames = append(nodeNames, nodeName)
-	}
-	req, err := labels.NewRequirement("metadata.name", selection.In, nodeNames)
+	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	sel := labels.NewSelector()
-	sel.Add(*req)
-	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{
-		FieldSelector: sel.String(),
-	})
-	if err != nil {
-		return nil, err
+	for i := 0; i < len(nodes.Items); i++ {
+		_, inSet := nodeSet[nodes.Items[i].Name]
+		if inSet {
+			continue
+		}
+		nodes.Items[i] = nodes.Items[len(nodes.Items)-1]
+		nodes.Items = nodes.Items[:len(nodes.Items)-1]
+		i--
 	}
 	return nodes.Items, nil
 }
