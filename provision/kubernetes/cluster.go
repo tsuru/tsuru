@@ -5,14 +5,20 @@
 package kubernetes
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
@@ -30,6 +36,14 @@ const (
 
 var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
+}
+
+var ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
+	return apiextensionsclientset.NewForConfig(conf)
+}
+
+var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
+	return tsuruv1clientset.NewForConfig(conf)
 }
 
 type ClusterClient struct {
@@ -128,11 +142,38 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) Namespace() string {
-	if c.CustomData == nil || c.CustomData[namespaceClusterKey] == "" {
-		return "default"
+func (c *ClusterClient) AppNamespace(app provision.App) (name string) {
+	tclient, err := TsuruClientForConfig(c.restConfig)
+	if err != nil {
+		return c.Namespace(app.GetPool()) // TODO: fail here?
 	}
-	return c.CustomData[namespaceClusterKey]
+	a, err := tclient.TsuruV1().Apps(c.Namespace("")).Get(app.GetName(), metav1.GetOptions{})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return c.Namespace(app.GetPool())
+		}
+		return c.Namespace(app.GetPool()) // TODO: fail here?
+	}
+	return a.Spec.NamespaceName
+}
+
+func (c *ClusterClient) Namespace(pool string) string {
+	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
+	return c.namespace(pool, usePoolNamespaces)
+}
+
+func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) string {
+	prefix := "default"
+	if usePoolNamespaces {
+		prefix = "tsuru"
+	}
+	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
+		prefix = c.CustomData[namespaceClusterKey]
+	}
+	if usePoolNamespaces && len(poolName) > 0 {
+		return fmt.Sprintf("%s-%s", prefix, poolName)
+	}
+	return prefix
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

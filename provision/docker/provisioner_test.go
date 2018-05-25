@@ -1392,7 +1392,6 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, true)
 }
-
 func (s *S) TestProvisionerExecuteCommandSingleContainer(c *check.C) {
 	a := provisiontest.NewFakeApp("almah", "static", 1)
 	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
@@ -1417,7 +1416,7 @@ func (s *S) TestProvisionerExecuteCommandSingleContainer(c *check.C) {
 	c.Assert(executed, check.Equals, true)
 }
 
-func (s *S) TestProvisionerExecuteCommandNoUnitss(c *check.C) {
+func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 	err := newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)

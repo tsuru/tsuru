@@ -1457,6 +1457,15 @@ waiting for the response for an issued command.
 Duration in seconds after which an error will be returned if tsuru is still
 sending a command to redis.
 
+Kubernetes specific configuration options
+-----------------------------------------
+
+kubernetes:use-pool-namespaces
+++++++++++++++++++++++++++++++
+
+If set to ``true``, tsuru will create a Kubernetes namespace for each pool.
+Defaults to ``false`` (using a single namespace).
+
 Sample file
 ===========
 

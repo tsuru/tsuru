@@ -21,15 +21,19 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
+	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -136,8 +140,12 @@ func (p *kubernetesProvisioner) GetName() string {
 	return provisionerName
 }
 
-func (p *kubernetesProvisioner) Provision(provision.App) error {
-	return nil
+func (p *kubernetesProvisioner) Provision(a provision.App) error {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return err
+	}
+	return ensureAppCustomResource(client, a)
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
@@ -166,7 +174,11 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if multiErrors.Len() > 0 {
 		return multiErrors
 	}
-	return nil
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	return tclient.TsuruV1().Apps(client.Namespace("")).Delete(a.GetName(), &metav1.DeleteOptions{})
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
@@ -297,7 +309,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			srvName := deploymentNameForApp(podApp, webProcessName)
 			port, ok := portMap[srvName]
 			if !ok {
-				port, err = getServicePort(client, srvName)
+				port, err = getServicePort(client, srvName, pod.ObjectMeta.Namespace)
 				if err != nil {
 					return nil, err
 				}
@@ -403,9 +415,17 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		}
 		sel = sel.Add(*req)
 	}
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(metav1.ListOptions{
-		LabelSelector: sel.String(),
-	})
+	restCli, err := rest.RESTClientFor(client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	opts := metav1.ListOptions{LabelSelector: sel.String()}
+	var pods apiv1.PodList
+	err = restCli.Get().
+		Resource("pods").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Do().
+		Into(&pods)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +452,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName)
+	pubPort, err := getServicePort(client, srvName, client.AppNamespace(a))
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +482,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(client.AppNamespace(a)).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -613,15 +633,15 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			return errors.WithStack(err)
 		}
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name, "")
+		pods, err = podsFromNode(client, node.Name, tsuruLabelPrefix+provision.LabelAppPool)
 		if err != nil {
 			return err
 		}
 		for _, pod := range pods {
-			err = client.CoreV1().Pods(client.Namespace()).Evict(&policy.Eviction{
+			err = client.CoreV1().Pods(pod.Namespace).Evict(&policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
-					Namespace: client.Namespace(),
+					Namespace: pod.Namespace,
 				},
 			})
 			if err != nil {
@@ -734,7 +754,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName)
+		defer cleanupPod(client, deployPodName, client.AppNamespace(a))
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -760,7 +780,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return newImage, nil
+	return newImage, ensureAppCustomResourceSynced(client, a)
 }
 
 func (p *kubernetesProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
@@ -914,7 +934,7 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName)
+	return deleteVolume(client, volumeName, client.Namespace(pool))
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
@@ -922,5 +942,120 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName)
+	return volumeExists(client, volumeName, client.Namespace(pool))
+}
+
+func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
+	label, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResource(client, a)
+	if err != nil {
+		return err
+	}
+	sList, err := client.CoreV1().Services(client.AppNamespace(a)).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
+	})
+	if err != nil {
+		return err
+	}
+	var services []string
+	for _, s := range sList.Items {
+		services = append(services, s.GetName())
+	}
+	dList, err := client.AppsV1beta2().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
+	})
+	if err != nil {
+		return err
+	}
+	var deployments []string
+	for _, d := range dList.Items {
+		deployments = append(deployments, d.GetName())
+	}
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	appCRD, err := tclient.TsuruV1().Apps(client.Namespace("")).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	appCRD.Spec.Services = services
+	appCRD.Spec.Deployments = deployments
+	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Update(appCRD)
+	return err
+}
+
+func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
+	err := ensureCustomResourceDefinitions(client)
+	if err != nil {
+		return err
+	}
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
+		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
+	})
+	if k8sErrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
+}
+
+func ensureCustomResourceDefinitions(client *ClusterClient) error {
+	extClient, err := ExtensionsClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	toCreate := appCustomResourceDefinition()
+	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(toCreate)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		return err
+	}
+	timeout := time.After(time.Minute)
+loop:
+	for {
+		crd, errGet := extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(toCreate.GetName(), metav1.GetOptions{})
+		if errGet != nil {
+			return errGet
+		}
+		for _, c := range crd.Status.Conditions {
+			if c.Type == v1beta1.Established && c.Status == v1beta1.ConditionTrue {
+				break loop
+			}
+		}
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout waiting for custom resource definition creation")
+		case <-time.After(time.Second):
+		}
+	}
+	return nil
+}
+
+func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
+	return &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "apps.tsuru.io"},
+		Spec: v1beta1.CustomResourceDefinitionSpec{
+			Group:   "tsuru.io",
+			Version: "v1",
+			Names: v1beta1.CustomResourceDefinitionNames{
+				Plural:   "apps",
+				Singular: "app",
+				Kind:     "App",
+				ListKind: "AppList",
+			},
+		},
+	}
 }

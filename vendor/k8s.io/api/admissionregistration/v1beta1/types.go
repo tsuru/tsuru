@@ -54,9 +54,11 @@ type Rule struct {
 type FailurePolicyType string
 
 const (
-	// Ignore means that an error calling the webhook is ignored.
+	// Ignore means the initializer is removed from the initializers list of an
+	// object if the initializer is timed out.
 	Ignore FailurePolicyType = "Ignore"
-	// Fail means that an error calling the webhook causes the admission to fail.
+	// For 1.7, only "Ignore" is allowed. "Fail" will be allowed when the
+	// extensible admission feature is beta.
 	Fail FailurePolicyType = "Fail"
 )
 

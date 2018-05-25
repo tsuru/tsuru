@@ -17,6 +17,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
+	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kubeTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -27,6 +29,8 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -90,13 +94,21 @@ func (s *S) SetUpTest(c *check.C) {
 	s.clusterClient, err = kubeProv.NewClusterClient(clus)
 	c.Assert(err, check.IsNil)
 	s.client = &kubeTesting.ClientWrapper{
-		Clientset:        fake.NewSimpleClientset(),
-		ClusterInterface: s.clusterClient,
+		Clientset:              fake.NewSimpleClientset(),
+		ClusterInterface:       s.clusterClient,
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
 	}
 	s.clusterClient.Interface = s.client
 	kubeProv.ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
 		return s.client, nil
+	}
+	kubeProv.TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
+		return s.client.TsuruClientset, nil
+	}
+	kubeProv.ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
+		return s.client.ApiExtensionsClientset, nil
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)

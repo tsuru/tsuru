@@ -6,6 +6,7 @@ package testing
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,11 +21,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
+	tsuruv1client "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,7 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -45,30 +51,43 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	Namespace() string
+	AppNamespace(provision.App) string
+	Namespace(string) string
 	GetCluster() *cluster.Cluster
 }
 
 type KubeMock struct {
-	client  *ClientWrapper
-	Stream  map[string]StreamResult
-	LogHook func(w io.Writer, r *http.Request)
-	p       provision.Provisioner
+	client      *ClientWrapper
+	Stream      map[string]StreamResult
+	LogHook     func(w io.Writer, r *http.Request)
+	DefaultHook func(w http.ResponseWriter, r *http.Request)
+	p           provision.Provisioner
 }
 
 func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
-		client:  cluster,
-		Stream:  stream,
-		LogHook: nil,
-		p:       p,
+		client:      cluster,
+		Stream:      stream,
+		LogHook:     nil,
+		DefaultHook: nil,
+		p:           p,
 	}
 }
 
 type ClientWrapper struct {
 	*fake.Clientset
+	ApiExtensionsClientset *fakeapiextensions.Clientset
+	TsuruClientset         *faketsuru.Clientset
 	ClusterInterface
+}
+
+func (c *ClientWrapper) TsuruV1() tsuruv1client.TsuruV1Interface {
+	return c.TsuruClientset.TsuruV1()
+}
+
+func (c *ClientWrapper) ApiextensionsV1beta1() apiextensionsv1beta1.ApiextensionsV1beta1Interface {
+	return c.ApiExtensionsClientset.ApiextensionsV1beta1()
 }
 
 func (c *ClientWrapper) CoreV1() v1core.CoreV1Interface {
@@ -91,11 +110,6 @@ type clientPodsWrapper struct {
 	cluster ClusterInterface
 }
 
-func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *rest.Request {
-	cli, _ := rest.RESTClientFor(c.cluster.RestConfig())
-	return cli.Get().Namespace(c.cluster.Namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, scheme.ParameterCodec)
-}
-
 type StreamResult struct {
 	Stdin  string
 	Resize string
@@ -112,6 +126,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
+	s.client.TsuruClientset.PrependReactor("create", "apps", s.appReaction(a, c))
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
@@ -239,9 +254,40 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			}
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "my log message")
+		} else if s.DefaultHook != nil {
+			s.DefaultHook(w, r)
+		} else if r.URL.Path == "/api/v1/pods" {
+			s.ListPodsHandler(c)(w, r)
 		}
 	}))
 	return srv, &wg
+}
+
+func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.URL.Path, check.Equals, "/api/v1/pods")
+		for _, f := range funcs {
+			f(r)
+		}
+		nlist, err := s.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		c.Assert(err, check.IsNil)
+		response := apiv1.PodList{}
+		namespaces := []string{}
+		if len(nlist.Items) == 0 {
+			namespaces = []string{"default"}
+		}
+		for _, n := range nlist.Items {
+			namespaces = append(namespaces, n.GetName())
+		}
+		for _, n := range namespaces {
+			podlist, errList := s.client.CoreV1().Pods(n).List(metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
+			c.Assert(errList, check.IsNil)
+			response.Items = append(response.Items, podlist.Items...)
+		}
+		w.Header().Add("Content-type", "application/json")
+		err = json.NewEncoder(w).Encode(response)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
@@ -273,6 +319,24 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 			},
 		})
 		c.Assert(err, check.IsNil)
+	}
+}
+
+func (s *KubeMock) appReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
+		c.Assert(app.GetName(), check.Equals, a.GetName())
+		return false, nil, nil
+	}
+}
+
+func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		crd := action.(ktesting.CreateAction).GetObject().(*v1beta1.CustomResourceDefinition)
+		crd.Status.Conditions = []v1beta1.CustomResourceDefinitionCondition{
+			{Type: v1beta1.Established, Status: v1beta1.ConditionTrue},
+		}
+		return false, nil, nil
 	}
 }
 
@@ -317,7 +381,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.CoreV1().Pods(s.client.Namespace()).Update(pod)
+				_, err = s.client.CoreV1().Pods(s.client.AppNamespace(a)).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
@@ -373,7 +437,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Spec.NodeName = "n1"
 			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
-			})
+			}, dep.Namespace)
 			c.Assert(err, check.IsNil)
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
@@ -386,13 +450,13 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 	}, &wg
 }
 
-func cleanupPods(client ClusterInterface, opts metav1.ListOptions) error {
-	pods, err := client.CoreV1().Pods(client.Namespace()).List(opts)
+func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string) error {
+	pods, err := client.CoreV1().Pods(namespace).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.CoreV1().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
+		err = client.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}

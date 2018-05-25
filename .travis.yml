@@ -21,6 +21,7 @@ script:
   - 'if [ "${JOB}" = "checkevents" ]; then ./misc/check-events.sh; fi'
   - 'if [ "${JOB}" = "checkapidocs" ]; then make check-api-doc; fi'
   - 'if [ "${JOB}" = "validateapispec" ]; then make validate-api-spec; fi'
+  - 'if [ "${JOB}" = "validatecodegen" ]; then ./hack/verify-codegen.sh; fi'
 env:
   global:
     - GOARCH=amd64
@@ -52,6 +53,8 @@ jobs:
       env: JOB=checkapidocs
     - go: master
       env: JOB=validateapispec
+    - go: master
+      env: JOB=validatecodegen
   include:
     - stage: deploy
       script:
