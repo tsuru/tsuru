@@ -7,8 +7,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
+	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
 )
 
@@ -57,5 +59,9 @@ func (c *tsurudCommand) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	fmt.Fprintf(context.Stderr, "Done reading config file: %s\n", configPath)
+	err = api.InitializeDBServices()
+	if err != nil {
+		return errors.Wrap(err, "error initializing services")
+	}
 	return c.Command.Run(context, client)
 }
