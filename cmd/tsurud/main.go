@@ -34,7 +34,7 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsurudCommand{Command: &migrateCmd{}})
 	m.Register(&tsurudCommand{Command: gandalfSyncCmd{}})
 	m.Register(&tsurudCommand{Command: createRootUserCmd{}})
-	m.Register(&migrationListCmd{})
+	m.Register(&tsurudCommand{Command: &migrationListCmd{}})
 	return m
 }
 

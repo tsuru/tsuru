@@ -83,6 +83,8 @@ func getAuthScheme() (string, error) {
 	return name, err
 }
 
+var onceServices sync.Once
+
 func setupServices() error {
 	var err error
 	servicemanager.Team, err = auth.TeamService()
@@ -97,6 +99,17 @@ func setupServices() error {
 	return err
 }
 
+func InitializeDBServices() error {
+	err := setupDatabase()
+	if err != nil {
+		return err
+	}
+	onceServices.Do(func() {
+		err = setupServices()
+	})
+	return err
+}
+
 // RunServer starts tsuru API server. The dry parameter indicates whether the
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
@@ -105,12 +118,10 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		stdLog.Fatalf("unable to initialize logging: %v", err)
 	}
-	err = setupDatabase()
+	err = InitializeDBServices()
 	if err != nil {
 		fatal(err)
 	}
-	setupServices()
-
 	m := apiRouter.NewRouter()
 
 	for _, handler := range tsuruHandlerList {
