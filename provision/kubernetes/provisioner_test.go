@@ -61,7 +61,7 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 }
 
 func (s *S) TestListNodesTimeoutShort(c *check.C) {
-	wantedTimeout := 0.1
+	wantedTimeout := 1.0
 	config.Set("kubernetes:api-short-timeout", wantedTimeout)
 	defer config.Unset("kubernetes")
 	block := make(chan bool)
@@ -69,12 +69,12 @@ func (s *S) TestListNodesTimeoutShort(c *check.C) {
 		<-block
 	}))
 	defer func() { close(block); blackhole.Close() }()
-	ClientForConfig = defaultClientForConfig
 	s.mock.MockfakeNodes(c, blackhole.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	t0 := time.Now()
+	ClientForConfig = defaultClientForConfig
 	_, err = s.p.ListNodes([]string{})
 	c.Assert(err, check.ErrorMatches, `(?i).*timeout.*`)
 	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)
@@ -692,7 +692,7 @@ func (s *S) TestUnitsNoApps(c *check.C) {
 }
 
 func (s *S) TestUnitsTimeoutShort(c *check.C) {
-	wantedTimeout := 0.1
+	wantedTimeout := 1.0
 	config.Set("kubernetes:api-short-timeout", wantedTimeout)
 	defer config.Unset("kubernetes")
 	block := make(chan bool)
@@ -709,12 +709,12 @@ func (s *S) TestUnitsTimeoutShort(c *check.C) {
 		}
 	}))
 	defer func() { close(block); blackhole.Close() }()
-	ClientForConfig = defaultClientForConfig
 	s.mock.MockfakeNodes(c, blackhole.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	t0 := time.Now()
+	ClientForConfig = defaultClientForConfig
 	_, err = s.p.Units(a)
 	c.Assert(err, check.ErrorMatches, `(?i).*timeout.*`)
 	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)

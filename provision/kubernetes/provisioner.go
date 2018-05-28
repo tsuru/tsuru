@@ -145,7 +145,7 @@ func (p *kubernetesProvisioner) Provision(a provision.App) error {
 	if err != nil {
 		return err
 	}
-	return ensureAppCustomResource(client, a)
+	return ensureAppCustomResourceSynced(client, a)
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
