@@ -328,7 +328,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(output))
 	}
-	ns := s.client.Namespace("")
+	ns := s.client.PoolNamespace("")
 	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pod-not-tsuru",

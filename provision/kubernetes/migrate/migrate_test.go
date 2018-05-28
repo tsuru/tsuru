@@ -109,10 +109,10 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := s.conn.Apps().DropCollection()
 	c.Assert(err, check.IsNil)
-	appList, err := s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	for _, a := range appList.Items {
-		err = s.client.TsuruV1().Apps("default").Delete(a.GetName(), &metav1.DeleteOptions{})
+		err = s.client.TsuruV1().Apps("tsuru").Delete(a.GetName(), &metav1.DeleteOptions{})
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -134,7 +134,7 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 	}
 	err := MigrateAppsCRDs()
 	c.Assert(err, check.NotNil)
-	appList, err := s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 2)
 	c.Assert(appList.Items[0].Name, check.Equals, "app-kube")
@@ -169,14 +169,14 @@ func (s *S) TestMigrateAppsCRDsDeployedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = kubeProv.GetProvisioner().Deploy(a, "tsuru/app-myapp:v1", evt)
 	c.Assert(err, check.IsNil)
-	err = s.client.TsuruV1().Apps("default").Delete(a.GetName(), &metav1.DeleteOptions{})
+	err = s.client.TsuruV1().Apps("tsuru").Delete(a.GetName(), &metav1.DeleteOptions{})
 	c.Assert(err, check.IsNil)
-	appList, err := s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 0)
 	err = MigrateAppsCRDs()
 	c.Assert(err, check.IsNil)
-	appList, err = s.client.TsuruV1().Apps("default").List(metav1.ListOptions{})
+	appList, err = s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{

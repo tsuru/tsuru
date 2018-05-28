@@ -52,7 +52,7 @@ type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
 	AppNamespace(provision.App) string
-	Namespace(string) string
+	PoolNamespace(string) string
 	GetCluster() *cluster.Cluster
 }
 

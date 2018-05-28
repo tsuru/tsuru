@@ -378,7 +378,7 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string) e
 
 func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
-	ns := client.Namespace(pool)
+	ns := client.PoolNamespace(pool)
 	err := client.AppsV1beta2().DaemonSets(ns).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})

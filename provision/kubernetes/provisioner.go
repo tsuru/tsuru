@@ -178,7 +178,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if err != nil {
 		return err
 	}
-	return tclient.TsuruV1().Apps(client.Namespace("")).Delete(a.GetName(), &metav1.DeleteOptions{})
+	return tclient.TsuruV1().Apps(client.Namespace()).Delete(a.GetName(), &metav1.DeleteOptions{})
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
@@ -931,7 +931,7 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName, client.Namespace(pool))
+	return deleteVolume(client, volumeName, client.PoolNamespace(pool))
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
@@ -939,7 +939,7 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName, client.Namespace(pool))
+	return volumeExists(client, volumeName, client.PoolNamespace(pool))
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
@@ -981,13 +981,13 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	appCRD, err := tclient.TsuruV1().Apps(client.Namespace("")).Get(a.GetName(), metav1.GetOptions{})
+	appCRD, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
-	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Update(appCRD)
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }
 
@@ -1000,13 +1000,17 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	if err != nil {
 		return err
 	}
-	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err == nil {
+		return nil
+	}
+	if !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Create(&tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
 		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
 	})
-	if k8sErrors.IsAlreadyExists(err) {
-		return nil
-	}
 	return err
 }
 

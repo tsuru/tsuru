@@ -382,8 +382,8 @@ func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
 	return ensureNamespace(client, client.AppNamespace(app))
 }
 
-func ensureNamespaceForPool(client *ClusterClient, pool string) error {
-	return ensureNamespace(client, client.Namespace(pool))
+func ensurePoolNamespace(client *ClusterClient, pool string) error {
+	return ensureNamespace(client, client.PoolNamespace(pool))
 }
 
 func ensureNamespace(client *ClusterClient, namespace string) error {
