@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -65,6 +66,7 @@ var (
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
 	// _ provision.AppFilterProvisioner     = &kubernetesProvisioner{}
 	// _ builder.PlatformBuilder            = &kubernetesProvisioner{}
+	_ provision.UpdatableProvisioner = &kubernetesProvisioner{}
 )
 
 func init() {
@@ -951,6 +953,46 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 		return false, err
 	}
 	return volumeExists(client, volumeName, client.PoolNamespace(pool))
+}
+
+func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
+	if old.GetPool() == new.GetPool() {
+		return nil
+	}
+	client, err := clusterForPool(old.GetPool())
+	if err != nil {
+		return err
+	}
+	newclient, err := clusterForPool(new.GetPool())
+	if err != nil {
+		return err
+	}
+	sameCluster := client.GetCluster().Name == newclient.GetCluster().Name
+	params := updatePipelineParams{
+		old: old,
+		new: new,
+		w:   w,
+		p:   p,
+	}
+	if !sameCluster {
+		actions := []*action.Action{
+			&provisionNewApp,
+			&restartApp,
+			&rebuildAppRoutes,
+			&destroyOldApp,
+		}
+		return action.NewPipeline(actions...).Execute(params)
+	}
+	if client.PoolNamespace(old.GetPool()) == newclient.PoolNamespace(new.GetPool()) {
+		return nil
+	}
+	actions := []*action.Action{
+		&updateAppCR,
+		&restartApp,
+		&rebuildAppRoutes,
+		&removeOldAppResources,
+	}
+	return action.NewPipeline(actions...).Execute(params)
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {

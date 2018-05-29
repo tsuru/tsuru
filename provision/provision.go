@@ -376,6 +376,12 @@ type SleepableProvisioner interface {
 	Sleep(App, string) error
 }
 
+// UpdatableProvisioner is a provisioner that stores data about applications
+// and must be notified when they are updated
+type UpdatableProvisioner interface {
+	UpdateApp(old, new App, w io.Writer) error
+}
+
 // MessageProvisioner is a provisioner that provides a welcome message for
 // logging.
 type MessageProvisioner interface {
