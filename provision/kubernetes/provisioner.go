@@ -185,6 +185,10 @@ func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsur
 			multiErrors.Add(errors.WithStack(err))
 		}
 	}
+	err := client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		multiErrors.Add(errors.WithStack(err))
+	}
 	return multiErrors.ToError()
 }
 
@@ -998,6 +1002,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	}
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
+	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
 	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }

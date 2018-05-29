@@ -180,8 +180,9 @@ func (s *S) TestMigrateAppsCRDsDeployedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName: "default",
-		Deployments:   []string{"myapp-web"},
-		Services:      []string{"myapp-web", "myapp-web-units"},
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments:        []string{"myapp-web"},
+		Services:           []string{"myapp-web", "myapp-web-units"},
 	})
 }

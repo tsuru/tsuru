@@ -938,6 +938,9 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	services, err := s.client.CoreV1().Services(s.client.AppNamespace(a)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
+	serviceAccounts, err := s.client.CoreV1().ServiceAccounts(s.client.AppNamespace(a)).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceAccounts.Items, check.HasLen, 0)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 0)
@@ -1016,9 +1019,10 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName: "default",
-		Deployments:   []string{"myapp-web"},
-		Services:      []string{"myapp-web", "myapp-web-units"},
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments:        []string{"myapp-web"},
+		Services:           []string{"myapp-web", "myapp-web-units"},
 	})
 }
 
@@ -1062,9 +1066,10 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName: "tsuru-test-default",
-		Deployments:   []string{"myapp-web"},
-		Services:      []string{"myapp-web", "myapp-web-units"},
+		NamespaceName:      "tsuru-test-default",
+		ServiceAccountName: "app-myapp",
+		Deployments:        []string{"myapp-web"},
+		Services:           []string{"myapp-web", "myapp-web-units"},
 	})
 }
 
