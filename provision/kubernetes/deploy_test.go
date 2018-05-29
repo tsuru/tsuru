@@ -288,10 +288,14 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	var counter int32
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		atomic.AddInt32(&counter, 1)
+		new := atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		if new == 2 {
+			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		} else if new < 2 {
+			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
+		}
 		return false, nil, nil
 	})
 	err := app.CreateApp(a, s.user)
@@ -309,7 +313,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(len(processes)))
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(len(processes)+1))
 }
 
 func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {

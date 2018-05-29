@@ -149,36 +149,43 @@ func (p *kubernetesProvisioner) Provision(a provision.App) error {
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
-	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	data, err := image.GetImageMetaData(imgID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
-	}
-	manager := &serviceManager{
-		client: client,
-	}
-	multiErrors := tsuruErrors.NewMultiError()
-	for process := range data.Processes {
-		err = manager.RemoveService(a, process)
-		if err != nil {
-			multiErrors.Add(err)
-		}
-	}
-	if multiErrors.Len() > 0 {
-		return multiErrors
 	}
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
+	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if err := p.removeResources(client, app); err != nil {
+		return err
+	}
 	return tclient.TsuruV1().Apps(client.Namespace()).Delete(a.GetName(), &metav1.DeleteOptions{})
+}
+
+func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsuruv1.App) error {
+	multiErrors := tsuruErrors.NewMultiError()
+	for _, d := range app.Spec.Deployments {
+		err := client.AppsV1beta2().Deployments(app.Spec.NamespaceName).Delete(d, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			multiErrors.Add(err)
+		}
+	}
+	for _, s := range app.Spec.Services {
+		err := client.CoreV1().Services(app.Spec.NamespaceName).Delete(s, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			multiErrors.Add(errors.WithStack(err))
+		}
+	}
+	return multiErrors.ToError()
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
@@ -943,6 +950,10 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
+	err := ensureNamespace(client, client.Namespace())
+	if err != nil {
+		return err
+	}
 	label, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{

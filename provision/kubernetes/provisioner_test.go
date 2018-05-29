@@ -935,12 +935,6 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	deps, err := s.client.AppsV1beta2().Deployments(s.client.AppNamespace(a)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(s.client.AppNamespace(a)).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(s.client.AppNamespace(a)).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(replicas.Items, check.HasLen, 0)
 	services, err := s.client.CoreV1().Services(s.client.AppNamespace(a)).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
@@ -1035,10 +1029,14 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	defer rollback()
 	var counter int32
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		atomic.AddInt32(&counter, 1)
+		new := atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		if new == 1 {
+			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		} else {
+			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
+		}
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
@@ -1059,7 +1057,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(2))
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)

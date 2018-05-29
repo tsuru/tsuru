@@ -53,6 +53,7 @@ type ClusterInterface interface {
 	RestConfig() *rest.Config
 	AppNamespace(provision.App) string
 	PoolNamespace(string) string
+	Namespace() string
 	GetCluster() *cluster.Cluster
 }
 
