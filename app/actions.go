@@ -542,7 +542,21 @@ var updateAppProvisioner = action.Action{
 		}
 		return nil, nil
 	},
-	//TODO: add Backwards
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		oldApp := ctx.Params[1].(*App)
+		newProv, err := app.getProvisioner()
+		if err != nil {
+			log.Errorf("BACKWARDS update-app-provisioner - failed to get app provisioner: %v", err)
+			return
+		}
+		w := ctx.Params[2].(io.Writer)
+		if upProv, ok := newProv.(provision.UpdatableProvisioner); ok {
+			if err := upProv.UpdateApp(app, oldApp, w); err != nil {
+				log.Errorf("BACKWARDS update-app-provisioner - failed to update app back to previous state: %v", err)
+			}
+		}
+	},
 }
 
 var validateNewCNames = action.Action{

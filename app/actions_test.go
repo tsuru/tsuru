@@ -5,12 +5,17 @@
 package app
 
 import (
+	"io/ioutil"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -667,4 +672,34 @@ func (s *S) TestAddRouterBackendBackward(c *check.C) {
 
 func (s *S) TestAddRouterBackendMinParams(c *check.C) {
 	c.Assert(addRouterBackend.MinParams, check.Equals, 1)
+}
+
+func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
+	err := pool.AddPool(opts)
+	app := App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
+	err = CreateApp(&app, s.user)
+	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
+	_, err = updateAppProvisioner.Forward(fwctx)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	provApp, err := p1.GetAppFromUnitID(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(provApp.GetPlatform(), check.Equals, "python")
+	bwctx := action.BWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
+	updateAppProvisioner.Backward(bwctx)
+	units, err = app.Units()
+	c.Assert(err, check.IsNil)
+	provApp, err = p1.GetAppFromUnitID(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(provApp.GetPlatform(), check.Equals, "django")
 }
