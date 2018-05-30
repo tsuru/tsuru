@@ -4979,3 +4979,27 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 		{Name: "mystatus", Address: "myapp.fakerouter.com", Type: "fake-status", Status: "not ready", StatusDetail: "burn"},
 	})
 }
+
+func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "test", Description: "updated description"}
+	err = app.Update(updateData, nil)
+	c.Assert(err, check.IsNil)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	updatedApp, err := p1.GetAppFromUnitID(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedApp.(*App).Description, check.Equals, "updated description")
+}
