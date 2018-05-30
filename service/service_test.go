@@ -10,9 +10,8 @@ import (
 	"net/http/httptest"
 	"sort"
 
-	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"github.com/globalsign/mgo/bson"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -320,8 +319,18 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 	sm := []ServiceModel{
 		{Service: "mysql"},
-		{Service: "mongo", ServiceInstances: []ServiceInstanceModel{
-			{Name: "my instance", Tags: []string{"my tag"}},
+		{Service: "mongo", ServiceInstances: []ServiceInstance{
+			{
+				Name:        "my instance",
+				Tags:        []string{"my tag"},
+				TeamOwner:   "t1",
+				ServiceName: "mysql",
+				Teams:       []string{"t1", "t2"},
+				Apps:        []string{"app1", "app2"},
+				BoundUnits: []Unit{
+					{AppName: "app1", ID: "unitid1", IP: "unitip1"},
+				},
+			},
 		}},
 	}
 	data, err := json.Marshal(&sm)
@@ -334,10 +343,25 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 		"service_instances": nil,
 	}
 	expected[1] = map[string]interface{}{
-		"service":           "mongo",
-		"instances":         nil,
-		"plans":             nil,
-		"service_instances": []interface{}{map[string]interface{}{"name": "my instance", "tags": []interface{}{"my tag"}}},
+		"service":   "mongo",
+		"instances": nil,
+		"plans":     nil,
+		"service_instances": []interface{}{map[string]interface{}{
+			"name":         "my instance",
+			"tags":         []interface{}{"my tag"},
+			"team_owner":   "t1",
+			"id":           float64(0),
+			"teams":        []interface{}{"t1", "t2"},
+			"apps":         []interface{}{"app1", "app2"},
+			"plan_name":    "",
+			"service_name": "mysql",
+			"description":  "",
+			"bound_units": []interface{}{map[string]interface{}{
+				"id":       "unitid1",
+				"ip":       "unitip1",
+				"app_name": "app1",
+			}},
+		}},
 	}
 	result := make([]map[string]interface{}, 2)
 	err = json.Unmarshal(data, &result)

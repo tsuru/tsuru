@@ -5,7 +5,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,20 +39,22 @@ var (
 )
 
 type ServiceInstance struct {
-	Name        string
-	Id          int
-	ServiceName string `bson:"service_name"`
-	PlanName    string `bson:"plan_name"`
-	Apps        []string
-	BoundUnits  []Unit `bson:"bound_units"`
-	Teams       []string
-	TeamOwner   string
-	Description string
-	Tags        []string
+	Name        string   `json:"name"`
+	Id          int      `json:"id"`
+	ServiceName string   `bson:"service_name" json:"service_name"`
+	PlanName    string   `bson:"plan_name" json:"plan_name"`
+	Apps        []string `json:"apps"`
+	BoundUnits  []Unit   `bson:"bound_units" json:"bound_units"`
+	Teams       []string `json:"teams"`
+	TeamOwner   string   `json:"team_owner"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
 }
 
 type Unit struct {
-	AppName, ID, IP string
+	AppName string `json:"app_name"`
+	ID      string `json:"id"`
+	IP      string `json:"ip"`
 }
 
 func (bu Unit) GetID() string {
@@ -86,25 +87,6 @@ func (si *ServiceInstance) GetIdentifier() string {
 		return strconv.Itoa(si.Id)
 	}
 	return si.Name
-}
-
-// MarshalJSON marshals the ServiceName in json format.
-func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
-	info, err := si.Info("")
-	if err != nil {
-		info = nil
-	}
-	data := map[string]interface{}{
-		"Id":          si.Id,
-		"Name":        si.Name,
-		"Teams":       si.Teams,
-		"PlanName":    si.PlanName,
-		"Apps":        si.Apps,
-		"ServiceName": si.ServiceName,
-		"Info":        info,
-		"TeamOwner":   si.TeamOwner,
-	}
-	return json.Marshal(&data)
 }
 
 func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
