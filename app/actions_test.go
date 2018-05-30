@@ -682,14 +682,16 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
 	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	app := App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
 	err = CreateApp(&app, s.user)
-	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	c.Assert(err, check.IsNil)
+	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	err = app.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)
+	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	provApp, err := p1.GetAppFromUnitID(units[0].ID)
