@@ -393,6 +393,9 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		if len(srv.Spec.Ports) > 0 && srv.Spec.Ports[0].NodePort != int32(0) {
+			return false, nil, nil
+		}
 		srv.Spec.Ports = []apiv1.ServicePort{
 			{
 				NodePort: int32(30000),

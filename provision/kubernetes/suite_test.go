@@ -62,6 +62,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "provision_kubernetes_tests_s")
+	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("queue:mongo-database", "queue_provision_kubernetes_tests")
+	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	var err error

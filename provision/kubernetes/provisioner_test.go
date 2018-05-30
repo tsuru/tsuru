@@ -14,8 +14,12 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router/routertest"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -27,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -1629,4 +1634,102 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
 	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "default")
+}
+
+func (s *S) TestProvisionerUpdateApp(c *check.C) {
+	err := pool.AddPool(pool.AddPoolOptions{
+		Name:        "test-pool-2",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 2)
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	buf := new(bytes.Buffer)
+	var recreatedPods bool
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+			"tsuru.io/pool": newApp.GetPool(),
+		})
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		recreatedPods = true
+		return true, nil, nil
+	})
+	s.client.PrependReactor("create", "services", func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		srv.Spec.Ports = []apiv1.ServicePort{
+			{
+				NodePort: int32(30002),
+			},
+		}
+		return false, nil, nil
+	})
+	_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-test-pool-2",
+			Labels: map[string]string{"tsuru.io/pool": "test-pool-2"},
+		},
+		Status: apiv1.NodeStatus{
+			Addresses: []apiv1.NodeAddress{{Type: apiv1.NodeInternalIP, Address: "192.168.100.1"}},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-pool-2",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateApp(a, newApp, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.Contains(buf.String(), "Done updating units"), check.Equals, true)
+	c.Assert(recreatedPods, check.Equals, true)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "tsuru-test-pool-2")
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 2)
+	raddrs, err := routertest.FakeRouter.Routes(a.GetName())
+	c.Assert(err, check.IsNil)
+	c.Assert(raddrs, check.DeepEquals, []*url.URL{
+		{
+			Scheme: "http",
+			Host:   "192.168.100.1:30002",
+		},
+	})
 }
