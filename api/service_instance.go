@@ -363,6 +363,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		}
 		entry.Instances = append(entry.Instances, instance.Name)
 		entry.Plans = append(entry.Plans, instance.PlanName)
+		entry.ServiceInstances = append(entry.ServiceInstances, instance)
 	}
 	result := []service.ServiceModel{}
 	for _, name := range sortedServiceNames(servicesMap) {

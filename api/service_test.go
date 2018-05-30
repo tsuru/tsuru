@@ -119,8 +119,8 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	expected := []service.ServiceModel{{
 		Service:   "mongodb",
 		Instances: []string{"my_nosql"},
-		ServiceInstances: []service.ServiceInstanceModel{
-			{Name: "my_nosql", Tags: []string{"tag 1"}},
+		ServiceInstances: []service.ServiceInstance{
+			{Name: "my_nosql", Tags: []string{"tag 1"}, ServiceName: "mongodb"},
 		},
 	}}
 	c.Assert(services, check.DeepEquals, expected)

@@ -1831,6 +1831,7 @@ definitions:
         type: string
       instances: 
         type: array
+        description: "[deprecated]"
         items:
           type: string
       plans:
@@ -1851,6 +1852,38 @@ definitions:
         type: array
         items:
           type: string
+      id:
+        type: integer
+      service_name:
+        type: string
+      plan_name:
+        type: string
+      apps:
+        type: array
+        items:
+          type: string
+      bound_units:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/ServiceInstanceBoundUnit'
+      teams:
+        type: array
+        items:
+          type: string
+      team_owner:
+        type: string
+      description:
+        type: string
+  ServiceInstanceBoundUnit:
+    type: object
+    properties:
+      app_name:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
   ServiceInstanceInfo:
     type: object
     properties:

@@ -51,8 +51,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		for _, si := range sInstances {
 			if si.ServiceName == s.Name {
 				results[i].Instances = append(results[i].Instances, si.Name)
-				instanceModel := service.ServiceInstanceModel{Name: si.Name, Tags: si.Tags}
-				results[i].ServiceInstances = append(results[i].ServiceInstances, instanceModel)
+				results[i].ServiceInstances = append(results[i].ServiceInstances, si)
 			}
 		}
 	}

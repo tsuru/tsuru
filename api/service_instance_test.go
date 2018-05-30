@@ -1183,8 +1183,26 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
-		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "mongodb-other",
+				ServiceName: "mongodb",
+				Apps:        []string{"other"},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
+		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "redis-globo",
+				ServiceName: "redis",
+				Apps:        []string{"globo"},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1235,7 +1253,16 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "mongodb-other",
+				ServiceName: "mongodb",
+				Apps:        []string{"other"},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
 		{Service: "redis", Instances: []string{}, Plans: []string(nil)},
 	}
 	sort.Sort(ServiceModelList(instances))
@@ -1312,11 +1339,62 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 	c.Assert(err, check.IsNil)
 	sort.Sort(ServiceModelList(instances))
 	expected := []service.ServiceModel{
-		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}, Plans: []string{"", ""}},
+		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}, Plans: []string{"", ""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "memcached1",
+				ServiceName: "memcached",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+			{
+				Name:        "memcached2",
+				ServiceName: "memcached",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
 		{Service: "mysql", Instances: []string{}, Plans: []string(nil)},
 		{Service: "oracle", Instances: []string{}, Plans: []string(nil)},
-		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}, Plans: []string{"", ""}},
-		{Service: "redis", Instances: []string{"redis1", "redis2"}, Plans: []string{"", ""}},
+		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}, Plans: []string{"", ""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "pgsql1",
+				ServiceName: "pgsql",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+			{
+				Name:        "pgsql2",
+				ServiceName: "pgsql",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
+		{Service: "redis", Instances: []string{"redis1", "redis2"}, Plans: []string{"", ""}, ServiceInstances: []service.ServiceInstance{
+			{
+				Name:        "redis1",
+				ServiceName: "redis",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+			{
+				Name:        "redis2",
+				ServiceName: "redis",
+				Apps:        []string{},
+				Teams:       []string{s.team.Name},
+				Tags:        []string{},
+				BoundUnits:  []service.Unit{},
+			},
+		}},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1590,6 +1668,10 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 	var instances []service.ServiceInstance
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
+	si1.BoundUnits = []service.Unit{}
+	si1.Tags = []string{}
+	si2.BoundUnits = []service.Unit{}
+	si2.Tags = []string{}
 	expected := []service.ServiceInstance{si1, si2}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1627,6 +1709,8 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 	var instances []service.ServiceInstance
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
+	si1.BoundUnits = []service.Unit{}
+	si1.Tags = []string{}
 	expected := []service.ServiceInstance{si1}
 	c.Assert(instances, check.DeepEquals, expected)
 }
