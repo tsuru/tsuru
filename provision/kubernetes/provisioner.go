@@ -983,6 +983,7 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		}
 		return action.NewPipeline(actions...).Execute(params)
 	}
+	// same cluster and it is not configured with per-pool-namespace, nothing to do.
 	if client.PoolNamespace(old.GetPool()) == newclient.PoolNamespace(new.GetPool()) {
 		return nil
 	}

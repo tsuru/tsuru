@@ -11,7 +11,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type updatePipelineParams struct {
@@ -42,6 +41,15 @@ var restartApp = action.Action{
 		return nil, params.p.Restart(params.new, "", params.w)
 	},
 	Backward: func(ctx action.BWContext) {
+		params := ctx.Params[0].(updatePipelineParams)
+		if err := backwardCR(params); err != nil {
+			log.Errorf("BACKWARDS failed to update namespace: %v", err)
+			return
+		}
+		err := params.p.Restart(params.old, "", params.w)
+		if err != nil {
+			log.Errorf("BACKWARDS error restarting app: %v", err)
+		}
 	},
 }
 
@@ -54,6 +62,10 @@ var rebuildAppRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
+		if err := backwardCR(params); err != nil {
+			log.Errorf("BACKWARDS failed to update namespace: %v", err)
+			return
+		}
 		rebuild.RoutesRebuildOrEnqueue(params.old.GetName())
 	},
 }
@@ -62,9 +74,11 @@ var destroyOldApp = action.Action{
 	Name: "destroy-old-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		return nil, params.p.Destroy(params.old)
-	},
-	Backward: func(ctx action.BWContext) {
+		err := params.p.Destroy(params.old)
+		if err != nil {
+			log.Errorf("failed to destroy old app: %v", err)
+		}
+		return nil, nil
 	},
 }
 
@@ -76,41 +90,22 @@ var updateAppCR = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		tclient, err := TsuruClientForConfig(client.restConfig)
-		if err != nil {
-			return nil, err
-		}
-		oldAppCR, err := tclient.TsuruV1().Apps(client.Namespace()).Get(params.old.GetName(), metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.new.GetPool())
-		_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(oldAppCR)
-		return nil, err
+		return nil, updateAppNamespace(client, params.old.GetName(), client.PoolNamespace(params.new.GetPool()))
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
-		client, err := clusterForPool(params.old.GetPool())
-		if err != nil {
-			log.Errorf("failed to get client for pool: %v", err)
-			return
-		}
-		tclient, err := TsuruClientForConfig(client.restConfig)
-		if err != nil {
-			log.Errorf("failed to get tclient for pool: %v", err)
-			return
-		}
-		oldAppCR, err := tclient.TsuruV1().Apps(client.Namespace()).Get(params.old.GetName(), metav1.GetOptions{})
-		if err != nil {
-			log.Errorf("failed to get cr for app: %v", err)
-			return
-		}
-		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.GetPool())
-		_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(oldAppCR)
-		if err != nil {
-			log.Errorf("failed to update app cr: %v", err)
+		if err := backwardCR(params); err != nil {
+			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 		}
 	},
+}
+
+func backwardCR(params updatePipelineParams) error {
+	client, err := clusterForPool(params.old.GetPool())
+	if err != nil {
+		return err
+	}
+	return updateAppNamespace(client, params.old.GetName(), client.PoolNamespace(params.old.GetPool()))
 }
 
 var removeOldAppResources = action.Action{
@@ -119,19 +114,19 @@ var removeOldAppResources = action.Action{
 		params := ctx.Params[0].(updatePipelineParams)
 		client, err := clusterForPool(params.old.GetPool())
 		if err != nil {
-			return nil, err
+			log.Errorf("failed to remove old resources: %v", err)
+			return nil, nil
 		}
-		tclient, err := TsuruClientForConfig(client.restConfig)
+		oldAppCR, err := getAppCR(client, params.old.GetName())
 		if err != nil {
-			return nil, err
-		}
-		oldAppCR, err := tclient.TsuruV1().Apps(client.Namespace()).Get(params.old.GetName(), metav1.GetOptions{})
-		if err != nil {
-			return nil, err
+			log.Errorf("failed to remove old resources: %v", err)
+			return nil, nil
 		}
 		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.GetPool())
-		return nil, params.p.removeResources(client, oldAppCR)
-	},
-	Backward: func(ctx action.BWContext) {
+		err = params.p.removeResources(client, oldAppCR)
+		if err != nil {
+			log.Errorf("failed to remove old resources: %v", err)
+		}
+		return nil, nil
 	},
 }

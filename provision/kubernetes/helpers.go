@@ -18,6 +18,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
@@ -657,4 +658,29 @@ nodesloop:
 		return node, nil
 	}
 	return nil, provision.ErrNodeNotFound
+}
+
+func updateAppNamespace(client *ClusterClient, appName, namespaceName string) error {
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	oldAppCR, err := getAppCR(client, appName)
+	if err != nil {
+		return err
+	}
+	if oldAppCR.Spec.NamespaceName == namespaceName {
+		return nil
+	}
+	oldAppCR.Spec.NamespaceName = namespaceName
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(oldAppCR)
+	return err
+}
+
+func getAppCR(client *ClusterClient, appName string) (*tsuruv1.App, error) {
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	return tclient.TsuruV1().Apps(client.Namespace()).Get(appName, metav1.GetOptions{})
 }
