@@ -220,16 +220,11 @@ func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Se
 	return GetServicesByFilter(filter)
 }
 
-type ServiceInstanceModel struct {
-	Name string   `json:"name"`
-	Tags []string `json:"tags"`
-}
-
 type ServiceModel struct {
-	Service          string                 `json:"service"`
-	Instances        []string               `json:"instances"`
-	Plans            []string               `json:"plans"`
-	ServiceInstances []ServiceInstanceModel `json:"service_instances"`
+	Service          string            `json:"service"`
+	Instances        []string          `json:"instances"`
+	Plans            []string          `json:"plans"`
+	ServiceInstances []ServiceInstance `json:"service_instances"`
 }
 
 // Proxy is a proxy between tsuru and the service.
