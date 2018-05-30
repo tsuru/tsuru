@@ -1437,3 +1437,15 @@ func (s *S) TestRebuildDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log, check.Equals, "Rebuild deploy called")
 }
+
+func (s *S) TestUpdateApp(c *check.C) {
+	app := NewFakeApp("myapp", "arch", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	newApp := NewFakeApp("myapp", "python", 1)
+	err = p.UpdateApp(app, newApp, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Provisioned(newApp), check.Equals, true)
+	c.Assert(p.apps["myapp"].app, check.DeepEquals, newApp)
+}
