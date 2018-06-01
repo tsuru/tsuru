@@ -142,6 +142,9 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *ClusterClient) AppNamespace(app provision.App) (string, error) {
+	if app == nil {
+		return c.Namespace(), nil
+	}
 	return c.appNamespaceByName(app.GetName())
 }
 

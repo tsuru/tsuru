@@ -442,6 +442,25 @@ func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
+type ImageBuildLabelsOpts struct {
+	Name         string
+	CustomLabels map[string]string
+	Provisioner  string
+	Prefix       string
+}
+
+func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
+	labels := map[string]string{
+		labelIsTsuru:     strconv.FormatBool(true),
+		labelProvisioner: opts.Provisioner,
+		labelIsBuild:     strconv.FormatBool(true),
+	}
+	for k, v := range opts.CustomLabels {
+		labels[k] = v
+	}
+	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
+}
+
 func withPrefix(m map[string]string, prefix string) map[string]string {
 	result := make(map[string]string, len(m))
 	for k, v := range m {

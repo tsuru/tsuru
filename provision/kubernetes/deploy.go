@@ -130,6 +130,7 @@ type createPodParams struct {
 	inputFile         string
 	attachInput       io.Reader
 	attachOutput      io.Writer
+	pod               *apiv1.Pod
 }
 
 func createBuildPod(ctx context.Context, params createPodParams) error {
@@ -160,6 +161,23 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 	if tag != "latest" {
 		params.destinationImages = append(params.destinationImages, fmt.Sprintf("%s:latest", repository))
 	}
+	return createPod(ctx, params)
+}
+
+func createImageBuildPod(ctx context.Context, params createPodParams) error {
+	kubeConf := getKubeConfig()
+	pod, err := newDeployAgentImageBuildPod(params.client, params.sourceImage, params.podName, deployAgentConfig{
+		name:              "commiter-cont",
+		image:             kubeConf.DeploySidecarImage,
+		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
+		destinationImages: params.destinationImages,
+		inputFile:         params.inputFile,
+		isFileBuild:       true,
+	})
+	if err != nil {
+		return err
+	}
+	params.pod = &pod
 	return createPod(ctx, params)
 }
 
@@ -227,26 +245,29 @@ func ensureAuthSecret(client *ClusterClient, namespace string) error {
 }
 
 func createPod(ctx context.Context, params createPodParams) error {
-	if len(params.cmds) != 3 {
-		return errors.Errorf("unexpected cmds list: %#v", params.cmds)
-	}
 	commitContainer := "committer-cont"
 	kubeConf := getKubeConfig()
-	pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
-		name:              commitContainer,
-		image:             kubeConf.DeploySidecarImage,
-		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
-		destinationImages: params.destinationImages,
-		inputFile:         params.inputFile,
-	})
-	if err != nil {
-		return err
+	if params.pod == nil {
+		if len(params.cmds) != 3 {
+			return errors.Errorf("unexpected cmds list: %#v", params.cmds)
+		}
+		pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+			name:              commitContainer,
+			image:             kubeConf.DeploySidecarImage,
+			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
+			destinationImages: params.destinationImages,
+			inputFile:         params.inputFile,
+		})
+		if err != nil {
+			return err
+		}
+		params.pod = &pod
 	}
 	ns, err := params.client.AppNamespace(params.app)
 	if err != nil {
 		return err
 	}
-	_, err = params.client.CoreV1().Pods(ns).Create(&pod)
+	_, err = params.client.CoreV1().Pods(ns).Create(params.pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -271,21 +292,21 @@ func createPod(ctx context.Context, params createPodParams) error {
 		}
 	}()
 	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(tctx, params.client, pod.Name, ns)
+	err = waitForPodContainersRunning(tctx, params.client, params.pod.Name, ns)
 	cancel()
 	if err != nil {
 		return err
 	}
 	if params.attachInput != nil {
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, pod.Name, commitContainer, false, nil, ns)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, params.pod.Name, commitContainer, false, nil, ns)
 		if err != nil {
-			return fmt.Errorf("error attaching to %s/%s: %v", pod.Name, commitContainer, err)
+			return fmt.Errorf("error attaching to %s/%s: %v", params.pod.Name, commitContainer, err)
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
 	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(tctx, params.client, pod.Name, ns, false)
+	return waitForPod(tctx, params.client, params.pod.Name, ns, false)
 }
 
 func registryAuth(img string) (username, password, imgDomain string) {
@@ -1038,6 +1059,7 @@ type deployAgentConfig struct {
 	registryAuthUser  string
 	registryAddress   string
 	runAsUser         string
+	isFileBuild       bool
 }
 
 func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
@@ -1126,6 +1148,82 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 	}, nil
 }
 
+func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
+	if len(conf.destinationImages) == 0 {
+		return apiv1.Pod{}, errors.Errorf("no destination images provided")
+	}
+	labels := provision.ImageBuildLabels(provision.ImageBuildLabelsOpts{
+		Prefix:      tsuruLabelPrefix,
+		Provisioner: provisionerName,
+	})
+	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
+	annotations.SetBuildImage(conf.destinationImages[0])
+	nodePoolLabelKey := tsuruLabelPrefix + provision.LabelNodePool
+	selectors := []apiv1.NodeSelectorRequirement{
+		{Key: nodePoolLabelKey, Operator: apiv1.NodeSelectorOpExists},
+	}
+	affinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: selectors,
+				}},
+			},
+		},
+	}
+	_, uid := dockercommon.UserForContainer()
+	ns := client.Namespace("")
+	pullSecrets, err := getImagePullSecrets(client, ns, sourceImage, conf.image)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	if uid != nil && conf.runAsUser == "" {
+		conf.runAsUser = strconv.FormatInt(*uid, 10)
+	}
+	conf.registryAuthUser, conf.registryAuthPass, conf.registryAddress = registryAuth(conf.destinationImages[0])
+	return apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        podName,
+			Namespace:   ns,
+			Labels:      labels.ToLabels(),
+			Annotations: annotations.ToLabels(),
+		},
+		Spec: apiv1.PodSpec{
+			Affinity:         affinity,
+			ImagePullSecrets: pullSecrets,
+			Volumes: []apiv1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: dockerSockPath,
+						},
+					},
+				},
+			},
+			RestartPolicy: apiv1.RestartPolicyNever,
+			Containers: []apiv1.Container{
+				apiv1.Container{
+					Name:  conf.name,
+					Image: conf.image,
+					VolumeMounts: append([]apiv1.VolumeMount{
+						{Name: "dockersock", MountPath: dockerSockPath},
+					}),
+					Stdin:     true,
+					StdinOnce: true,
+					Env:       conf.asEnvs(),
+					Command: []string{
+						"sh", "-ec",
+						fmt.Sprintf(`
+								%[1]s
+							`, conf.cmd),
+					},
+				},
+			},
+		},
+	}, nil
+}
+
 func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 	return []apiv1.EnvVar{
 		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
@@ -1136,6 +1234,7 @@ func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: c.registryAddress},
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: c.inputFile},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: c.runAsUser},
+		{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: strconv.FormatBool(c.isFileBuild)},
 	}
 }
 
