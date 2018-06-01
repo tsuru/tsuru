@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -162,7 +161,7 @@ func podsForAppProcess(client *ClusterClient, a provision.App, process string) (
 	return podList, nil
 }
 
-func allNewPodsRunning(client *ClusterClient, a provision.App, process string, generation int64) (bool, error) {
+func allNewPodsRunning(client *ClusterClient, a provision.App, process string, depRevision string) (bool, error) {
 	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
@@ -181,10 +180,9 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, g
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	generationStr := strconv.Itoa(int(generation))
 	var replica *v1beta2.ReplicaSet
 	for i, rs := range replicaSets.Items {
-		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == generationStr {
+		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
 			replica = &replicaSets.Items[i]
 			break
 		}
