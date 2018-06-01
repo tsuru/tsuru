@@ -801,6 +801,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		}
 		dep = nil
 	}
+	var oldRevision string
+	if dep != nil {
+		oldRevision, _ = dep.Annotations[replicaDepRevision]
+	}
 	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -814,6 +818,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	err = monitorDeployment(ctx, m.client, dep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
+		newRevision := dep.Annotations[replicaDepRevision]
+		// We should only rollback if the updated deployment is a new revision.
+		if oldRevision == newRevision {
+			fmt.Fprintf(m.writer, "\n**** FAILURE ****\n ---> %s <---\n", err)
+			return provision.ErrUnitStartup{Err: err}
+		}
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 		rollbackErr := m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
