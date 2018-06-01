@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -14,6 +15,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 )
+
+var _ provision.BuilderKubeClient = &KubeClient{}
 
 func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKubeClient, error) {
 	return &KubeClient{}, nil
@@ -69,4 +72,22 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 		return nil, "", nil, err
 	}
 	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
+}
+
+func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
+	buildPodName := fmt.Sprintf("%s-image-build", name)
+	client, err := clusterForPool("")
+	if err != nil {
+		return err
+	}
+	defer cleanupPod(client, buildPodName, client.Namespace(""))
+	params := createPodParams{
+		client:            client,
+		podName:           buildPodName,
+		destinationImages: []string{image},
+		inputFile:         "/data/context.tar.gz",
+		attachInput:       inputStream,
+		attachOutput:      output,
+	}
+	return createImageBuildPod(ctx, params)
 }
