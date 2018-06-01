@@ -708,7 +708,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allNewPodsRunning(client, a, processName, dep.Status.ObservedGeneration)
+			allInit, err = allNewPodsRunning(client, a, processName, dep.Annotations[replicaDepRevision])
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
