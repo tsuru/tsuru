@@ -1653,7 +1653,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		rev++
 		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
 		dep.Status.UnavailableReplicas = 2
-		dep.Status.ObservedGeneration = 12
 		labelsCp := make(map[string]string, len(dep.Labels))
 		for k, v := range dep.Spec.Template.Labels {
 			labelsCp[k] = v
@@ -1664,7 +1663,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
 					Annotations: map[string]string{
-						"deployment.kubernetes.io/revision": strconv.Itoa(int(dep.Status.ObservedGeneration)),
+						"deployment.kubernetes.io/revision": strconv.Itoa(rev),
 					},
 				},
 			})
