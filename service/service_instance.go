@@ -89,6 +89,36 @@ func (si *ServiceInstance) GetIdentifier() string {
 	return si.Name
 }
 
+type ServiceInstanceWithInfo struct {
+	Id          int
+	Name        string
+	Teams       []string
+	PlanName    string
+	Apps        []string
+	ServiceName string
+	Info        map[string]string
+	TeamOwner   string
+}
+
+// ToInfo returns the service instance as a struct compatible with the return
+// of the service info api call.
+func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
+	info, err := si.Info("")
+	if err != nil {
+		info = nil
+	}
+	return ServiceInstanceWithInfo{
+		Id:          si.Id,
+		Name:        si.Name,
+		Teams:       si.Teams,
+		PlanName:    si.PlanName,
+		Apps:        si.Apps,
+		ServiceName: si.ServiceName,
+		Info:        info,
+		TeamOwner:   si.TeamOwner,
+	}, nil
+}
+
 func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {

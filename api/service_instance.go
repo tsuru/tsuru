@@ -479,7 +479,15 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(instances)
+	var result []service.ServiceInstanceWithInfo
+	for _, instance := range instances {
+		infoData, err := instance.ToInfo()
+		if err != nil {
+			return err
+		}
+		result = append(result, infoData)
+	}
+	return json.NewEncoder(w).Encode(result)
 }
 
 // title: service doc
