@@ -676,11 +676,12 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) error {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
+	revision := dep.Annotations[replicaDepRevision]
 	ns := client.AppNamespace(a)
 	watch, err := filteredPodEvents(client, evtResourceVersion, "", ns)
 	if err != nil {
-		return err
+		return revision, err
 	}
 	watchCh := watch.ResultChan()
 	defer func() {
@@ -696,14 +697,15 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	for dep.Status.ObservedGeneration < dep.Generation {
 		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
-			return err
+			return revision, err
 		}
+		revision = dep.Annotations[replicaDepRevision]
 		select {
 		case <-time.After(100 * time.Millisecond):
 		case <-timeout:
-			return errors.Errorf("timeout waiting for deployment generation to update")
+			return revision, errors.Errorf("timeout waiting for deployment generation to update")
 		case <-ctx.Done():
-			return ctx.Err()
+			return revision, ctx.Err()
 		}
 	}
 	var specReplicas int32
@@ -724,7 +726,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
 			if c.Type == v1beta2.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
-				return errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
+				return revision, errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
 			}
 		}
 		if oldUpdatedReplicas != dep.Status.UpdatedReplicas {
@@ -732,7 +734,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allNewPodsRunning(client, a, processName, dep.Annotations[replicaDepRevision])
+			allInit, err = allNewPodsRunning(client, a, processName, revision)
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
@@ -764,19 +766,19 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-healthcheckTimeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
+			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
 		case <-timeout:
-			return createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
+			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		case <-ctx.Done():
-			return ctx.Err()
+			return revision, ctx.Err()
 		}
 		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
-			return err
+			return revision, err
 		}
 	}
 	fmt.Fprintln(w, " ---> Done updating units")
-	return nil
+	return revision, nil
 }
 
 func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
@@ -794,40 +796,43 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	depName := deploymentNameForApp(a, process)
 	ns := m.client.AppNamespace(a)
-	dep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	oldDep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-		dep = nil
+		oldDep = nil
 	}
 	var oldRevision string
-	if dep != nil {
-		oldRevision, _ = dep.Annotations[replicaDepRevision]
+	if oldDep != nil {
+		oldRevision, _ = oldDep.Annotations[replicaDepRevision]
 	}
 	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	dep, labels, annotations, err := createAppDeployment(m.client, dep, a, process, img, replicas, labels)
+	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, img, replicas, labels)
 	if err != nil {
 		return err
 	}
 	if m.writer == nil {
 		m.writer = ioutil.Discard
 	}
-	err = monitorDeployment(ctx, m.client, dep, a, process, m.writer, events.ResourceVersion)
+	newRevision, err := monitorDeployment(ctx, m.client, newDep, a, process, m.writer, events.ResourceVersion)
 	if err != nil {
-		newRevision := dep.Annotations[replicaDepRevision]
 		// We should only rollback if the updated deployment is a new revision.
-		if oldRevision == newRevision {
-			fmt.Fprintf(m.writer, "\n**** FAILURE ****\n ---> %s <---\n", err)
-			return provision.ErrUnitStartup{Err: err}
+		var rollbackErr error
+		if oldDep != nil && (newRevision == "" || oldRevision == newRevision) {
+			oldDep.Generation = 0
+			oldDep.ResourceVersion = ""
+			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+			_, rollbackErr = m.client.AppsV1beta2().Deployments(ns).Update(oldDep)
+		} else {
+			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
+				Name: depName,
+			})
 		}
-		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
-			Name: depName,
-		})
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
 		}
