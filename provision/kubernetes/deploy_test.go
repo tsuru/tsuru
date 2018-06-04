@@ -1748,8 +1748,6 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	defer config.Unset("docker:healthcheck:max-time")
 	config.Set("kubernetes:deployment-progress-timeout", 2)
 	defer config.Unset("kubernetes:deployment-progress-timeout")
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
 	buf := bytes.Buffer{}
 	m := serviceManager{client: s.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -1762,8 +1760,21 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		},
 	})
 	c.Assert(err, check.IsNil)
+	_, err = s.client.AppsV1beta2().Deployments(s.client.Namespace()).Create(&v1beta2.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp-p1",
+		},
+		Spec: v1beta2.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
 	var rollbackCalled bool
-	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
 		if action.GetSubresource() == "rollback" {
 			rollbackCalled = true
@@ -1786,21 +1797,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
 	c.Assert(rollbackCalled, check.Equals, false)
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.clusterClient, a, "p1")
-	_, err = s.client.CoreV1().Events(s.client.AppNamespace(a)).Create(&apiv1.Event{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pod.evt1",
-			Namespace: s.client.AppNamespace(a),
-		},
-		Reason:  "Unhealthy",
-		Message: "my evt message",
-	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*UPDATING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
 }
 
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
