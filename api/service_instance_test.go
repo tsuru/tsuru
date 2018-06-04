@@ -1665,14 +1665,27 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	var instances []service.ServiceInstance
+	var instances []service.ServiceInstanceWithInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	si1.BoundUnits = []service.Unit{}
 	si1.Tags = []string{}
 	si2.BoundUnits = []service.Unit{}
 	si2.Tags = []string{}
-	expected := []service.ServiceInstance{si1, si2}
+	expected := []service.ServiceInstanceWithInfo{
+		{
+			Name:        "my_nosql",
+			ServiceName: srv.Name,
+			Apps:        []string{},
+			Teams:       []string{s.team.Name},
+		},
+		{
+			Name:        "your_nosql",
+			ServiceName: srv.Name,
+			Apps:        []string{"wordpress"},
+			Teams:       []string{s.team.Name},
+		},
+	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
 
@@ -1706,12 +1719,19 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	var instances []service.ServiceInstance
+	var instances []service.ServiceInstanceWithInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	si1.BoundUnits = []service.Unit{}
 	si1.Tags = []string{}
-	expected := []service.ServiceInstance{si1}
+	expected := []service.ServiceInstanceWithInfo{
+		{
+			Name:        "my_nosql",
+			ServiceName: srv.Name,
+			Apps:        []string{},
+			Teams:       []string{s.team.Name},
+		},
+	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
 

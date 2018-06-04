@@ -6,6 +6,7 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -283,6 +284,85 @@ func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {
 		"key2": "value2",
 	}
 	c.Assert(info, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"label": "key", "value": "value"}]`))
+	}))
+	defer ts.Close()
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
+	info, err := si.ToInfo()
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(info)
+	c.Assert(err, check.IsNil)
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"Id":          float64(0),
+		"Name":        "ql",
+		"PlanName":    "",
+		"Teams":       nil,
+		"Apps":        nil,
+		"ServiceName": "mysql",
+		"Info":        map[string]interface{}{"key": "value"},
+		"TeamOwner":   "",
+	}
+	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C) {
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
+	info, err := si.ToInfo()
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(info)
+	c.Assert(err, check.IsNil)
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"Id":          float64(0),
+		"Name":        "ql",
+		"PlanName":    "",
+		"Teams":       nil,
+		"Apps":        nil,
+		"ServiceName": "mysql",
+		"Info":        nil,
+		"TeamOwner":   "",
+	}
+	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *check.C) {
+	srvc := Service{Name: "mysql"}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
+	info, err := si.ToInfo()
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(info)
+	c.Assert(err, check.IsNil)
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"Id":          float64(0),
+		"Name":        "ql",
+		"PlanName":    "",
+		"Teams":       nil,
+		"Apps":        nil,
+		"ServiceName": "mysql",
+		"Info":        nil,
+		"TeamOwner":   "",
+	}
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
