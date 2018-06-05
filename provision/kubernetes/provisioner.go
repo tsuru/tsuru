@@ -462,7 +462,11 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName, client.AppNamespace(a))
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	pubPort, err := getServicePort(client, srvName, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +496,11 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.AppNamespace(a)).Get(unitID, metav1.GetOptions{})
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+	pod, err := client.CoreV1().Pods(ns).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -764,7 +772,11 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName, client.AppNamespace(a))
+		ns, err := client.AppNamespace(a)
+		if err != nil {
+			return "", err
+		}
+		defer cleanupPod(client, deployPodName, ns)
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -1015,7 +1027,11 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	sList, err := client.CoreV1().Services(client.AppNamespace(a)).List(metav1.ListOptions{
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+	sList, err := client.CoreV1().Services(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
 	})
 	if err != nil {
@@ -1025,7 +1041,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	for _, s := range sList.Items {
 		services = append(services, s.GetName())
 	}
-	dList, err := client.AppsV1beta2().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
+	dList, err := client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
 	})
 	if err != nil {
@@ -1068,7 +1084,7 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	}
 	_, err = tclient.TsuruV1().Apps(client.Namespace()).Create(&tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
-		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
+		Spec:       tsuruv1.AppSpec{NamespaceName: client.PoolNamespace(a.GetPool())},
 	})
 	return err
 }

@@ -150,7 +150,11 @@ func (s *S) TestClusterAppNamespace(c *check.C) {
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	c.Assert(client.AppNamespace(a), check.Equals, "default")
+	err = s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	ns, err := client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(ns, check.Equals, "default")
 }
 
 func (s *S) TestClusterNamespace(c *check.C) {

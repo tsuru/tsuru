@@ -242,7 +242,10 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	ns := params.client.AppNamespace(params.app)
+	ns, err := params.client.AppNamespace(params.app)
+	if err != nil {
+		return err
+	}
 	_, err = params.client.CoreV1().Pods(ns).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
@@ -379,7 +382,11 @@ func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error)
 }
 
 func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
-	return ensureNamespace(client, client.AppNamespace(app))
+	ns, err := client.AppNamespace(app)
+	if err != nil {
+		return err
+	}
+	return ensureNamespace(client, ns)
 }
 
 func ensurePoolNamespace(client *ClusterClient, pool string) error {
@@ -419,7 +426,11 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
-	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, client.AppNamespace(a))
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
 func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
@@ -492,7 +503,10 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ns := client.AppNamespace(a)
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	pullSecrets, err := getImagePullSecrets(client, ns, imageName)
 	if err != nil {
 		return nil, nil, nil, err
@@ -573,20 +587,24 @@ type serviceManager struct {
 var _ servicecommon.ServiceManager = &serviceManager{}
 
 func (m *serviceManager) RemoveService(a provision.App, process string) error {
+	ns, err := m.client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
 	multiErrors := tsuruErrors.NewMultiError()
-	err := cleanupDeployment(m.client, a, process)
+	err = cleanupDeployment(m.client, a, process)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.CoreV1().Services(m.client.AppNamespace(a)).Delete(depName, &metav1.DeleteOptions{
+	err = m.client.CoreV1().Services(ns).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
 	headlessSvcName := headlessServiceNameForApp(a, process)
-	err = m.client.CoreV1().Services(m.client.AppNamespace(a)).Delete(headlessSvcName, &metav1.DeleteOptions{
+	err = m.client.CoreV1().Services(ns).Delete(headlessSvcName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -597,7 +615,11 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.AppsV1beta2().Deployments(m.client.AppNamespace(a)).Get(depName, metav1.GetOptions{})
+	ns, err := m.client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	dep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -678,7 +700,10 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 
 func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
-	ns := client.AppNamespace(a)
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return revision, err
+	}
 	watch, err := filteredPodEvents(client, evtResourceVersion, "", ns)
 	if err != nil {
 		return revision, err
@@ -795,7 +820,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	depName := deploymentNameForApp(a, process)
-	ns := m.client.AppNamespace(a)
+	ns, err := m.client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
 	oldDep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
@@ -971,7 +999,10 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		return err
 	}
-	ns := params.client.AppNamespace(params.app)
+	ns, err := params.client.AppNamespace(params.app)
+	if err != nil {
+		return err
+	}
 	_, err = params.client.CoreV1().Pods(ns).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
@@ -1048,7 +1079,10 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
-	ns := client.AppNamespace(app)
+	ns, err := client.AppNamespace(app)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
 	pullSecrets, err := getImagePullSecrets(client, ns, sourceImage, conf.image)
 	if err != nil {
 		return apiv1.Pod{}, err

@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -142,19 +141,16 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(app provision.App) (name string) {
+func (c *ClusterClient) AppNamespace(app provision.App) (string, error) {
 	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
-		return c.PoolNamespace(app.GetPool()) // TODO: fail here?
+		return "", fmt.Errorf("failed to get client for crd: %v", err)
 	}
 	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(app.GetName(), metav1.GetOptions{})
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return c.PoolNamespace(app.GetPool())
-		}
-		return c.PoolNamespace(app.GetPool()) // TODO: fail here?
+		return "", fmt.Errorf("failed to get app custom resource: %v", err)
 	}
-	return a.Spec.NamespaceName
+	return a.Spec.NamespaceName, nil
 }
 
 func (c *ClusterClient) PoolNamespace(pool string) string {

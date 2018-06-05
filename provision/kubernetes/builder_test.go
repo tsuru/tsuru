@@ -26,7 +26,11 @@ import (
 func (s *S) TestBuildPod(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	fakePods, ok := s.client.Core().Pods(ns).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -67,15 +71,19 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	var counter int32
+	nsName, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
 		return false, nil, nil
 	})
-	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -146,15 +154,17 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	var counter int32
+	nsName, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.AppNamespace(a))
+		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
 		return false, nil, nil
 	})
 	client := KubeClient{}
-	_, _, _, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -177,7 +187,9 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
+	nsName, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -231,7 +243,9 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.AppNamespace(a)).(*kfake.FakePods)
+	nsName, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)

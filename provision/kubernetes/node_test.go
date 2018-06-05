@@ -221,7 +221,6 @@ func (s *S) TestNodeUnits(c *check.C) {
 func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/is-service=true,tsuru.io/app-pool")
 		output := `{"items": [
@@ -259,9 +258,9 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 		c.Assert(errGet, check.IsNil)
 	}
 	for _, a := range []provision.App{app1, app2} {
-		ns := s.client.AppNamespace(a)
+		c.Assert(err, check.IsNil)
 		for i := 1; i <= numNodes; i++ {
-			_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+			_, err = s.client.CoreV1().Pods("tsuru-test-default").Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
 					Labels: map[string]string{
