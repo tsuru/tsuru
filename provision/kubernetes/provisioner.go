@@ -983,14 +983,13 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	if err != nil {
 		return err
 	}
-	sameCluster := client.GetCluster().Name == newclient.GetCluster().Name
 	params := updatePipelineParams{
 		old: old,
 		new: new,
 		w:   w,
 		p:   p,
 	}
-	if !sameCluster {
+	if !(client.GetCluster().Name == newclient.GetCluster().Name) {
 		actions := []*action.Action{
 			&provisionNewApp,
 			&restartApp,
