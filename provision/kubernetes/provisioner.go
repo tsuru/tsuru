@@ -1013,43 +1013,23 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	label, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return err
-	}
 	err = ensureAppCustomResource(client, a)
 	if err != nil {
 		return err
 	}
-	ns, err := client.AppNamespace(a)
+	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	sList, err := client.CoreV1().Services(ns).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
-	})
-	if err != nil {
-		return err
-	}
-	var services []string
-	for _, s := range sList.Items {
-		services = append(services, s.GetName())
-	}
-	dList, err := client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
-	})
+	currentImageData, err := image.GetImageMetaData(curImg)
 	if err != nil {
 		return err
 	}
 	var deployments []string
-	for _, d := range dList.Items {
-		deployments = append(deployments, d.GetName())
+	var services []string
+	for p := range currentImageData.Processes {
+		deployments = append(deployments, deploymentNameForApp(a, p))
+		services = append(services, deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
 	}
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
