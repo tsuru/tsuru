@@ -181,6 +181,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)

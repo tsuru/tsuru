@@ -172,19 +172,23 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsuruv1.App) error {
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, d := range app.Spec.Deployments {
-		err := client.AppsV1beta2().Deployments(app.Spec.NamespaceName).Delete(d, &metav1.DeleteOptions{
-			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-		})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			multiErrors.Add(err)
+		for _, dd := range d {
+			err := client.AppsV1beta2().Deployments(app.Spec.NamespaceName).Delete(dd, &metav1.DeleteOptions{
+				PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+			})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				multiErrors.Add(err)
+			}
 		}
 	}
 	for _, s := range app.Spec.Services {
-		err := client.CoreV1().Services(app.Spec.NamespaceName).Delete(s, &metav1.DeleteOptions{
-			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-		})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			multiErrors.Add(errors.WithStack(err))
+		for _, ss := range s {
+			err := client.CoreV1().Services(app.Spec.NamespaceName).Delete(ss, &metav1.DeleteOptions{
+				PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+			})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				multiErrors.Add(errors.WithStack(err))
+			}
 		}
 	}
 	err := client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
@@ -772,9 +776,9 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		ns, err := client.AppNamespace(a)
-		if err != nil {
-			return "", err
+		ns, nsErr := client.AppNamespace(a)
+		if nsErr != nil {
+			return "", nsErr
 		}
 		defer cleanupPod(client, deployPodName, ns)
 		params := createPodParams{
@@ -1025,11 +1029,11 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	var deployments []string
-	var services []string
+	deployments := make(map[string][]string)
+	services := make(map[string][]string)
 	for p := range currentImageData.Processes {
-		deployments = append(deployments, deploymentNameForApp(a, p))
-		services = append(services, deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
+		deployments[p] = append(deployments[p], deploymentNameForApp(a, p))
+		services[p] = append(services[p], deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
 	}
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {

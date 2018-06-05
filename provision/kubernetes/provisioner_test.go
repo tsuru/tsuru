@@ -1030,8 +1030,8 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        []string{"myapp-web"},
-		Services:           []string{"myapp-web", "myapp-web-units"},
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 	})
 }
 
@@ -1077,8 +1077,8 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "tsuru-test-default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        []string{"myapp-web"},
-		Services:           []string{"myapp-web", "myapp-web-units"},
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 	})
 }
 

@@ -1800,8 +1800,8 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			labelsCp[k] = v
 		}
 		go func() {
-			ns, err := s.client.AppNamespace(a)
-			c.Assert(err, check.IsNil)
+			ns, nsErr := s.client.AppNamespace(a)
+			c.Assert(nsErr, check.IsNil)
 			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
@@ -1854,7 +1854,9 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1beta2().Deployments(s.client.AppNamespace(a)).Create(&v1beta2.Deployment{
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-p1",
 		},
