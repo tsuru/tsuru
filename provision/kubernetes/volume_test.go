@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"github.com/tsuru/config"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -263,6 +264,54 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
+}
+
+func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	appCR := tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: a.GetName(),
+		},
+		Spec: tsuruv1.AppSpec{
+			NamespaceName: "custom-namespace",
+		},
+	}
+	_, err = s.client.TsuruV1().Apps(s.client.Namespace()).Update(&appCR)
+	c.Assert(err, check.IsNil)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	pvc, err := s.client.CoreV1().PersistentVolumeClaims("custom-namespace").Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvc.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+		Name: volumeClaimName(v.Name),
+		Labels: map[string]string{
+			"tsuru.io/volume-name": "v1",
+			"tsuru.io/volume-pool": "test-default",
+			"tsuru.io/volume-plan": "p1",
+			"tsuru.io/is-tsuru":    "true",
+			"tsuru.io/provisioner": "kubernetes",
+		},
+		Namespace: "custom-namespace",
+	})
 }
 
 func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
