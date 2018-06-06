@@ -1134,6 +1134,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
@@ -1248,6 +1249,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 			}},
 		{
 			Name:    "myapp-v1-deploy",
@@ -1352,11 +1354,46 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+		{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 	})
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
 trap end EXIT
 mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
+}
+
+func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	err := createImageBuildPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		podName:           "myplatform-image-build",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/data/context.tar.gz",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.Core().Pods(s.client.Namespace("")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Command, check.HasLen, 3)
+	c.Assert(containers[0].Command[:2], check.DeepEquals, []string{"sh", "-ec"})
+	c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
+		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/data/context.tar.gz"},
+		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+		{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "true"},
+	})
+	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.4.0")
+	cmds := cleanCmds(containers[0].Command[2])
+	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
+
 }
 
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
@@ -1533,6 +1570,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 			}},
 		{
 			Name:    "myapp-v1-deploy",

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -32,14 +31,17 @@ import (
 //   401: Unauthorized
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	name := r.FormValue("name")
-	file, _, _ := r.FormFile("dockerfile_content")
+	file, _, err := r.FormFile("dockerfile_content")
+	if err != nil {
+		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	defer file.Close()
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
-		return errors.New("Missing file content")
+		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: "missing file content"}
 	}
 	args := make(map[string]string)
 	for key, values := range r.Form {

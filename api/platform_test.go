@@ -148,6 +148,38 @@ func (s *PlatformSuite) TestPlatformAddError(c *check.C) {
 	c.Assert(recorder.Body.String(), check.DeepEquals, createErr.Error()+"\n")
 }
 
+func (s *PlatformSuite) TestPlatformAddMissingFile(c *check.C) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("name", "test")
+	writer.Close()
+	request, _ := http.NewRequest("POST", "/platforms", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "http: no such file\n")
+}
+
+func (s *PlatformSuite) TestPlatformAddMissingFileContent(c *check.C) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("name", "test")
+	_, err := writer.CreateFormFile("dockerfile_content", "Dockerfile")
+	c.Assert(err, check.IsNil)
+	writer.Close()
+	request, _ := http.NewRequest("POST", "/platforms", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "missing file content\n")
+}
+
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	name := "wat"
 	dockerfileURL := "http://localhost/Dockerfile"

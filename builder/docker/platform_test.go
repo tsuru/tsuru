@@ -32,35 +32,6 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var b dockerBuilder
-	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = b.PlatformAdd(appTypes.PlatformOptions{
-		Name:   "test",
-		Args:   args,
-		Output: ioutil.Discard,
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(requests) >= 2, check.Equals, true)
-	requests = requests[len(requests)-2:]
-	c.Assert(requests[0].URL.Path, check.Equals, "/build")
-	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), check.Equals, image.PlatformImageName("test"))
-	c.Assert(queryString.Get("remote"), check.Equals, "http://localhost/Dockerfile")
-	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
-}
-
-func (s *S) TestPlatformAddData(c *check.C) {
-	var requests []*http.Request
-	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		requests = append(requests, r)
-	})
-	c.Assert(err, check.IsNil)
-	defer server.Stop()
-	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
-	c.Assert(err, check.IsNil)
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	var b dockerBuilder
 	dockerfile := "FROM tsuru/java"
 	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:   "test",
@@ -76,26 +47,6 @@ func (s *S) TestPlatformAddData(c *check.C) {
 	c.Assert(queryString.Get("t"), check.Equals, image.PlatformImageName("test"))
 	c.Assert(queryString.Get("remote"), check.Equals, "")
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
-}
-
-func (s *S) TestPlatformAddWithoutArgs(c *check.C) {
-	b := dockerBuilder{}
-	err := b.PlatformAdd(appTypes.PlatformOptions{Name: "test"})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Dockerfile is required")
-}
-
-func (s *S) TestPlatformAddShouldValidateArgs(c *check.C) {
-	args := make(map[string]string)
-	args["dockerfile"] = "not_a_url"
-	b := dockerBuilder{}
-	err := b.PlatformAdd(appTypes.PlatformOptions{
-		Name:   "test",
-		Args:   args,
-		Output: ioutil.Discard,
-	})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Dockerfile parameter must be a URL")
 }
 
 func (s *S) TestPlatformAddProvisionerError(c *check.C) {
