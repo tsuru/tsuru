@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -50,6 +52,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 		})
 		return false, nil, nil
 	})
@@ -103,6 +106,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 		})
 		return false, nil, nil
 	})
@@ -211,6 +215,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 			})
 		}
 		return false, nil, nil
@@ -267,6 +272,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 			})
 		}
 		return false, nil, nil
@@ -279,4 +285,35 @@ cat >/dev/null && /bin/deploy-agent`)
 	c.Assert(procfileRaw, check.Equals, "web: make run")
 	c.Assert(yamlData.Healthcheck.Path, check.Equals, "/health")
 	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
+}
+
+func (s *S) TestBuildImage(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	fakePods, ok := s.client.Core().Pods(s.client.Namespace("")).(*kfake.FakePods)
+	c.Assert(ok, check.Equals, true)
+	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		containers := pod.Spec.Containers
+		c.Assert(containers, check.HasLen, 1)
+		cmds := cleanCmds(containers[0].Command[2])
+		c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
+		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:latest"},
+			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/data/context.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "true"},
+		})
+		return false, nil, nil
+	})
+	buf := strings.NewReader("FROM tsuru/myplatform")
+	client := KubeClient{}
+	out := &bytes.Buffer{}
+	err := client.BuildImage("myplatform", ioutil.NopCloser(buf), out, context.Background())
+	c.Assert(err, check.IsNil)
 }

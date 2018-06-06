@@ -11,7 +11,6 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -33,7 +32,6 @@ func (b *kubernetesBuilder) PlatformRemove(name string) error {
 }
 
 func (b *kubernetesBuilder) buildPlatform(name string, args map[string]string, w io.Writer, data []byte, ctx context.Context) error {
-	imageName := image.PlatformImageName(name)
 	client, err := getKubeClient()
 	if err != nil {
 		return err
@@ -47,7 +45,7 @@ func (b *kubernetesBuilder) buildPlatform(name string, args map[string]string, w
 	})
 	writer.Write(data)
 	writer.Close()
-	return client.BuildImage(name, imageName, &buf, w, ctx)
+	return client.BuildImage(name, &buf, w, ctx)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {

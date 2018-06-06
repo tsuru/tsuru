@@ -74,8 +74,9 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
 }
 
-func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
+func (c *KubeClient) BuildImage(name string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
 	buildPodName := fmt.Sprintf("%s-image-build", name)
+	image := image.PlatformImageName(name)
 	client, err := clusterForPool("")
 	if err != nil {
 		return err

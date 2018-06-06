@@ -1222,6 +1222,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
 			})
 		}
 		return false, nil, nil

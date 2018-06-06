@@ -146,6 +146,30 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}
 }
 
+func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
+	srv, wg := s.CreateDeployReadyServer(c)
+	s.MockfakeNodes(c, srv.URL)
+	podReaction, podReady := s.buildPodReaction(c)
+	servReaction := s.serviceWithPortReaction(c)
+	rollbackDeployment := s.DeploymentReactions(c)
+	s.client.PrependReactor("create", "pods", podReaction)
+	s.client.PrependReactor("create", "services", servReaction)
+	return func() {
+			rollbackDeployment()
+			podReady.Wait()
+			wg.Wait()
+		}, func() {
+			rollbackDeployment()
+			podReady.Wait()
+			wg.Wait()
+			if srv == nil {
+				return
+			}
+			srv.Close()
+			srv = nil
+		}
+}
+
 func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
 	mu := sync.Mutex{}
 	attachFn := func(w http.ResponseWriter, r *http.Request, cont string) {
@@ -390,6 +414,25 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				c.Assert(err, check.IsNil)
 			}()
 		}
+		return false, nil, nil
+	}, &wg
+}
+
+func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Spec.Affinity, check.NotNil)
+		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
+		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
+		if !strings.HasSuffix(pod.Name, "-image-build") {
+			return false, nil, nil
+		}
+		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
+		pod.Status.Phase = apiv1.PodSucceeded
+		pod.Spec.NodeName = "n1"
 		return false, nil, nil
 	}, &wg
 }
