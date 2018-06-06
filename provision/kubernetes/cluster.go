@@ -142,11 +142,15 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *ClusterClient) AppNamespace(app provision.App) (string, error) {
+	return c.appNamespaceByName(app.GetName())
+}
+
+func (c *ClusterClient) appNamespaceByName(appName string) (string, error) {
 	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to get client for crd: %v", err)
 	}
-	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(app.GetName(), metav1.GetOptions{})
+	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get app custom resource: %v", err)
 	}

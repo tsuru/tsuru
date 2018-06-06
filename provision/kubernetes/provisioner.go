@@ -960,7 +960,7 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName, client.PoolNamespace(pool))
+	return deleteVolume(client, volumeName)
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
@@ -968,7 +968,7 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName, client.PoolNamespace(pool))
+	return volumeExists(client, volumeName)
 }
 
 func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
