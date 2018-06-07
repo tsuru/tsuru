@@ -271,6 +271,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	appCR := tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: a.GetName(),
@@ -341,6 +342,7 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 	err = s.p.Provision(provisiontest.NewFakeAppWithPool("otherapp", "python", "otherpool", 0))
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
+	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.ErrorMatches, `multiple namespaces for volume`)
 }
