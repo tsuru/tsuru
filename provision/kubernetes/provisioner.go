@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -65,6 +66,7 @@ var (
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
 	// _ provision.AppFilterProvisioner     = &kubernetesProvisioner{}
 	// _ builder.PlatformBuilder            = &kubernetesProvisioner{}
+	_ provision.UpdatableProvisioner = &kubernetesProvisioner{}
 )
 
 func init() {
@@ -149,36 +151,51 @@ func (p *kubernetesProvisioner) Provision(a provision.App) error {
 }
 
 func (p *kubernetesProvisioner) Destroy(a provision.App) error {
-	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	data, err := image.GetImageMetaData(imgID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
-	}
-	manager := &serviceManager{
-		client: client,
-	}
-	multiErrors := tsuruErrors.NewMultiError()
-	for process := range data.Processes {
-		err = manager.RemoveService(a, process)
-		if err != nil {
-			multiErrors.Add(err)
-		}
-	}
-	if multiErrors.Len() > 0 {
-		return multiErrors
 	}
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
-	return tclient.TsuruV1().Apps(client.Namespace("")).Delete(a.GetName(), &metav1.DeleteOptions{})
+	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if err := p.removeResources(client, app); err != nil {
+		return err
+	}
+	return tclient.TsuruV1().Apps(client.Namespace()).Delete(a.GetName(), &metav1.DeleteOptions{})
+}
+
+func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsuruv1.App) error {
+	multiErrors := tsuruErrors.NewMultiError()
+	for _, d := range app.Spec.Deployments {
+		for _, dd := range d {
+			err := client.AppsV1beta2().Deployments(app.Spec.NamespaceName).Delete(dd, &metav1.DeleteOptions{
+				PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+			})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				multiErrors.Add(err)
+			}
+		}
+	}
+	for _, s := range app.Spec.Services {
+		for _, ss := range s {
+			err := client.CoreV1().Services(app.Spec.NamespaceName).Delete(ss, &metav1.DeleteOptions{
+				PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+			})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				multiErrors.Add(errors.WithStack(err))
+			}
+		}
+	}
+	err := client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		multiErrors.Add(errors.WithStack(err))
+	}
+	return multiErrors.ToError()
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
@@ -449,7 +466,11 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		return nil, nil
 	}
 	srvName := deploymentNameForApp(a, webProcessName)
-	pubPort, err := getServicePort(client, srvName, client.AppNamespace(a))
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	pubPort, err := getServicePort(client, srvName, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +500,11 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(client.AppNamespace(a)).Get(unitID, metav1.GetOptions{})
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+	pod, err := client.CoreV1().Pods(ns).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -751,7 +776,11 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		if err != nil {
 			return "", err
 		}
-		defer cleanupPod(client, deployPodName, client.AppNamespace(a))
+		ns, nsErr := client.AppNamespace(a)
+		if nsErr != nil {
+			return "", nsErr
+		}
+		defer cleanupPod(client, deployPodName, ns)
 		params := createPodParams{
 			app:               a,
 			client:            client,
@@ -931,7 +960,7 @@ func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName, client.Namespace(pool))
+	return deleteVolume(client, volumeName)
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bool, error) {
@@ -939,17 +968,51 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(volumeName, pool string) (bo
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName, client.Namespace(pool))
+	return volumeExists(client, volumeName)
+}
+
+func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
+	if old.GetPool() == new.GetPool() {
+		return nil
+	}
+	client, err := clusterForPool(old.GetPool())
+	if err != nil {
+		return err
+	}
+	newclient, err := clusterForPool(new.GetPool())
+	if err != nil {
+		return err
+	}
+	params := updatePipelineParams{
+		old: old,
+		new: new,
+		w:   w,
+		p:   p,
+	}
+	if !(client.GetCluster().Name == newclient.GetCluster().Name) {
+		actions := []*action.Action{
+			&provisionNewApp,
+			&restartApp,
+			&rebuildAppRoutes,
+			&destroyOldApp,
+		}
+		return action.NewPipeline(actions...).Execute(params)
+	}
+	// same cluster and it is not configured with per-pool-namespace, nothing to do.
+	if client.PoolNamespace(old.GetPool()) == newclient.PoolNamespace(new.GetPool()) {
+		return nil
+	}
+	actions := []*action.Action{
+		&updateAppCR,
+		&restartApp,
+		&rebuildAppRoutes,
+		&removeOldAppResources,
+	}
+	return action.NewPipeline(actions...).Execute(params)
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
-	label, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
+	err := ensureNamespace(client, client.Namespace())
 	if err != nil {
 		return err
 	}
@@ -957,37 +1020,32 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	sList, err := client.CoreV1().Services(client.AppNamespace(a)).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
-	})
+	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	var services []string
-	for _, s := range sList.Items {
-		services = append(services, s.GetName())
-	}
-	dList, err := client.AppsV1beta2().Deployments(client.AppNamespace(a)).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(label.ToAppSelector()).String(),
-	})
+	currentImageData, err := image.GetImageMetaData(curImg)
 	if err != nil {
 		return err
 	}
-	var deployments []string
-	for _, d := range dList.Items {
-		deployments = append(deployments, d.GetName())
+	deployments := make(map[string][]string)
+	services := make(map[string][]string)
+	for p := range currentImageData.Processes {
+		deployments[p] = append(deployments[p], deploymentNameForApp(a, p))
+		services[p] = append(services[p], deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
 	}
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
-	appCRD, err := tclient.TsuruV1().Apps(client.Namespace("")).Get(a.GetName(), metav1.GetOptions{})
+	appCRD, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
-	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Update(appCRD)
+	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }
 
@@ -1000,13 +1058,17 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	if err != nil {
 		return err
 	}
-	_, err = tclient.TsuruV1().Apps(client.Namespace("")).Create(&tsuruv1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
-		Spec:       tsuruv1.AppSpec{NamespaceName: client.AppNamespace(a)},
-	})
-	if k8sErrors.IsAlreadyExists(err) {
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err == nil {
 		return nil
 	}
+	if !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Create(&tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
+		Spec:       tsuruv1.AppSpec{NamespaceName: client.PoolNamespace(a.GetPool())},
+	})
 	return err
 }
 

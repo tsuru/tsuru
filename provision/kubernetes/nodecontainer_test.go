@@ -47,7 +47,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	pool := "mypool"
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace(pool)
+	ns := s.client.PoolNamespace(pool)
 	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
@@ -176,7 +176,7 @@ func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 		s.client.AppsV1beta2()
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1beta2.DaemonSet)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.Namespace(pool))
+		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.PoolNamespace(pool))
 		return false, nil, nil
 	})
 	c1 := nodecontainer.NodeContainerConfig{
@@ -222,7 +222,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}}, false)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace("")
+	ns := s.client.PoolNamespace("")
 	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
@@ -296,7 +296,7 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	pool := "main"
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace(pool)
+	ns := s.client.PoolNamespace(pool)
 	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
@@ -358,7 +358,7 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 	pool := "main"
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace("pool")
+	ns := s.client.PoolNamespace("pool")
 	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
@@ -429,7 +429,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, true)
 	c.Assert(err, check.IsNil)
-	ns := s.client.Namespace("")
+	ns := s.client.PoolNamespace("")
 	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{

@@ -530,6 +530,9 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	actions := []*action.Action{
 		&saveApp,
 	}
+	if newProv.GetName() == oldProv.GetName() {
+		actions = append(actions, &updateAppProvisioner)
+	}
 	if newProv.GetName() != oldProv.GetName() {
 		actions = append(actions,
 			&provisionAppNewProvisioner,

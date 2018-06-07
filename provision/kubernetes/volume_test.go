@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"github.com/tsuru/config"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -19,6 +20,8 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -31,11 +34,13 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err := v.Save()
+	err = v.Save()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	err = s.p.Provision(provisiontest.NewFakeApp("otherapp", "python", 0))
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -92,7 +97,8 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 		},
 	})
-	ns := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	emptyStr := ""
@@ -132,6 +138,8 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "emptyDir")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -141,7 +149,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err := v.Save()
+	err = v.Save()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -175,7 +183,9 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	_, err = s.client.CoreV1().PersistentVolumeClaims(s.client.AppNamespace(a)).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	volumes, mounts, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -189,13 +199,15 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name:      "v1",
 		Plan:      volume.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err := v.Save()
+	err = v.Save()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -222,7 +234,8 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	expectedClass := "my-class"
 	expectedCap, err := resource.ParseQuantity("20Gi")
 	c.Assert(err, check.IsNil)
-	ns := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
@@ -253,44 +266,22 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 }
 
-func (s *S) TestDeleteVolume(c *check.C) {
+func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	v := volume.Volume{
-		Name: "v1",
-		Opts: map[string]string{
-			"path":         "/exports",
-			"server":       "192.168.1.1",
-			"capacity":     "20Gi",
-			"access-modes": string(apiv1.ReadWriteMany),
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	appCR := tsuruv1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: a.GetName(),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
-		Pool:      "test-default",
-		TeamOwner: "admin",
+		Spec: tsuruv1.AppSpec{
+			NamespaceName: "custom-namespace",
+		},
 	}
-	err := v.Save()
+	_, err = s.client.TsuruV1().Apps(s.client.Namespace()).Update(&appCR)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
-	c.Assert(err, check.IsNil)
-	_, _, err = createVolumesForApp(s.clusterClient, a)
-	c.Assert(err, check.IsNil)
-	ns := s.client.AppNamespace(a)
-	err = deleteVolume(s.clusterClient, "v1", ns)
-	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-}
-
-func (s *S) TestVolumeExists(c *check.C) {
-	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
-	defer config.Unset("volume-plans")
-	exists, err := volumeExists(s.clusterClient, "v1", "test-default")
-	c.Assert(err, check.IsNil)
-	c.Assert(exists, check.Equals, false)
-	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -309,7 +300,115 @@ func (s *S) TestVolumeExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
 	c.Assert(err, check.IsNil)
-	exists, err = volumeExists(s.clusterClient, "v1", s.clusterClient.AppNamespace(a))
+	pvc, err := s.client.CoreV1().PersistentVolumeClaims("custom-namespace").Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvc.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+		Name: volumeClaimName(v.Name),
+		Labels: map[string]string{
+			"tsuru.io/volume-name": "v1",
+			"tsuru.io/volume-pool": "test-default",
+			"tsuru.io/volume-plan": "p1",
+			"tsuru.io/is-tsuru":    "true",
+			"tsuru.io/provisioner": "kubernetes",
+		},
+		Namespace: "custom-namespace",
+	})
+}
+
+func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = s.p.Provision(provisiontest.NewFakeAppWithPool("otherapp", "python", "otherpool", 0))
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("otherapp", "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(s.clusterClient, a)
+	c.Assert(err, check.ErrorMatches, `multiple namespaces for volume`)
+}
+
+func (s *S) TestDeleteVolume(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	err = deleteVolume(s.clusterClient, "v1")
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestVolumeExists(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	exists, err := volumeExists(s.clusterClient, "v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, false)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err = s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	exists, err = volumeExists(s.clusterClient, "v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, true)
 }

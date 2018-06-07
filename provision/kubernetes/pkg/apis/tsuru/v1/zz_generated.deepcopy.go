@@ -77,13 +77,27 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 	*out = *in
 	if in.Deployments != nil {
 		in, out := &in.Deployments, &out.Deployments
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				(*out)[key] = make([]string, len(val))
+				copy((*out)[key], val)
+			}
+		}
 	}
 	if in.Services != nil {
 		in, out := &in.Services, &out.Services
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				(*out)[key] = make([]string, len(val))
+				copy((*out)[key], val)
+			}
+		}
 	}
 	return
 }

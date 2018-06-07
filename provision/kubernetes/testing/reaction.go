@@ -51,8 +51,9 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	AppNamespace(provision.App) string
-	Namespace(string) string
+	AppNamespace(provision.App) (string, error)
+	PoolNamespace(string) string
+	Namespace() string
 	GetCluster() *cluster.Cluster
 }
 
@@ -120,6 +121,8 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	servReaction := s.serviceWithPortReaction(c)
@@ -381,7 +384,9 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = apiv1.PodSucceeded
-				_, err = s.client.CoreV1().Pods(s.client.AppNamespace(a)).Update(pod)
+				ns, err := s.client.AppNamespace(a)
+				c.Assert(err, check.IsNil)
+				_, err = s.client.CoreV1().Pods(ns).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
@@ -392,6 +397,9 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		if len(srv.Spec.Ports) > 0 && srv.Spec.Ports[0].NodePort != int32(0) {
+			return false, nil, nil
+		}
 		srv.Spec.Ports = []apiv1.ServicePort{
 			{
 				NodePort: int32(30000),

@@ -9,6 +9,7 @@ import (
 	"io"
 	"regexp"
 
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/quota"
@@ -517,6 +518,44 @@ var destroyAppOldProvisioner = action.Action{
 			return nil, err
 		}
 		return nil, oldProv.Destroy(oldApp)
+	},
+}
+
+var updateAppProvisioner = action.Action{
+	Name: "update-app-provisioner",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as first arg")
+		}
+		oldApp, ok := ctx.Params[1].(*App)
+		if !ok {
+			return nil, errors.New("expected app ptr as second arg")
+		}
+		oldProv, err := oldApp.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		w, _ := ctx.Params[2].(io.Writer)
+		if upProv, ok := oldProv.(provision.UpdatableProvisioner); ok {
+			return nil, upProv.UpdateApp(oldApp, app, w)
+		}
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		oldApp := ctx.Params[1].(*App)
+		newProv, err := app.getProvisioner()
+		if err != nil {
+			log.Errorf("BACKWARDS update-app-provisioner - failed to get app provisioner: %v", err)
+			return
+		}
+		w := ctx.Params[2].(io.Writer)
+		if upProv, ok := newProv.(provision.UpdatableProvisioner); ok {
+			if err := upProv.UpdateApp(app, oldApp, w); err != nil {
+				log.Errorf("BACKWARDS update-app-provisioner - failed to update app back to previous state: %v", err)
+			}
+		}
 	},
 }
 

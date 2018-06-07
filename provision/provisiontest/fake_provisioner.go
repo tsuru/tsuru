@@ -32,10 +32,11 @@ var (
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
-	_ provision.NodeProvisioner = &FakeProvisioner{}
-	_ provision.Provisioner     = &FakeProvisioner{}
-	_ provision.App             = &FakeApp{}
-	_ bind.App                  = &FakeApp{}
+	_ provision.NodeProvisioner      = &FakeProvisioner{}
+	_ provision.UpdatableProvisioner = &FakeProvisioner{}
+	_ provision.Provisioner          = &FakeProvisioner{}
+	_ provision.App                  = &FakeApp{}
+	_ bind.App                       = &FakeApp{}
 )
 
 const fakeAppImage = "app-image"
@@ -1340,6 +1341,13 @@ func (p *FakeProvisioner) DeleteVolume(volName, pool string) error {
 
 func (p *FakeProvisioner) IsVolumeProvisioned(name, pool string) (bool, error) {
 	return false, nil
+}
+
+func (p *FakeProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
+	provApp := p.apps[old.GetName()]
+	provApp.app = new
+	p.apps[old.GetName()] = provApp
+	return nil
 }
 
 func stringInArray(value string, array []string) bool {

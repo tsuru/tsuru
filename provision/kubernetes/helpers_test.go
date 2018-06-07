@@ -391,8 +391,11 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/router-name":          "fake",
 		"tsuru.io/provisioner":          "kubernetes",
 	}
-	ns := s.client.AppNamespace(a)
-	_, err := s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: ns,
@@ -466,7 +469,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ns := s.client.Namespace("pool")
+	ns := s.client.PoolNamespace("pool")
 	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",

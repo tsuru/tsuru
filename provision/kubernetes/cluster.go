@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -142,27 +141,24 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(app provision.App) (name string) {
+func (c *ClusterClient) AppNamespace(app provision.App) (string, error) {
+	return c.appNamespaceByName(app.GetName())
+}
+
+func (c *ClusterClient) appNamespaceByName(appName string) (string, error) {
 	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
-		return c.Namespace(app.GetPool()) // TODO: fail here?
+		return "", errors.Wrap(err, "failed to get client for crd")
 	}
-	a, err := tclient.TsuruV1().Apps(c.Namespace("")).Get(app.GetName(), metav1.GetOptions{})
+	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return c.Namespace(app.GetPool())
-		}
-		return c.Namespace(app.GetPool()) // TODO: fail here?
+		return "", errors.Wrap(err, "failed to get app custom resource")
 	}
-	return a.Spec.NamespaceName
+	return a.Spec.NamespaceName, nil
 }
 
-func (c *ClusterClient) Namespace(pool string) string {
+func (c *ClusterClient) PoolNamespace(pool string) string {
 	usePoolNamespaces, _ := config.GetBool("kubernetes:use-pool-namespaces")
-	return c.namespace(pool, usePoolNamespaces)
-}
-
-func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) string {
 	prefix := "default"
 	if usePoolNamespaces {
 		prefix = "tsuru"
@@ -170,10 +166,18 @@ func (c *ClusterClient) namespace(poolName string, usePoolNamespaces bool) strin
 	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
-	if usePoolNamespaces && len(poolName) > 0 {
-		return fmt.Sprintf("%s-%s", prefix, poolName)
+	if usePoolNamespaces && len(pool) > 0 {
+		return fmt.Sprintf("%s-%s", prefix, pool)
 	}
 	return prefix
+}
+
+// Namespace returns the namespace to be used by Custom Resources
+func (c *ClusterClient) Namespace() string {
+	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
+		return c.CustomData[namespaceClusterKey]
+	}
+	return "tsuru"
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
