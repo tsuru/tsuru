@@ -148,11 +148,11 @@ func (c *ClusterClient) AppNamespace(app provision.App) (string, error) {
 func (c *ClusterClient) appNamespaceByName(appName string) (string, error) {
 	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
-		return "", fmt.Errorf("failed to get client for crd: %v", err)
+		return "", errors.Wrap(err, "failed to get client for crd")
 	}
 	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to get app custom resource: %v", err)
+		return "", errors.Wrap(err, "failed to get app custom resource")
 	}
 	return a.Spec.NamespaceName, nil
 }
