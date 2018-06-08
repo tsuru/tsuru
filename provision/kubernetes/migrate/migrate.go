@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	tsuruerrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/kubernetes"
@@ -12,6 +13,8 @@ import (
 // on a Kubernetes cluster. This is done by re-provisioning the App
 // on the cluster.
 func MigrateAppsCRDs() error {
+	config.Set("kubernetes:use-pool-namespaces", false)
+	defer config.Unset("kubernetes:use-pool-namespaces")
 	prov := kubernetes.GetProvisioner()
 	pools, err := pool.ListAllPools()
 	if err != nil {
