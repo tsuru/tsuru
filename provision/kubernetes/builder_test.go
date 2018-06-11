@@ -290,7 +290,7 @@ cat >/dev/null && /bin/deploy-agent`)
 func (s *S) TestBuildImage(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace("")).(*kfake.FakePods)
+	fakePods, ok := s.client.Core().Pods(s.client.Namespace()).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
 	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
