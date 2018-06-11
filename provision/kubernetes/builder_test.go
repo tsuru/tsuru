@@ -52,7 +52,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
+			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
 		return false, nil, nil
 	})
@@ -106,7 +106,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
+			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
 		return false, nil, nil
 	})
@@ -215,7 +215,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
+				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
 		return false, nil, nil
@@ -272,7 +272,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "false"},
+				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
 		return false, nil, nil
@@ -307,7 +307,7 @@ func (s *S) TestBuildImage(c *check.C) {
 			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/data/context.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-			{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "true"},
+			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 		})
 		return false, nil, nil
 	})

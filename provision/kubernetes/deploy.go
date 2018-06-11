@@ -172,7 +172,7 @@ func createImageBuildPod(ctx context.Context, params createPodParams) error {
 		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
 		destinationImages: params.destinationImages,
 		inputFile:         params.inputFile,
-		isFileBuild:       true,
+		dockerfileBuild:   true,
 	})
 	if err != nil {
 		return err
@@ -1059,7 +1059,7 @@ type deployAgentConfig struct {
 	registryAuthUser  string
 	registryAddress   string
 	runAsUser         string
-	isFileBuild       bool
+	dockerfileBuild   bool
 }
 
 func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
@@ -1234,7 +1234,7 @@ func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: c.registryAddress},
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: c.inputFile},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: c.runAsUser},
-		{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: strconv.FormatBool(c.isFileBuild)},
+		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: strconv.FormatBool(c.dockerfileBuild)},
 	}
 }
 
