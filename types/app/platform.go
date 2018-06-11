@@ -48,6 +48,7 @@ var (
 	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
 	ErrDuplicatePlatform      = errors.New("Duplicate platform")
 	ErrInvalidPlatform        = errors.New("Invalid platform")
+	ErrMissingFileContent     = errors.New("Missing file content.")
 	ErrDeletePlatformWithApps = errors.New("Platform has apps. You must remove them before remove the platform.")
 	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
 		Message: "Invalid platform name, should have at most 63 " +

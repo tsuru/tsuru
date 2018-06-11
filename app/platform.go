@@ -5,6 +5,7 @@
 package app
 
 import (
+	"io/ioutil"
 	"strconv"
 
 	"github.com/globalsign/mgo/bson"
@@ -92,7 +93,15 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.Args["dockerfile"] != "" || opts.Input != nil {
+	if opts.Input != nil {
+		data, err := ioutil.ReadAll(opts.Input)
+		if err != nil {
+			return err
+		}
+		if len(data) == 0 {
+			return appTypes.ErrMissingFileContent
+		}
+		opts.Data = data
 		err = builder.PlatformUpdate(opts)
 		if err != nil {
 			return err
