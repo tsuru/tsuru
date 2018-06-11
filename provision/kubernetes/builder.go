@@ -81,7 +81,7 @@ func (c *KubeClient) BuildImage(name string, inputStream io.Reader, output io.Wr
 	if err != nil {
 		return err
 	}
-	defer cleanupPod(client, buildPodName, client.Namespace(""))
+	defer cleanupPod(client, buildPodName, client.Namespace())
 	params := createPodParams{
 		client:            client,
 		podName:           buildPodName,

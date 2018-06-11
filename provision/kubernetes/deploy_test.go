@@ -1372,7 +1372,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		inputFile:         "/data/context.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(s.client.Namespace("")).List(metav1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1390,7 +1390,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		{Name: "DEPLOYAGENT_IS_FILE_BUILD", Value: "true"},
 	})
-	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.4.0")
+	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.5.0")
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 

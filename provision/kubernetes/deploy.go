@@ -1172,7 +1172,7 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 		},
 	}
 	_, uid := dockercommon.UserForContainer()
-	ns := client.Namespace("")
+	ns := client.Namespace()
 	pullSecrets, err := getImagePullSecrets(client, ns, sourceImage, conf.image)
 	if err != nil {
 		return apiv1.Pod{}, err
