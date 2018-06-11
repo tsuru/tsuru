@@ -196,10 +196,13 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 		},
 	}
 	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
 
-	err := ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	s.builder.OnPlatformUpdate = func(o appTypes.PlatformOptions) error {
+		c.Assert(o.Data, check.NotNil)
+		return nil
+	}
+	err := ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(appTypes.PlatformOptions{Name: "other", Args: args})
@@ -226,7 +229,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 		},
 	}
 	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "true"
 	appName := "test-app-1"
 	app := App{
@@ -236,7 +238,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -272,7 +274,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewReader(nil)})
+	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -336,7 +338,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 		},
 	}
 	args := make(map[string]string)
-	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "false"
 	appName := "test-app3"
 	app := App{
@@ -346,7 +347,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -373,7 +374,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 		},
 	}
 	args := make(map[string]string)
-	args["dockerfile"] = ""
 	args["disabled"] = "false"
 	appName := "test-app4"
 	app := App{
@@ -385,6 +385,42 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 
 	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
+	a, err := GetByName(appName)
+	c.Assert(err, check.IsNil)
+	c.Assert(a.UpdatePlatform, check.Equals, false)
+}
+
+func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfileContent(c *check.C) {
+	name := "test-platform-update"
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+			OnUpdate: func(p appTypes.Platform) error {
+				if p.Name == name {
+					c.Assert(p.Disabled, check.Equals, false)
+					return nil
+				}
+				return appTypes.ErrPlatformNotFound
+			},
+		},
+	}
+	args := make(map[string]string)
+	args["disabled"] = "false"
+	appName := "test-app4"
+	app := App{
+		Name:     appName,
+		Platform: name,
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+
+	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("")})
+	c.Assert(err, check.Equals, appTypes.ErrMissingFileContent)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, false)
@@ -425,7 +461,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)

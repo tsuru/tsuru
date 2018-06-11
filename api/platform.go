@@ -41,7 +41,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	if len(data) == 0 {
-		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: "missing file content"}
+		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrMissingFileContent.Error()}
 	}
 	args := make(map[string]string)
 	for key, values := range r.Form {

@@ -177,7 +177,7 @@ func (s *PlatformSuite) TestPlatformAddMissingFileContent(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "missing file content\n")
+	c.Assert(recorder.Body.String(), check.Equals, appTypes.ErrMissingFileContent.Error()+"\n")
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
