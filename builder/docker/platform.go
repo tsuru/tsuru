@@ -5,8 +5,6 @@
 package docker
 
 import (
-	"archive/tar"
-	"bytes"
 	"errors"
 	"io"
 
@@ -55,17 +53,7 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
-	var inputStream io.Reader
-	var buf bytes.Buffer
-	writer := tar.NewWriter(&buf)
-	writer.WriteHeader(&tar.Header{
-		Name: "Dockerfile",
-		Mode: 0644,
-		Size: int64(len(data)),
-	})
-	writer.Write(data)
-	writer.Close()
-	inputStream = &buf
+	inputStream := builder.CompressDockerFile(data)
 
 	imageName := image.PlatformImageName(name)
 	client.SetTimeout(0)
