@@ -5,6 +5,8 @@
 package builder
 
 import (
+	"archive/tar"
+	"bytes"
 	"io"
 
 	"github.com/pkg/errors"
@@ -141,4 +143,17 @@ func PlatformRemove(name string) error {
 		return multiErr
 	}
 	return errors.New("No builder available")
+}
+
+func CompressDockerFile(data []byte) io.Reader {
+	var buf bytes.Buffer
+	writer := tar.NewWriter(&buf)
+	writer.WriteHeader(&tar.Header{
+		Name: "Dockerfile",
+		Mode: 0644,
+		Size: int64(len(data)),
+	})
+	writer.Write(data)
+	writer.Close()
+	return &buf
 }

@@ -5,8 +5,6 @@
 package kubernetes
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"io"
 
@@ -36,16 +34,8 @@ func (b *kubernetesBuilder) buildPlatform(name string, args map[string]string, w
 	if err != nil {
 		return err
 	}
-	var buf bytes.Buffer
-	writer := tar.NewWriter(&buf)
-	writer.WriteHeader(&tar.Header{
-		Name: "Dockerfile",
-		Mode: 0644,
-		Size: int64(len(data)),
-	})
-	writer.Write(data)
-	writer.Close()
-	return client.BuildImage(name, &buf, w, ctx)
+	inputStream := builder.CompressDockerFile(data)
+	return client.BuildImage(name, inputStream, w, ctx)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {
