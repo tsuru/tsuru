@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	registrytest "github.com/tsuru/tsuru/registry/testing"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
@@ -481,12 +482,25 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 		},
 	}
 
-	err := ps.Remove("platform-doesnt-exist")
+	registry, err := registrytest.NewServer("127.0.0.1:0")
+	c.Assert(err, check.IsNil)
+	defer registry.Stop()
+	config.Set("registry", "docker")
+	defer config.Unset("registry")
+	config.Set("docker:registry", registry.Addr())
+	defer config.Unset("docker:registry")
+	registry.AddRepo(registrytest.Repository{Name: "tsuru/" + name, Tags: map[string]string{"latest": "abcdefg"}})
+	c.Assert(registry.Repos, check.HasLen, 1)
+	c.Assert(registry.Repos[0].Tags, check.HasLen, 1)
+
+	err = ps.Remove("platform-doesnt-exist")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
 
 	err = ps.Remove(name)
 	c.Assert(err, check.IsNil)
+	c.Assert(registry.Repos, check.HasLen, 1)
+	c.Assert(registry.Repos[0].Tags, check.HasLen, 0)
 
 	err = ps.Remove("")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
