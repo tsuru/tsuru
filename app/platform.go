@@ -10,10 +10,12 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
@@ -142,6 +144,10 @@ func (s *platformService) Remove(name string) error {
 	err = builder.PlatformRemove(name)
 	if err != nil {
 		log.Errorf("Failed to remove platform: %s", err)
+	}
+	imageName := image.PlatformImageName(name)
+	if err := registry.RemoveImage(imageName); err != nil {
+		log.Errorf("Failed to remove platform image from registry: %s", err)
 	}
 	return s.storage.Delete(appTypes.Platform{Name: name})
 }
