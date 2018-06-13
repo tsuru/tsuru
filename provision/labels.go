@@ -447,13 +447,14 @@ type ImageBuildLabelsOpts struct {
 	CustomLabels map[string]string
 	Provisioner  string
 	Prefix       string
+	IsBuild      bool
 }
 
 func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 	labels := map[string]string{
 		labelIsTsuru:     strconv.FormatBool(true),
 		labelProvisioner: opts.Provisioner,
-		labelIsBuild:     strconv.FormatBool(true),
+		labelIsBuild:     strconv.FormatBool(opts.IsBuild),
 	}
 	for k, v := range opts.CustomLabels {
 		labels[k] = v

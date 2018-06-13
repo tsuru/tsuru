@@ -131,6 +131,7 @@ type createPodParams struct {
 	attachInput       io.Reader
 	attachOutput      io.Writer
 	pod               *apiv1.Pod
+	mainContainer     string
 }
 
 func createBuildPod(ctx context.Context, params createPodParams) error {
@@ -165,9 +166,10 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 }
 
 func createImageBuildPod(ctx context.Context, params createPodParams) error {
+	params.mainContainer = "build-cont"
 	kubeConf := getKubeConfig()
 	pod, err := newDeployAgentImageBuildPod(params.client, params.sourceImage, params.podName, deployAgentConfig{
-		name:              "commiter-cont",
+		name:              params.mainContainer,
 		image:             kubeConf.DeploySidecarImage,
 		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
 		destinationImages: params.destinationImages,
@@ -245,14 +247,16 @@ func ensureAuthSecret(client *ClusterClient, namespace string) error {
 }
 
 func createPod(ctx context.Context, params createPodParams) error {
-	commitContainer := "committer-cont"
+	if params.mainContainer == "" {
+		params.mainContainer = "committer-cont"
+	}
 	kubeConf := getKubeConfig()
 	if params.pod == nil {
 		if len(params.cmds) != 3 {
 			return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 		}
 		pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
-			name:              commitContainer,
+			name:              params.mainContainer,
 			image:             kubeConf.DeploySidecarImage,
 			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
 			destinationImages: params.destinationImages,
@@ -298,9 +302,9 @@ func createPod(ctx context.Context, params createPodParams) error {
 		return err
 	}
 	if params.attachInput != nil {
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, params.pod.Name, commitContainer, false, nil, ns)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, params.pod.Name, params.mainContainer, false, nil, ns)
 		if err != nil {
-			return fmt.Errorf("error attaching to %s/%s: %v", params.pod.Name, commitContainer, err)
+			return fmt.Errorf("error attaching to %s/%s: %v", params.pod.Name, params.mainContainer, err)
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
@@ -1152,7 +1156,12 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
+	err := ensureNamespaceForApp(client, nil)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
 	labels := provision.ImageBuildLabels(provision.ImageBuildLabelsOpts{
+		IsBuild:     true,
 		Prefix:      tsuruLabelPrefix,
 		Provisioner: provisionerName,
 	})
