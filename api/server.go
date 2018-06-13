@@ -41,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	servicev2 "github.com/tsuru/tsuru/service/v2"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -123,6 +124,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Cluster, err = cluster.ClusterService()
+	if err != nil {
+		return err
+	}
+	servicemanager.ServiceBroker, err = servicev2.BrokerService()
 	return err
 }
 
@@ -405,6 +410,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.6", "POST", "/tokens", AuthorizationRequiredHandler(tokenCreate))
 	m.Add("1.6", "DELETE", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
 	m.Add("1.6", "PUT", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
+
+	m.Add("1.7", "GET", "/brokers", AuthorizationRequiredHandler(serviceBrokerList))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.4", "Post", "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
