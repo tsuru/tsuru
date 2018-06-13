@@ -10,16 +10,18 @@ import (
 	"github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/service"
 )
 
 var (
-	Cache     app.CacheService
-	Plan      app.PlanService
-	Platform  app.PlatformService
-	Team      auth.TeamService
-	TeamToken auth.TeamTokenService
-	Webhook   event.WebhookService
-	AppQuota  quota.QuotaService
-	UserQuota quota.QuotaService
-	Cluster   provision.ClusterService
+	Cache         app.CacheService
+	Plan          app.PlanService
+	Platform      app.PlatformService
+	Team          auth.TeamService
+	TeamToken     auth.TeamTokenService
+	Webhook       event.WebhookService
+	AppQuota      quota.QuotaService
+	UserQuota     quota.QuotaService
+	Cluster       provision.ClusterService
+	ServiceBroker service.ServiceBrokerService
 )

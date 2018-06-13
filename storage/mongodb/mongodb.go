@@ -10,15 +10,16 @@ import (
 
 func init() {
 	mongodbDriver := storage.DbDriver{
-		TeamStorage:      &TeamStorage{},
-		PlatformStorage:  &PlatformStorage{},
-		PlanStorage:      &PlanStorage{},
-		CacheStorage:     &cacheStorage{},
-		TeamTokenStorage: &teamTokenStorage{},
-		UserQuotaStorage: authQuotaStorage(),
-		AppQuotaStorage:  appQuotaStorage(),
-		WebhookStorage:   &webhookStorage{},
-		ClusterStorage:   &clusterStorage{},
+		TeamStorage:          &TeamStorage{},
+		PlatformStorage:      &PlatformStorage{},
+		PlanStorage:          &PlanStorage{},
+		CacheStorage:         &cacheStorage{},
+		TeamTokenStorage:     &teamTokenStorage{},
+		UserQuotaStorage:     authQuotaStorage(),
+		AppQuotaStorage:      appQuotaStorage(),
+		WebhookStorage:       &webhookStorage{},
+		ClusterStorage:       &clusterStorage{},
+		ServiceBrokerStorage: &serviceBrokerStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }
