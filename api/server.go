@@ -482,7 +482,7 @@ func setupDatabase() error {
 		dbDriverName = storage.DefaultDbDriverName
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
 	}
-	fmt.Fprintln(os.Stderr, "Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	fmt.Fprintln(os.Stderr, "Using %q database %q from the server %q.", dbDriverName, dbName, connString)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		return err
