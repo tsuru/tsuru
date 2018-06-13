@@ -480,9 +480,9 @@ func setupDatabase() error {
 	dbDriverName, err := config.GetString("database:driver")
 	if err != nil {
 		dbDriverName = storage.DefaultDbDriverName
-		fmt.Println("Warning: configuration didn't declare a database driver, using default driver.")
+		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a database driver, using default driver.")
 	}
-	fmt.Printf("Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
+	fmt.Fprintln(os.Stderr, "Using %q database %q from the server %q.\n", dbDriverName, dbName, connString)
 	_, err = storage.GetDbDriver(dbDriverName)
 	if err != nil {
 		return err
@@ -566,7 +566,7 @@ func startServer(handler http.Handler) error {
 	repoManager, err := config.GetString("repo-manager")
 	if err != nil {
 		repoManager = "gandalf"
-		fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
+		Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
 	}
 	fmt.Printf("Using %q repository manager.\n", repoManager)
 	err = rebuild.RegisterTask(appFinder)
@@ -575,7 +575,7 @@ func startServer(handler http.Handler) error {
 	}
 	scheme, err := getAuthScheme()
 	if err != nil {
-		fmt.Printf("Warning: configuration didn't declare auth:scheme, using default scheme.\n")
+		Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.\n")
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
