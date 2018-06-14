@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/event"
+	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -24,6 +25,7 @@ type DbDriver struct {
 	UserQuotaStorage quota.QuotaStorage
 	AppQuotaStorage  quota.QuotaStorage
 	WebhookStorage   event.WebhookStorage
+	ClusterStorage   provision.ClusterStorage
 }
 
 var (
