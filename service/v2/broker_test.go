@@ -3,6 +3,8 @@ package v2
 import (
 	"testing"
 
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
+	fake "github.com/pmorie/go-open-service-broker-client/v2/fake"
 	"github.com/tsuru/config"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types/service"
@@ -108,4 +110,55 @@ func (s *S) TestServiceBrokerList(c *check.C) {
 		{Name: "broker-name", URL: "https://localhost:8080"},
 		{Name: "broker-2", URL: "https://localhost:9090"},
 	})
+}
+
+func (s *S) TestServiceBrokerGetCatalog(c *check.C) {
+	config := fake.FakeClientConfiguration{
+		CatalogReaction: &fake.CatalogReaction{
+			Response: catalogResponse(),
+		},
+	}
+	clientFactory = fake.NewFakeClientFunc(config)
+	catalog, err := s.service.GetCatalog(service.Broker{Name: "fake-broker"})
+	c.Assert(err, check.IsNil)
+	c.Assert(catalog.Services, check.DeepEquals, catalogResponse().Services)
+}
+
+func catalogResponse() *osb.CatalogResponse {
+	return &osb.CatalogResponse{
+		Services: []osb.Service{
+			{
+				ID:          "acb56d7c-XXXX-XXXX-XXXX-feb140a59a66",
+				Name:        "fake-service",
+				Description: "fake service",
+				Tags: []string{
+					"tag1",
+					"tag2",
+				},
+				Requires: []string{
+					"route_forwarding",
+				},
+				Plans: []osb.Plan{
+					{
+						ID:          "d3031751-XXXX-XXXX-XXXX-a42377d3320e",
+						Name:        "fake-plan-1",
+						Description: "description1",
+						Metadata: map[string]interface{}{
+							"b": "c",
+							"d": "e",
+						},
+					},
+				},
+				DashboardClient: &osb.DashboardClient{
+					ID:          "398e2f8e-XXXX-XXXX-XXXX-19a71ecbcf64",
+					Secret:      "277cabb0-XXXX-XXXX-XXXX-7822c0a90e5d",
+					RedirectURI: "http://localhost:1234",
+				},
+				Metadata: map[string]interface{}{
+					"a": "b",
+					"c": "d",
+				},
+			},
+		},
+	}
 }
