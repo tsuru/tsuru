@@ -38,13 +38,13 @@ func (s *serviceBrokerStorage) Insert(b service.Broker) error {
 	return err
 }
 
-func (s *serviceBrokerStorage) Update(b service.Broker) error {
+func (s *serviceBrokerStorage) Update(name string, b service.Broker) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = serviceBrokerCollection(conn).Update(bson.M{"name": b.Name}, b)
+	err = serviceBrokerCollection(conn).Update(bson.M{"name": name}, b)
 	if err == mgo.ErrNotFound {
 		err = service.ErrServiceBrokerNotFound
 	}

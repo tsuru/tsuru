@@ -30,8 +30,8 @@ func (b *brokerService) Create(broker serviceTypes.Broker) error {
 	return b.storage.Insert(broker)
 }
 
-func (b *brokerService) Update(broker serviceTypes.Broker) error {
-	return b.storage.Update(broker)
+func (b *brokerService) Update(name string, broker serviceTypes.Broker) error {
+	return b.storage.Update(name, broker)
 }
 
 func (b *brokerService) Delete(name string) error {
