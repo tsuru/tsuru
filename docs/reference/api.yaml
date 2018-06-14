@@ -11,6 +11,26 @@ securityDefinitions:
     name: Authorization
     in: header
 paths:
+  /1.0/services:
+    get:
+      operationId: ServicesList
+      description: List services
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Services
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '#/definitions/Service'
+        '204':
+          description: No content
+      tags:
+        - service
+      security:
+        - Bearer: []
   /1.0/services/instances:
     get:
       operationId: InstancesList
