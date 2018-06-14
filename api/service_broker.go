@@ -41,7 +41,6 @@ func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // title: Add service broker
 // path: /services/brokers
 // method: POST
-// produce: application/json
 // responses:
 //   201: Service broker created
 //   401: Unauthorized
@@ -73,7 +72,6 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // title: Update service broker
 // path: /services/brokers/{broker}
 // method: PUT
-// produce: application/json
 // responses:
 //   200: Service broker updated
 //   401: Unauthorized
@@ -106,7 +104,6 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 // title: Delete service broker
 // path: /services/brokers/{broker}
 // method: DELETE
-// produce: application/json
 // responses:
 //   200: Service broker deleted
 //   401: Unauthorized
