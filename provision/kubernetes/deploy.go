@@ -107,6 +107,7 @@ func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, 
 			sz: size,
 		}
 	}
+
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdin:             stdin,
 		Stdout:            stdout,
@@ -1212,7 +1213,7 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 			},
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				apiv1.Container{
+				{
 					Name:  conf.name,
 					Image: conf.image,
 					VolumeMounts: append([]apiv1.VolumeMount{

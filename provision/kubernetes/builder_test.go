@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 )
 
@@ -311,9 +311,9 @@ func (s *S) TestBuildImage(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	buf := strings.NewReader("FROM tsuru/myplatform")
+	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
-	out := &bytes.Buffer{}
-	err := client.BuildImage("myplatform", ioutil.NopCloser(buf), out, context.Background())
+	out := &safe.Buffer{}
+	err := client.BuildImage("myplatform", ioutil.NopCloser(inputStream), out, context.Background())
 	c.Assert(err, check.IsNil)
 }
