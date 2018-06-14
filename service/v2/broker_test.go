@@ -52,7 +52,7 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 		URL:  "https://localhost:8080",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.service.Update(service.Broker{
+	err = s.service.Update("broker-name", service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:9090",
 	})

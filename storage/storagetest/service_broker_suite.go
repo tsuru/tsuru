@@ -64,7 +64,7 @@ func (s *ServiceBrokerSuite) TestUpdate(c *check.C) {
 	err := s.ServiceBrokerStorage.Insert(broker)
 	c.Assert(err, check.IsNil)
 	broker.AuthConfig.BasicAuthConfig.Password = "new-password"
-	err = s.ServiceBrokerStorage.Update(broker)
+	err = s.ServiceBrokerStorage.Update("broker", broker)
 	c.Assert(err, check.IsNil)
 	broker, err = s.ServiceBrokerStorage.Find("broker")
 	c.Assert(err, check.IsNil)
@@ -82,7 +82,7 @@ func (s *ServiceBrokerSuite) TestUpdateNotFound(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Update(broker)
+	err := s.ServiceBrokerStorage.Update("broker", broker)
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 }
 

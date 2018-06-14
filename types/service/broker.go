@@ -23,7 +23,7 @@ type Broker struct {
 
 type ServiceBrokerStorage interface {
 	Insert(Broker) error
-	Update(Broker) error
+	Update(string, Broker) error
 	Delete(string) error
 	FindAll() ([]Broker, error)
 	Find(string) (Broker, error)
@@ -31,7 +31,7 @@ type ServiceBrokerStorage interface {
 
 type ServiceBrokerService interface {
 	Create(Broker) error
-	Update(Broker) error
+	Update(string, Broker) error
 	Delete(string) error
 	Find(string) (Broker, error)
 	List() ([]Broker, error)
