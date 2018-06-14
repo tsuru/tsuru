@@ -21,6 +21,10 @@ type Broker struct {
 	AuthConfig *osb.AuthConfig
 }
 
+type Catalog struct {
+	Services []osb.Service
+}
+
 type ServiceBrokerStorage interface {
 	Insert(Broker) error
 	Update(string, Broker) error
@@ -35,4 +39,6 @@ type ServiceBrokerService interface {
 	Delete(string) error
 	Find(string) (Broker, error)
 	List() ([]Broker, error)
+
+	GetCatalog(Broker) (Catalog, error)
 }
