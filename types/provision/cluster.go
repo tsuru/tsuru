@@ -18,6 +18,15 @@ type Cluster struct {
 	Default     bool              `json:"default"`
 }
 
+type ClusterService interface {
+	Save(Cluster) error
+	List() ([]Cluster, error)
+	FindByName(string) (*Cluster, error)
+	FindByProvisioner(string) ([]Cluster, error)
+	FindByPool(string, string) (*Cluster, error)
+	Delete(Cluster) error
+}
+
 type ClusterStorage interface {
 	Upsert(Cluster) error
 	FindAll() ([]Cluster, error)

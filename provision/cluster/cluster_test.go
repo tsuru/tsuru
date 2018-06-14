@@ -15,6 +15,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -113,6 +114,177 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
+}
+
+func (s *S) TestClusterServiceSave(c *check.C) {
+	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				c.Assert(clust.Name, check.Equals, mycluster.Name)
+				c.Assert(clust.Provisioner, check.Equals, mycluster.Provisioner)
+				return nil
+			},
+		},
+	}
+
+	err := cs.Save(mycluster)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestClusterServiceSaveError(c *check.C) {
+	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(_ provTypes.Cluster) error {
+				return errors.New("storage error")
+			},
+		},
+	}
+
+	err := cs.Save(mycluster)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestClusterServiceSaveValidationError(c *check.C) {
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(_ provTypes.Cluster) error {
+				return nil
+			},
+		},
+	}
+
+	err := cs.Save(provTypes.Cluster{Name: "-name with invalid characters-", Provisioner: "fake", Default: true})
+	c.Assert(err, check.NotNil)
+	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "unknown", Default: true})
+	c.Assert(err, check.NotNil)
+	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "fake"})
+	c.Assert(err, check.NotNil)
+	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "fake", Default: true, Pools: []string{"pool1"}})
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestClusterServiceList(c *check.C) {
+	clusters := []provTypes.Cluster{{Name: "cluster1"}, {Name: "cluster2"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindAll: func() ([]provTypes.Cluster, error) {
+				return clusters, nil
+			},
+		},
+	}
+
+	result, err := cs.List()
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, clusters)
+}
+
+func (s *S) TestClusterServiceFindByName(c *check.C) {
+	cluster := provTypes.Cluster{Name: "cluster1"}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByName: func(name string) (*provTypes.Cluster, error) {
+				c.Assert(name, check.Equals, cluster.Name)
+				return &cluster, nil
+			},
+		},
+	}
+
+	result, err := cs.FindByName(cluster.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.NotNil)
+	c.Assert(*result, check.DeepEquals, cluster)
+}
+
+func (s *S) TestClusterServiceFindByNameNotFound(c *check.C) {
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByName: func(_ string) (*provTypes.Cluster, error) {
+				return nil, errors.New("not found")
+			},
+		},
+	}
+
+	result, err := cs.FindByName("unknown cluster")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "not found")
+}
+
+func (s *S) TestClusterServiceFindByProvisioner(c *check.C) {
+	clusters := []provTypes.Cluster{{Name: "cluster1"}, {Name: "cluster2"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByProvisioner: func(prov string) ([]provTypes.Cluster, error) {
+				c.Assert(prov, check.Equals, "kubernetes")
+				return clusters, nil
+			},
+		},
+	}
+
+	result, err := cs.FindByProvisioner("kubernetes")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, clusters)
+}
+
+func (s *S) TestClusterServiceFindByPool(c *check.C) {
+	cluster := provTypes.Cluster{Name: "cluster1", Provisioner: "kubernetes", Pools: []string{"pool-a"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByPool: func(prov, pool string) (*provTypes.Cluster, error) {
+				c.Assert(prov, check.Equals, cluster.Provisioner)
+				c.Assert(pool, check.Equals, cluster.Pools[0])
+				return &cluster, nil
+			},
+		},
+	}
+
+	result, err := cs.FindByPool(cluster.Provisioner, cluster.Pools[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.NotNil)
+	c.Assert(*result, check.DeepEquals, cluster)
+}
+
+func (s *S) TestClusterServiceFindByPoolNotFound(c *check.C) {
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByPool: func(_, _ string) (*provTypes.Cluster, error) {
+				return nil, errors.New("not found")
+			},
+		},
+	}
+
+	result, err := cs.FindByPool("unknown prov", "unknown pool")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "not found")
+}
+
+func (s *S) TestClusterServiceDelete(c *check.C) {
+	cluster := provTypes.Cluster{Name: "cluster1"}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnDelete: func(clust provTypes.Cluster) error {
+				c.Assert(clust, check.DeepEquals, cluster)
+				return nil
+			},
+		},
+	}
+
+	err := cs.Delete(cluster)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnDelete: func(_ provTypes.Cluster) error {
+				return errors.New("not found")
+			},
+		},
+	}
+
+	err := cs.Delete(provTypes.Cluster{})
+	c.Assert(err, check.ErrorMatches, "not found")
 }
 
 func (s *S) TestClusterSave(c *check.C) {
