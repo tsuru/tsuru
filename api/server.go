@@ -566,7 +566,7 @@ func startServer(handler http.Handler) error {
 	repoManager, err := config.GetString("repo-manager")
 	if err != nil {
 		repoManager = "gandalf"
-		Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
+		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
 	}
 	fmt.Printf("Using %q repository manager.\n", repoManager)
 	err = rebuild.RegisterTask(appFinder)
@@ -575,7 +575,7 @@ func startServer(handler http.Handler) error {
 	}
 	scheme, err := getAuthScheme()
 	if err != nil {
-		Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.\n")
+		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.")
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
