@@ -26,6 +26,7 @@ func (b *kubernetesBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error 
 }
 
 func (b *kubernetesBuilder) PlatformRemove(name string) error {
+	// Kubernetes already removes unused images on nodes.
 	return nil
 }
 
