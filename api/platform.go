@@ -66,12 +66,13 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(context.Background())
 	err = servicemanager.Platform.Create(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Data:   data,
-		Output: writer,
+		Output: evt,
 		Ctx:    ctx,
 	})
 	cancel()
@@ -120,12 +121,13 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(context.Background())
 	err = servicemanager.Platform.Update(appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
-		Output: writer,
+		Output: evt,
 		Ctx:    ctx,
 	})
 	cancel()
