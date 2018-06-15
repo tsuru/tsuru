@@ -12,9 +12,9 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1beta2 "k8s.io/api/apps/v1beta2"
@@ -337,14 +337,17 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 
 func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 	s.mock.MockfakeNodes(c)
-	cluster2 := &cluster.Cluster{
+	clust := s.client.GetCluster()
+	c.Assert(clust, check.NotNil)
+	cluster2 := &provTypes.Cluster{
 		Name:        "cluster2",
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: provisionerName,
 	}
-	err := cluster2.Save()
-	c.Assert(err, check.IsNil)
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*clust, *cluster2}, nil
+	}
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: nodecontainer.BsDefaultName,
 		Config: docker.Config{
@@ -352,7 +355,7 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 		},
 		HostConfig: docker.HostConfig{},
 	}
-	err = nodecontainer.AddNewContainer("", &c1)
+	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	m := nodeContainerManager{}
 	pool := "main"

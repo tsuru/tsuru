@@ -14,8 +14,9 @@ import (
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
+	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -47,11 +48,11 @@ var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, 
 
 type ClusterClient struct {
 	kubernetes.Interface `json:"-" bson:"-"`
-	*cluster.Cluster
+	*provTypes.Cluster
 	restConfig *rest.Config
 }
 
-func getRestBaseConfig(c *cluster.Cluster) (*rest.Config, error) {
+func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	gv, err := schema.ParseGroupVersion("/v1")
 	if err != nil {
 		return nil, err
@@ -67,7 +68,7 @@ func getRestBaseConfig(c *cluster.Cluster) (*rest.Config, error) {
 	}, nil
 }
 
-func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
+func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	cfg, err := getRestBaseConfig(c)
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 	return cfg, nil
 }
 
-func getInClusterConfig(c *cluster.Cluster) (*rest.Config, error) {
+func getInClusterConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	cfg, err := getRestBaseConfig(c)
 	if err != nil {
 		return nil, err
@@ -109,7 +110,7 @@ func getInClusterConfig(c *cluster.Cluster) (*rest.Config, error) {
 	return cfg, nil
 }
 
-func NewClusterClient(clust *cluster.Cluster) (*ClusterClient, error) {
+func NewClusterClient(clust *provTypes.Cluster) (*ClusterClient, error) {
 	var cfg *rest.Config
 	var err error
 	if len(clust.Addresses) == 0 {
@@ -203,7 +204,7 @@ func (c *ClusterClient) RestConfig() *rest.Config {
 	return c.restConfig
 }
 
-func (c *ClusterClient) GetCluster() *cluster.Cluster {
+func (c *ClusterClient) GetCluster() *provTypes.Cluster {
 	return c.Cluster
 }
 
@@ -214,13 +215,13 @@ type clusterApp struct {
 
 func clustersForApps(apps []provision.App) ([]clusterApp, error) {
 	clusterClientMap := map[string]clusterApp{}
-	clusterPoolMap := map[string]*cluster.Cluster{}
+	clusterPoolMap := map[string]*provTypes.Cluster{}
 	var err error
 	for _, a := range apps {
 		poolName := a.GetPool()
 		clust, inMap := clusterPoolMap[poolName]
 		if !inMap {
-			clust, err = cluster.ForPool(provisionerName, poolName)
+			clust, err = servicemanager.Cluster.FindByPool(provisionerName, poolName)
 			if err != nil {
 				return nil, err
 			}
@@ -246,7 +247,7 @@ func clustersForApps(apps []provision.App) ([]clusterApp, error) {
 }
 
 func clusterForPool(pool string) (*ClusterClient, error) {
-	clust, err := cluster.ForPool(provisionerName, pool)
+	clust, err := servicemanager.Cluster.FindByPool(provisionerName, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -254,13 +255,13 @@ func clusterForPool(pool string) (*ClusterClient, error) {
 }
 
 func allClusters() ([]*ClusterClient, error) {
-	clusters, err := cluster.ForProvisioner(provisionerName)
+	clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
 	if err != nil {
 		return nil, err
 	}
 	clients := make([]*ClusterClient, len(clusters))
 	for i := range clusters {
-		clients[i], err = NewClusterClient(clusters[i])
+		clients[i], err = NewClusterClient(&clusters[i])
 		if err != nil {
 			return nil, err
 		}

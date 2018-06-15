@@ -15,11 +15,12 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-func createClusterMachine(c *cluster.Cluster) error {
+func createClusterMachine(c *provTypes.Cluster) error {
 	if len(c.CreateData) == 0 {
 		return nil
 	}
@@ -60,7 +61,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var provCluster cluster.Cluster
+	var provCluster provTypes.Cluster
 	err = r.ParseForm()
 	if err == nil {
 		err = dec.DecodeValues(&provCluster, r.Form)
@@ -82,7 +83,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	_, err = cluster.ByName(provCluster.Name)
+	_, err = servicemanager.Cluster.FindByName(provCluster.Name)
 	if err == nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,
@@ -105,7 +106,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	err = provCluster.Save()
+	err = servicemanager.Cluster.Save(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -131,7 +132,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var provCluster cluster.Cluster
+	var provCluster provTypes.Cluster
 	err = r.ParseForm()
 	if err == nil {
 		err = dec.DecodeValues(&provCluster, r.Form)
@@ -154,9 +155,9 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	_, err = cluster.ByName(provCluster.Name)
+	_, err = servicemanager.Cluster.FindByName(provCluster.Name)
 	if err != nil {
-		if err == cluster.ErrClusterNotFound {
+		if err == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
@@ -176,7 +177,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 			return err
 		}
 	}
-	err = provCluster.Save()
+	err = servicemanager.Cluster.Save(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -198,9 +199,9 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	clusters, err := cluster.AllClusters()
+	clusters, err := servicemanager.Cluster.List()
 	if err != nil {
-		if err == cluster.ErrNoCluster {
+		if err == provTypes.ErrNoCluster {
 			w.WriteHeader(http.StatusNoContent)
 			return nil
 		}
@@ -236,9 +237,9 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = cluster.DeleteCluster(clusterName)
+	err = servicemanager.Cluster.Delete(provTypes.Cluster{Name: clusterName})
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrClusterNotFound {
+		if errors.Cause(err) == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),

@@ -7,7 +7,6 @@ package storagetest
 import (
 	"sort"
 
-	clusterPkg "github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
@@ -80,7 +79,7 @@ func (s *ClusterSuite) TestFindClusterByName(c *check.C) {
 	c.Assert(clust.Name, check.Equals, cluster.Name)
 
 	clust, err = s.ClusterStorage.FindByName("wat")
-	c.Assert(err, check.Equals, clusterPkg.ErrClusterNotFound)
+	c.Assert(err, check.Equals, provision.ErrClusterNotFound)
 	c.Assert(clust, check.IsNil)
 }
 
@@ -126,7 +125,7 @@ func (s *ClusterSuite) TestFindClusterByPool(c *check.C) {
 	c.Assert(cluster.Name, check.Equals, "swarmcluster")
 
 	cluster, err = s.ClusterStorage.FindByPool("swarm", "pool-a")
-	c.Assert(err, check.Equals, clusterPkg.ErrNoCluster)
+	c.Assert(err, check.Equals, provision.ErrNoCluster)
 	c.Assert(cluster, check.IsNil)
 }
 
@@ -137,6 +136,6 @@ func (s *ClusterSuite) TestDeleteCluster(c *check.C) {
 	err = s.ClusterStorage.Delete(cluster)
 	c.Assert(err, check.IsNil)
 	clust, err := s.ClusterStorage.FindByName(cluster.Name)
-	c.Assert(err, check.Equals, clusterPkg.ErrClusterNotFound)
+	c.Assert(err, check.Equals, provision.ErrClusterNotFound)
 	c.Assert(clust, check.IsNil)
 }

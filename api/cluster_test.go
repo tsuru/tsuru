@@ -12,38 +12,37 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/iaas"
-	"github.com/tsuru/tsuru/provision/cluster"
+	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestCreateCluster(c *check.C) {
-	kubeCluster := cluster.Cluster{
+	kubeCluster := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Provisioner: "fake",
 		Default:     true,
 	}
+	s.mockService.Cluster.OnFindByName = func(name string) (*provTypes.Cluster, error) {
+		c.Assert(name, check.Equals, kubeCluster.Name)
+		return nil, provTypes.ErrNoCluster
+	}
 	encoded, err := form.EncodeToString(kubeCluster)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(encoded)
-	request, err := http.NewRequest("POST", "/1.3/provisioner/clusters", body)
+	request, err := http.NewRequest(http.MethodPost, "/1.3/provisioner/clusters", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
-	c.Assert(err, check.IsNil)
-	c.Assert(clusters, check.HasLen, 1)
-	c.Assert(clusters[0].Name, check.Equals, "c1")
-	c.Assert(clusters[0].Addresses, check.DeepEquals, []string{"addr1"})
-	c.Assert(clusters[0].Default, check.Equals, true)
 }
 
 func (s *S) TestCreateClusterWithCreateData(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
-	kubeCluster := cluster.Cluster{
+	kubeCluster := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{},
 		Provisioner: "fake",
@@ -53,55 +52,110 @@ func (s *S) TestCreateClusterWithCreateData(c *check.C) {
 			"iaas": "test-iaas",
 		},
 	}
+	s.mockService.Cluster.OnFindByName = func(name string) (*provTypes.Cluster, error) {
+		c.Assert(name, check.Equals, kubeCluster.Name)
+		return nil, provTypes.ErrNoCluster
+	}
+	s.mockService.Cluster.OnSave = func(clust provTypes.Cluster) error {
+		c.Assert(clust.Addresses, check.DeepEquals, []string{"http://test1.somewhere.com:2375"})
+		return nil
+	}
 	encoded, err := form.EncodeToString(kubeCluster)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(encoded)
-	request, err := http.NewRequest("POST", "/1.3/provisioner/clusters", body)
+	request, err := http.NewRequest(http.MethodPost, "/1.3/provisioner/clusters", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
+}
+
+func (s *S) TestCreateClusterAlreadyExists(c *check.C) {
+	kubeCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Pools:       []string{"fakePool"},
+	}
+	encoded, err := form.EncodeToString(kubeCluster)
 	c.Assert(err, check.IsNil)
-	c.Assert(clusters, check.HasLen, 1)
-	c.Assert(clusters[0].Name, check.Equals, "c1")
-	c.Assert(clusters[0].Addresses, check.DeepEquals, []string{"http://test1.somewhere.com:2375"})
-	c.Assert(clusters[0].Default, check.Equals, true)
+	body := strings.NewReader(encoded)
+	request, err := http.NewRequest(http.MethodPost, "/1.3/provisioner/clusters", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %q", recorder.Body.String()))
+}
+
+func (s *S) TestCreateClusterWithNonExistentPool(c *check.C) {
+	kubeCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Pools:       []string{"fakePool"},
+	}
+	s.mockService.Cluster.OnFindByName = func(name string) (*provTypes.Cluster, error) {
+		c.Assert(name, check.Equals, kubeCluster.Name)
+		return nil, provTypes.ErrNoCluster
+	}
+	encoded, err := form.EncodeToString(kubeCluster)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(encoded)
+	request, err := http.NewRequest(http.MethodPost, "/1.3/provisioner/clusters", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound, check.Commentf("body: %q", recorder.Body.String()))
 }
 
 func (s *S) TestUpdateCluster(c *check.C) {
-	kubeCluster := cluster.Cluster{
+	kubeCluster := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Provisioner: "fake",
 		Default:     true,
 	}
-	err := kubeCluster.Save()
-	c.Assert(err, check.IsNil)
 	kubeCluster.CustomData = map[string]string{"c1": "v1"}
 	encoded, err := form.EncodeToString(kubeCluster)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(encoded)
-	request, err := http.NewRequest("POST", "/1.4/provisioner/clusters/c1", body)
+	request, err := http.NewRequest(http.MethodPost, "/1.4/provisioner/clusters/c1", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
+}
+
+func (s *S) TestUpdateClusterNonExistentPool(c *check.C) {
+	kubeCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+	}
+	kubeCluster.Pools = []string{"fakePool"}
+	encoded, err := form.EncodeToString(kubeCluster)
 	c.Assert(err, check.IsNil)
-	c.Assert(clusters, check.HasLen, 1)
-	c.Assert(clusters[0].Name, check.Equals, "c1")
-	c.Assert(clusters[0].Addresses, check.DeepEquals, []string{"addr1"})
-	c.Assert(clusters[0].Default, check.Equals, true)
-	c.Assert(clusters[0].CustomData, check.DeepEquals, map[string]string{"c1": "v1"})
+	body := strings.NewReader(encoded)
+	request, err := http.NewRequest(http.MethodPost, "/1.4/provisioner/clusters/c1", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %q", recorder.Body.String()))
 }
 
 func (s *S) TestListClusters(c *check.C) {
-	kubeCluster := cluster.Cluster{
+	kubeCluster := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		CaCert:      []byte("testCA"),
@@ -110,18 +164,19 @@ func (s *S) TestListClusters(c *check.C) {
 		Provisioner: "fake",
 		Default:     true,
 	}
-	err := kubeCluster.Save()
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/1.3/provisioner/clusters", nil)
+	s.mockService.Cluster.OnList = func() ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{kubeCluster}, nil
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.3/provisioner/clusters", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	var retClusters []cluster.Cluster
+	var retClusters []provTypes.Cluster
 	err = json.Unmarshal(recorder.Body.Bytes(), &retClusters)
 	c.Assert(err, check.IsNil)
-	c.Assert(retClusters, check.DeepEquals, []cluster.Cluster{{
+	c.Assert(retClusters, check.DeepEquals, []provTypes.Cluster{{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		CaCert:      []byte("testCA"),
@@ -132,7 +187,10 @@ func (s *S) TestListClusters(c *check.C) {
 }
 
 func (s *S) TestListClustersNoContent(c *check.C) {
-	request, err := http.NewRequest("GET", "/1.3/provisioner/clusters", nil)
+	s.mockService.Cluster.OnList = func() ([]provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.3/provisioner/clusters", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -141,7 +199,10 @@ func (s *S) TestListClustersNoContent(c *check.C) {
 }
 
 func (s *S) TestDeleteClusterNotFound(c *check.C) {
-	request, err := http.NewRequest("DELETE", "/1.3/provisioner/clusters/c1", nil)
+	s.mockService.Cluster.OnDelete = func(_ provTypes.Cluster) error {
+		return provTypes.ErrClusterNotFound
+	}
+	request, err := http.NewRequest(http.MethodDelete, "/1.3/provisioner/clusters/c1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -150,72 +211,18 @@ func (s *S) TestDeleteClusterNotFound(c *check.C) {
 }
 
 func (s *S) TestDeleteCluster(c *check.C) {
-	kubeCluster := cluster.Cluster{
+	kubeCluster := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Default:     true,
 		Provisioner: "fake",
 	}
-	err := kubeCluster.Save()
+	err := servicemanager.Cluster.Save(kubeCluster)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/1.3/provisioner/clusters/c1", nil)
+	request, err := http.NewRequest(http.MethodDelete, "/1.3/provisioner/clusters/c1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
-	c.Assert(err, check.Equals, cluster.ErrNoCluster)
-	c.Assert(clusters, check.HasLen, 0)
-}
-
-func (s *S) TestCreateClusterWithNonexistentPool(c *check.C) {
-	kubeCluster := cluster.Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Provisioner: "fake",
-		Pools:       []string{"fakePool"},
-	}
-	encoded, err := form.EncodeToString(kubeCluster)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(encoded)
-	request, err := http.NewRequest("POST", "/1.3/provisioner/clusters", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
-	c.Assert(err, check.Equals, cluster.ErrNoCluster)
-	c.Assert(clusters, check.HasLen, 0)
-}
-
-func (s *S) TestAddClusterToNonexistentPool(c *check.C) {
-	kubeCluster := cluster.Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Provisioner: "fake",
-		Default:     true,
-	}
-	err := kubeCluster.Save()
-	c.Assert(err, check.IsNil)
-	kubeCluster.Pools = []string{"fakePool"}
-	encoded, err := form.EncodeToString(kubeCluster)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(encoded)
-	request, err := http.NewRequest("POST", "/1.4/provisioner/clusters/c1", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %q", recorder.Body.String()))
-	clusters, err := cluster.AllClusters()
-	c.Assert(err, check.IsNil)
-	c.Assert(clusters, check.HasLen, 1)
-	c.Assert(clusters[0].Name, check.Equals, "c1")
-	c.Assert(clusters[0].Addresses, check.DeepEquals, []string{"addr1"})
-	c.Assert(clusters[0].Pools, check.IsNil)
-	c.Assert(clusters[0].Default, check.Equals, true)
 }

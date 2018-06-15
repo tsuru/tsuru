@@ -11,8 +11,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/rest"
 )
@@ -85,7 +85,7 @@ qni/3jTJOxDGMH+x06HZjWietWmbY+aKWkKCyGGVVzlKTEBUMSSU
 )
 
 func (s *S) TestClusterInitClient(c *check.C) {
-	c1 := cluster.Cluster{
+	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		CaCert:      testCA,
@@ -94,8 +94,6 @@ func (s *S) TestClusterInitClient(c *check.C) {
 		Default:     true,
 		Provisioner: provisionerName,
 	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
 	cli, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(cli.Interface, check.NotNil)
@@ -115,14 +113,12 @@ func (s *S) TestClusterInitClient(c *check.C) {
 }
 
 func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
-	c1 := cluster.Cluster{
+	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1", "addr2"},
 		Default:     true,
 		Provisioner: provisionerName,
 	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
 	rand.Seed(3)
 	cfg, err := getRestConfig(&c1)
 	c.Assert(err, check.IsNil)
@@ -133,7 +129,7 @@ func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 }
 
 func (s *S) TestClusterClientSetTimeout(c *check.C) {
-	c1 := cluster.Cluster{
+	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1", "addr2"},
 		Default:     true,
@@ -146,7 +142,10 @@ func (s *S) TestClusterClientSetTimeout(c *check.C) {
 }
 
 func (s *S) TestClusterAppNamespace(c *check.C) {
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}}
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}}
+	s.mockService.Cluster.OnFindByPool = func(_, _ string) (*provTypes.Cluster, error) {
+		return &c1, nil
+	}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -158,15 +157,15 @@ func (s *S) TestClusterAppNamespace(c *check.C) {
 }
 
 func (s *S) TestClusterNamespace(c *check.C) {
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "x")
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+	c1 = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "default")
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
+	c1 = provTypes.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "default")
@@ -175,16 +174,16 @@ func (s *S) TestClusterNamespace(c *check.C) {
 func (s *S) TestClusterNamespacePerPool(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "x-mypool")
 	c.Assert(client.PoolNamespace(""), check.Equals, "x")
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+	c1 = provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "tsuru-mypool")
-	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
+	c1 = provTypes.Cluster{Addresses: []string{"addr1"}}
 	client, err = NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.PoolNamespace("mypool"), check.Equals, "tsuru-mypool")
@@ -192,7 +191,7 @@ func (s *S) TestClusterNamespacePerPool(c *check.C) {
 }
 
 func (s *S) TestClusterOvercommitFactor(c *check.C) {
-	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
 		"overcommit-factor":         "2",
 		"my-pool:overcommit-factor": "3",
 		"invalid:overcommit-factor": "a",
@@ -211,22 +210,24 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 }
 
 func (s *S) TestClustersForApps(c *check.C) {
-	c1 := cluster.Cluster{
+	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Default:     true,
 		Provisioner: provisionerName,
 	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	c2 := cluster.Cluster{
+	c2 := provTypes.Cluster{
 		Name:        "c2",
 		Addresses:   []string{"addr2"},
 		Pools:       []string{"p1", "p2"},
 		Provisioner: provisionerName,
 	}
-	err = c2.Save()
-	c.Assert(err, check.IsNil)
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+		if pool == "p1" || pool == "p2" {
+			return &c2, nil
+		}
+		return &c1, nil
+	}
 	a1 := provisiontest.NewFakeApp("myapp1", "python", 0)
 	a1.Pool = "xyz"
 	a2 := provisiontest.NewFakeApp("myapp2", "python", 0)

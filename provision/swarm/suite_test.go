@@ -19,13 +19,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -145,7 +145,7 @@ func (s *S) addTLSCluster(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	url := strings.Replace(s.clusterSrv.URL(), "http://", "https://", 1)
-	clust := &cluster.Cluster{
+	clust := &provTypes.Cluster{
 		Addresses:   []string{url},
 		Default:     true,
 		Name:        "c1",
@@ -161,7 +161,7 @@ func (s *S) addCluster(c *check.C) {
 	var err error
 	s.clusterSrv, err = dockerTesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
-	clust := &cluster.Cluster{
+	clust := &provTypes.Cluster{
 		Addresses:   []string{s.clusterSrv.URL()},
 		Default:     true,
 		Name:        "c1",
@@ -170,7 +170,7 @@ func (s *S) addCluster(c *check.C) {
 	s.initCluster(c, clust)
 }
 
-func (s *S) initCluster(c *check.C, clust *cluster.Cluster) {
+func (s *S) initCluster(c *check.C, clust *provTypes.Cluster) {
 	err := clust.Save()
 	c.Assert(err, check.IsNil)
 	s.clusterCli, err = newClusterClient(clust)
