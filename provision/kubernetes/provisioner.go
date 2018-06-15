@@ -21,11 +21,11 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -544,7 +544,7 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 		nodes = append(nodes, clusterNodes...)
 		return nil
 	})
-	if err == cluster.ErrNoCluster {
+	if err == provTypes.ErrNoCluster {
 		return nil, nil
 	}
 	if err != nil {
@@ -708,7 +708,7 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*ClusterClien
 		return nil
 	})
 	if err != nil {
-		if err == cluster.ErrNoCluster {
+		if err == provTypes.ErrNoCluster {
 			return nil, nil, provision.ErrNodeNotFound
 		}
 		return nil, nil, err
@@ -845,7 +845,7 @@ func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, wr
 	err := forEachCluster(func(cluster *ClusterClient) error {
 		return cleanupDaemonSet(cluster, name, pool)
 	})
-	if err == cluster.ErrNoCluster {
+	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err
@@ -929,7 +929,7 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 	clusters, err := allClusters()
 	if err != nil {
-		if err == cluster.ErrNoCluster {
+		if err == provTypes.ErrNoCluster {
 			return "", nil
 		}
 		return "", err

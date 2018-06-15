@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 const (
@@ -273,7 +274,7 @@ func (p *swarmProvisioner) Units(apps ...provision.App) ([]provision.Unit, error
 func (p *swarmProvisioner) units(a provision.App) ([]provision.Unit, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
+		if errors.Cause(err) == provTypes.ErrNoCluster {
 			return []provision.Unit{}, nil
 		}
 		return nil, err
@@ -430,7 +431,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
+		if errors.Cause(err) == provTypes.ErrNoCluster {
 			return nil, nil
 		}
 		return nil, err
@@ -476,7 +477,7 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) != cluster.ErrNoCluster {
+		if errors.Cause(err) != provTypes.ErrNoCluster {
 			return nil, err
 		}
 	}
@@ -641,7 +642,7 @@ func (p *swarmProvisioner) GetClient(a provision.App) (provision.BuilderDockerCl
 	if a == nil {
 		clusters, err := allClusters()
 		if err != nil {
-			if errors.Cause(err) == cluster.ErrNoCluster {
+			if errors.Cause(err) == provTypes.ErrNoCluster {
 				return nil, nil
 			}
 			return nil, err
@@ -759,7 +760,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		_, upsertErr := upsertService(*serviceSpec, client, placementOnly)
 		return upsertErr
 	})
-	if err == cluster.ErrNoCluster {
+	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err
@@ -774,7 +775,7 @@ func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer 
 	err := forEachCluster(func(client *clusterClient) error {
 		return client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
 	})
-	if err == cluster.ErrNoCluster {
+	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err
@@ -784,7 +785,7 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 	out := "Swarm provisioner reports the following nodes:\n"
 	clusters, err := allClusters()
 	if err != nil {
-		if errors.Cause(err) == cluster.ErrNoCluster {
+		if errors.Cause(err) == provTypes.ErrNoCluster {
 			return out + "    No Swarm node available.\n", nil
 		}
 		return "", err
@@ -1049,7 +1050,7 @@ func (p *swarmProvisioner) Sleep(a provision.App, process string) error {
 	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
 }
 
-func (p *swarmProvisioner) InitializeCluster(c *cluster.Cluster) error {
+func (p *swarmProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 	client, err := newClusterClient(c)
 	if err != nil {
 		return err

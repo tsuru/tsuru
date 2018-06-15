@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
-	clusterPkg "github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/types/provision"
 )
 
@@ -65,7 +64,7 @@ func (s *ClusterStorage) FindAll() ([]provision.Cluster, error) {
 		return nil, err
 	}
 	if len(clusters) == 0 {
-		return nil, clusterPkg.ErrNoCluster
+		return nil, provision.ErrNoCluster
 	}
 	return clusters, nil
 }
@@ -80,7 +79,7 @@ func (s *ClusterStorage) FindByName(name string) (*provision.Cluster, error) {
 	err = clustersCollection(conn).FindId(name).One(&c)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = clusterPkg.ErrClusterNotFound
+			err = provision.ErrClusterNotFound
 		}
 		return nil, err
 	}
@@ -108,7 +107,7 @@ func (s *ClusterStorage) FindByPool(provisioner, pool string) (*provision.Cluste
 	}
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, clusterPkg.ErrNoCluster
+			return nil, provision.ErrNoCluster
 		}
 		return nil, errors.WithStack(err)
 	}
@@ -141,7 +140,7 @@ func (s *ClusterStorage) Delete(c provision.Cluster) error {
 	defer conn.Close()
 	err = clustersCollection(conn).RemoveId(c.Name)
 	if err == mgo.ErrNotFound {
-		return clusterPkg.ErrClusterNotFound
+		return provision.ErrClusterNotFound
 	}
 	return err
 }

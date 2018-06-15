@@ -14,9 +14,9 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +32,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	err := forEachCluster(func(cluster *ClusterClient) error {
 		return m.deployNodeContainerForCluster(cluster, *config, pool, filter, placementOnly)
 	})
-	if err == cluster.ErrNoCluster {
+	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err

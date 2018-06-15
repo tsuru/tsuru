@@ -20,6 +20,7 @@ import (
 
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -28,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -741,9 +741,7 @@ func (s *S) TestGetNode(c *check.C) {
 }
 
 func (s *S) TestGetNodeWithoutCluster(c *check.C) {
-	err := cluster.DeleteCluster("c1")
-	c.Assert(err, check.IsNil)
-	_, err = s.p.GetNode("anything")
+	_, err := s.p.GetNode("anything")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
@@ -1562,8 +1560,9 @@ func (s *S) TestStartupMessage(c *check.C) {
     Kubernetes node: 192.168.99.1
     Kubernetes node: 192.168.99.2
 `)
-	err = cluster.DeleteCluster("c1")
-	c.Assert(err, check.IsNil)
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return nil, nil
+	}
 	msg, err = s.p.StartupMessage()
 	c.Assert(err, check.IsNil)
 	c.Assert(msg, check.Equals, "")

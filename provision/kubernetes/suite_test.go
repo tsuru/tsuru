@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
@@ -24,6 +23,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -79,15 +79,13 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	clus := &cluster.Cluster{
+	clus := &provision.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: provisionerName,
 		CustomData:  map[string]string{},
 	}
-	err = clus.Save()
-	c.Assert(err, check.IsNil)
 	s.clusterClient, err = NewClusterClient(clus)
 	c.Assert(err, check.IsNil)
 	s.client = &kTesting.ClientWrapper{
@@ -157,5 +155,13 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.UserQuota.OnInc = func(email string, q int) error {
 		c.Assert(email, check.Equals, s.user.Email)
 		return nil
+	}
+	clust := s.client.GetCluster()
+	c.Assert(clust, check.NotNil)
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provision.Cluster, error) {
+		return []provision.Cluster{*clust}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provision.Cluster, error) {
+		return clust, nil
 	}
 }

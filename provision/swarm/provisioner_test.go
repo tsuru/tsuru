@@ -29,11 +29,12 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -852,7 +853,7 @@ func (s *S) TestUpdateNodeNoPreviousMetadata(c *check.C) {
 	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer clusterSrv.Stop()
-	clust := &cluster.Cluster{
+	clust := &provTypes.Cluster{
 		Addresses:   []string{clusterSrv.URL()},
 		Default:     true,
 		Name:        "c1",
@@ -1839,7 +1840,7 @@ func (s *S) TestInitializeCluster(c *check.C) {
 	clusterSrv, err := dockerTesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer clusterSrv.Stop()
-	clust := &cluster.Cluster{
+	clust := &provTypes.Cluster{
 		Addresses:   []string{clusterSrv.URL()},
 		Default:     true,
 		Name:        "c1",

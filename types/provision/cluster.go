@@ -4,6 +4,8 @@
 
 package provision
 
+import "errors"
+
 // Cluster represents a cluster of nodes.
 type Cluster struct {
 	Name        string            `json:"name"`
@@ -35,3 +37,8 @@ type ClusterStorage interface {
 	FindByPool(string, string) (*Cluster, error)
 	Delete(Cluster) error
 }
+
+var (
+	ErrClusterNotFound = errors.New("cluster not found")
+	ErrNoCluster       = errors.New("no cluster")
+)

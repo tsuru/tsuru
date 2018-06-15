@@ -12,19 +12,20 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/provision/cluster"
+	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/types/provision"
 )
 
 type clusterClient struct {
 	*docker.Client
-	*cluster.Cluster
+	*provision.Cluster
 }
 
-func clusterHasTLS(clust *cluster.Cluster) bool {
+func clusterHasTLS(clust *provision.Cluster) bool {
 	return len(clust.ClientCert) != 0 && len(clust.ClientKey) != 0
 }
 
-func tlsConfigForCluster(clust *cluster.Cluster) (*tls.Config, error) {
+func tlsConfigForCluster(clust *provision.Cluster) (*tls.Config, error) {
 	if !clusterHasTLS(clust) {
 		return nil, nil
 	}
@@ -42,7 +43,7 @@ func tlsConfigForCluster(clust *cluster.Cluster) (*tls.Config, error) {
 	}, nil
 }
 
-func newClusterClient(clust *cluster.Cluster) (*clusterClient, error) {
+func newClusterClient(clust *provision.Cluster) (*clusterClient, error) {
 	tlsConfig, err := tlsConfigForCluster(clust)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func newClusterClient(clust *cluster.Cluster) (*clusterClient, error) {
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {
-	clust, err := cluster.ForPool(provisionerName, pool)
+	clust, err := servicemanager.Cluster.FindByPool(provisionerName, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func clusterForPool(pool string) (*clusterClient, error) {
 }
 
 func allClusters() ([]*clusterClient, error) {
-	clusters, err := cluster.ForProvisioner(provisionerName)
+	clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
 	if err != nil {
 		return nil, err
 	}

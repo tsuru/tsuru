@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -19,6 +20,7 @@ type MockService struct {
 	Team      *auth.MockTeamService
 	UserQuota *quota.MockQuotaService
 	AppQuota  *quota.MockQuotaService
+	Cluster   *provision.MockClusterService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -29,12 +31,14 @@ func SetMockService(m *MockService) {
 	m.Team = &auth.MockTeamService{}
 	m.UserQuota = &quota.MockQuotaService{}
 	m.AppQuota = &quota.MockQuotaService{}
+	m.Cluster = &provision.MockClusterService{}
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
 	servicemanager.Team = m.Team
 	servicemanager.UserQuota = m.UserQuota
 	servicemanager.AppQuota = m.AppQuota
+	servicemanager.Cluster = m.Cluster
 }
 
 func (m *MockService) ResetCache() {
@@ -79,4 +83,13 @@ func (m *MockService) ResetAppQuota() {
 	m.AppQuota.OnSet = nil
 	m.AppQuota.OnSetLimit = nil
 	m.AppQuota.OnGet = nil
+}
+
+func (m *MockService) ResetCluster() {
+	m.Cluster.OnSave = nil
+	m.Cluster.OnList = nil
+	m.Cluster.OnFindByName = nil
+	m.Cluster.OnFindByProvisioner = nil
+	m.Cluster.OnFindByPool = nil
+	m.Cluster.OnDelete = nil
 }

@@ -20,12 +20,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	tsuruv1client "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
@@ -54,7 +54,7 @@ type ClusterInterface interface {
 	AppNamespace(provision.App) (string, error)
 	PoolNamespace(string) string
 	Namespace() string
-	GetCluster() *cluster.Cluster
+	GetCluster() *provTypes.Cluster
 }
 
 type KubeMock struct {
@@ -297,8 +297,6 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 	if len(urls) > 0 {
 		s.client.GetCluster().Addresses = urls
 		s.client.ClusterInterface.RestConfig().Host = urls[0]
-		err := s.client.GetCluster().Save()
-		c.Assert(err, check.IsNil)
 	}
 	for i := 1; i <= 2; i++ {
 		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{

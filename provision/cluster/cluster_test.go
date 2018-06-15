@@ -5,7 +5,6 @@
 package cluster
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -148,21 +147,108 @@ func (s *S) TestClusterServiceSaveError(c *check.C) {
 
 func (s *S) TestClusterServiceSaveValidationError(c *check.C) {
 	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(_ provTypes.Cluster) error {
-				return nil
+		storage: &provTypes.MockClusterStorage{},
+	}
+	tests := []struct {
+		c   provTypes.Cluster
+		err string
+	}{
+		{
+			c: provTypes.Cluster{
+				Name:        "  ",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
 			},
+			err: "cluster name is mandatory",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "1c",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "c_1",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "C1",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     false,
+				Provisioner: "fake",
+			},
+			err: "either default or a list of pools must be set",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Pools:       []string{"p1"},
+				Provisioner: "fake",
+			},
+			err: "cannot have both pools and default set",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Provisioner: "",
+			},
+			err: "provisioner name is mandatory",
+		},
+		{
+			c: provTypes.Cluster{
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Provisioner: "invalid",
+			},
+			err: "unknown provisioner: \"invalid\"",
 		},
 	}
-
-	err := cs.Save(provTypes.Cluster{Name: "-name with invalid characters-", Provisioner: "fake", Default: true})
-	c.Assert(err, check.NotNil)
-	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "unknown", Default: true})
-	c.Assert(err, check.NotNil)
-	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "fake"})
-	c.Assert(err, check.NotNil)
-	err = cs.Save(provTypes.Cluster{Name: "mycluster", Provisioner: "fake", Default: true, Pools: []string{"pool1"}})
-	c.Assert(err, check.NotNil)
+	for _, tt := range tests {
+		err := cs.Save(tt.c)
+		c.Assert(err, check.ErrorMatches, tt.err)
+		c.Assert(errors.Cause(err), check.FitsTypeOf, &tsuruErrors.ValidationError{})
+	}
 }
 
 func (s *S) TestClusterServiceList(c *check.C) {
@@ -287,91 +373,12 @@ func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
-func (s *S) TestClusterSave(c *check.C) {
-	cluster := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1", "addr2"},
-		CaCert:      testCA,
-		ClientCert:  testCert,
-		ClientKey:   testKey,
-		Default:     true,
-		Provisioner: "fake",
-		CustomData: map[string]string{
-			"a": "b",
-		},
-	}
-	err := cluster.Save()
-	c.Assert(err, check.IsNil)
-	coll, err := clusterCollection()
-	c.Assert(err, check.IsNil)
-	var dbCluster Cluster
-	err = coll.FindId("c1").One(&dbCluster)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbCluster, check.DeepEquals, cluster)
-}
-
-func (s *S) TestClusterSaveRemoveDefaults(c *check.C) {
-	c1 := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Default:     true,
-		Provisioner: "fake",
-	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	c2 := Cluster{
-		Name:        "c2",
-		Addresses:   []string{"addr2"},
-		Default:     true,
-		Provisioner: "fake",
-	}
-	err = c2.Save()
-	c.Assert(err, check.IsNil)
-	coll, err := clusterCollection()
-	c.Assert(err, check.IsNil)
-	var dbCluster1, dbCluster2 Cluster
-	err = coll.FindId("c1").One(&dbCluster1)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbCluster1.Default, check.Equals, false)
-	err = coll.FindId("c2").One(&dbCluster2)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbCluster2.Default, check.Equals, true)
-}
-
-func (s *S) TestClusterSaveRemovePools(c *check.C) {
-	c1 := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Pools:       []string{"p1", "p2"},
-		Provisioner: "fake",
-	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	c2 := Cluster{
-		Name:        "c2",
-		Addresses:   []string{"addr2"},
-		Pools:       []string{"p2", "p3"},
-		Provisioner: "fake",
-	}
-	err = c2.Save()
-	c.Assert(err, check.IsNil)
-	coll, err := clusterCollection()
-	c.Assert(err, check.IsNil)
-	var dbCluster1, dbCluster2 Cluster
-	err = coll.FindId("c1").One(&dbCluster1)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbCluster1.Pools, check.DeepEquals, []string{"p1"})
-	err = coll.FindId("c2").One(&dbCluster2)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbCluster2.Pools, check.DeepEquals, []string{"p2", "p3"})
-}
-
 type initClusterProv struct {
 	*provisiontest.FakeProvisioner
-	callCluster *Cluster
+	callCluster *provTypes.Cluster
 }
 
-func (p *initClusterProv) InitializeCluster(c *Cluster) error {
+func (p *initClusterProv) InitializeCluster(c *provTypes.Cluster) error {
 	p.callCluster = c
 	return nil
 }
@@ -382,207 +389,16 @@ func (s *S) TestClusterSaveCallsProvInit(c *check.C) {
 		return &inst, nil
 	})
 	defer provision.Unregister("fake-cluster")
-	c1 := Cluster{
+	c1 := provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"addr1"},
 		Pools:       []string{"p1", "p2"},
 		Provisioner: "fake-cluster",
 	}
-	err := c1.Save()
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{},
+	}
+	err := cs.Save(c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.DeepEquals, *inst.callCluster)
-}
-
-func (s *S) TestClusterSaveValidation(c *check.C) {
-	tests := []struct {
-		c   Cluster
-		err string
-	}{
-		{
-			c: Cluster{
-				Name:        "  ",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "cluster name is mandatory",
-		},
-		{
-			c: Cluster{
-				Name:        "1c",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: Cluster{
-				Name:        "c_1",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: Cluster{
-				Name:        "C1",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: Cluster{
-				Name:        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: Cluster{
-				Name:        "c1",
-				Addresses:   []string{"addr1"},
-				Default:     false,
-				Provisioner: "fake",
-			},
-			err: "either default or a list of pools must be set",
-		},
-		{
-			c: Cluster{
-				Name:        "c1",
-				Addresses:   []string{"addr1"},
-				Default:     true,
-				Pools:       []string{"p1"},
-				Provisioner: "fake",
-			},
-			err: "cannot have both pools and default set",
-		},
-		{
-			c: Cluster{
-				Name:        "c1",
-				Addresses:   []string{"addr1"},
-				Default:     true,
-				Provisioner: "",
-			},
-			err: "provisioner name is mandatory",
-		},
-		{
-			c: Cluster{
-				Name:        "c1",
-				Addresses:   []string{"addr1"},
-				Default:     true,
-				Provisioner: "invalid",
-			},
-			err: "unknown provisioner: \"invalid\"",
-		},
-	}
-	for _, tt := range tests {
-		err := tt.c.Save()
-		c.Assert(err, check.ErrorMatches, tt.err)
-		c.Assert(errors.Cause(err), check.FitsTypeOf, &tsuruErrors.ValidationError{})
-	}
-}
-
-func (s *S) TestAllClusters(c *check.C) {
-	c1 := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Pools:       []string{"p1"},
-		Provisioner: "fake",
-	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	c2 := Cluster{
-		Name:        "c2",
-		Addresses:   []string{"addr2"},
-		Pools:       []string{"p2"},
-		Provisioner: "fake",
-	}
-	err = c2.Save()
-	c.Assert(err, check.IsNil)
-	clusters, err := AllClusters()
-	c.Assert(err, check.IsNil)
-	sort.Slice(clusters, func(i, j int) bool {
-		return clusters[i].Name < clusters[j].Name
-	})
-	c.Assert(clusters, check.HasLen, 2)
-	c.Assert(clusters, check.DeepEquals, []*Cluster{&c1, &c2})
-}
-
-func (s *S) TestForPool(c *check.C) {
-	c1 := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Pools:       []string{"p1", "p2"},
-		Provisioner: "fake",
-	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	c2 := Cluster{
-		Name:        "c2",
-		Addresses:   []string{"addr2"},
-		Pools:       []string{"p3"},
-		Provisioner: "fake",
-	}
-	err = c2.Save()
-	c.Assert(err, check.IsNil)
-	c3 := Cluster{
-		Name:        "c3",
-		Addresses:   []string{"addr2"},
-		Default:     true,
-		Provisioner: "fake",
-	}
-	err = c3.Save()
-	c.Assert(err, check.IsNil)
-	cluster, err := ForPool("fake", "p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(cluster, check.DeepEquals, &c1)
-	c.Assert(cluster.Name, check.Equals, "c1")
-	cluster, err = ForPool("fake", "p2")
-	c.Assert(err, check.IsNil)
-	c.Assert(cluster.Name, check.Equals, "c1")
-	cluster, err = ForPool("fake", "p3")
-	c.Assert(err, check.IsNil)
-	c.Assert(cluster.Name, check.Equals, "c2")
-	cluster, err = ForPool("fake", "p4")
-	c.Assert(err, check.IsNil)
-	c.Assert(cluster.Name, check.Equals, "c3")
-	cluster, err = ForPool("fake", "")
-	c.Assert(err, check.IsNil)
-	c.Assert(cluster.Name, check.Equals, "c3")
-	err = DeleteCluster("c3")
-	c.Assert(err, check.IsNil)
-	_, err = ForPool("fake", "p4")
-	c.Assert(err, check.Equals, ErrNoCluster)
-	_, err = ForPool("other", "p3")
-	c.Assert(err, check.Equals, ErrNoCluster)
-}
-
-func (s *S) TestByName(c *check.C) {
-	c1 := Cluster{
-		Name:        "c1",
-		Addresses:   []string{"addr1"},
-		Pools:       []string{"p1", "p2"},
-		Provisioner: "fake",
-	}
-	err := c1.Save()
-	c.Assert(err, check.IsNil)
-	dbC1, err := ByName("c1")
-	c.Assert(err, check.IsNil)
-	c.Assert(c1, check.DeepEquals, *dbC1)
-	_, err = ByName("cx")
-	c.Assert(err, check.Equals, ErrClusterNotFound)
 }
