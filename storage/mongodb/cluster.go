@@ -75,7 +75,7 @@ func (s *ClusterStorage) FindByName(name string) (*provision.Cluster, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	var c provision.Cluster
+	var c cluster
 	err = clustersCollection(conn).FindId(name).One(&c)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -98,7 +98,7 @@ func (s *ClusterStorage) FindByPool(provisioner, pool string) (*provision.Cluste
 	}
 	defer conn.Close()
 	coll := clustersCollection(conn)
-	var c provision.Cluster
+	var c cluster
 	if pool != "" {
 		err = coll.Find(bson.M{"provisioner": provisioner, "pools": pool}).One(&c)
 	}
@@ -111,7 +111,8 @@ func (s *ClusterStorage) FindByPool(provisioner, pool string) (*provision.Cluste
 		}
 		return nil, errors.WithStack(err)
 	}
-	return &c, nil
+	cluster := provision.Cluster(c)
+	return &cluster, nil
 }
 
 func (s *ClusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) {
@@ -120,7 +121,7 @@ func (s *ClusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) 
 		return nil, err
 	}
 	defer conn.Close()
-	var clusters []provision.Cluster
+	var clusters []cluster
 	err = clustersCollection(conn).Find(query).All(&clusters)
 	if err != nil {
 		return nil, err
