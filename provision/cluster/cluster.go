@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/storage"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -36,7 +37,18 @@ func ClusterService() (provTypes.ClusterService, error) {
 	}, nil
 }
 
-func (s *clusterService) Save(c provTypes.Cluster) error {
+func (s *clusterService) Create(c provTypes.Cluster) error {
+	if err := s.createClusterMachine(&c); err != nil {
+		return err
+	}
+	return s.save(c)
+}
+
+func (s *clusterService) Update(c provTypes.Cluster) error {
+	return s.save(c)
+}
+
+func (s *clusterService) save(c provTypes.Cluster) error {
 	err := s.validate(c)
 	if err != nil {
 		return err
@@ -103,4 +115,26 @@ func (s *clusterService) initCluster(c provTypes.Cluster) error {
 		err = clusterProv.InitializeCluster(&c)
 	}
 	return err
+}
+
+func (s *clusterService) createClusterMachine(c *provTypes.Cluster) error {
+	if len(c.CreateData) == 0 {
+		return nil
+	}
+	if templateName, ok := c.CreateData["template"]; ok {
+		var err error
+		c.CreateData, err = iaas.ExpandTemplate(templateName, c.CreateData)
+		if err != nil {
+			return err
+		}
+	}
+	m, err := iaas.CreateMachine(c.CreateData)
+	if err != nil {
+		return err
+	}
+	c.Addresses = append(c.Addresses, m.FormatNodeAddress())
+	c.CaCert = m.CaCert
+	c.ClientCert = m.ClientCert
+	c.ClientKey = m.ClientKey
+	return nil
 }

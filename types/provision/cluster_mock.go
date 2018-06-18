@@ -60,7 +60,8 @@ func (m *MockClusterStorage) Delete(c Cluster) error {
 }
 
 type MockClusterService struct {
-	OnSave              func(Cluster) error
+	OnCreate            func(Cluster) error
+	OnUpdate            func(Cluster) error
 	OnList              func() ([]Cluster, error)
 	OnFindByName        func(string) (*Cluster, error)
 	OnFindByProvisioner func(string) ([]Cluster, error)
@@ -68,11 +69,18 @@ type MockClusterService struct {
 	OnDelete            func(Cluster) error
 }
 
-func (m *MockClusterService) Save(c Cluster) error {
-	if m.OnSave == nil {
+func (m *MockClusterService) Create(c Cluster) error {
+	if m.OnCreate == nil {
 		return nil
 	}
-	return m.OnSave(c)
+	return m.OnCreate(c)
+}
+
+func (m *MockClusterService) Update(c Cluster) error {
+	if m.OnUpdate == nil {
+		return nil
+	}
+	return m.OnUpdate(c)
 }
 
 func (m *MockClusterService) List() ([]Cluster, error) {
