@@ -29,11 +29,11 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
@@ -476,8 +476,9 @@ func (s *S) TestUnitsWithoutSwarmCluster(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	err = cluster.DeleteCluster("c1")
-	c.Assert(err, check.IsNil)
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 0)
@@ -859,8 +860,18 @@ func (s *S) TestUpdateNodeNoPreviousMetadata(c *check.C) {
 		Name:        "c1",
 		Provisioner: provisionerName,
 	}
-	err = clust.Save()
+	s.mockService.Cluster.OnFindByProvisioner = func(prov string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*clust}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+		return clust, nil
+	}
+	prov, err := provision.Get(clust.Provisioner)
 	c.Assert(err, check.IsNil)
+	if clusterProv, ok := prov.(cluster.InitClusterProvisioner); ok {
+		err = clusterProv.InitializeCluster(clust)
+		c.Assert(err, check.IsNil)
+	}
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
 		Address:  "http://127.0.0.1:2375",
 		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
