@@ -7,14 +7,13 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision/cluster"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kubeTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/servicemanager"
-	apptypes "github.com/tsuru/tsuru/types/app"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	"github.com/tsuru/tsuru/types/provision"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -29,7 +28,9 @@ type S struct {
 	conn          *db.Storage
 	clusterClient *kubeProv.ClusterClient
 	client        *kubeTesting.ClientWrapper
+	cluster       *provision.Cluster
 	mock          *kubeTesting.KubeMock
+	mockService   servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -48,16 +49,14 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	servicemanager.Cache = &apptypes.MockCacheService{}
-	clus := &cluster.Cluster{
+	servicemock.SetMockService(&s.mockService)
+	s.cluster = &provision.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr"},
 		Provisioner: "kubernetes",
 		Pools:       []string{"kube", "test-default"},
 	}
-	err = clus.Save()
-	c.Assert(err, check.IsNil)
-	s.clusterClient, err = kubeProv.NewClusterClient(clus)
+	s.clusterClient, err = kubeProv.NewClusterClient(s.cluster)
 	c.Assert(err, check.IsNil)
 	s.client = &kubeTesting.ClientWrapper{
 		Clientset:              fake.NewSimpleClientset(),
@@ -120,6 +119,17 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 		{Name: "app-kube2", Pool: "kube"},
 		{Name: "app-kube-failed", Pool: "kube-failed"},
 		{Name: "app-docker", Pool: "docker"},
+	}
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provision.Cluster, error) {
+		if prov != s.cluster.Provisioner {
+			return nil, provision.ErrNoCluster
+		}
+		for _, p := range s.cluster.Pools {
+			if pool == p {
+				return s.cluster, nil
+			}
+		}
+		return nil, provision.ErrNoCluster
 	}
 	for _, a := range apps {
 		err := s.conn.Apps().Insert(a)
