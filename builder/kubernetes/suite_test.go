@@ -15,17 +15,17 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/cluster"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kubeTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -52,9 +52,7 @@ type S struct {
 	clusterClient *kubeProv.ClusterClient
 	p             testProv
 	mock          *kubeTesting.KubeMock
-	mockService   struct {
-		Plan *appTypes.MockPlanService
-	}
+	mockService   servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -83,14 +81,12 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	clus := &cluster.Cluster{
+	clus := &provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: "kubernetes",
 	}
-	err = clus.Save()
-	c.Assert(err, check.IsNil)
 	s.clusterClient, err = kubeProv.NewClusterClient(clus)
 	c.Assert(err, check.IsNil)
 	s.client = &kubeTesting.ClientWrapper{
@@ -124,6 +120,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Default:  true,
 		CpuShare: 100,
 	}
+	servicemock.SetMockService(&s.mockService)
 	s.mockService.Plan = &appTypes.MockPlanService{
 		OnList: func() ([]appTypes.Plan, error) {
 			return []appTypes.Plan{plan}, nil
@@ -132,7 +129,9 @@ func (s *S) SetUpTest(c *check.C) {
 			return &plan, nil
 		},
 	}
-	servicemanager.Plan = s.mockService.Plan
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+		return clus, nil
+	}
 	s.b = &kubernetesBuilder{}
 	s.p = kubeProv.GetProvisioner()
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p)
