@@ -11,7 +11,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -247,7 +246,6 @@ func (s *S) TestClusterServiceSaveValidationError(c *check.C) {
 	for _, tt := range tests {
 		err := cs.Save(tt.c)
 		c.Assert(err, check.ErrorMatches, tt.err)
-		c.Assert(errors.Cause(err), check.FitsTypeOf, &tsuruErrors.ValidationError{})
 	}
 }
 

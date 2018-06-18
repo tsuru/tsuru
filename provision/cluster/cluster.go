@@ -41,6 +41,10 @@ func (s *clusterService) Save(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
+	err = s.initCluster(c)
+	if err != nil {
+		return err
+	}
 	return s.storage.Upsert(c)
 }
 
@@ -78,10 +82,6 @@ func (s *clusterService) validate(c provTypes.Cluster) error {
 	if c.Provisioner == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "provisioner name is mandatory"})
 	}
-	prov, err := provision.Get(c.Provisioner)
-	if err != nil {
-		return errors.WithStack(&tsuruErrors.ValidationError{Message: err.Error()})
-	}
 	if len(c.Pools) > 0 {
 		if c.Default {
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "cannot have both pools and default set"})
@@ -91,11 +91,16 @@ func (s *clusterService) validate(c provTypes.Cluster) error {
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "either default or a list of pools must be set"})
 		}
 	}
+	return nil
+}
+
+func (s *clusterService) initCluster(c provTypes.Cluster) error {
+	prov, err := provision.Get(c.Provisioner)
+	if err != nil {
+		return err
+	}
 	if clusterProv, ok := prov.(InitClusterProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+	return err
 }
