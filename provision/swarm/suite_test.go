@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	dockerTesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -171,8 +172,19 @@ func (s *S) addCluster(c *check.C) {
 }
 
 func (s *S) initCluster(c *check.C, clust *provTypes.Cluster) {
-	err := clust.Save()
+	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+		return clust, nil
+	}
+	s.mockService.Cluster.OnFindByProvisioner = func(prov string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*clust}, nil
+	}
+	prov, err := provision.Get(clust.Provisioner)
 	c.Assert(err, check.IsNil)
+	if clusterProv, ok := prov.(cluster.InitClusterProvisioner); ok {
+		err = clusterProv.InitializeCluster(clust)
+		c.Assert(err, check.IsNil)
+	}
+
 	s.clusterCli, err = newClusterClient(clust)
 	c.Assert(err, check.IsNil)
 	dockerInfo, err := s.clusterCli.Info()

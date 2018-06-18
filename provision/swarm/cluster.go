@@ -74,7 +74,7 @@ func allClusters() ([]*clusterClient, error) {
 	}
 	clients := make([]*clusterClient, len(clusters))
 	for i := range clusters {
-		clients[i], err = newClusterClient(clusters[i])
+		clients[i], err = newClusterClient(&clusters[i])
 		if err != nil {
 			return nil, err
 		}
