@@ -6,66 +6,58 @@ package v2
 
 import (
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	"github.com/tsuru/tsuru/storage"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
 
-var _ serviceTypes.ServiceBrokerService = &brokerService{}
-
-type brokerService struct {
-	storage serviceTypes.ServiceBrokerStorage
-}
-
-var clientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
+// ClientFactory provides a way to customize the Open Service
+// Broker API client. Should be used in tests to create a fake client.
+var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
 	return osb.NewClient(config)
 }
 
-func BrokerService() (serviceTypes.ServiceBrokerService, error) {
-	dbDriver, err := storage.GetCurrentDbDriver()
-	if err != nil {
-		dbDriver, err = storage.GetDefaultDbDriver()
-		if err != nil {
-			return nil, err
+// ServiceBrokerAPI defines the Open Service Broker API contract
+type ServiceBrokerAPI interface {
+	GetCatalog() (*osb.CatalogResponse, error)
+}
+
+// BrokerClient implements the Open Service Broker API for stored
+// Brokers
+type BrokerClient struct {
+	broker serviceTypes.Broker
+	client osb.Client
+}
+
+// NewClient configures a client that provides a Service Broker API
+// implementation
+func NewClient(b serviceTypes.Broker) (ServiceBrokerAPI, error) {
+	broker := BrokerClient{broker: b}
+	config := osb.DefaultClientConfiguration()
+	config.URL = b.URL
+	var authConfig *osb.AuthConfig
+	if b.AuthConfig != nil {
+		authConfig = &osb.AuthConfig{}
+		if b.AuthConfig.BasicAuthConfig != nil {
+			authConfig.BasicAuthConfig = &osb.BasicAuthConfig{
+				Username: b.AuthConfig.BasicAuthConfig.Username,
+				Password: b.AuthConfig.BasicAuthConfig.Password,
+			}
+		}
+		if b.AuthConfig.BearerConfig != nil {
+			authConfig.BearerConfig = &osb.BearerConfig{
+				Token: b.AuthConfig.BearerConfig.Token,
+			}
 		}
 	}
-	return &brokerService{storage: dbDriver.ServiceBrokerStorage}, nil
-}
-
-func (b *brokerService) Create(broker serviceTypes.Broker) error {
-	return b.storage.Insert(broker)
-}
-
-func (b *brokerService) Update(name string, broker serviceTypes.Broker) error {
-	return b.storage.Update(name, broker)
-}
-
-func (b *brokerService) Delete(name string) error {
-	return b.storage.Delete(name)
-}
-
-func (b *brokerService) Find(name string) (serviceTypes.Broker, error) {
-	return b.storage.Find(name)
-}
-
-func (b *brokerService) List() ([]serviceTypes.Broker, error) {
-	return b.storage.FindAll()
-}
-
-func (b *brokerService) GetCatalog(broker serviceTypes.Broker) (serviceTypes.Catalog, error) {
-	client, err := newClient(broker)
+	config.AuthConfig = authConfig
+	client, err := ClientFactory(config)
 	if err != nil {
-		return serviceTypes.Catalog{}, err
+		return nil, err
 	}
-	cat, err := client.GetCatalog()
-	if err != nil {
-		return serviceTypes.Catalog{}, err
-	}
-	return serviceTypes.Catalog{Services: cat.Services}, nil
+	broker.client = client
+	return &broker, nil
 }
 
-func newClient(broker serviceTypes.Broker) (osb.Client, error) {
-	config := osb.DefaultClientConfiguration()
-	config.URL = broker.URL
-	config.AuthConfig = broker.AuthConfig
-	return clientFactory(config)
+// GetCatalog returns the broker catalog
+func (b *BrokerClient) GetCatalog() (*osb.CatalogResponse, error) {
+	return b.client.GetCatalog()
 }

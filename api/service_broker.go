@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/service/v2"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/service"
 )
@@ -39,7 +40,7 @@ func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 }
 
 // title: Add service broker
-// path: /services/brokers
+// path: /brokers
 // method: POST
 // responses:
 //   201: Service broker created
@@ -70,7 +71,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 }
 
 // title: Update service broker
-// path: /services/brokers/{broker}
+// path: /brokers/{broker}
 // method: PUT
 // responses:
 //   200: Service broker updated
@@ -102,7 +103,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 // title: Delete service broker
-// path: /services/brokers/{broker}
+// path: /brokers/{broker}
 // method: DELETE
 // responses:
 //   200: Service broker deleted
@@ -121,4 +122,35 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
+}
+
+// title: Get service broker catalog
+// path: /brokers/{broker}/v2/catalog
+// method: GET
+// responses:
+//   200: Service broker catalog
+//	 400: Invalid data
+//   401: Unauthorized
+//	 404: Not Found
+func serviceBrokerCatalog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	brokerName := r.URL.Query().Get(":broker")
+	if brokerName == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
+	}
+	b, err := servicemanager.ServiceBroker.Find(brokerName)
+	if err != nil {
+		if err == service.ErrServiceBrokerNotFound {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		return err
+	}
+	bClient, err := v2.NewClient(b)
+	if err != nil {
+		return err
+	}
+	catalog, err := bClient.GetCatalog()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(catalog)
 }

@@ -6,8 +6,6 @@ package service
 
 import (
 	"errors"
-
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
 var (
@@ -15,14 +13,37 @@ var (
 	ErrServiceBrokerNotFound      = errors.New("service broker not found")
 )
 
+// Broker contains the data required to request services to a
+// Service Broker API.
 type Broker struct {
-	Name       string
-	URL        string
-	AuthConfig *osb.AuthConfig
+	// Name is the name of the Service Broker.
+	Name string
+	// URL is the URL of the Service Broker API endpoint.
+	URL string
+	// AuthConfig is the credentials needed to interact with the API.
+	AuthConfig *AuthConfig
 }
 
-type Catalog struct {
-	Services []osb.Service
+// AuthConfig is a union-type representing the possible auth configurations a
+// client may use to authenticate to a broker.  Currently, only basic auth is
+// supported.
+type AuthConfig struct {
+	BasicAuthConfig *BasicAuthConfig
+	BearerConfig    *BearerConfig
+}
+
+// BasicAuthConfig represents a set of basic auth credentials.
+type BasicAuthConfig struct {
+	// Username is the basic auth username.
+	Username string
+	// Password is the basic auth password.
+	Password string
+}
+
+// BearerConfig represents bearer token credentials.
+type BearerConfig struct {
+	// Token is the bearer token.
+	Token string
 }
 
 type ServiceBrokerStorage interface {
@@ -39,6 +60,4 @@ type ServiceBrokerService interface {
 	Delete(string) error
 	Find(string) (Broker, error)
 	List() ([]Broker, error)
-
-	GetCatalog(Broker) (Catalog, error)
 }
