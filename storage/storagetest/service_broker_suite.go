@@ -5,7 +5,6 @@
 package storagetest
 
 import (
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
@@ -19,8 +18,8 @@ func (s *ServiceBrokerSuite) TestInsert(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},
@@ -37,8 +36,8 @@ func (s *ServiceBrokerSuite) TestInsertDuplicate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},
@@ -54,8 +53,8 @@ func (s *ServiceBrokerSuite) TestUpdate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},
@@ -75,8 +74,8 @@ func (s *ServiceBrokerSuite) TestUpdateNotFound(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},
@@ -90,8 +89,8 @@ func (s *ServiceBrokerSuite) TestDelete(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},
@@ -128,8 +127,8 @@ func (s *ServiceBrokerSuite) TestFind(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "user",
 				Password: "password",
 			},

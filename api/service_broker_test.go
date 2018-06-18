@@ -11,6 +11,8 @@ import (
 
 	"github.com/ajg/form"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
+	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	"github.com/tsuru/tsuru/service/v2"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
@@ -63,12 +65,12 @@ func (s *S) TestServiceBrokerAdd(c *check.C) {
 	expectedBroker := service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "username",
 				Password: "password",
 			},
-			BearerConfig: &osb.BearerConfig{},
+			BearerConfig: &service.BearerConfig{},
 		},
 	}
 	bodyData, err := form.EncodeToString(expectedBroker)
@@ -114,12 +116,12 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
-		AuthConfig: &osb.AuthConfig{
-			BasicAuthConfig: &osb.BasicAuthConfig{
+		AuthConfig: &service.AuthConfig{
+			BasicAuthConfig: &service.BasicAuthConfig{
 				Username: "username",
 				Password: "password",
 			},
-			BearerConfig: &osb.BearerConfig{},
+			BearerConfig: &service.BearerConfig{},
 		},
 	}
 	err := servicemanager.ServiceBroker.Create(broker)
@@ -211,4 +213,45 @@ func (s *S) TestServiceBrokerDeleteUnauthorized(c *check.C) {
 	foundBroker, err := servicemanager.ServiceBroker.Find("broker-name")
 	c.Assert(err, check.IsNil)
 	c.Assert(foundBroker.Name, check.DeepEquals, "broker-name")
+}
+
+func (s *S) TestServiceBrokerCatalog(c *check.C) {
+	catalog := osb.CatalogResponse{
+		Services: []osb.Service{
+			{Name: "my-service"},
+		},
+	}
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{
+			Response: &catalog,
+		},
+	}
+	v2.ClientFactory = osbfake.NewFakeClientFunc(config)
+	broker := service.Broker{
+		Name: "broker-name",
+		URL:  "http://localhost:8080",
+	}
+	err := servicemanager.ServiceBroker.Create(broker)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/1.7/brokers/broker-name/v2/catalog", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var got osb.CatalogResponse
+	err = json.NewDecoder(recorder.Result().Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, catalog)
+}
+
+func (s *S) TestServiceBrokerCatalogNotFound(c *check.C) {
+	request, err := http.NewRequest("GET", "/1.7/brokers/broker-name/v2/catalog", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
