@@ -21,7 +21,8 @@ type Cluster struct {
 }
 
 type ClusterService interface {
-	Save(Cluster) error
+	Create(Cluster) error
+	Update(Cluster) error
 	List() ([]Cluster, error)
 	FindByName(string) (*Cluster, error)
 	FindByProvisioner(string) ([]Cluster, error)

@@ -86,7 +86,8 @@ func (m *MockService) ResetAppQuota() {
 }
 
 func (m *MockService) ResetCluster() {
-	m.Cluster.OnSave = nil
+	m.Cluster.OnCreate = nil
+	m.Cluster.OnUpdate = nil
 	m.Cluster.OnList = nil
 	m.Cluster.OnFindByName = nil
 	m.Cluster.OnFindByProvisioner = nil

@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -114,7 +115,71 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
-func (s *S) TestClusterServiceSave(c *check.C) {
+type TestIaaS struct{}
+
+func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
+	m.Status = "destroyed"
+	return nil
+}
+
+func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	m := iaas.Machine{
+		Id:      params["id"],
+		Status:  "running",
+		Address: params["id"] + ".somewhere.com",
+	}
+	if params["pool"] != "" {
+		m.Id += "-" + params["pool"]
+	}
+	return &m, nil
+}
+
+func newTestIaaS(string) iaas.IaaS {
+	return TestIaaS{}
+}
+
+func (s *S) TestClusterServiceCreateWithCreateData(c *check.C) {
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	kubeCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				c.Assert(clust.Name, check.Equals, kubeCluster.Name)
+				c.Assert(clust.Provisioner, check.Equals, kubeCluster.Provisioner)
+				c.Assert(clust.Addresses, check.DeepEquals, []string{"http://test1.somewhere.com:2375"})
+				return nil
+			},
+		},
+	}
+
+	err := cs.Create(kubeCluster)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestClusterServiceCreateError(c *check.C) {
+	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(_ provTypes.Cluster) error {
+				return errors.New("storage error")
+			},
+		},
+	}
+
+	err := cs.Create(mycluster)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestClusterServiceUpdate(c *check.C) {
 	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{
@@ -126,11 +191,11 @@ func (s *S) TestClusterServiceSave(c *check.C) {
 		},
 	}
 
-	err := cs.Save(mycluster)
+	err := cs.Update(mycluster)
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestClusterServiceSaveError(c *check.C) {
+func (s *S) TestClusterServiceUpdateError(c *check.C) {
 	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{
@@ -140,11 +205,11 @@ func (s *S) TestClusterServiceSaveError(c *check.C) {
 		},
 	}
 
-	err := cs.Save(mycluster)
+	err := cs.Update(mycluster)
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestClusterServiceSaveValidationError(c *check.C) {
+func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{},
 	}
@@ -244,7 +309,7 @@ func (s *S) TestClusterServiceSaveValidationError(c *check.C) {
 		},
 	}
 	for _, tt := range tests {
-		err := cs.Save(tt.c)
+		err := cs.Update(tt.c)
 		c.Assert(err, check.ErrorMatches, tt.err)
 	}
 }
@@ -381,7 +446,7 @@ func (p *initClusterProv) InitializeCluster(c *provTypes.Cluster) error {
 	return nil
 }
 
-func (s *S) TestClusterSaveCallsProvInit(c *check.C) {
+func (s *S) TestClusterUpdateCallsProvInit(c *check.C) {
 	inst := initClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
 	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
 		return &inst, nil
@@ -396,7 +461,7 @@ func (s *S) TestClusterSaveCallsProvInit(c *check.C) {
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{},
 	}
-	err := cs.Save(c1)
+	err := cs.Update(c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.DeepEquals, *inst.callCluster)
 }

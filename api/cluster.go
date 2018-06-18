@@ -13,34 +13,11 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
-
-func createClusterMachine(c *provTypes.Cluster) error {
-	if len(c.CreateData) == 0 {
-		return nil
-	}
-	if templateName, ok := c.CreateData["template"]; ok {
-		var err error
-		c.CreateData, err = iaas.ExpandTemplate(templateName, c.CreateData)
-		if err != nil {
-			return err
-		}
-	}
-	m, err := iaas.CreateMachine(c.CreateData)
-	if err != nil {
-		return err
-	}
-	c.Addresses = append(c.Addresses, m.FormatNodeAddress())
-	c.CaCert = m.CaCert
-	c.ClientCert = m.ClientCert
-	c.ClientKey = m.ClientKey
-	return nil
-}
 
 // title: create provisioner cluster
 // path: /provisioner/clusters
@@ -102,11 +79,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 			return err
 		}
 	}
-	err = createClusterMachine(&provCluster)
-	if err != nil {
-		return err
-	}
-	err = servicemanager.Cluster.Save(provCluster)
+	err = servicemanager.Cluster.Create(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -177,7 +150,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 			return err
 		}
 	}
-	err = servicemanager.Cluster.Save(provCluster)
+	err = servicemanager.Cluster.Update(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
