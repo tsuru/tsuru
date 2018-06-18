@@ -17,7 +17,7 @@ var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
 
 // ServiceBrokerAPI defines the Open Service Broker API contract
 type ServiceBrokerAPI interface {
-	GetCatalog() (*osb.CatalogResponse, error)
+	osb.Client
 }
 
 // BrokerClient implements the Open Service Broker API for stored
@@ -57,7 +57,38 @@ func NewClient(b serviceTypes.Broker) (ServiceBrokerAPI, error) {
 	return &broker, nil
 }
 
-// GetCatalog returns the broker catalog
 func (b *BrokerClient) GetCatalog() (*osb.CatalogResponse, error) {
 	return b.client.GetCatalog()
+}
+
+func (b *BrokerClient) ProvisionInstance(r *osb.ProvisionRequest) (*osb.ProvisionResponse, error) {
+	return b.client.ProvisionInstance(r)
+}
+
+func (b *BrokerClient) DeprovisionInstance(r *osb.DeprovisionRequest) (*osb.DeprovisionResponse, error) {
+	return b.client.DeprovisionInstance(r)
+}
+
+func (b *BrokerClient) UpdateInstance(r *osb.UpdateInstanceRequest) (*osb.UpdateInstanceResponse, error) {
+	return b.client.UpdateInstance(r)
+}
+
+func (b *BrokerClient) PollLastOperation(r *osb.LastOperationRequest) (*osb.LastOperationResponse, error) {
+	return b.client.PollLastOperation(r)
+}
+
+func (b *BrokerClient) GetBinding(r *osb.GetBindingRequest) (*osb.GetBindingResponse, error) {
+	return b.client.GetBinding(r)
+}
+
+func (b *BrokerClient) Unbind(r *osb.UnbindRequest) (*osb.UnbindResponse, error) {
+	return b.client.Unbind(r)
+}
+
+func (b *BrokerClient) Bind(r *osb.BindRequest) (*osb.BindResponse, error) {
+	return b.client.Bind(r)
+}
+
+func (b *BrokerClient) PollBindingLastOperation(r *osb.BindingLastOperationRequest) (*osb.LastOperationResponse, error) {
+	return b.client.PollBindingLastOperation(r)
 }
