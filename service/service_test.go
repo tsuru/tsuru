@@ -132,26 +132,6 @@ func (s *S) TestGetClientWithServiceUsername(c *check.C) {
 	c.Assert(cli, check.DeepEquals, expected)
 }
 
-func (s *S) TestGetClientWithouHTTP(c *check.C) {
-	endpoints := map[string]string{
-		"production": "mysql.api.com",
-	}
-	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.getClient("production")
-	c.Assert(err, check.IsNil)
-	c.Assert(cli.endpoint, check.Equals, "http://mysql.api.com")
-}
-
-func (s *S) TestGetClientWithHTTPS(c *check.C) {
-	endpoints := map[string]string{
-		"production": "https://mysql.api.com",
-	}
-	service := Service{Name: "redis", Endpoint: endpoints, Password: "abcde"}
-	cli, err := service.getClient("production")
-	c.Assert(err, check.IsNil)
-	c.Assert(cli.endpoint, check.Equals, "https://mysql.api.com")
-}
-
 func (s *S) TestGetClientWithUnknownEndpoint(c *check.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",

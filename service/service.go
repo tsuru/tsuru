@@ -11,6 +11,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -28,6 +29,20 @@ type Service struct {
 	Teams        []string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
+}
+
+type ServiceClient interface {
+	Create(instance *ServiceInstance, evt *event.Event, requestID string) error
+	Update(instance *ServiceInstance, evt *event.Event, requestID string) error
+	Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error
+	BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error)
+	BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error
+	UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
+	UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error
+	Status(instance *ServiceInstance, requestID string) (string, error)
+	Info(instance *ServiceInstance, requestID string) ([]map[string]string, error)
+	Plans(requestID string) ([]Plan, error)
+	Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error
 }
 
 var (
@@ -87,7 +102,7 @@ func (s *Service) Delete() error {
 	return err
 }
 
-func (s *Service) getClient(endpoint string) (cli *Client, err error) {
+func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
 	if e, ok := s.Endpoint[endpoint]; ok {
 		if p := schemeRegexp.MatchString(e); !p {
 			e = "http://" + e
