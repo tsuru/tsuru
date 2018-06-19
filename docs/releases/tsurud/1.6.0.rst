@@ -46,9 +46,8 @@ New features
 
   We now support adding registering webhook calls to be triggered when an event
   is fired. It's possible to configure an event filter to only trigger the
-  webhook when the filter is matched by the event. See the `webhooks reference
-  <https://tsuru-client.readthedocs.io/en/master/reference.html#event-webhooks>`_
-  for more details.
+  webhook when the filter is matched by the event. See the
+  :doc:`webhooks reference</managing/event-webhooks>` for more details.
 
 * Added support for deploy cancelation in kubernetes provisioner (`#2030
   <https://github.com/tsuru/tsuru/issues/2030>`_)
