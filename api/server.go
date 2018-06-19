@@ -41,7 +41,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
-	servicev2 "github.com/tsuru/tsuru/service/v2"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -127,7 +126,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.ServiceBroker, err = servicev2.BrokerService()
+	servicemanager.ServiceBroker, err = service.BrokerService()
 	return err
 }
 

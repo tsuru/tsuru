@@ -1,4 +1,4 @@
-package v2
+package service
 
 import (
 	"testing"
@@ -9,15 +9,15 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-type S struct {
+type BrokerSuite struct {
 	service *brokerService
 }
 
-var _ = check.Suite(&S{})
+var _ = check.Suite(&BrokerSuite{})
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-func (s *S) SetUpSuite(c *check.C) {
+func (s *BrokerSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_service_v2_tests")
@@ -26,7 +26,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.service = svc.(*brokerService)
 }
 
-func (s *S) SetUpTest(c *check.C) {
+func (s *BrokerSuite) SetUpTest(c *check.C) {
 	brokers, err := s.service.List()
 	c.Assert(err, check.IsNil)
 	for _, b := range brokers {
@@ -35,7 +35,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 }
 
-func (s *S) TestServiceBrokerCreate(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerCreate(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
@@ -46,7 +46,7 @@ func (s *S) TestServiceBrokerCreate(c *check.C) {
 	c.Assert(broker.URL, check.DeepEquals, "https://localhost:8080")
 }
 
-func (s *S) TestServiceBrokerUpdate(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerUpdate(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
@@ -62,7 +62,7 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 	c.Assert(broker.URL, check.DeepEquals, "https://localhost:9090")
 }
 
-func (s *S) TestServiceBrokerDelete(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerDelete(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
@@ -75,7 +75,7 @@ func (s *S) TestServiceBrokerDelete(c *check.C) {
 	c.Assert(brokers, check.DeepEquals, []service.Broker(nil))
 }
 
-func (s *S) TestServiceBrokerFind(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerFind(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
@@ -91,7 +91,7 @@ func (s *S) TestServiceBrokerFind(c *check.C) {
 	c.Assert(broker.URL, check.Equals, "https://localhost:9090")
 }
 
-func (s *S) TestServiceBrokerList(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerList(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
