@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/ajg/form"
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
@@ -133,15 +134,8 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //   401: Unauthorized
 //	 404: Not Found
 func serviceBrokerCatalog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	brokerName := r.URL.Query().Get(":broker")
-	if brokerName == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
-	}
-	b, err := servicemanager.ServiceBroker.Find(brokerName)
+	b, err := brokerFromRequest(w, r)
 	if err != nil {
-		if err == service.ErrServiceBrokerNotFound {
-			w.WriteHeader(http.StatusNotFound)
-		}
 		return err
 	}
 	bClient, err := v2.NewClient(b)
@@ -153,4 +147,182 @@ func serviceBrokerCatalog(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	return json.NewEncoder(w).Encode(catalog)
+}
+
+type provisionRequest struct {
+	ServiceName string
+	PlanName    string
+	TeamOwner   string
+	Parameters  map[string]interface{}
+}
+
+func serviceBrokerProvision(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var provRequest provisionRequest
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	if err := r.ParseForm(); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse form: %v", err)}
+	}
+	if err := dec.DecodeValues(&provRequest, r.Form); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse request: %v", err)}
+	}
+	if provRequest.TeamOwner == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("empty team owner.")}
+	}
+	instanceName := r.URL.Query().Get(":instance")
+	if instanceName == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("empty instance name.")}
+	}
+	broker, err := brokerFromRequest(w, r)
+	if err != nil {
+		return err
+	}
+	bClient, err := v2.NewClient(broker)
+	if err != nil {
+		return err
+	}
+	cat, err := bClient.GetCatalog()
+	if err != nil {
+		return err
+	}
+	var service osb.Service
+	for _, s := range cat.Services {
+		if s.Name == provRequest.ServiceName {
+			service = s
+			break
+		}
+	}
+	if service.ID == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("service %s not found for broker %s", provRequest.ServiceName, broker.Name)}
+	}
+	var plan osb.Plan
+	for _, p := range service.Plans {
+		if p.Name == provRequest.PlanName {
+			plan = p
+		}
+	}
+	if plan.ID == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("plan %s not found for service %s", provRequest.PlanName, provRequest.ServiceName)}
+	}
+	origData, err := json.Marshal(map[string]string{
+		"username": t.GetUserName(),
+	})
+	if err != nil {
+		return err
+	}
+	provResponse, err := bClient.ProvisionInstance(&osb.ProvisionRequest{
+		InstanceID:       instanceName,
+		ServiceID:        service.ID,
+		PlanID:           plan.ID,
+		Parameters:       provRequest.Parameters,
+		OrganizationGUID: "tsuru",
+		SpaceGUID:        provRequest.TeamOwner,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(origData),
+		},
+		Context: map[string]interface{}{
+			"organization_guid": "tsuru",
+			"space_guid":        provRequest.TeamOwner,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(provResponse)
+}
+
+type bindRequest struct {
+	AppName     string
+	ServiceName string
+	PlanName    string
+	Parameters  map[string]interface{}
+}
+
+func serviceBrokerBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var bindRequest bindRequest
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	if err := r.ParseForm(); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse form: %v", err)}
+	}
+	if err := dec.DecodeValues(&bindRequest, r.Form); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse request: %v", err)}
+	}
+	instanceName := r.URL.Query().Get(":instance")
+	if instanceName == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty instance name."}
+	}
+	broker, err := brokerFromRequest(w, r)
+	if err != nil {
+		return err
+	}
+	bClient, err := v2.NewClient(broker)
+	if err != nil {
+		return err
+	}
+	cat, err := bClient.GetCatalog()
+	if err != nil {
+		return err
+	}
+	var service osb.Service
+	for _, s := range cat.Services {
+		if s.Name == bindRequest.ServiceName {
+			service = s
+			break
+		}
+	}
+	if service.ID == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("service %s not found for broker %s", bindRequest.ServiceName, broker.Name)}
+	}
+	var plan osb.Plan
+	for _, p := range service.Plans {
+		if p.Name == bindRequest.PlanName {
+			plan = p
+		}
+	}
+	if plan.ID == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("plan %s not found for service %s", bindRequest.PlanName, bindRequest.ServiceName)}
+	}
+	origData, err := json.Marshal(map[string]string{
+		"username": t.GetUserName(),
+	})
+	if err != nil {
+		return err
+	}
+	bindResponse, err := bClient.Bind(&osb.BindRequest{
+		InstanceID: instanceName,
+		ServiceID:  service.ID,
+		PlanID:     plan.ID,
+		Parameters: bindRequest.Parameters,
+		BindingID:  instanceName + "-" + bindRequest.AppName,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(origData),
+		},
+		BindResource: &osb.BindResource{
+			AppGUID: &bindRequest.AppName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(bindResponse)
+}
+
+func brokerFromRequest(w http.ResponseWriter, r *http.Request) (service.Broker, error) {
+	brokerName := r.URL.Query().Get(":broker")
+	if brokerName == "" {
+		return service.Broker{}, &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
+	}
+	b, err := servicemanager.ServiceBroker.Find(brokerName)
+	if err != nil {
+		if err == service.ErrServiceBrokerNotFound {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		return service.Broker{}, err
+	}
+	return b, nil
 }

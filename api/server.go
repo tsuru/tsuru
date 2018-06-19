@@ -417,6 +417,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.7", "DELETE", "/brokers/{broker}", AuthorizationRequiredHandler(serviceBrokerDelete))
 
 	m.Add("1.7", "GET", "/brokers/{broker}/v2/catalog", AuthorizationRequiredHandler(serviceBrokerCatalog))
+	m.Add("1.7", "PUT", "/brokers/{broker}/v2/service_instances/{instance}", AuthorizationRequiredHandler(serviceBrokerProvision))
+	m.Add("1.7", "PUT", "/brokers/{broker}/v2/service_instances/{instance}/service_bindings", AuthorizationRequiredHandler(serviceBrokerBind))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.4", "Post", "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
