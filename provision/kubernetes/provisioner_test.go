@@ -240,7 +240,6 @@ func (s *S) TestAddNodeIaaSID(c *check.C) {
 		"tsuru.io/iaas-id": "id-1",
 		"tsuru.io/m1":      "v1",
 	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
 		"tsuru.io/pool":    "p1",
 		"tsuru.io/iaas-id": "id-1",
@@ -315,7 +314,6 @@ func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 		"tsuru.io/iaas-id": "id-1",
 		"tsuru.io/m2":      "v2",
 	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
 		"tsuru.io/pool":    "p2",
 		"tsuru.io/iaas-id": "id-1",
@@ -339,7 +337,6 @@ func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 		"tsuru.io/iaas-id": "id-1",
 		"tsuru.io/m2":      "v2",
 	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "id-1")
 }
 
 func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
@@ -366,7 +363,6 @@ func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
 		"tsuru.io/iaas-id": "valid-iaas-id",
 		"tsuru.io/m1":      "v1",
 	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.ProviderID, check.Equals, "valid-iaas-id")
 }
 
 func (s *S) TestUpdateNodeNoPool(c *check.C) {
