@@ -772,7 +772,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -839,7 +839,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -915,7 +915,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -979,7 +979,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -1043,7 +1043,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -1090,7 +1090,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -1141,7 +1141,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := serv.Create()
+	err := Create(serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",

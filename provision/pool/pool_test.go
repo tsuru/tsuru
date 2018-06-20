@@ -522,7 +522,7 @@ func (s *S) TestGetServices(c *check.C) {
 		return []authTypes.Team{{Name: "ateam"}}, nil
 	}
 	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}, OwnerTeams: []string{"ateam"}}
-	err := serv.Create()
+	err := service.Create(serv)
 	c.Assert(err, check.IsNil)
 	err = AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)

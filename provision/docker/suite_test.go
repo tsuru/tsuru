@@ -254,7 +254,7 @@ func (s *S) addServiceInstance(c *check.C, appName string, unitsIDs []string, fn
 		ts.Close()
 	}
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	var units []service.Unit
 	for _, s := range unitsIDs {

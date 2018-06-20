@@ -4247,7 +4247,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 
 func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -4297,7 +4297,7 @@ func (s *S) TestBindHandler(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -4362,7 +4362,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndItsTheOnlyService(
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -4394,7 +4394,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvaila
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "demacia", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -4407,7 +4407,7 @@ func (s *S) TestBindHandlerReturns400IfServiceIsBlacklistedAndMoreServicesAvaila
 	})
 	c.Assert(err, check.IsNil)
 	srvc2 := service.Service{Name: "varus", Endpoint: map[string]string{"production": ts.URL}, Password: "varus123", OwnerTeams: []string{s.team.Name}}
-	err = srvc2.Create()
+	err = service.Create(srvc2)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "pain-gaming", Platform: "zend", TeamOwner: s.team.Name, Env: map[string]bind.EnvVar{}}
 	err = app.CreateApp(&a, s.user)
@@ -4432,7 +4432,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -4576,12 +4576,12 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := []service.Service{
+	srvcs := []service.Service{
 		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
-	for _, service := range srvc {
-		err := service.Create()
+	for _, srvc := range srvcs {
+		err := service.Create(srvc)
 		c.Assert(err, check.IsNil)
 	}
 	instance := service.ServiceInstance{
@@ -4664,7 +4664,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4762,7 +4762,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4859,7 +4859,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4948,7 +4948,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "myendpoint"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -4995,12 +4995,12 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := []service.Service{
+	srvcs := []service.Service{
 		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
-	for _, service := range srvc {
-		err := service.Create()
+	for _, srvc := range srvcs {
+		err := service.Create(srvc)
 		c.Assert(err, check.IsNil)
 	}
 	a := app.App{
