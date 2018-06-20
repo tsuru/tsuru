@@ -5,7 +5,12 @@
 package service
 
 import (
+	"fmt"
+	"net/http"
+
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/event"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
 
@@ -13,11 +18,6 @@ import (
 // Broker API client. Should be used in tests to create a fake client.
 var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
 	return osb.NewClient(config)
-}
-
-// ServiceBrokerAPI defines the Open Service Broker API contract
-type ServiceBrokerAPI interface {
-	osb.Client
 }
 
 // BrokerClient implements the Open Service Broker API for stored
@@ -29,7 +29,7 @@ type BrokerClient struct {
 
 // NewClient configures a client that provides a Service Broker API
 // implementation
-func NewClient(b serviceTypes.Broker) (ServiceBrokerAPI, error) {
+func NewClient(b serviceTypes.Broker) (ServiceClient, error) {
 	broker := BrokerClient{broker: b}
 	config := osb.DefaultClientConfiguration()
 	config.URL = b.URL
@@ -57,38 +57,49 @@ func NewClient(b serviceTypes.Broker) (ServiceBrokerAPI, error) {
 	return &broker, nil
 }
 
-func (b *BrokerClient) GetCatalog() (*osb.CatalogResponse, error) {
-	return b.client.GetCatalog()
+func (b *BrokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) ProvisionInstance(r *osb.ProvisionRequest) (*osb.ProvisionResponse, error) {
-	return b.client.ProvisionInstance(r)
+func (b *BrokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) DeprovisionInstance(r *osb.DeprovisionRequest) (*osb.DeprovisionResponse, error) {
-	return b.client.DeprovisionInstance(r)
+func (b *BrokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) UpdateInstance(r *osb.UpdateInstanceRequest) (*osb.UpdateInstanceResponse, error) {
-	return b.client.UpdateInstance(r)
+func (b *BrokerClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) PollLastOperation(r *osb.LastOperationRequest) (*osb.LastOperationResponse, error) {
-	return b.client.PollLastOperation(r)
+func (b *BrokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) GetBinding(r *osb.GetBindingRequest) (*osb.GetBindingResponse, error) {
-	return b.client.GetBinding(r)
+func (b *BrokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
+	return "", fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Unbind(r *osb.UnbindRequest) (*osb.UnbindResponse, error) {
-	return b.client.Unbind(r)
+func (b *BrokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Bind(r *osb.BindRequest) (*osb.BindResponse, error) {
-	return b.client.Bind(r)
+func (b *BrokerClient) Plans(requestID string) ([]Plan, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) PollBindingLastOperation(r *osb.BindingLastOperationRequest) (*osb.LastOperationResponse, error) {
-	return b.client.PollBindingLastOperation(r)
+// Proxy is not implemented for OSB API implementations
+func (b *BrokerClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+	return fmt.Errorf("service proxy is not available for broker services")
+}
+
+// UnbindUnit is a no-op for OSB API implementations
+func (b *BrokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+	return nil
+}
+
+// UnbindUnit is a no-op for OSB API implementations
+func (b *BrokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+	return nil
 }
