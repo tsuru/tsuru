@@ -213,7 +213,7 @@ func teamsNames() ([]string, error) {
 }
 
 func servicesNames() ([]string, error) {
-	services, err := service.GetServicesByFilter(nil)
+	services, err := service.GetServices()
 	if err != nil {
 		return nil, err
 	}

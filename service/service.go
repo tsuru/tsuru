@@ -105,16 +105,62 @@ func Delete(s Service) error {
 	return err
 }
 
-func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
-	if e, ok := s.Endpoint[endpoint]; ok {
-		if p := schemeRegexp.MatchString(e); !p {
-			e = "http://" + e
+func GetServices() ([]Service, error) {
+	return getServicesByFilter(nil)
+}
+
+func GetServicesByTeamsAndServices(teams []string, services []string) ([]Service, error) {
+	var filter bson.M
+	if teams != nil || services != nil {
+		filter = bson.M{
+			"$or": []bson.M{
+				{"teams": bson.M{"$in": teams}},
+				{"_id": bson.M{"$in": services}},
+				{"is_restricted": false},
+			},
 		}
-		cli = &Client{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
-	} else {
-		err = errors.New("Unknown endpoint: " + endpoint)
 	}
-	return
+	return getServicesByFilter(filter)
+}
+
+func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Service, error) {
+	var filter bson.M
+	if teams != nil || services != nil {
+		filter = bson.M{
+			"$or": []bson.M{
+				{"owner_teams": bson.M{"$in": teams}},
+				{"_id": bson.M{"$in": services}},
+			},
+		}
+	}
+	return getServicesByFilter(filter)
+}
+
+func RenameServiceTeam(oldName, newName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	fields := []string{"owner_teams", "teams"}
+	bulk := conn.Services().Bulk()
+	for _, f := range fields {
+		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$push": bson.M{f: newName}})
+		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$pull": bson.M{f: oldName}})
+	}
+	_, err = bulk.Run()
+	return err
+}
+
+func getServicesByFilter(filter bson.M) ([]Service, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var services []Service
+	err = conn.Services().Find(filter).All(&services)
+	return services, err
 }
 
 func (s *Service) GetUsername() string {
@@ -122,15 +168,6 @@ func (s *Service) GetUsername() string {
 		return s.Username
 	}
 	return s.Name
-}
-
-func (s *Service) findTeam(team *authTypes.Team) int {
-	for i, t := range s.Teams {
-		if team.Name == t {
-			return i
-		}
-	}
-	return -1
 }
 
 func (s *Service) HasTeam(team *authTypes.Team) bool {
@@ -153,6 +190,27 @@ func (s *Service) RevokeAccess(team *authTypes.Team) error {
 	copy(s.Teams[index:], s.Teams[index+1:])
 	s.Teams = s.Teams[:len(s.Teams)-1]
 	return nil
+}
+
+func (s *Service) findTeam(team *authTypes.Team) int {
+	for i, t := range s.Teams {
+		if team.Name == t {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
+	if e, ok := s.Endpoint[endpoint]; ok {
+		if p := schemeRegexp.MatchString(e); !p {
+			e = "http://" + e
+		}
+		cli = &Client{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
+	} else {
+		err = errors.New("Unknown endpoint: " + endpoint)
+	}
+	return
 }
 
 func (s *Service) validate(skipName bool) (err error) {
@@ -192,50 +250,12 @@ func (s *Service) validateOwnerTeams() error {
 	return nil
 }
 
-func GetServicesNames(services []Service) []string {
+func getServicesNames(services []Service) []string {
 	sNames := make([]string, len(services))
 	for i, s := range services {
 		sNames[i] = s.Name
 	}
 	return sNames
-}
-
-func GetServicesByFilter(filter bson.M) ([]Service, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var services []Service
-	err = conn.Services().Find(filter).All(&services)
-	return services, err
-}
-
-func GetServicesByTeamsAndServices(teams []string, services []string) ([]Service, error) {
-	var filter bson.M
-	if teams != nil || services != nil {
-		filter = bson.M{
-			"$or": []bson.M{
-				{"teams": bson.M{"$in": teams}},
-				{"_id": bson.M{"$in": services}},
-				{"is_restricted": false},
-			},
-		}
-	}
-	return GetServicesByFilter(filter)
-}
-
-func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Service, error) {
-	var filter bson.M
-	if teams != nil || services != nil {
-		filter = bson.M{
-			"$or": []bson.M{
-				{"owner_teams": bson.M{"$in": teams}},
-				{"_id": bson.M{"$in": services}},
-			},
-		}
-	}
-	return GetServicesByFilter(filter)
 }
 
 type ServiceModel struct {
@@ -253,20 +273,4 @@ func Proxy(service *Service, path string, evt *event.Event, requestID string, w 
 		return err
 	}
 	return endpoint.Proxy(path, evt, requestID, w, r)
-}
-
-func RenameServiceTeam(oldName, newName string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	fields := []string{"owner_teams", "teams"}
-	bulk := conn.Services().Bulk()
-	for _, f := range fields {
-		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$push": bson.M{f: newName}})
-		bulk.UpdateAll(bson.M{f: oldName}, bson.M{"$pull": bson.M{f: oldName}})
-	}
-	_, err = bulk.Run()
-	return err
 }
