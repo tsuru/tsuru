@@ -206,7 +206,7 @@ func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
 		if p := schemeRegexp.MatchString(e); !p {
 			e = "http://" + e
 		}
-		cli = &Client{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
+		cli = &endpointClient{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}

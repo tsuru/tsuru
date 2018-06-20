@@ -112,7 +112,7 @@ func (s *S) TestGetClient(c *check.C) {
 	}
 	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
-	expected := &Client{
+	expected := &endpointClient{
 		serviceName: "redis",
 		endpoint:    endpoints["production"],
 		username:    "redis",
@@ -128,7 +128,7 @@ func (s *S) TestGetClientWithServiceUsername(c *check.C) {
 	}
 	service := Service{Name: "redis", Username: "redis_test", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
-	expected := &Client{
+	expected := &endpointClient{
 		serviceName: "redis",
 		endpoint:    endpoints["production"],
 		username:    "redis_test",
