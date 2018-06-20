@@ -24,7 +24,7 @@ func (s *S) createService(c *check.C) {
 		},
 		OwnerTeams: []string{"admin"},
 	}
-	err := s.service.Create()
+	err := Create(*s.service)
 	c.Assert(err, check.IsNil)
 }
 
@@ -51,7 +51,7 @@ func (s *S) TestCreateService(c *check.C) {
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err := service.Create()
+	err := Create(*service)
 	c.Assert(err, check.IsNil)
 	se, err := Get(service.Name)
 	c.Assert(err, check.IsNil)
@@ -72,34 +72,34 @@ func (s *S) TestCreateServiceMissingFields(c *check.C) {
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err := service.Create()
+	err := Create(*service)
 	c.Assert(err, check.ErrorMatches, "Service id is required")
 	service.Name = "INVALID NAME"
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
 	service.Name = "servicename"
 	service.Password = ""
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "Service password is required")
 	service.Password = "abcde"
 	service.Endpoint = nil
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "Service production endpoint is required")
 	service.Endpoint = endpt
 	service.OwnerTeams = []string{}
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "At least one service team owner is required")
 	service.OwnerTeams = []string{"unknown-team", s.team.Name}
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 	service.OwnerTeams = []string{s.team.Name, ""}
-	err = service.Create()
+	err = Create(*service)
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
 func (s *S) TestDeleteService(c *check.C) {
 	s.createService(c)
-	err := s.service.Delete()
+	err := Delete(*s.service)
 	c.Assert(err, check.IsNil)
 	l, err := s.conn.Services().Find(bson.M{"_id": s.service.Name}).Count()
 	c.Assert(err, check.IsNil)
@@ -203,10 +203,10 @@ func (s *S) TestUpdateService(c *check.C) {
 		Endpoint:   map[string]string{"production": "url"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err := service.Create()
+	err := Create(service)
 	c.Assert(err, check.IsNil)
 	service.Doc = "doc"
-	err = service.Update()
+	err = Update(service)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(err, check.IsNil)
@@ -215,7 +215,7 @@ func (s *S) TestUpdateService(c *check.C) {
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 	service := Service{Name: "something", Password: "abcde", Endpoint: map[string]string{"production": "url"}}
-	err := service.Update()
+	err := Update(service)
 	c.Assert(err, check.NotNil)
 }
 
@@ -227,7 +227,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := srvc.Create()
+	err := Create(srvc)
 	c.Assert(err, check.IsNil)
 	otherTeam := authTypes.Team{Name: "other-team"}
 	srvc2 := Service{
@@ -237,7 +237,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 		Teams:      []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err = srvc2.Create()
+	err = Create(srvc2)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)
@@ -253,7 +253,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := srvc.Create()
+	err := Create(srvc)
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{
 		Name:       "mysql",
@@ -262,7 +262,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 		Password:   "abcde",
 		Endpoint:   map[string]string{"production": "url"},
 	}
-	err = srvc2.Create()
+	err = Create(srvc2)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, []string{srvc2.Name})
 	c.Assert(err, check.IsNil)
@@ -283,7 +283,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := service.Create()
+	err := Create(service)
 	c.Assert(err, check.IsNil)
 	deletedService := Service{
 		Name:       "mongodb",
@@ -291,9 +291,9 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 		Password:   "abcde",
 		Endpoint:   map[string]string{"production": "url"},
 	}
-	err = deletedService.Create()
+	err = Create(deletedService)
 	c.Assert(err, check.IsNil)
-	err = deletedService.Delete()
+	err = Delete(deletedService)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)

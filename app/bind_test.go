@@ -27,7 +27,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
 	err = s.conn.ServiceInstances().Insert(instance)

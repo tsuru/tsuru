@@ -64,7 +64,7 @@ func Get(service string) (Service, error) {
 	return s, nil
 }
 
-func (s *Service) Create() error {
+func Create(s Service) error {
 	if err := s.validate(false); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *Service) Create() error {
 	return conn.Services().Insert(s)
 }
 
-func (s *Service) Update() error {
+func Update(s Service) error {
 	if err := s.validate(true); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (s *Service) Update() error {
 	return conn.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
-func (s *Service) Delete() error {
+func Delete(s Service) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

@@ -120,7 +120,6 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
 	}
-
 	s.service = &service.Service{
 		Name:       "mysql",
 		Teams:      []string{s.team.Name},
@@ -128,7 +127,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		Endpoint:   map[string]string{"production": s.ts.URL},
 		Password:   "abcde",
 	}
-	err = s.service.Create()
+	err = service.Create(*s.service)
 	c.Assert(err, check.IsNil)
 }
 
@@ -178,14 +177,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:       "mysql",
-		Teams:      []string{s.team.Name},
-		OwnerTeams: []string{s.team.Name},
-		Endpoint:   map[string]string{"production": ts.URL},
-		Password:   "abcde",
-	}
-	se.Create()
 	params := map[string]interface{}{
 		"name":         "brainsql",
 		"service_name": "mysql",
@@ -215,14 +206,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:       "mysql",
-		Teams:      []string{s.team.Name},
-		OwnerTeams: []string{s.team.Name},
-		Endpoint:   map[string]string{"production": ts.URL},
-		Password:   "abcde",
-	}
-	se.Create()
 	params := map[string]interface{}{
 		"name":         "brainsql",
 		"service_name": "mysql",
@@ -335,14 +318,14 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceHasAccessToTheServiceInT
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenUserCannotUseService(c *check.C) {
-	service := service.Service{
+	se := service.Service{
 		Name:         "mysqlrestricted",
 		IsRestricted: true,
 		Endpoint:     map[string]string{"production": "http://localhost:1234"},
 		Password:     "abcde",
 		OwnerTeams:   []string{s.team.Name},
 	}
-	err := service.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -384,8 +367,13 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceNoPermission(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "cantdoanything")
-	srvc := service.Service{Name: "mysqlnoperms", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	srvc := service.Service{
+		Name:       "mysqlnoperms",
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -413,8 +401,13 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnErrorIfTheServiceA
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysqlerror", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	srvc := service.Service{
+		Name:       "mysqlerror",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",
@@ -443,14 +436,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:       "mysql",
-		Teams:      []string{s.team.Name},
-		OwnerTeams: []string{s.team.Name},
-		Endpoint:   map[string]string{"production": ts.URL},
-		Password:   "abcde",
-	}
-	se.Create()
 	params := map[string]interface{}{
 		"name":         "brainsql",
 		"service_name": "mysql",
@@ -480,14 +465,6 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:       "mysql",
-		Teams:      []string{s.team.Name},
-		OwnerTeams: []string{s.team.Name},
-		Endpoint:   map[string]string{"production": ts.URL},
-		Password:   "abcde",
-	}
-	se.Create()
 	params := map[string]interface{}{
 		"name":         "brainsql",
 		"service_name": "mysql",
@@ -814,7 +791,7 @@ func makeRequestToRemoveServiceInstance(service, instance string, c *check.C) (*
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceNotFound(c *check.C) {
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("foo", "not-found", c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -831,7 +808,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -868,8 +845,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 		{Name: "foo2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
-	for _, service := range services {
-		err := service.Create()
+	for _, srv := range services {
+		err := service.Create(srv)
 		c.Assert(err, check.IsNil)
 	}
 	s.pool = "test1"
@@ -935,7 +912,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldReturn401(c *check.C) {
 	se := service.Service{Name: "foo-service", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo-service"}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -948,7 +925,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldR
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithAssociatedAppsShouldFailAndReturnError(c *check.C) {
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Apps: []string{"foo-bar"}, Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -970,8 +947,6 @@ func makeRequestToRemoveServiceInstanceWithUnbind(service, instance string, c *c
 }
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUnbindAll(c *check.C) {
-	err := s.conn.Services().RemoveId(s.service.Name)
-	c.Assert(err, check.IsNil)
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
@@ -979,8 +954,10 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err = srvc.Create()
+	srv, err := service.Get(s.service.Name)
+	c.Assert(err, check.IsNil)
+	srv.Endpoint["production"] = ts.URL
+	err = service.Update(srv)
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
@@ -1029,7 +1006,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
@@ -1070,7 +1047,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysqlremove", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
@@ -1118,7 +1095,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "purity", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1146,7 +1123,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = srv.Create()
+	err = service.Create(srv)
 	c.Assert(err, check.IsNil)
 	srv2 := service.Service{
 		Name:       "mongodb",
@@ -1155,7 +1132,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = srv2.Create()
+	err = service.Create(srv2)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "redis-globo",
@@ -1217,7 +1194,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = srv.Create()
+	err = service.Create(srv)
 	c.Assert(err, check.IsNil)
 	srv2 := service.Service{
 		Name:       "mongodb",
@@ -1226,7 +1203,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = srv2.Create()
+	err = service.Create(srv2)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "redis-globo",
@@ -1303,7 +1280,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 			Endpoint:   map[string]string{"production": "http://localhost:1234"},
 			Password:   "abcde",
 		}
-		err := srv.Create()
+		err := service.Create(srv)
 		c.Assert(err, check.IsNil)
 		instance := service.ServiceInstance{
 			Name:        srv.Name + "1",
@@ -1327,7 +1304,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
@@ -1425,7 +1402,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatus(c *check.C) {
 		Endpoint:   map[string]string{"production": ts.URL},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1446,7 +1423,6 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusWithSameInstanceName(c *
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`Service instance "my_nosql" is down`))
 	}))
-
 	defer ts.Close()
 	srv := service.Service{
 		Name:       "mongodb",
@@ -1454,7 +1430,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusWithSameInstanceName(c *
 		Endpoint:   map[string]string{"production": ts.URL},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	srv2 := service.Service{
 		Name:       "mongodb2",
@@ -1462,7 +1438,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusWithSameInstanceName(c *
 		Endpoint:   map[string]string{"production": ts1.URL},
 		Password:   "abcde",
 	}
-	err = srv2.Create()
+	err = service.Create(srv2)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1489,7 +1465,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceStatusShouldReturnForbiddenWhe
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1531,7 +1507,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		Endpoint:   map[string]string{"production": ts.URL},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{
 		Name:        "my_nosql",
@@ -1581,7 +1557,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 		Endpoint:   map[string]string{"production": ts.URL},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{
 		Name:        "my_nosql",
@@ -1625,7 +1601,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoShouldReturnForbiddenWhenU
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1642,7 +1618,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "my_nosql",
@@ -1696,7 +1672,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "my_nosql",
@@ -1767,7 +1743,7 @@ Collnosql is a really really cool nosql`
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToGetServiceDoc("coolnosql", c)
 	err = serviceDoc(recorder, request, s.token)
@@ -1784,7 +1760,7 @@ func (s *ServiceInstanceSuite) TestServiceDocReturns401WhenUserHasNoAccessToServ
 		Password:     "abcde",
 		OwnerTeams:   []string{s.team.Name},
 	}
-	err := srv.Create()
+	err := service.Create(srv)
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToGetServiceDoc("coolnosql", c)
 	err = serviceDoc(recorder, request, s.token)
@@ -1821,7 +1797,7 @@ func (s *ServiceInstanceSuite) TestServicePlans(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysqlplan", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/mysqlplan/plans", nil)
 	c.Assert(err, check.IsNil)
@@ -1859,7 +1835,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1900,7 +1876,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1952,7 +1928,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -1992,7 +1968,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -2014,7 +1990,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyError(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -2038,7 +2014,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyOnlyPath(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -2075,7 +2051,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyForbiddenPath(c *check.C)
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -2109,7 +2085,7 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	}))
 	defer ts.Close()
 	se := service.Service{Name: "go", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := se.Create()
+	err := service.Create(se)
 	c.Assert(err, check.IsNil)
 	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
@@ -2159,8 +2135,8 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 		{Name: "go", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 		{Name: "go2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
-	for _, service := range se {
-		err := service.Create()
+	for _, srv := range se {
+		err := service.Create(srv)
 		c.Assert(err, check.IsNil)
 	}
 	si := service.ServiceInstance{Name: "si-test", ServiceName: se[0].Name, Teams: []string{s.team.Name}}

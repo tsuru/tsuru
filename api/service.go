@@ -111,7 +111,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = s.Create()
+	err = service.Create(s)
 	if err != nil {
 		if err == service.ErrServiceAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -169,7 +169,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if team != "" {
 		s.OwnerTeams = []string{team}
 	}
-	return s.Update()
+	return service.Update(s)
 }
 
 // title: service delete
@@ -212,7 +212,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		msg += "Please remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	return s.Delete()
+	return service.Delete(s)
 }
 
 // title: service proxy
@@ -300,7 +300,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return s.Update()
+	return service.Update(s)
 }
 
 // title: revoke access to a service
@@ -352,7 +352,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return s.Update()
+	return service.Update(s)
 }
 
 // title: change service documentation
@@ -387,7 +387,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return s.Update()
+	return service.Update(s)
 }
 
 func getService(name string) (service.Service, error) {

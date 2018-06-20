@@ -487,7 +487,7 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 		Password:   "abcde",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = srvc.Create()
+	err = service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "mydb",
@@ -544,7 +544,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 		Password:   "abcde",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = srvc.Create()
+	err = service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "mydb",
@@ -814,7 +814,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := srvc.Create()
+	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "chemistry",
@@ -3941,7 +3941,7 @@ func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
 		Password:   "abcde",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = srvc.Create()
+	err = service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "mydb",
@@ -4005,7 +4005,7 @@ func (s *S) TestValidateAppService(c *check.C) {
 		Endpoint:   map[string]string{"production": "somehost.com"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = serv.Create()
+	err = service.Create(serv)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
 	c.Assert(err, check.IsNil)
@@ -4024,7 +4024,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 		Endpoint:   map[string]string{"production": "somehost.com"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = serv.Create()
+	err = service.Create(serv)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
 	c.Assert(err, check.IsNil)
