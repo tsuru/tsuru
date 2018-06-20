@@ -51,14 +51,17 @@ var (
 	schemeRegexp = regexp.MustCompile("^https?://")
 )
 
-func (s *Service) Get() error {
+func Get(service string) (Service, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		return Service{}, err
 	}
 	defer conn.Close()
-	query := bson.M{"_id": s.Name}
-	return conn.Services().Find(query).One(&s)
+	var s Service
+	if err := conn.Services().Find(bson.M{"_id": service}).One(&s); err != nil {
+		return Service{}, err
+	}
+	return s, nil
 }
 
 func (s *Service) Create() error {

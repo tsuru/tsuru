@@ -391,8 +391,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 }
 
 func getService(name string) (service.Service, error) {
-	s := service.Service{Name: name}
-	err := s.Get()
+	s, err := service.Get(name)
 	if err != nil {
 		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}

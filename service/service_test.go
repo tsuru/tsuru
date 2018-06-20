@@ -15,21 +15,28 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) createService() {
-	s.service = &Service{Name: "my_service"}
-	s.service.Create()
+func (s *S) createService(c *check.C) {
+	s.service = &Service{
+		Name:     "my-service",
+		Password: "my-password",
+		Endpoint: map[string]string{
+			"production": "http://localhost:8080",
+		},
+		OwnerTeams: []string{"admin"},
+	}
+	err := s.service.Create()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestGetService(c *check.C) {
-	s.createService()
-	anotherService := Service{Name: s.service.Name}
-	anotherService.Get()
+	s.createService(c)
+	anotherService, err := Get(s.service.Name)
+	c.Assert(err, check.IsNil)
 	c.Assert(anotherService.Name, check.Equals, s.service.Name)
 }
 
 func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
-	se := Service{Name: "anything"}
-	err := se.Get()
+	_, err := Get("anything")
 	c.Assert(err, check.NotNil)
 }
 
@@ -46,8 +53,7 @@ func (s *S) TestCreateService(c *check.C) {
 	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
-	se := Service{Name: service.Name}
-	err = se.Get()
+	se, err := Get(service.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(se.Name, check.Equals, service.Name)
 	c.Assert(se.Endpoint["production"], check.Equals, endpt["production"])
@@ -92,7 +98,7 @@ func (s *S) TestCreateServiceMissingFields(c *check.C) {
 }
 
 func (s *S) TestDeleteService(c *check.C) {
-	s.createService()
+	s.createService(c)
 	err := s.service.Delete()
 	c.Assert(err, check.IsNil)
 	l, err := s.conn.Services().Find(bson.M{"_id": s.service.Name}).Count()
@@ -151,14 +157,14 @@ func (s *S) TestGetUsername(c *check.C) {
 }
 
 func (s *S) TestGrantAccessShouldAddTeamToTheService(c *check.C) {
-	s.createService()
+	s.createService(c)
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, check.IsNil)
 	c.Assert(*s.team, HasAccessTo, *s.service)
 }
 
 func (s *S) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService(c *check.C) {
-	s.createService()
+	s.createService(c)
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, check.IsNil)
 	err = s.service.GrantAccess(s.team)
@@ -167,7 +173,7 @@ func (s *S) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService
 }
 
 func (s *S) TestRevokeAccessShouldRemoveTeamFromService(c *check.C) {
-	s.createService()
+	s.createService(c)
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, check.IsNil)
 	err = s.service.RevokeAccess(s.team)
@@ -176,7 +182,7 @@ func (s *S) TestRevokeAccessShouldRemoveTeamFromService(c *check.C) {
 }
 
 func (s *S) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheService(c *check.C) {
-	s.createService()
+	s.createService(c)
 	err := s.service.RevokeAccess(s.team)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^This team does not have access to this service$")

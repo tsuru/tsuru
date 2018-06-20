@@ -49,8 +49,7 @@ func setAllowed(evt *event.Event) (err error) {
 	case event.TargetTypeTeam:
 		evt.Allowed = event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, evt.Target.Value))
 	case event.TargetTypeService:
-		s := service.Service{Name: evt.Target.Value}
-		err = s.Get()
+		s, err := service.Get(evt.Target.Value)
 		if err != nil {
 			evt.Allowed = event.Allowed(permission.PermServiceReadEvents)
 			return err
