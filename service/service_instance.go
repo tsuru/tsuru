@@ -366,7 +366,7 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 		query["teams"] = bson.M{"$in": teams}
 	}
 	if v, ok := services.([]Service); ok {
-		names := GetServicesNames(v)
+		names := getServicesNames(v)
 		query["service_name"] = bson.M{"$in": names}
 	}
 	if v, ok := services.(Service); ok {

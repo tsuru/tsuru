@@ -192,7 +192,7 @@ func (s *S) TestGetServicesNames(c *check.C) {
 	s1 := Service{Name: "Foo"}
 	s2 := Service{Name: "Bar"}
 	s3 := Service{Name: "FooBar"}
-	sNames := GetServicesNames([]Service{s1, s2, s3})
+	sNames := getServicesNames([]Service{s1, s2, s3})
 	c.Assert(sNames, check.DeepEquals, []string{"Foo", "Bar", "FooBar"})
 }
 
