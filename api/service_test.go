@@ -738,7 +738,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = se.Get()
+	se, err = service.Get("my-service")
 	c.Assert(err, check.IsNil)
 	c.Assert(*t, HasAccessTo, se)
 	c.Assert(eventtest.EventDesc{
@@ -820,7 +820,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = se.Get()
+	se, err = service.Get("my-service")
 	c.Assert(err, check.IsNil)
 	c.Assert(*s.team, check.Not(HasAccessTo), se)
 	c.Assert(eventtest.EventDesc{
