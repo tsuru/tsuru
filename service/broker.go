@@ -20,17 +20,15 @@ var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
 	return osb.NewClient(config)
 }
 
-// BrokerClient implements the Open Service Broker API for stored
+// brokerClient implements the Open Service Broker API for stored
 // Brokers
-type BrokerClient struct {
+type brokerClient struct {
 	broker serviceTypes.Broker
 	client osb.Client
 }
 
-// NewClient configures a client that provides a Service Broker API
-// implementation
-func NewClient(b serviceTypes.Broker) (ServiceClient, error) {
-	broker := BrokerClient{broker: b}
+func newClient(b serviceTypes.Broker) (ServiceClient, error) {
+	broker := brokerClient{broker: b}
 	config := osb.DefaultClientConfiguration()
 	config.URL = b.URL
 	var authConfig *osb.AuthConfig
@@ -57,49 +55,49 @@ func NewClient(b serviceTypes.Broker) (ServiceClient, error) {
 	return &broker, nil
 }
 
-func (b *BrokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
+func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
+func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
+func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *BrokerClient) Plans(requestID string) ([]Plan, error) {
+func (b *brokerClient) Plans(requestID string) ([]Plan, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
 // Proxy is not implemented for OSB API implementations
-func (b *BrokerClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func (b *brokerClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("service proxy is not available for broker services")
 }
 
 // UnbindUnit is a no-op for OSB API implementations
-func (b *BrokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (b *brokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	return nil
 }
 
 // UnbindUnit is a no-op for OSB API implementations
-func (b *BrokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	return nil
 }

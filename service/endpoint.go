@@ -49,68 +49,14 @@ func init() {
 	prometheus.MustRegister(requestErrors)
 }
 
-type Client struct {
+type endpointClient struct {
 	serviceName string
 	endpoint    string
 	username    string
 	password    string
 }
 
-func (c *Client) buildErrorMessage(err error, resp *http.Response) error {
-	if err != nil {
-		return err
-	}
-	if resp != nil {
-		defer resp.Body.Close()
-		b, _ := ioutil.ReadAll(resp.Body)
-		return errors.Errorf("invalid response: %s (code: %d)", string(b), resp.StatusCode)
-	}
-	return nil
-}
-
-func (c *Client) issueRequest(path, method string, params map[string][]string, requestID string) (*http.Response, error) {
-	v := url.Values(params)
-	var suffix string
-	var body io.Reader
-	if method == "GET" {
-		suffix = "?" + v.Encode()
-	} else {
-		body = strings.NewReader(v.Encode())
-	}
-	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
-	req, err := http.NewRequest(method, url, body)
-	if err != nil {
-		log.Errorf("Got error while creating request: %s", err)
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json")
-	requestIDHeader, err := config.GetString("request-id-header")
-	if err == nil && requestID != "" && requestIDHeader != "" {
-		req.Header.Add(requestIDHeader, requestID)
-	}
-	req.SetBasicAuth(c.username, c.password)
-	req.Close = true
-	t0 := time.Now()
-	resp, err := net.Dial5Full300ClientNoKeepAlive.Do(req)
-	requestLatencies.WithLabelValues(c.serviceName).Observe(time.Since(t0).Seconds())
-	if err != nil {
-		requestErrors.WithLabelValues(c.serviceName).Inc()
-	}
-	return resp, err
-}
-
-func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Got error while parsing service json: %s", err)
-		return err
-	}
-	return json.Unmarshal(body, &v)
-}
-
-func (c *Client) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	var err error
 	var resp *http.Response
 	params := map[string][]string{
@@ -140,7 +86,7 @@ func (c *Client) Create(instance *ServiceInstance, evt *event.Event, requestID s
 	return log.WrapError(err)
 }
 
-func (c *Client) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
 		"description": {instance.Description},
@@ -164,7 +110,7 @@ func (c *Client) Update(instance *ServiceInstance, evt *event.Event, requestID s
 	return err
 }
 
-func (c *Client) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
 		"user":    {evt.Owner.Name},
@@ -184,7 +130,7 @@ func (c *Client) Destroy(instance *ServiceInstance, evt *event.Event, requestID 
 	return err
 }
 
-func (c *Client) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
@@ -230,7 +176,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App, evt *event.Eve
 	return nil, log.WrapError(err)
 }
 
-func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (c *endpointClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -262,7 +208,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 	return nil
 }
 
-func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+func (c *endpointClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -292,7 +238,7 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.E
 	return err
 }
 
-func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (c *endpointClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -320,7 +266,7 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	return err
 }
 
-func (c *Client) Status(instance *ServiceInstance, requestID string) (string, error) {
+func (c *endpointClient) Status(instance *ServiceInstance, requestID string) (string, error) {
 	log.Debugf("Attempting to call status of service instance %q at %q api", instance.Name, instance.ServiceName)
 	var (
 		resp *http.Response
@@ -352,7 +298,7 @@ func (c *Client) Status(instance *ServiceInstance, requestID string) (string, er
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/<name>
-func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
+func (c *endpointClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
 	resp, err := c.issueRequest(url, "GET", nil, requestID)
@@ -375,7 +321,7 @@ func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/plans
-func (c *Client) Plans(requestID string) ([]Plan, error) {
+func (c *endpointClient) Plans(requestID string) ([]Plan, error) {
 	url := "/resources/plans"
 	resp, err := c.issueRequest(url, "GET", nil, requestID)
 	if err != nil {
@@ -395,7 +341,7 @@ func (c *Client) Plans(requestID string) ([]Plan, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *Client) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func (c *endpointClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
 	url, err := url.Parse(rawurl)
 	if err != nil {
@@ -418,4 +364,58 @@ func (c *Client) Proxy(path string, evt *event.Event, requestID string, w http.R
 	proxy := &httputil.ReverseProxy{Director: director}
 	proxy.ServeHTTP(w, r)
 	return nil
+}
+
+func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error {
+	if err != nil {
+		return err
+	}
+	if resp != nil {
+		defer resp.Body.Close()
+		b, _ := ioutil.ReadAll(resp.Body)
+		return errors.Errorf("invalid response: %s (code: %d)", string(b), resp.StatusCode)
+	}
+	return nil
+}
+
+func (c *endpointClient) issueRequest(path, method string, params map[string][]string, requestID string) (*http.Response, error) {
+	v := url.Values(params)
+	var suffix string
+	var body io.Reader
+	if method == "GET" {
+		suffix = "?" + v.Encode()
+	} else {
+		body = strings.NewReader(v.Encode())
+	}
+	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		log.Errorf("Got error while creating request: %s", err)
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json")
+	requestIDHeader, err := config.GetString("request-id-header")
+	if err == nil && requestID != "" && requestIDHeader != "" {
+		req.Header.Add(requestIDHeader, requestID)
+	}
+	req.SetBasicAuth(c.username, c.password)
+	req.Close = true
+	t0 := time.Now()
+	resp, err := net.Dial5Full300ClientNoKeepAlive.Do(req)
+	requestLatencies.WithLabelValues(c.serviceName).Observe(time.Since(t0).Seconds())
+	if err != nil {
+		requestErrors.WithLabelValues(c.serviceName).Inc()
+	}
+	return resp, err
+}
+
+func (c *endpointClient) jsonFromResponse(resp *http.Response, v interface{}) error {
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Got error while parsing service json: %s", err)
+		return err
+	}
+	return json.Unmarshal(body, &v)
 }

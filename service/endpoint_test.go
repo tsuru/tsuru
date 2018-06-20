@@ -92,7 +92,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "Request-ID")
 	c.Assert(err, check.IsNil)
@@ -119,7 +119,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 
 func (s *S) TestEndpointCreateEndpointDown(c *check.C) {
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz"}
-	client := &Client{endpoint: "http://127.0.0.1:19999", username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: "http://127.0.0.1:19999", username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "Request-ID")
 	c.Assert(err, check.ErrorMatches, `Failed to create the instance my-redis: Post http://127.0.0.1:19999/resources.*`)
@@ -135,7 +135,7 @@ func (s *S) TestEndpointCreatePlans(c *check.C) {
 		PlanName:    "basic",
 		TeamOwner:   "myteam",
 	}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "")
 	c.Assert(err, check.IsNil)
@@ -164,7 +164,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "myteam"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "")
 	c.Assert(err, check.IsNil)
@@ -193,7 +193,7 @@ func (s *S) TestCreateDuplicate(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceAlreadyExistsInAPI)
@@ -203,7 +203,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "")
 	c.Assert(err, check.NotNil)
@@ -231,7 +231,7 @@ func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Update(&instance, evt, requestIDValue)
 	c.Assert(err, check.IsNil)
@@ -242,7 +242,7 @@ func (s *S) TestUpdateShouldReturnErrorIfTheRequestFails(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Update(&instance, evt, "")
 	c.Assert(err, check.NotNil)
@@ -255,7 +255,7 @@ func (s *S) TestUpdateShouldIgnoreNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Update(&instance, evt, "")
 	c.Assert(err, check.IsNil)
@@ -266,7 +266,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Destroy(&instance, evt, "")
 	h.Lock()
@@ -281,7 +281,7 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Destroy(&instance, evt, "")
 	c.Assert(err, check.NotNil)
@@ -294,7 +294,7 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Destroy(&instance, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
@@ -303,7 +303,7 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 func (s *S) TestBindAppEndpointDown(c *check.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.NotNil)
@@ -316,7 +316,7 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
 	h.Lock()
@@ -356,7 +356,7 @@ func (s *S) TestBindAppBackwardCompatible(c *check.C) {
 	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	env, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.IsNil)
@@ -375,7 +375,7 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	env, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.IsNil)
@@ -387,7 +387,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.NotNil)
@@ -402,7 +402,7 @@ func (s *S) TestBindAppInstanceNotReady(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotReady)
@@ -416,7 +416,7 @@ func (s *S) TestBindAppInstanceNotFound(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
@@ -428,7 +428,7 @@ func (s *S) TestBindUnit(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
@@ -451,7 +451,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
@@ -468,7 +468,7 @@ func (s *S) TestBindUnitInstanceNotReady(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
@@ -483,7 +483,7 @@ func (s *S) TestBindUnitInstanceNotFound(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
@@ -496,7 +496,7 @@ func (s *S) TestUnbindApp(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
 	h.Lock()
@@ -522,7 +522,7 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
 	c.Assert(err, check.NotNil)
@@ -537,7 +537,7 @@ func (s *S) TestUnbindAppInstanceNotFound(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(&instance, a, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
@@ -549,7 +549,7 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.UnbindUnit(&instance, a, units[0])
@@ -572,7 +572,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.UnbindUnit(&instance, a, units[0])
@@ -588,7 +588,7 @@ func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.UnbindUnit(&instance, a, units[0])
@@ -596,25 +596,25 @@ func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
 }
 
 func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
-	cli := Client{}
+	cli := endpointClient{}
 	err := errors.New("epic fail")
 	c.Assert(cli.buildErrorMessage(err, nil), check.ErrorMatches, "epic fail")
 }
 
 func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *check.C) {
-	cli := Client{}
+	cli := endpointClient{}
 	c.Assert(cli.buildErrorMessage(nil, nil), check.IsNil)
 }
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
-	cli := Client{}
+	cli := endpointClient{}
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(nil, resp), check.ErrorMatches, `invalid response: something went wrong \(code: 0\)`)
 }
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
-	cli := Client{}
+	cli := endpointClient{}
 	err := errors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
@@ -641,7 +641,7 @@ func (s *S) TestStatus(c *check.C) {
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	for _, t := range tests {
 		state, err := client.Status(&instance, "")
 		c.Check(err, check.IsNil)
@@ -654,7 +654,7 @@ func (s *S) TestInfo(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance, "")
 	c.Assert(err, check.IsNil)
 	expected := []map[string]string{
@@ -670,7 +670,7 @@ func (s *S) TestInfoNotFound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(notFoundHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.IsNil)
@@ -680,7 +680,7 @@ func (s *S) TestPlans(c *check.C) {
 	h := plansHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Plans("")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
@@ -698,7 +698,7 @@ func (s *S) TestEndpointProxy(c *check.C) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	request, err := http.NewRequest(http.MethodGet, "/", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -718,7 +718,7 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	b := bytes.NewBufferString(`{"bla": "bla"}`)
 	request, err := http.NewRequest(http.MethodPost, "http://somewhere.com/", b)
 	c.Assert(err, check.IsNil)
