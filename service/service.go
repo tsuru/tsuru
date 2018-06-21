@@ -224,6 +224,9 @@ func (s *Service) findTeam(team *authTypes.Team) int {
 }
 
 func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
+	if isBrokeredService(s.Name) {
+		return newBrokeredServiceClient(s.Name)
+	}
 	if e, ok := s.Endpoint[endpoint]; ok {
 		if p := schemeRegexp.MatchString(e); !p {
 			e = "http://" + e

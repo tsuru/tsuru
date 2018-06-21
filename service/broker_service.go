@@ -73,23 +73,14 @@ func getBrokeredServices() ([]Service, error) {
 	return services, nil
 }
 
-// GetBrokeredService retrieves the service information from a service that is
+// getBrokeredService retrieves the service information from a service that is
 // offered by a broker. name is in the format "<broker>serviceNameBrokerSep<service>".
 func getBrokeredService(name string) (Service, error) {
-	parts := strings.SplitN(name, serviceNameBrokerSep, 2)
-	if len(parts) != 2 {
-		return Service{}, fmt.Errorf("name is not in the format <broker>%s<service>", serviceNameBrokerSep)
-	}
-	brokerName, serviceName := parts[0], parts[1]
-	brokerService, err := BrokerService()
+	_, serviceName, err := splitBrokerService(name)
 	if err != nil {
 		return Service{}, err
 	}
-	broker, err := brokerService.Find(brokerName)
-	if err != nil {
-		return Service{}, err
-	}
-	client, err := newClient(broker)
+	client, err := newBrokeredServiceClient(name)
 	if err != nil {
 		return Service{}, err
 	}
@@ -98,4 +89,28 @@ func getBrokeredService(name string) (Service, error) {
 
 func isBrokeredService(name string) bool {
 	return strings.Contains(name, serviceNameBrokerSep)
+}
+
+func splitBrokerService(name string) (string, string, error) {
+	parts := strings.SplitN(name, serviceNameBrokerSep, 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("name is not in the format <broker>%s<service>", serviceNameBrokerSep)
+	}
+	return parts[0], parts[1], nil
+}
+
+func newBrokeredServiceClient(service string) (*brokerClient, error) {
+	brokerName, _, err := splitBrokerService(service)
+	if err != nil {
+		return nil, err
+	}
+	brokerService, err := BrokerService()
+	if err != nil {
+		return nil, err
+	}
+	broker, err := brokerService.Find(brokerName)
+	if err != nil {
+		return nil, err
+	}
+	return newClient(broker)
 }
