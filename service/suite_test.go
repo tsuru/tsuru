@@ -74,6 +74,8 @@ func (s *S) SetUpTest(c *check.C) {
 		},
 	}
 	servicemanager.Team = s.mockTeamService
+	servicemanager.ServiceBroker, err = BrokerService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
