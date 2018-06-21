@@ -11,7 +11,11 @@ import (
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
+	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -38,6 +42,44 @@ func (s *S) TestGetService(c *check.C) {
 func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 	_, err := Get("anything")
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestGetServiceBrokered(c *check.C) {
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{Name: "otherservice"},
+				{Name: "service", Description: "This service is awesome!"},
+			},
+		}},
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
+	serv, err := Get("aws::service")
+	c.Assert(err, check.IsNil)
+	c.Assert(serv, check.DeepEquals, Service{
+		Name: "aws::service",
+		Doc:  "This service is awesome!",
+	})
+}
+
+func (s *S) TestGetServiceBrokeredServiceBrokerNotFound(c *check.C) {
+	serv, err := Get("broker::service")
+	c.Assert(err, check.DeepEquals, serviceTypes.ErrServiceBrokerNotFound)
+	c.Assert(serv, check.DeepEquals, Service{})
+}
+
+func (s *S) TestGetServiceBrokeredServiceNotFound(c *check.C) {
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{}},
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
+	serv, err := Get("aws::service")
+	c.Assert(err, check.DeepEquals, ErrServiceNotFound)
+	c.Assert(serv, check.DeepEquals, Service{})
 }
 
 func (s *S) TestCreateService(c *check.C) {
@@ -151,9 +193,9 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *check.C) {
 
 func (s *S) TestGetUsername(c *check.C) {
 	service := Service{Name: "test"}
-	c.Assert(service.Name, check.Equals, service.GetUsername())
+	c.Assert(service.Name, check.Equals, service.getUsername())
 	service.Username = "test_test"
-	c.Assert(service.Username, check.Equals, service.GetUsername())
+	c.Assert(service.Username, check.Equals, service.getUsername())
 }
 
 func (s *S) TestGrantAccessShouldAddTeamToTheService(c *check.C) {
@@ -217,6 +259,45 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 	service := Service{Name: "something", Password: "abcde", Endpoint: map[string]string{"production": "url"}}
 	err := Update(service)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestGetServices(c *check.C) {
+	s.createService(c)
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{Name: "otherservice"},
+				{Name: "service", Description: "This service is awesome!"},
+			},
+		}},
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
+	services, err := GetServices()
+	c.Assert(err, check.IsNil)
+	c.Assert(services, check.DeepEquals, []Service{
+		Service{
+			Name:     "my-service",
+			Password: "my-password",
+			Endpoint: map[string]string{
+				"production": "http://localhost:8080",
+			},
+			OwnerTeams: []string{"admin"},
+			Teams:      []string{},
+		},
+		Service{
+			Name:       "aws::otherservice",
+			Teams:      []string(nil),
+			OwnerTeams: []string(nil),
+		},
+		Service{
+			Name:       "aws::service",
+			Doc:        "This service is awesome!",
+			Teams:      []string(nil),
+			OwnerTeams: []string(nil),
+		},
+	})
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {

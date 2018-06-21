@@ -14,6 +14,8 @@ import (
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
 
+const serviceNameBrokerSep = "::"
+
 // ClientFactory provides a way to customize the Open Service
 // Broker API client. Should be used in tests to create a fake client.
 var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
@@ -27,7 +29,9 @@ type brokerClient struct {
 	client osb.Client
 }
 
-func newClient(b serviceTypes.Broker) (ServiceClient, error) {
+var _ ServiceClient = &brokerClient{}
+
+func newClient(b serviceTypes.Broker) (*brokerClient, error) {
 	broker := brokerClient{broker: b}
 	config := osb.DefaultClientConfiguration()
 	config.URL = b.URL
@@ -100,4 +104,24 @@ func (b *brokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit 
 // UnbindUnit is a no-op for OSB API implementations
 func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	return nil
+}
+
+func (b *brokerClient) GetService(name string) (Service, error) {
+	cat, err := b.client.GetCatalog()
+	if err != nil {
+		return Service{}, err
+	}
+	for _, s := range cat.Services {
+		if s.Name == name {
+			return newService(b.broker, s), nil
+		}
+	}
+	return Service{}, ErrServiceNotFound
+}
+
+func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {
+	return Service{
+		Name: fmt.Sprintf("%s%s%s", broker.Name, serviceNameBrokerSep, osbservice.Name),
+		Doc:  osbservice.Description,
+	}
 }

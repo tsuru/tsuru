@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
@@ -47,11 +48,15 @@ type ServiceClient interface {
 
 var (
 	ErrServiceAlreadyExists = errors.New("Service already exists.")
+	ErrServiceNotFound      = errors.New("Service not found.")
 
 	schemeRegexp = regexp.MustCompile("^https?://")
 )
 
 func Get(service string) (Service, error) {
+	if isBrokeredService(service) {
+		return getBrokeredService(service)
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return Service{}, err
@@ -59,6 +64,9 @@ func Get(service string) (Service, error) {
 	defer conn.Close()
 	var s Service
 	if err := conn.Services().Find(bson.M{"_id": service}).One(&s); err != nil {
+		if err == mgo.ErrNotFound {
+			return Service{}, ErrServiceNotFound
+		}
 		return Service{}, err
 	}
 	return s, nil
@@ -92,7 +100,11 @@ func Update(s Service) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Services().Update(bson.M{"_id": s.Name}, s)
+	err = conn.Services().Update(bson.M{"_id": s.Name}, s)
+	if err == mgo.ErrNotFound {
+		return ErrServiceNotFound
+	}
+	return err
 }
 
 func Delete(s Service) error {
@@ -102,6 +114,9 @@ func Delete(s Service) error {
 	}
 	defer conn.Close()
 	_, err = conn.Services().RemoveAll(bson.M{"_id": s.Name})
+	if err == mgo.ErrNotFound {
+		return ErrServiceNotFound
+	}
 	return err
 }
 
@@ -160,14 +175,14 @@ func getServicesByFilter(filter bson.M) ([]Service, error) {
 	defer conn.Close()
 	var services []Service
 	err = conn.Services().Find(filter).All(&services)
-	return services, err
-}
-
-func (s *Service) GetUsername() string {
-	if s.Username != "" {
-		return s.Username
+	if err != nil {
+		return nil, err
 	}
-	return s.Name
+	brokerServices, err := getBrokeredServices()
+	if err != nil {
+		return nil, err
+	}
+	return append(services, brokerServices...), err
 }
 
 func (s *Service) HasTeam(team *authTypes.Team) bool {
@@ -192,6 +207,13 @@ func (s *Service) RevokeAccess(team *authTypes.Team) error {
 	return nil
 }
 
+func (s *Service) getUsername() string {
+	if s.Username != "" {
+		return s.Username
+	}
+	return s.Name
+}
+
 func (s *Service) findTeam(team *authTypes.Team) int {
 	for i, t := range s.Teams {
 		if team.Name == t {
@@ -206,7 +228,7 @@ func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
 		if p := schemeRegexp.MatchString(e); !p {
 			e = "http://" + e
 		}
-		cli = &endpointClient{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
+		cli = &endpointClient{serviceName: s.Name, endpoint: e, username: s.getUsername(), password: s.Password}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}
@@ -221,6 +243,9 @@ func (s *Service) validate(skipName bool) (err error) {
 	}()
 	if s.Name == "" {
 		return fmt.Errorf("Service id is required")
+	}
+	if isBrokeredService(s.Name) {
+		return fmt.Errorf("Brokered services are not managed.")
 	}
 	if !skipName && !validation.ValidateName(s.Name) {
 		return fmt.Errorf("Invalid service id, should have at most 63 " +
