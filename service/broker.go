@@ -25,14 +25,18 @@ var ClientFactory = func(config *osb.ClientConfiguration) (osb.Client, error) {
 // brokerClient implements the Open Service Broker API for stored
 // Brokers
 type brokerClient struct {
-	broker serviceTypes.Broker
-	client osb.Client
+	broker  serviceTypes.Broker
+	service string
+	client  osb.Client
 }
 
 var _ ServiceClient = &brokerClient{}
 
-func newClient(b serviceTypes.Broker) (*brokerClient, error) {
-	broker := brokerClient{broker: b}
+func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
+	broker := brokerClient{
+		broker:  b,
+		service: service,
+	}
 	config := osb.DefaultClientConfiguration()
 	config.URL = b.URL
 	var authConfig *osb.AuthConfig
@@ -87,8 +91,19 @@ func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (b *brokerClient) Plans(requestID string) ([]Plan, error) {
-	return nil, fmt.Errorf("not implemented")
+func (b *brokerClient) Plans(_ string) ([]Plan, error) {
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return nil, err
+	}
+	plans := make([]Plan, len(s.Plans))
+	for i, p := range s.Plans {
+		plans[i] = Plan{
+			Name:        p.Name,
+			Description: p.Description,
+		}
+	}
+	return plans, nil
 }
 
 // Proxy is not implemented for OSB API implementations
@@ -106,17 +121,17 @@ func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bi
 	return nil
 }
 
-func (b *brokerClient) GetService(name string) (Service, error) {
+func (b *brokerClient) getService(name string) (Service, osb.Service, error) {
 	cat, err := b.client.GetCatalog()
 	if err != nil {
-		return Service{}, err
+		return Service{}, osb.Service{}, err
 	}
 	for _, s := range cat.Services {
 		if s.Name == name {
-			return newService(b.broker, s), nil
+			return newService(b.broker, s), s, nil
 		}
 	}
-	return Service{}, ErrServiceNotFound
+	return Service{}, osb.Service{}, ErrServiceNotFound
 }
 
 func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {

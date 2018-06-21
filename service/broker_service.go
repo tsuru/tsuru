@@ -58,7 +58,7 @@ func getBrokeredServices() ([]Service, error) {
 	}
 	var services []Service
 	for _, b := range brokers {
-		c, err := newClient(b)
+		c, err := newClient(b, "")
 		if err != nil {
 			continue
 		}
@@ -84,7 +84,8 @@ func getBrokeredService(name string) (Service, error) {
 	if err != nil {
 		return Service{}, err
 	}
-	return client.GetService(serviceName)
+	s, _, err := client.getService(serviceName)
+	return s, err
 }
 
 func isBrokeredService(name string) bool {
@@ -100,7 +101,7 @@ func splitBrokerService(name string) (string, string, error) {
 }
 
 func newBrokeredServiceClient(service string) (*brokerClient, error) {
-	brokerName, _, err := splitBrokerService(service)
+	brokerName, serviceName, err := splitBrokerService(service)
 	if err != nil {
 		return nil, err
 	}
@@ -112,5 +113,5 @@ func newBrokeredServiceClient(service string) (*brokerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newClient(broker)
+	return newClient(broker, serviceName)
 }
