@@ -11,7 +11,6 @@ type Plan struct {
 }
 
 func GetPlansByServiceName(serviceName, requestID string) ([]Plan, error) {
-	s := Service{Name: serviceName}
 	s, err := Get(serviceName)
 	if err != nil {
 		return nil, err
