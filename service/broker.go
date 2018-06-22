@@ -84,7 +84,7 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	if err != nil {
 		return err
 	}
-	_, err = b.client.ProvisionInstance(&osb.ProvisionRequest{
+	req := osb.ProvisionRequest{
 		InstanceID:       instance.Name,
 		ServiceID:        s.ID,
 		PlanID:           planID,
@@ -101,7 +101,14 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 			"organization_guid": instance.TeamOwner,
 			"space_guid":        instance.TeamOwner,
 		},
-	})
+	}
+	_, err = b.client.ProvisionInstance(&req)
+	if osb.IsAsyncRequiredError(err) {
+		// We only set AcceptsIncomplete when it is required because some Brokers fail when
+		// they don't support async operations and AcceptsIncomplete is true.
+		req.AcceptsIncomplete = true
+		_, err = b.client.ProvisionInstance(&req)
+	}
 	return err
 }
 
