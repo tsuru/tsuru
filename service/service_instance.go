@@ -49,7 +49,7 @@ type ServiceInstance struct {
 	TeamOwner   string                 `json:"team_owner"`
 	Description string                 `json:"description"`
 	Tags        []string               `json:"tags"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
 }
 
 type Unit struct {

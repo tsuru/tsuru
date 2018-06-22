@@ -89,3 +89,38 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `invalid plan: premium`)
 	c.Assert(provisioned, check.DeepEquals, false)
 }
+
+func (s *S) TestBrokerClientCreateAsyncRequired(c *check.C) {
+	var calls int
+	ev := createEvt(c)
+	reaction := func(req *osb.ProvisionRequest) (*osb.ProvisionResponse, error) {
+		calls++
+		if calls > 1 {
+			c.Assert(req.AcceptsIncomplete, check.DeepEquals, true)
+			return nil, nil
+		}
+		c.Assert(req.AcceptsIncomplete, check.DeepEquals, false)
+		return nil, osbfake.AsyncRequiredError()
+	}
+	config := osbfake.FakeClientConfiguration{
+		ProvisionReaction: osbfake.DynamicProvisionReaction(reaction),
+		CatalogReaction: &osbfake.CatalogReaction{
+			Response: &osb.CatalogResponse{
+				Services: []osb.Service{
+					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "standard", ID: "planid"}}},
+				},
+			},
+		},
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "my-instance",
+		PlanName:  "standard",
+		TeamOwner: "teamowner",
+	}
+	err = client.Create(&instance, ev, "request-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.DeepEquals, 2)
+}
