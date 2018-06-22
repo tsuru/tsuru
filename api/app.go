@@ -1312,8 +1312,12 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	if force {
+		s, err := service.Get(instance.ServiceName)
+		if err != nil {
+			return err
+		}
 		allowed = permission.Check(t, permission.PermServiceUpdate,
-			contextsForServiceProvision(instance.Service())...,
+			contextsForServiceProvision(&s)...,
 		)
 		if !allowed {
 			return permission.ErrUnauthorized

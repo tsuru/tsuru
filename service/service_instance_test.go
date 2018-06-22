@@ -36,6 +36,7 @@ type InstanceSuite struct {
 	team            *authTypes.Team
 	user            *auth.User
 	mockTeamService *authTypes.MockTeamService
+	service         Service
 }
 
 var _ = check.Suite(&InstanceSuite{})
@@ -68,6 +69,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 		},
 	}
 	servicemanager.Team = s.mockTeamService
+	c.Assert(err, check.IsNil)
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
@@ -76,25 +78,24 @@ func (s *InstanceSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
-	si := &ServiceInstance{Name: "MySQL"}
+	err := Create(Service{
+		Name:       "mongodb",
+		Password:   "password",
+		OwnerTeams: []string{"raul"},
+		Endpoint: map[string]string{
+			"production": "http://localhost:8080",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	si := &ServiceInstance{Name: "MySQL", ServiceName: "mongodb"}
 	s.conn.ServiceInstances().Insert(&si)
 	evt := createEvt(c)
-	DeleteInstance(si, evt, "")
+	err = DeleteInstance(si, evt, "")
+	c.Assert(err, check.IsNil)
 	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(qtd, check.Equals, 0)
-}
-
-func (s *InstanceSuite) TestRetrieveAssociatedService(c *check.C) {
-	service := Service{Name: "my_service"}
-	s.conn.Services().Insert(&service)
-	serviceInstance := &ServiceInstance{
-		Name:        service.Name,
-		ServiceName: service.Name,
-	}
-	rService := serviceInstance.Service()
-	c.Assert(service.Name, check.Equals, rService.Name)
 }
 
 func (s *InstanceSuite) TestFindApp(c *check.C) {
@@ -1214,11 +1215,12 @@ func (s *S) TestProxyInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	service := Service{
-		Name:     "tensorflow",
-		Endpoint: map[string]string{"production": ts.URL},
-		Password: "abcde",
+		Name:       "tensorflow",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
 	}
-	err := s.conn.Services().Insert(service)
+	err := Create(service)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{Name: "noflow", ServiceName: "tensorflow", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
