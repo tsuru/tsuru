@@ -39,16 +39,17 @@ var (
 )
 
 type ServiceInstance struct {
-	Name        string   `json:"name"`
-	Id          int      `json:"id"`
-	ServiceName string   `bson:"service_name" json:"service_name"`
-	PlanName    string   `bson:"plan_name" json:"plan_name"`
-	Apps        []string `json:"apps"`
-	BoundUnits  []Unit   `bson:"bound_units" json:"bound_units"`
-	Teams       []string `json:"teams"`
-	TeamOwner   string   `json:"team_owner"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
+	Name        string                 `json:"name"`
+	Id          int                    `json:"id"`
+	ServiceName string                 `bson:"service_name" json:"service_name"`
+	PlanName    string                 `bson:"plan_name" json:"plan_name"`
+	Apps        []string               `json:"apps"`
+	BoundUnits  []Unit                 `bson:"bound_units" json:"bound_units"`
+	Teams       []string               `json:"teams"`
+	TeamOwner   string                 `json:"team_owner"`
+	Description string                 `json:"description"`
+	Tags        []string               `json:"tags"`
+	Parameters  map[string]interface{} `json:"parameters"`
 }
 
 type Unit struct {

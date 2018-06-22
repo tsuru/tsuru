@@ -5,6 +5,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -64,7 +65,44 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 }
 
 func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	return fmt.Errorf("not implemented")
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return err
+	}
+	var planID string
+	for _, p := range s.Plans {
+		if p.Name == instance.PlanName {
+			planID = p.ID
+		}
+	}
+	if planID == "" {
+		return fmt.Errorf("invalid plan: %v", instance.PlanName)
+	}
+	identity, err := json.Marshal(map[string]interface{}{
+		"user": evt.Owner.Name,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = b.client.ProvisionInstance(&osb.ProvisionRequest{
+		InstanceID:       instance.Name,
+		ServiceID:        s.ID,
+		PlanID:           planID,
+		OrganizationGUID: instance.TeamOwner,
+		SpaceGUID:        instance.TeamOwner,
+		Parameters:       instance.Parameters,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(identity),
+		},
+		Context: map[string]interface{}{
+			"request_id":        requestID,
+			"event_id":          evt.UniqueID.Hex(),
+			"organization_guid": instance.TeamOwner,
+			"space_guid":        instance.TeamOwner,
+		},
+	})
+	return err
 }
 
 func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {

@@ -1238,6 +1238,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
 				BoundUnits:  []service.Unit{},
+				Parameters:  map[string]interface{}(nil),
 			},
 		}},
 		{Service: "redis", Instances: []string{}, Plans: []string(nil)},

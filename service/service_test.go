@@ -397,6 +397,7 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 				BoundUnits: []Unit{
 					{AppName: "app1", ID: "unitid1", IP: "unitip1"},
 				},
+				Parameters: map[string]interface{}{"parameter": "val"},
 			},
 		}},
 	}
@@ -428,6 +429,9 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 				"ip":       "unitip1",
 				"app_name": "app1",
 			}},
+			"parameters": map[string]interface{}{
+				"parameter": "val",
+			},
 		}},
 	}
 	result := make([]map[string]interface{}, 2)
