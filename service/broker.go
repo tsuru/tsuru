@@ -109,6 +109,7 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 		req.AcceptsIncomplete = true
 		_, err = b.client.ProvisionInstance(&req)
 	}
+	//TODO: store OperationKey
 	return err
 }
 
@@ -129,7 +130,40 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 }
 
 func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return "", err
+	}
+	var planID *string
+	for i, p := range s.Plans {
+		if p.Name == instance.PlanName {
+			planID = &s.Plans[i].ID
+		}
+	}
+	origID, err := json.Marshal(map[string]interface{}{
+		"team": instance.TeamOwner,
+	})
+	if err != nil {
+		return "", err
+	}
+	//TODO: send OperationKey
+	op, err := b.client.PollLastOperation(&osb.LastOperationRequest{
+		ServiceID:  &s.ID,
+		PlanID:     planID,
+		InstanceID: instance.Name,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(origID),
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	output := string(op.State)
+	if op.Description != nil {
+		output += " - " + *op.Description
+	}
+	return output, nil
 }
 
 func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {

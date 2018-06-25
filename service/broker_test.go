@@ -124,3 +124,55 @@ func (s *S) TestBrokerClientCreateAsyncRequired(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, 2)
 }
+
+func (s *S) TestBrokerClientStatus(c *check.C) {
+	reaction := func(req *osb.LastOperationRequest) (*osb.LastOperationResponse, error) {
+		pID := "p2"
+		sID := "s1"
+		exID, err := json.Marshal(map[string]interface{}{
+			"team": "teamOwner",
+		})
+		c.Assert(err, check.IsNil)
+		c.Assert(req, check.DeepEquals, &osb.LastOperationRequest{
+			InstanceID: "instance",
+			ServiceID:  &sID,
+			PlanID:     &pID,
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+		})
+		alldone := "last operation done!"
+		return &osb.LastOperationResponse{
+			State:       osb.StateSucceeded,
+			Description: &alldone,
+		}, nil
+	}
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{
+					ID:   "s1",
+					Name: "service",
+					Plans: []osb.Plan{
+						{ID: "p1", Name: "plan1", Description: "First plan"},
+						{ID: "p2", Name: "plan2", Description: "Second plan"},
+					},
+				},
+			},
+		}},
+		PollLastOperationReaction: osbfake.DynamicPollLastOperationReaction(reaction),
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:        "instance",
+		ServiceName: "service",
+		PlanName:    "plan2",
+		TeamOwner:   "teamOwner",
+	}
+	status, err := client.Status(&instance, "req-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(status, check.DeepEquals, "succeeded - last operation done!")
+}
