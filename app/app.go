@@ -422,8 +422,8 @@ func CreateApp(app *App, user *auth.User) error {
 		&createAppToken,
 		&exportEnvironmentsAction,
 		&createRepository,
-		&addRouterBackend,
 		&provisionApp,
+		&addRouterBackend,
 	}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)
