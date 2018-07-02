@@ -10,6 +10,6 @@ import (
 )
 
 var _ = check.Suite(&storagetest.ClusterSuite{
-	ClusterStorage: &ClusterStorage{},
+	ClusterStorage: &clusterStorage{},
 	SuiteHooks:     &mongodbBaseTest{},
 })
