@@ -113,10 +113,6 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	return err
 }
 
-func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	return fmt.Errorf("not implemented")
-}
-
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	return fmt.Errorf("not implemented")
 }
@@ -197,6 +193,11 @@ func (b *brokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit 
 
 // UnbindUnit is a no-op for OSB API implementations
 func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+	return nil
+}
+
+// Update  is a no-op for OSB API implementations
+func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	return nil
 }
 
