@@ -305,7 +305,7 @@ func (s *S) TestBindAppEndpointDown(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
 	evt := createEvt(c)
-	_, err := client.BindApp(&instance, a, evt, "")
+	_, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `Failed to bind app "her-app" to service instance "redis/her-redis": Post http://localhost:1234/resources/her-redis/bind-app:.*connection refused`)
 }
@@ -318,7 +318,7 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	_, err := client.BindApp(&instance, a, evt, "")
+	_, err := client.BindApp(&instance, a, nil, evt, "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -358,7 +358,7 @@ func (s *S) TestBindAppBackwardCompatible(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	env, err := client.BindApp(&instance, a, evt, "")
+	env, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(env, check.DeepEquals, expected)
 	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
@@ -377,7 +377,7 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	env, err := client.BindApp(&instance, a, evt, "")
+	env, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(env, check.DeepEquals, expected)
 }
@@ -389,7 +389,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	_, err := client.BindApp(&instance, a, evt, "")
+	_, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": invalid response: Server failed to do its job. \(code: 500\)$`)
 }
@@ -404,7 +404,7 @@ func (s *S) TestBindAppInstanceNotReady(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	_, err := client.BindApp(&instance, a, evt, "")
+	_, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotReady)
 }
 
@@ -418,7 +418,7 @@ func (s *S) TestBindAppInstanceNotFound(c *check.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
-	_, err := client.BindApp(&instance, a, evt, "")
+	_, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 

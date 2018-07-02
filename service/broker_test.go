@@ -5,6 +5,7 @@ import (
 
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
@@ -189,10 +190,9 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.DeprovisionRequest{
-			AcceptsIncomplete: true,
-			InstanceID:        "instance",
-			ServiceID:         "s1",
-			PlanID:            "p1",
+			InstanceID: "instance",
+			ServiceID:  "s1",
+			PlanID:     "p1",
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",
 				Value:    string(exID),
@@ -226,4 +226,124 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 	err = client.Destroy(&instance, ev, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, 1)
+}
+
+func (s *S) TestBrokerClientBindApp(c *check.C) {
+	ev := createEvt(c)
+	appName := "theapp"
+	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
+		exID, err := json.Marshal(map[string]interface{}{
+			"user": "my@user",
+		})
+		c.Assert(err, check.IsNil)
+		c.Assert(req, check.DeepEquals, &osb.BindRequest{
+			AcceptsIncomplete: true,
+			InstanceID:        "instance",
+			ServiceID:         "s1",
+			PlanID:            "p1",
+			BindingID:         "instance-theapp",
+			AppGUID:           &appName,
+			BindResource: &osb.BindResource{
+				AppGUID: &appName,
+			},
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+			Context: map[string]interface{}{
+				"request_id": "request-id",
+				"event_id":   ev.UniqueID.Hex(),
+			},
+			Parameters: map[string]interface{}{
+				"param1": "val1",
+			},
+		})
+		return &osb.BindResponse{Credentials: map[string]interface{}{
+			"env1": "val1",
+			"env2": "val2",
+			"env3": 3,
+		}}, nil
+	}
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{
+					ID:   "s1",
+					Name: "service",
+					Plans: []osb.Plan{
+						{ID: "p1", Name: "plan1", Description: "First plan"},
+					},
+				},
+			},
+		}},
+		BindReaction: osbfake.DynamicBindReaction(reaction),
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:        "instance",
+		ServiceName: "service",
+		PlanName:    "plan1",
+		TeamOwner:   "teamOwner",
+	}
+	a := provisiontest.NewFakeApp("theapp", "python", 1)
+	params := BindAppParameters(map[string]interface{}{
+		"param1": "val1",
+	})
+	envs, err := client.BindApp(&instance, a, params, ev, "request-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(envs, check.DeepEquals, map[string]string{
+		"env1": "val1",
+		"env2": "val2",
+		"env3": "3",
+	})
+}
+
+func (s *S) TestBrokerClientUnbindApp(c *check.C) {
+	ev := createEvt(c)
+	reaction := func(req *osb.UnbindRequest) (*osb.UnbindResponse, error) {
+		exID, err := json.Marshal(map[string]interface{}{
+			"user": "my@user",
+		})
+		c.Assert(err, check.IsNil)
+		c.Assert(req, check.DeepEquals, &osb.UnbindRequest{
+			InstanceID:        "instance",
+			ServiceID:         "s1",
+			PlanID:            "p1",
+			BindingID:         "instance-theapp",
+			AcceptsIncomplete: true,
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+		})
+		return &osb.UnbindResponse{}, nil
+	}
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{
+					ID:   "s1",
+					Name: "service",
+					Plans: []osb.Plan{
+						{ID: "p1", Name: "plan1", Description: "First plan"},
+					},
+				},
+			},
+		}},
+		UnbindReaction: osbfake.DynamicUnbindReaction(reaction),
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:        "instance",
+		ServiceName: "service",
+		PlanName:    "plan1",
+		TeamOwner:   "teamOwner",
+	}
+	a := provisiontest.NewFakeApp("theapp", "python", 1)
+	err = client.UnbindApp(&instance, a, ev, "request-id")
+	c.Assert(err, check.IsNil)
 }

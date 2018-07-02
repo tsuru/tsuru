@@ -130,7 +130,7 @@ func (c *endpointClient) Destroy(instance *ServiceInstance, evt *event.Event, re
 	return err
 }
 
-func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, _ BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
