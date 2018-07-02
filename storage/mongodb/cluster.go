@@ -13,9 +13,9 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 )
 
-type ClusterStorage struct{}
+type clusterStorage struct{}
 
-var _ provision.ClusterStorage = &ClusterStorage{}
+var _ provision.ClusterStorage = &clusterStorage{}
 
 type cluster struct {
 	Name        string `bson:"_id"`
@@ -34,7 +34,7 @@ func clustersCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("clusters")
 }
 
-func (s *ClusterStorage) Upsert(c provision.Cluster) error {
+func (s *clusterStorage) Upsert(c provision.Cluster) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (s *ClusterStorage) Upsert(c provision.Cluster) error {
 	return errors.WithStack(err)
 }
 
-func (s *ClusterStorage) FindAll() ([]provision.Cluster, error) {
+func (s *clusterStorage) FindAll() ([]provision.Cluster, error) {
 	clusters, err := s.findByQuery(nil)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (s *ClusterStorage) FindAll() ([]provision.Cluster, error) {
 	return clusters, nil
 }
 
-func (s *ClusterStorage) FindByName(name string) (*provision.Cluster, error) {
+func (s *clusterStorage) FindByName(name string) (*provision.Cluster, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -87,11 +87,11 @@ func (s *ClusterStorage) FindByName(name string) (*provision.Cluster, error) {
 	return &cluster, nil
 }
 
-func (s *ClusterStorage) FindByProvisioner(provisioner string) ([]provision.Cluster, error) {
+func (s *clusterStorage) FindByProvisioner(provisioner string) ([]provision.Cluster, error) {
 	return s.findByQuery(bson.M{"provisioner": provisioner})
 }
 
-func (s *ClusterStorage) FindByPool(provisioner, pool string) (*provision.Cluster, error) {
+func (s *clusterStorage) FindByPool(provisioner, pool string) (*provision.Cluster, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *ClusterStorage) FindByPool(provisioner, pool string) (*provision.Cluste
 	return &cluster, nil
 }
 
-func (s *ClusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) {
+func (s *clusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (s *ClusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) 
 	return provClusters, nil
 }
 
-func (s *ClusterStorage) Delete(c provision.Cluster) error {
+func (s *clusterStorage) Delete(c provision.Cluster) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

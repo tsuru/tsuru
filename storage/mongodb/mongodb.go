@@ -18,6 +18,7 @@ func init() {
 		UserQuotaStorage: authQuotaStorage(),
 		AppQuotaStorage:  appQuotaStorage(),
 		WebhookStorage:   &webhookStorage{},
+		ClusterStorage:   &clusterStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }

@@ -36,6 +36,7 @@ import (
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -118,6 +119,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Webhook, err = webhook.WebhookService()
+	if err != nil {
+		return err
+	}
+	servicemanager.Cluster, err = cluster.ClusterService()
 	return err
 }
 
