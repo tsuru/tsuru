@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
@@ -75,23 +74,18 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	if err != nil {
 		return err
 	}
-	identity, err := json.Marshal(map[string]interface{}{
-		"user": evt.Owner.Name,
-	})
+	id, err := idForEvent(evt)
 	if err != nil {
 		return err
 	}
 	req := osb.ProvisionRequest{
-		InstanceID:       instance.Name,
-		ServiceID:        s.ID,
-		PlanID:           plan.ID,
-		OrganizationGUID: instance.TeamOwner,
-		SpaceGUID:        instance.TeamOwner,
-		Parameters:       instance.Parameters,
-		OriginatingIdentity: &osb.OriginatingIdentity{
-			Platform: "tsuru",
-			Value:    string(identity),
-		},
+		InstanceID:          instance.Name,
+		ServiceID:           s.ID,
+		PlanID:              plan.ID,
+		OrganizationGUID:    instance.TeamOwner,
+		SpaceGUID:           instance.TeamOwner,
+		Parameters:          instance.Parameters,
+		OriginatingIdentity: id,
 		Context: map[string]interface{}{
 			"request_id":        requestID,
 			"event_id":          evt.UniqueID.Hex(),
@@ -111,7 +105,38 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 }
 
 func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	return errors.New("not implemented")
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return err
+	}
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return err
+	}
+	id, err := idForEvent(evt)
+	if err != nil {
+		return err
+	}
+	req := osb.UpdateInstanceRequest{
+		InstanceID:          instance.Name,
+		ServiceID:           s.ID,
+		PlanID:              &plan.ID,
+		Parameters:          instance.Parameters,
+		OriginatingIdentity: id,
+		Context: map[string]interface{}{
+			"request_id": requestID,
+			"event_id":   evt.UniqueID.Hex(),
+		},
+	}
+	_, err = b.client.UpdateInstance(&req)
+	if osb.IsAsyncRequiredError(err) {
+		// We only set AcceptsIncomplete when it is required because some Brokers fail when
+		// they don't support async operations and AcceptsIncomplete is true.
+		req.AcceptsIncomplete = true
+		_, err = b.client.UpdateInstance(&req)
+	}
+	// TODO: consider storing OperationKey
+	return err
 }
 
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
@@ -123,20 +148,15 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 	if err != nil {
 		return err
 	}
-	identity, err := json.Marshal(map[string]interface{}{
-		"user": evt.Owner.Name,
-	})
+	id, err := idForEvent(evt)
 	if err != nil {
 		return err
 	}
 	req := osb.DeprovisionRequest{
-		InstanceID: instance.Name,
-		ServiceID:  s.ID,
-		PlanID:     plan.ID,
-		OriginatingIdentity: &osb.OriginatingIdentity{
-			Platform: "tsuru",
-			Value:    string(identity),
-		},
+		InstanceID:          instance.Name,
+		ServiceID:           s.ID,
+		PlanID:              plan.ID,
+		OriginatingIdentity: id,
 	}
 	_, err = b.client.DeprovisionInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
@@ -159,23 +179,18 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 		return nil, err
 	}
 	appName := app.GetName()
-	identity, err := json.Marshal(map[string]interface{}{
-		"user": evt.Owner.Name,
-	})
+	id, err := idForEvent(evt)
 	if err != nil {
 		return nil, err
 	}
 	req := osb.BindRequest{
-		ServiceID:  s.ID,
-		InstanceID: instance.Name,
-		PlanID:     plan.ID,
-		BindingID:  getBindingID(instance, app),
-		AppGUID:    &appName,
-		Parameters: params,
-		OriginatingIdentity: &osb.OriginatingIdentity{
-			Platform: "tsuru",
-			Value:    string(identity),
-		},
+		ServiceID:           s.ID,
+		InstanceID:          instance.Name,
+		PlanID:              plan.ID,
+		BindingID:           getBindingID(instance, app),
+		AppGUID:             &appName,
+		Parameters:          params,
+		OriginatingIdentity: id,
 		BindResource: &osb.BindResource{
 			AppGUID: &appName,
 		},
@@ -215,22 +230,17 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	if err != nil {
 		return err
 	}
-	identity, err := json.Marshal(map[string]interface{}{
-		"user": evt.Owner.Name,
-	})
+	id, err := idForEvent(evt)
 	if err != nil {
 		return err
 	}
 	req := osb.UnbindRequest{
-		InstanceID: instance.Name,
-		BindingID:  getBindingID(instance, app),
-		ServiceID:  s.ID,
-		PlanID:     plan.ID,
-		OriginatingIdentity: &osb.OriginatingIdentity{
-			Platform: "tsuru",
-			Value:    string(identity),
-		},
-		AcceptsIncomplete: true,
+		InstanceID:          instance.Name,
+		BindingID:           getBindingID(instance, app),
+		ServiceID:           s.ID,
+		PlanID:              plan.ID,
+		OriginatingIdentity: id,
+		AcceptsIncomplete:   true,
 	}
 	_, err = b.client.Unbind(&req)
 	if osb.IsAsyncBindingOperationsNotAllowedError(err) {
@@ -341,4 +351,17 @@ func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {
 
 func getBindingID(instance *ServiceInstance, app bind.App) string {
 	return fmt.Sprintf("%s-%s", instance.Name, app.GetName())
+}
+
+func idForEvent(evt *event.Event) (*osb.OriginatingIdentity, error) {
+	identity, err := json.Marshal(map[string]interface{}{
+		"user": evt.Owner.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &osb.OriginatingIdentity{
+		Platform: "tsuru",
+		Value:    string(identity),
+	}, nil
 }
