@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
+	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
@@ -108,6 +110,10 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	return err
 }
 
+func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	return errors.New("not implemented")
+}
+
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	_, s, err := b.getService(b.service)
 	if err != nil {
@@ -123,26 +129,116 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 	if err != nil {
 		return err
 	}
-	_, err = b.client.DeprovisionInstance(&osb.DeprovisionRequest{
-		InstanceID:        instance.Name,
-		AcceptsIncomplete: true,
-		ServiceID:         s.ID,
-		PlanID:            plan.ID,
+	req := osb.DeprovisionRequest{
+		InstanceID: instance.Name,
+		ServiceID:  s.ID,
+		PlanID:     plan.ID,
 		OriginatingIdentity: &osb.OriginatingIdentity{
 			Platform: "tsuru",
 			Value:    string(identity),
 		},
-	})
+	}
+	_, err = b.client.DeprovisionInstance(&req)
+	if osb.IsAsyncRequiredError(err) {
+		// We only set AcceptsIncomplete when it is required because some Brokers fail when
+		// they don't support async operations and AcceptsIncomplete is true.
+		req.AcceptsIncomplete = true
+		_, err = b.client.DeprovisionInstance(&req)
+	}
 	//TODO: consider storing OperatioKey and track async operations
 	return err
 }
 
-func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
-	return nil, fmt.Errorf("not implemented")
+func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return nil, err
+	}
+	appName := app.GetName()
+	identity, err := json.Marshal(map[string]interface{}{
+		"user": evt.Owner.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	req := osb.BindRequest{
+		ServiceID:  s.ID,
+		InstanceID: instance.Name,
+		PlanID:     plan.ID,
+		BindingID:  getBindingID(instance, app),
+		AppGUID:    &appName,
+		Parameters: params,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(identity),
+		},
+		BindResource: &osb.BindResource{
+			AppGUID: &appName,
+		},
+		Context: map[string]interface{}{
+			"request_id": requestID,
+			"event_id":   evt.UniqueID.Hex(),
+		},
+		AcceptsIncomplete: true,
+	}
+	resp, err := b.client.Bind(&req)
+	if osb.IsAsyncBindingOperationsNotAllowedError(err) {
+		req.AcceptsIncomplete = false
+		resp, err = b.client.Bind(&req)
+	}
+	if resp == nil {
+		return nil, err
+	}
+	// TODO: consider storing OperationKey
+	envs := make(map[string]string)
+	for k, v := range resp.Credentials {
+		switch s := v.(type) {
+		case string:
+			envs[k] = s
+		case int:
+			envs[k] = strconv.Itoa(s)
+		}
+	}
+	return envs, err
 }
 
 func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
-	return fmt.Errorf("not implemented")
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return err
+	}
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return err
+	}
+	identity, err := json.Marshal(map[string]interface{}{
+		"user": evt.Owner.Name,
+	})
+	if err != nil {
+		return err
+	}
+	req := osb.UnbindRequest{
+		InstanceID: instance.Name,
+		BindingID:  getBindingID(instance, app),
+		ServiceID:  s.ID,
+		PlanID:     plan.ID,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(identity),
+		},
+		AcceptsIncomplete: true,
+	}
+	_, err = b.client.Unbind(&req)
+	if osb.IsAsyncBindingOperationsNotAllowedError(err) {
+		req.AcceptsIncomplete = false
+		_, err = b.client.Unbind(&req)
+	}
+	// TODO: consider storing OperationKey
+	return err
 }
 
 func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
@@ -214,11 +310,6 @@ func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bi
 	return nil
 }
 
-// Update  is a no-op for OSB API implementations
-func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	return nil
-}
-
 func (b *brokerClient) getService(name string) (Service, osb.Service, error) {
 	cat, err := b.client.GetCatalog()
 	if err != nil {
@@ -246,4 +337,8 @@ func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {
 		Name: fmt.Sprintf("%s%s%s", broker.Name, serviceNameBrokerSep, osbservice.Name),
 		Doc:  osbservice.Description,
 	}
+}
+
+func getBindingID(instance *ServiceInstance, app bind.App) string {
+	return fmt.Sprintf("%s-%s", instance.Name, app.GetName())
 }

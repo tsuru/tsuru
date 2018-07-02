@@ -193,6 +193,7 @@ func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.W
 		app:             app,
 		writer:          writer,
 		shouldRestart:   shouldRestart,
+		params:          BindAppParameters{},
 		event:           evt,
 		requestID:       requestID,
 	}

@@ -32,11 +32,13 @@ type Service struct {
 	IsRestricted bool `bson:"is_restricted"`
 }
 
+type BindAppParameters map[string]interface{}
+
 type ServiceClient interface {
 	Create(instance *ServiceInstance, evt *event.Event, requestID string) error
 	Update(instance *ServiceInstance, evt *event.Event, requestID string) error
 	Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error
-	BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error)
+	BindApp(instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
 	BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error
 	UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
 	UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error

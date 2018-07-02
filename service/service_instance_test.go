@@ -156,7 +156,15 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		"bindAppDBAction", "bindAppEndpointAction",
 		"setBoundEnvsAction", "bindUnitsAction",
 	}
-	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf, shouldRestart: true, event: evt, requestID: ""}}
+	expectedParams := []interface{}{&bindPipelineArgs{
+		app:             a,
+		serviceInstance: &si,
+		writer:          &buf,
+		shouldRestart:   true,
+		event:           evt,
+		requestID:       "",
+		params:          BindAppParameters{},
+	}}
 	c.Assert(calls, check.DeepEquals, expectedCalls)
 	c.Assert(params, check.DeepEquals, expectedParams)
 	c.Assert(buf.String(), check.Equals, "")
