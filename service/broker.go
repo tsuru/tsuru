@@ -69,14 +69,9 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	if err != nil {
 		return err
 	}
-	var planID string
-	for _, p := range s.Plans {
-		if p.Name == instance.PlanName {
-			planID = p.ID
-		}
-	}
-	if planID == "" {
-		return fmt.Errorf("invalid plan: %v", instance.PlanName)
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return err
 	}
 	identity, err := json.Marshal(map[string]interface{}{
 		"user": evt.Owner.Name,
@@ -87,7 +82,7 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	req := osb.ProvisionRequest{
 		InstanceID:       instance.Name,
 		ServiceID:        s.ID,
-		PlanID:           planID,
+		PlanID:           plan.ID,
 		OrganizationGUID: instance.TeamOwner,
 		SpaceGUID:        instance.TeamOwner,
 		Parameters:       instance.Parameters,
@@ -109,12 +104,37 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 		req.AcceptsIncomplete = true
 		_, err = b.client.ProvisionInstance(&req)
 	}
-	//TODO: store OperationKey
+	//TODO: consider storing OperationKey for Status call
 	return err
 }
 
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	return fmt.Errorf("not implemented")
+	_, s, err := b.getService(b.service)
+	if err != nil {
+		return err
+	}
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return err
+	}
+	identity, err := json.Marshal(map[string]interface{}{
+		"user": evt.Owner.Name,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = b.client.DeprovisionInstance(&osb.DeprovisionRequest{
+		InstanceID:        instance.Name,
+		AcceptsIncomplete: true,
+		ServiceID:         s.ID,
+		PlanID:            plan.ID,
+		OriginatingIdentity: &osb.OriginatingIdentity{
+			Platform: "tsuru",
+			Value:    string(identity),
+		},
+	})
+	//TODO: consider storing OperatioKey and track async operations
+	return err
 }
 
 func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) (map[string]string, error) {
@@ -130,11 +150,9 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	if err != nil {
 		return "", err
 	}
-	var planID *string
-	for i, p := range s.Plans {
-		if p.Name == instance.PlanName {
-			planID = &s.Plans[i].ID
-		}
+	plan, err := getPlan(s, instance.PlanName)
+	if err != nil {
+		return "", err
 	}
 	origID, err := json.Marshal(map[string]interface{}{
 		"team": instance.TeamOwner,
@@ -145,7 +163,7 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	//TODO: send OperationKey
 	op, err := b.client.PollLastOperation(&osb.LastOperationRequest{
 		ServiceID:  &s.ID,
-		PlanID:     planID,
+		PlanID:     &plan.ID,
 		InstanceID: instance.Name,
 		OriginatingIdentity: &osb.OriginatingIdentity{
 			Platform: "tsuru",
@@ -212,6 +230,15 @@ func (b *brokerClient) getService(name string) (Service, osb.Service, error) {
 		}
 	}
 	return Service{}, osb.Service{}, ErrServiceNotFound
+}
+
+func getPlan(s osb.Service, planName string) (osb.Plan, error) {
+	for _, p := range s.Plans {
+		if p.Name == planName {
+			return p, nil
+		}
+	}
+	return osb.Plan{}, fmt.Errorf("invalid plan: %s", planName)
 }
 
 func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {

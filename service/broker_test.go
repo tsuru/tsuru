@@ -41,24 +41,26 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 	ev := createEvt(c)
 	reaction := func(req *osb.ProvisionRequest) (*osb.ProvisionResponse, error) {
 		provisioned = true
-		c.Assert(req.PlanID, check.DeepEquals, "planid")
-		c.Assert(req.ServiceID, check.DeepEquals, "serviceid")
-		c.Assert(req.InstanceID, check.DeepEquals, "my-instance")
-		c.Assert(req.OrganizationGUID, check.DeepEquals, "teamowner")
-		c.Assert(req.SpaceGUID, check.DeepEquals, "teamowner")
 		exID, err := json.Marshal(map[string]interface{}{
 			"user": "my@user",
 		})
 		c.Assert(err, check.IsNil)
-		c.Assert(req.OriginatingIdentity, check.DeepEquals, &osb.OriginatingIdentity{
-			Platform: "tsuru",
-			Value:    string(exID),
-		})
-		c.Assert(req.Context, check.DeepEquals, map[string]interface{}{
-			"request_id":        "request-id",
-			"event_id":          ev.UniqueID.Hex(),
-			"organization_guid": "teamowner",
-			"space_guid":        "teamowner",
+		c.Assert(req, check.DeepEquals, &osb.ProvisionRequest{
+			PlanID:           "planid",
+			ServiceID:        "serviceid",
+			InstanceID:       "my-instance",
+			OrganizationGUID: "teamowner",
+			SpaceGUID:        "teamowner",
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+			Context: map[string]interface{}{
+				"request_id":        "request-id",
+				"event_id":          ev.UniqueID.Hex(),
+				"organization_guid": "teamowner",
+				"space_guid":        "teamowner",
+			},
 		})
 		return nil, nil
 	}
@@ -175,4 +177,53 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 	status, err := client.Status(&instance, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.DeepEquals, "succeeded - last operation done!")
+}
+
+func (s *S) TestBrokerClientDestroy(c *check.C) {
+	var calls int
+	ev := createEvt(c)
+	reaction := func(req *osb.DeprovisionRequest) (*osb.DeprovisionResponse, error) {
+		calls++
+		exID, err := json.Marshal(map[string]interface{}{
+			"user": "my@user",
+		})
+		c.Assert(err, check.IsNil)
+		c.Assert(req, check.DeepEquals, &osb.DeprovisionRequest{
+			AcceptsIncomplete: true,
+			InstanceID:        "instance",
+			ServiceID:         "s1",
+			PlanID:            "p1",
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+		})
+		return nil, nil
+	}
+	config := osbfake.FakeClientConfiguration{
+		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
+			Services: []osb.Service{
+				{
+					ID:   "s1",
+					Name: "service",
+					Plans: []osb.Plan{
+						{ID: "p1", Name: "plan1", Description: "First plan"},
+					},
+				},
+			},
+		}},
+		DeprovisionReaction: osbfake.DynamicDeprovisionReaction(reaction),
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:        "instance",
+		ServiceName: "service",
+		PlanName:    "plan1",
+		TeamOwner:   "teamOwner",
+	}
+	err = client.Destroy(&instance, ev, "req-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.DeepEquals, 1)
 }
