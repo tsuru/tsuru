@@ -347,3 +347,54 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 	err = client.UnbindApp(&instance, a, ev, "request-id")
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestBrokerClientUpdate(c *check.C) {
+	ev := createEvt(c)
+	planID := "planid"
+	reaction := func(req *osb.UpdateInstanceRequest) (*osb.UpdateInstanceResponse, error) {
+		exID, err := json.Marshal(map[string]interface{}{
+			"user": "my@user",
+		})
+		c.Assert(err, check.IsNil)
+		c.Assert(req, check.DeepEquals, &osb.UpdateInstanceRequest{
+			InstanceID: "my-instance",
+			ServiceID:  "serviceid",
+			PlanID:     &planID,
+			Parameters: map[string]interface{}{
+				"param1": "val1",
+			},
+			OriginatingIdentity: &osb.OriginatingIdentity{
+				Platform: "tsuru",
+				Value:    string(exID),
+			},
+			Context: map[string]interface{}{
+				"request_id": "request-id",
+				"event_id":   ev.UniqueID.Hex(),
+			},
+		})
+		return nil, nil
+	}
+	config := osbfake.FakeClientConfiguration{
+		UpdateInstanceReaction: osbfake.DynamicUpdateInstanceReaction(reaction),
+		CatalogReaction: &osbfake.CatalogReaction{
+			Response: &osb.CatalogResponse{
+				Services: []osb.Service{
+					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "standard", ID: "planid"}}},
+				},
+			},
+		},
+	}
+	ClientFactory = osbfake.NewFakeClientFunc(config)
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "my-instance",
+		PlanName:  "standard",
+		TeamOwner: "teamowner",
+		Parameters: map[string]interface{}{
+			"param1": "val1",
+		},
+	}
+	err = client.Update(&instance, ev, "request-id")
+	c.Assert(err, check.IsNil)
+}
