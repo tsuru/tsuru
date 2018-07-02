@@ -142,7 +142,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, true, nil, evt, "")
+	err = instance.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.NotNil)
 }
 
@@ -163,7 +163,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, true, nil, evt, "")
+	err = instance.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.GetName()})
@@ -192,7 +192,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, true, nil, evt, "")
+	err = instance.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(2*time.Second, func() bool {
 		return atomic.LoadInt32(&calls) == 3
@@ -234,9 +234,9 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance1.BindApp(a, true, nil, evt, "")
+	err = instance1.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
-	err = instance2.BindApp(a, true, nil, evt, "")
+	err = instance2.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{
@@ -287,7 +287,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, true, nil, evt, "")
+	err = instance.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.Equals, service.ErrAppAlreadyBound)
 }
 
@@ -306,7 +306,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, true, nil, evt, "")
+	err = instance.BindApp(a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{

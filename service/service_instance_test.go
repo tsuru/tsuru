@@ -150,7 +150,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err := si.BindApp(a, true, &buf, evt, "")
+	err := si.BindApp(a, nil, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
@@ -1066,7 +1066,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err = si.BindApp(a, true, &buf, evt, "")
+	err = si.BindApp(a, nil, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "add instance")
 	c.Assert(reqs, check.HasLen, 3)
@@ -1124,7 +1124,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			bindErr := si.BindApp(app, true, &buf, evt, "")
+			bindErr := si.BindApp(app, nil, true, &buf, evt, "")
 			c.Assert(bindErr, check.IsNil)
 		}(app)
 	}
@@ -1168,7 +1168,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
-		err = si.BindApp(app, true, &buf, evt, "")
+		err = si.BindApp(app, nil, true, &buf, evt, "")
 		c.Assert(err, check.IsNil)
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
