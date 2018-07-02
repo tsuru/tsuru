@@ -1222,7 +1222,17 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	instanceName := r.URL.Query().Get(":instance")
 	appName := r.URL.Query().Get(":app")
 	serviceName := r.URL.Query().Get(":service")
-	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
+	if err := r.ParseForm(); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	req := struct {
+		NoRestart  bool
+		Parameters service.BindAppParameters
+	}{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&req, r.Form)
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1263,7 +1273,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.BindApp(a, !noRestart, writer, evt, requestIDHeader(r))
+	err = instance.BindApp(a, req.Parameters, !req.NoRestart, writer, evt, requestIDHeader(r))
 	if err != nil {
 		return err
 	}

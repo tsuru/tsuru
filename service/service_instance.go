@@ -187,7 +187,7 @@ func (si *ServiceInstance) updateData(update bson.M) error {
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
+func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
 	args := bindPipelineArgs{
 		serviceInstance: si,
 		app:             app,
