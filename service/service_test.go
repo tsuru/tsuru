@@ -277,7 +277,7 @@ func (s *S) TestGetServices(c *check.C) {
 	services, err := GetServices()
 	c.Assert(err, check.IsNil)
 	c.Assert(services, check.DeepEquals, []Service{
-		Service{
+		{
 			Name:     "my-service",
 			Password: "my-password",
 			Endpoint: map[string]string{
@@ -286,12 +286,12 @@ func (s *S) TestGetServices(c *check.C) {
 			OwnerTeams: []string{"admin"},
 			Teams:      []string{},
 		},
-		Service{
+		{
 			Name:       "aws::otherservice",
 			Teams:      []string(nil),
 			OwnerTeams: []string(nil),
 		},
-		Service{
+		{
 			Name:       "aws::service",
 			Doc:        "This service is awesome!",
 			Teams:      []string(nil),

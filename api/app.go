@@ -1296,7 +1296,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
 	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
@@ -1320,9 +1320,9 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	if force {
-		s, err := service.Get(instance.ServiceName)
-		if err != nil {
-			return err
+		s, errGet := service.Get(instance.ServiceName)
+		if errGet != nil {
+			return errGet
 		}
 		allowed = permission.Check(t, permission.PermServiceUpdate,
 			contextsForServiceProvision(&s)...,
