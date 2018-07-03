@@ -93,6 +93,7 @@ var (
 	TargetTypePool            = TargetType("pool")
 	TargetTypeService         = TargetType("service")
 	TargetTypeServiceInstance = TargetType("service-instance")
+	TargetTypeServiceBroker   = TargetType("service-broker")
 	TargetTypeTeam            = TargetType("team")
 	TargetTypeUser            = TargetType("user")
 	TargetTypeIaas            = TargetType("iaas")

@@ -169,6 +169,7 @@ var (
 	PermServiceBrokerCreate              = PermissionRegistry.get("service-broker.create")               // [global]
 	PermServiceBrokerDelete              = PermissionRegistry.get("service-broker.delete")               // [global]
 	PermServiceBrokerRead                = PermissionRegistry.get("service-broker.read")                 // [global]
+	PermServiceBrokerReadEvents          = PermissionRegistry.get("service-broker.read.events")          // [global]
 	PermServiceBrokerUpdate              = PermissionRegistry.get("service-broker.update")               // [global]
 	PermServiceInstance                  = PermissionRegistry.get("service-instance")                    // [global service-instance team]
 	PermServiceInstanceCreate            = PermissionRegistry.get("service-instance.create")             // [global team]

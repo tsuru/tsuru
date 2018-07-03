@@ -132,6 +132,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service.update.doc",
 	"service.delete",
 	"service-broker.read",
+	"service-broker.read.events",
 	"service-broker.create",
 	"service-broker.delete",
 	"service-broker.update",
