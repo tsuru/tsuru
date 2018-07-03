@@ -8,6 +8,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/service"
@@ -59,6 +60,17 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err := dec.DecodeValues(&broker, r.Form); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse broker: %v", err)}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
+		Kind:       permission.PermServiceBrokerCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if err := servicemanager.ServiceBroker.Create(broker); err != nil {
 		if err == service.ErrServiceBrokerAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: "Broker already exists."}
@@ -94,8 +106,18 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err := dec.DecodeValues(&broker, r.Form); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse broker: %v", err)}
 	}
-	err := servicemanager.ServiceBroker.Update(brokerName, broker)
-	if err == service.ErrServiceBrokerNotFound {
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
+		Kind:       permission.PermServiceBrokerUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	if err := servicemanager.ServiceBroker.Update(brokerName, broker); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
@@ -116,24 +138,19 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if brokerName == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
 	}
-	err := servicemanager.ServiceBroker.Delete(brokerName)
-	if err == service.ErrServiceBrokerNotFound {
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: brokerName},
+		Kind:       permission.PermServiceBrokerDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	if err := servicemanager.ServiceBroker.Delete(brokerName); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
-}
-
-func brokerFromRequest(w http.ResponseWriter, r *http.Request) (service.Broker, error) {
-	brokerName := r.URL.Query().Get(":broker")
-	if brokerName == "" {
-		return service.Broker{}, &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
-	}
-	b, err := servicemanager.ServiceBroker.Find(brokerName)
-	if err != nil {
-		if err == service.ErrServiceBrokerNotFound {
-			w.WriteHeader(http.StatusNotFound)
-		}
-		return service.Broker{}, err
-	}
-	return b, nil
 }
