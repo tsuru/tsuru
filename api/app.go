@@ -1222,9 +1222,6 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	instanceName := r.URL.Query().Get(":instance")
 	appName := r.URL.Query().Get(":app")
 	serviceName := r.URL.Query().Get(":service")
-	if err := r.ParseForm(); err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	req := struct {
 		NoRestart  bool
 		Parameters service.BindAppParameters
@@ -1232,6 +1229,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
+	r.ParseForm()
 	dec.DecodeValues(&req, r.Form)
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
