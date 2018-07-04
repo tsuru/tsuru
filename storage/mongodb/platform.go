@@ -89,7 +89,10 @@ func (s *PlatformStorage) Update(p app.Platform) error {
 		return err
 	}
 	defer conn.Close()
-	return platformsCollection(conn).Update(bson.M{"_id": p.Name}, bson.M{"$set": bson.M{"disabled": p.Disabled}})
+	return platformsCollection(conn).Update(
+		bson.M{"_id": p.Name},
+		bson.M{"$set": bson.M{"disabled": p.Disabled}},
+	)
 }
 
 func (s *PlatformStorage) Delete(p app.Platform) error {

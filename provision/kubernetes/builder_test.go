@@ -314,6 +314,6 @@ func (s *S) TestBuildImage(c *check.C) {
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
 	out := &safe.Buffer{}
-	err := client.BuildImage("myplatform", ioutil.NopCloser(inputStream), out, context.Background())
+	err := client.BuildImage("myplatform", "tsuru/myplatform:latest", ioutil.NopCloser(inputStream), out, context.Background())
 	c.Assert(err, check.IsNil)
 }

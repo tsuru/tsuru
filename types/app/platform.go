@@ -18,12 +18,13 @@ type Platform struct {
 }
 
 type PlatformOptions struct {
-	Name   string
-	Args   map[string]string
-	Input  io.Reader
-	Output io.Writer
-	Data   []byte
-	Ctx    context.Context
+	Name      string
+	ImageName string
+	Args      map[string]string
+	Input     io.Reader
+	Output    io.Writer
+	Data      []byte
+	Ctx       context.Context
 }
 
 type PlatformService interface {

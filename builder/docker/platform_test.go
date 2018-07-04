@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
@@ -33,18 +32,23 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	defer config.Unset("docker:registry")
 	var b dockerBuilder
 	dockerfile := "FROM tsuru/java"
+	err = image.PlatformAppendImage("test", "localhost:3030/tsuru/test:v1")
+	c.Assert(err, check.IsNil)
 	err = b.PlatformAdd(appTypes.PlatformOptions{
-		Name:   "test",
-		Args:   map[string]string{"dockerfile": "http://localhost"},
-		Output: ioutil.Discard,
-		Input:  strings.NewReader(dockerfile),
+		Name:      "test",
+		ImageName: "localhost:3030/tsuru/test:v1",
+		Args:      map[string]string{"dockerfile": "http://localhost"},
+		Output:    ioutil.Discard,
+		Input:     strings.NewReader(dockerfile),
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 2, check.Equals, true)
 	requests = requests[len(requests)-2:]
 	c.Assert(requests[0].URL.Path, check.Equals, "/build")
+	img, err := image.PlatformCurrentImage("test")
+	c.Assert(err, check.IsNil)
 	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), check.Equals, image.PlatformImageName("test"))
+	c.Assert(queryString.Get("t"), check.Equals, img)
 	c.Assert(queryString.Get("remote"), check.Equals, "")
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
 }
@@ -108,17 +112,20 @@ func (s *S) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	var b dockerBuilder
+	err = image.PlatformAppendImage("test", "localhost:3030/tsuru/test:v1")
+	c.Assert(err, check.IsNil)
 	err = b.PlatformAdd(appTypes.PlatformOptions{
-		Name:   "test",
-		Args:   map[string]string{"dockerfile": "http://localhost/Dockerfile"},
-		Output: &buf,
+		Name:      "test",
+		ImageName: "localhost:3030/tsuru/test:v1",
+		Args:      map[string]string{"dockerfile": "http://localhost/Dockerfile"},
+		Output:    &buf,
 	})
 	c.Assert(err, check.IsNil)
 	err = b.PlatformRemove("test")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 4, check.Equals, true)
 	requests = requests[len(requests)-4:]
-	c.Assert(requests[2].URL.Path, check.Matches, "/images/localhost:3030/tsuru/test:latest/json")
+	c.Assert(requests[2].URL.Path, check.Matches, "/images/localhost:3030/tsuru/test:v1/json")
 	c.Assert(requests[3].Method, check.Equals, "DELETE")
 	c.Assert(requests[3].URL.Path, check.Matches, "/images/[^/]+")
 }
@@ -155,21 +162,4 @@ func (s *S) TestPlatformRemoveNoProvisioner(c *check.C) {
 	var b dockerBuilder
 	err = b.PlatformRemove("test")
 	c.Assert(err, check.ErrorMatches, "No Docker nodes available")
-}
-
-func (s *S) TestPlatformRemoveNoSuchImage(c *check.C) {
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	var requests []*http.Request
-	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		requests = append(requests, r)
-	})
-	c.Assert(err, check.IsNil)
-	defer server.Stop()
-	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
-	c.Assert(err, check.IsNil)
-	var b dockerBuilder
-	err = b.PlatformRemove("test")
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.DeepEquals, docker.ErrNoSuchImage)
 }
