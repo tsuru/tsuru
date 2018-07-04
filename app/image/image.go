@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
+const defaultCollection = "docker"
+
 var (
 	ErrNoImagesAvailable = errors.New("no images available for app")
 	procfileRegex        = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
@@ -76,11 +78,19 @@ func (i *ImageMetadata) Save() error {
 // in all other cases the app image name will be returne.
 func GetBuildImage(app provision.App) string {
 	if usePlatformImage(app) {
-		return PlatformImageName(app.GetPlatform())
+		img, err := PlatformCurrentImage(app.GetPlatform())
+		if err != nil {
+			return platformBasicImageName(app.GetPlatform())
+		}
+		return img
 	}
 	appImageName, err := AppCurrentImageName(app.GetName())
 	if err != nil {
-		return PlatformImageName(app.GetPlatform())
+		img, err := PlatformCurrentImage(app.GetPlatform())
+		if err != nil {
+			return platformBasicImageName(app.GetPlatform())
+		}
+		return img
 	}
 	return appImageName
 }
@@ -425,10 +435,6 @@ func PullAppImageNames(appName string, images []string) error {
 	return nil
 }
 
-func PlatformImageName(platformName string) string {
-	return fmt.Sprintf("%s/%s:latest", basicImageName("tsuru"), platformName)
-}
-
 func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	procfile := strings.Split(strProcfile, "\n")
 	processes := make(map[string][]string, len(procfile))
@@ -577,7 +583,7 @@ func appImagesColl() (*storage.Collection, error) {
 	}
 	name, err := config.GetString("docker:collection")
 	if err != nil {
-		name = "docker"
+		name = defaultCollection
 	}
 	return conn.Collection(fmt.Sprintf("%s_app_image", name)), nil
 }
@@ -596,7 +602,7 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	}
 	name, err := config.GetString("docker:collection")
 	if err != nil {
-		name = "docker"
+		name = defaultCollection
 	}
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }

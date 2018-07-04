@@ -50,8 +50,15 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
+	opts.ImageName, err = image.PlatformNewImage(opts.Name)
+	if err != nil {
+		return err
+	}
 	err = builder.PlatformAdd(opts)
 	if err != nil {
+		if imgErr := image.PlatformDeleteImages(opts.Name); imgErr != nil {
+			log.Errorf("unable to remove platform images: %s", imgErr)
+		}
 		dbErr := s.storage.Delete(p)
 		if dbErr != nil {
 			return tsuruErrors.NewMultiError(
@@ -61,7 +68,7 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 		}
 		return err
 	}
-	return nil
+	return image.PlatformAppendImage(opts.Name, opts.ImageName)
 }
 
 // List implements List method of PlatformService interface
@@ -104,7 +111,15 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 			return appTypes.ErrMissingFileContent
 		}
 		opts.Data = data
+		opts.ImageName, err = image.PlatformNewImage(opts.Name)
+		if err != nil {
+			return err
+		}
 		err = builder.PlatformUpdate(opts)
+		if err != nil {
+			return err
+		}
+		err = image.PlatformAppendImage(opts.Name, opts.ImageName)
 		if err != nil {
 			return err
 		}
@@ -143,11 +158,21 @@ func (s *platformService) Remove(name string) error {
 	}
 	err = builder.PlatformRemove(name)
 	if err != nil {
-		log.Errorf("Failed to remove platform: %s", err)
+		log.Errorf("Failed to remove platform from builder: %s", err)
 	}
-	imageName := image.PlatformImageName(name)
-	if err := registry.RemoveImage(imageName); err != nil {
-		log.Errorf("Failed to remove platform image from registry: %s", err)
+	images, err := image.PlatformListImages(name)
+	if err == nil {
+		for _, img := range images {
+			if regErr := registry.RemoveImage(img); regErr != nil {
+				log.Errorf("Failed to remove platform image from registry: %s", regErr)
+			}
+		}
+	} else {
+		log.Errorf("Failed to retrieve platform images from storage: %s", err)
+	}
+	err = image.PlatformDeleteImages(name)
+	if err != nil {
+		log.Errorf("Failed to remove platform images from storage: %s", err)
 	}
 	return s.storage.Delete(appTypes.Platform{Name: name})
 }

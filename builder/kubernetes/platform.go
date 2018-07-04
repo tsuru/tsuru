@@ -5,9 +5,6 @@
 package kubernetes
 
 import (
-	"context"
-	"io"
-
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -18,25 +15,24 @@ import (
 var _ builder.Builder = &kubernetesBuilder{}
 
 func (b *kubernetesBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data, opts.Ctx)
+	return b.buildPlatform(opts)
 }
 
 func (b *kubernetesBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data, opts.Ctx)
+	return b.buildPlatform(opts)
 }
 
 func (b *kubernetesBuilder) PlatformRemove(name string) error {
 	// Kubernetes already removes unused images on nodes.
 	return nil
 }
-
-func (b *kubernetesBuilder) buildPlatform(name string, args map[string]string, w io.Writer, data []byte, ctx context.Context) error {
+func (b *kubernetesBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	client, err := getKubeClient()
 	if err != nil {
 		return err
 	}
-	inputStream := builder.CompressDockerFile(data)
-	return client.BuildImage(name, inputStream, w, ctx)
+	inputStream := builder.CompressDockerFile(opts.Data)
+	return client.BuildImage(opts.Name, opts.ImageName, inputStream, opts.Output, opts.Ctx)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {

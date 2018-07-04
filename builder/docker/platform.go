@@ -6,7 +6,6 @@ package docker
 
 import (
 	"errors"
-	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app/image"
@@ -24,11 +23,11 @@ import (
 var _ builder.Builder = &dockerBuilder{}
 
 func (b *dockerBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data)
+	return b.buildPlatform(opts)
 }
 
 func (b *dockerBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Data)
+	return b.buildPlatform(opts)
 }
 
 func (b *dockerBuilder) PlatformRemove(name string) error {
@@ -36,34 +35,37 @@ func (b *dockerBuilder) PlatformRemove(name string) error {
 	if err != nil {
 		return err
 	}
-	img, err := client.InspectImage(image.PlatformImageName(name))
+	imgs, err := image.PlatformListImages(name)
 	if err != nil {
 		return err
 	}
-	err = client.RemoveImage(img.ID)
-	if err != nil && err == docker.ErrNoSuchImage {
-		log.Errorf("error removing image %s from Docker: no such image", name)
-		return nil
+	for _, imgName := range imgs {
+		img, err := client.InspectImage(imgName)
+		if err == nil {
+			err = client.RemoveImage(img.ID)
+			if err == nil {
+				continue
+			}
+		}
+		log.Errorf("error removing image %s from Docker: %s", imgName, err)
 	}
-	return err
+	return nil
 }
 
-func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.Writer, data []byte) error {
+func (b *dockerBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	client, err := getDockerClient()
 	if err != nil {
 		return err
 	}
-	inputStream := builder.CompressDockerFile(data)
-
-	imageName := image.PlatformImageName(name)
+	inputStream := builder.CompressDockerFile(opts.Data)
 	client.SetTimeout(0)
 	buildOptions := docker.BuildImageOptions{
-		Name:              imageName,
+		Name:              opts.ImageName,
 		Pull:              true,
 		NoCache:           true,
 		RmTmpContainer:    true,
 		InputStream:       inputStream,
-		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: w},
+		OutputStream:      &tsuruIo.DockerErrorCheckWriter{W: opts.Output},
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
@@ -71,17 +73,17 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	if err != nil {
 		return err
 	}
-	imageName, tag := image.SplitImageName(imageName)
-	var tbuf safe.Buffer
+	imageName, tag := image.SplitImageName(opts.ImageName)
+	var buf safe.Buffer
 	pushOpts := docker.PushImageOptions{
 		Name:              imageName,
 		Tag:               tag,
-		OutputStream:      &tbuf,
+		OutputStream:      &buf,
 		InactivityTimeout: net.StreamInactivityTimeout,
 	}
 	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(imageName))
 	if err != nil {
-		log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, tbuf.String())
+		log.Errorf("[docker] Failed to push image %q (%s): %s", opts.Name, err, buf.String())
 		return err
 	}
 	return nil
