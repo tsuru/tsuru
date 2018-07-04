@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
@@ -417,6 +418,7 @@ func cleanupPod(client *ClusterClient, podName, namespace string) error {
 		GracePeriodSeconds: &noWait,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
+		log.Errorf("[cleanupPod] Deferred cleanup action failed %s", err.Error())
 		return errors.WithStack(err)
 	}
 	return nil
