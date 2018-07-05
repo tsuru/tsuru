@@ -59,14 +59,7 @@ func (s *clusterStorage) Upsert(c provision.Cluster) error {
 }
 
 func (s *clusterStorage) FindAll() ([]provision.Cluster, error) {
-	clusters, err := s.findByQuery(nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(clusters) == 0 {
-		return nil, provision.ErrNoCluster
-	}
-	return clusters, nil
+	return s.findByQuery(nil)
 }
 
 func (s *clusterStorage) FindByName(name string) (*provision.Cluster, error) {
@@ -125,6 +118,9 @@ func (s *clusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) 
 	err = clustersCollection(conn).Find(query).All(&clusters)
 	if err != nil {
 		return nil, err
+	}
+	if len(clusters) == 0 {
+		return nil, provision.ErrNoCluster
 	}
 	provClusters := make([]provision.Cluster, len(clusters))
 	for i, c := range clusters {
