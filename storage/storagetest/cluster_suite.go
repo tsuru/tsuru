@@ -69,6 +69,11 @@ func (s *ClusterSuite) TestFindAllClusters(c *check.C) {
 	c.Assert(names, check.DeepEquals, []string{"cluster-a", "cluster-b"})
 }
 
+func (s *ClusterSuite) TestFindAllClustersNoCluster(c *check.C) {
+	_, err := s.ClusterStorage.FindAll()
+	c.Assert(err, check.Equals, provision.ErrNoCluster)
+}
+
 func (s *ClusterSuite) TestFindClusterByName(c *check.C) {
 	cluster := provision.Cluster{Name: "mycluster"}
 	err := s.ClusterStorage.Upsert(cluster)
@@ -103,9 +108,13 @@ func (s *ClusterSuite) TestFindClusterByProvisioner(c *check.C) {
 	c.Assert(clusters, check.HasLen, 1)
 	c.Assert(clusters[0].Name, check.Equals, "swarmcluster")
 
-	clusters, err = s.ClusterStorage.FindByProvisioner("other")
-	c.Assert(err, check.IsNil)
-	c.Assert(clusters, check.HasLen, 0)
+	_, err = s.ClusterStorage.FindByProvisioner("other")
+	c.Assert(err, check.Equals, provision.ErrNoCluster)
+}
+
+func (s *ClusterSuite) TestFindClusterByProvisionerNoCluster(c *check.C) {
+	_, err := s.ClusterStorage.FindByProvisioner("other")
+	c.Assert(err, check.Equals, provision.ErrNoCluster)
 }
 
 func (s *ClusterSuite) TestFindClusterByPool(c *check.C) {
@@ -127,6 +136,11 @@ func (s *ClusterSuite) TestFindClusterByPool(c *check.C) {
 	cluster, err = s.ClusterStorage.FindByPool("swarm", "pool-a")
 	c.Assert(err, check.Equals, provision.ErrNoCluster)
 	c.Assert(cluster, check.IsNil)
+}
+
+func (s *ClusterSuite) TestFindClusterByPoolNoCluster(c *check.C) {
+	_, err := s.ClusterStorage.FindByPool("swarm", "pool-a")
+	c.Assert(err, check.Equals, provision.ErrNoCluster)
 }
 
 func (s *ClusterSuite) TestDeleteCluster(c *check.C) {
