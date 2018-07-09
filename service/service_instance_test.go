@@ -163,7 +163,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		shouldRestart:   true,
 		event:           evt,
 		requestID:       "",
-		params:          BindAppParameters{},
+		params:          BindAppParameters(nil),
 	}}
 	c.Assert(calls, check.DeepEquals, expectedCalls)
 	c.Assert(params, check.DeepEquals, expectedParams)
