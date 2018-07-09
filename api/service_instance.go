@@ -56,12 +56,17 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	instance := service.ServiceInstance{
-		Name:        r.FormValue("name"),
-		PlanName:    r.FormValue("plan"),
-		TeamOwner:   r.FormValue("owner"),
-		Description: r.FormValue("description"),
-		Tags:        r.Form["tag"],
+		ServiceName: serviceName,
+		PlanName:    r.FormValue("plan"), // for compatibility
 	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&instance, r.Form)
+	if err != nil {
+		return err
+	}
+	instance.Tags = append(instance.Tags, r.Form["tag"]...) // for compatibility
 	var teamOwner string
 	if instance.TeamOwner == "" {
 		teamOwner, err = permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
