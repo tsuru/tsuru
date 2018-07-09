@@ -300,6 +300,7 @@ func (b *brokerClient) Plans(_ string) ([]Plan, error) {
 		plans[i] = Plan{
 			Name:        p.Name,
 			Description: p.Description,
+			Schemas:     p.Schemas,
 		}
 	}
 	return plans, nil

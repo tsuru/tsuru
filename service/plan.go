@@ -4,10 +4,15 @@
 
 package service
 
+import (
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
+)
+
 // Plan represents a service plan
 type Plan struct {
 	Name        string
 	Description string
+	Schemas     *osb.Schemas `json:",omitempty"`
 }
 
 func GetPlansByServiceName(serviceName, requestID string) ([]Plan, error) {
