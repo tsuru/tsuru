@@ -293,7 +293,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Body.String(), check.Equals, "")
 	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainsql", "service_name": "mysql"}).One(&si)
+	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainsql", "service_name": "mysql", "teamowner": s.team.Name}).One(&si)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, check.Equals, "brainsql")

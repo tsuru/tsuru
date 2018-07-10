@@ -57,7 +57,9 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	instance := service.ServiceInstance{
 		ServiceName: serviceName,
-		PlanName:    r.FormValue("plan"), // for compatibility
+		// for compatibility
+		PlanName:  r.FormValue("plan"),
+		TeamOwner: r.FormValue("owner"),
 	}
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
