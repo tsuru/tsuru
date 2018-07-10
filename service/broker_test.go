@@ -398,3 +398,23 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	err = client.Update(&instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestBrokerClientInfo(c *check.C) {
+	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "my-instance",
+		PlanName:  "standard",
+		TeamOwner: "teamowner",
+		Parameters: map[string]interface{}{
+			"param1": "val1",
+			"param2": 4,
+		},
+	}
+	info, err := client.Info(&instance, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(info, check.DeepEquals, []map[string]string{
+		{"label": "param1", "value": "val1"},
+		{"label": "param2", "value": "4"},
+	})
+}

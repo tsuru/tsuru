@@ -287,7 +287,14 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 }
 
 func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
-	return nil, fmt.Errorf("not implemented")
+	var params []map[string]string
+	for k, v := range instance.Parameters {
+		params = append(params, map[string]string{
+			"label": k,
+			"value": fmt.Sprintf("%v", v),
+		})
+	}
+	return params, nil
 }
 
 func (b *brokerClient) Plans(_ string) ([]Plan, error) {
