@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -188,17 +187,19 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-		"plan_name":    "small",
-	}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.ServiceName, check.Equals, "mysql")
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		PlanName:    "small",
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
@@ -215,17 +216,19 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-		"plan_name":    "small",
-	}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.ServiceName, check.Equals, "mysql")
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		PlanName:    "small",
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
@@ -292,29 +295,18 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Body.String(), check.Equals, "")
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainsql", "service_name": "mysql", "teamowner": s.team.Name}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.ServiceName, check.Equals, "mysql")
-	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
-}
-
-func (s *ServiceInstanceSuite) TestCreateServiceInstanceHasAccessToTheServiceInTheInstance(c *check.C) {
-	params := map[string]interface{}{
-		"name":         "brainsql",
-		"service_name": "mysql",
-		"owner":        s.team.Name,
-		"token":        s.token.GetValue(),
-	}
-	recorder, request := makeRequestToCreateServiceInstance(params, c)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainsql"}).One(&si)
-	c.Assert(err, check.IsNil)
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       []string{"tsuruteam"},
+		TeamOwner:   "tsuruteam",
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenUserCannotUseService(c *check.C) {
@@ -348,11 +340,18 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 	recorder, request := makeRequestToCreateServiceInstance(params, c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainsql"}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  s.token.GetUserName(),
@@ -447,17 +446,20 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-		"plan_name":    "small",
-	}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.ServiceName, check.Equals, "mysql")
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
-	c.Assert(si.Description, check.Equals, "desc")
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		PlanName:    "small",
+		Teams:       []string{"tsuruteam"},
+		TeamOwner:   "tsuruteam",
+		Description: "desc",
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
@@ -476,17 +478,19 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var si service.ServiceInstance
-	err := s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-		"plan_name":    "small",
-	}).One(&si)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(si.Name, check.Equals, "brainsql")
-	c.Assert(si.ServiceName, check.Equals, "mysql")
-	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
-	c.Assert(si.Tags, check.DeepEquals, []string{"tag a", "tag b"})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		PlanName:    "small",
+		Teams:       []string{"tsuruteam"},
+		TeamOwner:   "tsuruteam",
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{"tag a", "tag b"},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func makeRequestToUpdateServiceInstance(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -540,17 +544,19 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var instance service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-	}).One(&instance)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance.Name, check.Equals, "brainsql")
-	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
-	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.Description, check.Equals, "changed")
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       si.Teams,
+		TeamOwner:   si.TeamOwner,
+		Description: "changed",
+		Apps:        si.Apps,
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
@@ -586,17 +592,18 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var instance service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-	}).One(&instance)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance.Name, check.Equals, "brainsql")
-	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, append(si.Teams, t.Name))
-	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.TeamOwner, check.Equals, "changed")
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       append(si.Teams, t.Name),
+		TeamOwner:   "changed",
+		Apps:        si.Apps,
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
@@ -632,17 +639,18 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var instance service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-	}).One(&instance)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance.Name, check.Equals, "brainsql")
-	c.Assert(instance.ServiceName, check.Equals, "mysql")
-	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
-	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b", "tag c"})
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       si.Teams,
+		TeamOwner:   s.team.Name,
+		Apps:        si.Apps,
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{"tag b", "tag c"},
+		Parameters:  map[string]interface{}{},
+	})
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
@@ -678,13 +686,18 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var instance service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
-		"name":         "brainsql",
-		"service_name": "mysql",
-	}).One(&instance)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance.Tags, check.HasLen, 0)
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       si.Teams,
+		TeamOwner:   s.team.Name,
+		Apps:        si.Apps,
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		Parameters:  map[string]interface{}{},
+	})
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceDoesNotExist(c *check.C) {
@@ -822,9 +835,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Message, check.Equals, "service instance successfully removed\n")
-	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	_, err = service.GetServiceInstance("foo", "foo-instance")
+	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
@@ -889,14 +901,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	expected := ""
 	expected += `{"Message":"service instance successfully removed\n"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
-	var result []service.ServiceInstance
-	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo2"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).All(&result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].Apps, check.DeepEquals, []string{"app-instance"})
+	instance, err := service.GetServiceInstance("foo", "foo-instance")
+	c.Assert(err, check.DeepEquals, nil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{"app-instance"})
 	recorder, request = makeRequestToRemoveServiceInstanceWithUnbind("foo", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
@@ -905,9 +912,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
 	expected += `{"Message":"service instance successfully removed\n"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
-	n, err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	_, err = service.GetServiceInstance("foo", "foo-instance")
+	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 }
 
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithoutPermissionShouldReturn401(c *check.C) {
