@@ -62,12 +62,14 @@ func (s *S) TestServiceBrokerAdd(c *check.C) {
 	expectedBroker := service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "username",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "username",
+					Password: "password",
+				},
+				BearerConfig: &service.BearerConfig{},
 			},
-			BearerConfig: &service.BearerConfig{},
 		},
 	}
 	bodyData, err := form.EncodeToString(expectedBroker)
@@ -113,18 +115,20 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "username",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "username",
+					Password: "password",
+				},
+				BearerConfig: &service.BearerConfig{},
 			},
-			BearerConfig: &service.BearerConfig{},
 		},
 	}
 	err := servicemanager.ServiceBroker.Create(broker)
 	c.Assert(err, check.IsNil)
 	broker.URL = "https://localhost:9090"
-	broker.AuthConfig.BasicAuthConfig.Username = "new-user"
+	broker.Config.AuthConfig.BasicAuthConfig.Username = "new-user"
 	bodyData, err := form.EncodeToString(broker)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("PUT", "/1.7/brokers/broker-name", strings.NewReader(bodyData))

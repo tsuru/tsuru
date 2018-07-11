@@ -18,10 +18,12 @@ func (s *ServiceBrokerSuite) TestInsert(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}
@@ -36,10 +38,12 @@ func (s *ServiceBrokerSuite) TestInsertDuplicate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}
@@ -53,31 +57,35 @@ func (s *ServiceBrokerSuite) TestUpdate(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}
 	err := s.ServiceBrokerStorage.Insert(broker)
 	c.Assert(err, check.IsNil)
-	broker.AuthConfig.BasicAuthConfig.Password = "new-password"
+	broker.Config.AuthConfig.BasicAuthConfig.Password = "new-password"
 	err = s.ServiceBrokerStorage.Update("broker", broker)
 	c.Assert(err, check.IsNil)
 	broker, err = s.ServiceBrokerStorage.Find("broker")
 	c.Assert(err, check.IsNil)
-	c.Assert(broker.AuthConfig.BasicAuthConfig.Password, check.Equals, "new-password")
+	c.Assert(broker.Config.AuthConfig.BasicAuthConfig.Password, check.Equals, "new-password")
 }
 
 func (s *ServiceBrokerSuite) TestUpdateNotFound(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}
@@ -89,10 +97,12 @@ func (s *ServiceBrokerSuite) TestDelete(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}
@@ -127,10 +137,12 @@ func (s *ServiceBrokerSuite) TestFind(c *check.C) {
 	broker := service.Broker{
 		Name: "broker",
 		URL:  "https://localhost:8080",
-		AuthConfig: &service.AuthConfig{
-			BasicAuthConfig: &service.BasicAuthConfig{
-				Username: "user",
-				Password: "password",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "user",
+					Password: "password",
+				},
 			},
 		},
 	}

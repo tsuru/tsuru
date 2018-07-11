@@ -41,18 +41,19 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 	}
 	config := osb.DefaultClientConfiguration()
 	config.URL = b.URL
+	config.Insecure = b.Config.Insecure
 	var authConfig *osb.AuthConfig
-	if b.AuthConfig != nil {
+	if b.Config.AuthConfig != nil {
 		authConfig = &osb.AuthConfig{}
-		if b.AuthConfig.BasicAuthConfig != nil {
+		if b.Config.AuthConfig.BasicAuthConfig != nil {
 			authConfig.BasicAuthConfig = &osb.BasicAuthConfig{
-				Username: b.AuthConfig.BasicAuthConfig.Username,
-				Password: b.AuthConfig.BasicAuthConfig.Password,
+				Username: b.Config.AuthConfig.BasicAuthConfig.Username,
+				Password: b.Config.AuthConfig.BasicAuthConfig.Password,
 			}
 		}
-		if b.AuthConfig.BearerConfig != nil {
+		if b.Config.AuthConfig.BearerConfig != nil {
 			authConfig.BearerConfig = &osb.BearerConfig{
-				Token: b.AuthConfig.BearerConfig.Token,
+				Token: b.Config.AuthConfig.BearerConfig.Token,
 			}
 		}
 	}
