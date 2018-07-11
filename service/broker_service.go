@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
@@ -60,10 +61,12 @@ func getBrokeredServices() ([]Service, error) {
 	for _, b := range brokers {
 		c, err := newClient(b, "")
 		if err != nil {
+			log.Errorf("[Broker=%v] error creating broker client: %v.", b.Name, err)
 			continue
 		}
 		cat, err := c.client.GetCatalog()
 		if err != nil {
+			log.Errorf("[Broker=%v] error getting catalog: %v.", b.Name, err)
 			continue
 		}
 		for _, s := range cat.Services {

@@ -20,8 +20,20 @@ type Broker struct {
 	Name string
 	// URL is the URL of the Service Broker API endpoint.
 	URL string
-	// AuthConfig is the credentials needed to interact with the API.
+	// Config is the configuration used to setup a client for the broker
+	Config BrokerConfig
+}
+
+// BrokerConfig exposes configuration used to talk to the broker API.
+// Most of the fields are copied from osb client definition.
+type BrokerConfig struct {
+	// AuthConfig is the auth configuration the client should use to authenticate
+	// to the broker.
 	AuthConfig *AuthConfig
+	// Insecure represents whether the 'InsecureSkipVerify' TLS configuration
+	// field should be set.  If the TLSConfig field is set and this field is
+	// set to true, it overrides the value in the TLSConfig field.
+	Insecure bool
 }
 
 // AuthConfig is a union-type representing the possible auth configurations a
