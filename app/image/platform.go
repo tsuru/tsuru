@@ -106,12 +106,22 @@ func PlatformListImages(platformName string) ([]string, error) {
 		return nil, err
 	}
 	defer coll.Close()
-	var imgs platformImages
-	err = coll.FindId(platformName).One(&imgs)
+	var img platformImages
+	err = coll.FindId(platformName).One(&img)
 	if err != nil {
 		return nil, err
 	}
-	return imgs.Images, nil
+	return img.Images, nil
+}
+
+// PlatformListImagesOrDefault returns basicImageName when platform is empty
+// for backwards compatibility
+func PlatformListImagesOrDefault(platformName string) ([]string, error) {
+	imgs, err := PlatformListImages(platformName)
+	if err != nil && err == mgo.ErrNotFound {
+		return []string{platformBasicImageName(platformName)}, nil
+	}
+	return imgs, err
 }
 
 func platformBasicImageName(platformName string) string {

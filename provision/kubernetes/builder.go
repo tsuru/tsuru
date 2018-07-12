@@ -25,7 +25,10 @@ func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKub
 type KubeClient struct{}
 
 func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.Reader, tag string) (string, error) {
-	baseImage := image.GetBuildImage(a)
+	baseImage, err := image.GetBuildImage(a)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
 	buildingImage, err := image.AppNewBuilderImageName(a.GetName(), a.GetTeamOwner(), tag)
 	if err != nil {
 		return "", errors.WithStack(err)
