@@ -34,6 +34,9 @@ type App interface {
 	// GetName returns the app name.
 	GetName() string
 
+	// GetUUID returns the App v4 UUID
+	GetUUID() (string, error)
+
 	// GetUnits returns the app units.
 	GetUnits() ([]Unit, error)
 

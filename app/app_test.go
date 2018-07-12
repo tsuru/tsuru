@@ -5003,3 +5003,19 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.(*App).Description, check.Equals, "updated description")
 }
+
+func (s *S) TestGetUUID(c *check.C) {
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.UUID, check.DeepEquals, "")
+	uuid, err := app.GetUUID()
+	c.Assert(err, check.IsNil)
+	c.Assert(uuid, check.Not(check.DeepEquals), "")
+	c.Assert(uuid, check.DeepEquals, app.UUID)
+	var storedApp App
+	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&storedApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")
+	c.Assert(storedApp.UUID, check.DeepEquals, uuid)
+}

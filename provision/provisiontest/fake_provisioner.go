@@ -15,6 +15,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -51,6 +52,7 @@ func init() {
 // Fake implementation for provision.App.
 type FakeApp struct {
 	name           string
+	uuid           string
 	cname          []string
 	IP             string
 	platform       string
@@ -247,6 +249,17 @@ func (a *FakeApp) Log(message, source, unit string) error {
 
 func (a *FakeApp) GetName() string {
 	return a.name
+}
+
+func (a *FakeApp) GetUUID() (string, error) {
+	if a.uuid != "" {
+		return a.uuid, nil
+	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to generate uuid v4")
+	}
+	return uuidV4.String(), nil
 }
 
 func (a *FakeApp) GetPool() string {
