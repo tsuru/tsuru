@@ -259,7 +259,8 @@ func (a *FakeApp) GetUUID() (string, error) {
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	return uuidV4.String(), nil
+	a.uuid = uuidV4.String()
+	return a.uuid, nil
 }
 
 func (a *FakeApp) GetPool() string {
