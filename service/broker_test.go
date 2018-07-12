@@ -230,7 +230,9 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 
 func (s *S) TestBrokerClientBindApp(c *check.C) {
 	ev := createEvt(c)
-	appName := "theapp"
+	a := provisiontest.NewFakeApp("theapp", "python", 1)
+	appGUID, err := a.GetUUID()
+	c.Assert(err, check.IsNil)
 	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
 		exID, err := json.Marshal(map[string]interface{}{
 			"user": "my@user",
@@ -242,9 +244,9 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 			ServiceID:         "s1",
 			PlanID:            "p1",
 			BindingID:         "instance-theapp",
-			AppGUID:           &appName,
+			AppGUID:           &appGUID,
 			BindResource: &osb.BindResource{
-				AppGUID: &appName,
+				AppGUID: &appGUID,
 			},
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",
@@ -287,7 +289,6 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 		PlanName:    "plan1",
 		TeamOwner:   "teamOwner",
 	}
-	a := provisiontest.NewFakeApp("theapp", "python", 1)
 	params := BindAppParameters(map[string]interface{}{
 		"param1": "val1",
 	})
