@@ -75,24 +75,16 @@ func (i *ImageMetadata) Save() error {
 // * there are no containers;
 // * the container have an empty image name;
 // * the deploy number is multiple of 10.
-// in all other cases the app image name will be returne.
-func GetBuildImage(app provision.App) string {
+// in all other cases the app image name will be returned.
+func GetBuildImage(app provision.App) (string, error) {
 	if usePlatformImage(app) {
-		img, err := PlatformCurrentImage(app.GetPlatform())
-		if err != nil {
-			return platformBasicImageName(app.GetPlatform())
-		}
-		return img
+		return PlatformCurrentImage(app.GetPlatform())
 	}
 	appImageName, err := AppCurrentImageName(app.GetName())
 	if err != nil {
-		img, err := PlatformCurrentImage(app.GetPlatform())
-		if err != nil {
-			return platformBasicImageName(app.GetPlatform())
-		}
-		return img
+		return PlatformCurrentImage(app.GetPlatform())
 	}
-	return appImageName
+	return appImageName, nil
 }
 
 func customDataToImageMetadata(imageName string, customData map[string]interface{}) (*ImageMetadata, error) {

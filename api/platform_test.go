@@ -16,6 +16,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -443,6 +444,74 @@ func (s *PlatformSuite) TestPlatformListGetOnlyEnabledPlatforms(c *check.C) {
 
 func (s *PlatformSuite) TestPlatformListNoContent(c *check.C) {
 	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *PlatformSuite) TestPlatformInfo(c *check.C) {
+	type result struct {
+		Platform appTypes.Platform
+		Images   []string
+	}
+	expected := result{
+		Platform: appTypes.Platform{Name: "myPlatform"},
+		Images:   []string{"tsuru/myplatform:v1", "tsuru/myplatform:v2"},
+	}
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		c.Assert(name, check.Equals, "myplatform")
+		return &expected.Platform, nil
+	}
+	err := image.PlatformAppendImage("myplatform", "tsuru/myplatform:v1")
+	c.Assert(err, check.IsNil)
+	err = image.PlatformAppendImage("myplatform", "tsuru/myplatform:v2")
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got result
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *PlatformSuite) TestPlatformInfoDefaultImage(c *check.C) {
+	type result struct {
+		Platform appTypes.Platform
+		Images   []string
+	}
+	expected := result{
+		Platform: appTypes.Platform{Name: "myPlatform"},
+		Images:   []string{"tsuru/myplatform:latest"},
+	}
+	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
+		c.Assert(name, check.Equals, "myplatform")
+		return &expected.Platform, nil
+	}
+	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got result
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *PlatformSuite) TestPlatformInfoNoContent(c *check.C) {
+	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())

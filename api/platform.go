@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -194,4 +195,40 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(platforms)
+}
+
+// title: platform info
+// path: /platforms/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Platform info
+//   204: No content
+//   401: Unauthorized
+func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	r.ParseForm()
+	name := r.URL.Query().Get(":name")
+	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+		permission.Check(t, permission.PermPlatformCreate)
+	if !canUsePlat {
+		return permission.ErrUnauthorized
+	}
+	platform, err := servicemanager.Platform.FindByName(name)
+	if err != nil {
+		return err
+	}
+	if platform == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	images, err := image.PlatformListImagesOrDefault(name)
+	if err != nil {
+		return err
+	}
+	msg := map[string]interface{}{
+		"platform": platform,
+		"images":   images,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(msg)
 }

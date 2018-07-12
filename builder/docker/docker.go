@@ -36,7 +36,10 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	imageName := image.GetBuildImage(app)
+	imageName, err := image.GetBuildImage(app)
+	if err != nil {
+		return "", log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
+	}
 	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), imageTag)
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
