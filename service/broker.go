@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
@@ -71,13 +73,6 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 }
 
 func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	uid, err := uuid.NewV4()
-	if err != nil {
-		return errors.WithMessage(err, "failed to generate instance uuid")
-	}
-	instance.BrokerData = &BrokerInstanceData{
-		UUID: uid.String(),
-	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return err
@@ -90,10 +85,19 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	if err != nil {
 		return err
 	}
+	uid, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate instance uuid")
+	}
+	instance.BrokerData = &BrokerInstanceData{
+		UUID:      uid.String(),
+		ServiceID: s.ID,
+		PlanID:    plan.ID,
+	}
 	req := osb.ProvisionRequest{
 		InstanceID:          instance.BrokerData.UUID,
-		ServiceID:           s.ID,
-		PlanID:              plan.ID,
+		ServiceID:           instance.BrokerData.ServiceID,
+		PlanID:              instance.BrokerData.PlanID,
 		OrganizationGUID:    instance.TeamOwner,
 		SpaceGUID:           instance.TeamOwner,
 		Parameters:          instance.Parameters,
@@ -142,7 +146,13 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 			"request_id": requestID,
 			"event_id":   evt.UniqueID.Hex(),
 		},
+		PreviousValues: &osb.PreviousValues{
+			PlanID:    instance.BrokerData.PlanID,
+			ServiceID: instance.BrokerData.ServiceID,
+		},
 	}
+	instance.BrokerData.PlanID = plan.ID
+	instance.BrokerData.ServiceID = s.ID
 	_, err = b.client.UpdateInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
 		// We only set AcceptsIncomplete when it is required because some Brokers fail when
@@ -151,20 +161,15 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 		_, err = b.client.UpdateInstance(&req)
 	}
 	// TODO: consider storing OperationKey
-	return err
+	if err != nil {
+		return err
+	}
+	return updateBrokerData(instance.Name, instance.ServiceName, instance.BrokerData)
 }
 
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	if instance.BrokerData == nil {
 		return nil
-	}
-	_, s, err := b.getService(b.service)
-	if err != nil {
-		return err
-	}
-	plan, err := getPlan(s, instance.PlanName)
-	if err != nil {
-		return err
 	}
 	id, err := idForEvent(evt)
 	if err != nil {
@@ -172,8 +177,8 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 	}
 	req := osb.DeprovisionRequest{
 		InstanceID:          instance.BrokerData.UUID,
-		ServiceID:           s.ID,
-		PlanID:              plan.ID,
+		ServiceID:           instance.BrokerData.ServiceID,
+		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
 	}
 	_, err = b.client.DeprovisionInstance(&req)
@@ -191,14 +196,6 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	if instance.BrokerData == nil {
 		return nil, ErrInvalidBrokerData
 	}
-	_, s, err := b.getService(b.service)
-	if err != nil {
-		return nil, err
-	}
-	plan, err := getPlan(s, instance.PlanName)
-	if err != nil {
-		return nil, err
-	}
 	id, err := idForEvent(evt)
 	if err != nil {
 		return nil, err
@@ -208,9 +205,9 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 		return nil, err
 	}
 	req := osb.BindRequest{
-		ServiceID:           s.ID,
+		ServiceID:           instance.BrokerData.ServiceID,
 		InstanceID:          instance.BrokerData.UUID,
-		PlanID:              plan.ID,
+		PlanID:              instance.BrokerData.PlanID,
 		BindingID:           getBindingID(instance, app),
 		AppGUID:             &appGUID,
 		Parameters:          params,
@@ -249,14 +246,6 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	if instance.BrokerData == nil {
 		return ErrInvalidBrokerData
 	}
-	_, s, err := b.getService(b.service)
-	if err != nil {
-		return err
-	}
-	plan, err := getPlan(s, instance.PlanName)
-	if err != nil {
-		return err
-	}
 	id, err := idForEvent(evt)
 	if err != nil {
 		return err
@@ -264,8 +253,8 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	req := osb.UnbindRequest{
 		InstanceID:          instance.BrokerData.UUID,
 		BindingID:           getBindingID(instance, app),
-		ServiceID:           s.ID,
-		PlanID:              plan.ID,
+		ServiceID:           instance.BrokerData.ServiceID,
+		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
 		AcceptsIncomplete:   true,
 	}
@@ -282,14 +271,6 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	if instance.BrokerData == nil {
 		return "", ErrInvalidBrokerData
 	}
-	_, s, err := b.getService(b.service)
-	if err != nil {
-		return "", err
-	}
-	plan, err := getPlan(s, instance.PlanName)
-	if err != nil {
-		return "", err
-	}
 	origID, err := json.Marshal(map[string]interface{}{
 		"team": instance.TeamOwner,
 	})
@@ -298,8 +279,8 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	}
 	//TODO: send OperationKey
 	op, err := b.client.PollLastOperation(&osb.LastOperationRequest{
-		ServiceID:  &s.ID,
-		PlanID:     &plan.ID,
+		ServiceID:  &instance.BrokerData.ServiceID,
+		PlanID:     &instance.BrokerData.PlanID,
 		InstanceID: instance.BrokerData.UUID,
 		OriginatingIdentity: &osb.OriginatingIdentity{
 			Platform: "tsuru",
@@ -402,4 +383,16 @@ func idForEvent(evt *event.Event) (*osb.OriginatingIdentity, error) {
 		Platform: "tsuru",
 		Value:    string(identity),
 	}, nil
+}
+
+func updateBrokerData(instance, service string, data *BrokerInstanceData) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.ServiceInstances().Update(
+		bson.M{"name": instance, "service_name": service},
+		bson.M{"$set": bson.M{"broker_data": data}},
+	)
 }

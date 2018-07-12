@@ -165,6 +165,7 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
 	instance.PlanName = "plan2"
+	instance.BrokerData.PlanID = "p2"
 	status, err := client.Status(&instance, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.DeepEquals, "succeeded - last operation done!")
@@ -347,6 +348,10 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 				"request_id": "request-id",
 				"event_id":   ev.UniqueID.Hex(),
 			},
+			PreviousValues: &osb.PreviousValues{
+				ServiceID: "s1",
+				PlanID:    "p1",
+			},
 		})
 		return nil, nil
 	}
@@ -364,11 +369,20 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
+	err = s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, check.IsNil)
 	instance.Parameters = map[string]interface{}{
 		"param1": "val1",
 	}
 	err = client.Update(&instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
+	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
+		UUID:      "e7252f14-54be-45df-bd40-e988a0e41059",
+		ServiceID: "serviceid",
+		PlanID:    "planid",
+	})
 }
 
 func (s *S) TestBrokerClientInfo(c *check.C) {
@@ -401,7 +415,9 @@ func createTestInstance() ServiceInstance {
 		PlanName:    "plan1",
 		TeamOwner:   "teamOwner",
 		BrokerData: &BrokerInstanceData{
-			UUID: "e7252f14-54be-45df-bd40-e988a0e41059",
+			UUID:      "e7252f14-54be-45df-bd40-e988a0e41059",
+			ServiceID: "s1",
+			PlanID:    "p1",
 		},
 	}
 }

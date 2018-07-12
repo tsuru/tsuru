@@ -58,6 +58,9 @@ type ServiceInstance struct {
 type BrokerInstanceData struct {
 	// UUID is a v4 UUID generated for this Instance on creation
 	UUID string
+
+	ServiceID string
+	PlanID    string
 }
 
 type Unit struct {
