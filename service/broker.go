@@ -109,15 +109,20 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 			"space_guid":        instance.TeamOwner,
 		},
 	}
-	_, err = b.client.ProvisionInstance(&req)
+	resp, err := b.client.ProvisionInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
 		// We only set AcceptsIncomplete when it is required because some Brokers fail when
 		// they don't support async operations and AcceptsIncomplete is true.
 		req.AcceptsIncomplete = true
-		_, err = b.client.ProvisionInstance(&req)
+		resp, err = b.client.ProvisionInstance(&req)
 	}
-	//TODO: consider storing OperationKey for Status call
-	return err
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.OperationKey != nil {
+		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
+	}
+	return nil
 }
 
 func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
@@ -153,18 +158,20 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 	}
 	instance.BrokerData.PlanID = plan.ID
 	instance.BrokerData.ServiceID = s.ID
-	_, err = b.client.UpdateInstance(&req)
+	resp, err := b.client.UpdateInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
 		// We only set AcceptsIncomplete when it is required because some Brokers fail when
 		// they don't support async operations and AcceptsIncomplete is true.
 		req.AcceptsIncomplete = true
-		_, err = b.client.UpdateInstance(&req)
+		resp, err = b.client.UpdateInstance(&req)
 	}
-	// TODO: consider storing OperationKey
 	if err != nil {
 		return err
 	}
-	return updateBrokerData(instance.Name, instance.ServiceName, instance.BrokerData)
+	if resp != nil && resp.OperationKey != nil {
+		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
+	}
+	return updateBrokerData(instance)
 }
 
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
@@ -181,14 +188,20 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
 	}
-	_, err = b.client.DeprovisionInstance(&req)
+	resp, err := b.client.DeprovisionInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
 		// We only set AcceptsIncomplete when it is required because some Brokers fail when
 		// they don't support async operations and AcceptsIncomplete is true.
 		req.AcceptsIncomplete = true
-		_, err = b.client.DeprovisionInstance(&req)
+		resp, err = b.client.DeprovisionInstance(&req)
 	}
-	//TODO: consider storing OperatioKey and track async operations
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.OperationKey != nil {
+		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
+		err = updateBrokerData(instance)
+	}
 	return err
 }
 
@@ -229,7 +242,10 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	if resp == nil {
 		return nil, err
 	}
-	// TODO: consider storing OperationKey
+	if resp.OperationKey != nil {
+		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
+		err = updateBrokerData(instance)
+	}
 	envs := make(map[string]string)
 	for k, v := range resp.Credentials {
 		switch s := v.(type) {
@@ -258,12 +274,18 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 		OriginatingIdentity: id,
 		AcceptsIncomplete:   true,
 	}
-	_, err = b.client.Unbind(&req)
+	resp, err := b.client.Unbind(&req)
 	if osb.IsAsyncBindingOperationsNotAllowedError(err) {
 		req.AcceptsIncomplete = false
-		_, err = b.client.Unbind(&req)
+		resp, err = b.client.Unbind(&req)
 	}
-	// TODO: consider storing OperationKey
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.OperationKey != nil {
+		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
+		err = updateBrokerData(instance)
+	}
 	return err
 }
 
@@ -277,7 +299,7 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	if err != nil {
 		return "", err
 	}
-	//TODO: send OperationKey
+	opKey := osb.OperationKey(instance.BrokerData.LastOperationKey)
 	op, err := b.client.PollLastOperation(&osb.LastOperationRequest{
 		ServiceID:  &instance.BrokerData.ServiceID,
 		PlanID:     &instance.BrokerData.PlanID,
@@ -286,6 +308,7 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 			Platform: "tsuru",
 			Value:    string(origID),
 		},
+		OperationKey: &opKey,
 	})
 	if err != nil {
 		return "", err
@@ -385,14 +408,14 @@ func idForEvent(evt *event.Event) (*osb.OriginatingIdentity, error) {
 	}, nil
 }
 
-func updateBrokerData(instance, service string, data *BrokerInstanceData) error {
+func updateBrokerData(instance *ServiceInstance) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	return conn.ServiceInstances().Update(
-		bson.M{"name": instance, "service_name": service},
-		bson.M{"$set": bson.M{"broker_data": data}},
+		bson.M{"name": instance.Name, "service_name": instance.ServiceName},
+		bson.M{"$set": bson.M{"broker_data": instance.BrokerData}},
 	)
 }

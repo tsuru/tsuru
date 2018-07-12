@@ -130,6 +130,7 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 			"team": "teamOwner",
 		})
 		c.Assert(err, check.IsNil)
+		opKey := osb.OperationKey("")
 		c.Assert(req, check.DeepEquals, &osb.LastOperationRequest{
 			InstanceID: "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:  &sID,
@@ -138,6 +139,7 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 				Platform: "tsuru",
 				Value:    string(exID),
 			},
+			OperationKey: &opKey,
 		})
 		alldone := "last operation done!"
 		return &osb.LastOperationResponse{
@@ -353,7 +355,8 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 				PlanID:    "p1",
 			},
 		})
-		return nil, nil
+		opKey := osb.OperationKey("Provisioning")
+		return &osb.UpdateInstanceResponse{OperationKey: &opKey}, nil
 	}
 	config := osbfake.FakeClientConfiguration{
 		UpdateInstanceReaction: osbfake.DynamicUpdateInstanceReaction(reaction),
@@ -379,9 +382,10 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
-		UUID:      "e7252f14-54be-45df-bd40-e988a0e41059",
-		ServiceID: "serviceid",
-		PlanID:    "planid",
+		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
+		ServiceID:        "serviceid",
+		PlanID:           "planid",
+		LastOperationKey: "Provisioning",
 	})
 }
 
