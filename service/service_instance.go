@@ -61,6 +61,15 @@ type BrokerInstanceData struct {
 	ServiceID        string
 	PlanID           string
 	LastOperationKey string
+
+	Binds map[string]BrokerInstanceBind
+}
+
+type BrokerInstanceBind struct {
+	// UUID is a v4 UUID generated when binding
+	UUID         string
+	OperationKey string
+	Parameters   map[string]interface{}
 }
 
 type Unit struct {
