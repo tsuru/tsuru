@@ -17,6 +17,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/action"
@@ -148,6 +149,9 @@ type App struct {
 	Tags           []string
 	Error          string
 	Routers        []appTypes.AppRouter
+
+	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
+	UUID string
 
 	Quota       quota.Quota
 	builder     builder.Builder
@@ -1331,6 +1335,29 @@ func (app *App) GetUnits() ([]bind.Unit, error) {
 // GetName returns the name of the app.
 func (app *App) GetName() string {
 	return app.Name
+}
+
+// GetUUID returns the app v4 UUID. An UUID will be generated
+// if it does not exist.
+func (app *App) GetUUID() (string, error) {
+	if app.UUID != "" {
+		return app.UUID, nil
+	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return "", errors.WithMessage(err, "failed to generate uuid v4")
+	}
+	app.UUID = uuidV4.String()
+	conn, err := db.Conn()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"uuid": app.UUID}})
+	if err != nil {
+		return "", err
+	}
+	return app.UUID, nil
 }
 
 // GetPool returns the pool of the app.
