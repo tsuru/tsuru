@@ -10,11 +10,15 @@ import (
 	"net/http"
 	"strconv"
 
+	uuid "github.com/nu7hatch/gouuid"
+	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
+
+var ErrInvalidBrokerData = errors.New("Invalid broker data")
 
 const serviceNameBrokerSep = "::"
 
@@ -67,6 +71,13 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 }
 
 func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	uid, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate instance uuid")
+	}
+	instance.BrokerData = &BrokerInstanceData{
+		UUID: uid.String(),
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return err
@@ -80,7 +91,7 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 		return err
 	}
 	req := osb.ProvisionRequest{
-		InstanceID:          instance.Name,
+		InstanceID:          instance.BrokerData.UUID,
 		ServiceID:           s.ID,
 		PlanID:              plan.ID,
 		OrganizationGUID:    instance.TeamOwner,
@@ -106,6 +117,9 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 }
 
 func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	if instance.BrokerData == nil {
+		return ErrInvalidBrokerData
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return err
@@ -119,7 +133,7 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 		return err
 	}
 	req := osb.UpdateInstanceRequest{
-		InstanceID:          instance.Name,
+		InstanceID:          instance.BrokerData.UUID,
 		ServiceID:           s.ID,
 		PlanID:              &plan.ID,
 		Parameters:          instance.Parameters,
@@ -141,6 +155,9 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 }
 
 func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+	if instance.BrokerData == nil {
+		return nil
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return err
@@ -154,7 +171,7 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 		return err
 	}
 	req := osb.DeprovisionRequest{
-		InstanceID:          instance.Name,
+		InstanceID:          instance.BrokerData.UUID,
 		ServiceID:           s.ID,
 		PlanID:              plan.ID,
 		OriginatingIdentity: id,
@@ -171,6 +188,9 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 }
 
 func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+	if instance.BrokerData == nil {
+		return nil, ErrInvalidBrokerData
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return nil, err
@@ -189,7 +209,7 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	}
 	req := osb.BindRequest{
 		ServiceID:           s.ID,
-		InstanceID:          instance.Name,
+		InstanceID:          instance.BrokerData.UUID,
 		PlanID:              plan.ID,
 		BindingID:           getBindingID(instance, app),
 		AppGUID:             &appGUID,
@@ -226,6 +246,9 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 }
 
 func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+	if instance.BrokerData == nil {
+		return ErrInvalidBrokerData
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return err
@@ -239,7 +262,7 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 		return err
 	}
 	req := osb.UnbindRequest{
-		InstanceID:          instance.Name,
+		InstanceID:          instance.BrokerData.UUID,
 		BindingID:           getBindingID(instance, app),
 		ServiceID:           s.ID,
 		PlanID:              plan.ID,
@@ -256,6 +279,9 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 }
 
 func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
+	if instance.BrokerData == nil {
+		return "", ErrInvalidBrokerData
+	}
 	_, s, err := b.getService(b.service)
 	if err != nil {
 		return "", err
@@ -274,7 +300,7 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	op, err := b.client.PollLastOperation(&osb.LastOperationRequest{
 		ServiceID:  &s.ID,
 		PlanID:     &plan.ID,
-		InstanceID: instance.Name,
+		InstanceID: instance.BrokerData.UUID,
 		OriginatingIdentity: &osb.OriginatingIdentity{
 			Platform: "tsuru",
 			Value:    string(origID),

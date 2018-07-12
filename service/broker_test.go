@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"sort"
 
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
@@ -46,12 +47,13 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 			"user": "my@user",
 		})
 		c.Assert(err, check.IsNil)
+		c.Assert(req.InstanceID, check.Not(check.DeepEquals), "")
+		req.InstanceID = ""
 		c.Assert(req, check.DeepEquals, &osb.ProvisionRequest{
 			PlanID:           "planid",
 			ServiceID:        "serviceid",
-			InstanceID:       "my-instance",
-			OrganizationGUID: "teamowner",
-			SpaceGUID:        "teamowner",
+			OrganizationGUID: "teamOwner",
+			SpaceGUID:        "teamOwner",
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",
 				Value:    string(exID),
@@ -59,8 +61,8 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 			Context: map[string]interface{}{
 				"request_id":        "request-id",
 				"event_id":          ev.UniqueID.Hex(),
-				"organization_guid": "teamowner",
-				"space_guid":        "teamowner",
+				"organization_guid": "teamOwner",
+				"space_guid":        "teamOwner",
 			},
 		})
 		return nil, nil
@@ -70,7 +72,7 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 		CatalogReaction: &osbfake.CatalogReaction{
 			Response: &osb.CatalogResponse{
 				Services: []osb.Service{
-					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "standard", ID: "planid"}}},
+					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "plan1", ID: "planid"}}},
 				},
 			},
 		},
@@ -78,11 +80,7 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:      "my-instance",
-		PlanName:  "standard",
-		TeamOwner: "teamowner",
-	}
+	instance := createTestInstance()
 	err = client.Create(&instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(provisioned, check.DeepEquals, true)
@@ -110,7 +108,7 @@ func (s *S) TestBrokerClientCreateAsyncRequired(c *check.C) {
 		CatalogReaction: &osbfake.CatalogReaction{
 			Response: &osb.CatalogResponse{
 				Services: []osb.Service{
-					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "standard", ID: "planid"}}},
+					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "plan1", ID: "planid"}}},
 				},
 			},
 		},
@@ -118,11 +116,7 @@ func (s *S) TestBrokerClientCreateAsyncRequired(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:      "my-instance",
-		PlanName:  "standard",
-		TeamOwner: "teamowner",
-	}
+	instance := createTestInstance()
 	err = client.Create(&instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, 2)
@@ -137,7 +131,7 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.LastOperationRequest{
-			InstanceID: "instance",
+			InstanceID: "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:  &sID,
 			PlanID:     &pID,
 			OriginatingIdentity: &osb.OriginatingIdentity{
@@ -169,12 +163,8 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:        "instance",
-		ServiceName: "service",
-		PlanName:    "plan2",
-		TeamOwner:   "teamOwner",
-	}
+	instance := createTestInstance()
+	instance.PlanName = "plan2"
 	status, err := client.Status(&instance, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.DeepEquals, "succeeded - last operation done!")
@@ -190,7 +180,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.DeprovisionRequest{
-			InstanceID: "instance",
+			InstanceID: "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:  "s1",
 			PlanID:     "p1",
 			OriginatingIdentity: &osb.OriginatingIdentity{
@@ -217,12 +207,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:        "instance",
-		ServiceName: "service",
-		PlanName:    "plan1",
-		TeamOwner:   "teamOwner",
-	}
+	instance := createTestInstance()
 	err = client.Destroy(&instance, ev, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, 1)
@@ -240,7 +225,7 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.BindRequest{
 			AcceptsIncomplete: true,
-			InstanceID:        "instance",
+			InstanceID:        "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:         "s1",
 			PlanID:            "p1",
 			BindingID:         "instance-theapp",
@@ -283,12 +268,7 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:        "instance",
-		ServiceName: "service",
-		PlanName:    "plan1",
-		TeamOwner:   "teamOwner",
-	}
+	instance := createTestInstance()
 	params := BindAppParameters(map[string]interface{}{
 		"param1": "val1",
 	})
@@ -309,7 +289,7 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.UnbindRequest{
-			InstanceID:        "instance",
+			InstanceID:        "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:         "s1",
 			PlanID:            "p1",
 			BindingID:         "instance-theapp",
@@ -338,12 +318,7 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:        "instance",
-		ServiceName: "service",
-		PlanName:    "plan1",
-		TeamOwner:   "teamOwner",
-	}
+	instance := createTestInstance()
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
 	err = client.UnbindApp(&instance, a, ev, "request-id")
 	c.Assert(err, check.IsNil)
@@ -358,7 +333,7 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req, check.DeepEquals, &osb.UpdateInstanceRequest{
-			InstanceID: "my-instance",
+			InstanceID: "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:  "serviceid",
 			PlanID:     &planID,
 			Parameters: map[string]interface{}{
@@ -380,7 +355,7 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 		CatalogReaction: &osbfake.CatalogReaction{
 			Response: &osb.CatalogResponse{
 				Services: []osb.Service{
-					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "standard", ID: "planid"}}},
+					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "plan1", ID: "planid"}}},
 				},
 			},
 		},
@@ -388,13 +363,9 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{
-		Name:      "my-instance",
-		PlanName:  "standard",
-		TeamOwner: "teamowner",
-		Parameters: map[string]interface{}{
-			"param1": "val1",
-		},
+	instance := createTestInstance()
+	instance.Parameters = map[string]interface{}{
+		"param1": "val1",
 	}
 	err = client.Update(&instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
@@ -414,8 +385,23 @@ func (s *S) TestBrokerClientInfo(c *check.C) {
 	}
 	info, err := client.Info(&instance, "")
 	c.Assert(err, check.IsNil)
+	sort.Slice(info, func(i int, j int) bool {
+		return info[i]["label"] < info[j]["label"]
+	})
 	c.Assert(info, check.DeepEquals, []map[string]string{
 		{"label": "param1", "value": "val1"},
 		{"label": "param2", "value": "4"},
 	})
+}
+
+func createTestInstance() ServiceInstance {
+	return ServiceInstance{
+		Name:        "instance",
+		ServiceName: "service",
+		PlanName:    "plan1",
+		TeamOwner:   "teamOwner",
+		BrokerData: &BrokerInstanceData{
+			UUID: "e7252f14-54be-45df-bd40-e988a0e41059",
+		},
+	}
 }

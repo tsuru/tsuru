@@ -50,6 +50,14 @@ type ServiceInstance struct {
 	Description string                 `json:"description"`
 	Tags        []string               `json:"tags"`
 	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+
+	// BrokerData stores data used by Instances provisioned by Brokers
+	BrokerData *BrokerInstanceData `json:"broker_data,omitempty" bson:"broker_data"`
+}
+
+type BrokerInstanceData struct {
+	// UUID is a v4 UUID generated for this Instance on creation
+	UUID string
 }
 
 type Unit struct {
