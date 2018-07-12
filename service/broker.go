@@ -217,11 +217,19 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	if err != nil {
 		return nil, err
 	}
+	bindID, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+	bind := BrokerInstanceBind{
+		UUID:       bindID.String(),
+		Parameters: params,
+	}
 	req := osb.BindRequest{
 		ServiceID:           instance.BrokerData.ServiceID,
 		InstanceID:          instance.BrokerData.UUID,
 		PlanID:              instance.BrokerData.PlanID,
-		BindingID:           getBindingID(instance, app),
+		BindingID:           bind.UUID,
 		AppGUID:             &appGUID,
 		Parameters:          params,
 		OriginatingIdentity: id,
@@ -239,12 +247,12 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 		req.AcceptsIncomplete = false
 		resp, err = b.client.Bind(&req)
 	}
-	if resp == nil {
+	if err != nil {
 		return nil, err
 	}
 	if resp.OperationKey != nil {
+		bind.OperationKey = string(*resp.OperationKey)
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
-		err = updateBrokerData(instance)
 	}
 	envs := make(map[string]string)
 	for k, v := range resp.Credentials {
@@ -255,7 +263,11 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 			envs[k] = strconv.Itoa(s)
 		}
 	}
-	return envs, err
+	if instance.BrokerData.Binds == nil {
+		instance.BrokerData.Binds = make(map[string]BrokerInstanceBind)
+	}
+	instance.BrokerData.Binds[app.GetName()] = bind
+	return envs, updateBrokerData(instance)
 }
 
 func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
@@ -268,7 +280,7 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	}
 	req := osb.UnbindRequest{
 		InstanceID:          instance.BrokerData.UUID,
-		BindingID:           getBindingID(instance, app),
+		BindingID:           instance.BrokerData.Binds[app.GetName()].UUID,
 		ServiceID:           instance.BrokerData.ServiceID,
 		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
@@ -282,6 +294,7 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	if err != nil {
 		return err
 	}
+	delete(instance.BrokerData.Binds, app.GetName())
 	if resp != nil && resp.OperationKey != nil {
 		instance.BrokerData.LastOperationKey = string(*resp.OperationKey)
 		err = updateBrokerData(instance)

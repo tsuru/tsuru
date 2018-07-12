@@ -221,17 +221,20 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
 	appGUID, err := a.GetUUID()
 	c.Assert(err, check.IsNil)
+	var bindID string
 	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
 		exID, err := json.Marshal(map[string]interface{}{
 			"user": "my@user",
 		})
 		c.Assert(err, check.IsNil)
+		c.Assert(req.BindingID, check.Not(check.DeepEquals), "")
+		bindID = req.BindingID
+		req.BindingID = ""
 		c.Assert(req, check.DeepEquals, &osb.BindRequest{
 			AcceptsIncomplete: true,
 			InstanceID:        "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:         "s1",
 			PlanID:            "p1",
-			BindingID:         "instance-theapp",
 			AppGUID:           &appGUID,
 			BindResource: &osb.BindResource{
 				AppGUID: &appGUID,
@@ -248,11 +251,14 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 				"param1": "val1",
 			},
 		})
-		return &osb.BindResponse{Credentials: map[string]interface{}{
-			"env1": "val1",
-			"env2": "val2",
-			"env3": 3,
-		}}, nil
+		opKey := osb.OperationKey("Binding")
+		return &osb.BindResponse{
+			OperationKey: &opKey,
+			Credentials: map[string]interface{}{
+				"env1": "val1",
+				"env2": "val2",
+				"env3": 3,
+			}}, nil
 	}
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
@@ -272,6 +278,8 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
+	err = s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, check.IsNil)
 	params := BindAppParameters(map[string]interface{}{
 		"param1": "val1",
 	})
@@ -281,6 +289,21 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 		"env1": "val1",
 		"env2": "val2",
 		"env3": "3",
+	})
+	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
+		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
+		ServiceID:        "s1",
+		PlanID:           "p1",
+		LastOperationKey: "Binding",
+		Binds: map[string]BrokerInstanceBind{
+			"theapp": BrokerInstanceBind{
+				UUID:         bindID,
+				OperationKey: "Binding",
+				Parameters:   params,
+			},
+		},
 	})
 }
 
@@ -295,14 +318,15 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 			InstanceID:        "e7252f14-54be-45df-bd40-e988a0e41059",
 			ServiceID:         "s1",
 			PlanID:            "p1",
-			BindingID:         "instance-theapp",
+			BindingID:         "xxxx-xxxx",
 			AcceptsIncomplete: true,
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",
 				Value:    string(exID),
 			},
 		})
-		return &osb.UnbindResponse{}, nil
+		opKey := osb.OperationKey("Unbinding")
+		return &osb.UnbindResponse{OperationKey: &opKey}, nil
 	}
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
@@ -322,9 +346,25 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
+	instance.BrokerData.Binds = map[string]BrokerInstanceBind{
+		"theapp": BrokerInstanceBind{
+			UUID: "xxxx-xxxx",
+		},
+	}
+	err = s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
 	err = client.UnbindApp(&instance, a, ev, "request-id")
 	c.Assert(err, check.IsNil)
+	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
+		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
+		ServiceID:        "s1",
+		PlanID:           "p1",
+		LastOperationKey: "Unbinding",
+		Binds:            map[string]BrokerInstanceBind{},
+	})
 }
 
 func (s *S) TestBrokerClientUpdate(c *check.C) {
@@ -386,6 +426,7 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 		ServiceID:        "serviceid",
 		PlanID:           "planid",
 		LastOperationKey: "Provisioning",
+		Binds:            map[string]BrokerInstanceBind{},
 	})
 }
 
