@@ -179,8 +179,11 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	if err != nil {
 		return nil, err
 	}
-	appName := app.GetName()
 	id, err := idForEvent(evt)
+	if err != nil {
+		return nil, err
+	}
+	appGUID, err := app.GetUUID()
 	if err != nil {
 		return nil, err
 	}
@@ -189,11 +192,11 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 		InstanceID:          instance.Name,
 		PlanID:              plan.ID,
 		BindingID:           getBindingID(instance, app),
-		AppGUID:             &appName,
+		AppGUID:             &appGUID,
 		Parameters:          params,
 		OriginatingIdentity: id,
 		BindResource: &osb.BindResource{
-			AppGUID: &appName,
+			AppGUID: &appGUID,
 		},
 		Context: map[string]interface{}{
 			"request_id": requestID,
