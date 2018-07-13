@@ -34,6 +34,9 @@ type BrokerConfig struct {
 	// field should be set.  If the TLSConfig field is set and this field is
 	// set to true, it overrides the value in the TLSConfig field.
 	Insecure bool
+	// Context is a set of key/value pairs that are going to be added to every
+	// request to the Service Broker
+	Context map[string]interface{}
 }
 
 // AuthConfig is a union-type representing the possible auth configurations a

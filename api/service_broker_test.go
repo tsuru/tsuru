@@ -36,8 +36,8 @@ func (s *S) TestServiceBrokerList(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&response)
 	c.Assert(err, check.IsNil)
 	c.Assert(response["brokers"], check.DeepEquals, []service.Broker{
-		{Name: "broker-1", URL: "http://localhost:8080"},
-		{Name: "broker-2", URL: "http://localhost:8080"},
+		{Name: "broker-1", URL: "http://localhost:8080", Config: service.BrokerConfig{Context: map[string]interface{}{}}},
+		{Name: "broker-2", URL: "http://localhost:8080", Config: service.BrokerConfig{Context: map[string]interface{}{}}},
 	})
 }
 
@@ -70,6 +70,7 @@ func (s *S) TestServiceBrokerAdd(c *check.C) {
 				},
 				BearerConfig: &service.BearerConfig{},
 			},
+			Context: map[string]interface{}{},
 		},
 	}
 	bodyData, err := form.EncodeToString(expectedBroker)
@@ -123,6 +124,7 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 				},
 				BearerConfig: &service.BearerConfig{},
 			},
+			Context: map[string]interface{}{},
 		},
 	}
 	err := servicemanager.ServiceBroker.Create(broker)

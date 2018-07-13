@@ -66,6 +66,7 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 				"event_id":          ev.UniqueID.Hex(),
 				"organization_guid": orgID,
 				"space_guid":        orgID,
+				"Namespace":         "broker-namespace",
 			},
 		})
 		return nil, nil
@@ -81,7 +82,14 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 		},
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	client, err := newClient(serviceTypes.Broker{
+		Name: "broker",
+		Config: serviceTypes.BrokerConfig{
+			Context: map[string]interface{}{
+				"Namespace": "broker-namespace",
+			},
+		},
+	}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
 	err = client.Create(&instance, ev, "request-id")
@@ -249,6 +257,7 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 			Context: map[string]interface{}{
 				"request_id": "request-id",
 				"event_id":   ev.UniqueID.Hex(),
+				"Namespace":  "broker-namespace",
 			},
 			Parameters: map[string]interface{}{
 				"param1": "val1",
@@ -278,7 +287,14 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 		BindReaction: osbfake.DynamicBindReaction(reaction),
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
+	client, err := newClient(serviceTypes.Broker{
+		Name: "broker",
+		Config: serviceTypes.BrokerConfig{
+			Context: map[string]interface{}{
+				"Namespace": "broker-namespace",
+			},
+		},
+	}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
 	err = s.conn.ServiceInstances().Insert(&instance)

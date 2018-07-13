@@ -105,7 +105,19 @@ func (s *BrokerSuite) TestServiceBrokerList(c *check.C) {
 	brokers, err := s.service.List()
 	c.Assert(err, check.IsNil)
 	c.Assert(brokers, check.DeepEquals, []service.Broker{
-		{Name: "broker-name", URL: "https://localhost:8080"},
-		{Name: "broker-2", URL: "https://localhost:9090"},
+		{
+			Name: "broker-name",
+			URL:  "https://localhost:8080",
+			Config: service.BrokerConfig{
+				Context: map[string]interface{}{},
+			},
+		},
+		{
+			Name: "broker-2",
+			URL:  "https://localhost:9090",
+			Config: service.BrokerConfig{
+				Context: map[string]interface{}{},
+			},
+		},
 	})
 }
