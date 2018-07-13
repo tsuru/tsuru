@@ -421,10 +421,6 @@ func newService(broker serviceTypes.Broker, osbservice osb.Service) Service {
 	}
 }
 
-func getBindingID(instance *ServiceInstance, app bind.App) string {
-	return fmt.Sprintf("%s-%s", instance.Name, app.GetName())
-}
-
 func idForEvent(evt *event.Event) (*osb.OriginatingIdentity, error) {
 	identity, err := json.Marshal(map[string]interface{}{
 		"user": evt.Owner.Name,
