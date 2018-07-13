@@ -48,12 +48,14 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		c.Assert(req.InstanceID, check.Not(check.DeepEquals), "")
+		c.Assert(req.OrganizationGUID, check.Not(check.DeepEquals), "")
+		c.Assert(req.SpaceGUID, check.Not(check.DeepEquals), "")
 		req.InstanceID = ""
+		req.OrganizationGUID = ""
+		req.SpaceGUID = ""
 		c.Assert(req, check.DeepEquals, &osb.ProvisionRequest{
-			PlanID:           "planid",
-			ServiceID:        "serviceid",
-			OrganizationGUID: "teamOwner",
-			SpaceGUID:        "teamOwner",
+			PlanID:    "planid",
+			ServiceID: "serviceid",
 			OriginatingIdentity: &osb.OriginatingIdentity{
 				Platform: "tsuru",
 				Value:    string(exID),
