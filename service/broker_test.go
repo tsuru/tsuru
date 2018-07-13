@@ -234,10 +234,10 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var bindID string
 	reaction := func(req *osb.BindRequest) (*osb.BindResponse, error) {
-		exID, err := json.Marshal(map[string]interface{}{
+		exID, errMarshal := json.Marshal(map[string]interface{}{
 			"user": "my@user",
 		})
-		c.Assert(err, check.IsNil)
+		c.Assert(errMarshal, check.IsNil)
 		c.Assert(req.BindingID, check.Not(check.DeepEquals), "")
 		bindID = req.BindingID
 		req.BindingID = ""
@@ -317,7 +317,7 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 		PlanID:           "p1",
 		LastOperationKey: "Binding",
 		Binds: map[string]BrokerInstanceBind{
-			"theapp": BrokerInstanceBind{
+			"theapp": {
 				UUID:         bindID,
 				OperationKey: "Binding",
 				Parameters:   params,
@@ -366,7 +366,7 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
 	instance.BrokerData.Binds = map[string]BrokerInstanceBind{
-		"theapp": BrokerInstanceBind{
+		"theapp": {
 			UUID: "xxxx-xxxx",
 		},
 	}
