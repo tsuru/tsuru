@@ -40,11 +40,11 @@ func (s *S) TestNotifyCreateServiceInstanceForward(c *check.C) {
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance, evt, ""},
+		Params: []interface{}{srv, &instance, evt, ""},
 	}
 	r, err := notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := r.(ServiceInstance)
+	a, ok := r.(*ServiceInstance)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, instance.Name)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
@@ -67,9 +67,9 @@ func (s *S) TestNotifyCreateServiceInstanceForwardInvalidParams(c *check.C) {
 	ctx = action.FWContext{Params: []interface{}{srv, "", ""}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Second parameter must be a ServiceInstance.")
+	c.Assert(err.Error(), check.Equals, "Second parameter must be a *ServiceInstance.")
 	instance := ServiceInstance{Name: "mysql"}
-	ctx = action.FWContext{Params: []interface{}{srv, instance, 1}}
+	ctx = action.FWContext{Params: []interface{}{srv, &instance, 1}}
 	_, err = notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Third parameter must be an event.")
@@ -87,7 +87,7 @@ func (s *S) TestNotifyCreateServiceInstanceBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
-	ctx := action.BWContext{Params: []interface{}{srv, instance, evt, "test"}}
+	ctx := action.BWContext{Params: []interface{}{srv, &instance, evt, "test"}}
 	notifyCreateServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 }
@@ -122,7 +122,7 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "mysql"}
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance},
+		Params: []interface{}{srv, &instance},
 	}
 	_, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -134,7 +134,7 @@ func (s *S) TestCreateServiceInstanceForwardParams(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"", ""}}
 	_, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Second parameter must be a ServiceInstance.")
+	c.Assert(err.Error(), check.Equals, "Second parameter must be a *ServiceInstance.")
 }
 
 func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
@@ -143,7 +143,7 @@ func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
 	err := s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
-		Params: []interface{}{srv, instance},
+		Params: []interface{}{srv, &instance},
 	}
 	createServiceInstance.Backward(ctx)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -254,11 +254,11 @@ func (s *S) TestNotifyUpdateServiceInstanceForward(c *check.C) {
 	instance := ServiceInstance{Name: "mysql"}
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance, evt, ""},
+		Params: []interface{}{srv, &instance, evt, ""},
 	}
 	r, err := notifyCreateServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	a, ok := r.(ServiceInstance)
+	a, ok := r.(*ServiceInstance)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, instance.Name)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))

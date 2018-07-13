@@ -47,6 +47,7 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 			"user": "my@user",
 		})
 		c.Assert(err, check.IsNil)
+		orgID := req.OrganizationGUID
 		c.Assert(req.InstanceID, check.Not(check.DeepEquals), "")
 		c.Assert(req.OrganizationGUID, check.Not(check.DeepEquals), "")
 		c.Assert(req.SpaceGUID, check.Not(check.DeepEquals), "")
@@ -63,8 +64,8 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 			Context: map[string]interface{}{
 				"request_id":        "request-id",
 				"event_id":          ev.UniqueID.Hex(),
-				"organization_guid": "teamOwner",
-				"space_guid":        "teamOwner",
+				"organization_guid": orgID,
+				"space_guid":        orgID,
 			},
 		})
 		return nil, nil

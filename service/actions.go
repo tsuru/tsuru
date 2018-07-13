@@ -37,9 +37,9 @@ var notifyCreateServiceInstance = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		instance, ok := ctx.Params[1].(ServiceInstance)
+		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
-			return nil, errors.New("Second parameter must be a ServiceInstance.")
+			return nil, errors.New("Second parameter must be a *ServiceInstance.")
 		}
 		evt, ok := ctx.Params[2].(*event.Event)
 		if !ok {
@@ -49,7 +49,7 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("RequestID should be a string.")
 		}
-		err = endpoint.Create(&instance, evt, requestID)
+		err = endpoint.Create(instance, evt, requestID)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +64,7 @@ var notifyCreateServiceInstance = action.Action{
 		if err != nil {
 			return
 		}
-		instance, ok := ctx.Params[1].(ServiceInstance)
+		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
 			return
 		}
@@ -76,7 +76,7 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return
 		}
-		endpoint.Destroy(&instance, evt, requestID)
+		endpoint.Destroy(instance, evt, requestID)
 	},
 	MinParams: 3,
 }
@@ -87,19 +87,19 @@ var notifyCreateServiceInstance = action.Action{
 var createServiceInstance = action.Action{
 	Name: "create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		instance, ok := ctx.Params[1].(ServiceInstance)
+		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
-			return nil, errors.New("Second parameter must be a ServiceInstance.")
+			return nil, errors.New("Second parameter must be a *ServiceInstance.")
 		}
 		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}
 		defer conn.Close()
-		return nil, conn.ServiceInstances().Insert(&instance)
+		return nil, conn.ServiceInstances().Insert(instance)
 	},
 	Backward: func(ctx action.BWContext) {
-		instance, ok := ctx.Params[1].(ServiceInstance)
+		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
 			return
 		}
