@@ -89,17 +89,23 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate instance uuid")
 	}
+	orgID, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate org/space uuid")
+	}
 	instance.BrokerData = &BrokerInstanceData{
 		UUID:      uid.String(),
 		ServiceID: s.ID,
 		PlanID:    plan.ID,
+		OrgID:     orgID.String(),
+		SpaceID:   orgID.String(),
 	}
 	req := osb.ProvisionRequest{
 		InstanceID:          instance.BrokerData.UUID,
 		ServiceID:           instance.BrokerData.ServiceID,
 		PlanID:              instance.BrokerData.PlanID,
-		OrganizationGUID:    instance.TeamOwner,
-		SpaceGUID:           instance.TeamOwner,
+		OrganizationGUID:    instance.BrokerData.OrgID,
+		SpaceGUID:           instance.BrokerData.SpaceID,
 		Parameters:          instance.Parameters,
 		OriginatingIdentity: id,
 		Context: map[string]interface{}{
@@ -154,6 +160,8 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 		PreviousValues: &osb.PreviousValues{
 			PlanID:    instance.BrokerData.PlanID,
 			ServiceID: instance.BrokerData.ServiceID,
+			OrgID:     instance.BrokerData.OrgID,
+			SpaceID:   instance.BrokerData.SpaceID,
 		},
 	}
 	instance.BrokerData.PlanID = plan.ID

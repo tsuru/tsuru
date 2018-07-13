@@ -60,6 +60,8 @@ type BrokerInstanceData struct {
 	UUID             string
 	ServiceID        string
 	PlanID           string
+	OrgID            string
+	SpaceID          string
 	LastOperationKey string
 
 	Binds map[string]BrokerInstanceBind
