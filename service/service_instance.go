@@ -456,7 +456,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, evt *even
 	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(*service, instance, evt, requestID)
+	return pipeline.Execute(*service, &instance, evt, requestID)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {

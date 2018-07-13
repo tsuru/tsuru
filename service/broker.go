@@ -111,8 +111,8 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 		Context: map[string]interface{}{
 			"request_id":        requestID,
 			"event_id":          evt.UniqueID.Hex(),
-			"organization_guid": instance.TeamOwner,
-			"space_guid":        instance.TeamOwner,
+			"organization_guid": instance.BrokerData.OrgID,
+			"space_guid":        instance.BrokerData.SpaceID,
 		},
 	}
 	resp, err := b.client.ProvisionInstance(&req)
