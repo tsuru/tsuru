@@ -115,6 +115,9 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 			"space_guid":        instance.BrokerData.SpaceID,
 		},
 	}
+	for k, v := range b.broker.Config.Context {
+		req.Context[k] = v
+	}
 	resp, err := b.client.ProvisionInstance(&req)
 	if osb.IsAsyncRequiredError(err) {
 		// We only set AcceptsIncomplete when it is required because some Brokers fail when
@@ -163,6 +166,9 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 			OrgID:     instance.BrokerData.OrgID,
 			SpaceID:   instance.BrokerData.SpaceID,
 		},
+	}
+	for k, v := range b.broker.Config.Context {
+		req.Context[k] = v
 	}
 	instance.BrokerData.PlanID = plan.ID
 	instance.BrokerData.ServiceID = s.ID
@@ -249,6 +255,9 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 			"event_id":   evt.UniqueID.Hex(),
 		},
 		AcceptsIncomplete: true,
+	}
+	for k, v := range b.broker.Config.Context {
+		req.Context[k] = v
 	}
 	resp, err := b.client.Bind(&req)
 	if osb.IsAsyncBindingOperationsNotAllowedError(err) {

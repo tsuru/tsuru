@@ -25,6 +25,9 @@ func (s *ServiceBrokerSuite) TestInsert(c *check.C) {
 					Password: "password",
 				},
 			},
+			Context: map[string]interface{}{
+				"Namespace": "broker-namespace",
+			},
 		},
 	}
 	err := s.ServiceBrokerStorage.Insert(broker)
@@ -143,6 +146,9 @@ func (s *ServiceBrokerSuite) TestFind(c *check.C) {
 					Username: "user",
 					Password: "password",
 				},
+			},
+			Context: map[string]interface{}{
+				"Namespace": "broker-namespace",
 			},
 		},
 	}
