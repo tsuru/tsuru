@@ -45,23 +45,42 @@ func writeToken(token string) error {
 	if n != len(token) {
 		return errors.New("Failed to write token file.")
 	}
+	targetLabel, err := GetTargetLabel()
+	if err == nil {
+		tokenPath = JoinWithUserDir(".tsuru", "token.d", targetLabel)
+		file, err := filesystem().Create(tokenPath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		n, err := file.WriteString(token)
+		if err != nil {
+			return err
+		}
+		if n != len(token) {
+			return errors.New("Failed to write token file.")
+		}
+	}
 	return nil
 }
 
 func ReadToken() (string, error) {
+	var token []byte
 	if token := os.Getenv("TSURU_TOKEN"); token != "" {
 		return token, nil
 	}
-	tokenPath := JoinWithUserDir(".tsuru", "token")
-	file, err := filesystem().Open(tokenPath)
-	if os.IsNotExist(err) {
-		return "", nil
+	targetLabel, err := GetTargetLabel()
+	if err == nil {
+		tokenPath := JoinWithUserDir(".tsuru", "token.d", targetLabel)
+		token, err = ioutil.ReadFile(tokenPath)
 	}
 	if err != nil {
-		return "", err
+		tokenPath := JoinWithUserDir(".tsuru", "token")
+		token, err = ioutil.ReadFile(tokenPath)
+		if os.IsNotExist(err) {
+			return "", nil
+		}
 	}
-	defer file.Close()
-	token, err := ioutil.ReadAll(file)
 	if err != nil {
 		return "", err
 	}
