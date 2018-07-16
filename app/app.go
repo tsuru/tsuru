@@ -1347,16 +1347,16 @@ func (app *App) GetUUID() (string, error) {
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	app.UUID = uuidV4.String()
 	conn, err := db.Conn()
 	if err != nil {
 		return "", err
 	}
 	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"uuid": app.UUID}})
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"uuid": uuidV4.String()}})
 	if err != nil {
 		return "", err
 	}
+	app.UUID = uuidV4.String()
 	return app.UUID, nil
 }
 
