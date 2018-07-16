@@ -990,7 +990,10 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Plan = appTypes.Plan{Memory: 1024}
+	a.Plan = appTypes.Plan{
+		Memory:   1024,
+		CpuShare: 200,
+	}
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
@@ -1006,12 +1009,15 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
+	expectedCPU := resource.NewMilliQuantity(200, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
 			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceCPU:    *expectedCPU,
 		},
 		Requests: apiv1.ResourceList{
 			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceCPU:    *expectedCPU,
 		},
 	})
 }
