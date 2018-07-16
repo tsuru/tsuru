@@ -2740,18 +2740,26 @@ definitions:
         type: string
       URL:
         type: string
-      AuthInfo:
-        type: object
+      Config:
         properties:
-          BasicAuthConfig:
+          Insecure:
+            type: boolean
+          Context:
+            type: object
+            additionalProperties:
+              type: string
+          AuthConfig:
             type: object
             properties:
-              username:
-                type: string
-              password:
-                type: string
-          BearerConfig:
-            type: object
-            properties:
-              token:
-                type: string
+              BasicAuthConfig:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  password:
+                    type: string
+              BearerConfig:
+                type: object
+                properties:
+                  token:
+                    type: string
