@@ -68,6 +68,7 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 				"space_guid":        orgID,
 				"Namespace":         "broker-namespace",
 			},
+			AcceptsIncomplete: true,
 		})
 		return nil, nil
 	}
@@ -100,37 +101,6 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 	err = client.Create(&instance, ev, "request-id")
 	c.Assert(err, check.ErrorMatches, `invalid plan: premium`)
 	c.Assert(provisioned, check.DeepEquals, false)
-}
-
-func (s *S) TestBrokerClientCreateAsyncRequired(c *check.C) {
-	var calls int
-	ev := createEvt(c)
-	reaction := func(req *osb.ProvisionRequest) (*osb.ProvisionResponse, error) {
-		calls++
-		if calls > 1 {
-			c.Assert(req.AcceptsIncomplete, check.DeepEquals, true)
-			return nil, nil
-		}
-		c.Assert(req.AcceptsIncomplete, check.DeepEquals, false)
-		return nil, osbfake.AsyncRequiredError()
-	}
-	config := osbfake.FakeClientConfiguration{
-		ProvisionReaction: osbfake.DynamicProvisionReaction(reaction),
-		CatalogReaction: &osbfake.CatalogReaction{
-			Response: &osb.CatalogResponse{
-				Services: []osb.Service{
-					{Name: "service", ID: "serviceid", Plans: []osb.Plan{{Name: "plan1", ID: "planid"}}},
-				},
-			},
-		},
-	}
-	ClientFactory = osbfake.NewFakeClientFunc(config)
-	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
-	c.Assert(err, check.IsNil)
-	instance := createTestInstance()
-	err = client.Create(&instance, ev, "request-id")
-	c.Assert(err, check.IsNil)
-	c.Assert(calls, check.DeepEquals, 2)
 }
 
 func (s *S) TestBrokerClientStatus(c *check.C) {
@@ -201,6 +171,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 				Platform: "tsuru",
 				Value:    string(exID),
 			},
+			AcceptsIncomplete: true,
 		})
 		return nil, nil
 	}
@@ -413,6 +384,7 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 				ServiceID: "s1",
 				PlanID:    "p1",
 			},
+			AcceptsIncomplete: true,
 		})
 		opKey := osb.OperationKey("Provisioning")
 		return &osb.UpdateInstanceResponse{OperationKey: &opKey}, nil

@@ -114,17 +114,12 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 			"organization_guid": instance.BrokerData.OrgID,
 			"space_guid":        instance.BrokerData.SpaceID,
 		},
+		AcceptsIncomplete: true,
 	}
 	for k, v := range b.broker.Config.Context {
 		req.Context[k] = v
 	}
 	resp, err := b.client.ProvisionInstance(&req)
-	if osb.IsAsyncRequiredError(err) {
-		// We only set AcceptsIncomplete when it is required because some Brokers fail when
-		// they don't support async operations and AcceptsIncomplete is true.
-		req.AcceptsIncomplete = true
-		resp, err = b.client.ProvisionInstance(&req)
-	}
 	if err != nil {
 		return err
 	}
@@ -166,6 +161,7 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 			OrgID:     instance.BrokerData.OrgID,
 			SpaceID:   instance.BrokerData.SpaceID,
 		},
+		AcceptsIncomplete: true,
 	}
 	for k, v := range b.broker.Config.Context {
 		req.Context[k] = v
@@ -173,12 +169,6 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 	instance.BrokerData.PlanID = plan.ID
 	instance.BrokerData.ServiceID = s.ID
 	resp, err := b.client.UpdateInstance(&req)
-	if osb.IsAsyncRequiredError(err) {
-		// We only set AcceptsIncomplete when it is required because some Brokers fail when
-		// they don't support async operations and AcceptsIncomplete is true.
-		req.AcceptsIncomplete = true
-		resp, err = b.client.UpdateInstance(&req)
-	}
 	if err != nil {
 		return err
 	}
@@ -201,14 +191,9 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 		ServiceID:           instance.BrokerData.ServiceID,
 		PlanID:              instance.BrokerData.PlanID,
 		OriginatingIdentity: id,
+		AcceptsIncomplete:   true,
 	}
 	resp, err := b.client.DeprovisionInstance(&req)
-	if osb.IsAsyncRequiredError(err) {
-		// We only set AcceptsIncomplete when it is required because some Brokers fail when
-		// they don't support async operations and AcceptsIncomplete is true.
-		req.AcceptsIncomplete = true
-		resp, err = b.client.DeprovisionInstance(&req)
-	}
 	if err != nil {
 		return err
 	}
