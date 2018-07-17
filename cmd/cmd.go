@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -156,6 +157,7 @@ func (m *Manager) Run(args []string) {
 		verbosity      int
 		displayHelp    bool
 		displayVersion bool
+		target         string
 	)
 	if len(args) == 0 {
 		args = append(args, "help")
@@ -167,6 +169,8 @@ func (m *Manager) Run(args []string) {
 	flagset.BoolVar(&displayHelp, "help", false, "Display help and exit")
 	flagset.BoolVar(&displayHelp, "h", false, "Display help and exit")
 	flagset.BoolVar(&displayVersion, "version", false, "Print version and exit")
+	flagset.StringVar(&target, "t", "", "Define target for running command")
+	flagset.StringVar(&target, "target", "", "Define target for running command")
 	parseErr := flagset.Parse(false, args)
 	if parseErr != nil {
 		fmt.Fprint(m.stderr, parseErr)
@@ -179,6 +183,36 @@ func (m *Manager) Run(args []string) {
 		args = append([]string{"help"}, args...)
 	} else if displayVersion {
 		args = []string{"version"}
+	}
+	if len(target) > 0 {
+		var targets = map[string]string{}
+		targetsPath := JoinWithUserDir(".tsuru", "targets")
+		f, err := filesystem().Open(targetsPath)
+		if err == nil {
+			defer f.Close()
+			if b, err := ioutil.ReadAll(f); err == nil {
+				var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
+				for i := range targetLines {
+					var targetSplit = strings.Split(targetLines[i], "\t")
+
+					if len(targetSplit) == 2 {
+						targets[targetSplit[0]] = targetSplit[1]
+					}
+				}
+			}
+			target, ok := targets[target]
+			if ok {
+				os.Setenv("TSURU_TARGET", target)
+			} else {
+				fmt.Fprint(m.stderr, "Target not found.\n")
+				m.finisher().Exit(1)
+				return
+			}
+		} else {
+			fmt.Fprint(m.stderr, err)
+			m.finisher().Exit(1)
+			return
+		}
 	}
 	if m.lookup != nil {
 		context := m.newContext(args, m.stdout, m.stderr, m.stdin)
