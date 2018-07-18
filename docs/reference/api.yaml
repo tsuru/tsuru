@@ -163,10 +163,8 @@ paths:
         '200':
           description: List service brokers
           schema:
-            type: array
-            items:
-              type: object
-              $ref: '#/definitions/ServiceBroker'
+            type: object
+            $ref: '#/definitions/ServiceBrokerList'
         '204':
           description: No content
         '401':
@@ -2733,6 +2731,14 @@ definitions:
         type: boolean
       success_only:
         type: boolean
+  ServiceBrokerList:
+    type: object
+    properties:
+      brokers:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/ServiceBroker'
   ServiceBroker:
     type: object
     properties:
