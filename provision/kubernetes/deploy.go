@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -72,7 +73,41 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	return remotecommand.NewSPDYExecutorForTransports(wrapper, upgradeRoundTripper, method, url)
 }
 
-func doAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
+func doAttach(ctx context.Context, client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- doUnsafeAttach(client, stdin, stdout, stderr, podName, container, tty, size, namespace)
+	}()
+	finishedCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		err := waitForContainerFinished(finishedCtx, client, podName, container, namespace)
+		if err == nil {
+			// The attach call and the waitForContainer may happen at the same
+			// time this timeout ensures we only raise an error if attach is
+			// really blocked after the container finished.
+			conf := getKubeConfig()
+			time.Sleep(conf.AttachTimeoutAfterContainerFinished)
+			errCh <- errors.New("container finished while attach is running")
+		} else {
+			log.Errorf("error while waiting for container to finish during attach, attach not canceled: %v", err)
+		}
+	}()
+	// WARNING(cezarsa): If a context cancelation or a container finished
+	// situation is triggered there's no reliable way to close the pending
+	// doUnsafeAttach call. We may only hope it will be gone eventually (as it
+	// should if the remote host isn't accessible anymore due to tcp keepalive
+	// probes failing). If it takes too long to finish or if too many happen in
+	// a short period of time we may leak sockets here.
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func doUnsafeAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -303,7 +338,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		return err
 	}
 	if params.attachInput != nil {
-		err = doAttach(params.client, params.attachInput, params.attachOutput, params.attachOutput, params.pod.Name, params.mainContainer, false, nil, ns)
+		err = doAttach(ctx, params.client, params.attachInput, params.attachOutput, params.attachOutput, params.pod.Name, params.mainContainer, false, nil, ns)
 		if err != nil {
 			return fmt.Errorf("error attaching to %s/%s: %v", params.pod.Name, params.mainContainer, err)
 		}
@@ -1041,7 +1076,7 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
-	err = doAttach(params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil, ns)
+	err = doAttach(context.TODO(), params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil, ns)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}

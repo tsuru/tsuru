@@ -109,6 +109,7 @@ func (s *S) TestClusterInitClient(c *check.C) {
 		Timeout: time.Minute,
 	}
 	expected.ContentConfig = cli.restConfig.ContentConfig
+	cli.restConfig.Dial = nil
 	c.Assert(cli.restConfig, check.DeepEquals, expected)
 }
 

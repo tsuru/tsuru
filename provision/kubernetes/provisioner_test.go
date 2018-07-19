@@ -1602,16 +1602,18 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:pod-ready-timeout", 6)
 	config.Set("kubernetes:pod-running-timeout", 2*60)
 	config.Set("kubernetes:deployment-progress-timeout", 3*60)
+	config.Set("kubernetes:attach-after-finish-timeout", 5)
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:        "img1",
-		DeployInspectImage:        "img2",
-		APITimeout:                10 * time.Second,
-		APIShortTimeout:           500 * time.Millisecond,
-		PodReadyTimeout:           6 * time.Second,
-		PodRunningTimeout:         2 * time.Minute,
-		DeploymentProgressTimeout: 3 * time.Minute,
+		DeploySidecarImage:                  "img1",
+		DeployInspectImage:                  "img2",
+		APITimeout:                          10 * time.Second,
+		APIShortTimeout:                     500 * time.Millisecond,
+		PodReadyTimeout:                     6 * time.Second,
+		PodRunningTimeout:                   2 * time.Minute,
+		DeploymentProgressTimeout:           3 * time.Minute,
+		AttachTimeoutAfterContainerFinished: 5 * time.Second,
 	})
 }
 
@@ -1619,13 +1621,14 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:        "tsuru/deploy-agent:0.6.0",
-		DeployInspectImage:        "tsuru/deploy-agent:0.6.0",
-		APITimeout:                60 * time.Second,
-		APIShortTimeout:           5 * time.Second,
-		PodReadyTimeout:           time.Minute,
-		PodRunningTimeout:         10 * time.Minute,
-		DeploymentProgressTimeout: 10 * time.Minute,
+		DeploySidecarImage:                  "tsuru/deploy-agent:0.6.0",
+		DeployInspectImage:                  "tsuru/deploy-agent:0.6.0",
+		APITimeout:                          60 * time.Second,
+		APIShortTimeout:                     5 * time.Second,
+		PodReadyTimeout:                     time.Minute,
+		PodRunningTimeout:                   10 * time.Minute,
+		DeploymentProgressTimeout:           10 * time.Minute,
+		AttachTimeoutAfterContainerFinished: time.Minute,
 	})
 }
 

@@ -642,7 +642,7 @@ func runPod(args runSinglePodArgs) error {
 	if args.stdin == nil {
 		args.stdin = bytes.NewBufferString(".")
 	}
-	err = doAttach(args.client, args.stdin, args.stdout, args.stderr, pod.Name, args.name, tty, args.termSize, ns)
+	err = doAttach(context.TODO(), args.client, args.stdin, args.stdout, args.stderr, pod.Name, args.name, tty, args.termSize, ns)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
@@ -706,4 +706,28 @@ func getAppCR(client *ClusterClient, appName string) (*tsuruv1.App, error) {
 		return nil, err
 	}
 	return tclient.TsuruV1().Apps(client.Namespace()).Get(appName, metav1.GetOptions{})
+}
+
+func waitForContainerFinished(ctx context.Context, client *ClusterClient, podName, containerName, namespace string) error {
+	return waitFor(ctx, func() (bool, error) {
+		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				return true, nil
+			}
+			return true, errors.WithStack(err)
+		}
+		switch pod.Status.Phase {
+		case apiv1.PodSucceeded:
+			fallthrough
+		case apiv1.PodFailed:
+			return true, nil
+		}
+		for _, contStatus := range pod.Status.ContainerStatuses {
+			if contStatus.Name == containerName && contStatus.State.Terminated != nil {
+				return true, nil
+			}
+		}
+		return false, nil
+	}, nil)
 }

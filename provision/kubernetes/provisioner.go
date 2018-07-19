@@ -39,13 +39,14 @@ import (
 )
 
 const (
-	provisionerName                  = "kubernetes"
-	defaultKubeAPITimeout            = time.Minute
-	defaultShortKubeAPITimeout       = 5 * time.Second
-	defaultPodReadyTimeout           = time.Minute
-	defaultPodRunningTimeout         = 10 * time.Minute
-	defaultDeploymentProgressTimeout = 10 * time.Minute
-	defaultSidecarImageName          = "tsuru/deploy-agent:0.6.0"
+	provisionerName                            = "kubernetes"
+	defaultKubeAPITimeout                      = time.Minute
+	defaultShortKubeAPITimeout                 = 5 * time.Second
+	defaultPodReadyTimeout                     = time.Minute
+	defaultPodRunningTimeout                   = 10 * time.Minute
+	defaultDeploymentProgressTimeout           = 10 * time.Minute
+	defaultAttachTimeoutAfterContainerFinished = time.Minute
+	defaultSidecarImageName                    = "tsuru/deploy-agent:0.6.0"
 )
 
 type kubernetesProvisioner struct{}
@@ -93,6 +94,9 @@ type kubernetesConfig struct {
 	// DeploymentProgressTimeout is the timeout for a deployment to
 	// successfully complete.
 	DeploymentProgressTimeout time.Duration
+	// AttachTimeoutAfterContainerFinished is the time tsuru will wait for an
+	// attach call to finish after the attached container has finished.
+	AttachTimeoutAfterContainerFinished time.Duration
 }
 
 func getKubeConfig() kubernetesConfig {
@@ -134,6 +138,12 @@ func getKubeConfig() kubernetesConfig {
 		conf.DeploymentProgressTimeout = time.Duration(deploymentTimeout * float64(time.Second))
 	} else {
 		conf.DeploymentProgressTimeout = defaultDeploymentProgressTimeout
+	}
+	attachTimeout, _ := config.GetFloat("kubernetes:attach-after-finish-timeout")
+	if attachTimeout != 0 {
+		conf.AttachTimeoutAfterContainerFinished = time.Duration(attachTimeout * float64(time.Second))
+	} else {
+		conf.AttachTimeoutAfterContainerFinished = defaultAttachTimeoutAfterContainerFinished
 	}
 	return conf
 }
