@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"strconv"
 	"time"
 
@@ -32,6 +33,9 @@ const (
 	userClusterKey       = "username"
 	passwordClusterKey   = "password"
 	overcommitClusterKey = "overcommit-factor"
+
+	dialTimeout  = 30 * time.Second
+	tcpKeepAlive = 30 * time.Second
 )
 
 var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
@@ -92,6 +96,10 @@ func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	cfg.BearerToken = token
 	cfg.Username = user
 	cfg.Password = password
+	cfg.Dial = (&net.Dialer{
+		Timeout:   dialTimeout,
+		KeepAlive: tcpKeepAlive,
+	}).Dial
 	return cfg, nil
 }
 

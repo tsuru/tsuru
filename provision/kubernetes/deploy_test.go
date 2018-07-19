@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1470,6 +1472,32 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	c.Assert(buf.String(), check.Matches, `(?s).*stdout data.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*stderr data.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> myapp-v1-deploy - msg1 \[c1\].* ---> myapp-v1-deploy - mycont - msg2 \[c1, n1\].*`)
+}
+
+func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
+	config.Set("kubernetes:attach-after-finish-timeout", 1)
+	defer config.Unset("kubernetes:attach-after-finish-timeout")
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	ch := make(chan struct{})
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		ch <- struct{}{}
+		w.Write([]byte("ignored"))
+	}
+	err = createDeployPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/dev/null",
+		attachInput:       strings.NewReader("."),
+		attachOutput:      buf,
+	})
+	c.Assert(err, check.ErrorMatches, `error attaching to myapp-v1-deploy/committer-cont: container finished while attach is running`)
+	<-ch
 }
 
 func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
