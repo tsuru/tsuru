@@ -16,7 +16,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -465,10 +464,10 @@ func (s *PlatformSuite) TestPlatformInfo(c *check.C) {
 		c.Assert(name, check.Equals, "myplatform")
 		return &expected.Platform, nil
 	}
-	err := image.PlatformAppendImage("myplatform", "tsuru/myplatform:v1")
-	c.Assert(err, check.IsNil)
-	err = image.PlatformAppendImage("myplatform", "tsuru/myplatform:v2")
-	c.Assert(err, check.IsNil)
+	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
+		c.Assert(name, check.Equals, "myplatform")
+		return []string{"tsuru/myplatform:v1", "tsuru/myplatform:v2"}, nil
+	}
 	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
@@ -495,6 +494,10 @@ func (s *PlatformSuite) TestPlatformInfoDefaultImage(c *check.C) {
 	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
 		c.Assert(name, check.Equals, "myplatform")
 		return &expected.Platform, nil
+	}
+	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
+		c.Assert(name, check.Equals, "myplatform")
+		return []string{"tsuru/myplatform:latest"}, nil
 	}
 	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
 	c.Assert(err, check.IsNil)

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/provision"
@@ -28,6 +29,7 @@ type DbDriver struct {
 	WebhookStorage       event.WebhookStorage
 	ClusterStorage       provision.ClusterStorage
 	ServiceBrokerStorage service.ServiceBrokerStorage
+	PlatformImageStorage image.PlatformImageStorage
 }
 
 var (

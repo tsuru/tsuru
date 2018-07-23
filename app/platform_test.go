@@ -7,22 +7,22 @@ package app
 import (
 	"bytes"
 
-	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
 
 type PlatformSuite struct {
-	builder *builder.MockBuilder
-	conn    *db.Storage
+	builder     *builder.MockBuilder
+	conn        *db.Storage
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&PlatformSuite{})
@@ -47,6 +47,13 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	builder.DefaultBuilder = "fake"
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	servicemock.SetMockService(&s.mockService)
+	s.mockService.PlatformImage.OnNewImage = func(name string) (string, error) {
+		return "tsuru/" + name + ":v1", nil
+	}
+	s.mockService.PlatformImage.OnAppendImage = func(name, image string) error {
+		return nil
+	}
 }
 
 func (s *PlatformSuite) TestPlatformCreate(c *check.C) {
@@ -61,9 +68,6 @@ func (s *PlatformSuite) TestPlatformCreate(c *check.C) {
 	}
 	err := ps.Create(appTypes.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	img, err := image.PlatformCurrentImage(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, "tsuru/"+name+":v1")
 }
 
 func (s *PlatformSuite) TestPlatformCreateValidatesPlatformName(c *check.C) {
@@ -105,9 +109,6 @@ func (s *PlatformSuite) TestPlatformCreateWithStorageError(c *check.C) {
 	name := "test-platform-add"
 	err := ps.Create(appTypes.PlatformOptions{Name: name})
 	c.Assert(err, check.Equals, appTypes.ErrDuplicatePlatform)
-	images, err := image.PlatformListImages(name)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
-	c.Assert(images, check.HasLen, 0)
 }
 
 func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
@@ -132,9 +133,6 @@ func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
 	opts := appTypes.PlatformOptions{Name: name, Args: args}
 	err := ps.Create(opts)
 	c.Assert(err, check.NotNil)
-	images, err := image.PlatformListImages(name)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
-	c.Assert(images, check.HasLen, 0)
 }
 
 func (s *PlatformSuite) TestPlatformList(c *check.C) {
@@ -209,21 +207,13 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	}
 	args := make(map[string]string)
 	args["disabled"] = ""
-	img, err := image.PlatformNewImage(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, "tsuru/"+name+":v1")
-	err = image.PlatformAppendImage(name, img)
-	c.Assert(err, check.IsNil)
 
 	s.builder.OnPlatformUpdate = func(o appTypes.PlatformOptions) error {
 		c.Assert(o.Data, check.NotNil)
 		return nil
 	}
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err := ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
-	images, err := image.PlatformListImages(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(images, check.DeepEquals, []string{img, "tsuru/" + name + ":v2"})
 
 	err = ps.Update(appTypes.PlatformOptions{Name: "other", Args: args})
 	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
@@ -511,12 +501,13 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	registry.AddRepo(registrytest.Repository{Name: "tsuru/" + name, Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(registry.Repos, check.HasLen, 1)
 	c.Assert(registry.Repos[0].Tags, check.HasLen, 1)
-	img, err := image.PlatformNewImage(name)
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, registry.Addr()+"/tsuru/"+name+":v1")
-	err = image.PlatformAppendImage(name, img)
-	c.Assert(err, check.IsNil)
 
+	s.mockService.PlatformImage.OnDeleteImages = func(name string) error {
+		return nil
+	}
+	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
+		return []string{"tsuru/" + name + ":v1"}, nil
+	}
 	err = ps.Remove("platform-doesnt-exist")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
@@ -525,9 +516,6 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(registry.Repos, check.HasLen, 1)
 	c.Assert(registry.Repos[0].Tags, check.HasLen, 0)
-	images, err := image.PlatformListImages(name)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
-	c.Assert(images, check.HasLen, 0)
 
 	err = ps.Remove("")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)

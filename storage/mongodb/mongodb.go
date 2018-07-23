@@ -12,6 +12,7 @@ func init() {
 	mongodbDriver := storage.DbDriver{
 		TeamStorage:          &TeamStorage{},
 		PlatformStorage:      &PlatformStorage{},
+		PlatformImageStorage: &PlatformImageStorage{},
 		PlanStorage:          &PlanStorage{},
 		CacheStorage:         &cacheStorage{},
 		TeamTokenStorage:     &teamTokenStorage{},

@@ -10,12 +10,12 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/registry"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/validation"
@@ -50,13 +50,13 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	opts.ImageName, err = image.PlatformNewImage(opts.Name)
+	opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
 	if err != nil {
 		return err
 	}
 	err = builder.PlatformAdd(opts)
 	if err != nil {
-		if imgErr := image.PlatformDeleteImages(opts.Name); imgErr != nil {
+		if imgErr := servicemanager.PlatformImage.DeleteImages(opts.Name); imgErr != nil {
 			log.Errorf("unable to remove platform images: %s", imgErr)
 		}
 		dbErr := s.storage.Delete(p)
@@ -68,7 +68,7 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 		}
 		return err
 	}
-	return image.PlatformAppendImage(opts.Name, opts.ImageName)
+	return servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
 }
 
 // List implements List method of PlatformService interface
@@ -111,7 +111,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 			return appTypes.ErrMissingFileContent
 		}
 		opts.Data = data
-		opts.ImageName, err = image.PlatformNewImage(opts.Name)
+		opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 		if err != nil {
 			return err
 		}
-		err = image.PlatformAppendImage(opts.Name, opts.ImageName)
+		err = servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ func (s *platformService) Remove(name string) error {
 	if err != nil {
 		log.Errorf("Failed to remove platform from builder: %s", err)
 	}
-	images, err := image.PlatformListImages(name)
+	images, err := servicemanager.PlatformImage.ListImagesOrDefault(name)
 	if err == nil {
 		for _, img := range images {
 			if regErr := registry.RemoveImage(img); regErr != nil {
@@ -170,7 +170,7 @@ func (s *platformService) Remove(name string) error {
 	} else {
 		log.Errorf("Failed to retrieve platform images from storage: %s", err)
 	}
-	err = image.PlatformDeleteImages(name)
+	err = servicemanager.PlatformImage.DeleteImages(name)
 	if err != nil {
 		log.Errorf("Failed to remove platform images from storage: %s", err)
 	}

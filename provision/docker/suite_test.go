@@ -36,7 +36,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -65,12 +65,7 @@ type S struct {
 	team          *authTypes.Team
 	clusterSess   *mgo.Session
 	logBuf        *safe.Buffer
-	mockService   struct {
-		Team      *authTypes.MockTeamService
-		Plan      *appTypes.MockPlanService
-		UserQuota *quota.MockQuotaService
-		AppQuota  *quota.MockQuotaService
-	}
+	mockService   servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -154,17 +149,16 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
+	servicemock.SetMockService(&s.mockService)
 	s.team = &authTypes.Team{Name: "admin"}
-	s.mockService.Team = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
-			return []authTypes.Team{*s.team}, nil
-		},
-		OnFindByName: func(_ string) (*authTypes.Team, error) {
-			return s.team, nil
-		},
-		OnFindByNames: func(_ []string) ([]authTypes.Team, error) {
-			return []authTypes.Team{{Name: s.team.Name}}, nil
-		},
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{*s.team}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return s.team, nil
+	}
+	s.mockService.Team.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	defaultPlan := appTypes.Plan{
 		Name:     "default-plan",
@@ -173,29 +167,24 @@ func (s *S) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	s.mockService.Plan = &appTypes.MockPlanService{
-		OnList: func() ([]appTypes.Plan, error) {
-			return []appTypes.Plan{defaultPlan}, nil
-		},
-		OnDefaultPlan: func() (*appTypes.Plan, error) {
-			return &defaultPlan, nil
-		},
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{defaultPlan}, nil
 	}
-	s.mockService.UserQuota = &quota.MockQuotaService{
-		OnGet: func(email string) (*quota.Quota, error) {
-			c.Assert(email, check.Equals, s.user.Email)
-			return &s.user.Quota, nil
-		},
-		OnInc: func(email string, n int) error {
-			c.Assert(email, check.Equals, s.user.Email)
-			return nil
-		},
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &defaultPlan, nil
 	}
-	s.mockService.AppQuota = &quota.MockQuotaService{}
-	servicemanager.Team = s.mockService.Team
-	servicemanager.Plan = s.mockService.Plan
-	servicemanager.UserQuota = s.mockService.UserQuota
-	servicemanager.AppQuota = s.mockService.AppQuota
+	s.mockService.UserQuota.OnGet = func(email string) (*quota.Quota, error) {
+		c.Assert(email, check.Equals, s.user.Email)
+		return &s.user.Quota, nil
+	}
+	s.mockService.UserQuota.OnInc = func(email string, n int) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
+	}
+
+	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
+		return "tsuru/" + name + ":v1", nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

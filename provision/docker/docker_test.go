@@ -183,7 +183,7 @@ func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:latest", repoNamespace))
+	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:v1", repoNamespace))
 }
 
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
@@ -200,22 +200,25 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:latest", repoNamespace, app.Platform))
+	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:v1", repoNamespace, app.Platform))
 }
 
 func (s *S) TestGetImageWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
+		return "localhost:3030/tsuru/" + name + ":v1", nil
+	}
 	img, err := image.GetBuildImage(app)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	expected := fmt.Sprintf("localhost:3030/%s/python:latest", repoNamespace)
+	expected := fmt.Sprintf("localhost:3030/%s/python:v1", repoNamespace)
 	c.Assert(img, check.Equals, expected)
 }
 
 func (s *S) TestStart(c *check.C) {
-	err := newFakeImage(s.p, "tsuru/python:latest", nil)
+	err := newFakeImage(s.p, "tsuru/python:v1", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID, err := image.GetBuildImage(app)
@@ -235,7 +238,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	cont.Status = provision.StatusStopped.String()
-	err = newFakeImage(s.p, "tsuru/python:latest", nil)
+	err = newFakeImage(s.p, "tsuru/python:v1", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID, err := image.GetBuildImage(app)

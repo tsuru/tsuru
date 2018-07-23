@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
@@ -107,6 +108,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Platform, err = app.PlatformService()
+	if err != nil {
+		return err
+	}
+	servicemanager.PlatformImage, err = image.PlatformImageService()
 	if err != nil {
 		return err
 	}

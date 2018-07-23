@@ -12,7 +12,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -32,8 +31,6 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	defer config.Unset("docker:registry")
 	var b dockerBuilder
 	dockerfile := "FROM tsuru/java"
-	err = image.PlatformAppendImage("test", "localhost:3030/tsuru/test:v1")
-	c.Assert(err, check.IsNil)
 	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:      "test",
 		ImageName: "localhost:3030/tsuru/test:v1",
@@ -45,10 +42,8 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	c.Assert(len(requests) >= 2, check.Equals, true)
 	requests = requests[len(requests)-2:]
 	c.Assert(requests[0].URL.Path, check.Equals, "/build")
-	img, err := image.PlatformCurrentImage("test")
-	c.Assert(err, check.IsNil)
 	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), check.Equals, img)
+	c.Assert(queryString.Get("t"), check.Equals, "localhost:3030/tsuru/test:v1")
 	c.Assert(queryString.Get("remote"), check.Equals, "")
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
 }
@@ -112,8 +107,6 @@ func (s *S) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	var b dockerBuilder
-	err = image.PlatformAppendImage("test", "localhost:3030/tsuru/test:v1")
-	c.Assert(err, check.IsNil)
 	err = b.PlatformAdd(appTypes.PlatformOptions{
 		Name:      "test",
 		ImageName: "localhost:3030/tsuru/test:v1",
@@ -121,6 +114,10 @@ func (s *S) TestPlatformRemove(c *check.C) {
 		Output:    &buf,
 	})
 	c.Assert(err, check.IsNil)
+	s.mockService.PlatformImage.OnListImages = func(name string) ([]string, error) {
+		c.Assert(name, check.Equals, "test")
+		return []string{"localhost:3030/tsuru/test:v1"}, nil
+	}
 	err = b.PlatformRemove("test")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 4, check.Equals, true)
