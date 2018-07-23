@@ -198,9 +198,8 @@ And you will be also able to omit the ``--app`` flag from now on:
 Handling dependencies
 =====================
 
-If your app depends on external packages, you should vendor them in your
-project and set the `GO_PKG_PATH` environment variable in your app with
-the package name of your app:
+If your app is split in packages, you should set the `GO_PKG_PATH` environment
+variable with the package name of your app:
 
 .. highlight:: bash
 
@@ -208,18 +207,20 @@ the package name of your app:
 
     $ tsuru env-set GO_PKG_PATH=github.com/tsuru/helloworld --app helloworld
 
+If you have external dependencies, you should add them as vendored packages.
 An alternative solution is building your app locally and deploying it using
-the app deploy command:
+the app deploy command. In this case, you would also need a Procfile:
 
 .. highlight:: bash
 
 ::
 
     $ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o helloworld
-    $ tsuru app-deploy --app helloworld ./helloworld
+    $ echo "web: ./helloworld" > ./Procfile
+    $ tsuru app-deploy --app helloworld ./helloworld ./Procfile
 
-If your app has other files to include in the deploy command, like a Procfile
-or tsuru.yaml, include them as parameters in the above command as well.
+If your app has other files to include in the deploy command, like tsuru.yaml,
+include them as parameters in the above command as well.
 
 Running the application
 =======================
