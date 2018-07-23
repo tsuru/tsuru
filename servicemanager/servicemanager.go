@@ -6,6 +6,7 @@ package servicemanager
 
 import (
 	"github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/provision"
@@ -17,6 +18,7 @@ var (
 	Cache         app.CacheService
 	Plan          app.PlanService
 	Platform      app.PlatformService
+	PlatformImage image.PlatformImageService
 	Team          auth.TeamService
 	TeamToken     auth.TeamTokenService
 	Webhook       event.WebhookService

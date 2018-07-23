@@ -7,107 +7,74 @@ package image
 import (
 	"fmt"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/storage"
+	imageTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
+var _ imageTypes.PlatformImageService = &platformImageService{}
+
+type platformImageService struct {
+	storage imageTypes.PlatformImageStorage
+}
+
+func PlatformImageService() (imageTypes.PlatformImageService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &platformImageService{
+		storage: dbDriver.PlatformImageStorage,
+	}, nil
+}
+
 type platformImages struct {
-	PlatformName string `bson:"_id"`
-	Images       []string
-	Count        int
+	Name   string `bson:"_id"`
+	Images []string
+	Count  int
 }
 
-func platformImagesColl() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	name, err := config.GetString("docker:collection")
-	if err != nil {
-		name = defaultCollection
-	}
-	return conn.Collection(fmt.Sprintf("%s_platform_image", name)), nil
-}
-
-func PlatformNewImage(platformName string) (string, error) {
-	coll, err := platformImagesColl()
+func (s *platformImageService) NewImage(platformName string) (string, error) {
+	p, err := s.storage.Upsert(platformName)
 	if err != nil {
 		return "", err
 	}
-	defer coll.Close()
-	var imgs platformImages
-	dbChange := mgo.Change{
-		Update:    bson.M{"$inc": bson.M{"count": 1}},
-		ReturnNew: true,
-		Upsert:    true,
-	}
-	_, err = coll.FindId(platformName).Apply(dbChange, &imgs)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s/%s:v%d", basicImageName("tsuru"), platformName, imgs.Count), nil
+	return fmt.Sprintf("%s/%s:v%d", basicImageName("tsuru"), platformName, p.Count), nil
 }
 
-func PlatformCurrentImage(platformName string) (string, error) {
-	coll, err := platformImagesColl()
-	if err != nil {
-		return "", err
-	}
-	defer coll.Close()
-	var imgs platformImages
-	err = coll.FindId(platformName).One(&imgs)
+func (s *platformImageService) CurrentImage(platformName string) (string, error) {
+	img, err := s.storage.FindByName(platformName)
 	if err != nil {
 		log.Errorf("Couldn't find images for platform %q, fallback to default image name. Error: %s", platformName, err)
 		return platformBasicImageName(platformName), nil
 	}
-	if len(imgs.Images) == 0 && imgs.Count > 0 {
+	if len(img.Images) == 0 && img.Count > 0 {
 		log.Errorf("Couldn't find valid images for platform %q", platformName)
 		return platformBasicImageName(platformName), nil
 	}
-	if len(imgs.Images) == 0 {
+	if len(img.Images) == 0 {
 		return "", ErrNoImagesAvailable
 	}
-	return imgs.Images[len(imgs.Images)-1], nil
+	return img.Images[len(img.Images)-1], nil
 }
 
-func PlatformAppendImage(platformName, imageID string) error {
-	coll, err := platformImagesColl()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	bulk := coll.Bulk()
-	bulk.Upsert(bson.M{"_id": platformName}, bson.M{"$pull": bson.M{"images": imageID}})
-	bulk.Upsert(bson.M{"_id": platformName}, bson.M{"$push": bson.M{"images": imageID}})
-	_, err = bulk.Run()
-	return err
+func (s *platformImageService) AppendImage(platformName, imageID string) error {
+	return s.storage.Append(platformName, imageID)
 }
 
-func PlatformDeleteImages(platformName string) error {
-	coll, err := platformImagesColl()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	err = coll.RemoveId(platformName)
-	if err != nil && err != mgo.ErrNotFound {
+func (s *platformImageService) DeleteImages(platformName string) error {
+	err := s.storage.Delete(platformName)
+	if err != nil && err != imageTypes.ErrPlatformImageNotFound {
 		return err
 	}
 	return nil
 }
 
-func PlatformListImages(platformName string) ([]string, error) {
-	coll, err := platformImagesColl()
-	if err != nil {
-		return nil, err
-	}
-	defer coll.Close()
-	var img platformImages
-	err = coll.FindId(platformName).One(&img)
+func (s *platformImageService) ListImages(platformName string) ([]string, error) {
+	img, err := s.storage.FindByName(platformName)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +83,9 @@ func PlatformListImages(platformName string) ([]string, error) {
 
 // PlatformListImagesOrDefault returns basicImageName when platform is empty
 // for backwards compatibility
-func PlatformListImagesOrDefault(platformName string) ([]string, error) {
-	imgs, err := PlatformListImages(platformName)
-	if err != nil && err == mgo.ErrNotFound {
+func (s *platformImageService) ListImagesOrDefault(platformName string) ([]string, error) {
+	imgs, err := s.ListImages(platformName)
+	if err != nil && err == imageTypes.ErrPlatformImageNotFound {
 		return []string{platformBasicImageName(platformName)}, nil
 	}
 	return imgs, err

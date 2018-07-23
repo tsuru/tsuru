@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -35,7 +36,7 @@ func (b *dockerBuilder) PlatformRemove(name string) error {
 	if err != nil {
 		return err
 	}
-	imgs, err := image.PlatformListImages(name)
+	imgs, err := servicemanager.PlatformImage.ListImages(name)
 	if err != nil {
 		return err
 	}

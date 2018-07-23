@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 )
 
 const defaultCollection = "docker"
@@ -78,11 +79,11 @@ func (i *ImageMetadata) Save() error {
 // in all other cases the app image name will be returned.
 func GetBuildImage(app provision.App) (string, error) {
 	if usePlatformImage(app) {
-		return PlatformCurrentImage(app.GetPlatform())
+		return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
 	}
 	appImageName, err := AppCurrentImageName(app.GetName())
 	if err != nil {
-		return PlatformCurrentImage(app.GetPlatform())
+		return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
 	}
 	return appImageName, nil
 }

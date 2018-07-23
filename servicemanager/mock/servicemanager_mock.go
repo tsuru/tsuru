@@ -7,6 +7,7 @@ package mock
 import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
@@ -14,13 +15,14 @@ import (
 
 // MockService is a struct to use in tests
 type MockService struct {
-	Cache     *app.MockCacheService
-	Plan      *app.MockPlanService
-	Platform  *app.MockPlatformService
-	Team      *auth.MockTeamService
-	UserQuota *quota.MockQuotaService
-	AppQuota  *quota.MockQuotaService
-	Cluster   *provision.MockClusterService
+	Cache         *app.MockCacheService
+	Plan          *app.MockPlanService
+	Platform      *app.MockPlatformService
+	PlatformImage *image.MockPlatformImageService
+	Team          *auth.MockTeamService
+	UserQuota     *quota.MockQuotaService
+	AppQuota      *quota.MockQuotaService
+	Cluster       *provision.MockClusterService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -28,6 +30,7 @@ func SetMockService(m *MockService) {
 	m.Cache = &app.MockCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
+	m.PlatformImage = &image.MockPlatformImageService{}
 	m.Team = &auth.MockTeamService{}
 	m.UserQuota = &quota.MockQuotaService{}
 	m.AppQuota = &quota.MockQuotaService{}
@@ -35,6 +38,7 @@ func SetMockService(m *MockService) {
 	servicemanager.Cache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
+	servicemanager.PlatformImage = m.PlatformImage
 	servicemanager.Team = m.Team
 	servicemanager.UserQuota = m.UserQuota
 	servicemanager.AppQuota = m.AppQuota
@@ -61,6 +65,15 @@ func (m *MockService) ResetPlatform() {
 	m.Platform.OnList = nil
 	m.Platform.OnRemove = nil
 	m.Platform.OnUpdate = nil
+}
+
+func (m *MockService) ResetPlatformImage() {
+	m.PlatformImage.OnNewImage = nil
+	m.PlatformImage.OnCurrentImage = nil
+	m.PlatformImage.OnAppendImage = nil
+	m.PlatformImage.OnDeleteImages = nil
+	m.PlatformImage.OnListImages = nil
+	m.PlatformImage.OnListImagesOrDefault = nil
 }
 
 func (m *MockService) ResetTeam() {

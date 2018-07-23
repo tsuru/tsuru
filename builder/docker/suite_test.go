@@ -113,6 +113,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
+	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
+		return "tsuru/" + name + ":v1", nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

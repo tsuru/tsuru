@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -221,7 +220,7 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	images, err := image.PlatformListImagesOrDefault(name)
+	images, err := servicemanager.PlatformImage.ListImagesOrDefault(name)
 	if err != nil {
 		return err
 	}
