@@ -359,15 +359,29 @@ func ReleaseApplicationLockMany(appNames []string) {
 // by a middleware, however, ideally, it should be called individually by each
 // handler since they might be doing operations in background.
 func ReleaseApplicationLock(appName string) {
+	var err error
+	retries := 3
+	for i := 0; i < retries; i++ {
+		err = releaseApplicationLockOnce(appName)
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Second * time.Duration(i+1))
+	}
+	log.Error(err)
+}
+
+func releaseApplicationLockOnce(appName string) error {
 	conn, err := db.Conn()
 	if err != nil {
-		log.Errorf("Error getting DB, couldn't unlock %s: %s", appName, err)
+		return errors.Wrapf(err, "error getting DB, couldn't unlock %s", appName)
 	}
 	defer conn.Close()
 	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": AppLock{}}})
 	if err != nil {
-		log.Errorf("Error updating entry, couldn't unlock %s: %s", appName, err)
+		return errors.Wrapf(err, "Error updating entry, couldn't unlock %s", appName)
 	}
+	return nil
 }
 
 // GetByName queries the database to find an app identified by the given
