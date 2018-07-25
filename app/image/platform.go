@@ -31,12 +31,6 @@ func PlatformImageService() (imageTypes.PlatformImageService, error) {
 	}, nil
 }
 
-type platformImages struct {
-	Name   string `bson:"_id"`
-	Images []string
-	Count  int
-}
-
 func (s *platformImageService) NewImage(platformName string) (string, error) {
 	p, err := s.storage.Upsert(platformName)
 	if err != nil {
