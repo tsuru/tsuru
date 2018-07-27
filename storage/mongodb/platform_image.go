@@ -16,14 +16,11 @@ var _ image.PlatformImageStorage = &PlatformImageStorage{}
 
 type PlatformImageStorage struct{}
 
-type platformImage struct {
-	Name   string `bson:"_id"`
-	Images []string
-	Count  int
-}
-
 func platformImageCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("platform_images")
+	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	c := conn.Collection("platform_images")
+	c.EnsureIndex(nameIndex)
+	return c
 }
 
 func (s *PlatformImageStorage) Upsert(name string) (*image.PlatformImage, error) {
@@ -37,28 +34,26 @@ func (s *PlatformImageStorage) Upsert(name string) (*image.PlatformImage, error)
 		ReturnNew: true,
 		Upsert:    true,
 	}
-	var p platformImage
-	_, err = platformImageCollection(conn).FindId(name).Apply(dbChange, &p)
-	platform := image.PlatformImage(p)
-	return &platform, err
+	var p image.PlatformImage
+	_, err = platformImageCollection(conn).Find(bson.M{"name": name}).Apply(dbChange, &p)
+	return &p, err
 }
 
 func (s *PlatformImageStorage) FindByName(name string) (*image.PlatformImage, error) {
-	var p platformImage
+	var p image.PlatformImage
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = platformImageCollection(conn).FindId(name).One(&p)
+	err = platformImageCollection(conn).Find(bson.M{"name": name}).One(&p)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			err = image.ErrPlatformImageNotFound
 		}
 		return nil, err
 	}
-	platform := image.PlatformImage(p)
-	return &platform, nil
+	return &p, nil
 }
 
 func (s *PlatformImageStorage) Append(name string, image string) error {
@@ -68,8 +63,8 @@ func (s *PlatformImageStorage) Append(name string, image string) error {
 	}
 	defer conn.Close()
 	bulk := platformImageCollection(conn).Bulk()
-	bulk.Upsert(bson.M{"_id": name}, bson.M{"$pull": bson.M{"images": image}})
-	bulk.Upsert(bson.M{"_id": name}, bson.M{"$push": bson.M{"images": image}})
+	bulk.Upsert(bson.M{"name": name}, bson.M{"$pull": bson.M{"images": image}})
+	bulk.Upsert(bson.M{"name": name}, bson.M{"$push": bson.M{"images": image}})
 	_, err = bulk.Run()
 	return err
 }
@@ -80,7 +75,7 @@ func (s *PlatformImageStorage) Delete(name string) error {
 		return err
 	}
 	defer conn.Close()
-	err = platformImageCollection(conn).RemoveId(name)
+	err = platformImageCollection(conn).Remove(bson.M{"name": name})
 	if err == mgo.ErrNotFound {
 		return image.ErrPlatformImageNotFound
 	}
