@@ -9,7 +9,7 @@ TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS_SLOW = \
 	-j 4 --enable-gc -s vendor -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
-	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
+	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gosec \
 	--disable=structcheck --disable=gotype --disable=gotypex --deadline=60m --tests -s provision/kubernetes/pkg/client
 
 LINTER_ARGS = \
