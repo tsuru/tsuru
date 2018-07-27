@@ -42,25 +42,29 @@ const (
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
 
+func validKubeName(name string) string {
+	return strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
+}
+
 func serviceAccountNameForApp(a provision.App) string {
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	name := validKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
 }
 
 func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(nodeContainer.Name, "-"))
+	name := validKubeName(nodeContainer.Name)
 	return fmt.Sprintf("node-container-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string) string {
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
-	process = strings.ToLower(kubeNameRegex.ReplaceAllString(process, "-"))
+	name := validKubeName(a.GetName())
+	process = validKubeName(process)
 	return fmt.Sprintf("%s-%s", name, process)
 }
 
 func headlessServiceNameForApp(a provision.App, process string) string {
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
-	process = strings.ToLower(kubeNameRegex.ReplaceAllString(process, "-"))
+	name := validKubeName(a.GetName())
+	process = validKubeName(process)
 	return fmt.Sprintf("%s-%s-units", name, process)
 }
 
@@ -69,7 +73,7 @@ func deployPodNameForApp(a provision.App) (string, error) {
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to retrieve app current image version")
 	}
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	name := validKubeName(a.GetName())
 	return fmt.Sprintf("%s-%s-deploy", name, version), nil
 }
 
@@ -78,7 +82,7 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to retrieve app current image version")
 	}
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	name := validKubeName(a.GetName())
 	if suffix != "" {
 		return fmt.Sprintf("%s-%s-build-%s", name, version, suffix), nil
 	}
@@ -86,13 +90,13 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 }
 
 func execCommandPodNameForApp(a provision.App) string {
-	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	name := validKubeName(a.GetName())
 	return fmt.Sprintf("%s-isolated-run", name)
 }
 
 func daemonSetName(name, pool string) string {
-	name = strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
-	pool = strings.ToLower(kubeNameRegex.ReplaceAllString(pool, "-"))
+	name = validKubeName(name)
+	pool = validKubeName(pool)
 	if pool == "" {
 		return fmt.Sprintf("node-container-%s-all", name)
 	}
@@ -108,7 +112,7 @@ func volumeClaimName(name string) string {
 }
 
 func registrySecretName(registry string) string {
-	registry = strings.ToLower(kubeNameRegex.ReplaceAllString(registry, "-"))
+	registry = validKubeName(registry)
 	return fmt.Sprintf("registry-%s", registry)
 }
 

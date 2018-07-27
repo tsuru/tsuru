@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -179,7 +178,8 @@ func (c *ClusterClient) PoolNamespace(pool string) string {
 	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
-	nsPool := strings.Replace(pool, "_", "-", -1)
+	// Replace invalid characters from the pool name, to keep compatibility with older tsuru versions
+	nsPool := validKubeName(pool)
 	if usePoolNamespaces && len(nsPool) > 0 {
 		return fmt.Sprintf("%s-%s", prefix, nsPool)
 	}
