@@ -141,14 +141,6 @@ func (s *Storage) UserActions() *storage.Collection {
 	return s.Collection("user_actions")
 }
 
-// Quota returns the quota collection from MongoDB.
-func (s *Storage) Quota() *storage.Collection {
-	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
-	c := s.Collection("quota")
-	c.EnsureIndex(userIndex)
-	return c
-}
-
 // SAMLRequests returns the saml_requests from MongoDB.
 func (s *Storage) SAMLRequests() *storage.Collection {
 	id := mgo.Index{Key: []string{"id"}}
@@ -234,11 +226,6 @@ func (s *Storage) InstallHosts() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
 	c := s.Collection("install_hosts")
 	c.EnsureIndex(nameIndex)
-	return c
-}
-
-func (s *Storage) ProvisionerClusters() *storage.Collection {
-	c := s.Collection("provisioner_clusters")
 	return c
 }
 

@@ -142,23 +142,6 @@ func (s *S) TestServiceInstances(c *check.C) {
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
 }
 
-func (s *S) TestQuota(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	quota := strg.Quota()
-	quotac := strg.Collection("quota")
-	c.Assert(quota, check.DeepEquals, quotac)
-}
-
-func (s *S) TestQuotaOwnerIsUnique(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	quota := strg.Quota()
-	c.Assert(quota, HasUniqueIndex, []string{"owner"})
-}
-
 func (s *S) TestLogs(c *check.C) {
 	strg, err := LogConn()
 	c.Assert(err, check.IsNil)
