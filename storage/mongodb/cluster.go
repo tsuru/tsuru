@@ -31,7 +31,7 @@ type cluster struct {
 }
 
 func clustersCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("clusters")
+	return conn.Collection("provisioner_clusters")
 }
 
 func (s *clusterStorage) Upsert(c provision.Cluster) error {
