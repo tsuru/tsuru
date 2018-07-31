@@ -109,7 +109,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 		"team":        {"theteam"},
 		"description": {"xyz"},
 		"eventid":     {evt.UniqueID.Hex()},
-		"tags":        []string{"tag 1", "tag 2"},
+		"tags":        {"tag 1", "tag 2"},
 	})
 	c.Assert("Request-ID", check.Equals, h.request.Header.Get("Request-ID"))
 	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
