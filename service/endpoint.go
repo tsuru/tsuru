@@ -64,6 +64,7 @@ func (c *endpointClient) Create(instance *ServiceInstance, evt *event.Event, req
 		"team":    {instance.TeamOwner},
 		"user":    {evt.Owner.Name},
 		"eventid": {evt.UniqueID.Hex()},
+		"tags":    instance.Tags,
 	}
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
