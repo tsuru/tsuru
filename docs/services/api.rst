@@ -20,8 +20,8 @@ tsuru sends requests to the service API to the following actions:
 API Specification
 =================
 
-The API specification is available as an OpenAPI v3 specification at 
-`SwaggerHub <https://app.swaggerhub.com/apis/tsuru/tsuru-service_api/1.0.0>`_ 
+The API specification is available as an OpenAPI v3 specification at
+`SwaggerHub <https://app.swaggerhub.com/apis/tsuru/tsuru-service_api/1.0.0>`_
 and as a yaml file :download:`here <../reference/service_api.yaml>`.
 
 
@@ -112,7 +112,7 @@ via command line tool:
 
 tsuru calls the service API to create a new instance via POST on ``/resources``
 (please notice that tsuru does not include a trailing slash) with the name,
-plan and the team that owns the instance. Example of request:
+plan, tags and the team that owns the instance. Example of request:
 
 ::
 
@@ -124,7 +124,7 @@ plan and the team that owns the instance. Example of request:
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
 
-    name=mysql_instance&plan=small&team=myteam&user=username
+    name=mysql_instance&plan=small&team=myteam&user=username&tag=tag1&tag=tag2
 
 The API should return the following HTTP response codes with the respective
 response body:
@@ -212,7 +212,7 @@ This endpoint is a POST with:
 
 The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
 called once when an app is bound to a service.  This endpoint is a POST with:
-    
+
     * ``app-host`` the host to which the app is accessible
     * ``app-name`` the name of the app
 
