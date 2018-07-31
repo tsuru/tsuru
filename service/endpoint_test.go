@@ -91,7 +91,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz"}
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz", Tags: []string{"tag 1", "tag 2"}}
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "Request-ID")
@@ -109,6 +109,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 		"team":        {"theteam"},
 		"description": {"xyz"},
 		"eventid":     {evt.UniqueID.Hex()},
+		"tags":        []string{"tag 1", "tag 2"},
 	})
 	c.Assert("Request-ID", check.Equals, h.request.Header.Get("Request-ID"))
 	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
