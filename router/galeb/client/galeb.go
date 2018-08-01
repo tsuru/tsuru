@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 )
 
-const maxAuthRetries = 3
+const maxConnRetries = 3
 
 type ErrItemNotFound struct {
 	path string
@@ -169,12 +169,16 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		}
 		log.Debugf("galeb %s %s %s: %d", method, url, bodyData, code)
 	}
-	if err == nil && rsp.StatusCode == http.StatusUnauthorized && retryCount < maxAuthRetries {
-		err = c.regenerateToken()
-		if err != nil {
-			return nil, err
+	if retryCount < maxConnRetries {
+		if err == nil && rsp.StatusCode == http.StatusUnauthorized {
+			err = c.regenerateToken()
+			if err != nil {
+				return nil, err
+			}
+			return c.doRequestRetry(method, path, params, retryCount+1)
+		} else if err != nil && req.Method == http.MethodGet {
+			return c.doRequestRetry(method, path, params, retryCount+1)
 		}
-		return c.doRequestRetry(method, path, params, retryCount+1)
 	}
 	return rsp, err
 }

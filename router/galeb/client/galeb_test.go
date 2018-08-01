@@ -200,6 +200,32 @@ func (s *S) TestGalebAuthTokenExpiredMaxRetries(c *check.C) {
 	c.Assert(s.handler.Header[6].Get("x-auth-token"), check.Equals, "abc")
 }
 
+func (s *S) TestGalebGetMaxRetries(c *check.C) {
+	s.handler.Hook = func(w http.ResponseWriter, r *http.Request) bool {
+		hj, ok := w.(http.Hijacker)
+		c.Assert(ok, check.Equals, true)
+		conn, _, _ := hj.Hijack()
+		conn.Close()
+		return true
+	}
+	_, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/", "/api/", "/api/", "/api/"})
+}
+
+func (s *S) TestGalebPostNoRetry(c *check.C) {
+	s.handler.Hook = func(w http.ResponseWriter, r *http.Request) bool {
+		hj, ok := w.(http.Hijacker)
+		c.Assert(ok, check.Equals, true)
+		conn, _, _ := hj.Hijack()
+		conn.Close()
+		return true
+	}
+	_, err := s.client.doRequest("POST", "/", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/"})
+}
+
 func (s *S) TestGalebAuthTokenConcurrentRequests(c *check.C) {
 	s.handler.RspHeader = http.Header{
 		"x-auth-token": []string{"xyz"},
