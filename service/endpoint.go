@@ -403,7 +403,7 @@ func (c *endpointClient) issueRequest(path, method string, params map[string][]s
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
 	t0 := time.Now()
-	resp, err := net.Dial5Full300ClientNoKeepAlive.Do(req)
+	resp, err := net.Dial10Full300ClientWithPool.Do(req)
 	requestLatencies.WithLabelValues(c.serviceName).Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.WithLabelValues(c.serviceName).Inc()
