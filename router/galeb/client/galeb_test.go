@@ -210,7 +210,9 @@ func (s *S) TestGalebGetMaxRetries(c *check.C) {
 	}
 	_, err := s.client.doRequest("GET", "/", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/", "/api/", "/api/", "/api/"})
+	s.handler.WithLock(func() {
+		c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/", "/api/", "/api/", "/api/"})
+	})
 }
 
 func (s *S) TestGalebPostNoRetry(c *check.C) {
@@ -223,7 +225,9 @@ func (s *S) TestGalebPostNoRetry(c *check.C) {
 	}
 	_, err := s.client.doRequest("POST", "/", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/"})
+	s.handler.WithLock(func() {
+		c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/"})
+	})
 }
 
 func (s *S) TestGalebAuthTokenConcurrentRequests(c *check.C) {

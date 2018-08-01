@@ -76,3 +76,9 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(h.Content))
 	}
 }
+
+func (h *MultiTestHandler) WithLock(fn func()) {
+	h.mu.Lock()
+	fn()
+	h.mu.Unlock()
+}
