@@ -661,6 +661,12 @@ routers:<router name>:use-token (type: galeb)
 If true, tsuru will get an authentication token by calling the /token route and
 reuse it until it expires. (Defaults to false)
 
+routers:<router name>:max-requests (type: galeb)
+++++++++++++++++++++++++++++++++++++++++++++++++
+
+Maximum number of parallel requests to the Galeb API when adding or removing
+routes. (Defaults to unlimited)
+
 routers:<router name>:headers (type: api)
 +++++++++++++++++++++++++++++++++++++++++
 
