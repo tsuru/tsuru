@@ -52,6 +52,7 @@ func getClient(configPrefix string) (*galebClient.GalebClient, error) {
 	if err != nil {
 		waitTimeoutSec = 10 * 60
 	}
+	maxRequests, _ := config.GetInt(configPrefix + ":max-requests")
 	client := &galebClient.GalebClient{
 		ApiURL:        apiURL,
 		Username:      username,
@@ -64,6 +65,7 @@ func getClient(configPrefix string) (*galebClient.GalebClient, error) {
 		RuleType:      ruleType,
 		WaitTimeout:   time.Duration(waitTimeoutSec) * time.Second,
 		Debug:         debug,
+		MaxRequests:   maxRequests,
 	}
 	clientCache.cache[configPrefix] = client
 	return client, nil

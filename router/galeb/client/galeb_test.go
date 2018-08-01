@@ -744,3 +744,68 @@ func (s *S) TestGalebAddBackendPoolPendingTimeout(c *check.C) {
 	c.Assert(parsedParams, check.DeepEquals, expected)
 	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
 }
+
+func (s *S) TestGalebAddBackends(c *check.C) {
+	s.handler.ConditionalContent["/api/target/10"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+		"_embedded": {
+			"pool": [
+				{
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/target/9"
+						}
+					}
+				}
+			]
+		}
+	}`
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
+	s.handler.RspCode = http.StatusCreated
+	url1, _ := url.Parse("http://10.0.0.1:8080")
+	url2, _ := url.Parse("http://10.0.0.2:8080")
+	err := s.client.AddBackends([]*url.URL{
+		url1,
+		url2,
+	}, "mypool")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.HasLen, 5)
+	c.Assert(s.handler.Method[0], check.Equals, "GET")
+	c.Assert(s.handler.URL, check.HasLen, 5)
+	c.Assert(s.handler.URL[0], check.Equals, "/api/pool/search/findByName?name=mypool")
+}
+
+func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
+	s.client.MaxRequests = 1
+	s.handler.ConditionalContent["/api/target/10"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+		"_embedded": {
+			"pool": [
+				{
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/target/9"
+						}
+					}
+				}
+			]
+		}
+	}`
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
+	s.handler.RspCode = http.StatusCreated
+	url1, _ := url.Parse("http://10.0.0.1:8080")
+	url2, _ := url.Parse("http://10.0.0.2:8080")
+	err := s.client.AddBackends([]*url.URL{
+		url1,
+		url2,
+	}, "mypool")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.HasLen, 5)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST", "GET", "POST", "GET"})
+	c.Assert(s.handler.URL, check.HasLen, 5)
+	c.Assert(s.handler.URL[0], check.Equals, "/api/pool/search/findByName?name=mypool")
+}

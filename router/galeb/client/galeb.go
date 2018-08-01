@@ -62,6 +62,7 @@ type GalebClient struct {
 	WaitTimeout   time.Duration
 	UseToken      bool
 	Debug         bool
+	MaxRequests   int
 }
 
 func (c *GalebClient) getTokenHeader() string {
@@ -92,7 +93,7 @@ func (c *GalebClient) regenerateToken() (err error) {
 		return err
 	}
 	req.SetBasicAuth(c.Username, c.Password)
-	rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
+	rsp, err := net.Dial10Full60ClientWithPool.Do(req)
 	if err != nil {
 		return err
 	}
@@ -160,7 +161,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		req.SetBasicAuth(c.Username, c.Password)
 	}
 	req.Header.Set("Content-Type", contentType)
-	rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
+	rsp, err := net.Dial10Full60ClientWithPool.Do(req)
 	if c.Debug {
 		var code int
 		if err == nil {
@@ -350,9 +351,17 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 	}
 	errCh := make(chan error, len(backends))
 	wg := sync.WaitGroup{}
+	var limiter chan struct{}
+	if c.MaxRequests > 0 {
+		limiter = make(chan struct{}, c.MaxRequests)
+	}
 	for i := range backends {
 		wg.Add(1)
 		go func(i int) {
+			if limiter != nil {
+				limiter <- struct{}{}
+				defer func() { <-limiter }()
+			}
 			defer wg.Done()
 			var params Target
 			c.fillDefaultTargetValues(&params)
@@ -431,9 +440,17 @@ func (c *GalebClient) RemoveBackendByID(backendID string) error {
 func (c *GalebClient) RemoveBackendsByIDs(backendIDs []string) error {
 	errCh := make(chan error, len(backendIDs))
 	wg := sync.WaitGroup{}
+	var limiter chan struct{}
+	if c.MaxRequests > 0 {
+		limiter = make(chan struct{}, c.MaxRequests)
+	}
 	for i := range backendIDs {
 		wg.Add(1)
 		go func(i int) {
+			if limiter != nil {
+				limiter <- struct{}{}
+				defer func() { <-limiter }()
+			}
 			defer wg.Done()
 			err := c.removeResource(backendIDs[i])
 			if err != nil {

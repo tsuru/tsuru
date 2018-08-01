@@ -22,6 +22,7 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 			Dial:                dialer.Dial,
 			TLSHandshakeTimeout: dialTimeout,
 			MaxIdleConnsPerHost: maxIdle,
+			IdleConnTimeout:     15 * time.Second,
 		},
 		Timeout: fullTimeout,
 	}
@@ -45,6 +46,8 @@ var (
 	Dial5Full60ClientNoKeepAliveNoRedirect, _      = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1, false)
 	Dial5Full60ClientNoKeepAliveNoRedirectInsecure = insecure(*Dial5Full60ClientNoKeepAliveNoRedirect)
 	Dial5Full60ClientNoKeepAliveInsecure           = insecure(*Dial5Full60ClientNoKeepAlive)
+
+	Dial10Full60ClientWithPool, _ = makeTimeoutHTTPClient(10*time.Second, 1*time.Minute, 10, true)
 )
 
 func insecure(client http.Client) http.Client {
