@@ -460,7 +460,7 @@ func (s *S) TestGalebAddRuleToID(c *check.C) {
 			Match: "/",
 		},
 	}
-	fullId, err := s.client.AddRuleToID("myrule", "http://galeb.somewhere/api/target/9")
+	fullId, err := s.client.addRuleToID("myrule", "http://galeb.somewhere/api/target/9")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/rule"})
@@ -469,6 +469,45 @@ func (s *S) TestGalebAddRuleToID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(parsedParams, check.DeepEquals, expected)
 	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/rule/8")
+}
+
+func (s *S) TestGalebAddRuleToPool(c *check.C) {
+	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/rule/8")
+	s.handler.RspCode = http.StatusCreated
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = []string{
+		"200", `{
+		"_embedded": {
+			"pool": [
+				{
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/pool/9"
+						}
+					}
+				}
+			]
+		}
+	}`}
+	expected := Rule{
+		commonPostResponse: commonPostResponse{ID: 0, Name: "myrule"},
+		RuleType:           "ruletype1",
+		BackendPool:        "http://galeb.somewhere/api/pool/9",
+		Default:            true,
+		Order:              0,
+		Properties: RuleProperties{
+			Match: "/",
+		},
+	}
+	fullId, err := s.client.AddRuleToPool("myrule", "mypool")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool/search/findByName?name=mypool", "/api/rule"})
+	var parsedParams Rule
+	err = json.Unmarshal(s.handler.Body[1], &parsedParams)
+	c.Assert(err, check.IsNil)
+	c.Assert(parsedParams, check.DeepEquals, expected)
+	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/rule/8")
 }
 

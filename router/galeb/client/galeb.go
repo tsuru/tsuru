@@ -398,7 +398,15 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 	return nil
 }
 
-func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
+func (c *GalebClient) AddRuleToPool(name, poolName string) (string, error) {
+	id, err := c.findItemByName("pool", poolName)
+	if err != nil {
+		return "", err
+	}
+	return c.addRuleToID(name, id)
+}
+
+func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
 	params.Name = name
@@ -406,7 +414,7 @@ func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 	return c.doCreateResource("/rule", &params)
 }
 
-func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
+func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error {
 	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
 	rsp, err := c.doRequest("PATCH", path, virtualHostID)
 	if err != nil {
@@ -434,7 +442,7 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error
 	if err != nil {
 		return err
 	}
-	return c.SetRuleVirtualHostIDs(ruleID, virtualHostID)
+	return c.setRuleVirtualHostIDs(ruleID, virtualHostID)
 }
 
 func (c *GalebClient) RemoveBackendByID(backendID string) error {

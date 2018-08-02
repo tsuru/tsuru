@@ -124,7 +124,7 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 		done(err)
 	}()
 	backendExists := false
-	backendPoolId, err := r.client.AddBackendPool(r.poolName(name))
+	_, err = r.client.AddBackendPool(r.poolName(name))
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
@@ -140,7 +140,7 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 		}
 		return err
 	}
-	_, err = r.client.AddRuleToID(r.ruleName(name), backendPoolId)
+	_, err = r.client.AddRuleToPool(r.ruleName(name), r.poolName(name))
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
