@@ -224,6 +224,13 @@ func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 	var rule galebClient.Rule
 	rule.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&rule)
+	for _, rInt := range s.rules {
+		r := rInt.(*galebClient.Rule)
+		if r.Name == rule.Name {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+	}
 	s.idCounter++
 	rule.ID = s.idCounter
 	rule.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), rule.ID)
@@ -256,8 +263,13 @@ func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	s.ruleVh[id] = append(s.ruleVh[id], vhId)
 	w.WriteHeader(http.StatusNoContent)
+	for _, r := range s.ruleVh[id] {
+		if r == vhId {
+			return
+		}
+	}
+	s.ruleVh[id] = append(s.ruleVh[id], vhId)
 }
 
 func (s *fakeGalebServer) destroyRuleVirtualhost(w http.ResponseWriter, r *http.Request) {

@@ -682,3 +682,11 @@ loop:
 	}
 	return nil
 }
+
+func IsErrExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	_, ok := errors.Cause(err).(ErrItemAlreadyExists)
+	return ok
+}
