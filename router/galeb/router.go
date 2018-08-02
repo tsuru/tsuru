@@ -123,31 +123,37 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 	defer func() {
 		done(err)
 	}()
+	backendExists := false
 	backendPoolId, err := r.client.AddBackendPool(r.poolName(name))
-	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
-		return router.ErrBackendExists
-	}
-	if err != nil {
+	if galebClient.IsErrExists(err) {
+		backendExists = true
+	} else if err != nil {
 		return err
 	}
-	virtualHostId, err := r.client.AddVirtualHost(r.virtualHostName(name))
-	if err != nil {
+	_, err = r.client.AddVirtualHost(r.virtualHostName(name))
+	if galebClient.IsErrExists(err) {
+		backendExists = true
+	} else if err != nil {
 		cleanupErr := r.forceCleanupBackend(name)
 		if cleanupErr != nil {
 			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
 		}
 		return err
 	}
-	ruleId, err := r.client.AddRuleToID(r.ruleName(name), backendPoolId)
-	if err != nil {
+	_, err = r.client.AddRuleToID(r.ruleName(name), backendPoolId)
+	if galebClient.IsErrExists(err) {
+		backendExists = true
+	} else if err != nil {
 		cleanupErr := r.forceCleanupBackend(name)
 		if cleanupErr != nil {
 			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
 		}
 		return err
 	}
-	err = r.client.SetRuleVirtualHostIDs(ruleId, virtualHostId)
-	if err != nil {
+	err = r.client.SetRuleVirtualHost(r.ruleName(name), r.virtualHostName(name))
+	if galebClient.IsErrExists(err) {
+		backendExists = true
+	} else if err != nil {
 		cleanupErr := r.forceCleanupBackend(name)
 		if cleanupErr != nil {
 			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
@@ -161,6 +167,9 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
 		}
 		return err
+	}
+	if backendExists {
+		return router.ErrBackendExists
 	}
 	return nil
 }
@@ -252,14 +261,23 @@ func (r *galebRouter) SetCName(cname, name string) (err error) {
 	if !router.ValidCName(cname, r.domain) {
 		return router.ErrCNameNotAllowed
 	}
+	cnameExists := false
 	_, err = r.client.AddVirtualHost(cname)
-	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
-		return router.ErrCNameExists
-	}
-	if err != nil {
+	if galebClient.IsErrExists(err) {
+		cnameExists = true
+	} else if err != nil {
 		return err
 	}
-	return r.client.SetRuleVirtualHost(r.ruleName(backendName), cname)
+	err = r.client.SetRuleVirtualHost(r.ruleName(backendName), cname)
+	if galebClient.IsErrExists(err) {
+		cnameExists = true
+	} else if err != nil {
+		return err
+	}
+	if cnameExists {
+		return router.ErrCNameExists
+	}
+	return nil
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) (err error) {
