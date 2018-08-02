@@ -129,8 +129,12 @@ func (c *logout) Run(context *Context, client *Client) error {
 		request, _ := http.NewRequest("DELETE", url, nil)
 		client.Do(request)
 	}
+	targetLabel, errTokend := GetTargetLabel()
+	if errTokend == nil {
+		errTokend = filesystem().Remove(JoinWithUserDir(".tsuru", "token.d", targetLabel))
+	}
 	err := filesystem().Remove(JoinWithUserDir(".tsuru", "token"))
-	if err != nil && os.IsNotExist(err) {
+	if (err != nil && os.IsNotExist(err)) && (errTokend != nil && os.IsNotExist(errTokend)) {
 		return errors.New("You're not logged in!")
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged out!")
