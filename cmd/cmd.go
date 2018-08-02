@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -185,21 +184,8 @@ func (m *Manager) Run(args []string) {
 		args = []string{"version"}
 	}
 	if len(target) > 0 {
-		var targets = map[string]string{}
-		targetsPath := JoinWithUserDir(".tsuru", "targets")
-		f, err := filesystem().Open(targetsPath)
+		targets, err := getTargets()
 		if err == nil {
-			defer f.Close()
-			if b, err := ioutil.ReadAll(f); err == nil {
-				var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
-				for i := range targetLines {
-					var targetSplit = strings.Split(targetLines[i], "\t")
-
-					if len(targetSplit) == 2 {
-						targets[targetSplit[0]] = targetSplit[1]
-					}
-				}
-			}
 			target, ok := targets[target]
 			if ok {
 				os.Setenv("TSURU_TARGET", target)

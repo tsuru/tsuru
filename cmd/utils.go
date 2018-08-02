@@ -47,6 +47,10 @@ func writeToken(token string) error {
 	}
 	targetLabel, err := GetTargetLabel()
 	if err == nil {
+		err := filesystem().MkdirAll(JoinWithUserDir(".tsuru", "token.d"), 0700)
+		if err != nil {
+			return err
+		}
 		tokenPath = JoinWithUserDir(".tsuru", "token.d", targetLabel)
 		file, err := filesystem().Create(tokenPath)
 		if err != nil {
