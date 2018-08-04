@@ -185,6 +185,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *check.C) {
 	os.Unsetenv("TSURU_TOKEN")
 	fsystem = &fstest.RecordingFs{FileContent: "mytoken"}
+	TargetInit(fsystem)
 	defer func() {
 		fsystem = nil
 	}()
