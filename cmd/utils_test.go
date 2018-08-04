@@ -48,12 +48,13 @@ func (s *S) TestReadToken(c *check.C) {
 	os.Unsetenv("TSURU_TOKEN")
 	rfs := &fstest.RecordingFs{FileContent: "123"}
 	fsystem = rfs
+	TargetInit(fsystem)
 	defer func() {
 		fsystem = nil
 	}()
 	token, err := ReadToken()
 	c.Assert(err, check.IsNil)
-	tokenPath := JoinWithUserDir(".tsuru", "token")
+	tokenPath := JoinWithUserDir(".tsuru", "token.d", "123test")
 	c.Assert(err, check.IsNil)
 	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
 	c.Assert(token, check.Equals, "123")

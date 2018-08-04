@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
+	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/fstest"
 	"gopkg.in/check.v1"
 )
@@ -22,10 +23,18 @@ func nativeScheme() {
 	os.Setenv("TSURU_AUTH_SCHEME", "")
 }
 
+func TargetInit(fsystem fs.Fs) {
+	f, _ := fsystem.Create(JoinWithUserDir(".tsuru", "target"))
+	f.Write([]byte("http://localhost"))
+	f.Close()
+	WriteOnTargetList("test", "http://localhost")
+}
+
 func (s *S) TestNativeLogin(c *check.C) {
 	os.Unsetenv("TSURU_TOKEN")
 	nativeScheme()
 	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
+	TargetInit(fsystem)
 	defer func() {
 		fsystem = nil
 	}()
@@ -57,7 +66,8 @@ func (s *S) TestNativeLogin(c *check.C) {
 func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 	os.Unsetenv("TSURU_TOKEN")
 	nativeScheme()
-	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
+	fsystem = &fstest.RecordingFs{}
+	TargetInit(fsystem)
 	defer func() {
 		fsystem = nil
 	}()
