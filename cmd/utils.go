@@ -76,13 +76,21 @@ func ReadToken() (string, error) {
 	targetLabel, err := GetTargetLabel()
 	if err == nil {
 		tokenPath := JoinWithUserDir(".tsuru", "token.d", targetLabel)
-		token, err = ioutil.ReadFile(tokenPath)
+		tkdFile, err := filesystem().Open(tokenPath)
+		if err == nil {
+			defer tkdFile.Close()
+			token, err = ioutil.ReadAll(tkdFile)
+		}
 	}
 	if err != nil {
 		tokenPath := JoinWithUserDir(".tsuru", "token")
-		token, err = ioutil.ReadFile(tokenPath)
+		tkFile, err := filesystem().Open(tokenPath)
 		if os.IsNotExist(err) {
 			return "", nil
+		}
+		if err == nil {
+			defer tkFile.Close()
+			token, err = ioutil.ReadAll(tkFile)
 		}
 	}
 	if err != nil {
