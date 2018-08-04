@@ -186,7 +186,8 @@ func (m *Manager) Run(args []string) {
 	if len(target) > 0 {
 		targets, err := getTargets()
 		if err == nil {
-			target, ok := targets[target]
+			var ok bool
+			target, ok = targets[target]
 			if ok {
 				os.Setenv("TSURU_TARGET", target)
 			} else {

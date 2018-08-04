@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tablecli"
+	"github.com/tsuru/tsuru/fs"
 )
 
 func getHome() string {
@@ -75,22 +76,30 @@ func ReadToken() (string, error) {
 	}
 	targetLabel, err := GetTargetLabel()
 	if err == nil {
+		var tkdFile fs.File
 		tokenPath := JoinWithUserDir(".tsuru", "token.d", targetLabel)
-		tkdFile, err := filesystem().Open(tokenPath)
+		tkdFile, err = filesystem().Open(tokenPath)
 		if err == nil {
 			defer tkdFile.Close()
 			token, err = ioutil.ReadAll(tkdFile)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 	if err != nil {
+		var tkFile fs.File
 		tokenPath := JoinWithUserDir(".tsuru", "token")
-		tkFile, err := filesystem().Open(tokenPath)
+		tkFile, err = filesystem().Open(tokenPath)
 		if os.IsNotExist(err) {
 			return "", nil
 		}
 		if err == nil {
 			defer tkFile.Close()
 			token, err = ioutil.ReadAll(tkFile)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 	if err != nil {
