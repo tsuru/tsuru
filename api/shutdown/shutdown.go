@@ -45,13 +45,13 @@ func Do(ctx context.Context, w io.Writer) error {
 			} else {
 				name = fmt.Sprintf("%T", h)
 			}
-			fmt.Fprintf(w, "running shutdown for %s...\n", name)
+			fmt.Fprintf(w, "[shutdown] running shutdown for %s...\n", name)
 			err := h.Shutdown(ctx)
 			if err != nil {
-				fmt.Fprintf(w, "running shutdown for %s. ERROED: %v", name, err)
+				fmt.Fprintf(w, "[shutdown] running shutdown for %s. ERROED: %v", name, err)
 				return
 			}
-			fmt.Fprintf(w, "running shutdown for %s. DONE.\n", name)
+			fmt.Fprintf(w, "[shutdown] running shutdown for %s. DONE.\n", name)
 		}(h)
 	}
 	go func() {

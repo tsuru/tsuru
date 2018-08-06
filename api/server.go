@@ -548,13 +548,7 @@ func startServer(handler http.Handler) error {
 	}
 	go srvConf.handleSignals(shutdownTimeout)
 
-	defer func() {
-		srvConf.shutdown(shutdownTimeout)
-		fmt.Println("tsuru is running shutdown handlers")
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-		shutdown.Do(ctx, os.Stdout)
-		cancel()
-	}()
+	defer srvConf.shutdown(shutdownTimeout)
 
 	shutdown.Register(&logTracker)
 	var startupMessage string
@@ -691,20 +685,36 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 }
 
 type srvConfig struct {
-	httpSrv  *http.Server
-	httpsSrv *http.Server
-	certFile string
-	keyFile  string
+	sync.Mutex
+	httpSrv        *http.Server
+	httpsSrv       *http.Server
+	certFile       string
+	keyFile        string
+	shutdownCalled bool
+	once           sync.Once
 }
 
 func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
-	wg := sync.WaitGroup{}
+	conf.Lock()
+	defer conf.Unlock()
+	conf.once.Do(func() {
+		conf.onceShutdown(shutdownTimeout)
+	})
+	conf.shutdownCalled = true
+}
+
+func (conf *srvConfig) onceShutdown(shutdownTimeout time.Duration) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
 	shutdownSrv := func(srv *http.Server) {
 		defer wg.Done()
-		fmt.Printf("tsuru is shutting down server %v, waiting for pending connections to finish.\n", srv.Addr)
+		fmt.Printf("[shutdown] tsuru is shutting down server %v, waiting for pending connections to finish.\n", srv.Addr)
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		srv.Shutdown(ctx)
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			fmt.Printf("[shutdown] error while shutting down server %v: %v\n", srv.Addr, err)
+		}
 	}
 	if conf.httpSrv != nil {
 		wg.Add(1)
@@ -714,7 +724,14 @@ func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
 		wg.Add(1)
 		go shutdownSrv(conf.httpsSrv)
 	}
-	wg.Wait()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("[shutdown] tsuru is running shutdown handlers")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		shutdown.Do(ctx, os.Stdout)
+		cancel()
+	}()
 }
 
 func (conf *srvConfig) handleSignals(shutdownTimeout time.Duration) {
@@ -725,7 +742,13 @@ func (conf *srvConfig) handleSignals(shutdownTimeout time.Duration) {
 }
 
 func (conf *srvConfig) start() <-chan error {
+	conf.Lock()
+	defer conf.Unlock()
 	errChan := make(chan error, 2)
+	if conf.shutdownCalled {
+		errChan <- errors.New("shutdown called")
+		return errChan
+	}
 	if conf.httpSrv != nil {
 		go func() {
 			fmt.Printf("tsuru HTTP server listening at %s...\n", conf.httpSrv.Addr)
