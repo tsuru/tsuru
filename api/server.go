@@ -692,7 +692,6 @@ type srvConfig struct {
 	keyFile        string
 	shutdownCalled bool
 	once           sync.Once
-	wg             sync.WaitGroup
 }
 
 func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
@@ -701,13 +700,14 @@ func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
 	conf.once.Do(func() {
 		conf.onceShutdown(shutdownTimeout)
 	})
-	conf.wg.Wait()
 	conf.shutdownCalled = true
 }
 
 func (conf *srvConfig) onceShutdown(shutdownTimeout time.Duration) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
 	shutdownSrv := func(srv *http.Server) {
-		defer conf.wg.Done()
+		defer wg.Done()
 		fmt.Printf("[shutdown] tsuru is shutting down server %v, waiting for pending connections to finish.\n", srv.Addr)
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
@@ -717,16 +717,16 @@ func (conf *srvConfig) onceShutdown(shutdownTimeout time.Duration) {
 		}
 	}
 	if conf.httpSrv != nil {
-		conf.wg.Add(1)
+		wg.Add(1)
 		go shutdownSrv(conf.httpSrv)
 	}
 	if conf.httpsSrv != nil {
-		conf.wg.Add(1)
+		wg.Add(1)
 		go shutdownSrv(conf.httpsSrv)
 	}
-	conf.wg.Add(1)
+	wg.Add(1)
 	go func() {
-		defer conf.wg.Done()
+		defer wg.Done()
 		fmt.Println("[shutdown] tsuru is running shutdown handlers")
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		shutdown.Do(ctx, os.Stdout)
