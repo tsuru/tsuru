@@ -42,21 +42,6 @@ func (s *S) TestSendEmailUndefinedUser(c *check.C) {
 	c.Assert(err.Error(), check.Equals, `Setting "smtp:user" is not defined`)
 }
 
-func (s *S) TestSendEmailUndefinedSMTPPassword(c *check.C) {
-	defer s.server.Reset()
-	old, _ := config.Get("smtp:password")
-	defer config.Set("smtp:password", old)
-	config.Unset("smtp:password")
-	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
-	c.Assert(err, check.IsNil)
-	s.server.Lock()
-	defer s.server.Unlock()
-	m := s.server.MailBox[0]
-	c.Assert(m.To, check.DeepEquals, []string{"something@tsuru.io"})
-	c.Assert(m.From, check.Equals, "root")
-	c.Assert(m.Data, check.DeepEquals, []byte("Hello world!\r\n"))
-}
-
 func (s *S) TestSMTPServer(c *check.C) {
 	var tests = []struct {
 		input   string

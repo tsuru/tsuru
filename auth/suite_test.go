@@ -45,7 +45,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
 	config.Set("smtp:user", "root")
-	config.Set("smtp:password", "123456")
 	config.Set("repo-manager", "fake")
 	var err error
 	servicemanager.TeamToken, err = TeamTokenService()
