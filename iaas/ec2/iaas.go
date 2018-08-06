@@ -59,7 +59,7 @@ func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 		Credentials: credentials.NewStaticCredentials(keyId, secretKey, ""),
 		Region:      aws.String(region),
 		Endpoint:    aws.String(endpoint),
-		HTTPClient:  tsuruNet.Dial5Full300ClientNoKeepAlive,
+		HTTPClient:  tsuruNet.Dial15Full300ClientNoKeepAlive,
 	}
 	newSession, err := session.NewSession(&config)
 	if err != nil {

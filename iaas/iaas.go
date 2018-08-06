@@ -68,7 +68,7 @@ func (i *UserDataIaaS) ReadUserData(params map[string]string) (string, error) {
 	if userDataURL == "" {
 		return "", nil
 	}
-	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(userDataURL)
+	resp, err := tsuruNet.Dial15Full60ClientNoKeepAlive.Get(userDataURL)
 	if err != nil {
 		return "", err
 	}

@@ -314,7 +314,7 @@ func downloadFromContainer(client provision.BuilderDockerClient, app provision.A
 
 func downloadFromURL(url string) (io.ReadCloser, error) {
 	var out bytes.Buffer
-	client := net.Dial5Full300Client
+	client := net.Dial15Full300Client
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err

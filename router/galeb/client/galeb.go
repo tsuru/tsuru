@@ -93,7 +93,7 @@ func (c *GalebClient) regenerateToken() (err error) {
 		return err
 	}
 	req.SetBasicAuth(c.Username, c.Password)
-	rsp, err := net.Dial10Full60ClientWithPool.Do(req)
+	rsp, err := net.Dial15Full60ClientWithPool.Do(req)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		req.SetBasicAuth(c.Username, c.Password)
 	}
 	req.Header.Set("Content-Type", contentType)
-	rsp, err := net.Dial10Full60ClientWithPool.Do(req)
+	rsp, err := net.Dial15Full60ClientWithPool.Do(req)
 	if c.Debug {
 		var code int
 		if err == nil {

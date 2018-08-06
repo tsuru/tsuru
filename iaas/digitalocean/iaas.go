@@ -40,10 +40,10 @@ func (i *digitalOceanIaas) Auth() error {
 	if err != nil {
 		return err
 	}
-	client := *net.Dial5Full300Client
+	client := *net.Dial15Full300Client
 	client.Transport = &oauth2.Transport{
 		Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
-		Base:   net.Dial5Full300Client.Transport,
+		Base:   net.Dial15Full300Client.Transport,
 	}
 	i.client = godo.NewClient(&client)
 	if u != "" {

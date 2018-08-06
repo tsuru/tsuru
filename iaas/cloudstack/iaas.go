@@ -98,7 +98,7 @@ func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interfa
 	if err != nil {
 		return err
 	}
-	client := net.Dial5Full300ClientNoKeepAlive
+	client := net.Dial15Full300ClientNoKeepAlive
 	resp, err := client.Get(url)
 	if err != nil {
 		return err

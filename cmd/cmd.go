@@ -239,7 +239,7 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
-	client := NewClient(net.Dial5FullUnlimitedClient, context, m)
+	client := NewClient(net.Dial15FullUnlimitedClient, context, m)
 	client.Verbosity = verbosity
 	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {

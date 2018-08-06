@@ -41,7 +41,7 @@ func pingDockerRegistry(scheme string) error {
 	registry = fmt.Sprintf("%s://%s", scheme, strings.TrimRight(registry, "/"))
 	v1URL := registry + "/v1/_ping"
 	v2URL := registry + "/v2/"
-	client := tsuruNet.Dial5Full60ClientNoKeepAlive
+	client := tsuruNet.Dial15Full60ClientNoKeepAlive
 	req, err := newRequestWithCredentials(http.MethodGet, v2URL)
 	if err != nil {
 		return err

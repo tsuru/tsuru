@@ -97,7 +97,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "Error in GetURL")
 		}
-		resp, err := tsuruNet.Dial5Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+		resp, err := tsuruNet.Dial15Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "Error during login post")
 		}

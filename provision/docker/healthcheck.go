@@ -74,7 +74,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 			defer cancel()
 			req = req.WithContext(ctx)
 		}
-		rsp, err := net.Dial5Full60ClientNoKeepAliveNoRedirectInsecure.Do(req)
+		rsp, err := net.Dial15Full60ClientNoKeepAliveNoRedirectInsecure.Do(req)
 		if err != nil {
 			lastError = errors.Wrapf(err, "healthcheck fail(%s)", cont.ShortID())
 		} else {

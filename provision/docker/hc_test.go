@@ -248,9 +248,9 @@ func (s *S) TestHealthCheckDockerRegistryV2TLS(c *check.C) {
 		w.Write([]byte("{}"))
 	}))
 	defer server.Close()
-	oldTransport := tsuruNet.Dial5Full60ClientNoKeepAlive.Transport
-	defer func() { tsuruNet.Dial5Full60ClientNoKeepAlive.Transport = oldTransport }()
-	tsuruNet.Dial5Full60ClientNoKeepAlive.Transport = &http.Transport{
+	oldTransport := tsuruNet.Dial15Full60ClientNoKeepAlive.Transport
+	defer func() { tsuruNet.Dial15Full60ClientNoKeepAlive.Transport = oldTransport }()
+	tsuruNet.Dial15Full60ClientNoKeepAlive.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
