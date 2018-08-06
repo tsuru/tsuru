@@ -43,7 +43,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
-	config.Set("smtp:password", "123456")
 }
 
 func (s *S) SetUpTest(c *check.C) {

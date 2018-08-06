@@ -70,7 +70,6 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
-	config.Set("smtp:password", "123456")
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	s.testServer = RunServer(true)
