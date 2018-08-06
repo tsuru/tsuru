@@ -167,7 +167,7 @@ func (r *dockerRegistry) doRequest(method, path string, headers map[string]strin
 		server = u.Host
 	}
 	if r.client == nil {
-		r.client = tsuruNet.Dial5Full300ClientNoKeepAlive
+		r.client = tsuruNet.Dial15Full300ClientNoKeepAlive
 	}
 	for _, scheme := range []string{"https", "http"} {
 		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)

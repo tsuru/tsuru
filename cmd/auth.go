@@ -248,7 +248,7 @@ func schemeInfo() (*loginScheme, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(url)
+	resp, err := tsuruNet.Dial15Full60ClientNoKeepAlive.Get(url)
 	if err != nil {
 		return nil, err
 	}

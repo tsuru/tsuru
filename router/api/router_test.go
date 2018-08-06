@@ -67,7 +67,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter.certificates = make(map[string]certData)
 	s.testRouter = &apiRouter{
 		endpoint:   s.apiRouter.endpoint,
-		client:     tsuruNet.Dial5Full60ClientNoKeepAlive,
+		client:     tsuruNet.Dial15Full60ClientNoKeepAlive,
 		routerName: "apirouter",
 	}
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)

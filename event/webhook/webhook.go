@@ -218,9 +218,9 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", defaultUserAgent)
 	}
-	client := tsuruNet.Dial5Full60ClientNoKeepAlive
+	client := tsuruNet.Dial15Full60ClientNoKeepAlive
 	if hook.Insecure {
-		client = &tsuruNet.Dial5Full60ClientNoKeepAliveInsecure
+		client = &tsuruNet.Dial15Full60ClientNoKeepAliveInsecure
 	}
 	if hook.ProxyURL != "" {
 		client, err = tsuruNet.WithProxy(*client, hook.ProxyURL)

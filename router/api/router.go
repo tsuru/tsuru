@@ -124,7 +124,7 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	baseRouter := &apiRouter{
 		routerName: routerName,
 		endpoint:   endpoint,
-		client:     net.Dial5Full60ClientNoKeepAlive,
+		client:     net.Dial15Full60ClientNoKeepAlive,
 		debug:      debug,
 		headers:    headerMap,
 	}
