@@ -634,6 +634,38 @@ paths:
         - platform
       security:
         - Bearer: []
+  /1.6/platforms/{platform}:
+    parameters:
+      - name: platform
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Platform info.
+    get:
+      operationId: PlatformInfo
+      description: Platform info.
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Platform info
+          schema:
+            $ref: '#/definitions/PlatformInfo'
+        '204':
+          description: No content.
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - platform
+      security:
+        - Bearer: []
   /1.0/teams:
     get:
       operationId: TeamsList
@@ -836,21 +868,21 @@ paths:
       consumes:
       - application/json
       responses:
-        '201': 
+        '201':
           description: User created.
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '403': 
+        '403':
           description: Forbidden
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '409': 
+        '409':
           description: User already exists
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -869,17 +901,17 @@ paths:
           minLength: 1
           description: User e-mail.
       responses:
-        '200': 
+        '200':
           description: User removed
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
-      tags: 
+      tags:
         - user
       security:
         - Bearer: []
@@ -892,18 +924,18 @@ paths:
           in: query
           type: string
           required: true
-      produces: 
+      produces:
         - application/json
       responses:
-        '200': 
+        '200':
           description: API TOKEN
           schema:
             type: string
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: User not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -922,15 +954,15 @@ paths:
       produces:
         - application/json
       responses:
-        '200': 
+        '200':
           description: API TOKEN
           schema:
             type: string
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: User not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -974,18 +1006,18 @@ paths:
         - application/json
       produces:
         - application/json
-      responses: 
-        '200': 
+      responses:
+        '200':
           description: Ok
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '409': 
+        '409':
           description: Key already exists
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1004,17 +1036,17 @@ paths:
           type: string
           minLength: 1
       responses:
-        '200': 
+        '200':
           description: Ok
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1029,15 +1061,15 @@ paths:
       produces:
         - application/json
       responses:
-        '200': 
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/User'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-      tags: 
+      tags:
         - user
       security:
         - Bearer: []
@@ -1055,11 +1087,11 @@ paths:
       produces:
         - application/json
       responses:
-        '200': 
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/UserQuotaViewResponse'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1089,17 +1121,17 @@ paths:
       consumes:
         - application/json
       responses:
-        '200': 
+        '200':
           description: Quota successfully updated
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: User not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1120,21 +1152,21 @@ paths:
       consumes:
        - application/x-www-form-urlencoded
       responses:
-        '200': 
+        '200':
           description: Ok
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '403': 
+        '403':
           description: Forbidden
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1161,21 +1193,21 @@ paths:
       consumes:
        - application/json
       responses:
-        '200': 
+        '200':
           description: Ok
-        '400': 
+        '400':
           description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '401': 
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '403': 
+        '403':
           description: Forbidden
           schema:
             $ref: '#/definitions/ErrorMessage'
-        '404': 
+        '404':
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
@@ -1188,7 +1220,7 @@ paths:
       operationId: UserTokenDelete
       description: Logout.
       responses:
-        '200': 
+        '200':
           description: Ok
       tags:
         - user
@@ -1958,9 +1990,9 @@ definitions:
   Service:
     type: object
     properties:
-      service: 
+      service:
         type: string
-      instances: 
+      instances:
         type: array
         description: "[deprecated]"
         items:
@@ -2675,6 +2707,16 @@ definitions:
         type: string
       disabled:
         type: boolean
+  PlatformInfo:
+    type: object
+    properties:
+      platform:
+        type: object
+        $ref: '#/definitions/Platform'
+      images:
+        type: array
+        items:
+          type: string
   EventCancelArgs:
     type: object
     properties:
