@@ -204,6 +204,7 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Platform info
 //   204: No content
 //   401: Unauthorized
+//   404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	r.ParseForm()
 	name := r.URL.Query().Get(":name")
@@ -213,6 +214,9 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	platform, err := servicemanager.Platform.FindByName(name)
+	if err == appTypes.ErrPlatformNotFound {
+		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	if err != nil {
 		return err
 	}
