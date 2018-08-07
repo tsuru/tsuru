@@ -7,13 +7,13 @@ package app
 import (
 	"context"
 
-	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/cache"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestAppRouterUpdaterUpdateWait(c *check.C) {
-	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
-		return []appTypes.CacheEntry{
+	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
+		return []cache.CacheEntry{
 			{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"},
 		}, nil
 	}

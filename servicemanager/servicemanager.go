@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	Cache         app.CacheService
+	Cache         cache.CacheService
 	Plan          app.PlanService
 	Platform      app.PlatformService
 	PlatformImage image.PlatformImageService

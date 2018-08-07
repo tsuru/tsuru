@@ -14,7 +14,7 @@ func init() {
 		PlatformStorage:      &PlatformStorage{},
 		PlatformImageStorage: &PlatformImageStorage{},
 		PlanStorage:          &PlanStorage{},
-		CacheStorage:         &cacheStorage{},
+		AppCacheStorage:      appCacheStorage(),
 		TeamTokenStorage:     &teamTokenStorage{},
 		UserQuotaStorage:     authQuotaStorage(),
 		AppQuotaStorage:      appQuotaStorage(),

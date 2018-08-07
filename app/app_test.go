@@ -46,6 +46,7 @@ import (
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -3202,8 +3203,8 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Quota: quota.UnlimitedQuota,
 		},
 	})
-	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
-		return []appTypes.CacheEntry{
+	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
+		return []cache.CacheEntry{
 			{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"},
 			{Key: "app-router-addr\x00app2\x00fake", Value: "app2.fakerouter.com"},
 		}, nil
@@ -3256,8 +3257,8 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 			},
 		},
 	})
-	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
-		return []appTypes.CacheEntry{
+	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
+		return []cache.CacheEntry{
 			{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"},
 		}, nil
 	}
@@ -3696,7 +3697,7 @@ func (s *S) TestSwap(c *check.C) {
 	app1 := &App{Name: "app1", CName: []string{"cname"}, TeamOwner: s.team.Name}
 	err := CreateApp(app1, s.user)
 	c.Assert(err, check.IsNil)
-	s.mockService.Cache.OnCreate = func(entry appTypes.CacheEntry) error {
+	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
 		if entry.Value != "app1.fakerouter.com" && entry.Value != "app2.fakerouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
@@ -5036,7 +5037,7 @@ func (s *S) TestGetRoutersWithAddr(c *check.C) {
 		Name: "fake-tls",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockService.Cache.OnCreate = func(entry appTypes.CacheEntry) error {
+	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
 		if entry.Value != "myapp.fakerouter.com" && entry.Value != "myapp.faketlsrouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
@@ -5059,7 +5060,7 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.FailForIp("fakemyapp")
-	s.mockService.Cache.OnCreate = func(entry appTypes.CacheEntry) error {
+	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
 		if entry.Value != "myapp.faketlsrouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
@@ -5086,7 +5087,7 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 		Name: "mystatus",
 	})
 	c.Assert(err, check.IsNil)
-	s.mockService.Cache.OnCreate = func(entry appTypes.CacheEntry) error {
+	s.mockService.Cache.OnCreate = func(entry cache.CacheEntry) error {
 		if entry.Value != "myapp.fakerouter.com" {
 			c.Errorf("unexpected cache entry: %v", entry)
 		}
