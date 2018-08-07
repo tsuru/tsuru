@@ -7,11 +7,11 @@ package mongodb
 import (
 	"time"
 
-	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/cache"
 )
 
 type cacheStorage struct {
@@ -32,7 +32,7 @@ func (s *cacheStorage) cacheCollection(conn *db.Storage) *dbStorage.Collection {
 	return c
 }
 
-func (s *cacheStorage) GetAll(keys ...string) ([]app.CacheEntry, error) {
+func (s *cacheStorage) GetAll(keys ...string) ([]cache.CacheEntry, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -43,31 +43,31 @@ func (s *cacheStorage) GetAll(keys ...string) ([]app.CacheEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries := make([]app.CacheEntry, len(dbEntries))
+	entries := make([]cache.CacheEntry, len(dbEntries))
 	for i := range dbEntries {
-		entries[i] = app.CacheEntry(dbEntries[i])
+		entries[i] = cache.CacheEntry(dbEntries[i])
 	}
 	return entries, nil
 }
 
-func (s *cacheStorage) Get(key string) (app.CacheEntry, error) {
+func (s *cacheStorage) Get(key string) (cache.CacheEntry, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return app.CacheEntry{}, err
+		return cache.CacheEntry{}, err
 	}
 	defer conn.Close()
 	var dbEntry mongoCacheEntry
 	err = s.cacheCollection(conn).FindId(key).One(&dbEntry)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return app.CacheEntry{}, app.ErrEntryNotFound
+			return cache.CacheEntry{}, cache.ErrEntryNotFound
 		}
-		return app.CacheEntry{}, err
+		return cache.CacheEntry{}, err
 	}
-	return app.CacheEntry(dbEntry), nil
+	return cache.CacheEntry(dbEntry), nil
 }
 
-func (s *cacheStorage) Put(entry app.CacheEntry) error {
+func (s *cacheStorage) Put(entry cache.CacheEntry) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

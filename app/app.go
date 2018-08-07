@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -1938,7 +1939,7 @@ func loadCachedAddrsInApps(apps []App) error {
 	if err != nil {
 		return err
 	}
-	entryMap := make(map[string]appTypes.CacheEntry, len(entries))
+	entryMap := make(map[string]cache.CacheEntry, len(entries))
 	for _, e := range entries {
 		entryMap[e.Key] = e
 	}
@@ -2209,7 +2210,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].Status = string(status)
 			routers[i].StatusDetail = detail
 		}
-		servicemanager.Cache.Create(appTypes.CacheEntry{
+		servicemanager.Cache.Create(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})

@@ -44,6 +44,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
@@ -500,8 +501,8 @@ func (s *S) TestAppList(c *check.C) {
 }
 
 func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
-	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
-		return []appTypes.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
+	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
+		return []cache.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
 	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
@@ -548,8 +549,8 @@ func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
 }
 
 func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
-	s.mockService.Cache.OnList = func(keys ...string) ([]appTypes.CacheEntry, error) {
-		return []appTypes.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
+	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
+		return []cache.CacheEntry{{Key: "app-router-addr\x00app1\x00fake", Value: "app1.fakerouter.com"}}, nil
 	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}

@@ -5,18 +5,18 @@
 package app
 
 import (
-	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/cache"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestCacheCreate(c *check.C) {
-	e := appTypes.CacheEntry{
+	e := cache.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	}
 	service := &cacheService{
-		storage: &appTypes.MockCacheStorage{
-			OnPut: func(entry appTypes.CacheEntry) error {
+		storage: &cache.MockCacheStorage{
+			OnPut: func(entry cache.CacheEntry) error {
 				c.Assert(e, check.Equals, entry)
 				return nil
 			},
@@ -28,9 +28,9 @@ func (s *S) TestCacheCreate(c *check.C) {
 
 func (s *S) TestCacheList(c *check.C) {
 	service := &cacheService{
-		storage: &appTypes.MockCacheStorage{
-			OnGetAll: func(keys ...string) ([]appTypes.CacheEntry, error) {
-				return []appTypes.CacheEntry{
+		storage: &cache.MockCacheStorage{
+			OnGetAll: func(keys ...string) ([]cache.CacheEntry, error) {
+				return []cache.CacheEntry{
 					{Key: "k1", Value: "v1"},
 					{Key: "k2", Value: "v2"},
 				}, nil
@@ -44,10 +44,10 @@ func (s *S) TestCacheList(c *check.C) {
 
 func (s *S) TestCacheFindByName(c *check.C) {
 	service := &cacheService{
-		storage: &appTypes.MockCacheStorage{
-			OnGet: func(key string) (appTypes.CacheEntry, error) {
+		storage: &cache.MockCacheStorage{
+			OnGet: func(key string) (cache.CacheEntry, error) {
 				c.Check(key, check.Equals, "k1")
-				return appTypes.CacheEntry{
+				return cache.CacheEntry{
 					Key:   "k1",
 					Value: "v1",
 				}, nil

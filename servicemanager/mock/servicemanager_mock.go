@@ -9,13 +9,14 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
 // MockService is a struct to use in tests
 type MockService struct {
-	Cache         *app.MockCacheService
+	Cache         *cache.MockCacheService
 	Plan          *app.MockPlanService
 	Platform      *app.MockPlatformService
 	PlatformImage *image.MockPlatformImageService
@@ -27,7 +28,7 @@ type MockService struct {
 
 // SetMockService return a new MockService and set as a servicemanager
 func SetMockService(m *MockService) {
-	m.Cache = &app.MockCacheService{}
+	m.Cache = &cache.MockCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.PlatformImage = &image.MockPlatformImageService{}
