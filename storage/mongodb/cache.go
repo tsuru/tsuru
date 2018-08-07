@@ -14,7 +14,9 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 )
 
-type cacheStorage struct{}
+type cacheStorage struct {
+	collection string
+}
 
 type mongoCacheEntry struct {
 	Key      string `bson:"_id"`
@@ -22,8 +24,8 @@ type mongoCacheEntry struct {
 	ExpireAt time.Time `bson:",omitempty"`
 }
 
-func cacheCollection(conn *db.Storage) *dbStorage.Collection {
-	c := conn.Collection("cache")
+func (s *cacheStorage) cacheCollection(conn *db.Storage) *dbStorage.Collection {
+	c := conn.Collection(s.collection)
 	// Ideally ExpireAfter would be 0, but due to mgo bug this needs to be at
 	// least a second.
 	c.EnsureIndex(mgo.Index{Key: []string{"expireat"}, ExpireAfter: time.Second})
@@ -37,7 +39,7 @@ func (s *cacheStorage) GetAll(keys ...string) ([]app.CacheEntry, error) {
 	}
 	defer conn.Close()
 	var dbEntries []mongoCacheEntry
-	err = cacheCollection(conn).Find(bson.M{"_id": bson.M{"$in": keys}}).All(&dbEntries)
+	err = s.cacheCollection(conn).Find(bson.M{"_id": bson.M{"$in": keys}}).All(&dbEntries)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +57,7 @@ func (s *cacheStorage) Get(key string) (app.CacheEntry, error) {
 	}
 	defer conn.Close()
 	var dbEntry mongoCacheEntry
-	err = cacheCollection(conn).FindId(key).One(&dbEntry)
+	err = s.cacheCollection(conn).FindId(key).One(&dbEntry)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return app.CacheEntry{}, app.ErrEntryNotFound
@@ -71,6 +73,6 @@ func (s *cacheStorage) Put(entry app.CacheEntry) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = cacheCollection(conn).UpsertId(entry.Key, mongoCacheEntry(entry))
+	_, err = s.cacheCollection(conn).UpsertId(entry.Key, mongoCacheEntry(entry))
 	return err
 }
