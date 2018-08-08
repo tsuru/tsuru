@@ -1935,7 +1935,7 @@ func loadCachedAddrsInApps(apps []App) error {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
 	}
-	entries, err := servicemanager.Cache.List(keys...)
+	entries, err := servicemanager.AppCache.List(keys...)
 	if err != nil {
 		return err
 	}
@@ -2210,7 +2210,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].Status = string(status)
 			routers[i].StatusDetail = detail
 		}
-		servicemanager.Cache.Create(cache.CacheEntry{
+		servicemanager.AppCache.Create(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})

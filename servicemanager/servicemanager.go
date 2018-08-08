@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	Cache         cache.CacheService
+	AppCache      cache.CacheService
 	Plan          app.PlanService
 	Platform      app.PlatformService
 	PlatformImage image.PlatformImageService
