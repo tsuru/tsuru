@@ -160,6 +160,9 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 		}
 		return err
 	}
+	if backendExists {
+		return router.ErrBackendExists
+	}
 	err = router.Store(name, name, routerType)
 	if err != nil {
 		cleanupErr := r.forceCleanupBackend(name)
@@ -167,9 +170,6 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
 		}
 		return err
-	}
-	if backendExists {
-		return router.ErrBackendExists
 	}
 	return nil
 }
