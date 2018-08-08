@@ -20,17 +20,18 @@ import (
 )
 
 type DbDriver struct {
-	TeamStorage          auth.TeamStorage
-	PlatformStorage      app.PlatformStorage
-	PlanStorage          app.PlanStorage
-	AppCacheStorage      cache.CacheStorage
-	TeamTokenStorage     auth.TeamTokenStorage
-	UserQuotaStorage     quota.QuotaStorage
-	AppQuotaStorage      quota.QuotaStorage
-	WebhookStorage       event.WebhookStorage
-	ClusterStorage       provision.ClusterStorage
-	ServiceBrokerStorage service.ServiceBrokerStorage
-	PlatformImageStorage image.PlatformImageStorage
+	TeamStorage                      auth.TeamStorage
+	PlatformStorage                  app.PlatformStorage
+	PlanStorage                      app.PlanStorage
+	AppCacheStorage                  cache.CacheStorage
+	TeamTokenStorage                 auth.TeamTokenStorage
+	UserQuotaStorage                 quota.QuotaStorage
+	AppQuotaStorage                  quota.QuotaStorage
+	WebhookStorage                   event.WebhookStorage
+	ClusterStorage                   provision.ClusterStorage
+	ServiceBrokerStorage             service.ServiceBrokerStorage
+	ServiceBrokerCatalogCacheStorage cache.CacheStorage
+	PlatformImageStorage             image.PlatformImageStorage
 }
 
 var (

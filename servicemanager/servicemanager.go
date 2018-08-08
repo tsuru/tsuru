@@ -16,15 +16,16 @@ import (
 )
 
 var (
-	AppCache      cache.CacheService
-	Plan          app.PlanService
-	Platform      app.PlatformService
-	PlatformImage image.PlatformImageService
-	Team          auth.TeamService
-	TeamToken     auth.TeamTokenService
-	Webhook       event.WebhookService
-	AppQuota      quota.QuotaService
-	UserQuota     quota.QuotaService
-	Cluster       provision.ClusterService
-	ServiceBroker service.ServiceBrokerService
+	AppCache                  cache.CacheService
+	Plan                      app.PlanService
+	Platform                  app.PlatformService
+	PlatformImage             image.PlatformImageService
+	Team                      auth.TeamService
+	TeamToken                 auth.TeamTokenService
+	Webhook                   event.WebhookService
+	AppQuota                  quota.QuotaService
+	UserQuota                 quota.QuotaService
+	Cluster                   provision.ClusterService
+	ServiceBroker             service.ServiceBrokerService
+	ServiceBrokerCatalogCache cache.CacheService
 )

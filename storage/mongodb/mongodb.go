@@ -10,17 +10,18 @@ import (
 
 func init() {
 	mongodbDriver := storage.DbDriver{
-		TeamStorage:          &TeamStorage{},
-		PlatformStorage:      &PlatformStorage{},
-		PlatformImageStorage: &PlatformImageStorage{},
-		PlanStorage:          &PlanStorage{},
-		AppCacheStorage:      appCacheStorage(),
-		TeamTokenStorage:     &teamTokenStorage{},
-		UserQuotaStorage:     authQuotaStorage(),
-		AppQuotaStorage:      appQuotaStorage(),
-		WebhookStorage:       &webhookStorage{},
-		ClusterStorage:       &clusterStorage{},
-		ServiceBrokerStorage: &serviceBrokerStorage{},
+		TeamStorage:                      &TeamStorage{},
+		PlatformStorage:                  &PlatformStorage{},
+		PlatformImageStorage:             &PlatformImageStorage{},
+		PlanStorage:                      &PlanStorage{},
+		AppCacheStorage:                  appCacheStorage(),
+		TeamTokenStorage:                 &teamTokenStorage{},
+		UserQuotaStorage:                 authQuotaStorage(),
+		AppQuotaStorage:                  appQuotaStorage(),
+		WebhookStorage:                   &webhookStorage{},
+		ClusterStorage:                   &clusterStorage{},
+		ServiceBrokerStorage:             &serviceBrokerStorage{},
+		ServiceBrokerCatalogCacheStorage: serviceBrokerCatalogCacheStorage(),
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }
