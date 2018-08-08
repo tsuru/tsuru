@@ -34,3 +34,8 @@ type BrokerPlan struct {
 	// printing by a CLI.
 	Description string
 }
+
+type ServiceBrokerCatalogCacheService interface {
+	Save(string, BrokerCatalog) error
+	Load(string) (*BrokerCatalog, error)
+}

@@ -6,6 +6,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -45,6 +46,12 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokered(c *check.C) {
+	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
+		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+			c.Assert(brokerName, check.Equals, "aws")
+			return nil, fmt.Errorf("not found")
+		},
+	}
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
 			Services: []osb.Service{
@@ -64,7 +71,38 @@ func (s *S) TestGetServiceBrokered(c *check.C) {
 	})
 }
 
+func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
+	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
+		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+			c.Assert(brokerName, check.Equals, "aws")
+			return &serviceTypes.BrokerCatalog{
+				Services: []serviceTypes.BrokerService{
+					{
+						ID:          "123",
+						Name:        "service",
+						Description: "cached service",
+					},
+				},
+			}, nil
+		},
+	}
+	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
+	serv, err := Get("aws::service")
+	c.Assert(err, check.IsNil)
+	c.Assert(serv, check.DeepEquals, Service{
+		Name: "aws::service",
+		Doc:  "cached service",
+	})
+}
+
 func (s *S) TestGetServiceBrokeredServiceBrokerNotFound(c *check.C) {
+	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
+		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+			c.Assert(brokerName, check.Equals, "broker")
+			return nil, fmt.Errorf("not found")
+		},
+	}
 	serv, err := Get("broker::service")
 	c.Assert(err, check.DeepEquals, serviceTypes.ErrServiceBrokerNotFound)
 	c.Assert(serv, check.DeepEquals, Service{})

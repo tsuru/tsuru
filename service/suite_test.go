@@ -5,6 +5,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -13,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
@@ -76,6 +79,12 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.Team = s.mockTeamService
 	servicemanager.ServiceBroker, err = BrokerService()
 	c.Assert(err, check.IsNil)
+
+	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
+		OnLoad: func(_ string) (*serviceTypes.BrokerCatalog, error) {
+			return nil, fmt.Errorf("not found")
+		},
+	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {

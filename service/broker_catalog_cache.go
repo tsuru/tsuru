@@ -15,18 +15,13 @@ import (
 
 const defaultExpiration = 15 * time.Minute
 
-var _ ServiceBrokerCatalogCacheService = &serviceBrokerCatalogCacheService{}
-
-type ServiceBrokerCatalogCacheService interface {
-	Save(string, service.BrokerCatalog) error
-	Load(string) (*service.BrokerCatalog, error)
-}
+var _ service.ServiceBrokerCatalogCacheService = &serviceBrokerCatalogCacheService{}
 
 type serviceBrokerCatalogCacheService struct {
 	storage cache.CacheStorage
 }
 
-func CatalogCacheService() (ServiceBrokerCatalogCacheService, error) {
+func CatalogCacheService() (service.ServiceBrokerCatalogCacheService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
