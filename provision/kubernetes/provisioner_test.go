@@ -668,6 +668,49 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
 }
 
+func (s *S) TestUnitsSkipEvicted(c *check.C) {
+	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
+		output := `{"items": [
+			{"metadata": {"name": "myapp", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
+		]}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(output))
+	}
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 2)
+	for _, p := range podlist.Items {
+		if p.Labels["tsuru.io/app-process"] == "worker" {
+			p.Status.Phase = apiv1.PodFailed
+			p.Status.Reason = "Evicted"
+			_, err = s.client.CoreV1().Pods(ns).Update(&p)
+			c.Assert(err, check.IsNil)
+		}
+	}
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
+}
+
 func (s *S) TestUnitsEmpty(c *check.C) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
