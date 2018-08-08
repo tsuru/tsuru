@@ -95,6 +95,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/app-pool":             "test-default",
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
+		"app":                           "tsuru-app-myapp-p1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
