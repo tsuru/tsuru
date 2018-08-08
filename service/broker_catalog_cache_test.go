@@ -8,30 +8,32 @@ import (
 	"encoding/json"
 	"fmt"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/types/cache"
+	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestCacheSave(c *check.C) {
-	catalog := osb.CatalogResponse{
-		Services: []osb.Service{{
+	catalog := service.BrokerCatalog{
+		Services: []service.BrokerService{{
 			ID:          "123",
 			Name:        "service1",
 			Description: "my service",
+			Plans: []service.BrokerPlan{{
+				ID:          "456",
+				Name:        "my-plan",
+				Description: "plan description",
+			}},
 		}},
 	}
 	service := &serviceBrokerCatalogCacheService{
 		storage: &cache.MockCacheStorage{
 			OnPut: func(entry cache.CacheEntry) error {
 				c.Assert(entry.Key, check.Equals, "my-catalog")
-				var cat osb.CatalogResponse
+				var cat service.BrokerCatalog
 				err := json.Unmarshal([]byte(entry.Value), &cat)
 				c.Assert(err, check.IsNil)
-				c.Assert(cat.Services, check.HasLen, 1)
-				c.Assert(cat.Services[0].ID, check.Equals, catalog.Services[0].ID)
-				c.Assert(cat.Services[0].Name, check.Equals, catalog.Services[0].Name)
-				c.Assert(cat.Services[0].Description, check.Equals, catalog.Services[0].Description)
+				c.Assert(cat, check.DeepEquals, catalog)
 				return nil
 			},
 		},
@@ -41,11 +43,16 @@ func (s *S) TestCacheSave(c *check.C) {
 }
 
 func (s *S) TestCacheLoad(c *check.C) {
-	catalog := osb.CatalogResponse{
-		Services: []osb.Service{{
+	catalog := service.BrokerCatalog{
+		Services: []service.BrokerService{{
 			ID:          "123",
 			Name:        "service1",
 			Description: "my service",
+			Plans: []service.BrokerPlan{{
+				ID:          "456",
+				Name:        "my-plan",
+				Description: "plan description",
+			}},
 		}},
 	}
 	service := &serviceBrokerCatalogCacheService{
@@ -60,10 +67,8 @@ func (s *S) TestCacheLoad(c *check.C) {
 	}
 	cat, err := service.Load("my-catalog")
 	c.Assert(err, check.IsNil)
-	c.Assert(cat.Services, check.HasLen, 1)
-	c.Assert(cat.Services[0].ID, check.Equals, catalog.Services[0].ID)
-	c.Assert(cat.Services[0].Name, check.Equals, catalog.Services[0].Name)
-	c.Assert(cat.Services[0].Description, check.Equals, catalog.Services[0].Description)
+	c.Assert(cat, check.NotNil)
+	c.Assert(*cat, check.DeepEquals, catalog)
 }
 
 func (s *S) TestCacheLoadNotFound(c *check.C) {
