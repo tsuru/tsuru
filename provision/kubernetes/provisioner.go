@@ -293,7 +293,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	}
 	var units []provision.Unit
 	for _, pod := range pods {
-		if isTerminating(pod) {
+		if isTerminating(pod) || isEvicted(pod) {
 			continue
 		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
@@ -362,6 +362,10 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 // and https://github.com/kubernetes/kubernetes/blob/560e15fb9acee4b8391afbc21fc3aea7b771e2c4/pkg/printers/internalversion/printers.go#L606
 func isTerminating(pod apiv1.Pod) bool {
 	return pod.Spec.ActiveDeadlineSeconds != nil && *pod.Spec.ActiveDeadlineSeconds >= int64(0) || pod.DeletionTimestamp != nil
+}
+
+func isEvicted(pod apiv1.Pod) bool {
+	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "evicted"
 }
 
 func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error) {
