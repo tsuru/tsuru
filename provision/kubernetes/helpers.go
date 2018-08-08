@@ -89,6 +89,12 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 	return fmt.Sprintf("%s-%s-build", name, version), nil
 }
 
+func appLabelForApp(a provision.App, process string) string {
+	name := validKubeName(a.GetName())
+	process = validKubeName(process)
+	return fmt.Sprintf("tsuru-app-%s-%s", name, process)
+}
+
 func execCommandPodNameForApp(a provision.App) string {
 	name := validKubeName(a.GetName())
 	return fmt.Sprintf("%s-isolated-run", name)
