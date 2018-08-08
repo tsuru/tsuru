@@ -27,5 +27,5 @@ var (
 	UserQuota                 quota.QuotaService
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
-	ServiceBrokerCatalogCache cache.CacheService
+	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
 )

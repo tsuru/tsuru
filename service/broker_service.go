@@ -79,7 +79,7 @@ func getBrokeredServices() ([]Service, error) {
 // getBrokeredService retrieves the service information from a service that is
 // offered by a broker. name is in the format "<broker>serviceNameBrokerSep<service>".
 func getBrokeredService(name string) (Service, error) {
-	_, serviceName, err := splitBrokerService(name)
+	catalogName, serviceName, err := splitBrokerService(name)
 	if err != nil {
 		return Service{}, err
 	}
@@ -87,7 +87,7 @@ func getBrokeredService(name string) (Service, error) {
 	if err != nil {
 		return Service{}, err
 	}
-	s, _, err := client.getService(serviceName)
+	s, _, err := client.getService(serviceName, catalogName)
 	return s, err
 }
 

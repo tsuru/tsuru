@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/servicemanager"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
 
@@ -73,7 +74,7 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 }
 
 func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	_, s, err := b.getService(b.service)
+	_, s, err := b.getService(b.service, instance.Name)
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,7 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 	if instance.BrokerData == nil {
 		return ErrInvalidBrokerData
 	}
-	_, s, err := b.getService(b.service)
+	_, s, err := b.getService(b.service, instance.Name)
 	if err != nil {
 		return err
 	}
@@ -346,8 +347,8 @@ func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[
 	return params, nil
 }
 
-func (b *brokerClient) Plans(_ string) ([]Plan, error) {
-	_, s, err := b.getService(b.service)
+func (b *brokerClient) Plans(catalogName string) ([]Plan, error) {
+	_, s, err := b.getService(b.service, catalogName)
 	if err != nil {
 		return nil, err
 	}
@@ -377,8 +378,31 @@ func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bi
 	return nil
 }
 
-func (b *brokerClient) getService(name string) (Service, osb.Service, error) {
-	cat, err := b.client.GetCatalog()
+func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
+	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(name)
+	if err != nil {
+		return b.client.GetCatalog()
+	}
+
+	cat := &osb.CatalogResponse{
+		Services: make([]osb.Service, len(catalog.Services)),
+	}
+	for i, s := range catalog.Services {
+		cat.Services[i].ID = s.ID
+		cat.Services[i].Name = s.Name
+		cat.Services[i].Description = s.Description
+		cat.Services[i].Plans = make([]osb.Plan, len(s.Plans))
+		for j, p := range s.Plans {
+			cat.Services[i].Plans[j].ID = p.ID
+			cat.Services[i].Plans[j].Name = p.Name
+			cat.Services[i].Plans[j].Description = p.Description
+		}
+	}
+	return cat, nil
+}
+
+func (b *brokerClient) getService(name, catalogName string) (Service, osb.Service, error) {
+	cat, err := b.getCatalog(catalogName)
 	if err != nil {
 		return Service{}, osb.Service{}, err
 	}
