@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"time"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/cache"
+	"github.com/tsuru/tsuru/types/service"
 )
 
 const defaultExpiration = 15 * time.Minute
@@ -18,8 +18,8 @@ const defaultExpiration = 15 * time.Minute
 var _ ServiceBrokerCatalogCacheService = &serviceBrokerCatalogCacheService{}
 
 type ServiceBrokerCatalogCacheService interface {
-	Save(string, osb.CatalogResponse) error
-	Load(string) (*osb.CatalogResponse, error)
+	Save(string, service.BrokerCatalog) error
+	Load(string) (*service.BrokerCatalog, error)
 }
 
 type serviceBrokerCatalogCacheService struct {
@@ -37,7 +37,7 @@ func CatalogCacheService() (ServiceBrokerCatalogCacheService, error) {
 	return &serviceBrokerCatalogCacheService{dbDriver.ServiceBrokerCatalogCacheStorage}, nil
 }
 
-func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog osb.CatalogResponse) error {
+func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog service.BrokerCatalog) error {
 	b, err := json.Marshal(catalog)
 	if err != nil {
 		return err
@@ -50,13 +50,13 @@ func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog osb.C
 	return s.storage.Put(entry)
 }
 
-func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*osb.CatalogResponse, error) {
+func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*service.BrokerCatalog, error) {
 	entry, err := s.storage.Get(brokerName)
 	if err != nil {
 		return nil, err
 	}
 
-	var catalog osb.CatalogResponse
+	var catalog service.BrokerCatalog
 	err = json.Unmarshal([]byte(entry.Value), &catalog)
 	if err != nil {
 		return nil, err
