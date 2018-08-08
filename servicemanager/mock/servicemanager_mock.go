@@ -36,7 +36,7 @@ func SetMockService(m *MockService) {
 	m.UserQuota = &quota.MockQuotaService{}
 	m.AppQuota = &quota.MockQuotaService{}
 	m.Cluster = &provision.MockClusterService{}
-	servicemanager.Cache = m.Cache
+	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
 	servicemanager.PlatformImage = m.PlatformImage

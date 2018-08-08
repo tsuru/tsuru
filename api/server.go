@@ -95,7 +95,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.Cache, err = app.CacheService()
+	servicemanager.AppCache, err = app.CacheService()
 	if err != nil {
 		return err
 	}
