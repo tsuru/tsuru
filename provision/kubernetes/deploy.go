@@ -455,12 +455,17 @@ func ensurePoolNamespace(client *ClusterClient, pool string) error {
 }
 
 func ensureNamespace(client *ClusterClient, namespace string) error {
+	nsLabels, err := client.namespaceLabels(namespace)
+	if err != nil {
+		return err
+	}
 	ns := apiv1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
+			Name:   namespace,
+			Labels: nsLabels,
 		},
 	}
-	_, err := client.CoreV1().Namespaces().Create(&ns)
+	_, err = client.CoreV1().Namespaces().Create(&ns)
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return errors.WithStack(err)
 	}

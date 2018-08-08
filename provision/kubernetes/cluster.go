@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -33,6 +34,7 @@ const (
 	userClusterKey       = "username"
 	passwordClusterKey   = "password"
 	overcommitClusterKey = "overcommit-factor"
+	namespaceLabelsKey   = "namespace-labels"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -198,7 +200,7 @@ func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 	if c.CustomData == nil {
 		return 1, nil
 	}
-	overcommitConf := c.configForPool(pool, overcommitClusterKey)
+	overcommitConf := c.configForContext(pool, overcommitClusterKey)
 	if overcommitConf == "" {
 		return 1, nil
 	}
@@ -206,8 +208,28 @@ func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 	return int64(overcommit), err
 }
 
-func (c *ClusterClient) configForPool(pool, key string) string {
-	if v, ok := c.CustomData[pool+":"+key]; ok {
+func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
+	if c.CustomData == nil {
+		return nil, nil
+	}
+	nsLabelsConf := c.configForContext(ns, namespaceLabelsKey)
+	if nsLabelsConf == "" {
+		return nil, nil
+	}
+	labels := make(map[string]string)
+	labelsRaw := strings.Split(nsLabelsConf, ",")
+	for _, l := range labelsRaw {
+		parts := strings.Split(l, "=")
+		if len(parts) != 2 {
+			continue
+		}
+		labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	return labels, nil
+}
+
+func (c *ClusterClient) configForContext(context, key string) string {
+	if v, ok := c.CustomData[context+":"+key]; ok {
 		return v
 	}
 	return c.CustomData[key]

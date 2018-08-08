@@ -2058,3 +2058,69 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
 }
+
+func (s *S) TestEnsureNamespace(c *check.C) {
+	tests := []struct {
+		name       string
+		customData map[string]string
+		expected   apiv1.Namespace
+	}{
+		{
+			name:     "myns",
+			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "myns"}},
+		},
+		{
+			name: "myns",
+			customData: map[string]string{
+				"namespace-labels": "lb1= val1,lb2 =val2 ",
+			},
+			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					"lb1": "val1",
+					"lb2": "val2",
+				},
+			}},
+		},
+		{
+			name: "myns",
+			customData: map[string]string{
+				"namespace-labels":       "lb1= val1,lb2 =val2 ",
+				"myns:namespace-labels":  "lb3=val3",
+				"other:namespace-labels": "lb4=val4",
+			},
+			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					"lb3": "val3",
+				},
+			}},
+		},
+		{
+			name: "myns2",
+			customData: map[string]string{
+				"namespace-labels":      "lb1= val1,lb2 =val2 ",
+				"myns:namespace-labels": "lb3=val3",
+			},
+			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: "myns2",
+				Labels: map[string]string{
+					"lb1": "val1",
+					"lb2": "val2",
+				},
+			}},
+		},
+	}
+	for _, tt := range tests {
+		s.clusterClient.CustomData = tt.customData
+		err := ensureNamespace(s.clusterClient, tt.name)
+		c.Assert(err, check.IsNil)
+		nss, err := s.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(nss.Items, check.DeepEquals, []apiv1.Namespace{
+			tt.expected,
+		})
+		err = s.client.CoreV1().Namespaces().Delete(tt.name, nil)
+		c.Assert(err, check.IsNil)
+	}
+}
