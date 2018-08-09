@@ -43,6 +43,8 @@ var (
 		serviceImageSetup(),
 		serviceCreate(),
 		serviceBind(),
+		appRouters(),
+		appSwap(),
 	}
 	installerConfig = ""
 )
@@ -515,6 +517,109 @@ func testCases() ExecFlow {
 			}
 		},
 	}
+}
+
+func appRouters() ExecFlow {
+	return ExecFlow{
+		provides: []string{"routers"},
+		forward: func(c *check.C, env *Environment) {
+			res := T("router-list").Run(env)
+			c.Assert(res, ResultOk)
+			table := resultTable{raw: res.Stdout.String()}
+			table.parse()
+			for _, row := range table.rows {
+				env.Add("routers", row[0])
+			}
+		},
+	}
+}
+
+func appSwap() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"pool":   "poolnames",
+			"router": "routers",
+		},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			gopath = build.Default.GOPATH
+		}
+		swapDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "fixtures", "swap-app")
+		appNames := []string{
+			fmt.Sprintf("swap-app1-%s-%s-iapp", env.Get("pool"), env.Get("router")),
+			fmt.Sprintf("swap-app2-%s-%s-iapp", env.Get("pool"), env.Get("router")),
+		}
+		appCname := func(appName string) string {
+			return fmt.Sprintf("%s.integration.test", appName)
+		}
+		var res *Result
+		var addrs []string
+		for _, appName := range appNames {
+			res = T("app-create", appName, "python", "-t", "{{.team}}", "-o", "{{.pool}}", "-r", "{{.router}}").Run(env)
+			c.Assert(res, ResultOk)
+			res = T("cname-add", "-a", appName, appCname(appName)).Run(env)
+			c.Assert(res, ResultOk)
+			env.Add(fmt.Sprintf("swap-apps-%s-%s", env.Get("pool"), env.Get("router")), appName)
+			res = T("app-deploy", "-a", appName, swapDir).Run(env)
+			c.Assert(res, ResultOk)
+			regex := regexp.MustCompile("started")
+			ok := retry(5*time.Minute, func() bool {
+				res = T("app-info", "-a", appName).Run(env)
+				c.Assert(res, ResultOk)
+				return regex.MatchString(res.Stdout.String())
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+			addrRE := regexp.MustCompile(fmt.Sprintf(`\| %s\s+(\|[^|]+){2}\| ([^| ]+)`, env.Get("router")))
+			parts := addrRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(parts, check.HasLen, 3)
+			addrs = append(addrs, parts[2])
+		}
+		runTest := func(idx int, expected, cnameExpected string) {
+			cmd := NewCommand("curl", "-sSf", "http://"+addrs[idx])
+			ok := retry(1*time.Minute, func() bool {
+				res = cmd.Run(env)
+				return res.ExitCode == 0
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app did not respond after 1 minute: %v", res))
+			c.Assert(res.Stdout.String(), check.Matches, `app: `+expected)
+			cmd = NewCommand("curl", "-sSf", "-HHost:"+appCname(appNames[idx]), "http://"+addrs[idx])
+			ok = retry(1*time.Minute, func() bool {
+				res = cmd.Run(env)
+				return res.ExitCode == 0
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app did not respond after 1 minute: %v", res))
+			c.Assert(res.Stdout.String(), check.Matches, `app: `+cnameExpected)
+		}
+		runTest(0, appNames[0], appNames[0])
+		runTest(1, appNames[1], appNames[1])
+		res = T("app-swap", appNames[0], appNames[1]).Run(env)
+		c.Assert(res, ResultOk)
+		runTest(0, appNames[1], appNames[1])
+		runTest(1, appNames[0], appNames[0])
+		res = T("app-swap", appNames[0], appNames[1]).Run(env)
+		c.Assert(res, ResultOk)
+		runTest(0, appNames[0], appNames[0])
+		runTest(1, appNames[1], appNames[1])
+		res = T("app-swap", "--cname-only", appNames[0], appNames[1]).Run(env)
+		c.Assert(res, ResultOk)
+		runTest(0, appNames[0], appNames[1])
+		runTest(1, appNames[1], appNames[0])
+		res = T("app-swap", "--cname-only", appNames[0], appNames[1]).Run(env)
+		c.Assert(res, ResultOk)
+		runTest(0, appNames[0], appNames[0])
+		runTest(1, appNames[1], appNames[1])
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		appNames := env.All(fmt.Sprintf("swap-apps-%s-%s", env.Get("pool"), env.Get("router")))
+		for _, appName := range appNames {
+			res := T("app-remove", "-y", "-a", appName).Run(env)
+			c.Check(res, ResultOk)
+		}
+	}
+	return flow
 }
 
 func testApps() ExecFlow {
