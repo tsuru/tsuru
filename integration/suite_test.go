@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -88,4 +89,10 @@ func (r *resultTable) parse() {
 			r.rows = append(r.rows, parts)
 		}
 	}
+}
+
+var dnsValidRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
+
+func slugifyName(name string) string {
+	return strings.ToLower(dnsValidRegex.ReplaceAllString(name, "-"))
 }

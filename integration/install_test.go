@@ -549,8 +549,8 @@ func appSwap() ExecFlow {
 		}
 		swapDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "fixtures", "swap-app")
 		appNames := []string{
-			fmt.Sprintf("swap-app1-%s-%s-iapp", env.Get("pool"), env.Get("router")),
-			fmt.Sprintf("swap-app2-%s-%s-iapp", env.Get("pool"), env.Get("router")),
+			slugifyName(fmt.Sprintf("swap-app1-%s-%s-iapp", env.Get("pool"), env.Get("router"))),
+			slugifyName(fmt.Sprintf("swap-app2-%s-%s-iapp", env.Get("pool"), env.Get("router"))),
 		}
 		appCname := func(appName string) string {
 			return fmt.Sprintf("%s.integration.test", appName)
@@ -558,7 +558,7 @@ func appSwap() ExecFlow {
 		var res *Result
 		var addrs []string
 		for _, appName := range appNames {
-			res = T("app-create", appName, "python", "-t", "{{.team}}", "-o", "{{.pool}}", "-r", "{{.router}}").Run(env)
+			res = T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}", "-r", "{{.router}}").Run(env)
 			c.Assert(res, ResultOk)
 			res = T("cname-add", "-a", appName, appCname(appName)).Run(env)
 			c.Assert(res, ResultOk)
