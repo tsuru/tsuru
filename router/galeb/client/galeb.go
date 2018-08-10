@@ -495,7 +495,11 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 func (c *GalebClient) RemoveRuleVirtualHostByID(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
 	path := fmt.Sprintf("%s/parents/%s", ruleID, vhId)
-	return c.removeResource(path)
+	err := c.removeResource(path)
+	if err != nil {
+		return err
+	}
+	return c.waitStatusOK(ruleID)
 }
 
 func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) error {
