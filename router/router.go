@@ -168,6 +168,10 @@ type InfoRouter interface {
 	GetInfo() (map[string]string, error)
 }
 
+type AsyncRouter interface {
+	AddRoutesAsync(name string, address []*url.URL) error
+}
+
 type BackendStatus string
 
 var (

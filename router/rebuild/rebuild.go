@@ -29,9 +29,17 @@ type RebuildApp interface {
 }
 
 func RebuildRoutes(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
+	return rebuildRoutes(app, dry, true)
+}
+
+func rebuildRoutesAsync(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
+	return rebuildRoutes(app, dry, false)
+}
+
+func rebuildRoutes(app RebuildApp, dry, wait bool) (map[string]RebuildRoutesResult, error) {
 	result := make(map[string]RebuildRoutesResult)
 	for _, appRouter := range app.GetRouters() {
-		resultInRouter, err := rebuildRoutesInRouter(app, dry, appRouter)
+		resultInRouter, err := rebuildRoutesInRouter(app, dry, appRouter, wait)
 		if err != nil {
 			return nil, err
 		}
@@ -40,11 +48,15 @@ func RebuildRoutes(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, er
 	return result, nil
 }
 
-func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
+func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRouter, wait bool) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", app.GetName())
 	r, err := router.Get(appRouter.Name)
 	if err != nil {
 		return nil, err
+	}
+	var asyncR router.AsyncRouter
+	if !wait {
+		asyncR, _ = r.(router.AsyncRouter)
 	}
 	if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(app, appRouter.Opts)
@@ -107,7 +119,11 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", app.GetName())
 		return &result, nil
 	}
-	err = r.AddRoutes(app.GetName(), toAdd)
+	if asyncR != nil {
+		err = asyncR.AddRoutesAsync(app.GetName(), toAdd)
+	} else {
+		err = r.AddRoutes(app.GetName(), toAdd)
+	}
 	if err != nil {
 		return nil, err
 	}
