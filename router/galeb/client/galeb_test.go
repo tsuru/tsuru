@@ -380,48 +380,6 @@ func (s *S) TestUpdatePoolProperties(c *check.C) {
 	})
 }
 
-func (s *S) TestGalebAddBackend(c *check.C) {
-	s.handler.ConditionalContent["/api/target/10"] = []string{
-		"200", `{"_status": "OK"}`,
-	}
-	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
-		"_embedded": {
-			"pool": [
-				{
-					"_links": {
-						"self": {
-							"href": "http://galeb.somewhere/api/target/9"
-						}
-					}
-				}
-			]
-		}
-	}`
-	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
-	s.handler.RspCode = http.StatusCreated
-	expected := Target{
-		commonPostResponse: commonPostResponse{ID: 0, Name: "http://10.0.0.1:8080"},
-		Project:            "proj1",
-		Environment:        "env1",
-		BackendPool:        "http://galeb.somewhere/api/target/9",
-	}
-	url1, _ := url.Parse("http://10.0.0.1:8080")
-	fullId, err := s.client.AddBackend(url1, "mypool")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST", "GET"})
-	c.Assert(s.handler.URL, check.DeepEquals, []string{
-		"/api/pool/search/findByName?name=mypool",
-		"/api/target",
-		"/api/target/10",
-	})
-	var parsedParams Target
-	err = json.Unmarshal(s.handler.Body[1], &parsedParams)
-	c.Assert(err, check.IsNil)
-	c.Assert(parsedParams, check.DeepEquals, expected)
-	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
-	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/target/10", s.client.ApiURL))
-}
-
 func (s *S) TestGalebAddVirtualHost(c *check.C) {
 	s.handler.ConditionalContent["/api/virtualhost/999"] = []string{
 		"200", `{"_status": "OK"}`,
@@ -838,7 +796,7 @@ func (s *S) TestGalebAddBackends(c *check.C) {
 	err := s.client.AddBackends([]*url.URL{
 		url1,
 		url2,
-	}, "mypool")
+	}, "mypool", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.HasLen, 5)
 	c.Assert(s.handler.Method[0], check.Equals, "GET")
@@ -871,10 +829,38 @@ func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
 	err := s.client.AddBackends([]*url.URL{
 		url1,
 		url2,
-	}, "mypool")
+	}, "mypool", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.HasLen, 5)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST", "GET", "POST", "GET"})
 	c.Assert(s.handler.URL, check.HasLen, 5)
 	c.Assert(s.handler.URL[0], check.Equals, "/api/pool/search/findByName?name=mypool")
+}
+
+func (s *S) TestGalebAddBackendsNoWait(c *check.C) {
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+		"_embedded": {
+			"pool": [
+				{
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/target/9"
+						}
+					}
+				}
+			]
+		}
+	}`
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
+	s.handler.RspCode = http.StatusCreated
+	url1, _ := url.Parse("http://10.0.0.1:8080")
+	err := s.client.AddBackends([]*url.URL{
+		url1,
+	}, "mypool", false)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{
+		"/api/pool/search/findByName?name=mypool",
+		"/api/target",
+	})
 }

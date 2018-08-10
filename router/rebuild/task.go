@@ -67,7 +67,7 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 		}
 		defer a.Unlock()
 	}
-	_, err = RebuildRoutes(a, false)
+	_, err = rebuildRoutesAsync(a, false)
 	if err != nil {
 		log.Errorf("[routes-rebuild-task] error rebuilding app %q: %s", appName, err)
 		return false

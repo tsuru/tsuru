@@ -327,28 +327,7 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	return c.waitStatusOK(poolID)
 }
 
-func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, error) {
-	var params Target
-	c.fillDefaultTargetValues(&params)
-	params.Name = backend.String()
-	poolID, err := c.findItemByName("pool", poolName)
-	if err != nil {
-		return "", err
-	}
-	params.BackendPool = poolID
-	resource, err := c.doCreateResource("/target", &params)
-	if err != nil {
-		return "", err
-	}
-	err = c.waitStatusOK(resource)
-	if err != nil {
-		c.removeResource(resource)
-		return "", err
-	}
-	return resource, nil
-}
-
-func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
+func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait bool) error {
 	poolID, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return err
@@ -378,10 +357,12 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 				}
 				errCh <- cerr
 			}
-			cerr = c.waitStatusOK(resource)
-			if cerr != nil {
-				c.removeResource(resource)
-				errCh <- cerr
+			if wait {
+				cerr = c.waitStatusOK(resource)
+				if cerr != nil {
+					c.removeResource(resource)
+					errCh <- cerr
+				}
 			}
 		}(i)
 	}
