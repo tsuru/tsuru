@@ -174,7 +174,15 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 	return nil
 }
 
-func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) error {
+	return r.addRoutes(name, addresses, true)
+}
+
+func (r *galebRouter) AddRoutesAsync(name string, addresses []*url.URL) error {
+	return r.addRoutes(name, addresses, false)
+}
+
+func (r *galebRouter) addRoutes(name string, addresses []*url.URL, wait bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -186,7 +194,7 @@ func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 	for _, a := range addresses {
 		a.Scheme = router.HttpScheme
 	}
-	return r.client.AddBackends(addresses, r.poolName(backendName))
+	return r.client.AddBackends(addresses, r.poolName(backendName), wait)
 }
 
 func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
