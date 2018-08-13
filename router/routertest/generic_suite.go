@@ -464,6 +464,81 @@ func (s *RouterSuite) TestSwapTwice(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *RouterSuite) TestSwapCNameOnly(c *check.C) {
+	cnameRouter, ok := s.Router.(router.CNameRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement CNameRouter", s.Router))
+	}
+	addr1, _ := url.Parse("http://127.0.0.1:8080")
+	addr2, _ := url.Parse("http://10.10.10.10:8080")
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
+	c.Assert(err, check.IsNil)
+	backend1OrigAddr, err := s.Router.Addr(testBackend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1})
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend2})
+	c.Assert(err, check.IsNil)
+	backend2OrigAddr, err := s.Router.Addr(testBackend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoutes(testBackend2, []*url.URL{addr2})
+	c.Assert(err, check.IsNil)
+	err = cnameRouter.SetCName("myapp1.cool.domain", testBackend1)
+	c.Assert(err, check.IsNil)
+	err = cnameRouter.SetCName("myapp2.cool.domain", testBackend2)
+	c.Assert(err, check.IsNil)
+	names1, err := cnameRouter.CNames(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(names1, check.DeepEquals, []*url.URL{
+		{Host: "myapp1.cool.domain"},
+	})
+	names2, err := cnameRouter.CNames(testBackend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(names2, check.DeepEquals, []*url.URL{
+		{Host: "myapp2.cool.domain"},
+	})
+	err = s.Router.Swap(testBackend1, testBackend2, true)
+	c.Assert(err, check.IsNil)
+	names1, err = cnameRouter.CNames(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(names1, check.DeepEquals, []*url.URL{
+		{Host: "myapp2.cool.domain"},
+	})
+	names2, err = cnameRouter.CNames(testBackend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(names2, check.DeepEquals, []*url.URL{
+		{Host: "myapp1.cool.domain"},
+	})
+	backAddr1, err := s.Router.Addr(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr1, check.Equals, backend1OrigAddr)
+	backAddr2, err := s.Router.Addr(testBackend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr2, check.Equals, backend2OrigAddr)
+	err = s.Router.Swap(testBackend1, testBackend2, true)
+	c.Assert(err, check.IsNil)
+	names1, err = cnameRouter.CNames(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(names1, check.DeepEquals, []*url.URL{
+		{Host: "myapp1.cool.domain"},
+	})
+	names2, err = cnameRouter.CNames(testBackend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(names2, check.DeepEquals, []*url.URL{
+		{Host: "myapp2.cool.domain"},
+	})
+	backAddr1, err = s.Router.Addr(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr1, check.Equals, backend1OrigAddr)
+	backAddr2, err = s.Router.Addr(testBackend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr2, check.Equals, backend2OrigAddr)
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(testBackend2)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	cnameRouter, ok := s.Router.(router.CNameRouter)
 	if !ok {
