@@ -44,6 +44,7 @@ type apiRouter struct {
 	headers    map[string]string
 	client     *http.Client
 	debug      bool
+	supIface   router.Router
 }
 
 type apiRouterWithCnameSupport struct{ *apiRouter }
@@ -136,7 +137,8 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 			log.Errorf("failed to fetch %q support from router %q: %s", cap, routerName, err)
 		}
 	}
-	return toSupportedInterface(baseRouter, supports), nil
+	baseRouter.supIface = toSupportedInterface(baseRouter, supports)
+	return baseRouter.supIface, nil
 }
 
 func (r *apiRouter) GetName() string {
@@ -282,7 +284,7 @@ func (r *apiRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err 
 	if err != nil {
 		return err
 	}
-	return router.Swap(r, backend1, backend2, cnameOnly)
+	return router.Swap(r.supIface, backend1, backend2, cnameOnly)
 }
 
 func (r *apiRouter) StartupMessage() (string, error) {
