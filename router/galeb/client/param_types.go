@@ -67,8 +67,14 @@ type Rule struct {
 	Properties  RuleProperties `json:"properties,omitempty"`
 }
 
+type RuleOrdered struct {
+	RuleId    int `json:"ruleId"`
+	RuleOrder int `json:"ruleOrder"`
+}
+
 type VirtualHost struct {
 	commonPostResponse
-	Environment string `json:"environment,omitempty"`
-	Project     string `json:"project,omitempty"`
+	Environment  string        `json:"environment,omitempty"`
+	Project      string        `json:"project,omitempty"`
+	RulesOrdered []RuleOrdered `json:"rulesOrdered,omitempty"`
 }

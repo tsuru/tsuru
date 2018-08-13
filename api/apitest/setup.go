@@ -63,7 +63,10 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	condContent := h.ConditionalContent[r.URL.String()]
+	condContent := h.ConditionalContent[r.Method+" "+r.URL.String()]
+	if condContent == nil {
+		condContent = h.ConditionalContent[r.URL.String()]
+	}
 	if content, ok := condContent.(string); ok {
 		w.WriteHeader(h.RspCode)
 		w.Write([]byte(content))
