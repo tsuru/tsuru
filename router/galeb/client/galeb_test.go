@@ -868,3 +868,60 @@ func (s *S) TestGalebAddBackendsNoWait(c *check.C) {
 		"/api/target",
 	})
 }
+
+func (s *S) TestUpdateVirtualHostRule(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "rule": [
+               {
+                   "ID": 1,
+                   "_links": {
+                       "self": {
+                           "href": "%s/rule/1"
+                       }
+                   }
+               }
+           ]
+       }
+	}`, s.client.ApiURL)}
+	s.handler.ConditionalContent["/api/virtualhost/search/findByName?name=myvh"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "virtualhost": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/virtualhost/2"
+                       }
+                   }
+               }
+           ]
+       }
+	}`, s.client.ApiURL)}
+	s.handler.ConditionalContent["GET /api/virtualhost/2"] = []string{
+		"200", fmt.Sprintf(`{
+		"ID": 2,
+		"rulesOrdered": [{"ruleId": 999}],
+		"_status": "OK",
+		"_links": {
+			"self": {
+				"href": "%s/virtualhost/2"
+			}
+		}
+	}`, s.client.ApiURL)}
+	s.handler.ConditionalContent["PATCH /api/virtualhost/2"] = []string{
+		"204", `{"_status": "OK"}`,
+	}
+	err := s.client.UpdateVirtualHostRule("myvh", "myrule")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "GET", "PATCH", "GET"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{
+		"/api/virtualhost/search/findByName?name=myvh",
+		"/api/rule/search/findByName?name=myrule",
+		"/api/virtualhost/2",
+		"/api/virtualhost/2",
+		"/api/virtualhost/2",
+	})
+	c.Assert(string(s.handler.Body[3]), check.Matches, `(?s).*"rulesOrdered\":\[{"ruleId":1,"ruleOrder":0}\].*`)
+}

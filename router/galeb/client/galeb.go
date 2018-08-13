@@ -408,7 +408,7 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	}
 	err = c.waitStatusOK(ruleID)
 	if err != nil {
-		c.RemoveRuleVirtualHostByID(ruleID, virtualHostID)
+		c.removeRuleVirtualHostByID(ruleID, virtualHostID)
 		return err
 	}
 	return nil
@@ -492,7 +492,7 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 	return c.removeResource(ruleID)
 }
 
-func (c *GalebClient) RemoveRuleVirtualHostByID(ruleID, virtualHostID string) error {
+func (c *GalebClient) removeRuleVirtualHostByID(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
 	path := fmt.Sprintf("%s/parents/%s", ruleID, vhId)
 	err := c.removeResource(path)
@@ -511,7 +511,7 @@ func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) er
 	if err != nil {
 		return err
 	}
-	return c.RemoveRuleVirtualHostByID(ruleID, virtualHostID)
+	return c.removeRuleVirtualHostByID(ruleID, virtualHostID)
 }
 
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
@@ -581,6 +581,36 @@ func (c *GalebClient) Healthcheck() error {
 	return nil
 }
 
+func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string) error {
+	vhID, err := c.findItemByName("virtualhost", virtualHostName)
+	if err != nil {
+		return err
+	}
+	_, ruleID, err := c.findItemIDsByName("rule", ruleName)
+	if err != nil {
+		return err
+	}
+	path := strings.TrimPrefix(vhID, c.ApiURL)
+	var vh VirtualHost
+	err = c.getObj(path, &vh)
+	if err != nil {
+		return err
+	}
+	vh.RulesOrdered = []RuleOrdered{
+		{RuleId: ruleID, RuleOrder: 0},
+	}
+	rsp, err := c.doRequest("PATCH", path, vh)
+	if err != nil {
+		return err
+	}
+	if rsp.StatusCode != http.StatusNoContent {
+		responseData, _ := ioutil.ReadAll(rsp.Body)
+		rsp.Body.Close()
+		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	return c.waitStatusOK(vhID)
+}
+
 func (c *GalebClient) removeResource(resourceURI string) error {
 	path := strings.TrimPrefix(resourceURI, c.ApiURL)
 	rsp, err := c.doRequest("DELETE", path, nil)
@@ -596,10 +626,15 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 }
 
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
+	idStr, _, err := c.findItemIDsByName(item, name)
+	return idStr, err
+}
+
+func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) {
 	path := fmt.Sprintf("/%s/search/findByName?name=%s", item, name)
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
@@ -607,24 +642,25 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	defer rsp.Body.Close()
 	rspData, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	err = json.Unmarshal(rspData, &rspObj)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse find response %q", string(rspData))
+		return "", 0, errors.Wrapf(err, "unable to parse find response %q", string(rspData))
 	}
 	itemList := rspObj.Embedded[item]
 	if len(itemList) == 0 {
-		return "", ErrItemNotFound{path: path}
+		return "", 0, ErrItemNotFound{path: path}
 	}
 	if len(itemList) > 1 {
-		return "", ErrAmbiguousSearch{path: path, items: itemList}
+		return "", 0, ErrAmbiguousSearch{path: path, items: itemList}
 	}
-	id := rspObj.Embedded[item][0].FullId()
+	itemObj := rspObj.Embedded[item][0]
+	id := itemObj.FullId()
 	if id == "" {
-		return "", ErrItemNotFound{path: path}
+		return "", 0, ErrItemNotFound{path: path}
 	}
-	return id, nil
+	return id, itemObj.ID, nil
 }
 
 func (c *GalebClient) fetchPathStatus(path string) (string, error) {
@@ -672,6 +708,23 @@ loop:
 	}
 	if status != STATUS_OK {
 		return errors.Errorf("GET %s: invalid status %s", path, status)
+	}
+	return nil
+}
+
+func (c *GalebClient) getObj(path string, data interface{}) error {
+	rsp, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return errors.Errorf("GET %s: wrong status code: %d. content: %s", path, rsp.StatusCode, string(responseData))
+	}
+	err = json.Unmarshal(responseData, data)
+	if err != nil {
+		return errors.Wrapf(err, "GET %s: unable to parse: %s", path, string(responseData))
 	}
 	return nil
 }
