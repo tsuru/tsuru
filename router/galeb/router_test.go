@@ -63,6 +63,7 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/pool/{id}", server.updatePool).Methods("PATCH")
 	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
 	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
+	r.HandleFunc("/api/virtualhost/{id}", server.updateVirtualHost).Methods("PATCH")
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
@@ -316,6 +317,32 @@ func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Reque
 	s.virtualhosts[strconv.Itoa(virtualhost.ID)] = &virtualhost
 	w.Header().Set("Location", virtualhost.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) updateVirtualHost(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	var vh galebClient.VirtualHost
+	json.NewDecoder(r.Body).Decode(&vh)
+	for _, ruleOrder := range vh.RulesOrdered {
+		var found bool
+		for _, ruleVhs := range s.ruleVh[strconv.Itoa(ruleOrder.RuleId)] {
+			if ruleVhs == strconv.Itoa(vh.ID) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "invalid rule %d for vh %s", ruleOrder.RuleId, vh.FullId())
+		}
+	}
+	existingVH, ok := s.virtualhosts[id].(*galebClient.VirtualHost)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	existingVH.RulesOrdered = vh.RulesOrdered
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func init() {
