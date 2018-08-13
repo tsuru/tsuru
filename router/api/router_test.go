@@ -70,6 +70,7 @@ func (s *S) SetUpTest(c *check.C) {
 		client:     tsuruNet.Dial15Full60ClientNoKeepAlive,
 		routerName: "apirouter",
 	}
+	s.testRouter.supIface = s.testRouter
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
 	config.Set("database:name", "router_api_tests")
 	s.apiRouter.backends = make(map[string]*backend)
