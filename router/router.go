@@ -139,6 +139,10 @@ type CNameRouter interface {
 	CNames(name string) ([]*url.URL, error)
 }
 
+type CNameMoveRouter interface {
+	MoveCName(cname, orgBackend, dstBackend string) error
+}
+
 type MessageRouter interface {
 	StartupMessage() (string, error)
 }
@@ -307,22 +311,31 @@ func swapCnames(r Router, backend1, backend2 string) error {
 	if err != nil {
 		return err
 	}
+	swapCnameRouter, _ := r.(CNameMoveRouter)
 	for _, cname := range cnames1 {
-		err = cnameRouter.UnsetCName(cname.Host, backend1)
-		if err != nil {
-			return err
+		if swapCnameRouter == nil {
+			err = cnameRouter.UnsetCName(cname.Host, backend1)
+			if err != nil {
+				return err
+			}
+			err = cnameRouter.SetCName(cname.Host, backend2)
+		} else {
+			err = swapCnameRouter.MoveCName(cname.Host, backend1, backend2)
 		}
-		err = cnameRouter.SetCName(cname.Host, backend2)
 		if err != nil {
 			return err
 		}
 	}
 	for _, cname := range cnames2 {
-		err = cnameRouter.UnsetCName(cname.Host, backend2)
-		if err != nil {
-			return err
+		if swapCnameRouter == nil {
+			err = cnameRouter.UnsetCName(cname.Host, backend2)
+			if err != nil {
+				return err
+			}
+			err = cnameRouter.SetCName(cname.Host, backend1)
+		} else {
+			err = swapCnameRouter.MoveCName(cname.Host, backend2, backend1)
 		}
-		err = cnameRouter.SetCName(cname.Host, backend1)
 		if err != nil {
 			return err
 		}
