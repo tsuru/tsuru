@@ -132,6 +132,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.ServiceBroker, err = service.BrokerService()
+	if err != nil {
+		return err
+	}
+	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
 	return err
 }
 
