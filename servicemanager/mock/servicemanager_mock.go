@@ -12,23 +12,26 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/service"
 )
 
 // MockService is a struct to use in tests
 type MockService struct {
-	Cache         *cache.MockCacheService
-	Plan          *app.MockPlanService
-	Platform      *app.MockPlatformService
-	PlatformImage *image.MockPlatformImageService
-	Team          *auth.MockTeamService
-	UserQuota     *quota.MockQuotaService
-	AppQuota      *quota.MockQuotaService
-	Cluster       *provision.MockClusterService
+	Cache                     *cache.MockAppCacheService
+	Plan                      *app.MockPlanService
+	Platform                  *app.MockPlatformService
+	PlatformImage             *image.MockPlatformImageService
+	Team                      *auth.MockTeamService
+	UserQuota                 *quota.MockQuotaService
+	AppQuota                  *quota.MockQuotaService
+	Cluster                   *provision.MockClusterService
+	ServiceBroker             *service.MockServiceBrokerService
+	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
 func SetMockService(m *MockService) {
-	m.Cache = &cache.MockCacheService{}
+	m.Cache = &cache.MockAppCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
 	m.PlatformImage = &image.MockPlatformImageService{}
@@ -36,6 +39,8 @@ func SetMockService(m *MockService) {
 	m.UserQuota = &quota.MockQuotaService{}
 	m.AppQuota = &quota.MockQuotaService{}
 	m.Cluster = &provision.MockClusterService{}
+	m.ServiceBroker = &service.MockServiceBrokerService{}
+	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -44,6 +49,8 @@ func SetMockService(m *MockService) {
 	servicemanager.UserQuota = m.UserQuota
 	servicemanager.AppQuota = m.AppQuota
 	servicemanager.Cluster = m.Cluster
+	servicemanager.ServiceBroker = m.ServiceBroker
+	servicemanager.ServiceBrokerCatalogCache = m.ServiceBrokerCatalogCache
 }
 
 func (m *MockService) ResetCache() {
@@ -107,4 +114,17 @@ func (m *MockService) ResetCluster() {
 	m.Cluster.OnFindByProvisioner = nil
 	m.Cluster.OnFindByPool = nil
 	m.Cluster.OnDelete = nil
+}
+
+func (m *MockService) ResetServiceBroker() {
+	m.ServiceBroker.OnCreate = nil
+	m.ServiceBroker.OnUpdate = nil
+	m.ServiceBroker.OnDelete = nil
+	m.ServiceBroker.OnFind = nil
+	m.ServiceBroker.OnList = nil
+}
+
+func (m *MockService) ResetServiceBrokerCatalogCache() {
+	m.ServiceBrokerCatalogCache.OnSave = nil
+	m.ServiceBrokerCatalogCache.OnLoad = nil
 }

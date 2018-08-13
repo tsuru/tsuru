@@ -20,7 +20,7 @@ type CacheEntry struct {
 	ExpireAt time.Time
 }
 
-type CacheService interface {
+type AppCacheService interface {
 	Create(entry CacheEntry) error
 	List(keys ...string) ([]CacheEntry, error)
 	FindByName(key string) (CacheEntry, error)

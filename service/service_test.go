@@ -61,7 +61,9 @@ func (s *S) TestGetServiceBrokered(c *check.C) {
 		}},
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	sb, err := BrokerService()
+	c.Assert(err, check.IsNil)
+	err = sb.Create(serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	serv, err := Get("aws::service")
 	c.Assert(err, check.IsNil)
@@ -86,7 +88,9 @@ func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
 			}, nil
 		},
 	}
-	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	sb, err := BrokerService()
+	c.Assert(err, check.IsNil)
+	err = sb.Create(serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	serv, err := Get("aws::service")
 	c.Assert(err, check.IsNil)
@@ -113,7 +117,9 @@ func (s *S) TestGetServiceBrokeredServiceNotFound(c *check.C) {
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{}},
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
+	sb, err := BrokerService()
+	c.Assert(err, check.IsNil)
+	err = sb.Create(serviceTypes.Broker{Name: "aws"})
 	c.Assert(err, check.IsNil)
 	serv, err := Get("aws::service")
 	c.Assert(err, check.DeepEquals, ErrServiceNotFound)
@@ -301,6 +307,10 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 
 func (s *S) TestGetServices(c *check.C) {
 	s.createService(c)
+	sb, err := BrokerService()
+	c.Assert(err, check.IsNil)
+	err = sb.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
 			Services: []osb.Service{
@@ -310,8 +320,6 @@ func (s *S) TestGetServices(c *check.C) {
 		}},
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	err := servicemanager.ServiceBroker.Create(serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
 	services, err := GetServices()
 	c.Assert(err, check.IsNil)
 	c.Assert(services, check.DeepEquals, []Service{

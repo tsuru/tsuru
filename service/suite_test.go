@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
@@ -20,11 +20,11 @@ import (
 )
 
 type S struct {
-	conn            *db.Storage
-	service         *Service
-	team            *authTypes.Team
-	user            *auth.User
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	service     *Service
+	team        *authTypes.Team
+	user        *auth.User
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&S{})
@@ -68,22 +68,15 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "raul"}
-	s.mockTeamService = &authTypes.MockTeamService{
-		OnFindByName: func(name string) (*authTypes.Team, error) {
-			return s.team, nil
-		},
-		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
-			return []authTypes.Team{*s.team}, nil
-		},
+	servicemock.SetMockService(&s.mockService)
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return s.team, nil
 	}
-	servicemanager.Team = s.mockTeamService
-	servicemanager.ServiceBroker, err = BrokerService()
-	c.Assert(err, check.IsNil)
-
-	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
-		OnLoad: func(_ string) (*serviceTypes.BrokerCatalog, error) {
-			return nil, fmt.Errorf("not found")
-		},
+	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{*s.team}, nil
+	}
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(_ string) (*serviceTypes.BrokerCatalog, error) {
+		return nil, fmt.Errorf("not found")
 	}
 }
 

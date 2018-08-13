@@ -5,7 +5,7 @@
 package cache
 
 var _ CacheStorage = &MockCacheStorage{}
-var _ CacheService = &MockCacheService{}
+var _ AppCacheService = &MockAppCacheService{}
 
 // MockCacheStorage implements CacheStorage interface
 type MockCacheStorage struct {
@@ -26,28 +26,28 @@ func (m *MockCacheStorage) Get(key string) (CacheEntry, error) {
 	return m.OnGet(key)
 }
 
-// MockCacheService implements CacheService interface
-type MockCacheService struct {
+// MockAppCacheService implements AppCacheService interface
+type MockAppCacheService struct {
 	OnCreate     func(CacheEntry) error
 	OnList       func(...string) ([]CacheEntry, error)
 	OnFindByName func(string) (CacheEntry, error)
 }
 
-func (m *MockCacheService) Create(e CacheEntry) error {
+func (m *MockAppCacheService) Create(e CacheEntry) error {
 	if m.OnCreate == nil {
 		return nil
 	}
 	return m.OnCreate(e)
 }
 
-func (m *MockCacheService) List(keys ...string) ([]CacheEntry, error) {
+func (m *MockAppCacheService) List(keys ...string) ([]CacheEntry, error) {
 	if m.OnList == nil {
 		return []CacheEntry{}, nil
 	}
 	return m.OnList(keys...)
 }
 
-func (m *MockCacheService) FindByName(k string) (CacheEntry, error) {
+func (m *MockAppCacheService) FindByName(k string) (CacheEntry, error) {
 	if m.OnFindByName == nil {
 		return CacheEntry{}, nil
 	}

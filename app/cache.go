@@ -9,13 +9,13 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 )
 
-var _ cache.CacheService = &cacheService{}
+var _ cache.AppCacheService = &cacheService{}
 
 type cacheService struct {
 	storage cache.CacheStorage
 }
 
-func CacheService() (cache.CacheService, error) {
+func CacheService() (cache.AppCacheService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
