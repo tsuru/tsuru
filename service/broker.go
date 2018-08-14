@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
@@ -399,7 +400,10 @@ func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 				cat.Services[i].Plans[j].Description = p.Description
 			}
 		}
-		servicemanager.ServiceBrokerCatalogCache.Save(name, cat)
+		err = servicemanager.ServiceBrokerCatalogCache.Save(name, cat)
+		if err != nil {
+			log.Errorf("[Broker=%v] error caching catalog: %v.", name, err)
+		}
 		return response, nil
 	}
 
