@@ -14,7 +14,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
-	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
@@ -46,11 +45,9 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokered(c *check.C) {
-	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
-		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-			c.Assert(brokerName, check.Equals, "aws")
-			return nil, fmt.Errorf("not found")
-		},
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		c.Assert(brokerName, check.Equals, "aws")
+		return nil, fmt.Errorf("not found")
 	}
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
@@ -74,19 +71,17 @@ func (s *S) TestGetServiceBrokered(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
-	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
-		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-			c.Assert(brokerName, check.Equals, "aws")
-			return &serviceTypes.BrokerCatalog{
-				Services: []serviceTypes.BrokerService{
-					{
-						ID:          "123",
-						Name:        "service",
-						Description: "cached service",
-					},
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		c.Assert(brokerName, check.Equals, "aws")
+		return &serviceTypes.BrokerCatalog{
+			Services: []serviceTypes.BrokerService{
+				{
+					ID:          "123",
+					Name:        "service",
+					Description: "cached service",
 				},
-			}, nil
-		},
+			},
+		}, nil
 	}
 	sb, err := BrokerService()
 	c.Assert(err, check.IsNil)
@@ -101,11 +96,9 @@ func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokeredServiceBrokerNotFound(c *check.C) {
-	servicemanager.ServiceBrokerCatalogCache = &serviceTypes.MockServiceBrokerCatalogCacheService{
-		OnLoad: func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
-			c.Assert(brokerName, check.Equals, "broker")
-			return nil, fmt.Errorf("not found")
-		},
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		c.Assert(brokerName, check.Equals, "broker")
+		return nil, fmt.Errorf("not found")
 	}
 	serv, err := Get("broker::service")
 	c.Assert(err, check.DeepEquals, serviceTypes.ErrServiceBrokerNotFound)
