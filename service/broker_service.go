@@ -64,7 +64,7 @@ func getBrokeredServices() ([]Service, error) {
 			log.Errorf("[Broker=%v] error creating broker client: %v.", b.Name, err)
 			continue
 		}
-		cat, err := c.client.GetCatalog()
+		cat, err := c.getCatalog(b.Name)
 		if err != nil {
 			log.Errorf("[Broker=%v] error getting catalog: %v.", b.Name, err)
 			continue

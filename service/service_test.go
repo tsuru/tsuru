@@ -311,7 +311,19 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestGetServices(c *check.C) {
+func (s *S) TestGetServicesNoCache(c *check.C) {
+	var calls int32
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		atomic.AddInt32(&calls, 1)
+		c.Assert(brokerName, check.Equals, "aws")
+		return nil, fmt.Errorf("not found")
+	}
+	s.mockService.ServiceBrokerCatalogCache.OnSave = func(brokerName string, catalog serviceTypes.BrokerCatalog) error {
+		atomic.AddInt32(&calls, 1)
+		c.Assert(brokerName, check.Equals, "aws")
+		c.Assert(catalog.Services, check.HasLen, 2)
+		return nil
+	}
 	s.createService(c)
 	sb, err := BrokerService()
 	c.Assert(err, check.IsNil)
@@ -350,6 +362,51 @@ func (s *S) TestGetServices(c *check.C) {
 			OwnerTeams: []string(nil),
 		},
 	})
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
+}
+
+func (s *S) TestGetServicesFromCache(c *check.C) {
+	var calls int32
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		atomic.AddInt32(&calls, 1)
+		c.Assert(brokerName, check.Equals, "aws")
+		return &serviceTypes.BrokerCatalog{
+			Services: []serviceTypes.BrokerService{
+				{Name: "otherservice"},
+				{Name: "service", Description: "service loaded from cache"},
+			},
+		}, nil
+	}
+	s.createService(c)
+	sb, err := BrokerService()
+	c.Assert(err, check.IsNil)
+	err = sb.Create(serviceTypes.Broker{Name: "aws"})
+	c.Assert(err, check.IsNil)
+	services, err := GetServices()
+	c.Assert(err, check.IsNil)
+	c.Assert(services, check.DeepEquals, []Service{
+		{
+			Name:     "my-service",
+			Password: "my-password",
+			Endpoint: map[string]string{
+				"production": "http://localhost:8080",
+			},
+			OwnerTeams: []string{"admin"},
+			Teams:      []string{},
+		},
+		{
+			Name:       "aws::otherservice",
+			Teams:      []string(nil),
+			OwnerTeams: []string(nil),
+		},
+		{
+			Name:       "aws::service",
+			Doc:        "service loaded from cache",
+			Teams:      []string(nil),
+			OwnerTeams: []string(nil),
+		},
+	})
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(1))
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
