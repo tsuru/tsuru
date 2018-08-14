@@ -28,16 +28,17 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
 
 type SyncSuite struct {
-	conn            *db.Storage
-	user            auth.User
-	team            authTypes.Team
-	mockTeamService *authTypes.MockTeamService
+	conn        *db.Storage
+	user        auth.User
+	team        authTypes.Team
+	mockService servicemock.MockService
 }
 
 var _ = check.Suite(&SyncSuite{})
@@ -64,15 +65,25 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.mockTeamService = &authTypes.MockTeamService{
-		OnList: func() ([]authTypes.Team, error) {
-			return []authTypes.Team{s.team}, nil
-		},
-		OnFindByNames: func(names []string) ([]authTypes.Team, error) {
-			return []authTypes.Team{s.team}, nil
-		},
+
+	servicemock.SetMockService(&s.mockService)
+	plan := appTypes.Plan{
+		Name:     "default",
+		Default:  true,
+		CpuShare: 100,
 	}
-	servicemanager.Team = s.mockTeamService
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
+	}
+	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
+		return &plan, nil
+	}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{s.team}, nil
+	}
+	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{s.team}, nil
+	}
 }
 
 func (s *SyncSuite) TearDownSuite(c *check.C) {
