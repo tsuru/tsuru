@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"sync/atomic"
 
 	"github.com/globalsign/mgo/bson"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
@@ -45,9 +46,20 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokered(c *check.C) {
+	var calls int32
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+		atomic.AddInt32(&calls, 1)
 		c.Assert(brokerName, check.Equals, "aws")
 		return nil, fmt.Errorf("not found")
+	}
+	s.mockService.ServiceBrokerCatalogCache.OnSave = func(brokerName string, catalog serviceTypes.BrokerCatalog) error {
+		atomic.AddInt32(&calls, 1)
+		c.Assert(brokerName, check.Equals, "aws")
+		c.Assert(catalog.Services, check.HasLen, 2)
+		c.Assert(catalog.Services[0].Name, check.Equals, "otherservice")
+		c.Assert(catalog.Services[1].Name, check.Equals, "service")
+		c.Assert(catalog.Services[1].Description, check.Equals, "This service is awesome!")
+		return nil
 	}
 	config := osbfake.FakeClientConfiguration{
 		CatalogReaction: &osbfake.CatalogReaction{Response: &osb.CatalogResponse{
@@ -68,6 +80,7 @@ func (s *S) TestGetServiceBrokered(c *check.C) {
 		Name: "aws::service",
 		Doc:  "This service is awesome!",
 	})
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
 
 func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
