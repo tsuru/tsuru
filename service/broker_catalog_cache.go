@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/service"
@@ -40,7 +41,7 @@ func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog servi
 	entry := cache.CacheEntry{
 		Key:      brokerName,
 		Value:    string(b),
-		ExpireAt: time.Now().Add(defaultExpiration),
+		ExpireAt: s.expirationTime(brokerName),
 	}
 	return s.storage.Put(entry)
 }
@@ -57,4 +58,13 @@ func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*service.Bro
 		return nil, err
 	}
 	return &catalog, nil
+}
+
+func (s *serviceBrokerCatalogCacheService) expirationTime(brokerName string) time.Time {
+	expiration := defaultExpiration
+	sb, err := servicemanager.ServiceBroker.Find(brokerName)
+	if err == nil && sb.Config.CacheExpiration != nil {
+		expiration = *sb.Config.CacheExpiration
+	}
+	return time.Now().Add(expiration)
 }

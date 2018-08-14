@@ -7,13 +7,15 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/service"
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestCacheSave(c *check.C) {
+func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {
 	catalog := service.BrokerCatalog{
 		Services: []service.BrokerService{{
 			ID:          "123",
@@ -40,6 +42,38 @@ func (s *S) TestCacheSave(c *check.C) {
 	}
 	err := service.Save("my-catalog", catalog)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestCacheSaveCustomExpiration(c *check.C) {
+	var calls int32
+	s.mockService.ServiceBroker.OnFind = func(name string) (service.Broker, error) {
+		atomic.AddInt32(&calls, 1)
+		duration := time.Duration(5 * time.Minute)
+		return service.Broker{
+			Name: name,
+			Config: service.BrokerConfig{
+				CacheExpiration: &duration,
+			},
+		}, nil
+	}
+	catalog := service.BrokerCatalog{
+		Services: []service.BrokerService{{
+			ID:   "123",
+			Name: "service1",
+		}},
+	}
+	service := &serviceBrokerCatalogCacheService{
+		storage: &cache.MockCacheStorage{
+			OnPut: func(entry cache.CacheEntry) error {
+				atomic.AddInt32(&calls, 1)
+				c.Assert(entry.ExpireAt.Sub(time.Now()) <= time.Duration(5*time.Minute), check.Equals, true)
+				return nil
+			},
+		},
+	}
+	err := service.Save("my-catalog", catalog)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
 
 func (s *S) TestCacheLoad(c *check.C) {
