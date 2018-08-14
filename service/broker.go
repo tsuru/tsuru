@@ -74,6 +74,42 @@ func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 	return &broker, nil
 }
 
+func convertResponseToCatalog(response osb.CatalogResponse) serviceTypes.BrokerCatalog {
+	cat := serviceTypes.BrokerCatalog{
+		Services: make([]serviceTypes.BrokerService, len(response.Services)),
+	}
+	for i, s := range response.Services {
+		cat.Services[i].ID = s.ID
+		cat.Services[i].Name = s.Name
+		cat.Services[i].Description = s.Description
+		cat.Services[i].Plans = make([]serviceTypes.BrokerPlan, len(s.Plans))
+		for j, p := range s.Plans {
+			cat.Services[i].Plans[j].ID = p.ID
+			cat.Services[i].Plans[j].Name = p.Name
+			cat.Services[i].Plans[j].Description = p.Description
+		}
+	}
+	return cat
+}
+
+func convertCatalogToResponse(catalog serviceTypes.BrokerCatalog) osb.CatalogResponse {
+	cat := osb.CatalogResponse{
+		Services: make([]osb.Service, len(catalog.Services)),
+	}
+	for i, s := range catalog.Services {
+		cat.Services[i].ID = s.ID
+		cat.Services[i].Name = s.Name
+		cat.Services[i].Description = s.Description
+		cat.Services[i].Plans = make([]osb.Plan, len(s.Plans))
+		for j, p := range s.Plans {
+			cat.Services[i].Plans[j].ID = p.ID
+			cat.Services[i].Plans[j].Name = p.Name
+			cat.Services[i].Plans[j].Description = p.Description
+		}
+	}
+	return cat
+}
+
 func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
 	_, s, err := b.getService(b.service, instance.Name)
 	if err != nil {
@@ -386,20 +422,7 @@ func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 		if err != nil {
 			return nil, err
 		}
-		cat := serviceTypes.BrokerCatalog{
-			Services: make([]serviceTypes.BrokerService, len(response.Services)),
-		}
-		for i, s := range response.Services {
-			cat.Services[i].ID = s.ID
-			cat.Services[i].Name = s.Name
-			cat.Services[i].Description = s.Description
-			cat.Services[i].Plans = make([]serviceTypes.BrokerPlan, len(s.Plans))
-			for j, p := range s.Plans {
-				cat.Services[i].Plans[j].ID = p.ID
-				cat.Services[i].Plans[j].Name = p.Name
-				cat.Services[i].Plans[j].Description = p.Description
-			}
-		}
+		cat := convertResponseToCatalog(*response)
 		err = servicemanager.ServiceBrokerCatalogCache.Save(name, cat)
 		if err != nil {
 			log.Errorf("[Broker=%v] error caching catalog: %v.", name, err)
@@ -407,21 +430,8 @@ func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 		return response, nil
 	}
 
-	cat := &osb.CatalogResponse{
-		Services: make([]osb.Service, len(catalog.Services)),
-	}
-	for i, s := range catalog.Services {
-		cat.Services[i].ID = s.ID
-		cat.Services[i].Name = s.Name
-		cat.Services[i].Description = s.Description
-		cat.Services[i].Plans = make([]osb.Plan, len(s.Plans))
-		for j, p := range s.Plans {
-			cat.Services[i].Plans[j].ID = p.ID
-			cat.Services[i].Plans[j].Name = p.Name
-			cat.Services[i].Plans[j].Description = p.Description
-		}
-	}
-	return cat, nil
+	cat := convertCatalogToResponse(*catalog)
+	return &cat, nil
 }
 
 func (b *brokerClient) getService(name, catalogName string) (Service, osb.Service, error) {
