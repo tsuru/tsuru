@@ -381,7 +381,26 @@ func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bi
 func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(name)
 	if err != nil {
-		return b.client.GetCatalog()
+		response, err := b.client.GetCatalog()
+		if err != nil {
+			return nil, err
+		}
+		cat := serviceTypes.BrokerCatalog{
+			Services: make([]serviceTypes.BrokerService, len(response.Services)),
+		}
+		for i, s := range response.Services {
+			cat.Services[i].ID = s.ID
+			cat.Services[i].Name = s.Name
+			cat.Services[i].Description = s.Description
+			cat.Services[i].Plans = make([]serviceTypes.BrokerPlan, len(s.Plans))
+			for j, p := range s.Plans {
+				cat.Services[i].Plans[j].ID = p.ID
+				cat.Services[i].Plans[j].Name = p.Name
+				cat.Services[i].Plans[j].Description = p.Description
+			}
+		}
+		servicemanager.ServiceBrokerCatalogCache.Save(name, cat)
+		return response, nil
 	}
 
 	cat := &osb.CatalogResponse{
