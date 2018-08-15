@@ -671,12 +671,12 @@ func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
 		return node, nil
 	}
 	if !k8sErrors.IsNotFound(err) {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	node = nil
 	nodeList, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 nodesloop:
 	for i, n := range nodeList.Items {

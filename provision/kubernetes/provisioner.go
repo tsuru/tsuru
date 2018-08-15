@@ -375,7 +375,7 @@ func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error)
 	}
 	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	for i := 0; i < len(nodes.Items); i++ {
 		_, inSet := nodeSet[nodes.Items[i].Name]
@@ -496,7 +496,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 		LabelSelector: labels.SelectorFromSet(nodeSelector).String(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	addrs := make([]url.URL, len(nodes.Items))
 	for i, n := range nodes.Items {
@@ -575,7 +575,7 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addr
 	}
 	nodeList, err := cluster.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	for i := range nodeList.Items {
 		n := &kubernetesNodeWrapper{
@@ -768,7 +768,7 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
 	_, err = client.CoreV1().Nodes().Update(node)
-	return err
+	return errors.WithStack(err)
 }
 
 func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {

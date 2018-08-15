@@ -81,7 +81,7 @@ func (s *S) TestListNodesTimeoutShort(c *check.C) {
 	t0 := time.Now()
 	ClientForConfig = defaultClientForConfig
 	_, err = s.p.ListNodes([]string{})
-	c.Assert(err, check.ErrorMatches, `(?i).*timeout.*`)
+	c.Assert(err, check.ErrorMatches, `(?is).*timeout.*`)
 	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)
 }
 

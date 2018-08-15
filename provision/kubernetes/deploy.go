@@ -738,7 +738,7 @@ func filteredPodEvents(client *ClusterClient, evtResourceVersion, podName, names
 		ResourceVersion: evtResourceVersion,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return evtWatch, nil
 }
@@ -908,7 +908,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, img, replicas, labels)
 	if err != nil {
@@ -959,7 +959,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		},
 	})
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
-		return err
+		return errors.WithStack(err)
 	}
 	labels.SetIsHeadlessService()
 	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
@@ -983,7 +983,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		},
 	})
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
-		return err
+		return errors.WithStack(err)
 	}
 	return nil
 }
