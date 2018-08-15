@@ -19,6 +19,7 @@ var _ auth.TeamStorage = &TeamStorage{}
 type team struct {
 	Name         string `bson:"_id"`
 	CreatingUser string
+	Tags         []string
 }
 
 func teamsCollection(conn *db.Storage) *dbStorage.Collection {

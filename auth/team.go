@@ -36,7 +36,7 @@ func TeamService() (authTypes.TeamService, error) {
 	}, nil
 }
 
-func (t *teamService) Create(name string, user *authTypes.User) error {
+func (t *teamService) Create(name string, tags []string, user *authTypes.User) error {
 	if user == nil {
 		return errors.New("user cannot be null")
 	}
@@ -44,6 +44,7 @@ func (t *teamService) Create(name string, user *authTypes.User) error {
 	team := authTypes.Team{
 		Name:         name,
 		CreatingUser: user.Email,
+		Tags:         tags,
 	}
 	if err := t.validate(team); err != nil {
 		return err

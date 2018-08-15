@@ -13,35 +13,38 @@ import (
 
 func (s *S) TestTeamServiceCreate(c *check.C) {
 	teamName := "pos"
+	tags := []string{"tag1=val1"}
 	one := authTypes.User{Email: "king@pos.com"}
 	ts := &teamService{
 		storage: &authTypes.MockTeamStorage{
 			OnInsert: func(t authTypes.Team) error {
 				c.Assert(t.Name, check.Equals, teamName)
 				c.Assert(t.CreatingUser, check.DeepEquals, one.Email)
+				c.Assert(t.Tags, check.DeepEquals, tags)
 				return nil
 			},
 		},
 	}
 
-	err := ts.Create(teamName, &one)
+	err := ts.Create(teamName, tags, &one)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestTeamServiceCreateDuplicate(c *check.C) {
 	teamName := "pos"
 	u := authTypes.User{Email: "king@pos.com"}
+	tags := []string{"tag1=val1"}
 	ts := &teamService{
 		storage: &authTypes.MockTeamStorage{
 			OnInsert: func(t authTypes.Team) error {
 				c.Assert(t.Name, check.Equals, teamName)
 				c.Assert(t.CreatingUser, check.DeepEquals, u.Email)
+				c.Assert(t.Tags, check.DeepEquals, tags)
 				return authTypes.ErrTeamAlreadyExists
 			},
 		},
 	}
-
-	err := ts.Create("pos", &u)
+	err := ts.Create("pos", tags, &u)
 	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
@@ -56,7 +59,7 @@ func (s *S) TestTeamServiceCreateTrimsName(c *check.C) {
 		},
 	}
 
-	err := ts.Create("pos    ", &u)
+	err := ts.Create("pos", nil, &u)
 	c.Assert(err, check.IsNil)
 }
 
@@ -90,7 +93,7 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 	}
 
 	for _, t := range tests {
-		err := ts.Create(t.input, &u)
+		err := ts.Create(t.input, nil, &u)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}

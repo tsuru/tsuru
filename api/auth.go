@@ -274,7 +274,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	_, err = servicemanager.Team.FindByName(name)
+	oldTeam, err := servicemanager.Team.FindByName(name)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -296,7 +296,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	err = servicemanager.Team.Create(changeRequest.NewName, u)
+	err = servicemanager.Team.Create(changeRequest.NewName, oldTeam.Tags, u)
 	if err != nil {
 		return err
 	}
@@ -336,21 +336,28 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Team already exists
-func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if err := r.ParseForm(); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	allowed := permission.Check(t, permission.PermTeamCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	name := r.FormValue("name")
-	if name == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: authTypes.ErrInvalidTeamName.Error()}
+	var team authTypes.Team
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	if err := dec.DecodeValues(&team, r.Form); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	team.Tags = append(team.Tags, r.Form["tag"]...) // for compatibility
 	evt, err := event.New(&event.Opts{
-		Target:     teamTarget(name),
+		Target:     teamTarget(team.Name),
 		Kind:       permission.PermTeamCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, name)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, team.Name)),
 	})
 	if err != nil {
 		return err
@@ -360,7 +367,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	err = servicemanager.Team.Create(name, u)
+	err = servicemanager.Team.Create(team.Name, team.Tags, u)
 	switch err {
 	case authTypes.ErrInvalidTeamName:
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}

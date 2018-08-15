@@ -37,18 +37,18 @@ func (m *MockTeamStorage) Delete(t Team) error {
 }
 
 type MockTeamService struct {
-	OnCreate      func(string, *User) error
+	OnCreate      func(string, []string, *User) error
 	OnList        func() ([]Team, error)
 	OnFindByName  func(string) (*Team, error)
 	OnFindByNames func([]string) ([]Team, error)
 	OnRemove      func(string) error
 }
 
-func (m *MockTeamService) Create(teamName string, user *User) error {
+func (m *MockTeamService) Create(teamName string, tags []string, user *User) error {
 	if m.OnCreate == nil {
 		return nil
 	}
-	return m.OnCreate(teamName, user)
+	return m.OnCreate(teamName, tags, user)
 }
 
 func (m *MockTeamService) List() ([]Team, error) {
