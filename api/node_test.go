@@ -1112,7 +1112,7 @@ func (s *S) TestInfoNodeHandler(c *check.C) {
 		{Name: "ok1", Successful: true},
 		{Name: "ok2", Successful: true},
 	}
-	err = nodeHealer.UpdateNodeData(node, checks)
+	err = nodeHealer.UpdateNodeData([]string{node.Address()}, checks)
 	c.Assert(err, check.IsNil)
 	factory, _ := iaasTesting.NewHealerIaaSConstructorWithInst(nodeAddr)
 	iaas.RegisterIaasProvider("test123", factory)
