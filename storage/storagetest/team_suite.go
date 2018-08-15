@@ -35,6 +35,26 @@ func (s *TeamSuite) TestInsertDuplicateTeam(c *check.C) {
 	c.Assert(err, check.Equals, auth.ErrTeamAlreadyExists)
 }
 
+func (s *TeamSuite) TeamUpdate(c *check.C) {
+	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com", Tags: []string{"tag1"}}
+	err := s.TeamStorage.Insert(t)
+	c.Assert(err, check.IsNil)
+	t.Tags = []string{"tag2"}
+	err = s.TeamStorage.Update(t)
+	c.Assert(err, check.IsNil)
+	team, err := s.TeamStorage.FindByName(t.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(team.Name, check.Equals, t.Name)
+	c.Assert(team.CreatingUser, check.Equals, t.CreatingUser)
+	c.Assert(team.Tags, check.DeepEquals, t.Tags)
+}
+
+func (s *TeamSuite) TeamUpdateNotFound(c *check.C) {
+	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com", Tags: []string{"tag1"}}
+	err := s.TeamStorage.Update(t)
+	c.Assert(err, check.DeepEquals, auth.ErrTeamNotFound)
+}
+
 func (s *TeamSuite) TestFindAllTeams(c *check.C) {
 	err := s.TeamStorage.Insert(auth.Team{Name: "corrino"})
 	c.Assert(err, check.IsNil)

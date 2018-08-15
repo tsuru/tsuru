@@ -1671,19 +1671,23 @@ func (s *AuthSuite) TestUpdateTeamNotFound(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrTeamNotFound.Error()+"\n")
 }
 
-func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
-	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
-		return nil, authTypes.ErrInvalidTeamName
+func (s *AuthSuite) TestUpdateTeamTags(c *check.C) {
+	var updated bool
+	s.mockTeamService.OnUpdate = func(name string, tags []string) error {
+		c.Assert(name, check.DeepEquals, "team1")
+		c.Assert(tags, check.DeepEquals, []string{"tag1", "tag2"})
+		updated = true
+		return nil
 	}
-	body := strings.NewReader("newname=")
-	request, err := http.NewRequest(http.MethodPost, "/teams/team1", body)
+	body := strings.NewReader("tag=tag2&tags.0=tag1")
+	request, err := http.NewRequest(http.MethodPut, "/teams/team1", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "new team name cannot be empty\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(updated, check.DeepEquals, true)
 }
 
 func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {

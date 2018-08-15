@@ -61,6 +61,15 @@ func (t *teamService) Create(name string, tags []string, user *authTypes.User) e
 	return nil
 }
 
+func (t *teamService) Update(name string, tags []string) error {
+	team, err := t.storage.FindByName(name)
+	if err != nil {
+		return err
+	}
+	team.Tags = tags
+	return t.storage.Update(*team)
+}
+
 func (t *teamService) List() ([]authTypes.Team, error) {
 	return t.storage.FindAll()
 }

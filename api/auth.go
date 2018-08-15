@@ -251,30 +251,30 @@ var teamRenameFns = []func(oldName, newName string) error{
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Team not found
-func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
+func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if err := r.ParseForm(); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	name := r.URL.Query().Get(":name")
 	type teamChange struct {
 		NewName string
+		Tags    []string
 	}
 	changeRequest := teamChange{}
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&changeRequest, r.Form)
-	if err != nil {
+	if err := dec.DecodeValues(&changeRequest, r.Form); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	if changeRequest.NewName == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "new team name cannot be empty"}
-	}
+	changeRequest.Tags = append(changeRequest.Tags, r.Form["tag"]...) // for compatibility
 	allowed := permission.Check(t, permission.PermTeamUpdate,
 		permission.Context(permission.CtxTeam, name),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	oldTeam, err := servicemanager.Team.FindByName(name)
+	_, err := servicemanager.Team.FindByName(name)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -292,11 +292,14 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	if changeRequest.NewName == "" {
+		return servicemanager.Team.Update(name, changeRequest.Tags)
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	err = servicemanager.Team.Create(changeRequest.NewName, oldTeam.Tags, u)
+	err = servicemanager.Team.Create(changeRequest.NewName, changeRequest.Tags, u)
 	if err != nil {
 		return err
 	}
