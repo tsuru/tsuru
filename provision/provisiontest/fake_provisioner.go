@@ -587,6 +587,9 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 }
 
 func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	if err := p.getError("NodeForNodeData"); err != nil {
+		return nil, err
+	}
 	nodeAddrMap := map[string]provision.Node{}
 	for addr, n := range p.nodes {
 		n := n

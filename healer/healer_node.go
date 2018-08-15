@@ -328,7 +328,11 @@ func (h *NodeHealer) GetNodeStatusData(node provision.Node) (NodeStatusData, err
 	return nodeStatus, nil
 }
 
-func (h *NodeHealer) UpdateNodeData(node provision.Node, checks []provision.NodeCheckResult) error {
+func (h *NodeHealer) UpdateNodeData(nodeAddrs []string, checks []provision.NodeCheckResult) error {
+	nodeAddr, err := findNodeForNodeAddrs(nodeAddrs)
+	if err != nil {
+		return err
+	}
 	isSuccess := true
 	for _, c := range checks {
 		isSuccess = c.Successful
@@ -348,7 +352,7 @@ func (h *NodeHealer) UpdateNodeData(node provision.Node, checks []provision.Node
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.UpsertId(node.Address(), bson.M{
+	_, err = coll.UpsertId(nodeAddr, bson.M{
 		"$set": toInsert,
 		"$push": bson.M{
 			"checks": bson.D([]bson.DocElem{
@@ -358,6 +362,31 @@ func (h *NodeHealer) UpdateNodeData(node provision.Node, checks []provision.Node
 		},
 	})
 	return err
+}
+
+func findNodeForNodeAddrs(nodeAddrs []string) (string, error) {
+	if len(nodeAddrs) == 1 {
+		return nodeAddrs[0], nil
+	}
+	var foundNodes []struct {
+		Address string `bson:"_id"`
+	}
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return "", err
+	}
+	defer coll.Close()
+	err = coll.Find(bson.M{"_id": bson.M{"$in": nodeAddrs}}).All(&foundNodes)
+	if err != nil {
+		return "", err
+	}
+	if len(foundNodes) == 0 {
+		return "", errors.Errorf("node not found for addrs %v", nodeAddrs)
+	}
+	if len(foundNodes) > 1 {
+		return "", errors.Errorf("ambiguous nodes for addrs, received: %v, found in db: %v", nodeAddrs, foundNodes)
+	}
+	return foundNodes[0].Address, nil
 }
 
 func (h *NodeHealer) RemoveNode(node provision.Node) error {
