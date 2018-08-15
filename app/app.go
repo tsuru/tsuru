@@ -885,26 +885,47 @@ type UpdateUnitsResult struct {
 	Found bool
 }
 
-// UpdateNodeStatus updates the status of the given node and its units,
-// returning a map which units were found during the update.
-func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
+func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, err
 	}
-	var node provision.Node
 	for _, p := range provisioners {
 		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
-			node, err = nodeProv.NodeForNodeData(nodeData)
+			var node provision.Node
+			if len(nodeData.Addrs) == 1 {
+				node, err = nodeProv.GetNode(nodeData.Addrs[0])
+			} else {
+				node, err = nodeProv.NodeForNodeData(nodeData)
+			}
 			if err == nil {
-				break
+				return node, nil
 			}
 			if errors.Cause(err) != provision.ErrNodeNotFound {
 				return nil, err
 			}
 		}
 	}
-	if node == nil {
+	return nil, provision.ErrNodeNotFound
+}
+
+// UpdateNodeStatus updates the status of the given node and its units,
+// returning a map which units were found during the update.
+func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
+	node, findNodeErr := findNodeForNodeData(nodeData)
+	var nodeAddresses []string
+	if findNodeErr == nil {
+		nodeAddresses = []string{node.Address()}
+	} else {
+		nodeAddresses = nodeData.Addrs
+	}
+	if healer.HealerInstance != nil {
+		err := healer.HealerInstance.UpdateNodeData(nodeAddresses, nodeData.Checks)
+		if err != nil {
+			log.Errorf("[update node status] unable to set node status in healer: %s", err)
+		}
+	}
+	if findNodeErr == provision.ErrNodeNotFound {
 		counterNodesNotFound.Inc()
 		log.Errorf("[update node status] node not found with nodedata: %#v", nodeData)
 		result := make([]UpdateUnitsResult, len(nodeData.Units))
@@ -913,11 +934,8 @@ func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, e
 		}
 		return result, nil
 	}
-	if healer.HealerInstance != nil {
-		err = healer.HealerInstance.UpdateNodeData(node, nodeData.Checks)
-		if err != nil {
-			log.Errorf("[update node status] unable to set node status in healer: %s", err)
-		}
+	if findNodeErr != nil {
+		return nil, findNodeErr
 	}
 	unitProv, ok := node.Provisioner().(provision.UnitStatusProvisioner)
 	if !ok {
@@ -926,7 +944,7 @@ func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, e
 	result := make([]UpdateUnitsResult, len(nodeData.Units))
 	for i, unitData := range nodeData.Units {
 		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
-		err = unitProv.SetUnitStatus(unit, unitData.Status)
+		err := unitProv.SetUnitStatus(unit, unitData.Status)
 		_, isNotFound := err.(*provision.UnitNotFoundError)
 		if err != nil && !isNotFound {
 			return nil, err

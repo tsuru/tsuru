@@ -6,7 +6,9 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
@@ -940,6 +943,89 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 		{ID: units[2].ID + "-not-found", Found: false},
 	}
 	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateNodeStatusProvError(c *check.C) {
+	_, err := healer.Initialize()
+	c.Assert(err, check.IsNil)
+	defer func() {
+		healer.HealerInstance.Shutdown(context.Background())
+		healer.HealerInstance = nil
+	}()
+
+	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
+	c.Assert(err, check.IsNil)
+
+	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
+	c.Assert(err, check.ErrorMatches, "myerror")
+
+	node, err := s.provisioner.GetNode("addr1")
+	c.Assert(err, check.IsNil)
+	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeData.Checks, check.HasLen, 2)
+}
+
+func (s *S) TestUpdateNodeStatusProvErrorNotFoundInHealer(c *check.C) {
+	_, err := healer.Initialize()
+	c.Assert(err, check.IsNil)
+	defer func() {
+		healer.HealerInstance.Shutdown(context.Background())
+		healer.HealerInstance = nil
+	}()
+
+	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+
+	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
+	c.Assert(err, check.ErrorMatches, "myerror")
+
+	node, err := s.provisioner.GetNode("addr1")
+	c.Assert(err, check.IsNil)
+	_, err = healer.HealerInstance.GetNodeStatusData(node)
+	c.Assert(err, check.ErrorMatches, "node not found")
+}
+
+func (s *S) TestUpdateNodeStatusProvErrorSingleAddr(c *check.C) {
+	_, err := healer.Initialize()
+	c.Assert(err, check.IsNil)
+	defer func() {
+		healer.HealerInstance.Shutdown(context.Background())
+		healer.HealerInstance = nil
+	}()
+
+	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+
+	s.provisioner.PrepareFailure("GetNode", stderrors.New("myerror"))
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1"}})
+	c.Assert(err, check.ErrorMatches, "myerror")
+
+	node, err := s.provisioner.GetNode("addr1")
+	c.Assert(err, check.IsNil)
+	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeData.Checks, check.HasLen, 1)
 }
 
 func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {

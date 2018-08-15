@@ -54,7 +54,7 @@ func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *p
 	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
 	c.Assert(nodes[0].IaaSID(), check.Equals, "m-1")
 
-	err = healer.UpdateNodeData(nodes[0], []provision.NodeCheckResult{
+	err = healer.UpdateNodeData([]string{nodes[0].Address()}, []provision.NodeCheckResult{
 		{
 			Name:       "whatever",
 			Successful: true,
@@ -446,7 +446,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -520,7 +520,7 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -633,7 +633,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -678,7 +678,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 		{Name: "ok1", Successful: true},
 		{Name: "ok2", Successful: true},
 	}
-	err = healer.UpdateNodeData(node, checks)
+	err = healer.UpdateNodeData([]string{node.Address()}, checks)
 	c.Assert(err, check.IsNil)
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
@@ -698,6 +698,87 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	})
 }
 
+func (s *S) TestHealerUpdateNodeDataMultipleNodes(c *check.C) {
+	p := provisiontest.ProvisionerInstance
+	nodeAddr := "http://addr1:1"
+	err := p.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+	})
+	c.Assert(err, check.IsNil)
+	node, err := p.GetNode(nodeAddr)
+	c.Assert(err, check.IsNil)
+	healer := newNodeHealer(nodeHealerArgs{})
+	healer.Shutdown(context.Background())
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
+	}
+	err = healer.UpdateNodeData([]string{node.Address()}, checks)
+	c.Assert(err, check.IsNil)
+	err = healer.UpdateNodeData([]string{node.Address(), "http://addr2:2"}, checks)
+	c.Assert(err, check.IsNil)
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	var result NodeStatusData
+	err = coll.FindId(nodeAddr).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
+	c.Assert(result.LastUpdate.IsZero(), check.Equals, false)
+	c.Assert(result.Checks[0].Time.IsZero(), check.Equals, false)
+	result.LastUpdate = time.Time{}
+	result.LastSuccess = time.Time{}
+	c.Assert(result.Checks, check.HasLen, 2)
+	result.Checks[0].Time = time.Time{}
+	result.Checks[1].Time = time.Time{}
+	c.Assert(result, check.DeepEquals, NodeStatusData{
+		Address: nodeAddr,
+		Checks:  []NodeChecks{{Checks: checks}, {Checks: checks}},
+	})
+}
+
+func (s *S) TestHealerUpdateNodeDataMultipleNodesNotFound(c *check.C) {
+	p := provisiontest.ProvisionerInstance
+	nodeAddr := "http://addr1:1"
+	err := p.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+	})
+	c.Assert(err, check.IsNil)
+	node, err := p.GetNode(nodeAddr)
+	c.Assert(err, check.IsNil)
+	healer := newNodeHealer(nodeHealerArgs{})
+	healer.Shutdown(context.Background())
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
+	}
+	err = healer.UpdateNodeData([]string{node.Address(), "http://addr2:2"}, checks)
+	c.Assert(err, check.ErrorMatches, `node not found for addrs \[http://addr1:1 http://addr2:2\]`)
+}
+
+func (s *S) TestHealerUpdateNodeDataMultipleNodesAmbiguous(c *check.C) {
+	p := provisiontest.ProvisionerInstance
+	nodeAddr := "http://addr1:1"
+	err := p.AddNode(provision.AddNodeOptions{
+		Address: nodeAddr,
+	})
+	c.Assert(err, check.IsNil)
+	node, err := p.GetNode(nodeAddr)
+	c.Assert(err, check.IsNil)
+	healer := newNodeHealer(nodeHealerArgs{})
+	healer.Shutdown(context.Background())
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
+	}
+	err = healer.UpdateNodeData([]string{node.Address()}, checks)
+	c.Assert(err, check.IsNil)
+	err = healer.UpdateNodeData([]string{"http://addr2:2"}, checks)
+	c.Assert(err, check.IsNil)
+	err = healer.UpdateNodeData([]string{node.Address(), "http://addr2:2"}, checks)
+	c.Assert(err, check.ErrorMatches, `ambiguous nodes for addrs, received: \[http://addr1:1 http://addr2:2\], found in db: \[{http://addr1:1} {http://addr2:2}\]`)
+}
+
 func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
@@ -710,7 +791,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown(context.Background())
 	for i := 0; i < 20; i++ {
-		err = healer.UpdateNodeData(node, []provision.NodeCheckResult{
+		err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 			{Name: fmt.Sprintf("ok1-%d", i), Successful: true},
 			{Name: fmt.Sprintf("ok2-%d", i), Successful: true},
 		})
@@ -761,7 +842,7 @@ func (s *S) TestHealerGetNodeStatusData(c *check.C) {
 		{Name: "ok1", Successful: true},
 		{Name: "ok2", Successful: true},
 	}
-	err = healer.UpdateNodeData(node, checks)
+	err = healer.UpdateNodeData([]string{node.Address()}, checks)
 	c.Assert(err, check.IsNil)
 	status, err = healer.GetNodeStatusData(node)
 	c.Assert(err, check.IsNil)
@@ -834,7 +915,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
@@ -861,7 +942,7 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown(context.Background())
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
@@ -894,9 +975,9 @@ func (s *S) TestFindNodesForHealingRotateResults(c *check.C) {
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
-	err = healer.UpdateNodeData(node1, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node1.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
-	err = healer.UpdateNodeData(node2, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node2.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodesResult1, _, err := healer.findNodesForHealing()
@@ -940,7 +1021,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	healer.Shutdown(context.Background())
 	healer.started = time.Now().Add(-3 * time.Second)
 
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 
@@ -1014,7 +1095,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
+	err = healer.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)

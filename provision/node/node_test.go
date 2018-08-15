@@ -225,7 +225,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p1.GetNode("http://addr1")
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData(node, []provision.NodeCheckResult{
+	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
@@ -256,7 +256,7 @@ func (s *S) TestRemoveNodeWithNodeInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p1.GetNode(machine.Address)
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData(node, []provision.NodeCheckResult{
+	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
@@ -288,7 +288,7 @@ func (s *S) TestRemoveNodeWithNodeInstanceRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p1.GetNode(machine.Address)
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData(node, []provision.NodeCheckResult{
+	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
