@@ -218,7 +218,7 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 		}
 		_, err = client.CoreV1().PersistentVolumes().Create(pv)
 		if err != nil && !k8sErrors.IsAlreadyExists(err) {
-			return err
+			return errors.WithStack(err)
 		}
 		selector = &metav1.LabelSelector{
 			MatchLabels: labelSet.ToVolumeSelector(),
@@ -242,7 +242,7 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 	}
 	_, err = client.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
-		return err
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -265,10 +265,10 @@ func volumeExists(client *ClusterClient, name string) (bool, error) {
 		return false, nil
 	}
 	if pvErr != nil {
-		return false, pvErr
+		return false, errors.WithStack(pvErr)
 	}
 	if pvcErr != nil {
-		return false, pvcErr
+		return false, errors.WithStack(pvcErr)
 	}
 	return true, nil
 }
