@@ -369,11 +369,12 @@ func (s *AuthSuite) TestLogout(c *check.C) {
 
 func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	teamName := "teamredbull"
-	s.mockTeamService.OnCreate = func(teamName string, _ *authTypes.User) error {
+	s.mockTeamService.OnCreate = func(teamName string, tags []string, _ *authTypes.User) error {
 		c.Assert(teamName, check.Equals, teamName)
+		c.Assert(tags, check.DeepEquals, []string{"tag1", "tag2"})
 		return nil
 	}
-	b := strings.NewReader("name=" + teamName)
+	b := strings.NewReader("name=" + teamName + "&tag=tag1&tag=tag2")
 	request, err := http.NewRequest(http.MethodPost, "/teams", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -387,12 +388,13 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 		Kind:   "team.create",
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": teamName},
+			{"name": "tag", "value": []string{"tag1", "tag2"}},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestCreateTeamInvalidTeamName(c *check.C) {
-	s.mockTeamService.OnCreate = func(_ string, _ *authTypes.User) error {
+	s.mockTeamService.OnCreate = func(_ string, _ []string, _ *authTypes.User) error {
 		return authTypes.ErrInvalidTeamName
 	}
 	b := strings.NewReader("ble=bla")
@@ -407,7 +409,7 @@ func (s *AuthSuite) TestCreateTeamInvalidTeamName(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
-	s.mockTeamService.OnCreate = func(_ string, _ *authTypes.User) error {
+	s.mockTeamService.OnCreate = func(_ string, _ []string, _ *authTypes.User) error {
 		return authTypes.ErrTeamAlreadyExists
 	}
 	teamName := "timeredbull"
@@ -1636,7 +1638,7 @@ func (s *AuthSuite) TestUpdateTeam(c *check.C) {
 		c.Assert(name, check.Equals, oldTeamName)
 		return &authTypes.Team{Name: name}, nil
 	}
-	s.mockTeamService.OnCreate = func(name string, _ *authTypes.User) error {
+	s.mockTeamService.OnCreate = func(name string, _ []string, _ *authTypes.User) error {
 		c.Assert(name, check.Equals, newTeamName)
 		return nil
 	}
@@ -1685,6 +1687,9 @@ func (s *AuthSuite) TestUpdateTeamNewTeamInvalid(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &authTypes.Team{}, nil
+	}
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string
@@ -1717,6 +1722,9 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 }
 
 func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
+	s.mockTeamService.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &authTypes.Team{}, nil
+	}
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string

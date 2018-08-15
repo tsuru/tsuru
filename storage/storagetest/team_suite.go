@@ -17,13 +17,14 @@ type TeamSuite struct {
 }
 
 func (s *TeamSuite) TestInsertTeam(c *check.C) {
-	t := auth.Team{Name: "teamname", CreatingUser: "me@example.com"}
+	t := auth.Team{Name: "teamname", Tags: []string{"tag1", "tag2"}, CreatingUser: "me@example.com"}
 	err := s.TeamStorage.Insert(t)
 	c.Assert(err, check.IsNil)
 	team, err := s.TeamStorage.FindByName(t.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(team.Name, check.Equals, t.Name)
 	c.Assert(team.CreatingUser, check.Equals, t.CreatingUser)
+	c.Assert(team.Tags, check.DeepEquals, t.Tags)
 }
 
 func (s *TeamSuite) TestInsertDuplicateTeam(c *check.C) {
@@ -63,13 +64,13 @@ func (s *TeamSuite) TestFindTeamByNameNotFound(c *check.C) {
 }
 
 func (s *TeamSuite) TestFindTeamByNames(c *check.C) {
-	t1 := auth.Team{Name: "team1"}
+	t1 := auth.Team{Name: "team1", Tags: []string{}}
 	err := s.TeamStorage.Insert(t1)
 	c.Assert(err, check.IsNil)
-	t2 := auth.Team{Name: "team2"}
+	t2 := auth.Team{Name: "team2", Tags: []string{}}
 	err = s.TeamStorage.Insert(t2)
 	c.Assert(err, check.IsNil)
-	t3 := auth.Team{Name: "team3"}
+	t3 := auth.Team{Name: "team3", Tags: []string{}}
 	err = s.TeamStorage.Insert(t3)
 	c.Assert(err, check.IsNil)
 	teams, err := s.TeamStorage.FindByNames([]string{t1.Name, t2.Name, "unknown"})

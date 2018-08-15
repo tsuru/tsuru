@@ -14,10 +14,11 @@ import (
 type Team struct {
 	Name         string `json:"name"`
 	CreatingUser string
+	Tags         []string `json:"tags"`
 }
 
 type TeamService interface {
-	Create(string, *User) error
+	Create(string, []string, *User) error
 	List() ([]Team, error)
 	FindByName(string) (*Team, error)
 	FindByNames([]string) ([]Team, error)
