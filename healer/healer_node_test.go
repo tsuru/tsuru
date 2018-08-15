@@ -656,7 +656,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	err = healer.tryHealingNode(nodes[0], "myreason", nil)
-	c.Assert(err, check.ErrorMatches, "Error trying to insert node healing event, healing aborted: event throttled, limit for healer on any node is 3 every 5m0s")
+	c.Assert(err, check.ErrorMatches, "Error trying to insert node healing event for node \"http://addr1:1\", healing aborted: event throttled, limit for healer on any node is 3 every 5m0s")
 	nodes, err = p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)

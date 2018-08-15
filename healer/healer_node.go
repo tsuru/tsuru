@@ -224,7 +224,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			// Healing in progress.
 			return nil
 		}
-		return errors.Wrap(err, "Error trying to insert node healing event, healing aborted")
+		return errors.Wrapf(err, "Error trying to insert node healing event for node %q, healing aborted", node.Address())
 	}
 	var createdNode *provision.NodeSpec
 	var evtErr error
@@ -240,7 +240,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			updateErr = evt.DoneCustomData(evtErr, createdNode)
 		}
 		if updateErr != nil {
-			log.Errorf("error trying to update healing event: %s", updateErr)
+			log.Errorf("error trying to update healing event for node %q: %s", node.Address(), updateErr)
 		}
 	}()
 	_, err = node.Provisioner().GetNode(node.Address())
@@ -248,12 +248,12 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 		if err == provision.ErrNodeNotFound {
 			return nil
 		}
-		evtErr = errors.Wrap(err, "unable to check if node still exists")
+		evtErr = errors.Wrapf(err, "unable to check if node %q still exists", node.Address())
 		return evtErr
 	}
 	shouldHeal, err := h.shouldHealNode(node)
 	if err != nil {
-		evtErr = errors.Wrap(err, "unable to check if node should be healed")
+		evtErr = errors.Wrapf(err, "unable to check if node %q should be healed", node.Address())
 		return evtErr
 	}
 	if !shouldHeal {
