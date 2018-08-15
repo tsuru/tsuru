@@ -439,12 +439,14 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	teamsMap := map[string][]string{}
+	teamsMap := map[string]authTypes.Team{}
+	permsMap := map[string][]string{}
 	perms, err := t.Permissions()
 	if err != nil {
 		return err
 	}
 	for _, team := range teams {
+		teamsMap[team.Name] = team
 		teamCtx := permission.Context(permission.CtxTeam, team.Name)
 		var parent *permission.PermissionScheme
 		for _, p := range permsForTeam {
@@ -453,18 +455,19 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 			if permission.CheckFromPermList(perms, p, teamCtx) {
 				parent = p
-				teamsMap[team.Name] = append(teamsMap[team.Name], p.FullName())
+				permsMap[team.Name] = append(permsMap[team.Name], p.FullName())
 			}
 		}
 	}
-	if len(teamsMap) == 0 {
+	if len(permsMap) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 	var result []map[string]interface{}
-	for name, permissions := range teamsMap {
+	for name, permissions := range permsMap {
 		result = append(result, map[string]interface{}{
 			"name":        name,
+			"tags":        teamsMap[name].Tags,
 			"permissions": permissions,
 		})
 	}
@@ -537,6 +540,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	result := map[string]interface{}{
 		"name":  team.Name,
+		"tags":  team.Tags,
 		"users": includedUsers,
 		"pools": pools,
 		"apps":  apps,

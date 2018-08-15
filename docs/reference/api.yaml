@@ -703,6 +703,10 @@ paths:
             properties:
               name:
                 type: string
+              tags:
+                type: array
+                items:
+                  type: string
           description: Team name.
       responses:
         '201':
@@ -801,6 +805,10 @@ paths:
             properties:
               newname:
                 type: string
+              tags:
+                type: array
+                items:
+                  type: string
       consumes:
       - application/json
       responses:
@@ -2607,6 +2615,10 @@ definitions:
     properties:
       name:
         type: string
+      tags:
+        type: array
+        items:
+          type: string
       permissions:
         type: array
         items:
@@ -2616,6 +2628,10 @@ definitions:
     properties:
       name:
         type: string
+      tags:
+        type: array
+        items:
+          type: string
       users:
         type: array
         items:
