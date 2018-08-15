@@ -10,6 +10,7 @@ var _ TeamService = &MockTeamService{}
 // MockTeamStorage implements TeamStorage interface
 type MockTeamStorage struct {
 	OnInsert      func(Team) error
+	OnUpdate      func(Team) error
 	OnFindAll     func() ([]Team, error)
 	OnFindByName  func(string) (*Team, error)
 	OnFindByNames func([]string) ([]Team, error)
@@ -18,6 +19,10 @@ type MockTeamStorage struct {
 
 func (m *MockTeamStorage) Insert(t Team) error {
 	return m.OnInsert(t)
+}
+
+func (m *MockTeamStorage) Update(t Team) error {
+	return m.OnUpdate(t)
 }
 
 func (m *MockTeamStorage) FindAll() ([]Team, error) {
@@ -38,6 +43,7 @@ func (m *MockTeamStorage) Delete(t Team) error {
 
 type MockTeamService struct {
 	OnCreate      func(string, []string, *User) error
+	OnUpdate      func(string, []string) error
 	OnList        func() ([]Team, error)
 	OnFindByName  func(string) (*Team, error)
 	OnFindByNames func([]string) ([]Team, error)
@@ -49,6 +55,13 @@ func (m *MockTeamService) Create(teamName string, tags []string, user *User) err
 		return nil
 	}
 	return m.OnCreate(teamName, tags, user)
+}
+
+func (m *MockTeamService) Update(teamName string, tags []string) error {
+	if m.OnUpdate == nil {
+		return nil
+	}
+	return m.OnUpdate(teamName, tags)
 }
 
 func (m *MockTeamService) List() ([]Team, error) {

@@ -39,6 +39,19 @@ func (s *TeamStorage) Insert(t auth.Team) error {
 	return err
 }
 
+func (s *TeamStorage) Update(t auth.Team) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = teamsCollection(conn).UpdateId(t.Name, t)
+	if err == mgo.ErrNotFound {
+		return auth.ErrTeamNotFound
+	}
+	return err
+}
+
 func (s *TeamStorage) FindAll() ([]auth.Team, error) {
 	return s.findByQuery(nil)
 }
