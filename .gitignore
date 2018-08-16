@@ -1,4 +1,5 @@
 *.test
+.vscode/
 dist-*
 cmd/tsurud/tsurud
 docs/_build
