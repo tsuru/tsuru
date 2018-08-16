@@ -1051,6 +1051,40 @@ func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestUpdateNodeStatusUnrelatedProvError(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	defer provision.Unregister("fake1")
+	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
+
+	_, err := healer.Initialize()
+	c.Assert(err, check.IsNil)
+	defer func() {
+		healer.HealerInstance.Shutdown(context.Background())
+		healer.HealerInstance = nil
+	}()
+
+	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = p1.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
+	c.Check(err, check.IsNil)
+
+	node, err := p1.GetNode("addr1")
+	c.Assert(err, check.IsNil)
+	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeData.Checks, check.HasLen, 1)
+}
+
 func (s *S) TestGrantAccess(c *check.C) {
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
