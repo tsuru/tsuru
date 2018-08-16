@@ -890,6 +890,7 @@ func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, err
 	if err != nil {
 		return nil, err
 	}
+	provErrors := tsuruErrors.NewMultiError()
 	for _, p := range provisioners {
 		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
 			var node provision.Node
@@ -902,9 +903,12 @@ func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, err
 				return node, nil
 			}
 			if errors.Cause(err) != provision.ErrNodeNotFound {
-				return nil, err
+				provErrors.Add(err)
 			}
 		}
+	}
+	if err = provErrors.ToError(); err != nil {
+		return nil, err
 	}
 	return nil, provision.ErrNodeNotFound
 }
