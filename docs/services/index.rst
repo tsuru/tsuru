@@ -11,3 +11,4 @@ Services
     api
     build
     tsuru-services-env-var
+    open-service-broker
