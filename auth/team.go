@@ -44,7 +44,7 @@ func (t *teamService) Create(name string, tags []string, user *authTypes.User) e
 	team := authTypes.Team{
 		Name:         name,
 		CreatingUser: user.Email,
-		Tags:         tags,
+		Tags:         processTags(tags),
 	}
 	if err := t.validate(team); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (t *teamService) Update(name string, tags []string) error {
 	if err != nil {
 		return err
 	}
-	team.Tags = tags
+	team.Tags = processTags(tags)
 	return t.storage.Update(*team)
 }
 
@@ -112,4 +112,21 @@ func (t *teamService) validate(team authTypes.Team) error {
 		return authTypes.ErrInvalidTeamName
 	}
 	return nil
+}
+
+// processTags removes duplicates and trims spaces from each tag
+func processTags(tags []string) []string {
+	if tags == nil {
+		return nil
+	}
+	processedTags := []string{}
+	usedTags := make(map[string]bool)
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if len(tag) > 0 && !usedTags[tag] {
+			processedTags = append(processedTags, tag)
+			usedTags[tag] = true
+		}
+	}
+	return processedTags
 }

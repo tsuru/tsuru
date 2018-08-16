@@ -13,20 +13,41 @@ import (
 
 func (s *S) TestTeamServiceCreate(c *check.C) {
 	teamName := "pos"
-	tags := []string{"tag1=val1"}
+	tags := []string{"tag1", "tag1 ", "tag2"}
 	one := authTypes.User{Email: "king@pos.com"}
 	ts := &teamService{
 		storage: &authTypes.MockTeamStorage{
 			OnInsert: func(t authTypes.Team) error {
 				c.Assert(t.Name, check.Equals, teamName)
 				c.Assert(t.CreatingUser, check.DeepEquals, one.Email)
-				c.Assert(t.Tags, check.DeepEquals, tags)
+				c.Assert(t.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 				return nil
 			},
 		},
 	}
 
 	err := ts.Create(teamName, tags, &one)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestTeamServiceUpdate(c *check.C) {
+	teamName := "pos"
+	tags := []string{"tag1", "tag1 ", "tag2"}
+	one := authTypes.User{Email: "king@pos.com"}
+	ts := &teamService{
+		storage: &authTypes.MockTeamStorage{
+			OnFindByName: func(name string) (*authTypes.Team, error) {
+				return &authTypes.Team{Name: teamName, Tags: []string{"tag3"}, CreatingUser: one.Email}, nil
+			},
+			OnUpdate: func(t authTypes.Team) error {
+				c.Assert(t.Name, check.Equals, teamName)
+				c.Assert(t.CreatingUser, check.DeepEquals, one.Email)
+				c.Assert(t.Tags, check.DeepEquals, []string{"tag1", "tag2"})
+				return nil
+			},
+		},
+	}
+	err := ts.Update(teamName, tags)
 	c.Assert(err, check.IsNil)
 }
 
