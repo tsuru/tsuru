@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
@@ -50,15 +51,9 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if !permission.Check(t, permission.PermServiceBrokerCreate) {
 		return permission.ErrUnauthorized
 	}
-	var broker service.Broker
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	if err := r.ParseForm(); err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse form: %v", err)}
-	}
-	if err := dec.DecodeValues(&broker, r.Form); err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse broker: %v", err)}
+	broker, err := decodeServiceBroker(r)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
@@ -71,7 +66,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = servicemanager.ServiceBroker.Create(broker); err != nil {
+	if err = servicemanager.ServiceBroker.Create(*broker); err != nil {
 		if err == service.ErrServiceBrokerAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: "Broker already exists."}
 		}
@@ -96,15 +91,9 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if brokerName == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
 	}
-	var broker service.Broker
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	if err := r.ParseForm(); err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse form: %v", err)}
-	}
-	if err := dec.DecodeValues(&broker, r.Form); err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse broker: %v", err)}
+	broker, err := decodeServiceBroker(r)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
@@ -117,7 +106,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = servicemanager.ServiceBroker.Update(brokerName, broker); err == service.ErrServiceBrokerNotFound {
+	if err = servicemanager.ServiceBroker.Update(brokerName, *broker); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
@@ -153,4 +142,28 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
+}
+
+func decodeServiceBroker(request *http.Request) (*service.Broker, error) {
+	var broker service.Broker
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	if err := request.ParseForm(); err != nil {
+		return nil, fmt.Errorf("unable to parse form: %v", err)
+	}
+	if err := dec.DecodeValues(&broker, request.Form); err != nil {
+		return nil, fmt.Errorf("unable to parse broker: %v", err)
+	}
+	cacheStr := request.FormValue("Config.CacheExpiration")
+	if len(cacheStr) > 0 {
+		cache, err := time.ParseDuration(cacheStr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse cache expiration: %v", err)
+		}
+		broker.Config.CacheExpiration = &cache
+	} else {
+		broker.Config.CacheExpiration = nil
+	}
+	return &broker, nil
 }

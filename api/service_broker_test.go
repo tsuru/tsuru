@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/types/service"
@@ -81,6 +82,39 @@ func (s *S) TestServiceBrokerAdd(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 }
 
+func (s *S) TestServiceBrokerAddWithCache(c *check.C) {
+	duration := 5 * time.Minute
+	expectedBroker := service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:8080",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "username",
+					Password: "password",
+				},
+				BearerConfig: &service.BearerConfig{},
+			},
+			Context: nil,
+		},
+	}
+	s.mockService.ServiceBroker.OnCreate = func(b service.Broker) error {
+		expectedBroker.Config.CacheExpiration = &duration
+		c.Assert(b, check.DeepEquals, expectedBroker)
+		return nil
+	}
+	bodyData, err := form.EncodeToString(expectedBroker)
+	c.Assert(err, check.IsNil)
+	bodyData = "Config.CacheExpiration=5m&" + bodyData
+	request, err := http.NewRequest("POST", "/1.7/brokers", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+}
+
 func (s *S) TestServiceBrokerAddUnauthorized(c *check.C) {
 	request, err := http.NewRequest("POST", "/1.7/brokers", nil)
 	c.Assert(err, check.IsNil)
@@ -130,6 +164,40 @@ func (s *S) TestServiceBrokerUpdate(c *check.C) {
 	}
 	bodyData, err := form.EncodeToString(broker)
 	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", "/1.7/brokers/broker-name", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestServiceBrokerUpdateWithCache(c *check.C) {
+	duration := 2 * time.Hour
+	broker := service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:9090",
+		Config: service.BrokerConfig{
+			AuthConfig: &service.AuthConfig{
+				BasicAuthConfig: &service.BasicAuthConfig{
+					Username: "new-user",
+					Password: "password",
+				},
+				BearerConfig: &service.BearerConfig{},
+			},
+			Context: nil,
+		},
+	}
+	s.mockService.ServiceBroker.OnUpdate = func(name string, b service.Broker) error {
+		broker.Config.CacheExpiration = &duration
+		c.Assert(name, check.Equals, "broker-name")
+		c.Assert(b, check.DeepEquals, broker)
+		return nil
+	}
+	bodyData, err := form.EncodeToString(broker)
+	c.Assert(err, check.IsNil)
+	bodyData = "Config.CacheExpiration=2h&" + bodyData
 	request, err := http.NewRequest("PUT", "/1.7/brokers/broker-name", strings.NewReader(bodyData))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
