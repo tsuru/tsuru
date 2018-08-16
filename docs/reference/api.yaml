@@ -2827,3 +2827,5 @@ definitions:
                 properties:
                   token:
                     type: string
+          CacheExpiration:
+            type: string
