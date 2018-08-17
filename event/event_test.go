@@ -182,11 +182,11 @@ func (s *S) TestNewExtraTargetLocks(c *check.C) {
 	tests := []struct {
 		target1      Target
 		extras1      []ExtraTarget
-		disableLock1 bool
 		target2      Target
 		extras2      []ExtraTarget
-		disableLock2 bool
 		err          string
+		disableLock1 bool
+		disableLock2 bool
 	}{
 		{
 			target1: Target{Type: "app", Value: "myapp"},

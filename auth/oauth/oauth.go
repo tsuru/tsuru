@@ -168,7 +168,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 			return nil, err
 		}
 	}
-	token := Token{*t, email}
+	token := Token{Token: *t, UserEmail: email}
 	err = token.save()
 	if err != nil {
 		return nil, err

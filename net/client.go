@@ -20,6 +20,7 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 	client := &http.Client{
 		Transport: &http.Transport{
 			Dial:                dialer.Dial,
+			DialContext:         dialer.DialContext,
 			TLSHandshakeTimeout: dialTimeout,
 			MaxIdleConnsPerHost: maxIdle,
 			IdleConnTimeout:     15 * time.Second,
@@ -71,7 +72,7 @@ func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
 	}
 	baseTrans, _ := cli.Transport.(*http.Transport)
 	if baseTrans != nil {
-		newTransport.Dial = baseTrans.Dial
+		newTransport.DialContext = baseTrans.DialContext
 		newTransport.TLSHandshakeTimeout = baseTrans.TLSHandshakeTimeout
 		newTransport.MaxIdleConnsPerHost = baseTrans.MaxIdleConnsPerHost
 		newTransport.TLSClientConfig = baseTrans.TLSClientConfig

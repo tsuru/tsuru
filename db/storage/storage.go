@@ -93,5 +93,5 @@ func (s *Storage) DropDatabase(name string) error {
 //
 // If the collection does not exist, MongoDB will create it.
 func (s *Storage) Collection(name string) *Collection {
-	return &Collection{s.session.DB(s.dbname).C(name)}
+	return &Collection{Collection: s.session.DB(s.dbname).C(name)}
 }
