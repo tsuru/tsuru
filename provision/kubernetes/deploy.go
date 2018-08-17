@@ -904,7 +904,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	var oldRevision string
 	if oldDep != nil {
-		oldRevision, _ = oldDep.Annotations[replicaDepRevision]
+		oldRevision = oldDep.Annotations[replicaDepRevision]
 	}
 	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
 	if err != nil {
