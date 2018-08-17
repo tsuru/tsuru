@@ -16,7 +16,7 @@ Tsuru supports services provided by a service broker since version 1.6.0. Servic
 their services available for applications running on the platform. Users can create instances from these services, bind and unbind those instances
 as if they were tsuru native services. 
 
-The next section explains how service brokers are managed by tsuru admins. The usage of services fromm those brokers do not differ from regular
+The next section explains how service brokers are managed by tsuru admins. The usage of services from those brokers do not differ from regular
 tsuru services, except for the support for instance creation and binding parameters.
 
 Managing Service Brokers
