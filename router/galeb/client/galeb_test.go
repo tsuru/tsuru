@@ -551,6 +551,48 @@ func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
 }
 
 func (s *S) TestRemoveRuleVirtualHost(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "rule": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/rule/1"
+                       }
+                   }
+               }
+           ]
+       }
+   }`, s.client.ApiURL)}
+	s.handler.ConditionalContent["/api/virtualhost/search/findByName?name=myvh"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "virtualhost": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/virtualhost/2"
+                       }
+                   }
+               }
+           ]
+       }
+   }`, s.client.ApiURL)}
+	s.handler.ConditionalContent["/api/rule/1/parents"] = []string{"200", `{}`}
+	s.handler.RspCode = http.StatusNoContent
+	err := s.client.RemoveRuleVirtualHost("myrule", "myvh")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE", "GET"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{
+		"/api/rule/search/findByName?name=myrule",
+		"/api/virtualhost/search/findByName?name=myvh",
+		"/api/rule/1/parents/2",
+		"/api/rule/1/parents",
+	})
+}
+
+func (s *S) TestRemoveRuleVirtualHostMultipleVH(c *check.C) {
 	s.handler.ConditionalContent["/api/rule/1"] = []string{
 		"200", `{"_status": "OK"}`,
 	}
@@ -582,14 +624,29 @@ func (s *S) TestRemoveRuleVirtualHost(c *check.C) {
            ]
        }
    }`, s.client.ApiURL)}
+	s.handler.ConditionalContent["/api/rule/1/parents"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "virtualhost": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/virtualhost/1"
+                       }
+                   }
+               }
+           ]
+       }
+   }`, s.client.ApiURL)}
 	s.handler.RspCode = http.StatusNoContent
 	err := s.client.RemoveRuleVirtualHost("myrule", "myvh")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE", "GET"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE", "GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
 		"/api/rule/1/parents/2",
+		"/api/rule/1/parents",
 		"/api/rule/1",
 	})
 }
