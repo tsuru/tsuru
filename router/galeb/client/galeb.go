@@ -492,6 +492,20 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 	return c.removeResource(ruleID)
 }
 
+func (c *GalebClient) getRuleVirtualhosts(ruleID string) ([]VirtualHost, error) {
+	var rspObj struct {
+		Embedded struct {
+			VirtualHost []VirtualHost `json:"virtualhost"`
+		} `json:"_embedded"`
+	}
+	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
+	err := c.getObj(path, &rspObj)
+	if err != nil {
+		return nil, err
+	}
+	return rspObj.Embedded.VirtualHost, nil
+}
+
 func (c *GalebClient) removeRuleVirtualHostByID(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
 	path := fmt.Sprintf("%s/parents/%s", ruleID, vhId)
@@ -499,7 +513,14 @@ func (c *GalebClient) removeRuleVirtualHostByID(ruleID, virtualHostID string) er
 	if err != nil {
 		return err
 	}
-	return c.waitStatusOK(ruleID)
+	virtualhosts, err := c.getRuleVirtualhosts(ruleID)
+	if err != nil {
+		return nil
+	}
+	if len(virtualhosts) > 0 {
+		return c.waitStatusOK(ruleID)
+	}
+	return nil
 }
 
 func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) error {
