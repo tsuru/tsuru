@@ -33,6 +33,7 @@ type BrokerPlan struct {
 	// Description is a brief description of the plan, suitable for
 	// printing by a CLI.
 	Description string
+	Schemas     interface{}
 }
 
 type ServiceBrokerCatalogCacheService interface {

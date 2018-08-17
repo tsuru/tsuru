@@ -87,6 +87,9 @@ func convertResponseToCatalog(response osb.CatalogResponse) serviceTypes.BrokerC
 			cat.Services[i].Plans[j].ID = p.ID
 			cat.Services[i].Plans[j].Name = p.Name
 			cat.Services[i].Plans[j].Description = p.Description
+			if p.Schemas != nil {
+				cat.Services[i].Plans[j].Schemas = *p.Schemas
+			}
 		}
 	}
 	return cat
@@ -105,6 +108,9 @@ func convertCatalogToResponse(catalog serviceTypes.BrokerCatalog) osb.CatalogRes
 			cat.Services[i].Plans[j].ID = p.ID
 			cat.Services[i].Plans[j].Name = p.Name
 			cat.Services[i].Plans[j].Description = p.Description
+			if schemas, ok := p.Schemas.(osb.Schemas); ok {
+				cat.Services[i].Plans[j].Schemas = &schemas
+			}
 		}
 	}
 	return cat
