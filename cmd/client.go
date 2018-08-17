@@ -10,9 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
-	"strconv"
 
 	"github.com/pkg/errors"
 	tsuruerr "github.com/tsuru/tsuru/errors"
@@ -35,13 +33,23 @@ type Client struct {
 }
 
 func NewClient(client *http.Client, context *Context, manager *Manager) *Client {
-	return &Client{
-		HTTPClient:     client,
+	w := ioutil.Discard
+	if context != nil && context.Stdout != nil {
+		w = context.Stdout
+	}
+	cli := &Client{
 		context:        context,
 		progname:       manager.name,
 		currentVersion: manager.version,
 		versionHeader:  manager.versionHeader,
 	}
+	client.Transport = &VerboseRoundTripper{
+		RoundTripper: client.Transport,
+		Writer:       w,
+		Verbosity:    &cli.Verbosity,
+	}
+	cli.HTTPClient = client
+	return cli
 }
 
 func (c *Client) detectClientError(err error) error {
@@ -62,36 +70,10 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	if token, err := ReadToken(); err == nil && token != "" {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
-	request.Header.Add(VerbosityHeader, strconv.Itoa(c.Verbosity))
-	request.Close = true
-	if c.Verbosity >= 1 {
-		fmt.Fprintf(c.context.Stdout, "*************************** <Request uri=%q> **********************************\n", request.URL.RequestURI())
-		requestDump, err := httputil.DumpRequest(request, true)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Fprintf(c.context.Stdout, string(requestDump))
-		if requestDump[len(requestDump)-1] != '\n' {
-			fmt.Fprintln(c.context.Stdout)
-		}
-		fmt.Fprintf(c.context.Stdout, "*************************** </Request uri=%q> **********************************\n", request.URL.RequestURI())
-	}
 	response, err := c.HTTPClient.Do(request)
 	err = c.detectClientError(err)
 	if err != nil {
 		return nil, err
-	}
-	if c.Verbosity >= 2 {
-		fmt.Fprintf(c.context.Stdout, "*************************** <Response uri=%q> **********************************\n", request.URL.RequestURI())
-		responseDump, err := httputil.DumpResponse(response, true)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Fprintf(c.context.Stdout, string(responseDump))
-		if responseDump[len(responseDump)-1] != '\n' {
-			fmt.Fprintln(c.context.Stdout)
-		}
-		fmt.Fprintf(c.context.Stdout, "*************************** </Response uri=%q> **********************************\n", request.URL.RequestURI())
 	}
 	supported := response.Header.Get(c.versionHeader)
 	format := `#####################################################################
