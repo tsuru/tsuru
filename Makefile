@@ -7,13 +7,8 @@ TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
-LINTER_ARGS_SLOW = \
-	-j 4 --enable-gc -s vendor -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
-	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gosec \
-	--disable=structcheck --disable=gotype --disable=gotypex --deadline=60m --tests -s provision/kubernetes/pkg/client
-
 LINTER_ARGS = \
-	$(LINTER_ARGS_SLOW) --disable=staticcheck --disable=unused --disable=gosimple
+	--deadline 30m -D errcheck -E goimports -E gofmt -E misspell -E maligned
 
 
 .PHONY: all check-path test race docs install
@@ -56,11 +51,10 @@ lint: metalint
 
 metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
-		go get -u github.com/alecthomas/gometalinter; \
-		gometalinter --install; \
+		go get -u github.com/golangci/golangci-lint/cmd/golangci-lint; \
 		go install $(TSR_PKGS); \
 		go test -i $(TSR_PKGS); \
-		gometalinter $(LINTER_ARGS) ./...; \
+		golangci-lint run $(LINTER_ARGS); \
 	fi
 
 race:
