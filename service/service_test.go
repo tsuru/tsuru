@@ -47,10 +47,15 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 
 func (s *S) TestGetServiceBrokered(c *check.C) {
 	var calls int32
+	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
+		atomic.AddInt32(&calls, 1)
+		c.Assert(brokerName, check.Equals, "aws")
+		return serviceTypes.Broker{Name: brokerName}, nil
+	}
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
 		atomic.AddInt32(&calls, 1)
 		c.Assert(brokerName, check.Equals, "aws")
-		return nil, fmt.Errorf("not found")
+		return nil, nil
 	}
 	s.mockService.ServiceBrokerCatalogCache.OnSave = func(brokerName string, catalog serviceTypes.BrokerCatalog) error {
 		atomic.AddInt32(&calls, 1)
@@ -70,20 +75,20 @@ func (s *S) TestGetServiceBrokered(c *check.C) {
 		}},
 	}
 	ClientFactory = osbfake.NewFakeClientFunc(config)
-	sb, err := BrokerService()
-	c.Assert(err, check.IsNil)
-	err = sb.Create(serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
 	serv, err := Get("aws::service")
 	c.Assert(err, check.IsNil)
 	c.Assert(serv, check.DeepEquals, Service{
 		Name: "aws::service",
 		Doc:  "This service is awesome!",
 	})
-	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(3))
 }
 
 func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
+	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
+		c.Assert(brokerName, check.Equals, "aws")
+		return serviceTypes.Broker{Name: brokerName}, nil
+	}
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
 		c.Assert(brokerName, check.Equals, "aws")
 		return &serviceTypes.BrokerCatalog{
@@ -96,10 +101,6 @@ func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
 			},
 		}, nil
 	}
-	sb, err := BrokerService()
-	c.Assert(err, check.IsNil)
-	err = sb.Create(serviceTypes.Broker{Name: "aws"})
-	c.Assert(err, check.IsNil)
 	serv, err := Get("aws::service")
 	c.Assert(err, check.IsNil)
 	c.Assert(serv, check.DeepEquals, Service{
@@ -109,9 +110,9 @@ func (s *S) TestGetServiceBrokeredFromCache(c *check.C) {
 }
 
 func (s *S) TestGetServiceBrokeredServiceBrokerNotFound(c *check.C) {
-	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(brokerName string) (*serviceTypes.BrokerCatalog, error) {
+	s.mockService.ServiceBroker.OnFind = func(brokerName string) (serviceTypes.Broker, error) {
 		c.Assert(brokerName, check.Equals, "broker")
-		return nil, fmt.Errorf("not found")
+		return serviceTypes.Broker{}, serviceTypes.ErrServiceBrokerNotFound
 	}
 	serv, err := Get("broker::service")
 	c.Assert(err, check.DeepEquals, serviceTypes.ErrServiceBrokerNotFound)

@@ -944,7 +944,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithAssociatedAppsShould
 }
 
 func makeRequestToRemoveServiceInstanceWithUnbind(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/instances/%s?:service=%s&:instance=%s&unbindall=%s", service, instance, service, instance, "true")
+	url := fmt.Sprintf("/services/%[1]s/instances/%[2]s?:service=%[1]s&:instance=%[2]s&unbindall=true", service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -995,7 +995,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 }
 
 func makeRequestToRemoveServiceInstanceWithNoUnbind(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/instances/%s?:service=%s&:instance=%s&unbindall=%s", service, instance, service, instance, "false")
+	url := fmt.Sprintf("/services/%[1]s/instances/%[2]s?:service=%[1]s&:instance=%[2]s&unbindall=false", service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1384,7 +1384,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 }
 
 func makeRequestToServiceInstanceStatus(service string, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/instances/%s/status/?:instance=%s&:service=%s", service, instance, instance, service)
+	url := fmt.Sprintf("/services/%[1]s/instances/%[2]s/status/?:instance=%[2]s&:service=%[1]s", service, instance)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1697,7 +1697,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 	}
 	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%[1]s?:name=%[1]s", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
@@ -1719,7 +1719,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 }
 
 func (s *ServiceInstanceSuite) TestServiceInfoReturns404WhenTheServiceDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%[1]s?:name=%[1]s", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
@@ -1731,7 +1731,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoReturns404WhenTheServiceDoesNotExi
 }
 
 func (s *ServiceInstanceSuite) makeRequestToGetServiceDoc(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/doc/?:name=%s", name, name)
+	url := fmt.Sprintf("/services/%[1]s/doc/?:name=%[1]s", name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
