@@ -184,22 +184,7 @@ func (m *Manager) Run(args []string) {
 		args = []string{"version"}
 	}
 	if len(target) > 0 {
-		targets, err := getTargets()
-		if err == nil {
-			var ok bool
-			target, ok = targets[target]
-			if ok {
-				os.Setenv("TSURU_TARGET", target)
-			} else {
-				fmt.Fprint(m.stderr, "Target not found.\n")
-				m.finisher().Exit(1)
-				return
-			}
-		} else {
-			fmt.Fprint(m.stderr, err)
-			m.finisher().Exit(1)
-			return
-		}
+		os.Setenv("TSURU_TARGET", target)
 	}
 	if m.lookup != nil {
 		context := m.newContext(args, m.stdout, m.stderr, m.stdin)
