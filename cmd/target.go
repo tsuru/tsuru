@@ -96,6 +96,12 @@ func (t *targetSlice) String() string {
 // environment variable or in the target file.
 func ReadTarget() (string, error) {
 	if target := os.Getenv("TSURU_TARGET"); target != "" {
+		targets, err := getTargets()
+		if err == nil {
+			if val, ok := targets[target]; ok {
+				return val, nil
+			}
+		}
 		return target, nil
 	}
 	targetPath := JoinWithUserDir(".tsuru", "target")
