@@ -142,8 +142,13 @@ func GetTargetLabel() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for k, v := range targets {
-		if v == target {
+	targetKeys := make([]string, len(targets))
+	for k := range targets {
+		targetKeys = append(targetKeys, k)
+	}
+	sort.Strings(targetKeys)
+	for _, k := range targetKeys {
+		if targets[k] == target {
 			return k, nil
 		}
 	}
