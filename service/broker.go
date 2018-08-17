@@ -417,7 +417,7 @@ func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bi
 
 func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(name)
-	if err != nil {
+	if err != nil || catalog == nil {
 		response, err := b.client.GetCatalog()
 		if err != nil {
 			return nil, err

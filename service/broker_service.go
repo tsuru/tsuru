@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
@@ -108,11 +109,7 @@ func newBrokeredServiceClient(service string) (*brokerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	brokerService, err := BrokerService()
-	if err != nil {
-		return nil, err
-	}
-	broker, err := brokerService.Find(brokerName)
+	broker, err := servicemanager.ServiceBroker.Find(brokerName)
 	if err != nil {
 		return nil, err
 	}
