@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/cache"
@@ -52,11 +53,12 @@ func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*service.Bro
 		return nil, err
 	}
 
-	var catalog service.BrokerCatalog
-	err = json.Unmarshal([]byte(entry.Value), &catalog)
+	var response osb.CatalogResponse
+	err = json.Unmarshal([]byte(entry.Value), &response)
 	if err != nil {
 		return nil, err
 	}
+	catalog := convertResponseToCatalog(response)
 	return &catalog, nil
 }
 
