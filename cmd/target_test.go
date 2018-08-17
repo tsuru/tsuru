@@ -168,6 +168,30 @@ func (s *S) TestGetTargetLabel(c *check.C) {
 	}
 }
 
+func (s *S) TestGetTargetLabelStableWithRepeatedValues(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	rfs := &fstest.RecordingFs{FileContent: "2second\thttp://tsuru.io/\n1first\thttp://tsuru.io/"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+		os.Unsetenv("TSURU_TARGET")
+	}()
+	var tests = []struct {
+		expected string
+		target   string
+	}{
+		{"1first", "http://tsuru.io/"},
+		{"1first", "http://tsuru.io/"},
+		{"1first", "http://tsuru.io/"},
+	}
+	for _, t := range tests {
+		os.Setenv("TSURU_TARGET", t.target)
+		got, err := GetTargetLabel()
+		c.Check(err, check.IsNil)
+		c.Check(got, check.Equals, t.expected)
+	}
+}
+
 func (s *S) TestGetTargetLabelNotFound(c *check.C) {
 	os.Setenv("TSURU_TARGET", "http://notfound.io")
 	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\nsecond\thttp://tsuru.google.com"}
