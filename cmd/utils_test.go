@@ -37,27 +37,71 @@ func (s *S) TestWriteToken(c *check.C) {
 	err := writeToken("abc")
 	c.Assert(err, check.IsNil)
 	tokenPath := JoinWithUserDir(".tsuru", "token")
-	c.Assert(err, check.IsNil)
 	c.Assert(rfs.HasAction("create "+tokenPath), check.Equals, true)
 	fil, _ := fsystem.Open(tokenPath)
 	b, _ := ioutil.ReadAll(fil)
 	c.Assert(string(b), check.Equals, "abc")
 }
 
-func (s *S) TestReadToken(c *check.C) {
-	os.Unsetenv("TSURU_TOKEN")
-	rfs := &fstest.RecordingFs{FileContent: "123"}
+func (s *S) TestWriteTokenWithTarget(c *check.C) {
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	TargetInit(fsystem)
 	defer func() {
 		fsystem = nil
 	}()
+	err := writeToken("abc")
+	c.Assert(err, check.IsNil)
+	tokenPath1 := JoinWithUserDir(".tsuru", "token")
+	c.Assert(rfs.HasAction("create "+tokenPath1), check.Equals, true)
+	tokenPath2 := JoinWithUserDir(".tsuru", "token.d", "test")
+	c.Assert(rfs.HasAction("create "+tokenPath2), check.Equals, true)
+	fil, _ := fsystem.Open(tokenPath1)
+	b, _ := ioutil.ReadAll(fil)
+	c.Assert(string(b), check.Equals, "abc")
+	fil, _ = fsystem.Open(tokenPath2)
+	b, _ = ioutil.ReadAll(fil)
+	c.Assert(string(b), check.Equals, "abc")
+}
+
+func (s *S) TestReadToken(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
+	rfs := &fstest.RecordingFs{}
+	fsystem = rfs
+	TargetInit(fsystem)
+	f, err := fsystem.Create(JoinWithUserDir(".tsuru", "token.d", "test"))
+	c.Assert(err, check.IsNil)
+	f.WriteString("mytoken")
+	defer func() {
+		fsystem = nil
+	}()
 	token, err := ReadToken()
 	c.Assert(err, check.IsNil)
-	tokenPath := JoinWithUserDir(".tsuru", "token.d", "123test")
-	c.Assert(err, check.IsNil)
+	c.Assert(token, check.Equals, "mytoken")
+	tokenPath := JoinWithUserDir(".tsuru", "token.d", "test")
 	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
-	c.Assert(token, check.Equals, "123")
+	tokenPath = JoinWithUserDir(".tsuru", "token")
+	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, false)
+}
+
+func (s *S) TestReadTokenFallback(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
+	rfs := &fstest.RecordingFs{}
+	fsystem = rfs
+	TargetInit(fsystem)
+	f, err := fsystem.Create(JoinWithUserDir(".tsuru", "token"))
+	c.Assert(err, check.IsNil)
+	f.WriteString("mytoken")
+	defer func() {
+		fsystem = nil
+	}()
+	token, err := ReadToken()
+	c.Assert(err, check.IsNil)
+	c.Assert(token, check.Equals, "mytoken")
+	tokenPath := JoinWithUserDir(".tsuru", "token.d", "test")
+	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
+	tokenPath = JoinWithUserDir(".tsuru", "token")
+	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
 }
 
 func (s *S) TestReadTokenFileNotFound(c *check.C) {

@@ -33,18 +33,8 @@ func JoinWithUserDir(p ...string) string {
 }
 
 func writeToken(token string) error {
-	tokenPath := JoinWithUserDir(".tsuru", "token")
-	file, err := filesystem().Create(tokenPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	n, err := file.WriteString(token)
-	if err != nil {
-		return err
-	}
-	if n != len(token) {
-		return errors.New("Failed to write token file.")
+	tokenPaths := []string{
+		JoinWithUserDir(".tsuru", "token"),
 	}
 	targetLabel, err := GetTargetLabel()
 	if err == nil {
@@ -52,7 +42,9 @@ func writeToken(token string) error {
 		if err != nil {
 			return err
 		}
-		tokenPath = JoinWithUserDir(".tsuru", "token.d", targetLabel)
+		tokenPaths = append(tokenPaths, JoinWithUserDir(".tsuru", "token.d", targetLabel))
+	}
+	for _, tokenPath := range tokenPaths {
 		file, err := filesystem().Create(tokenPath)
 		if err != nil {
 			return err
@@ -74,38 +66,29 @@ func ReadToken() (string, error) {
 	if token := os.Getenv("TSURU_TOKEN"); token != "" {
 		return token, nil
 	}
+	tokenPaths := []string{
+		JoinWithUserDir(".tsuru", "token"),
+	}
 	targetLabel, err := GetTargetLabel()
 	if err == nil {
-		var tkdFile fs.File
-		tokenPath := JoinWithUserDir(".tsuru", "token.d", targetLabel)
-		tkdFile, err = filesystem().Open(tokenPath)
-		if err == nil {
-			defer tkdFile.Close()
-			token, err = ioutil.ReadAll(tkdFile)
-			if err != nil {
-				return "", err
-			}
-		}
+		tokenPaths = append([]string{JoinWithUserDir(".tsuru", "token.d", targetLabel)}, tokenPaths...)
 	}
-	if err != nil {
+	for _, tokenPath := range tokenPaths {
 		var tkFile fs.File
-		tokenPath := JoinWithUserDir(".tsuru", "token")
 		tkFile, err = filesystem().Open(tokenPath)
-		if os.IsNotExist(err) {
-			return "", nil
-		}
 		if err == nil {
 			defer tkFile.Close()
 			token, err = ioutil.ReadAll(tkFile)
 			if err != nil {
 				return "", err
 			}
+			return string(token), nil
 		}
 	}
-	if err != nil {
-		return "", err
+	if os.IsNotExist(err) {
+		return "", nil
 	}
-	return string(token), nil
+	return "", err
 }
 
 type ServiceModel struct {
