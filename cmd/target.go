@@ -158,7 +158,7 @@ func GetTargetLabel() (string, error) {
 			return k, nil
 		}
 	}
-	return "", errors.New("label for target not found " + target)
+	return "", errors.Errorf("label for target %q not found ", target)
 }
 
 func GetURLVersion(version, path string) (string, error) {

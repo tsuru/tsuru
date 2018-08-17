@@ -134,7 +134,7 @@ func (c *logout) Run(context *Context, client *Client) error {
 		errTokend = filesystem().Remove(JoinWithUserDir(".tsuru", "token.d", targetLabel))
 	}
 	err := filesystem().Remove(JoinWithUserDir(".tsuru", "token"))
-	if (err != nil && os.IsNotExist(err)) && errTokend != nil {
+	if err != nil && os.IsNotExist(err) && errTokend != nil {
 		return errors.New("You're not logged in!")
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged out!")
