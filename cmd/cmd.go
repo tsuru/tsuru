@@ -291,7 +291,7 @@ func (m *Manager) Run(args []string) {
 func (m *Manager) newContext(args []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) *Context {
 	stdout = newPagerWriter(stdout)
 	stdin = newSyncReader(stdin, stdout)
-	ctx := &Context{args, stdout, stderr, stdin}
+	ctx := &Context{Args: args, Stdout: stdout, Stderr: stderr, Stdin: stdin}
 	m.contexts = append(m.contexts, ctx)
 	return ctx
 }

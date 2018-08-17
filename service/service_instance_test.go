@@ -36,7 +36,6 @@ type InstanceSuite struct {
 	team            *authTypes.Team
 	user            *auth.User
 	mockTeamService *authTypes.MockTeamService
-	service         Service
 }
 
 var _ = check.Suite(&InstanceSuite{})

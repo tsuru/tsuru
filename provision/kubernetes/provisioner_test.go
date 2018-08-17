@@ -1676,9 +1676,9 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 }
 
 func (s *S) TestProvisionerProvision(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
+	_, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	a = provisiontest.NewFakeApp("myapp", "python", 0)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
 	crdList, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
