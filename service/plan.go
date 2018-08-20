@@ -15,12 +15,8 @@ type Plan struct {
 	Schemas     *osb.Schemas `json:",omitempty"`
 }
 
-func GetPlansByServiceName(serviceName, requestID string) ([]Plan, error) {
-	s, err := Get(serviceName)
-	if err != nil {
-		return nil, err
-	}
-	endpoint, err := s.getClient("production")
+func GetPlansByService(svc Service, requestID string) ([]Plan, error) {
+	endpoint, err := svc.getClient("production")
 	if err != nil {
 		return []Plan{}, nil
 	}
@@ -31,8 +27,8 @@ func GetPlansByServiceName(serviceName, requestID string) ([]Plan, error) {
 	return plans, nil
 }
 
-func GetPlanByServiceNameAndPlanName(serviceName, planName, requestID string) (Plan, error) {
-	plans, err := GetPlansByServiceName(serviceName, requestID)
+func GetPlanByServiceAndPlanName(svc Service, planName, requestID string) (Plan, error) {
+	plans, err := GetPlansByService(svc, requestID)
 	if err != nil {
 		return Plan{}, err
 	}

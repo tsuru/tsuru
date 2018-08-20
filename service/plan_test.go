@@ -29,8 +29,7 @@ func (s *S) TestGetPlansByServiceName(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
-	plans, err := GetPlansByServiceName("mysql", "")
+	plans, err := GetPlansByService(srvc, "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
 		{Name: "ignite", Description: "some value"},
@@ -48,8 +47,7 @@ func (s *S) TestGetPlanByServiceNameAndPlanName(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
-	plan, err := GetPlanByServiceNameAndPlanName("mysql", "small", "")
+	plan, err := GetPlanByServiceAndPlanName(srvc, "small", "")
 	c.Assert(err, check.IsNil)
 	expected := Plan{
 		Name:        "small",
@@ -62,8 +60,7 @@ func (s *S) TestGetPlansByServiceNameWithoutEndpoint(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
-	plans, err := GetPlansByServiceName("mysql", "")
+	plans, err := GetPlansByService(srvc, "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{}
 	c.Assert(plans, check.DeepEquals, expected)

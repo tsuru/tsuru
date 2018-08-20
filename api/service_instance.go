@@ -436,6 +436,10 @@ type serviceInstanceInfo struct {
 func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
+	svc, err := getService(serviceName)
+	if err != nil {
+		return err
+	}
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
@@ -451,7 +455,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	plan, err := service.GetPlanByServiceNameAndPlanName(serviceName, serviceInstance.PlanName, requestID)
+	plan, err := service.GetPlanByServiceAndPlanName(svc, serviceInstance.PlanName, requestID)
 	if err != nil {
 		return err
 	}
@@ -561,7 +565,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	requestID := requestIDHeader(r)
-	plans, err := service.GetPlansByServiceName(serviceName, requestID)
+	plans, err := service.GetPlansByService(s, requestID)
 	if err != nil {
 		return err
 	}
