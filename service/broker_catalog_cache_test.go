@@ -66,7 +66,7 @@ func (s *S) TestCacheSaveCustomExpiration(c *check.C) {
 		storage: &cache.MockCacheStorage{
 			OnPut: func(entry cache.CacheEntry) error {
 				atomic.AddInt32(&calls, 1)
-				c.Assert(entry.ExpireAt.Sub(time.Now()) <= time.Duration(5*time.Minute), check.Equals, true)
+				c.Assert(time.Until(entry.ExpireAt) <= time.Duration(5*time.Minute), check.Equals, true)
 				return nil
 			},
 		},
