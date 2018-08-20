@@ -25,6 +25,10 @@ func (e *HTTP) Error() string {
 	return e.Message
 }
 
+func (e *HTTP) StatusCode() int {
+	return e.Code
+}
+
 // ValidationError is an error implementation used whenever a validation
 // failure occurs.
 type ValidationError struct {

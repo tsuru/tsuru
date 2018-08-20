@@ -23,6 +23,23 @@ const (
 
 var errUnauthorized = &tsuruerr.HTTP{Code: http.StatusUnauthorized, Message: "unauthorized"}
 
+type statusCoder interface {
+	StatusCode() int
+}
+
+func isUnauthorized(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == errUnauthorized {
+		return true
+	}
+	if statusErr, ok := err.(statusCoder); ok {
+		return statusErr.StatusCode() == http.StatusUnauthorized
+	}
+	return false
+}
+
 type Client struct {
 	HTTPClient     *http.Client
 	context        *Context
