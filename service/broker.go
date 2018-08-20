@@ -390,8 +390,8 @@ func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[
 	return params, nil
 }
 
-func (b *brokerClient) Plans(catalogName string) ([]Plan, error) {
-	_, s, err := b.getService(b.service, catalogName)
+func (b *brokerClient) Plans(_ string) ([]Plan, error) {
+	_, s, err := b.getService(b.service, b.broker.Name)
 	if err != nil {
 		return nil, err
 	}

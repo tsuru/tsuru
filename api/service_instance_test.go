@@ -36,6 +36,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -1502,7 +1503,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
 		}
 		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
-			w.Write([]byte(`[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`))
+			w.Write([]byte(`[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "no space left for you"}]`))
 		}
 		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
 	}))
@@ -1545,7 +1546,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 			"key2": "value2",
 		},
 		PlanName:        "small",
-		PlanDescription: "not space left for you",
+		PlanDescription: "no space left for you",
 		Description:     si.Description,
 		Tags:            []string{"tag 1"},
 	}
@@ -1799,7 +1800,7 @@ func (s *ServiceInstanceSuite) TestServicePlans(c *check.C) {
 	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
-		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
+		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "no space left for you"}]`
 		w.Write([]byte(content))
 	}))
 	defer ts.Close()
@@ -1819,7 +1820,47 @@ func (s *ServiceInstanceSuite) TestServicePlans(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []service.Plan{
 		{Name: "ignite", Description: "some value"},
-		{Name: "small", Description: "not space left for you"},
+		{Name: "small", Description: "no space left for you"},
+	}
+	c.Assert(plans, check.DeepEquals, expected)
+}
+
+func (s *ServiceInstanceSuite) TestBrokeredServicePlans(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
+		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "no space left for you"}]`
+		w.Write([]byte(content))
+	}))
+	defer ts.Close()
+	s.mockService.ServiceBroker.OnFind = func(broker string) (serviceTypes.Broker, error) {
+		return serviceTypes.Broker{Name: broker}, nil
+	}
+	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(broker string) (*serviceTypes.BrokerCatalog, error) {
+		return &serviceTypes.BrokerCatalog{
+			Services: []serviceTypes.BrokerService{
+				{Name: "s3", Plans: []serviceTypes.BrokerPlan{
+					{Name: "ignite", Description: "some value"},
+					{Name: "small", Description: "no space left for you"},
+				}},
+			},
+		}, nil
+	}
+	request, err := http.NewRequest("GET", "/services/aws::s3/plans", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	request.Header.Set(requestIDHeader, "test")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var plans []service.Plan
+	err = json.Unmarshal(recorder.Body.Bytes(), &plans)
+	c.Assert(err, check.IsNil)
+	expected := []service.Plan{
+		{Name: "ignite", Description: "some value"},
+		{Name: "small", Description: "no space left for you"},
 	}
 	c.Assert(plans, check.DeepEquals, expected)
 }
