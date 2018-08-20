@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/types/service"
 )
 
-const defaultExpiration = 15 * time.Minute
+const defaultExpiration = 1 * time.Hour
 
 var _ service.ServiceBrokerCatalogCacheService = &serviceBrokerCatalogCacheService{}
 
