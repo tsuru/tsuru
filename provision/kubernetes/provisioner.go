@@ -213,6 +213,9 @@ func changeState(a provision.App, process string, state servicecommon.ProcessSta
 	if err != nil {
 		return err
 	}
+	if err := ensureAppCustomResourceSynced(client, a); err != nil {
+		return err
+	}
 	return servicecommon.ChangeAppState(&serviceManager{
 		client: client,
 		writer: w,
@@ -222,6 +225,9 @@ func changeState(a provision.App, process string, state servicecommon.ProcessSta
 func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
+		return err
+	}
+	if err := ensureAppCustomResourceSynced(client, a); err != nil {
 		return err
 	}
 	return servicecommon.ChangeUnits(&serviceManager{
