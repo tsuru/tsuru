@@ -14,18 +14,11 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	samlErrors "github.com/tsuru/tsuru/auth/saml/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
-)
-
-var (
-	ErrMissingRequestIdError        = &tsuruErrors.ValidationError{Message: "You must provide RequestID to login"}
-	ErrMissingFormValueError        = &tsuruErrors.ValidationError{Message: "SAMLResponse form value missing"}
-	ErrParseResponseError           = &tsuruErrors.ValidationError{Message: "SAMLResponse parse error"}
-	ErrEmptyIDPResponseError        = &tsuruErrors.ValidationError{Message: "SAMLResponse form value missing"}
-	ErrRequestWaitingForCredentials = &tsuruErrors.ValidationError{Message: "Waiting credentials from IDP"}
 )
 
 type SAMLAuthParser interface {
@@ -149,7 +142,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	}
 	requestId, ok := params["request_id"]
 	if !ok {
-		return nil, ErrMissingRequestIdError
+		return nil, samlErrors.ErrMissingRequestIdError
 	}
 	req := request{}
 	err = req.getById(requestId)
@@ -157,7 +150,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, err
 	}
 	if !req.Authed {
-		return nil, ErrRequestWaitingForCredentials
+		return nil, samlErrors.ErrRequestWaitingForCredentials
 	}
 	user, err := auth.GetUserByEmail(req.Email)
 	if err != nil {
@@ -194,13 +187,13 @@ func (s *SAMLAuthScheme) idpHost() string {
 func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	xml, ok := params["xml"]
 	if !ok {
-		return ErrMissingFormValueError
+		return samlErrors.ErrMissingFormValueError
 	}
 	log.Debugf("Data received from identity provider: %s", xml)
 	response, err := s.Parser.Parse(xml)
 	if err != nil {
 		log.Errorf("Got error while parsing IDP data: %s", err)
-		return ErrParseResponseError
+		return samlErrors.ErrParseResponseError
 	}
 	sp, err := s.createSP()
 	if err != nil {
@@ -212,7 +205,7 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 		if strings.Contains(err.Error(), "assertion has expired") {
 			return ErrRequestNotFound
 		}
-		return ErrParseResponseError
+		return samlErrors.ErrParseResponseError
 	}
 	requestId, err := getRequestIdFromResponse(response)
 	if requestId == "" && err == ErrRequestIdNotFound {
@@ -330,7 +323,7 @@ func (s *SAMLAuthScheme) Info() (auth.SchemeInfo, error) {
 
 func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 	if xml == "" {
-		return nil, ErrMissingFormValueError
+		return nil, samlErrors.ErrMissingFormValueError
 	}
 	var response *saml.Response
 	var err error

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/saml/errors"
 	"gopkg.in/check.v1"
 )
 
@@ -27,7 +28,7 @@ func (s *S) TestSamlAuthLoginWithEmptyRequestId(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	scheme.Login(params)
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrMissingRequestIdError)
+	c.Assert(err, check.Equals, errors.ErrMissingRequestIdError)
 }
 
 func (s *S) TestSamlAuthLoginWithInvalidRequestId(c *check.C) {
@@ -396,7 +397,7 @@ func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
 	params := make(map[string]string)
 	params["request_id"] = info["request_id"].(string)
 	_, err = scheme.Login(params)
-	c.Assert(err, check.Equals, ErrRequestWaitingForCredentials)
+	c.Assert(err, check.Equals, errors.ErrRequestWaitingForCredentials)
 }
 
 func (s *S) TestSamlCallbackWithEmptyResponse(c *check.C) {
@@ -405,7 +406,7 @@ func (s *S) TestSamlCallbackWithEmptyResponse(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	scheme.Login(params)
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrMissingFormValueError)
+	c.Assert(err, check.Equals, errors.ErrMissingFormValueError)
 }
 
 func (s *S) TestSamlCallbackWithInvalidResponse(c *check.C) {
@@ -415,7 +416,7 @@ func (s *S) TestSamlCallbackWithInvalidResponse(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	scheme.Login(params)
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrParseResponseError)
+	c.Assert(err, check.Equals, errors.ErrParseResponseError)
 }
 
 func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *check.C) {
