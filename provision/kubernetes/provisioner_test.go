@@ -869,6 +869,29 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(units, check.HasLen, 3)
 }
 
+func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	a.Deploys = 1
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
+
 func (s *S) TestRemoveUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -921,6 +944,25 @@ func (s *S) TestRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units[0].ID, check.Not(check.Equals), id)
+}
+
+func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	a.Deploys = 1
+	err = s.p.Restart(a, "", nil)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestStopStart(c *check.C) {
