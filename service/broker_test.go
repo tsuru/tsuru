@@ -30,7 +30,7 @@ func (s *S) TestBrokerClientPlans(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	plans, err := client.Plans("aws")
+	plans, err := client.Plans("")
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []Plan{
 		{Name: "plan1", Description: "First plan"},
