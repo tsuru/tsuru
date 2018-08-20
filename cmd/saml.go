@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth/saml"
+	samlErrors "github.com/tsuru/tsuru/auth/saml/errors"
 	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
@@ -106,7 +106,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "Error reading body")
 		}
-		if strings.TrimSpace(string(result)) == saml.ErrRequestWaitingForCredentials.Message {
+		if strings.TrimSpace(string(result)) == samlErrors.ErrRequestWaitingForCredentials.Message {
 			if count < maxRetries {
 				time.Sleep(2 * time.Second)
 			}
@@ -119,7 +119,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 		return data["token"].(string), nil
 	}
 	// finish when timeout
-	return "", saml.ErrRequestWaitingForCredentials
+	return "", samlErrors.ErrRequestWaitingForCredentials
 }
 
 func (c *login) samlLogin(context *Context, client *Client) error {
@@ -147,7 +147,7 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 	case nil:
 		writeToken(token)
 		fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
-	case saml.ErrRequestWaitingForCredentials:
+	case samlErrors.ErrRequestWaitingForCredentials:
 		fmt.Fprintln(context.Stdout, "\nLogin failed! Timeout waiting for credentials from IDP, please try again.")
 	default:
 		fmt.Fprintln(context.Stdout, "\nLogin failed for some reason, please try again: "+err.Error())
