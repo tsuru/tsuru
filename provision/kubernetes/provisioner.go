@@ -782,6 +782,9 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 	if err != nil {
 		return "", err
 	}
+	if err := ensureAppCustomResourceSynced(client, a); err != nil {
+		return "", err
+	}
 	newImage := buildImageID
 	if strings.HasSuffix(buildImageID, "-builder") {
 		newImage, err = image.AppNewImageName(a.GetName())

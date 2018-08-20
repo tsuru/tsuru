@@ -1114,6 +1114,29 @@ func (s *S) TestDeploy(c *check.C) {
 	})
 }
 
+func (s *S) TestDeployCreatesAppCR(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+}
+
 func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
@@ -1124,7 +1147,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		new := atomic.AddInt32(&counter, 1)
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
-		if new == 1 {
+		if new == 2 {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, "tsuru-test-default")
 		} else {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
@@ -1149,7 +1172,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(2))
+	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(3))
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
