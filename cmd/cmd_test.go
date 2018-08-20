@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"syscall"
@@ -255,6 +256,36 @@ worked nicely!
 `
 	globalManager.Register(&FailAndWorkCommand{})
 	globalManager.Register(&SuccessLoginCommand{})
+	globalManager.Run([]string{"fail-and-work"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
+}
+
+func (s *S) TestManagerRunWithGenericHTTPUnauthorizedErrorAndLoginRegistered(c *check.C) {
+	expectedStderr := `Error: you're not authenticated or your session has expired.
+Calling the "login" command...
+
+`
+	expectedStdout := `logged in!
+worked nicely!
+`
+
+	globalManager.Register(&FailAndWorkCommandCustom{
+		err: testStatusErr{status: http.StatusUnauthorized},
+	})
+	globalManager.Register(&SuccessLoginCommand{})
+	globalManager.Run([]string{"fail-and-work"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
+}
+
+func (s *S) TestManagerRunWithGenericOtherError(c *check.C) {
+	expectedStderr := `Error: my unauth
+`
+	expectedStdout := ``
+	globalManager.Register(&FailAndWorkCommandCustom{
+		err: testStatusErr{status: http.StatusBadRequest},
+	})
 	globalManager.Run([]string{"fail-and-work"})
 	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
@@ -1097,4 +1128,34 @@ func (c *HelpCommandWithFlags) Flags() *gnuflag.FlagSet {
 		c.fs.BoolVar(&c.h, "h", false, "help?")
 	}
 	return c.fs
+}
+
+type FailAndWorkCommandCustom struct {
+	calls int
+	err   error
+}
+
+func (c *FailAndWorkCommandCustom) Info() *Info {
+	return &Info{Name: "fail-and-work"}
+}
+
+func (c *FailAndWorkCommandCustom) Run(context *Context, client *Client) error {
+	c.calls++
+	if c.calls == 1 {
+		return c.err
+	}
+	fmt.Fprintln(context.Stdout, "worked nicely!")
+	return nil
+}
+
+type testStatusErr struct {
+	status int
+}
+
+func (testStatusErr) Error() string {
+	return "my unauth"
+}
+
+func (t testStatusErr) StatusCode() int {
+	return t.status
 }

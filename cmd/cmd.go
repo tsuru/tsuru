@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -20,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/gnuflag"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/net"
 )
@@ -263,7 +261,7 @@ func (m *Manager) Run(args []string) {
 	}
 	err = command.Run(context, client)
 	close(sigChan)
-	if err == errUnauthorized && name != loginCmdName {
+	if isUnauthorized(err) && name != loginCmdName {
 		if cmd, ok := m.Commands[loginCmdName]; ok {
 			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
 			fmt.Fprintf(m.stderr, "Calling the %q command...\n", loginCmdName)
@@ -279,8 +277,7 @@ func (m *Manager) Run(args []string) {
 		if verbosity > 0 {
 			errorMsg = fmt.Sprintf("%+v", err)
 		}
-		httpErr, ok := err.(*tsuruErrors.HTTP)
-		if ok && httpErr.Code == http.StatusUnauthorized && name != loginCmdName {
+		if isUnauthorized(err) && name != loginCmdName {
 			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
