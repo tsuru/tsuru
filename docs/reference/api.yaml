@@ -1687,7 +1687,7 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/ClusterUpdateData'
+            $ref: '#/definitions/Cluster'
       consumes:
       - application/json
       responses:
@@ -3057,52 +3057,12 @@ definitions:
           type: object
           $ref: '#/definitions/Pool'
       custom_data:
-        type: array
-        items:
-          type: object
-          properties:
-            key:
-              type: string
-      create_data:
-        type: array
-        items:
-          type: object
-          properties:
-            key:
-              type: string
-      default:
-        type: boolean
-  ClusterUpdateData:
-    type: object
-    properties:
-      addresses:
-        type: array
-        items:
+        type: object
+        additionalProperties: 
           type: string
-      provisioner:
-        type: string
-      cacert:
-        type: string
-      clientcert:
-        type: string
-      pools:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/Pool'
-      custom_data:
-        type: array
-        items:
-          type: object
-          properties:
-            key:
-              type: string
       create_data:
-        type: array
-        items:
-          type: object
-          properties:
-            key:
-              type: string
+        type: object
+        additionalProperties: 
+          type: string
       default:
         type: boolean
