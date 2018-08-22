@@ -33,6 +33,7 @@ type PlatformService interface {
 	FindByName(string) (*Platform, error)
 	Update(PlatformOptions) error
 	Remove(string) error
+	Rollback(PlatformOptions) error
 }
 
 type PlatformStorage interface {
@@ -46,6 +47,7 @@ type PlatformStorage interface {
 
 var (
 	ErrPlatformNameMissing    = errors.New("Platform name is required.")
+	ErrPlatformImageMissing   = errors.New("Platform image is required.")
 	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
 	ErrDuplicatePlatform      = errors.New("Duplicate platform")
 	ErrInvalidPlatform        = errors.New("Invalid platform")
