@@ -13,7 +13,7 @@ LINTER_ARGS_SLOW = \
 	--disable=structcheck --disable=gotype --disable=gotypex --deadline=60m --tests
 
 LINTER_ARGS = \
-	$(LINTER_ARGS_SLOW) --disable=staticcheck --disable=unused --disable=gosimple
+	$(LINTER_ARGS_SLOW) --disable=staticcheck --disable=unused --disable=gosimple --disable=gosec
 
 
 .PHONY: all check-path test race docs install
