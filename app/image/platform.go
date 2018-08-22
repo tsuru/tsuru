@@ -6,6 +6,7 @@ package image
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
@@ -83,6 +84,19 @@ func (s *platformImageService) ListImagesOrDefault(platformName string) ([]strin
 		return []string{platformBasicImageName(platformName)}, nil
 	}
 	return imgs, err
+}
+
+func (s *platformImageService) CheckImageExists(platformName, image string) (bool, error) {
+	imgs, err := s.ListImages(platformName)
+	if err != nil {
+		return false, err
+	}
+	for _, img := range imgs {
+		if strings.HasSuffix(img, image) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func platformBasicImageName(platformName string) string {

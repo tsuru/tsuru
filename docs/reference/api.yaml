@@ -666,6 +666,43 @@ paths:
         - platform
       security:
         - Bearer: []
+  /1.6/platforms/{platform}/rollback:
+    parameters:
+      - name: platform
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Platform name.
+    post:
+      operationId: PlatformRollback
+      description: Platform rollback.
+      parameters:
+      - name: image
+        in: query
+        required: true
+        type: string
+      produces:
+      - application/x-json-stream
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - platform
+      security:
+        - Bearer: []
   /1.0/teams:
     get:
       operationId: TeamsList
