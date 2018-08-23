@@ -113,7 +113,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	s.p = &kubernetesProvisioner{}
+	s.p = GetProvisioner()
 	s.mock = kTesting.NewKubeMock(s.client, s.p)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})

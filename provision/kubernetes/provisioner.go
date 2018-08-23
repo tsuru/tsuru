@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -33,8 +34,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/informers"
+	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -49,7 +50,10 @@ const (
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.6.0"
 )
 
-type kubernetesProvisioner struct{}
+type kubernetesProvisioner struct {
+	mu           sync.Mutex
+	podInformers map[string]v1informers.PodInformer
+}
 
 var (
 	_ provision.Provisioner              = &kubernetesProvisioner{}
@@ -67,17 +71,21 @@ var (
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
 	// _ provision.AppFilterProvisioner     = &kubernetesProvisioner{}
 	// _ builder.PlatformBuilder            = &kubernetesProvisioner{}
-	_ provision.UpdatableProvisioner = &kubernetesProvisioner{}
+	_                         provision.UpdatableProvisioner = &kubernetesProvisioner{}
+	mainKubernetesProvisioner *kubernetesProvisioner
 )
 
 func init() {
+	mainKubernetesProvisioner = &kubernetesProvisioner{
+		podInformers: make(map[string]v1informers.PodInformer),
+	}
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
-		return &kubernetesProvisioner{}, nil
+		return mainKubernetesProvisioner, nil
 	})
 }
 
 func GetProvisioner() *kubernetesProvisioner {
-	return &kubernetesProvisioner{}
+	return mainKubernetesProvisioner
 }
 
 type kubernetesConfig struct {
@@ -407,7 +415,7 @@ func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, 
 		if err != nil {
 			return nil, err
 		}
-		pods, err := podsForApps(cApp.client, cApp.apps)
+		pods, err := p.podsForApps(cApp.client, cApp.apps)
 		if err != nil {
 			return nil, err
 		}
@@ -420,7 +428,7 @@ func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, 
 	return units, nil
 }
 
-func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {
+func (p *kubernetesProvisioner) podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {
 	inSelectorMap := map[string][]string{}
 	for _, a := range apps {
 		l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
@@ -449,21 +457,15 @@ func podsForApps(client *ClusterClient, apps []provision.App) ([]apiv1.Pod, erro
 		}
 		sel = sel.Add(*req)
 	}
-	restCli, err := rest.RESTClientFor(client.restConfig)
+	pods, err := p.podInformerForCluster(client).Lister().List(sel)
 	if err != nil {
 		return nil, err
 	}
-	opts := metav1.ListOptions{LabelSelector: sel.String()}
-	var pods apiv1.PodList
-	err = restCli.Get().
-		Resource("pods").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Do().
-		Into(&pods)
-	if err != nil {
-		return nil, err
+	podCopies := make([]apiv1.Pod, len(pods))
+	for i, p := range pods {
+		podCopies[i] = *p.DeepCopy()
 	}
-	return pods.Items, nil
+	return podCopies, nil
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
@@ -1029,6 +1031,17 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		&removeOldAppResources,
 	}
 	return action.NewPipeline(actions...).Execute(params)
+}
+
+func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) v1informers.PodInformer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if informer, ok := p.podInformers[client.Name]; ok {
+		return informer
+	}
+	factory := informers.NewSharedInformerFactory(client.Interface, time.Minute)
+	p.podInformers[client.Name] = factory.Core().V1().Pods()
+	return p.podInformers[client.Name]
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
