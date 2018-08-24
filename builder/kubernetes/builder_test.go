@@ -19,7 +19,7 @@ import (
 )
 
 func (s *S) TestArchiveFile(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -39,7 +39,7 @@ func (s *S) TestArchiveFile(c *check.C) {
 }
 
 func (s *S) TestArchiveFileWithTag(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	a.TeamOwner = "admin"
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -61,7 +61,7 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 }
 
 func (s *S) TestArchiveURL(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -84,7 +84,7 @@ func (s *S) TestArchiveURL(c *check.C) {
 }
 
 func (s *S) TestImageID(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -110,7 +110,7 @@ func (s *S) TestImageID(c *check.C) {
 }
 
 func (s *S) TestImageIDWithProcfile(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -140,7 +140,7 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 }
 
 func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -198,7 +198,7 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 }
 
 func (s *S) TestImageIDInspectError(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},

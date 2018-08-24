@@ -120,7 +120,7 @@ type StreamResult struct {
 	Urls   []url.URL
 }
 
-func (s *KubeMock) DefaultReactions(c *check.C, podInformer v1informers.PodInformer) (*provisiontest.FakeApp, func(), func()) {
+func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)

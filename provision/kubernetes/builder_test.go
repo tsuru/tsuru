@@ -26,7 +26,7 @@ import (
 )
 
 func (s *S) TestBuildPod(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -72,7 +72,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -133,7 +133,7 @@ func (s *S) TestImageTagPushAndInspect(c *check.C) {
 }`
 		w.Write([]byte(output))
 	}
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
 	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
@@ -155,7 +155,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 }`
 		w.Write([]byte(output))
 	}
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	var counter int32
 	nsName, err := s.client.AppNamespace(a)
@@ -189,7 +189,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 }`
 		w.Write([]byte(output))
 	}
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
@@ -246,7 +246,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 }`
 		w.Write([]byte(output))
 	}
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
