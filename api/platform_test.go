@@ -561,10 +561,27 @@ func (s *PlatformSuite) TestPlatformRollbackNoImage(c *check.C) {
 		c.Errorf("service not expected to be called.")
 		return nil
 	}
-	request, _ := http.NewRequest("POST", "/platforms/"+name+"/rollback", nil)
+	var buf bytes.Buffer
+	request, err := http.NewRequest("POST", "/platforms/"+name+"/rollback", &buf)
+	c.Assert(err, check.IsNil)
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *PlatformSuite) TestPlatformRollbackError(c *check.C) {
+	name := "myplatform"
+	s.mockService.Platform.OnRollback = func(opts appTypes.PlatformOptions) error {
+		c.Errorf("service not expected to be called.")
+		return nil
+	}
+	request, err := http.NewRequest("POST", "/platforms/"+name+"/rollback", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }
