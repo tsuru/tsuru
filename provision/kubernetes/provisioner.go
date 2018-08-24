@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -84,6 +85,7 @@ func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainKubernetesProvisioner, nil
 	})
+	shutdown.Register(mainKubernetesProvisioner)
 }
 
 func GetProvisioner() *kubernetesProvisioner {
@@ -1033,6 +1035,11 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		&removeOldAppResources,
 	}
 	return action.NewPipeline(actions...).Execute(params)
+}
+
+func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
+	close(p.stopCh)
+	return nil
 }
 
 func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) v1informers.PodInformer {
