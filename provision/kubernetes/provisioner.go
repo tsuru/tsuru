@@ -53,6 +53,7 @@ const (
 type kubernetesProvisioner struct {
 	mu           sync.Mutex
 	podInformers map[string]v1informers.PodInformer
+	stopCh       chan struct{}
 }
 
 var (
@@ -78,6 +79,7 @@ var (
 func init() {
 	mainKubernetesProvisioner = &kubernetesProvisioner{
 		podInformers: make(map[string]v1informers.PodInformer),
+		stopCh:       make(chan struct{}),
 	}
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainKubernetesProvisioner, nil
@@ -1039,12 +1041,17 @@ func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) v1i
 	if informer, ok := p.podInformers[client.Name]; ok {
 		return informer
 	}
-	p.podInformers[client.Name] = PodInformerFactory(client)
+	p.podInformers[client.Name] = PodInformerFactory(client, p.stopCh)
 	return p.podInformers[client.Name]
 }
 
-var PodInformerFactory = func(client *ClusterClient) v1informers.PodInformer {
-	return informers.NewSharedInformerFactory(client.Interface, time.Minute).Core().V1().Pods()
+// PodInformerFactory creates a PodInformer and runs the informer in a different goroutine
+var PodInformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) v1informers.PodInformer {
+	factory := informers.NewSharedInformerFactory(client.Interface, time.Minute)
+	informer := factory.Core().V1().Pods()
+	factory.WaitForCacheSync(stopCh)
+	go informer.Informer().Run(stopCh)
+	return informer
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
