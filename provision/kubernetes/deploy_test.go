@@ -1091,7 +1091,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 }
 
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -1155,7 +1155,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 }
 
 func (s *S) TestCreateDeployPodContainers(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -1276,7 +1276,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "pwd")
 	defer config.Unset("docker:registry-auth:password")
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -1400,7 +1400,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 }
 
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -1478,7 +1478,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 	config.Set("kubernetes:attach-after-finish-timeout", 1)
 	defer config.Unset("kubernetes:attach-after-finish-timeout")
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -1502,7 +1502,7 @@ func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 }
 
 func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)

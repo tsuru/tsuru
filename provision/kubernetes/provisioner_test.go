@@ -491,7 +491,7 @@ func (s *S) TestUnits(c *check.C) {
 		Name: "non-app-pod",
 	}})
 	c.Assert(err, check.IsNil)
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -624,7 +624,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 }
 
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -659,7 +659,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 }
 
 func (s *S) TestUnitsSkipEvicted(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -746,7 +746,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(output))
 	}
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -768,7 +768,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
@@ -793,7 +793,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 }
 
 func (s *S) TestAddUnits(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -813,7 +813,7 @@ func (s *S) TestAddUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
@@ -836,7 +836,7 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -862,7 +862,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 }
 
 func (s *S) TestRestart(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -890,7 +890,7 @@ func (s *S) TestRestart(c *check.C) {
 }
 
 func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
@@ -909,7 +909,7 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 }
 
 func (s *S) TestStopStart(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -938,7 +938,7 @@ func (s *S) TestStopStart(c *check.C) {
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -976,7 +976,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 }
 
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1010,7 +1010,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 }
 
 func (s *S) TestDeploy(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1058,7 +1058,7 @@ func (s *S) TestDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployCreatesAppCR(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
@@ -1083,7 +1083,7 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	var counter int32
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -1179,7 +1179,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 }
 
 func (s *S) TestRollback(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	deployEvt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1246,7 +1246,7 @@ func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "pwd")
 	defer config.Unset("docker:registry-auth:password")
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -1360,7 +1360,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1400,7 +1400,7 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1437,7 +1437,7 @@ func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1463,7 +1463,7 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestExecuteCommand(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1497,7 +1497,7 @@ func (s *S) TestExecuteCommand(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1529,7 +1529,7 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1573,7 +1573,7 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -1617,7 +1617,7 @@ func (s *S) TestStartupMessage(c *check.C) {
 }
 
 func (s *S) TestSleepStart(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1684,7 +1684,7 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 }
 
 func (s *S) TestProvisionerProvision(c *check.C) {
-	_, _, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	_, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(a)
@@ -1707,7 +1707,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	a, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
