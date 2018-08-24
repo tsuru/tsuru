@@ -1039,9 +1039,12 @@ func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) v1i
 	if informer, ok := p.podInformers[client.Name]; ok {
 		return informer
 	}
-	factory := informers.NewSharedInformerFactory(client.Interface, time.Minute)
-	p.podInformers[client.Name] = factory.Core().V1().Pods()
+	p.podInformers[client.Name] = PodInformerFactory(client)
 	return p.podInformers[client.Name]
+}
+
+var PodInformerFactory = func(client *ClusterClient) v1informers.PodInformer {
+	return informers.NewSharedInformerFactory(client.Interface, time.Minute).Core().V1().Pods()
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {

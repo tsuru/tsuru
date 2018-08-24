@@ -171,7 +171,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(output))
 	}
-	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
+	fakeApp, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
 	defer rollback()
 	routertest.FakeRouter.Reset()
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
@@ -338,7 +338,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
+	fakeApp, wait, rollback := s.mock.DefaultReactions(c, s.podInformer)
 	defer rollback()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()

@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
+	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -63,9 +64,10 @@ type KubeMock struct {
 	LogHook     func(w io.Writer, r *http.Request)
 	DefaultHook func(w http.ResponseWriter, r *http.Request)
 	p           provision.Provisioner
+	podInformer v1informers.PodInformer
 }
 
-func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
+func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, podInformer v1informers.PodInformer) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
 		client:      cluster,
@@ -73,6 +75,7 @@ func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner) *KubeMock {
 		LogHook:     nil,
 		DefaultHook: nil,
 		p:           p,
+		podInformer: podInformer,
 	}
 }
 
@@ -117,7 +120,7 @@ type StreamResult struct {
 	Urls   []url.URL
 }
 
-func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
+func (s *KubeMock) DefaultReactions(c *check.C, podInformer v1informers.PodInformer) (*provisiontest.FakeApp, func(), func()) {
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -382,6 +385,8 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-name"], check.Equals, "fake")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
+			err := s.podInformer.Informer().GetStore().Add(pod)
+			c.Assert(err, check.IsNil)
 			return false, nil, nil
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
@@ -409,6 +414,8 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				ns, err := s.client.AppNamespace(a)
 				c.Assert(err, check.IsNil)
 				_, err = s.client.CoreV1().Pods(ns).Update(pod)
+				c.Assert(err, check.IsNil)
+				err = s.podInformer.Informer().GetStore().Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
@@ -486,12 +493,14 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Spec.NodeName = "n1"
 			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
-			}, dep.Namespace)
+			}, dep.Namespace, s.podInformer)
 			c.Assert(err, check.IsNil)
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
 				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
 				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(pod)
+				c.Assert(err, check.IsNil)
+				err = s.podInformer.Informer().GetStore().Add(pod)
 				c.Assert(err, check.IsNil)
 			}
 		}()
@@ -499,13 +508,17 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 	}, &wg
 }
 
-func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string) error {
+func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string, podInformer v1informers.PodInformer) error {
 	pods, err := client.CoreV1().Pods(namespace).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
 		err = client.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+		err = podInformer.Informer().GetStore().Delete(&pod)
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}

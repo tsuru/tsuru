@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -31,6 +32,8 @@ import (
 	check "gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	"k8s.io/client-go/informers"
+	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -53,6 +56,7 @@ type S struct {
 	p             testProv
 	mock          *kubeTesting.KubeMock
 	mockService   servicemock.MockService
+	podInformer   v1informers.PodInformer
 }
 
 var _ = check.Suite(&S{})
@@ -134,7 +138,12 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.b = &kubernetesBuilder{}
 	s.p = kubeProv.GetProvisioner()
-	s.mock = kubeTesting.NewKubeMock(s.client, s.p)
+	factory := informers.NewSharedInformerFactory(s.client, time.Minute)
+	s.podInformer = factory.Core().V1().Pods()
+	kubeProv.PodInformerFactory = func(client *kubeProv.ClusterClient) v1informers.PodInformer {
+		return s.podInformer
+	}
+	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.podInformer)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
