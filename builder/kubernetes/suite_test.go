@@ -140,7 +140,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.p = kubeProv.GetProvisioner()
 	factory := informers.NewSharedInformerFactory(s.client, time.Minute)
 	s.podInformer = factory.Core().V1().Pods()
-	kubeProv.PodInformerFactory = func(client *kubeProv.ClusterClient) v1informers.PodInformer {
+	kubeProv.PodInformerFactory = func(client *kubeProv.ClusterClient, _ <-chan struct{}) v1informers.PodInformer {
 		return s.podInformer
 	}
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.podInformer)
