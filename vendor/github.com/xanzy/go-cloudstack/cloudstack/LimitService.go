@@ -1,5 +1,5 @@
 //
-// Copyright 2016, Sander van Harmelen
+// Copyright 2018, Sander van Harmelen
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,196 +22,47 @@ import (
 	"strconv"
 )
 
-type UpdateResourceLimitParams struct {
+type GetApiLimitParams struct {
 	p map[string]interface{}
 }
 
-func (p *UpdateResourceLimitParams) toURLValues() url.Values {
+func (p *GetApiLimitParams) toURLValues() url.Values {
 	u := url.Values{}
 	if p.p == nil {
 		return u
 	}
-	if v, found := p.p["account"]; found {
-		u.Set("account", v.(string))
-	}
-	if v, found := p.p["domainid"]; found {
-		u.Set("domainid", v.(string))
-	}
-	if v, found := p.p["max"]; found {
-		vv := strconv.FormatInt(v.(int64), 10)
-		u.Set("max", vv)
-	}
-	if v, found := p.p["projectid"]; found {
-		u.Set("projectid", v.(string))
-	}
-	if v, found := p.p["resourcetype"]; found {
-		vv := strconv.Itoa(v.(int))
-		u.Set("resourcetype", vv)
-	}
 	return u
 }
 
-func (p *UpdateResourceLimitParams) SetAccount(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["account"] = v
-	return
-}
-
-func (p *UpdateResourceLimitParams) SetDomainid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["domainid"] = v
-	return
-}
-
-func (p *UpdateResourceLimitParams) SetMax(v int64) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["max"] = v
-	return
-}
-
-func (p *UpdateResourceLimitParams) SetProjectid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["projectid"] = v
-	return
-}
-
-func (p *UpdateResourceLimitParams) SetResourcetype(v int) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["resourcetype"] = v
-	return
-}
-
-// You should always use this function to get a new UpdateResourceLimitParams instance,
+// You should always use this function to get a new GetApiLimitParams instance,
 // as then you are sure you have configured all required params
-func (s *LimitService) NewUpdateResourceLimitParams(resourcetype int) *UpdateResourceLimitParams {
-	p := &UpdateResourceLimitParams{}
+func (s *LimitService) NewGetApiLimitParams() *GetApiLimitParams {
+	p := &GetApiLimitParams{}
 	p.p = make(map[string]interface{})
-	p.p["resourcetype"] = resourcetype
 	return p
 }
 
-// Updates resource limits for an account or domain.
-func (s *LimitService) UpdateResourceLimit(p *UpdateResourceLimitParams) (*UpdateResourceLimitResponse, error) {
-	resp, err := s.cs.newRequest("updateResourceLimit", p.toURLValues())
+// Get API limit count for the caller
+func (s *LimitService) GetApiLimit(p *GetApiLimitParams) (*GetApiLimitResponse, error) {
+	resp, err := s.cs.newRequest("getApiLimit", p.toURLValues())
 	if err != nil {
 		return nil, err
 	}
 
-	var r UpdateResourceLimitResponse
+	var r GetApiLimitResponse
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
-type UpdateResourceLimitResponse struct {
-	Account      string `json:"account,omitempty"`
-	Domain       string `json:"domain,omitempty"`
-	Domainid     string `json:"domainid,omitempty"`
-	Max          int64  `json:"max,omitempty"`
-	Project      string `json:"project,omitempty"`
-	Projectid    string `json:"projectid,omitempty"`
-	Resourcetype string `json:"resourcetype,omitempty"`
-}
-
-type UpdateResourceCountParams struct {
-	p map[string]interface{}
-}
-
-func (p *UpdateResourceCountParams) toURLValues() url.Values {
-	u := url.Values{}
-	if p.p == nil {
-		return u
-	}
-	if v, found := p.p["account"]; found {
-		u.Set("account", v.(string))
-	}
-	if v, found := p.p["domainid"]; found {
-		u.Set("domainid", v.(string))
-	}
-	if v, found := p.p["projectid"]; found {
-		u.Set("projectid", v.(string))
-	}
-	if v, found := p.p["resourcetype"]; found {
-		vv := strconv.Itoa(v.(int))
-		u.Set("resourcetype", vv)
-	}
-	return u
-}
-
-func (p *UpdateResourceCountParams) SetAccount(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["account"] = v
-	return
-}
-
-func (p *UpdateResourceCountParams) SetDomainid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["domainid"] = v
-	return
-}
-
-func (p *UpdateResourceCountParams) SetProjectid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["projectid"] = v
-	return
-}
-
-func (p *UpdateResourceCountParams) SetResourcetype(v int) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["resourcetype"] = v
-	return
-}
-
-// You should always use this function to get a new UpdateResourceCountParams instance,
-// as then you are sure you have configured all required params
-func (s *LimitService) NewUpdateResourceCountParams(domainid string) *UpdateResourceCountParams {
-	p := &UpdateResourceCountParams{}
-	p.p = make(map[string]interface{})
-	p.p["domainid"] = domainid
-	return p
-}
-
-// Recalculate and update resource count for an account or domain.
-func (s *LimitService) UpdateResourceCount(p *UpdateResourceCountParams) (*UpdateResourceCountResponse, error) {
-	resp, err := s.cs.newRequest("updateResourceCount", p.toURLValues())
-	if err != nil {
-		return nil, err
-	}
-
-	var r UpdateResourceCountResponse
-	if err := json.Unmarshal(resp, &r); err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-type UpdateResourceCountResponse struct {
-	Account       string `json:"account,omitempty"`
-	Domain        string `json:"domain,omitempty"`
-	Domainid      string `json:"domainid,omitempty"`
-	Project       string `json:"project,omitempty"`
-	Projectid     string `json:"projectid,omitempty"`
-	Resourcecount int64  `json:"resourcecount,omitempty"`
-	Resourcetype  string `json:"resourcetype,omitempty"`
+type GetApiLimitResponse struct {
+	Account     string `json:"account"`
+	Accountid   string `json:"accountid"`
+	ApiAllowed  int    `json:"apiAllowed"`
+	ApiIssued   int    `json:"apiIssued"`
+	ExpireAfter int64  `json:"expireAfter"`
 }
 
 type ListResourceLimitsParams struct {
@@ -361,6 +212,7 @@ func (s *LimitService) ListResourceLimits(p *ListResourceLimitsParams) (*ListRes
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -370,55 +222,13 @@ type ListResourceLimitsResponse struct {
 }
 
 type ResourceLimit struct {
-	Account      string `json:"account,omitempty"`
-	Domain       string `json:"domain,omitempty"`
-	Domainid     string `json:"domainid,omitempty"`
-	Max          int64  `json:"max,omitempty"`
-	Project      string `json:"project,omitempty"`
-	Projectid    string `json:"projectid,omitempty"`
-	Resourcetype string `json:"resourcetype,omitempty"`
-}
-
-type GetApiLimitParams struct {
-	p map[string]interface{}
-}
-
-func (p *GetApiLimitParams) toURLValues() url.Values {
-	u := url.Values{}
-	if p.p == nil {
-		return u
-	}
-	return u
-}
-
-// You should always use this function to get a new GetApiLimitParams instance,
-// as then you are sure you have configured all required params
-func (s *LimitService) NewGetApiLimitParams() *GetApiLimitParams {
-	p := &GetApiLimitParams{}
-	p.p = make(map[string]interface{})
-	return p
-}
-
-// Get API limit count for the caller
-func (s *LimitService) GetApiLimit(p *GetApiLimitParams) (*GetApiLimitResponse, error) {
-	resp, err := s.cs.newRequest("getApiLimit", p.toURLValues())
-	if err != nil {
-		return nil, err
-	}
-
-	var r GetApiLimitResponse
-	if err := json.Unmarshal(resp, &r); err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-type GetApiLimitResponse struct {
-	Account     string `json:"account,omitempty"`
-	Accountid   string `json:"accountid,omitempty"`
-	ApiAllowed  int    `json:"apiAllowed,omitempty"`
-	ApiIssued   int    `json:"apiIssued,omitempty"`
-	ExpireAfter int64  `json:"expireAfter,omitempty"`
+	Account      string `json:"account"`
+	Domain       string `json:"domain"`
+	Domainid     string `json:"domainid"`
+	Max          int64  `json:"max"`
+	Project      string `json:"project"`
+	Projectid    string `json:"projectid"`
+	Resourcetype string `json:"resourcetype"`
 }
 
 type ResetApiLimitParams struct {
@@ -463,13 +273,208 @@ func (s *LimitService) ResetApiLimit(p *ResetApiLimitParams) (*ResetApiLimitResp
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
 type ResetApiLimitResponse struct {
-	Account     string `json:"account,omitempty"`
-	Accountid   string `json:"accountid,omitempty"`
-	ApiAllowed  int    `json:"apiAllowed,omitempty"`
-	ApiIssued   int    `json:"apiIssued,omitempty"`
-	ExpireAfter int64  `json:"expireAfter,omitempty"`
+	Account     string `json:"account"`
+	Accountid   string `json:"accountid"`
+	ApiAllowed  int    `json:"apiAllowed"`
+	ApiIssued   int    `json:"apiIssued"`
+	ExpireAfter int64  `json:"expireAfter"`
+}
+
+type UpdateResourceCountParams struct {
+	p map[string]interface{}
+}
+
+func (p *UpdateResourceCountParams) toURLValues() url.Values {
+	u := url.Values{}
+	if p.p == nil {
+		return u
+	}
+	if v, found := p.p["account"]; found {
+		u.Set("account", v.(string))
+	}
+	if v, found := p.p["domainid"]; found {
+		u.Set("domainid", v.(string))
+	}
+	if v, found := p.p["projectid"]; found {
+		u.Set("projectid", v.(string))
+	}
+	if v, found := p.p["resourcetype"]; found {
+		vv := strconv.Itoa(v.(int))
+		u.Set("resourcetype", vv)
+	}
+	return u
+}
+
+func (p *UpdateResourceCountParams) SetAccount(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["account"] = v
+	return
+}
+
+func (p *UpdateResourceCountParams) SetDomainid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["domainid"] = v
+	return
+}
+
+func (p *UpdateResourceCountParams) SetProjectid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["projectid"] = v
+	return
+}
+
+func (p *UpdateResourceCountParams) SetResourcetype(v int) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["resourcetype"] = v
+	return
+}
+
+// You should always use this function to get a new UpdateResourceCountParams instance,
+// as then you are sure you have configured all required params
+func (s *LimitService) NewUpdateResourceCountParams(domainid string) *UpdateResourceCountParams {
+	p := &UpdateResourceCountParams{}
+	p.p = make(map[string]interface{})
+	p.p["domainid"] = domainid
+	return p
+}
+
+// Recalculate and update resource count for an account or domain.
+func (s *LimitService) UpdateResourceCount(p *UpdateResourceCountParams) (*UpdateResourceCountResponse, error) {
+	resp, err := s.cs.newRequest("updateResourceCount", p.toURLValues())
+	if err != nil {
+		return nil, err
+	}
+
+	var r UpdateResourceCountResponse
+	if err := json.Unmarshal(resp, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+type UpdateResourceCountResponse struct {
+	Account       string `json:"account"`
+	Domain        string `json:"domain"`
+	Domainid      string `json:"domainid"`
+	Project       string `json:"project"`
+	Projectid     string `json:"projectid"`
+	Resourcecount int64  `json:"resourcecount"`
+	Resourcetype  string `json:"resourcetype"`
+}
+
+type UpdateResourceLimitParams struct {
+	p map[string]interface{}
+}
+
+func (p *UpdateResourceLimitParams) toURLValues() url.Values {
+	u := url.Values{}
+	if p.p == nil {
+		return u
+	}
+	if v, found := p.p["account"]; found {
+		u.Set("account", v.(string))
+	}
+	if v, found := p.p["domainid"]; found {
+		u.Set("domainid", v.(string))
+	}
+	if v, found := p.p["max"]; found {
+		vv := strconv.FormatInt(v.(int64), 10)
+		u.Set("max", vv)
+	}
+	if v, found := p.p["projectid"]; found {
+		u.Set("projectid", v.(string))
+	}
+	if v, found := p.p["resourcetype"]; found {
+		vv := strconv.Itoa(v.(int))
+		u.Set("resourcetype", vv)
+	}
+	return u
+}
+
+func (p *UpdateResourceLimitParams) SetAccount(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["account"] = v
+	return
+}
+
+func (p *UpdateResourceLimitParams) SetDomainid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["domainid"] = v
+	return
+}
+
+func (p *UpdateResourceLimitParams) SetMax(v int64) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["max"] = v
+	return
+}
+
+func (p *UpdateResourceLimitParams) SetProjectid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["projectid"] = v
+	return
+}
+
+func (p *UpdateResourceLimitParams) SetResourcetype(v int) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["resourcetype"] = v
+	return
+}
+
+// You should always use this function to get a new UpdateResourceLimitParams instance,
+// as then you are sure you have configured all required params
+func (s *LimitService) NewUpdateResourceLimitParams(resourcetype int) *UpdateResourceLimitParams {
+	p := &UpdateResourceLimitParams{}
+	p.p = make(map[string]interface{})
+	p.p["resourcetype"] = resourcetype
+	return p
+}
+
+// Updates resource limits for an account or domain.
+func (s *LimitService) UpdateResourceLimit(p *UpdateResourceLimitParams) (*UpdateResourceLimitResponse, error) {
+	resp, err := s.cs.newRequest("updateResourceLimit", p.toURLValues())
+	if err != nil {
+		return nil, err
+	}
+
+	var r UpdateResourceLimitResponse
+	if err := json.Unmarshal(resp, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+type UpdateResourceLimitResponse struct {
+	Account      string `json:"account"`
+	Domain       string `json:"domain"`
+	Domainid     string `json:"domainid"`
+	Max          int64  `json:"max"`
+	Project      string `json:"project"`
+	Projectid    string `json:"projectid"`
+	Resourcetype string `json:"resourcetype"`
 }

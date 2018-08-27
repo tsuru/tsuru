@@ -1,5 +1,5 @@
 //
-// Copyright 2016, Sander van Harmelen
+// Copyright 2018, Sander van Harmelen
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,95 @@ import (
 	"net/url"
 	"strconv"
 )
+
+type AddTrafficMonitorParams struct {
+	p map[string]interface{}
+}
+
+func (p *AddTrafficMonitorParams) toURLValues() url.Values {
+	u := url.Values{}
+	if p.p == nil {
+		return u
+	}
+	if v, found := p.p["excludezones"]; found {
+		u.Set("excludezones", v.(string))
+	}
+	if v, found := p.p["includezones"]; found {
+		u.Set("includezones", v.(string))
+	}
+	if v, found := p.p["url"]; found {
+		u.Set("url", v.(string))
+	}
+	if v, found := p.p["zoneid"]; found {
+		u.Set("zoneid", v.(string))
+	}
+	return u
+}
+
+func (p *AddTrafficMonitorParams) SetExcludezones(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["excludezones"] = v
+	return
+}
+
+func (p *AddTrafficMonitorParams) SetIncludezones(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["includezones"] = v
+	return
+}
+
+func (p *AddTrafficMonitorParams) SetUrl(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["url"] = v
+	return
+}
+
+func (p *AddTrafficMonitorParams) SetZoneid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["zoneid"] = v
+	return
+}
+
+// You should always use this function to get a new AddTrafficMonitorParams instance,
+// as then you are sure you have configured all required params
+func (s *UsageService) NewAddTrafficMonitorParams(url string, zoneid string) *AddTrafficMonitorParams {
+	p := &AddTrafficMonitorParams{}
+	p.p = make(map[string]interface{})
+	p.p["url"] = url
+	p.p["zoneid"] = zoneid
+	return p
+}
+
+// Adds Traffic Monitor Host for Direct Network Usage
+func (s *UsageService) AddTrafficMonitor(p *AddTrafficMonitorParams) (*AddTrafficMonitorResponse, error) {
+	resp, err := s.cs.newRequest("addTrafficMonitor", p.toURLValues())
+	if err != nil {
+		return nil, err
+	}
+
+	var r AddTrafficMonitorResponse
+	if err := json.Unmarshal(resp, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+type AddTrafficMonitorResponse struct {
+	Id         string `json:"id"`
+	Ipaddress  string `json:"ipaddress"`
+	Numretries string `json:"numretries"`
+	Timeout    string `json:"timeout"`
+	Zoneid     string `json:"zoneid"`
+}
 
 type AddTrafficTypeParams struct {
 	p map[string]interface{}
@@ -175,19 +264,91 @@ func (s *UsageService) AddTrafficType(p *AddTrafficTypeParams) (*AddTrafficTypeR
 			return nil, err
 		}
 	}
+
 	return &r, nil
 }
 
 type AddTrafficTypeResponse struct {
-	JobID              string `json:"jobid,omitempty"`
-	Hypervnetworklabel string `json:"hypervnetworklabel,omitempty"`
-	Id                 string `json:"id,omitempty"`
-	Kvmnetworklabel    string `json:"kvmnetworklabel,omitempty"`
-	Ovm3networklabel   string `json:"ovm3networklabel,omitempty"`
-	Physicalnetworkid  string `json:"physicalnetworkid,omitempty"`
-	Traffictype        string `json:"traffictype,omitempty"`
-	Vmwarenetworklabel string `json:"vmwarenetworklabel,omitempty"`
-	Xennetworklabel    string `json:"xennetworklabel,omitempty"`
+	JobID              string `json:"jobid"`
+	Hypervnetworklabel string `json:"hypervnetworklabel"`
+	Id                 string `json:"id"`
+	Kvmnetworklabel    string `json:"kvmnetworklabel"`
+	Ovm3networklabel   string `json:"ovm3networklabel"`
+	Physicalnetworkid  string `json:"physicalnetworkid"`
+	Traffictype        string `json:"traffictype"`
+	Vmwarenetworklabel string `json:"vmwarenetworklabel"`
+	Xennetworklabel    string `json:"xennetworklabel"`
+}
+
+type DeleteTrafficMonitorParams struct {
+	p map[string]interface{}
+}
+
+func (p *DeleteTrafficMonitorParams) toURLValues() url.Values {
+	u := url.Values{}
+	if p.p == nil {
+		return u
+	}
+	if v, found := p.p["id"]; found {
+		u.Set("id", v.(string))
+	}
+	return u
+}
+
+func (p *DeleteTrafficMonitorParams) SetId(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["id"] = v
+	return
+}
+
+// You should always use this function to get a new DeleteTrafficMonitorParams instance,
+// as then you are sure you have configured all required params
+func (s *UsageService) NewDeleteTrafficMonitorParams(id string) *DeleteTrafficMonitorParams {
+	p := &DeleteTrafficMonitorParams{}
+	p.p = make(map[string]interface{})
+	p.p["id"] = id
+	return p
+}
+
+// Deletes an traffic monitor host.
+func (s *UsageService) DeleteTrafficMonitor(p *DeleteTrafficMonitorParams) (*DeleteTrafficMonitorResponse, error) {
+	resp, err := s.cs.newRequest("deleteTrafficMonitor", p.toURLValues())
+	if err != nil {
+		return nil, err
+	}
+
+	var r DeleteTrafficMonitorResponse
+	if err := json.Unmarshal(resp, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+type DeleteTrafficMonitorResponse struct {
+	Displaytext string `json:"displaytext"`
+	Success     bool   `json:"success"`
+}
+
+func (r *DeleteTrafficMonitorResponse) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		return err
+	}
+
+	if success, ok := m["success"].(string); ok {
+		m["success"] = success == "true"
+		b, err = json.Marshal(m)
+		if err != nil {
+			return err
+		}
+	}
+
+	type alias DeleteTrafficMonitorResponse
+	return json.Unmarshal(b, (*alias)(r))
 }
 
 type DeleteTrafficTypeParams struct {
@@ -248,20 +409,115 @@ func (s *UsageService) DeleteTrafficType(p *DeleteTrafficTypeParams) (*DeleteTra
 			return nil, err
 		}
 	}
+
 	return &r, nil
 }
 
 type DeleteTrafficTypeResponse struct {
-	JobID       string `json:"jobid,omitempty"`
-	Displaytext string `json:"displaytext,omitempty"`
-	Success     bool   `json:"success,omitempty"`
+	JobID       string `json:"jobid"`
+	Displaytext string `json:"displaytext"`
+	Success     bool   `json:"success"`
 }
 
-type ListTrafficTypesParams struct {
+type GenerateUsageRecordsParams struct {
 	p map[string]interface{}
 }
 
-func (p *ListTrafficTypesParams) toURLValues() url.Values {
+func (p *GenerateUsageRecordsParams) toURLValues() url.Values {
+	u := url.Values{}
+	if p.p == nil {
+		return u
+	}
+	if v, found := p.p["domainid"]; found {
+		u.Set("domainid", v.(string))
+	}
+	if v, found := p.p["enddate"]; found {
+		u.Set("enddate", v.(string))
+	}
+	if v, found := p.p["startdate"]; found {
+		u.Set("startdate", v.(string))
+	}
+	return u
+}
+
+func (p *GenerateUsageRecordsParams) SetDomainid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["domainid"] = v
+	return
+}
+
+func (p *GenerateUsageRecordsParams) SetEnddate(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["enddate"] = v
+	return
+}
+
+func (p *GenerateUsageRecordsParams) SetStartdate(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["startdate"] = v
+	return
+}
+
+// You should always use this function to get a new GenerateUsageRecordsParams instance,
+// as then you are sure you have configured all required params
+func (s *UsageService) NewGenerateUsageRecordsParams(enddate string, startdate string) *GenerateUsageRecordsParams {
+	p := &GenerateUsageRecordsParams{}
+	p.p = make(map[string]interface{})
+	p.p["enddate"] = enddate
+	p.p["startdate"] = startdate
+	return p
+}
+
+// Generates usage records. This will generate records only if there any records to be generated, i.e if the scheduled usage job was not run or failed
+func (s *UsageService) GenerateUsageRecords(p *GenerateUsageRecordsParams) (*GenerateUsageRecordsResponse, error) {
+	resp, err := s.cs.newRequest("generateUsageRecords", p.toURLValues())
+	if err != nil {
+		return nil, err
+	}
+
+	var r GenerateUsageRecordsResponse
+	if err := json.Unmarshal(resp, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+type GenerateUsageRecordsResponse struct {
+	Displaytext string `json:"displaytext"`
+	Success     bool   `json:"success"`
+}
+
+func (r *GenerateUsageRecordsResponse) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		return err
+	}
+
+	if success, ok := m["success"].(string); ok {
+		m["success"] = success == "true"
+		b, err = json.Marshal(m)
+		if err != nil {
+			return err
+		}
+	}
+
+	type alias GenerateUsageRecordsResponse
+	return json.Unmarshal(b, (*alias)(r))
+}
+
+type ListTrafficMonitorsParams struct {
+	p map[string]interface{}
+}
+
+func (p *ListTrafficMonitorsParams) toURLValues() url.Values {
 	u := url.Values{}
 	if p.p == nil {
 		return u
@@ -277,13 +533,13 @@ func (p *ListTrafficTypesParams) toURLValues() url.Values {
 		vv := strconv.Itoa(v.(int))
 		u.Set("pagesize", vv)
 	}
-	if v, found := p.p["physicalnetworkid"]; found {
-		u.Set("physicalnetworkid", v.(string))
+	if v, found := p.p["zoneid"]; found {
+		u.Set("zoneid", v.(string))
 	}
 	return u
 }
 
-func (p *ListTrafficTypesParams) SetKeyword(v string) {
+func (p *ListTrafficMonitorsParams) SetKeyword(v string) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
@@ -291,7 +547,7 @@ func (p *ListTrafficTypesParams) SetKeyword(v string) {
 	return
 }
 
-func (p *ListTrafficTypesParams) SetPage(v int) {
+func (p *ListTrafficMonitorsParams) SetPage(v int) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
@@ -299,7 +555,7 @@ func (p *ListTrafficTypesParams) SetPage(v int) {
 	return
 }
 
-func (p *ListTrafficTypesParams) SetPagesize(v int) {
+func (p *ListTrafficMonitorsParams) SetPagesize(v int) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
@@ -307,220 +563,49 @@ func (p *ListTrafficTypesParams) SetPagesize(v int) {
 	return
 }
 
-func (p *ListTrafficTypesParams) SetPhysicalnetworkid(v string) {
+func (p *ListTrafficMonitorsParams) SetZoneid(v string) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
-	p.p["physicalnetworkid"] = v
+	p.p["zoneid"] = v
 	return
 }
 
-// You should always use this function to get a new ListTrafficTypesParams instance,
+// You should always use this function to get a new ListTrafficMonitorsParams instance,
 // as then you are sure you have configured all required params
-func (s *UsageService) NewListTrafficTypesParams(physicalnetworkid string) *ListTrafficTypesParams {
-	p := &ListTrafficTypesParams{}
+func (s *UsageService) NewListTrafficMonitorsParams(zoneid string) *ListTrafficMonitorsParams {
+	p := &ListTrafficMonitorsParams{}
 	p.p = make(map[string]interface{})
-	p.p["physicalnetworkid"] = physicalnetworkid
+	p.p["zoneid"] = zoneid
 	return p
 }
 
-// This is a courtesy helper function, which in some cases may not work as expected!
-func (s *UsageService) GetTrafficTypeID(keyword string, physicalnetworkid string, opts ...OptionFunc) (string, error) {
-	p := &ListTrafficTypesParams{}
-	p.p = make(map[string]interface{})
-
-	p.p["keyword"] = keyword
-	p.p["physicalnetworkid"] = physicalnetworkid
-
-	for _, fn := range opts {
-		if err := fn(s.cs, p); err != nil {
-			return "", err
-		}
-	}
-
-	l, err := s.ListTrafficTypes(p)
-	if err != nil {
-		return "", err
-	}
-
-	if l.Count == 0 {
-		return "", fmt.Errorf("No match found for %s: %+v", keyword, l)
-	}
-
-	if l.Count == 1 {
-		return l.TrafficTypes[0].Id, nil
-	}
-
-	if l.Count > 1 {
-		for _, v := range l.TrafficTypes {
-			if v.Name == keyword {
-				return v.Id, nil
-			}
-		}
-	}
-	return "", fmt.Errorf("Could not find an exact match for %s: %+v", keyword, l)
-}
-
-// Lists traffic types of a given physical network.
-func (s *UsageService) ListTrafficTypes(p *ListTrafficTypesParams) (*ListTrafficTypesResponse, error) {
-	resp, err := s.cs.newRequest("listTrafficTypes", p.toURLValues())
+// List traffic monitor Hosts.
+func (s *UsageService) ListTrafficMonitors(p *ListTrafficMonitorsParams) (*ListTrafficMonitorsResponse, error) {
+	resp, err := s.cs.newRequest("listTrafficMonitors", p.toURLValues())
 	if err != nil {
 		return nil, err
 	}
 
-	var r ListTrafficTypesResponse
-	if err := json.Unmarshal(resp, &r); err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-type ListTrafficTypesResponse struct {
-	Count        int            `json:"count"`
-	TrafficTypes []*TrafficType `json:"traffictype"`
-}
-
-type TrafficType struct {
-	Canenableindividualservice   bool     `json:"canenableindividualservice,omitempty"`
-	Destinationphysicalnetworkid string   `json:"destinationphysicalnetworkid,omitempty"`
-	Id                           string   `json:"id,omitempty"`
-	Name                         string   `json:"name,omitempty"`
-	Physicalnetworkid            string   `json:"physicalnetworkid,omitempty"`
-	Servicelist                  []string `json:"servicelist,omitempty"`
-	State                        string   `json:"state,omitempty"`
-}
-
-type UpdateTrafficTypeParams struct {
-	p map[string]interface{}
-}
-
-func (p *UpdateTrafficTypeParams) toURLValues() url.Values {
-	u := url.Values{}
-	if p.p == nil {
-		return u
-	}
-	if v, found := p.p["hypervnetworklabel"]; found {
-		u.Set("hypervnetworklabel", v.(string))
-	}
-	if v, found := p.p["id"]; found {
-		u.Set("id", v.(string))
-	}
-	if v, found := p.p["kvmnetworklabel"]; found {
-		u.Set("kvmnetworklabel", v.(string))
-	}
-	if v, found := p.p["ovm3networklabel"]; found {
-		u.Set("ovm3networklabel", v.(string))
-	}
-	if v, found := p.p["vmwarenetworklabel"]; found {
-		u.Set("vmwarenetworklabel", v.(string))
-	}
-	if v, found := p.p["xennetworklabel"]; found {
-		u.Set("xennetworklabel", v.(string))
-	}
-	return u
-}
-
-func (p *UpdateTrafficTypeParams) SetHypervnetworklabel(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["hypervnetworklabel"] = v
-	return
-}
-
-func (p *UpdateTrafficTypeParams) SetId(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["id"] = v
-	return
-}
-
-func (p *UpdateTrafficTypeParams) SetKvmnetworklabel(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["kvmnetworklabel"] = v
-	return
-}
-
-func (p *UpdateTrafficTypeParams) SetOvm3networklabel(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["ovm3networklabel"] = v
-	return
-}
-
-func (p *UpdateTrafficTypeParams) SetVmwarenetworklabel(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["vmwarenetworklabel"] = v
-	return
-}
-
-func (p *UpdateTrafficTypeParams) SetXennetworklabel(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["xennetworklabel"] = v
-	return
-}
-
-// You should always use this function to get a new UpdateTrafficTypeParams instance,
-// as then you are sure you have configured all required params
-func (s *UsageService) NewUpdateTrafficTypeParams(id string) *UpdateTrafficTypeParams {
-	p := &UpdateTrafficTypeParams{}
-	p.p = make(map[string]interface{})
-	p.p["id"] = id
-	return p
-}
-
-// Updates traffic type of a physical network
-func (s *UsageService) UpdateTrafficType(p *UpdateTrafficTypeParams) (*UpdateTrafficTypeResponse, error) {
-	resp, err := s.cs.newRequest("updateTrafficType", p.toURLValues())
-	if err != nil {
-		return nil, err
-	}
-
-	var r UpdateTrafficTypeResponse
+	var r ListTrafficMonitorsResponse
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
 
-	// If we have a async client, we need to wait for the async result
-	if s.cs.async {
-		b, err := s.cs.GetAsyncJobResult(r.JobID, s.cs.timeout)
-		if err != nil {
-			if err == AsyncTimeoutErr {
-				return &r, err
-			}
-			return nil, err
-		}
-
-		b, err = getRawValue(b)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := json.Unmarshal(b, &r); err != nil {
-			return nil, err
-		}
-	}
 	return &r, nil
 }
 
-type UpdateTrafficTypeResponse struct {
-	JobID              string `json:"jobid,omitempty"`
-	Hypervnetworklabel string `json:"hypervnetworklabel,omitempty"`
-	Id                 string `json:"id,omitempty"`
-	Kvmnetworklabel    string `json:"kvmnetworklabel,omitempty"`
-	Ovm3networklabel   string `json:"ovm3networklabel,omitempty"`
-	Physicalnetworkid  string `json:"physicalnetworkid,omitempty"`
-	Traffictype        string `json:"traffictype,omitempty"`
-	Vmwarenetworklabel string `json:"vmwarenetworklabel,omitempty"`
-	Xennetworklabel    string `json:"xennetworklabel,omitempty"`
+type ListTrafficMonitorsResponse struct {
+	Count           int               `json:"count"`
+	TrafficMonitors []*TrafficMonitor `json:"trafficmonitor"`
+}
+
+type TrafficMonitor struct {
+	Id         string `json:"id"`
+	Ipaddress  string `json:"ipaddress"`
+	Numretries string `json:"numretries"`
+	Timeout    string `json:"timeout"`
+	Zoneid     string `json:"zoneid"`
 }
 
 type ListTrafficTypeImplementorsParams struct {
@@ -600,6 +685,7 @@ func (s *UsageService) ListTrafficTypeImplementors(p *ListTrafficTypeImplementor
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -609,82 +695,142 @@ type ListTrafficTypeImplementorsResponse struct {
 }
 
 type TrafficTypeImplementor struct {
-	Traffictype            string `json:"traffictype,omitempty"`
-	Traffictypeimplementor string `json:"traffictypeimplementor,omitempty"`
+	Traffictype            string `json:"traffictype"`
+	Traffictypeimplementor string `json:"traffictypeimplementor"`
 }
 
-type GenerateUsageRecordsParams struct {
+type ListTrafficTypesParams struct {
 	p map[string]interface{}
 }
 
-func (p *GenerateUsageRecordsParams) toURLValues() url.Values {
+func (p *ListTrafficTypesParams) toURLValues() url.Values {
 	u := url.Values{}
 	if p.p == nil {
 		return u
 	}
-	if v, found := p.p["domainid"]; found {
-		u.Set("domainid", v.(string))
+	if v, found := p.p["keyword"]; found {
+		u.Set("keyword", v.(string))
 	}
-	if v, found := p.p["enddate"]; found {
-		u.Set("enddate", v.(string))
+	if v, found := p.p["page"]; found {
+		vv := strconv.Itoa(v.(int))
+		u.Set("page", vv)
 	}
-	if v, found := p.p["startdate"]; found {
-		u.Set("startdate", v.(string))
+	if v, found := p.p["pagesize"]; found {
+		vv := strconv.Itoa(v.(int))
+		u.Set("pagesize", vv)
+	}
+	if v, found := p.p["physicalnetworkid"]; found {
+		u.Set("physicalnetworkid", v.(string))
 	}
 	return u
 }
 
-func (p *GenerateUsageRecordsParams) SetDomainid(v string) {
+func (p *ListTrafficTypesParams) SetKeyword(v string) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
-	p.p["domainid"] = v
+	p.p["keyword"] = v
 	return
 }
 
-func (p *GenerateUsageRecordsParams) SetEnddate(v string) {
+func (p *ListTrafficTypesParams) SetPage(v int) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
-	p.p["enddate"] = v
+	p.p["page"] = v
 	return
 }
 
-func (p *GenerateUsageRecordsParams) SetStartdate(v string) {
+func (p *ListTrafficTypesParams) SetPagesize(v int) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
-	p.p["startdate"] = v
+	p.p["pagesize"] = v
 	return
 }
 
-// You should always use this function to get a new GenerateUsageRecordsParams instance,
+func (p *ListTrafficTypesParams) SetPhysicalnetworkid(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["physicalnetworkid"] = v
+	return
+}
+
+// You should always use this function to get a new ListTrafficTypesParams instance,
 // as then you are sure you have configured all required params
-func (s *UsageService) NewGenerateUsageRecordsParams(enddate string, startdate string) *GenerateUsageRecordsParams {
-	p := &GenerateUsageRecordsParams{}
+func (s *UsageService) NewListTrafficTypesParams(physicalnetworkid string) *ListTrafficTypesParams {
+	p := &ListTrafficTypesParams{}
 	p.p = make(map[string]interface{})
-	p.p["enddate"] = enddate
-	p.p["startdate"] = startdate
+	p.p["physicalnetworkid"] = physicalnetworkid
 	return p
 }
 
-// Generates usage records. This will generate records only if there any records to be generated, i.e if the scheduled usage job was not run or failed
-func (s *UsageService) GenerateUsageRecords(p *GenerateUsageRecordsParams) (*GenerateUsageRecordsResponse, error) {
-	resp, err := s.cs.newRequest("generateUsageRecords", p.toURLValues())
+// This is a courtesy helper function, which in some cases may not work as expected!
+func (s *UsageService) GetTrafficTypeID(keyword string, physicalnetworkid string, opts ...OptionFunc) (string, int, error) {
+	p := &ListTrafficTypesParams{}
+	p.p = make(map[string]interface{})
+
+	p.p["keyword"] = keyword
+	p.p["physicalnetworkid"] = physicalnetworkid
+
+	for _, fn := range append(s.cs.options, opts...) {
+		if err := fn(s.cs, p); err != nil {
+			return "", -1, err
+		}
+	}
+
+	l, err := s.ListTrafficTypes(p)
+	if err != nil {
+		return "", -1, err
+	}
+
+	if l.Count == 0 {
+		return "", l.Count, fmt.Errorf("No match found for %s: %+v", keyword, l)
+	}
+
+	if l.Count == 1 {
+		return l.TrafficTypes[0].Id, l.Count, nil
+	}
+
+	if l.Count > 1 {
+		for _, v := range l.TrafficTypes {
+			if v.Name == keyword {
+				return v.Id, l.Count, nil
+			}
+		}
+	}
+	return "", l.Count, fmt.Errorf("Could not find an exact match for %s: %+v", keyword, l)
+}
+
+// Lists traffic types of a given physical network.
+func (s *UsageService) ListTrafficTypes(p *ListTrafficTypesParams) (*ListTrafficTypesResponse, error) {
+	resp, err := s.cs.newRequest("listTrafficTypes", p.toURLValues())
 	if err != nil {
 		return nil, err
 	}
 
-	var r GenerateUsageRecordsResponse
+	var r ListTrafficTypesResponse
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
-type GenerateUsageRecordsResponse struct {
-	Displaytext string `json:"displaytext,omitempty"`
-	Success     string `json:"success,omitempty"`
+type ListTrafficTypesResponse struct {
+	Count        int            `json:"count"`
+	TrafficTypes []*TrafficType `json:"traffictype"`
+}
+
+type TrafficType struct {
+	Canenableindividualservice   bool     `json:"canenableindividualservice"`
+	Destinationphysicalnetworkid string   `json:"destinationphysicalnetworkid"`
+	Id                           string   `json:"id"`
+	Name                         string   `json:"name"`
+	Physicalnetworkid            string   `json:"physicalnetworkid"`
+	Servicelist                  []string `json:"servicelist"`
+	State                        string   `json:"state"`
 }
 
 type ListUsageRecordsParams struct {
@@ -811,7 +957,7 @@ func (p *ListUsageRecordsParams) SetType(v int64) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
-	p.p["usageType"] = v
+	p.p["type"] = v
 	return
 }
 
@@ -844,6 +990,7 @@ func (s *UsageService) ListUsageRecords(p *ListUsageRecordsParams) (*ListUsageRe
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -853,34 +1000,34 @@ type ListUsageRecordsResponse struct {
 }
 
 type UsageRecord struct {
-	Account          string `json:"account,omitempty"`
-	Accountid        string `json:"accountid,omitempty"`
-	Cpunumber        int64  `json:"cpunumber,omitempty"`
-	Cpuspeed         int64  `json:"cpuspeed,omitempty"`
-	Description      string `json:"description,omitempty"`
-	Domain           string `json:"domain,omitempty"`
-	Domainid         string `json:"domainid,omitempty"`
-	Enddate          string `json:"enddate,omitempty"`
-	Isdefault        bool   `json:"isdefault,omitempty"`
-	Issourcenat      bool   `json:"issourcenat,omitempty"`
-	Issystem         bool   `json:"issystem,omitempty"`
-	Memory           int64  `json:"memory,omitempty"`
-	Name             string `json:"name,omitempty"`
-	Networkid        string `json:"networkid,omitempty"`
-	Offeringid       string `json:"offeringid,omitempty"`
-	Project          string `json:"project,omitempty"`
-	Projectid        string `json:"projectid,omitempty"`
-	Rawusage         string `json:"rawusage,omitempty"`
-	Size             int64  `json:"size,omitempty"`
-	Startdate        string `json:"startdate,omitempty"`
-	Templateid       string `json:"templateid,omitempty"`
-	Type             string `json:"type,omitempty"`
-	Usage            string `json:"usage,omitempty"`
-	Usageid          string `json:"usageid,omitempty"`
-	Usagetype        int    `json:"usagetype,omitempty"`
-	Virtualmachineid string `json:"virtualmachineid,omitempty"`
-	Virtualsize      int64  `json:"virtualsize,omitempty"`
-	Zoneid           string `json:"zoneid,omitempty"`
+	Account          string `json:"account"`
+	Accountid        string `json:"accountid"`
+	Cpunumber        int64  `json:"cpunumber"`
+	Cpuspeed         int64  `json:"cpuspeed"`
+	Description      string `json:"description"`
+	Domain           string `json:"domain"`
+	Domainid         string `json:"domainid"`
+	Enddate          string `json:"enddate"`
+	Isdefault        bool   `json:"isdefault"`
+	Issourcenat      bool   `json:"issourcenat"`
+	Issystem         bool   `json:"issystem"`
+	Memory           int64  `json:"memory"`
+	Name             string `json:"name"`
+	Networkid        string `json:"networkid"`
+	Offeringid       string `json:"offeringid"`
+	Project          string `json:"project"`
+	Projectid        string `json:"projectid"`
+	Rawusage         string `json:"rawusage"`
+	Size             int64  `json:"size"`
+	Startdate        string `json:"startdate"`
+	Templateid       string `json:"templateid"`
+	Type             string `json:"type"`
+	Usage            string `json:"usage"`
+	Usageid          string `json:"usageid"`
+	Usagetype        int    `json:"usagetype"`
+	Virtualmachineid string `json:"virtualmachineid"`
+	Virtualsize      int64  `json:"virtualsize"`
+	Zoneid           string `json:"zoneid"`
 }
 
 type ListUsageTypesParams struct {
@@ -914,6 +1061,7 @@ func (s *UsageService) ListUsageTypes(p *ListUsageTypesParams) (*ListUsageTypesR
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -923,8 +1071,8 @@ type ListUsageTypesResponse struct {
 }
 
 type UsageType struct {
-	Description string `json:"description,omitempty"`
-	Usagetypeid int    `json:"usagetypeid,omitempty"`
+	Description string `json:"description"`
+	Usagetypeid int    `json:"usagetypeid"`
 }
 
 type RemoveRawUsageRecordsParams struct {
@@ -971,118 +1119,73 @@ func (s *UsageService) RemoveRawUsageRecords(p *RemoveRawUsageRecordsParams) (*R
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
 type RemoveRawUsageRecordsResponse struct {
-	Displaytext string `json:"displaytext,omitempty"`
-	Success     string `json:"success,omitempty"`
+	Displaytext string `json:"displaytext"`
+	Success     bool   `json:"success"`
 }
 
-type AddTrafficMonitorParams struct {
-	p map[string]interface{}
-}
-
-func (p *AddTrafficMonitorParams) toURLValues() url.Values {
-	u := url.Values{}
-	if p.p == nil {
-		return u
-	}
-	if v, found := p.p["excludezones"]; found {
-		u.Set("excludezones", v.(string))
-	}
-	if v, found := p.p["includezones"]; found {
-		u.Set("includezones", v.(string))
-	}
-	if v, found := p.p["url"]; found {
-		u.Set("url", v.(string))
-	}
-	if v, found := p.p["zoneid"]; found {
-		u.Set("zoneid", v.(string))
-	}
-	return u
-}
-
-func (p *AddTrafficMonitorParams) SetExcludezones(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["excludezones"] = v
-	return
-}
-
-func (p *AddTrafficMonitorParams) SetIncludezones(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["includezones"] = v
-	return
-}
-
-func (p *AddTrafficMonitorParams) SetUrl(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["url"] = v
-	return
-}
-
-func (p *AddTrafficMonitorParams) SetZoneid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["zoneid"] = v
-	return
-}
-
-// You should always use this function to get a new AddTrafficMonitorParams instance,
-// as then you are sure you have configured all required params
-func (s *UsageService) NewAddTrafficMonitorParams(url string, zoneid string) *AddTrafficMonitorParams {
-	p := &AddTrafficMonitorParams{}
-	p.p = make(map[string]interface{})
-	p.p["url"] = url
-	p.p["zoneid"] = zoneid
-	return p
-}
-
-// Adds Traffic Monitor Host for Direct Network Usage
-func (s *UsageService) AddTrafficMonitor(p *AddTrafficMonitorParams) (*AddTrafficMonitorResponse, error) {
-	resp, err := s.cs.newRequest("addTrafficMonitor", p.toURLValues())
+func (r *RemoveRawUsageRecordsResponse) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	err := json.Unmarshal(b, &m)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var r AddTrafficMonitorResponse
-	if err := json.Unmarshal(resp, &r); err != nil {
-		return nil, err
+	if success, ok := m["success"].(string); ok {
+		m["success"] = success == "true"
+		b, err = json.Marshal(m)
+		if err != nil {
+			return err
+		}
 	}
-	return &r, nil
+
+	type alias RemoveRawUsageRecordsResponse
+	return json.Unmarshal(b, (*alias)(r))
 }
 
-type AddTrafficMonitorResponse struct {
-	Id         string `json:"id,omitempty"`
-	Ipaddress  string `json:"ipaddress,omitempty"`
-	Numretries string `json:"numretries,omitempty"`
-	Timeout    string `json:"timeout,omitempty"`
-	Zoneid     string `json:"zoneid,omitempty"`
-}
-
-type DeleteTrafficMonitorParams struct {
+type UpdateTrafficTypeParams struct {
 	p map[string]interface{}
 }
 
-func (p *DeleteTrafficMonitorParams) toURLValues() url.Values {
+func (p *UpdateTrafficTypeParams) toURLValues() url.Values {
 	u := url.Values{}
 	if p.p == nil {
 		return u
+	}
+	if v, found := p.p["hypervnetworklabel"]; found {
+		u.Set("hypervnetworklabel", v.(string))
 	}
 	if v, found := p.p["id"]; found {
 		u.Set("id", v.(string))
 	}
+	if v, found := p.p["kvmnetworklabel"]; found {
+		u.Set("kvmnetworklabel", v.(string))
+	}
+	if v, found := p.p["ovm3networklabel"]; found {
+		u.Set("ovm3networklabel", v.(string))
+	}
+	if v, found := p.p["vmwarenetworklabel"]; found {
+		u.Set("vmwarenetworklabel", v.(string))
+	}
+	if v, found := p.p["xennetworklabel"]; found {
+		u.Set("xennetworklabel", v.(string))
+	}
 	return u
 }
 
-func (p *DeleteTrafficMonitorParams) SetId(v string) {
+func (p *UpdateTrafficTypeParams) SetHypervnetworklabel(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["hypervnetworklabel"] = v
+	return
+}
+
+func (p *UpdateTrafficTypeParams) SetId(v string) {
 	if p.p == nil {
 		p.p = make(map[string]interface{})
 	}
@@ -1090,124 +1193,90 @@ func (p *DeleteTrafficMonitorParams) SetId(v string) {
 	return
 }
 
-// You should always use this function to get a new DeleteTrafficMonitorParams instance,
+func (p *UpdateTrafficTypeParams) SetKvmnetworklabel(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["kvmnetworklabel"] = v
+	return
+}
+
+func (p *UpdateTrafficTypeParams) SetOvm3networklabel(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["ovm3networklabel"] = v
+	return
+}
+
+func (p *UpdateTrafficTypeParams) SetVmwarenetworklabel(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["vmwarenetworklabel"] = v
+	return
+}
+
+func (p *UpdateTrafficTypeParams) SetXennetworklabel(v string) {
+	if p.p == nil {
+		p.p = make(map[string]interface{})
+	}
+	p.p["xennetworklabel"] = v
+	return
+}
+
+// You should always use this function to get a new UpdateTrafficTypeParams instance,
 // as then you are sure you have configured all required params
-func (s *UsageService) NewDeleteTrafficMonitorParams(id string) *DeleteTrafficMonitorParams {
-	p := &DeleteTrafficMonitorParams{}
+func (s *UsageService) NewUpdateTrafficTypeParams(id string) *UpdateTrafficTypeParams {
+	p := &UpdateTrafficTypeParams{}
 	p.p = make(map[string]interface{})
 	p.p["id"] = id
 	return p
 }
 
-// Deletes an traffic monitor host.
-func (s *UsageService) DeleteTrafficMonitor(p *DeleteTrafficMonitorParams) (*DeleteTrafficMonitorResponse, error) {
-	resp, err := s.cs.newRequest("deleteTrafficMonitor", p.toURLValues())
+// Updates traffic type of a physical network
+func (s *UsageService) UpdateTrafficType(p *UpdateTrafficTypeParams) (*UpdateTrafficTypeResponse, error) {
+	resp, err := s.cs.newRequest("updateTrafficType", p.toURLValues())
 	if err != nil {
 		return nil, err
 	}
 
-	var r DeleteTrafficMonitorResponse
+	var r UpdateTrafficTypeResponse
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
+	// If we have a async client, we need to wait for the async result
+	if s.cs.async {
+		b, err := s.cs.GetAsyncJobResult(r.JobID, s.cs.timeout)
+		if err != nil {
+			if err == AsyncTimeoutErr {
+				return &r, err
+			}
+			return nil, err
+		}
+
+		b, err = getRawValue(b)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(b, &r); err != nil {
+			return nil, err
+		}
+	}
+
 	return &r, nil
 }
 
-type DeleteTrafficMonitorResponse struct {
-	Displaytext string `json:"displaytext,omitempty"`
-	Success     string `json:"success,omitempty"`
-}
-
-type ListTrafficMonitorsParams struct {
-	p map[string]interface{}
-}
-
-func (p *ListTrafficMonitorsParams) toURLValues() url.Values {
-	u := url.Values{}
-	if p.p == nil {
-		return u
-	}
-	if v, found := p.p["keyword"]; found {
-		u.Set("keyword", v.(string))
-	}
-	if v, found := p.p["page"]; found {
-		vv := strconv.Itoa(v.(int))
-		u.Set("page", vv)
-	}
-	if v, found := p.p["pagesize"]; found {
-		vv := strconv.Itoa(v.(int))
-		u.Set("pagesize", vv)
-	}
-	if v, found := p.p["zoneid"]; found {
-		u.Set("zoneid", v.(string))
-	}
-	return u
-}
-
-func (p *ListTrafficMonitorsParams) SetKeyword(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["keyword"] = v
-	return
-}
-
-func (p *ListTrafficMonitorsParams) SetPage(v int) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["page"] = v
-	return
-}
-
-func (p *ListTrafficMonitorsParams) SetPagesize(v int) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["pagesize"] = v
-	return
-}
-
-func (p *ListTrafficMonitorsParams) SetZoneid(v string) {
-	if p.p == nil {
-		p.p = make(map[string]interface{})
-	}
-	p.p["zoneid"] = v
-	return
-}
-
-// You should always use this function to get a new ListTrafficMonitorsParams instance,
-// as then you are sure you have configured all required params
-func (s *UsageService) NewListTrafficMonitorsParams(zoneid string) *ListTrafficMonitorsParams {
-	p := &ListTrafficMonitorsParams{}
-	p.p = make(map[string]interface{})
-	p.p["zoneid"] = zoneid
-	return p
-}
-
-// List traffic monitor Hosts.
-func (s *UsageService) ListTrafficMonitors(p *ListTrafficMonitorsParams) (*ListTrafficMonitorsResponse, error) {
-	resp, err := s.cs.newRequest("listTrafficMonitors", p.toURLValues())
-	if err != nil {
-		return nil, err
-	}
-
-	var r ListTrafficMonitorsResponse
-	if err := json.Unmarshal(resp, &r); err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-type ListTrafficMonitorsResponse struct {
-	Count           int               `json:"count"`
-	TrafficMonitors []*TrafficMonitor `json:"trafficmonitor"`
-}
-
-type TrafficMonitor struct {
-	Id         string `json:"id,omitempty"`
-	Ipaddress  string `json:"ipaddress,omitempty"`
-	Numretries string `json:"numretries,omitempty"`
-	Timeout    string `json:"timeout,omitempty"`
-	Zoneid     string `json:"zoneid,omitempty"`
+type UpdateTrafficTypeResponse struct {
+	JobID              string `json:"jobid"`
+	Hypervnetworklabel string `json:"hypervnetworklabel"`
+	Id                 string `json:"id"`
+	Kvmnetworklabel    string `json:"kvmnetworklabel"`
+	Ovm3networklabel   string `json:"ovm3networklabel"`
+	Physicalnetworkid  string `json:"physicalnetworkid"`
+	Traffictype        string `json:"traffictype"`
+	Vmwarenetworklabel string `json:"vmwarenetworklabel"`
+	Xennetworklabel    string `json:"xennetworklabel"`
 }
