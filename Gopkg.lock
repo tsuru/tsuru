@@ -1057,13 +1057,12 @@
   revision = "13d5f779f148deec8cbd455f83a0d46352e2305f"
 
 [[projects]]
-  branch = "secondarystoragetotal_float"
+  branch = "master"
   digest = "1:c2ef96dda049166338eed3389078a501161e6117995b96e05301262af7529999"
   name = "github.com/xanzy/go-cloudstack"
   packages = ["cloudstack"]
   pruneopts = "NUT"
-  revision = "4bfd70487ac5a4a353b9abe2c389e01185c49736"
-  source = "github.com/cezarsa/go-cloudstack"
+  revision = "a833aae31566d0d93bc0729bf9265a3df3ed24c9"
 
 [[projects]]
   branch = "master"
