@@ -131,8 +131,7 @@ required = [
   revision = "ae2e162c4b2ae96aa66b596b2c18f17834299ed0"
 [[override]]
   name = "github.com/xanzy/go-cloudstack"
-  source = "github.com/cezarsa/go-cloudstack"
-  branch = "secondarystoragetotal_float"
+  branch = "master"
 [[override]]
   name = "github.com/vulcand/predicate"
   revision = "cb0bff91a7ab7cf7571e661ff883fc997bc554a3"
