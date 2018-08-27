@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/informers"
 	v1informers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -414,11 +415,6 @@ func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, 
 	}
 	var units []provision.Unit
 	for _, cApp := range cApps {
-		kubeConf := getKubeConfig()
-		err = cApp.client.SetTimeout(kubeConf.APIShortTimeout)
-		if err != nil {
-			return nil, err
-		}
 		pods, err := p.podsForApps(cApp.client, cApp.apps)
 		if err != nil {
 			return nil, err
@@ -461,7 +457,11 @@ func (p *kubernetesProvisioner) podsForApps(client *ClusterClient, apps []provis
 		}
 		sel = sel.Add(*req)
 	}
-	pods, err := p.podInformerForCluster(client).Lister().List(sel)
+	informer, err := p.podInformerForCluster(client)
+	if err != nil {
+		return nil, err
+	}
+	pods, err := informer.Lister().List(sel)
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +788,7 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 	if err != nil {
 		return "", err
 	}
-	if err := ensureAppCustomResourceSynced(client, a); err != nil {
+	if err = ensureAppCustomResourceSynced(client, a); err != nil {
 		return "", err
 	}
 	newImage := buildImageID
@@ -1042,23 +1042,37 @@ func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) v1informers.PodInformer {
+func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) (v1informers.PodInformer, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if informer, ok := p.podInformers[client.Name]; ok {
-		return informer
+		return informer, nil
 	}
-	p.podInformers[client.Name] = PodInformerFactory(client, p.stopCh)
-	return p.podInformers[client.Name]
+	var err error
+	p.podInformers[client.Name], err = PodInformerFactory(client, p.stopCh)
+	return p.podInformers[client.Name], err
 }
 
 // PodInformerFactory creates a PodInformer and runs the informer in a different goroutine
-var PodInformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) v1informers.PodInformer {
-	factory := informers.NewSharedInformerFactory(client.Interface, time.Minute)
+var PodInformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (v1informers.PodInformer, error) {
+	timeout := client.restConfig.Timeout
+	restConfig := *client.restConfig
+	restConfig.Timeout = 0
+	cli, err := ClientForConfig(&restConfig)
+	if err != nil {
+		return nil, err
+	}
+	tweakFunc := internalinterfaces.TweakListOptionsFunc(func(opts *metav1.ListOptions) {
+		if opts.TimeoutSeconds == nil {
+			timeoutSec := int64(timeout.Seconds())
+			opts.TimeoutSeconds = &timeoutSec
+		}
+	})
+	factory := informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc)
 	informer := factory.Core().V1().Pods()
 	factory.WaitForCacheSync(stopCh)
 	go informer.Informer().Run(stopCh)
-	return informer
+	return informer, nil
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {

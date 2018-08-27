@@ -140,8 +140,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.p = kubeProv.GetProvisioner()
 	factory := informers.NewSharedInformerFactory(s.client, time.Minute)
 	s.podInformer = factory.Core().V1().Pods()
-	kubeProv.PodInformerFactory = func(client *kubeProv.ClusterClient, _ <-chan struct{}) v1informers.PodInformer {
-		return s.podInformer
+	kubeProv.PodInformerFactory = func(client *kubeProv.ClusterClient, _ <-chan struct{}) (v1informers.PodInformer, error) {
+		return s.podInformer, nil
 	}
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.podInformer)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
