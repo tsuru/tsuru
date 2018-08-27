@@ -1,5 +1,5 @@
 //
-// Copyright 2016, Sander van Harmelen
+// Copyright 2018, Sander van Harmelen
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,19 +99,20 @@ func (s *SwiftService) AddSwift(p *AddSwiftParams) (*AddSwiftResponse, error) {
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
 type AddSwiftResponse struct {
-	Details      []string `json:"details,omitempty"`
-	Id           string   `json:"id,omitempty"`
-	Name         string   `json:"name,omitempty"`
-	Protocol     string   `json:"protocol,omitempty"`
-	Providername string   `json:"providername,omitempty"`
-	Scope        string   `json:"scope,omitempty"`
-	Url          string   `json:"url,omitempty"`
-	Zoneid       string   `json:"zoneid,omitempty"`
-	Zonename     string   `json:"zonename,omitempty"`
+	Details      []interface{} `json:"details"`
+	Id           string        `json:"id"`
+	Name         string        `json:"name"`
+	Protocol     string        `json:"protocol"`
+	Providername string        `json:"providername"`
+	Scope        string        `json:"scope"`
+	Url          string        `json:"url"`
+	Zoneid       string        `json:"zoneid"`
+	Zonename     string        `json:"zonename"`
 }
 
 type ListSwiftsParams struct {
@@ -182,39 +183,39 @@ func (s *SwiftService) NewListSwiftsParams() *ListSwiftsParams {
 }
 
 // This is a courtesy helper function, which in some cases may not work as expected!
-func (s *SwiftService) GetSwiftID(keyword string, opts ...OptionFunc) (string, error) {
+func (s *SwiftService) GetSwiftID(keyword string, opts ...OptionFunc) (string, int, error) {
 	p := &ListSwiftsParams{}
 	p.p = make(map[string]interface{})
 
 	p.p["keyword"] = keyword
 
-	for _, fn := range opts {
+	for _, fn := range append(s.cs.options, opts...) {
 		if err := fn(s.cs, p); err != nil {
-			return "", err
+			return "", -1, err
 		}
 	}
 
 	l, err := s.ListSwifts(p)
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 
 	if l.Count == 0 {
-		return "", fmt.Errorf("No match found for %s: %+v", keyword, l)
+		return "", l.Count, fmt.Errorf("No match found for %s: %+v", keyword, l)
 	}
 
 	if l.Count == 1 {
-		return l.Swifts[0].Id, nil
+		return l.Swifts[0].Id, l.Count, nil
 	}
 
 	if l.Count > 1 {
 		for _, v := range l.Swifts {
 			if v.Name == keyword {
-				return v.Id, nil
+				return v.Id, l.Count, nil
 			}
 		}
 	}
-	return "", fmt.Errorf("Could not find an exact match for %s: %+v", keyword, l)
+	return "", l.Count, fmt.Errorf("Could not find an exact match for %s: %+v", keyword, l)
 }
 
 // List Swift.
@@ -228,6 +229,7 @@ func (s *SwiftService) ListSwifts(p *ListSwiftsParams) (*ListSwiftsResponse, err
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -237,13 +239,13 @@ type ListSwiftsResponse struct {
 }
 
 type Swift struct {
-	Details      []string `json:"details,omitempty"`
-	Id           string   `json:"id,omitempty"`
-	Name         string   `json:"name,omitempty"`
-	Protocol     string   `json:"protocol,omitempty"`
-	Providername string   `json:"providername,omitempty"`
-	Scope        string   `json:"scope,omitempty"`
-	Url          string   `json:"url,omitempty"`
-	Zoneid       string   `json:"zoneid,omitempty"`
-	Zonename     string   `json:"zonename,omitempty"`
+	Details      []interface{} `json:"details"`
+	Id           string        `json:"id"`
+	Name         string        `json:"name"`
+	Protocol     string        `json:"protocol"`
+	Providername string        `json:"providername"`
+	Scope        string        `json:"scope"`
+	Url          string        `json:"url"`
+	Zoneid       string        `json:"zoneid"`
+	Zonename     string        `json:"zonename"`
 }

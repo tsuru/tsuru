@@ -1,5 +1,5 @@
 //
-// Copyright 2016, Sander van Harmelen
+// Copyright 2018, Sander van Harmelen
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ func (s *APIDiscoveryService) ListApis(p *ListApisParams) (*ListApisResponse, er
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
 	}
+
 	return &r, nil
 }
 
@@ -72,25 +73,25 @@ type ListApisResponse struct {
 }
 
 type Api struct {
-	Description string `json:"description,omitempty"`
-	Isasync     bool   `json:"isasync,omitempty"`
-	Name        string `json:"name,omitempty"`
+	Description string `json:"description"`
+	Isasync     bool   `json:"isasync"`
+	Name        string `json:"name"`
 	Params      []struct {
-		Description string `json:"description,omitempty"`
-		Length      int    `json:"length,omitempty"`
-		Name        string `json:"name,omitempty"`
-		Related     string `json:"related,omitempty"`
-		Required    bool   `json:"required,omitempty"`
-		Since       string `json:"since,omitempty"`
-		Type        string `json:"type,omitempty"`
-	} `json:"params,omitempty"`
-	Related  string `json:"related,omitempty"`
+		Description string `json:"description"`
+		Length      int    `json:"length"`
+		Name        string `json:"name"`
+		Related     string `json:"related"`
+		Required    bool   `json:"required"`
+		Since       string `json:"since"`
+		Type        string `json:"type"`
+	} `json:"params"`
+	Related  string `json:"related"`
 	Response []struct {
-		Description string   `json:"description,omitempty"`
-		Name        string   `json:"name,omitempty"`
-		Response    []string `json:"response,omitempty"`
-		Type        string   `json:"type,omitempty"`
-	} `json:"response,omitempty"`
-	Since string `json:"since,omitempty"`
-	Type  string `json:"type,omitempty"`
+		Description string        `json:"description"`
+		Name        string        `json:"name"`
+		Response    []interface{} `json:"response"`
+		Type        string        `json:"type"`
+	} `json:"response"`
+	Since string `json:"since"`
+	Type  string `json:"type"`
 }
