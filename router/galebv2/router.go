@@ -19,7 +19,7 @@ import (
 	galebClient "github.com/tsuru/tsuru/router/galebv2/client"
 )
 
-const routerType = "galeb"
+const routerType = "galebv2"
 
 var clientCache struct {
 	sync.Mutex
