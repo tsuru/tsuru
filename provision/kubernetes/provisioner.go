@@ -6,9 +6,11 @@ package kubernetes
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -67,8 +69,8 @@ var (
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.RollbackableDeployer = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
+	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -94,6 +96,7 @@ func GetProvisioner() *kubernetesProvisioner {
 }
 
 type kubernetesConfig struct {
+	LogLevel           int
 	DeploySidecarImage string
 	DeployInspectImage string
 	APITimeout         time.Duration
@@ -114,6 +117,7 @@ type kubernetesConfig struct {
 
 func getKubeConfig() kubernetesConfig {
 	conf := kubernetesConfig{}
+	conf.LogLevel, _ = config.GetInt("kubernetes:log-level")
 	conf.DeploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
 	if conf.DeploySidecarImage == "" {
 		conf.DeploySidecarImage = defaultSidecarImageName
@@ -159,6 +163,17 @@ func getKubeConfig() kubernetesConfig {
 		conf.AttachTimeoutAfterContainerFinished = defaultAttachTimeoutAfterContainerFinished
 	}
 	return conf
+}
+
+func (p *kubernetesProvisioner) Initialize() error {
+	conf := getKubeConfig()
+	if conf.LogLevel > 0 {
+		// These flags are used by golang/glog package which in turn is used by
+		// kubernetes to control logging. Unfortunately it doesn't seem like
+		// there's a better way to control glog.
+		flag.CommandLine.Parse([]string{"-v", strconv.Itoa(conf.LogLevel), "-logtostderr"})
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) GetName() string {
