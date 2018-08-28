@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
@@ -465,8 +466,8 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 	return podsFromNode(client, nodeName, labelFilter)
 }
 
-func getServicePort(client *ClusterClient, srvName, namespace string) (int32, error) {
-	srv, err := client.CoreV1().Services(namespace).Get(srvName, metav1.GetOptions{})
+func getServicePort(svcInformer v1informers.ServiceInformer, srvName, namespace string) (int32, error) {
+	srv, err := svcInformer.Lister().Services(namespace).Get(srvName)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}

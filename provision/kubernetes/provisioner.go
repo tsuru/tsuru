@@ -55,9 +55,12 @@ const (
 )
 
 type kubernetesProvisioner struct {
-	mu           sync.Mutex
-	podInformers map[string]v1informers.PodInformer
-	stopCh       chan struct{}
+	mu               sync.Mutex
+	informerFactory  map[string]informers.SharedInformerFactory
+	podInformers     map[string]v1informers.PodInformer
+	serviceInformers map[string]v1informers.ServiceInformer
+	nodeInformers    map[string]v1informers.NodeInformer
+	stopCh           chan struct{}
 }
 
 var (
@@ -82,8 +85,11 @@ var (
 
 func init() {
 	mainKubernetesProvisioner = &kubernetesProvisioner{
-		podInformers: make(map[string]v1informers.PodInformer),
-		stopCh:       make(chan struct{}),
+		informerFactory:  make(map[string]informers.SharedInformerFactory),
+		podInformers:     make(map[string]v1informers.PodInformer),
+		serviceInformers: make(map[string]v1informers.ServiceInformer),
+		nodeInformers:    make(map[string]v1informers.NodeInformer),
+		stopCh:           make(chan struct{}),
 	}
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainKubernetesProvisioner, nil
@@ -317,13 +323,21 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		appMap[baseApp.GetName()] = baseApp
 	}
 	if len(baseNodes) == 0 {
-		baseNodes, err = nodesForPods(client, pods)
+		nodeInformer, err := p.nodeInformerForCluster(client)
+		if err != nil {
+			return nil, err
+		}
+		baseNodes, err = nodesForPods(nodeInformer, pods)
 		if err != nil {
 			return nil, err
 		}
 	}
 	for i, baseNode := range baseNodes {
 		nodeMap[baseNode.Name] = &baseNodes[i]
+	}
+	svcInformer, err := p.serviceInformerForCluster(client)
+	if err != nil {
+		return nil, err
 	}
 	var units []provision.Unit
 	for _, pod := range pods {
@@ -370,7 +384,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			srvName := deploymentNameForApp(podApp, webProcessName)
 			port, ok := portMap[srvName]
 			if !ok {
-				port, err = getServicePort(client, srvName, pod.ObjectMeta.Namespace)
+				port, err = getServicePort(svcInformer, srvName, pod.ObjectMeta.Namespace)
 				if err != nil {
 					return nil, err
 				}
@@ -402,25 +416,24 @@ func isEvicted(pod apiv1.Pod) bool {
 	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "evicted"
 }
 
-func nodesForPods(client *ClusterClient, pods []apiv1.Pod) ([]apiv1.Node, error) {
+func nodesForPods(informer v1informers.NodeInformer, pods []apiv1.Pod) ([]apiv1.Node, error) {
 	nodeSet := map[string]struct{}{}
 	for _, p := range pods {
 		nodeSet[p.Spec.NodeName] = struct{}{}
 	}
-	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := informer.Lister().List(labels.Everything())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	for i := 0; i < len(nodes.Items); i++ {
-		_, inSet := nodeSet[nodes.Items[i].Name]
+	nodesRet := make([]apiv1.Node, 0, len(nodes))
+	for _, node := range nodes {
+		_, inSet := nodeSet[node.Name]
 		if inSet {
-			continue
+			copy := node.DeepCopy()
+			nodesRet = append(nodesRet, *copy)
 		}
-		nodes.Items[i] = nodes.Items[len(nodes.Items)-1]
-		nodes.Items = nodes.Items[:len(nodes.Items)-1]
-		i--
 	}
-	return nodes.Items, nil
+	return nodesRet, nil
 }
 
 func (p *kubernetesProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
@@ -511,7 +524,11 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	pubPort, err := getServicePort(client, srvName, ns)
+	svcInformer, err := p.serviceInformerForCluster(client)
+	if err != nil {
+		return nil, err
+	}
+	pubPort, err := getServicePort(svcInformer, srvName, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -1063,13 +1080,60 @@ func (p *kubernetesProvisioner) podInformerForCluster(client *ClusterClient) (v1
 	if informer, ok := p.podInformers[client.Name]; ok {
 		return informer, nil
 	}
-	var err error
-	p.podInformers[client.Name], err = PodInformerFactory(client, p.stopCh)
+	err := p.withInformerFactory(client, func(factory informers.SharedInformerFactory) {
+		p.podInformers[client.Name] = factory.Core().V1().Pods()
+		p.podInformers[client.Name].Informer()
+	})
 	return p.podInformers[client.Name], err
 }
 
-// PodInformerFactory creates a PodInformer and runs the informer in a different goroutine
-var PodInformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (v1informers.PodInformer, error) {
+func (p *kubernetesProvisioner) serviceInformerForCluster(client *ClusterClient) (v1informers.ServiceInformer, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if informer, ok := p.serviceInformers[client.Name]; ok {
+		return informer, nil
+	}
+	err := p.withInformerFactory(client, func(factory informers.SharedInformerFactory) {
+		p.serviceInformers[client.Name] = factory.Core().V1().Services()
+		p.serviceInformers[client.Name].Informer()
+	})
+	return p.serviceInformers[client.Name], err
+}
+
+func (p *kubernetesProvisioner) nodeInformerForCluster(client *ClusterClient) (v1informers.NodeInformer, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if informer, ok := p.nodeInformers[client.Name]; ok {
+		return informer, nil
+	}
+	err := p.withInformerFactory(client, func(factory informers.SharedInformerFactory) {
+		p.nodeInformers[client.Name] = factory.Core().V1().Nodes()
+		p.nodeInformers[client.Name].Informer()
+	})
+	return p.nodeInformers[client.Name], err
+}
+
+func (p *kubernetesProvisioner) withInformerFactory(client *ClusterClient, fn func(factory informers.SharedInformerFactory)) error {
+	factory, err := p.factoryForCluster(client)
+	if err != nil {
+		return err
+	}
+	fn(factory)
+	factory.Start(p.stopCh)
+	factory.WaitForCacheSync(p.stopCh)
+	return nil
+}
+
+func (p *kubernetesProvisioner) factoryForCluster(client *ClusterClient) (informers.SharedInformerFactory, error) {
+	if factory, ok := p.informerFactory[client.Name]; ok {
+		return factory, nil
+	}
+	var err error
+	p.informerFactory[client.Name], err = InformerFactory(client, p.stopCh)
+	return p.informerFactory[client.Name], err
+}
+
+var InformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (informers.SharedInformerFactory, error) {
 	timeout := client.restConfig.Timeout
 	restConfig := *client.restConfig
 	restConfig.Timeout = 0
@@ -1083,11 +1147,7 @@ var PodInformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (v1
 			opts.TimeoutSeconds = &timeoutSec
 		}
 	})
-	factory := informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc)
-	informer := factory.Core().V1().Pods()
-	factory.WaitForCacheSync(stopCh)
-	go informer.Informer().Run(stopCh)
-	return informer, nil
+	return informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc), nil
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
