@@ -497,6 +497,7 @@ func (s *S) TestLoggerMiddleware(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/my/path", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("User-Agent", "ardata 1.1")
 	h, handlerLog := doHandler()
 	handlerLog.sleep = 100 * time.Millisecond
 	handlerLog.response = http.StatusOK
@@ -507,7 +508,7 @@ func (s *S) TestLoggerMiddleware(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 "ardata 1.1" in 1\d{2}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
@@ -524,7 +525,7 @@ func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 "" in 1\d{2}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
@@ -544,7 +545,7 @@ func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 "" in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareHTTPS(c *check.C) {
@@ -567,7 +568,7 @@ func (s *S) TestLoggerMiddlewareHTTPS(c *check.C) {
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? https PUT /my/path 200 in \d{1}\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? https PUT /my/path 200 "Go-http-client/1.1" in \d{1}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestContentHijackerMiddleware(c *check.C) {
