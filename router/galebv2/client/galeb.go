@@ -86,13 +86,6 @@ type GalebClient struct {
 	MaxRequests   int
 }
 
-func (c *GalebClient) getTokenHeader() string {
-	if c.TokenHeader == "" {
-		return "X-Auth-Token"
-	}
-	return http.CanonicalHeaderKey(c.TokenHeader)
-}
-
 func (c *GalebClient) getToken() (string, error) {
 	c.tokenMu.RLock()
 	defer c.tokenMu.RUnlock()
@@ -122,22 +115,18 @@ func (c *GalebClient) regenerateToken() (err error) {
 	if rsp.StatusCode != http.StatusOK {
 		return errors.Errorf("invalid status code in request to /token: %d", rsp.StatusCode)
 	}
-	header := c.getTokenHeader()
-	c.token = rsp.Header.Get(header)
+	data, err := ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		return err
+	}
+	tokenStruct := struct{ Token string }{}
+	err = json.Unmarshal(data, &tokenStruct)
+	if err != nil {
+		return err
+	}
+	c.token = tokenStruct.Token
 	if c.token == "" {
-		data, err := ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			return err
-		}
-		tokenStruct := struct{ Token string }{}
-		err = json.Unmarshal(data, &tokenStruct)
-		if err != nil {
-			return err
-		}
-		c.token = tokenStruct.Token
-		if c.token == "" {
-			return errors.Errorf("invalid empty token in request to %q: %q", url, string(data))
-		}
+		return errors.Errorf("invalid empty token in request to %q: %q", url, string(data))
 	}
 	return nil
 }
@@ -177,8 +166,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		if err != nil {
 			return nil, err
 		}
-		header := c.getTokenHeader()
-		req.Header.Set(header, token)
+		req.SetBasicAuth(c.Username, token)
 	} else {
 		log.Debugf("Use basic auth: %s, %s", c.Username, c.Password)
 		req.SetBasicAuth(c.Username, c.Password)
