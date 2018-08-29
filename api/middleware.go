@@ -271,7 +271,11 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 			requestID = fmt.Sprintf(" [%s: %s]", requestIDHeader, requestID)
 		}
 	}
-	l.logger.Printf("%s %s %s %d in %0.6fms%s", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond), requestID)
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	l.logger.Printf("%s %s %s %s %d in %0.6fms%s", nowFormatted, scheme, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond), requestID)
 }
 
 type contentHijackMiddleware struct {
