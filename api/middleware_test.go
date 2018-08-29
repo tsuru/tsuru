@@ -507,7 +507,7 @@ func (s *S) TestLoggerMiddleware(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
@@ -524,7 +524,7 @@ func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
@@ -544,7 +544,30 @@ func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? http PUT /my/path 200 in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
+}
+
+func (s *S) TestLoggerMiddlewareHTTPS(c *check.C) {
+	h, handlerLog := doHandler()
+	handlerLog.response = http.StatusOK
+	var out bytes.Buffer
+	middle := loggerMiddleware{
+		logger: log.New(&out, "", 0),
+	}
+	n := negroni.New()
+	n.Use(&middle)
+	n.UseHandler(h)
+	srv := httptest.NewTLSServer(n)
+	defer srv.Close()
+	cli := srv.Client()
+	request, err := http.NewRequest("PUT", srv.URL+"/my/path", nil)
+	c.Assert(err, check.IsNil)
+	rsp, err := cli.Do(request)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(handlerLog.called, check.Equals, true)
+	timePart := time.Now().Format(time.RFC3339Nano)[:19]
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? https PUT /my/path 200 in \d{1}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestContentHijackerMiddleware(c *check.C) {
