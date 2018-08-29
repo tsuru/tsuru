@@ -176,4 +176,11 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provision.Cluster, error) {
 		return clust, nil
 	}
+	s.mockService.Cluster.OnFindByPools = func(provName string, poolNames []string) (map[string]provision.Cluster, error) {
+		ret := make(map[string]provision.Cluster)
+		for _, pool := range poolNames {
+			ret[pool] = *clust
+		}
+		return ret, nil
+	}
 }

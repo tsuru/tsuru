@@ -317,7 +317,6 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	}
 	nodeMap := map[string]*apiv1.Node{}
 	appMap := map[string]provision.App{}
-	webProcMap := map[string]string{}
 	portMap := map[string]int32{}
 	for _, baseApp := range baseApps {
 		appMap[baseApp.GetName()] = baseApp
@@ -362,36 +361,25 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			}
 			appMap[podApp.GetName()] = podApp
 		}
-		webProcessName, ok := webProcMap[podApp.GetName()]
-		if !ok {
-			var imageName string
-			imageName, err = image.AppCurrentImageName(podApp.GetName())
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			webProcessName, err = image.GetImageWebProcessName(imageName)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			webProcMap[podApp.GetName()] = webProcessName
-		}
 		wrapper := kubernetesNodeWrapper{node: node, prov: p}
 		url := &url.URL{
 			Scheme: "http",
 			Host:   wrapper.Address(),
 		}
 		appProcess := l.AppProcess()
-		if appProcess != "" && appProcess == webProcessName {
-			srvName := deploymentNameForApp(podApp, webProcessName)
+		if appProcess != "" {
+			srvName := deploymentNameForApp(podApp, appProcess)
 			port, ok := portMap[srvName]
 			if !ok {
 				port, err = getServicePort(svcInformer, srvName, pod.ObjectMeta.Namespace)
-				if err != nil {
+				if err != nil && !k8sErrors.IsNotFound(errors.Cause(err)) {
 					return nil, err
 				}
 				portMap[srvName] = port
 			}
-			url.Host = fmt.Sprintf("%s:%d", url.Host, port)
+			if port != 0 {
+				url.Host = fmt.Sprintf("%s:%d", url.Host, port)
+			}
 		}
 		units = append(units, provision.Unit{
 			ID:          pod.Name,

@@ -213,7 +213,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ""},
+			Address:     &url.URL{Scheme: "http", Host: ":30000"},
 		},
 	})
 }
@@ -381,7 +381,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ""},
+			Address:     &url.URL{Scheme: "http", Host: ":30000"},
 		},
 	})
 }

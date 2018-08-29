@@ -232,11 +232,15 @@ func (s *S) TestClustersForApps(c *check.C) {
 		Pools:       []string{"p1", "p2"},
 		Provisioner: provisionerName,
 	}
-	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
-		if pool == "p1" || pool == "p2" {
-			return &c2, nil
-		}
-		return &c1, nil
+	s.mockService.Cluster.OnFindByPools = func(prov string, pools []string) (map[string]provTypes.Cluster, error) {
+		sort.Strings(pools)
+		c.Assert(pools, check.DeepEquals, []string{"abc", "p1", "p2", "xyz"})
+		return map[string]provTypes.Cluster{
+			"p1":  c2,
+			"p2":  c2,
+			"xyz": c1,
+			"abc": c1,
+		}, nil
 	}
 	a1 := provisiontest.NewFakeApp("myapp1", "python", 0)
 	a1.Pool = "xyz"
