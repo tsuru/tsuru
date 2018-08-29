@@ -66,6 +66,7 @@ type MockClusterService struct {
 	OnFindByName        func(string) (*Cluster, error)
 	OnFindByProvisioner func(string) ([]Cluster, error)
 	OnFindByPool        func(string, string) (*Cluster, error)
+	OnFindByPools       func(string, []string) (map[string]Cluster, error)
 	OnDelete            func(Cluster) error
 }
 
@@ -109,6 +110,13 @@ func (m *MockClusterService) FindByPool(prov, pool string) (*Cluster, error) {
 		return nil, nil
 	}
 	return m.OnFindByPool(prov, pool)
+}
+
+func (m *MockClusterService) FindByPools(provisioner string, pool []string) (map[string]Cluster, error) {
+	if m.OnFindByPools == nil {
+		return nil, nil
+	}
+	return m.OnFindByPools(provisioner, pool)
 }
 
 func (m *MockClusterService) Delete(c Cluster) error {

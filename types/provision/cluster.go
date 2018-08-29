@@ -27,6 +27,7 @@ type ClusterService interface {
 	FindByName(string) (*Cluster, error)
 	FindByProvisioner(string) ([]Cluster, error)
 	FindByPool(string, string) (*Cluster, error)
+	FindByPools(string, []string) (map[string]Cluster, error)
 	Delete(Cluster) error
 }
 

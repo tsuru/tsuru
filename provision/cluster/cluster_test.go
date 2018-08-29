@@ -398,3 +398,46 @@ func (s *S) TestClusterUpdateCallsProvInit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.DeepEquals, *inst.callCluster)
 }
+
+func (s *S) TestFindByPools(c *check.C) {
+	prov := "prov1"
+	clusters := []provTypes.Cluster{
+		{Name: "cluster1", Provisioner: "kubernetes", Pools: []string{"poolA", "poolC"}},
+		{Name: "cluster2", Provisioner: "kubernetes", Pools: []string{"poolB"}},
+		{Name: "cluster3", Provisioner: "kubernetes", Default: true},
+	}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByProvisioner: func(prov string) ([]provTypes.Cluster, error) {
+				c.Assert(prov, check.Equals, prov)
+				return clusters, nil
+			},
+		},
+	}
+	result, err := cs.FindByPools(prov, []string{"poolA", "poolB", "poolC", "poolD", "poolA"})
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]provTypes.Cluster{
+		"poolA": clusters[0],
+		"poolB": clusters[1],
+		"poolC": clusters[0],
+		"poolD": clusters[2],
+	})
+}
+
+func (s *S) TestFindByPoolsNotFound(c *check.C) {
+	prov := "prov1"
+	clusters := []provTypes.Cluster{
+		{Name: "cluster1", Provisioner: "kubernetes", Pools: []string{"poolA", "poolC"}},
+		{Name: "cluster2", Provisioner: "kubernetes", Pools: []string{"poolB"}},
+	}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnFindByProvisioner: func(prov string) ([]provTypes.Cluster, error) {
+				c.Assert(prov, check.Equals, prov)
+				return clusters, nil
+			},
+		},
+	}
+	_, err := cs.FindByPools(prov, []string{"poolA", "poolB", "poolC", "poolD"})
+	c.Assert(err, check.ErrorMatches, `unable to find cluster for pool "poolD"`)
+}

@@ -72,6 +72,32 @@ func (s *clusterService) FindByProvisioner(prov string) ([]provTypes.Cluster, er
 	return s.storage.FindByProvisioner(prov)
 }
 
+func (s *clusterService) FindByPools(prov string, pools []string) (map[string]provTypes.Cluster, error) {
+	provClusters, err := s.FindByProvisioner(prov)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]provTypes.Cluster)
+poolLoop:
+	for _, pool := range pools {
+		for _, cluster := range provClusters {
+			if cluster.Default {
+				result[pool] = cluster
+			}
+			for _, clusterPool := range cluster.Pools {
+				if clusterPool == pool {
+					result[pool] = cluster
+					continue poolLoop
+				}
+			}
+		}
+		if _, ok := result[pool]; !ok {
+			return nil, errors.Errorf("unable to find cluster for pool %q", pool)
+		}
+	}
+	return result, nil
+}
+
 func (s *clusterService) FindByPool(prov, pool string) (*provTypes.Cluster, error) {
 	return s.storage.FindByPool(prov, pool)
 }
