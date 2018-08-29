@@ -467,6 +467,9 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 }
 
 func getServicePort(svcInformer v1informers.ServiceInformer, srvName, namespace string) (int32, error) {
+	if namespace == "" {
+		namespace = "default"
+	}
 	srv, err := svcInformer.Lister().Services(namespace).Get(srvName)
 	if err != nil {
 		return 0, errors.WithStack(err)

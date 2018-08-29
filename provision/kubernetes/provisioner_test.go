@@ -551,7 +551,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	s.mock.MockfakeNodes(c, srv.URL)
 	for _, a := range []provision.App{a1, a2} {
 		for i := 1; i <= 2; i++ {
-			err := s.podInformer.Informer().GetStore().Add(&apiv1.Pod{
+			_, err := s.client.CoreV1().Pods("default").Create(&apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
 					Labels: map[string]string{
@@ -649,7 +649,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 		if p.Labels["tsuru.io/app-process"] == "worker" {
 			deadline := int64(10)
 			p.Spec.ActiveDeadlineSeconds = &deadline
-			err = s.podInformer.Informer().GetStore().Update(&p)
+			_, err = s.client.CoreV1().Pods("default").Update(&p)
 			c.Assert(err, check.IsNil)
 		}
 	}
@@ -684,7 +684,7 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 		if p.Labels["tsuru.io/app-process"] == "worker" {
 			p.Status.Phase = apiv1.PodFailed
 			p.Status.Reason = "Evicted"
-			err = s.podInformer.Informer().GetStore().Update(&p)
+			_, err = s.client.CoreV1().Pods("default").Update(&p)
 			c.Assert(err, check.IsNil)
 		}
 	}

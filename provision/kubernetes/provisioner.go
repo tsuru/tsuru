@@ -323,7 +323,8 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		appMap[baseApp.GetName()] = baseApp
 	}
 	if len(baseNodes) == 0 {
-		nodeInformer, err := p.nodeInformerForCluster(client)
+		var nodeInformer v1informers.NodeInformer
+		nodeInformer, err = p.nodeInformerForCluster(client)
 		if err != nil {
 			return nil, err
 		}

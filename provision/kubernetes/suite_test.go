@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -48,7 +47,7 @@ type S struct {
 	t             *testing.T
 	mock          *kTesting.KubeMock
 	mockService   servicemock.MockService
-	podInformer   v1informers.PodInformer
+	factory       informers.SharedInformerFactory
 }
 
 var suiteInstance = &S{}
@@ -117,14 +116,17 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	factory := informers.NewSharedInformerFactory(s.client, time.Minute)
-	s.podInformer = factory.Core().V1().Pods()
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
 	s.p = &kubernetesProvisioner{
-		podInformers: map[string]v1informers.PodInformer{
-			clus.Name: s.podInformer,
+		informerFactory: map[string]informers.SharedInformerFactory{
+			clus.Name: s.factory,
 		},
+		podInformers:     make(map[string]v1informers.PodInformer),
+		serviceInformers: make(map[string]v1informers.ServiceInformer),
+		nodeInformers:    make(map[string]v1informers.NodeInformer),
+		stopCh:           make(chan struct{}),
 	}
-	s.mock = kTesting.NewKubeMock(s.client, s.p, s.podInformer)
+	s.mock = kTesting.NewKubeMock(s.client, s.p, s.factory)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

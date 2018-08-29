@@ -540,19 +540,24 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 
 func (s *S) TestGetServicePort(c *check.C) {
 	ns := "default"
-	_, err := getServicePort(s.clusterClient, "notfound", ns)
+	svcInformer, err := s.p.serviceInformerForCluster(s.clusterClient)
+	c.Assert(err, check.IsNil)
+	_, err = getServicePort(svcInformer, "notfound", ns)
 	c.Assert(err, check.NotNil)
-	_, err = s.client.CoreV1().Services(ns).Create(&apiv1.Service{
+	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv1",
 			Namespace: ns,
 		},
-	})
+	}
+	_, err = s.client.CoreV1().Services(ns).Create(svc)
 	c.Assert(err, check.IsNil)
-	port, err := getServicePort(s.clusterClient, "srv1", ns)
+	err = s.factory.Core().V1().Services().Informer().GetStore().Add(svc)
+	c.Assert(err, check.IsNil)
+	port, err := getServicePort(svcInformer, "srv1", ns)
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
-	_, err = s.client.CoreV1().Services(ns).Create(&apiv1.Service{
+	svc = &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv2",
 			Namespace: ns,
@@ -560,9 +565,12 @@ func (s *S) TestGetServicePort(c *check.C) {
 		Spec: apiv1.ServiceSpec{
 			Ports: []apiv1.ServicePort{{NodePort: 123}},
 		},
-	})
+	}
+	_, err = s.client.CoreV1().Services(ns).Create(svc)
 	c.Assert(err, check.IsNil)
-	port, err = getServicePort(s.clusterClient, "srv2", ns)
+	err = s.factory.Core().V1().Services().Informer().GetStore().Add(svc)
+	c.Assert(err, check.IsNil)
+	port, err = getServicePort(svcInformer, "srv2", ns)
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(123))
 }
