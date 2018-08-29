@@ -38,7 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
-	v1informers "k8s.io/client-go/informers/core/v1"
+	informers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -64,10 +64,10 @@ type KubeMock struct {
 	LogHook     func(w io.Writer, r *http.Request)
 	DefaultHook func(w http.ResponseWriter, r *http.Request)
 	p           provision.Provisioner
-	podInformer v1informers.PodInformer
+	factory     informers.SharedInformerFactory
 }
 
-func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, podInformer v1informers.PodInformer) *KubeMock {
+func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, factory informers.SharedInformerFactory) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
 		client:      cluster,
@@ -75,7 +75,7 @@ func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, podInformer v1
 		LogHook:     nil,
 		DefaultHook: nil,
 		p:           p,
-		podInformer: podInformer,
+		factory:     factory,
 	}
 }
 
@@ -372,6 +372,10 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		defer func() {
+			err := s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
+			c.Assert(err, check.IsNil)
+		}()
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
 			"tsuru.io/pool": a.GetPool(),
 		})
@@ -385,8 +389,6 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-name"], check.Equals, "fake")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
-			err := s.podInformer.Informer().GetStore().Add(pod)
-			c.Assert(err, check.IsNil)
 			return false, nil, nil
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
@@ -415,7 +417,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				c.Assert(err, check.IsNil)
 				_, err = s.client.CoreV1().Pods(ns).Update(pod)
 				c.Assert(err, check.IsNil)
-				err = s.podInformer.Informer().GetStore().Update(pod)
+				err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}
@@ -445,6 +447,10 @@ func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.Wa
 func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		defer func() {
+			err := s.factory.Core().V1().Services().Informer().GetStore().Add(srv)
+			c.Assert(err, check.IsNil)
+		}()
 		if len(srv.Spec.Ports) > 0 && srv.Spec.Ports[0].NodePort != int32(0) {
 			return false, nil, nil
 		}
@@ -493,14 +499,14 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Spec.NodeName = "n1"
 			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
-			}, dep.Namespace, s.podInformer)
+			}, dep.Namespace, s.factory)
 			c.Assert(err, check.IsNil)
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
 				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
 				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(pod)
 				c.Assert(err, check.IsNil)
-				err = s.podInformer.Informer().GetStore().Add(pod)
+				err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
 				c.Assert(err, check.IsNil)
 			}
 		}()
@@ -508,7 +514,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 	}, &wg
 }
 
-func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string, podInformer v1informers.PodInformer) error {
+func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string, factory informers.SharedInformerFactory) error {
 	pods, err := client.CoreV1().Pods(namespace).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
@@ -518,7 +524,7 @@ func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace str
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-		err = podInformer.Informer().GetStore().Delete(&pod)
+		err = factory.Core().V1().Pods().Informer().GetStore().Delete(&pod)
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
