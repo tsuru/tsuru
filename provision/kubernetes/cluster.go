@@ -250,20 +250,20 @@ type clusterApp struct {
 
 func clustersForApps(apps []provision.App) ([]clusterApp, error) {
 	clusterClientMap := map[string]clusterApp{}
-	clusterPoolMap := map[string]*provTypes.Cluster{}
-	var err error
+	var poolNames []string
+	for _, a := range apps {
+		poolNames = append(poolNames, a.GetPool())
+	}
+	clusterPoolMap, err := servicemanager.Cluster.FindByPools(provisionerName, poolNames)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range apps {
 		poolName := a.GetPool()
-		clust, inMap := clusterPoolMap[poolName]
+		cluster := clusterPoolMap[poolName]
+		mapItem, inMap := clusterClientMap[cluster.Name]
 		if !inMap {
-			clust, err = servicemanager.Cluster.FindByPool(provisionerName, poolName)
-			if err != nil {
-				return nil, err
-			}
-		}
-		mapItem, inMap := clusterClientMap[clust.Name]
-		if !inMap {
-			cli, err := NewClusterClient(clust)
+			cli, err := NewClusterClient(&cluster)
 			if err != nil {
 				return nil, err
 			}
@@ -272,7 +272,7 @@ func clustersForApps(apps []provision.App) ([]clusterApp, error) {
 			}
 		}
 		mapItem.apps = append(mapItem.apps, a)
-		clusterClientMap[clust.Name] = mapItem
+		clusterClientMap[cluster.Name] = mapItem
 	}
 	result := make([]clusterApp, 0, len(clusterClientMap))
 	for _, v := range clusterClientMap {

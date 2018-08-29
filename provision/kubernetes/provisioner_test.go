@@ -534,7 +534,7 @@ func (s *S) TestUnits(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
 		},
 	})
 }
