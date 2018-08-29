@@ -46,13 +46,13 @@ func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {
 
 func (s *S) TestCacheSaveCustomExpiration(c *check.C) {
 	var calls int32
+	duration := 300
 	s.mockService.ServiceBroker.OnFind = func(name string) (service.Broker, error) {
 		atomic.AddInt32(&calls, 1)
-		duration := time.Duration(5 * time.Minute)
 		return service.Broker{
 			Name: name,
 			Config: service.BrokerConfig{
-				CacheExpiration: &duration,
+				CacheExpirationSeconds: duration,
 			},
 		}, nil
 	}
@@ -66,7 +66,7 @@ func (s *S) TestCacheSaveCustomExpiration(c *check.C) {
 		storage: &cache.MockCacheStorage{
 			OnPut: func(entry cache.CacheEntry) error {
 				atomic.AddInt32(&calls, 1)
-				c.Assert(time.Until(entry.ExpireAt) <= time.Duration(5*time.Minute), check.Equals, true)
+				c.Assert(time.Until(entry.ExpireAt) <= time.Duration(time.Duration(duration)*time.Second), check.Equals, true)
 				return nil
 			},
 		},

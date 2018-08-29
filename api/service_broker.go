@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
@@ -154,16 +153,6 @@ func decodeServiceBroker(request *http.Request) (*service.Broker, error) {
 	}
 	if err := dec.DecodeValues(&broker, request.Form); err != nil {
 		return nil, fmt.Errorf("unable to parse broker: %v", err)
-	}
-	cacheStr := request.FormValue("Config.CacheExpiration")
-	if len(cacheStr) > 0 {
-		cache, err := time.ParseDuration(cacheStr)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse cache expiration: %v", err)
-		}
-		broker.Config.CacheExpiration = &cache
-	} else {
-		broker.Config.CacheExpiration = nil
 	}
 	return &broker, nil
 }
