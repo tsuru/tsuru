@@ -6,7 +6,6 @@ package service
 
 import (
 	"errors"
-	"time"
 )
 
 var (
@@ -38,9 +37,9 @@ type BrokerConfig struct {
 	// Context is a set of key/value pairs that are going to be added to every
 	// request to the Service Broker
 	Context map[string]interface{}
-	// CacheExpiration is a time period that the Service Broker catalog is kept
-	// in cache
-	CacheExpiration *time.Duration
+	// CacheExpirationSeconds is a time duration in seconds that the Service
+	// Broker catalog is kept in cache
+	CacheExpirationSeconds int
 }
 
 // AuthConfig is a union-type representing the possible auth configurations a
