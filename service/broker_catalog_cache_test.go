@@ -32,6 +32,9 @@ func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {
 		storage: &cache.MockCacheStorage{
 			OnPut: func(entry cache.CacheEntry) error {
 				c.Assert(entry.Key, check.Equals, "my-catalog")
+				expiration := time.Until(entry.ExpireAt)
+				c.Assert(expiration > 0, check.Equals, true)
+				c.Assert(expiration <= defaultExpiration, check.Equals, true)
 				var cat service.BrokerCatalog
 				err := json.Unmarshal([]byte(entry.Value), &cat)
 				c.Assert(err, check.IsNil)
@@ -42,6 +45,39 @@ func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {
 	}
 	err := service.Save("my-catalog", catalog)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestCacheSaveNegativeExpiration(c *check.C) {
+	var calls int32
+	s.mockService.ServiceBroker.OnFind = func(name string) (service.Broker, error) {
+		atomic.AddInt32(&calls, 1)
+		return service.Broker{
+			Name: name,
+			Config: service.BrokerConfig{
+				CacheExpirationSeconds: -1,
+			},
+		}, nil
+	}
+	catalog := service.BrokerCatalog{
+		Services: []service.BrokerService{{
+			ID:   "123",
+			Name: "service1",
+		}},
+	}
+	service := &serviceBrokerCatalogCacheService{
+		storage: &cache.MockCacheStorage{
+			OnPut: func(entry cache.CacheEntry) error {
+				atomic.AddInt32(&calls, 1)
+				expiration := time.Until(entry.ExpireAt)
+				c.Assert(expiration > 0, check.Equals, true)
+				c.Assert(expiration <= defaultExpiration, check.Equals, true)
+				return nil
+			},
+		},
+	}
+	err := service.Save("my-catalog", catalog)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
 
 func (s *S) TestCacheSaveCustomExpiration(c *check.C) {

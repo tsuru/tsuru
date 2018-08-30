@@ -46,10 +46,33 @@ func (s *BrokerSuite) TestServiceBrokerCreate(c *check.C) {
 	c.Assert(broker.URL, check.DeepEquals, "https://localhost:8080")
 }
 
-func (s *BrokerSuite) TestServiceBrokerUpdate(c *check.C) {
+func (s *BrokerSuite) TestServiceBrokerUpdateWithCache(c *check.C) {
 	err := s.service.Create(service.Broker{
 		Name: "broker-name",
 		URL:  "https://localhost:8080",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.service.Update("broker-name", service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:9090",
+		Config: service.BrokerConfig{
+			CacheExpirationSeconds: 120,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	broker, err := s.service.Find("broker-name")
+	c.Assert(err, check.IsNil)
+	c.Assert(broker.URL, check.DeepEquals, "https://localhost:9090")
+	c.Assert(broker.Config.CacheExpirationSeconds, check.Equals, 120)
+}
+
+func (s *BrokerSuite) TestServiceBrokerUpdateWithoutCache(c *check.C) {
+	err := s.service.Create(service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:8080",
+		Config: service.BrokerConfig{
+			CacheExpirationSeconds: 60,
+		},
 	})
 	c.Assert(err, check.IsNil)
 	err = s.service.Update("broker-name", service.Broker{
@@ -60,6 +83,30 @@ func (s *BrokerSuite) TestServiceBrokerUpdate(c *check.C) {
 	broker, err := s.service.Find("broker-name")
 	c.Assert(err, check.IsNil)
 	c.Assert(broker.URL, check.DeepEquals, "https://localhost:9090")
+	c.Assert(broker.Config.CacheExpirationSeconds, check.Equals, 60)
+}
+
+func (s *BrokerSuite) TestServiceBrokerUpdateDefaultCache(c *check.C) {
+	err := s.service.Create(service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:8080",
+		Config: service.BrokerConfig{
+			CacheExpirationSeconds: 60,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.service.Update("broker-name", service.Broker{
+		Name: "broker-name",
+		URL:  "https://localhost:9090",
+		Config: service.BrokerConfig{
+			CacheExpirationSeconds: -1,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	broker, err := s.service.Find("broker-name")
+	c.Assert(err, check.IsNil)
+	c.Assert(broker.URL, check.DeepEquals, "https://localhost:9090")
+	c.Assert(broker.Config.CacheExpirationSeconds, check.Equals, 0)
 }
 
 func (s *BrokerSuite) TestServiceBrokerDelete(c *check.C) {
