@@ -34,6 +34,15 @@ func (b *brokerService) Create(broker serviceTypes.Broker) error {
 }
 
 func (b *brokerService) Update(name string, broker serviceTypes.Broker) error {
+	if broker.Config.CacheExpirationSeconds == 0 {
+		sb, err := b.Find(name)
+		if err != nil {
+			return err
+		}
+		broker.Config.CacheExpirationSeconds = sb.Config.CacheExpirationSeconds
+	} else if broker.Config.CacheExpirationSeconds < 0 {
+		broker.Config.CacheExpirationSeconds = 0
+	}
 	return b.storage.Update(name, broker)
 }
 

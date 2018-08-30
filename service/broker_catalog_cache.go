@@ -65,7 +65,7 @@ func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*service.Bro
 func (s *serviceBrokerCatalogCacheService) expirationTime(brokerName string) time.Time {
 	expiration := defaultExpiration
 	sb, err := servicemanager.ServiceBroker.Find(brokerName)
-	if err == nil && sb.Config.CacheExpirationSeconds != 0 {
+	if err == nil && sb.Config.CacheExpirationSeconds > 0 {
 		expiration = time.Duration(sb.Config.CacheExpirationSeconds) * time.Second
 	}
 	return time.Now().Add(expiration)
