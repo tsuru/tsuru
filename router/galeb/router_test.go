@@ -192,6 +192,11 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *fakeGalebServer) createPool(w http.ResponseWriter, r *http.Request) {
+	err := s.checkError(r.Method, r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	var pool galebClient.Pool
 	pool.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&pool)
@@ -401,6 +406,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+	clientCache.cache = nil
 }
 
 func (s *S) TestCreateRouterConcurrent(c *check.C) {
@@ -456,4 +462,60 @@ func (s *S) TestAddBackendPartialFailure(c *check.C) {
 	c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
+}
+
+func (s *S) TestAddBackendPartialFailureExisting(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.IsNil)
+	fakeServer.prepareError("PATCH", "/api/rule/3/parents", "error on SetRuleVirtualHostIDs")
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.ErrorMatches, "PATCH /rule/3/parents: invalid response code: 500: error on SetRuleVirtualHostIDs\n")
+	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.rules, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.ruleVh, check.Not(check.DeepEquals), map[string][]string{})
+}
+
+func (s *S) TestAddBackendPartialFailureInFirstResource(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	fakeServer.prepareError("POST", "/api/pool", "error in pool create")
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.ErrorMatches, "(?s)POST /pool: invalid response code: 500: error in pool create.*")
+	c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
+}
+
+func (s *S) TestAddBackendPartialFailureInFirstResourceExisting(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.IsNil)
+	fakeServer.prepareError("POST", "/api/pool", "error in pool create")
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.ErrorMatches, "(?s)POST /pool: invalid response code: 500: error in pool create.*")
+	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.rules, check.Not(check.DeepEquals), map[string]interface{}{})
+	c.Check(fakeServer.ruleVh, check.Not(check.DeepEquals), map[string][]string{})
 }
