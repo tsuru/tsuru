@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -178,7 +177,13 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		if err == nil {
 			code = rsp.StatusCode
 		}
-		log.Debugf("galeb %s %s %s: %d", method, url, bodyData, code)
+		var rspData []byte
+		rspData, err = ioutil.ReadAll(rsp.Body)
+		if err != nil {
+			return nil, errors.Errorf("error reading request body: %v", err)
+		}
+		rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
+		log.Debugf("galebv2 debug %s %s %q: %d %q", method, url, bodyData, code, rspData)
 	}
 	if retryCount < maxConnRetries {
 		if err == nil && rsp.StatusCode == http.StatusUnauthorized {
@@ -278,7 +283,7 @@ func (c *GalebClient) getVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
-	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%s", c.ApiURL, virtualhostGroupId)
+	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%d", c.ApiURL, virtualhostGroupId)
 	return params, nil
 }
 
@@ -451,7 +456,7 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	var params RuleOrdered
 	c.fillDefaultRuleOrderedValues(&params)
 	params.Rule = ruleID
-	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%s", c.ApiURL, virtualHostGroupId)
+	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%d", c.ApiURL, virtualHostGroupId)
 
 	resource, err := c.doCreateResource("/ruleordered", &params)
 	if err != nil {
@@ -565,31 +570,35 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 	return err
 }
 
-func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) (virtualHostGroupId string, err error) {
+func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) (virtualHostGroupId int, err error) {
 
 	path := fmt.Sprintf("%s/virtualhostgroup", strings.TrimPrefix(virtualHostId, c.ApiURL))
 	rsp, err := c.doRequest("GET", path, nil)
 
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("GET %s/virtualhostgroup: wrong status code: %d. content: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), rsp.StatusCode, string(responseData))
+		return 0, errors.Errorf("GET %s/virtualhostgroup: wrong status code: %d. content: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		VirtualHostGroupId int `json:"id"`
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return "", errors.Wrapf(err, "GET %s/virtualhostgroup: unable to parse: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), string(responseData))
+		return 0, errors.Wrapf(err, "GET %s/virtualhostgroup: unable to parse: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), string(responseData))
 	}
-	return strconv.Itoa(rspObj.VirtualHostGroupId), nil
+	return rspObj.VirtualHostGroupId, nil
 }
 
-func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
-	path := fmt.Sprintf("/target/search/findAllByPoolName?name=%s&size=999999", poolName)
+func (c *GalebClient) FindTargetsByPool(poolName string) ([]Target, error) {
+	_, poolID, err := c.findItemIDsByName("pool", poolName)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("/pool/%d/targets", poolID)
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
@@ -597,7 +606,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /target/search/findAllByPoolName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, errors.Errorf("GET %s: wrong status code: %d. content: %s", path, rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -606,7 +615,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, errors.Wrapf(err, "GET /target/search/findAllByPoolName?name={parentName}: unable to parse: %s", string(responseData))
+		return nil, errors.Wrapf(err, "GET %s: unable to parse: %s", path, string(responseData))
 	}
 	return rspObj.Embedded.Targets, nil
 }
@@ -620,7 +629,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]Virtual
 	if err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("%s/virtualhostgroup/%s/virtualhosts", c.ApiURL, virtualHostGroupId)
+	path := fmt.Sprintf("/virtualhostgroup/%d/virtualhosts", virtualHostGroupId)
 
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
@@ -629,7 +638,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]Virtual
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /virtualhostgroup/{id}/virtualhosts: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, errors.Errorf("GET %s: wrong status code: %d. content: %s", path, rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -638,7 +647,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]Virtual
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, errors.Wrapf(err, "GET /virtualhostgroup/{id}/virtualhosts: unable to parse: %s", string(responseData))
+		return nil, errors.Wrapf(err, "GET %s: unable to parse: %s", path, string(responseData))
 	}
 	return rspObj.Embedded.VirtualHosts, nil
 
