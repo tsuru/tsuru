@@ -230,7 +230,7 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error
 	if len(ids) == 0 {
 		return nil
 	}
-	return r.client.RemoveBackendsByIDs(ids)
+	return r.client.RemoveResourcesByIDs(ids)
 }
 
 func (r *galebRouter) CNames(name string) (urls []*url.URL, err error) {
@@ -307,18 +307,6 @@ func (r *galebRouter) MoveCName(cname, orgBackend, dstBackend string) (err error
 	}
 	err = r.client.UpdateVirtualHostWithGroup(cname, r.virtualHostName(dstBackendName))
 	return err
-	// FIXME(cezarsa): remove?
-	// err = r.client.SetRuleVirtualHost(r.ruleName(dstBackendName), cname)
-	// if err != nil && !galebClient.IsErrExists(err) {
-	// 	return err
-	// }
-	// err = r.client.RemoveRuleVirtualHost(r.ruleName(orgBackendName), cname)
-	// if err != nil {
-	// 	if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); !ok {
-	// 		return err
-	// 	}
-	// }
-	// return r.client.UpdateVirtualHostRule(cname, r.ruleName(dstBackendName))
 }
 
 func (r *galebRouter) Addr(name string) (addr string, err error) {
@@ -401,7 +389,7 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 		return err
 	}
 	for _, target := range targets {
-		err = r.client.RemoveBackendByID(target.FullId())
+		err = r.client.RemoveResourceByID(target.FullId())
 		if err != nil {
 			return err
 		}
@@ -419,7 +407,7 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 		return err
 	}
 	for _, vh := range virtualhosts {
-		err = r.client.RemoveBackendByID(vh.FullId())
+		err = r.client.RemoveResourceByID(vh.FullId())
 		if err != nil {
 			return err
 		}
@@ -434,7 +422,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhostName)
 	if err == nil {
 		for _, virtualhost := range virtualhosts {
-			err = r.client.RemoveBackendByID(virtualhost.FullId())
+			err = r.client.RemoveResourceByID(virtualhost.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}
@@ -454,7 +442,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	targets, err := r.client.FindTargetsByPool(pool)
 	if err == nil {
 		for _, target := range targets {
-			err = r.client.RemoveBackendByID(target.FullId())
+			err = r.client.RemoveResourceByID(target.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}

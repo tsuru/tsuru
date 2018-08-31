@@ -425,7 +425,7 @@ func (s *S) TestGalebAddRuleToPool(c *check.C) {
 
 func (s *S) TestGalebRemoveBackendByID(c *check.C) {
 	s.handler.RspCode = http.StatusOK
-	err := s.client.RemoveBackendByID("/target/mybackendID")
+	err := s.client.RemoveResourceByID("/target/mybackendID")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/target/mybackendID"})
@@ -493,7 +493,7 @@ func (s *S) TestGalebRemoveRule(c *check.C) {
 
 func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
 	s.handler.RspCode = http.StatusOK
-	_ = s.client.RemoveBackendByID("/target/11")
+	_ = s.client.RemoveResourceByID("/target/11")
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
 }
 
@@ -641,7 +641,7 @@ func (s *S) TestGalebAddBackends(c *check.C) {
 	s.handler.ConditionalContent["/api/target/10"] = []string{
 		"200", `{"_status": "OK"}`,
 	}
-	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = []string{"200", `{
 		"_embedded": {
 			"pool": [
 				{
@@ -653,7 +653,7 @@ func (s *S) TestGalebAddBackends(c *check.C) {
 				}
 			]
 		}
-	}`
+	}`}
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
@@ -674,7 +674,7 @@ func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
 	s.handler.ConditionalContent["/api/target/10"] = []string{
 		"200", `{"_status": "OK"}`,
 	}
-	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = []string{"200", `{
 		"_embedded": {
 			"pool": [
 				{
@@ -686,7 +686,7 @@ func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
 				}
 			]
 		}
-	}`
+	}`}
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
@@ -703,7 +703,7 @@ func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
 }
 
 func (s *S) TestGalebAddBackendsNoWait(c *check.C) {
-	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = []string{"200", `{
 		"_embedded": {
 			"pool": [
 				{
@@ -715,7 +715,7 @@ func (s *S) TestGalebAddBackendsNoWait(c *check.C) {
 				}
 			]
 		}
-	}`
+	}`}
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
