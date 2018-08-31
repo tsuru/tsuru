@@ -218,7 +218,7 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error
 	for _, addr := range addresses {
 		addressMap[addr.Host] = struct{}{}
 	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func (r *galebRouter) Routes(name string) (urls []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 		return router.ErrBackendSwapped
 	}
 
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 		multiErr.Add(err)
 	}
 	pool := r.poolName(backendName)
-	targets, err := r.client.FindTargetsByParent(pool)
+	targets, err := r.client.FindTargetsByPool(pool)
 	if err == nil {
 		for _, target := range targets {
 			err = r.client.RemoveBackendByID(target.FullId())
