@@ -65,6 +65,7 @@ type Rule struct {
 }
 
 type RuleOrdered struct {
+	commonPostResponse
 	VirtualHostGroup string `json:"virtualhostgroup"`
 	Environment      string `json:"environment"`
 	Rule             string `json:"rule"`

@@ -100,7 +100,8 @@ func (c *GalebClient) getToken() (string, error) {
 func (c *GalebClient) regenerateToken() (err error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiURL, "/"), "token")
+	path := "/token"
+	url := fmt.Sprintf("%s%s", strings.TrimRight(c.ApiURL, "/"), path)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -112,7 +113,7 @@ func (c *GalebClient) regenerateToken() (err error) {
 	}
 	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusOK {
-		return errors.Errorf("invalid status code in request to /token: %d", rsp.StatusCode)
+		return errors.Errorf("GET %s: invalid status code in request to /token: %d", path, rsp.StatusCode)
 	}
 	data, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
@@ -121,11 +122,11 @@ func (c *GalebClient) regenerateToken() (err error) {
 	tokenStruct := struct{ Token string }{}
 	err = json.Unmarshal(data, &tokenStruct)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "GET %s: unable to parse json response", path)
 	}
 	c.token = tokenStruct.Token
 	if c.token == "" {
-		return errors.Errorf("invalid empty token in request to %q: %q", url, string(data))
+		return errors.Errorf("GET %s: invalid empty token in request: %q", path, string(data))
 	}
 	return nil
 }
@@ -180,7 +181,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		var rspData []byte
 		rspData, err = ioutil.ReadAll(rsp.Body)
 		if err != nil {
-			return nil, errors.Errorf("error reading request body: %v", err)
+			return nil, errors.Wrapf(err, "error reading request body %s %s", method, url)
 		}
 		rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
 		log.Debugf("galebv2 debug %s %s %q: %d %q", method, url, bodyData, code, rspData)
@@ -334,34 +335,23 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 }
 
 func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolHealthCheck, error) {
-	var properties BackendPoolHealthCheck
+	var pool Pool
 	path := strings.TrimPrefix(poolID, c.ApiURL)
-	rsp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return properties, err
-	}
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusNoContent {
-		var rspObj struct {
-			Properties BackendPoolHealthCheck
-		}
-		responseData, err := ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			return properties, err
-		}
-		err = json.Unmarshal(responseData, &rspObj)
-		if err != nil {
-			return properties, err
-		}
-		properties = rspObj.Properties
-	}
-	return properties, nil
+	err := c.getObj(path, &pool)
+	return pool.BackendPoolHealthCheck, err
 }
 
 func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolHealthCheck) error {
 	poolID, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return err
+	}
+	currProperties, err := c.getPoolProperties(poolID)
+	if err == nil && currProperties == properties {
+		log.Debugf("skipping properties update for pool %q", poolName)
+		return nil
+	} else if err != nil {
+		log.Errorf("ignored error getting pool properties, proceeding with PATH: %v", err)
 	}
 	path := strings.TrimPrefix(poolID, c.ApiURL)
 	var poolParam Pool
@@ -443,7 +433,7 @@ func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
 	params.Name = name
-	params.BackendPool = append(params.BackendPool, poolID)
+	params.BackendPool = []string{poolID}
 	return c.doCreateResource("/rule", &params)
 }
 
@@ -570,6 +560,35 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 	return err
 }
 
+func (c *GalebClient) RemoveRulesOrderedByRule(ruleName string) error {
+	_, ruleID, err := c.findItemIDsByName("rule", ruleName)
+	if err != nil {
+		return err
+	}
+	path := fmt.Sprintf("/rule/%d/rulesOrdered", ruleID)
+	var rspObj struct {
+		Embedded struct {
+			RuleOrdered []RuleOrdered `json:"ruleordered"`
+		} `json:"_embedded"`
+	}
+	err = c.getObj(path, &rspObj)
+	if err != nil {
+		return err
+	}
+	for _, ruleOrdered := range rspObj.Embedded.RuleOrdered {
+		fullID := ruleOrdered.FullId()
+		_, err = c.removeResource(fullID)
+		if err != nil {
+			return err
+		}
+		err = c.waitStatusOK(fullID)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
 func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) (virtualHostGroupId int, err error) {
 
 	path := fmt.Sprintf("%s/virtualhostgroup", strings.TrimPrefix(virtualHostId, c.ApiURL))
@@ -581,14 +600,14 @@ func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) 
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return 0, errors.Errorf("GET %s/virtualhostgroup: wrong status code: %d. content: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), rsp.StatusCode, string(responseData))
+		return 0, errors.Errorf("GET %s: wrong status code: %d. content: %s", path, rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		VirtualHostGroupId int `json:"id"`
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return 0, errors.Wrapf(err, "GET %s/virtualhostgroup: unable to parse: %s", strings.TrimPrefix(virtualHostId, c.ApiURL), string(responseData))
+		return 0, errors.Wrapf(err, "GET %s: unable to parse: %s", path, string(responseData))
 	}
 	return rspObj.VirtualHostGroupId, nil
 }
