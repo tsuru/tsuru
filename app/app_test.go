@@ -828,11 +828,12 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	}
 	instance := service.ServiceInstance{
 		Name:        "my-inst",
-		ServiceName: "mysql",
+		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{app.Name},
 	}
-	s.conn.ServiceInstances().Insert(instance)
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(2, "web", nil)
@@ -5123,6 +5124,50 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	updatedApp, err := p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedApp.(*App).Description, check.Equals, "updated description")
+}
+
+func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer server.Close()
+	svc := service.Service{
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": server.URL},
+		Password:   "abcde",
+		OwnerTeams: []string{s.team.Name},
+	}
+	err = service.Create(svc)
+	c.Assert(err, check.IsNil)
+	si1 := service.ServiceInstance{
+		Name:        "mydb",
+		ServiceName: svc.Name,
+		Apps:        []string{app.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(si1)
+	c.Assert(err, check.IsNil)
+
+	optsPool2 := pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name, Public: true}
+	err = pool.AddPool(optsPool2)
+	c.Assert(err, check.IsNil)
+	pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: optsPool2.Name,
+		Field:    pool.ConstraintTypeService,
+		Values: []string{
+			svc.Name,
+		},
+		Blacklist: true,
+	})
+	err = app.Update(App{Pool: optsPool2.Name}, nil)
+	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestGetUUID(c *check.C) {

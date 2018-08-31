@@ -1166,6 +1166,20 @@ func (app *App) validatePool() error {
 	if err != nil {
 		return err
 	}
+	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
+	if err != nil {
+		return err
+	}
+	if len(instances) > 0 {
+		serviceNames := make([]string, len(instances))
+		for i, instance := range instances {
+			serviceNames[i] = instance.ServiceName
+		}
+		err = app.ValidateService(serviceNames...)
+		if err != nil {
+			return err
+		}
+	}
 	return pool.ValidateRouters(app.GetRouters())
 }
 
@@ -1188,22 +1202,29 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
-func (app *App) ValidateService(service string) error {
+func (app *App) ValidateService(services ...string) error {
 	pool, err := pool.GetPoolByName(app.Pool)
 	if err != nil {
 		return err
 	}
-	services, err := pool.GetServices()
+	poolServices, err := pool.GetServices()
 	if err != nil {
 		return err
 	}
-	for _, v := range services {
-		if v == service {
-			return nil
+	for _, svc := range services {
+		valid := false
+		for _, v := range poolServices {
+			if v == svc {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			msg := fmt.Sprintf("service %q is not available for pool %q. Available services are: %q", svc, pool.Name, strings.Join(poolServices, ", "))
+			return &tsuruErrors.ValidationError{Message: msg}
 		}
 	}
-	msg := fmt.Sprintf("service %q is not available for pool %q. Available services are: %q", service, pool.Name, strings.Join(services, ", "))
-	return &tsuruErrors.ValidationError{Message: msg}
+	return nil
 }
 
 // InstanceEnvs returns a map of environment variables that belongs to the
