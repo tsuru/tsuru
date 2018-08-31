@@ -163,11 +163,6 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 		}
 		return err
 	}
-	// FIXME(cezarsa): not needed anymore?
-	// err = r.client.UpdateVirtualHostRule(vhName, ruleName)
-	// if err != nil {
-	// 	return err
-	// }
 	if backendExists {
 		return router.ErrBackendExists
 	}
@@ -290,7 +285,11 @@ func (r *galebRouter) UnsetCName(cname, name string) (err error) {
 	defer func() {
 		done(err)
 	}()
-	return r.client.RemoveVirtualHost(cname)
+	err = r.client.RemoveVirtualHost(cname)
+	if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); ok {
+		return router.ErrCNameNotFound
+	}
+	return err
 }
 
 func (r *galebRouter) MoveCName(cname, orgBackend, dstBackend string) (err error) {
@@ -389,7 +388,14 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-
+	virtualhost := r.virtualHostName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhost)
+	if err != nil {
+		if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); ok {
+			return router.ErrBackendNotFound
+		}
+		return err
+	}
 	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return err
@@ -400,6 +406,10 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 			return err
 		}
 	}
+	err = r.client.RemoveRulesOrderedByRule(r.ruleName(backendName))
+	if err != nil {
+		return err
+	}
 	err = r.client.RemoveRule(r.ruleName(backendName))
 	if err != nil {
 		return err
@@ -408,8 +418,13 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 	if err != nil {
 		return err
 	}
-	virtualhost := r.virtualHostName(backendName)
-	return r.client.RemoveVirtualHost(virtualhost)
+	for _, vh := range virtualhosts {
+		err = r.client.RemoveBackendByID(vh.FullId())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *galebRouter) forceCleanupBackend(backendName string) error {
@@ -419,7 +434,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhostName)
 	if err == nil {
 		for _, virtualhost := range virtualhosts {
-			err = r.client.RemoveVirtualHostByID(virtualhost.FullId())
+			err = r.client.RemoveBackendByID(virtualhost.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}

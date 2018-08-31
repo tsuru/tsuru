@@ -274,20 +274,13 @@ func (s *S) TestUpdatePoolPropertiesNoChanges(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)
-	s.handler.ConditionalContent["PATCH /api/pool/22"] = []string{"204", `{
-		"id" : 22,
-		"_lastmodified_by" : "system",
-		"hcPath" : "/",
-		"hcHttpStatusCode" : "200",
-		"hcBody" : ""
-	}`}
-	s.handler.ConditionalContent["GET /api/pool/22"] = []string{"200", `{
-		"id" : 22,
-		"_lastmodified_by" : "system",
-		"hcPath" : "/",
-		"hcHttpStatusCode" : "200",
-		"hcBody" : ""
-	}`}
+	s.handler.ConditionalContent["/api/pool/22"] = `{
+		"id": 22,
+		"_lastmodified_by": "system",
+		"hcPath": "/",
+		"hcHttpStatusCode": "200",
+		"hcBody": ""
+	}`
 	props := BackendPoolHealthCheck{
 		HcPath:           "/",
 		HcBody:           "",
@@ -295,10 +288,9 @@ func (s *S) TestUpdatePoolPropertiesNoChanges(c *check.C) {
 	}
 	err := s.client.UpdatePoolProperties("mypool", props)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "PATCH", "GET"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
 		"/api/pool/search/findByName?name=mypool",
-		"/api/pool/22",
 		"/api/pool/22",
 	})
 }
@@ -324,8 +316,8 @@ func (s *S) TestUpdatePoolProperties(c *check.C) {
 		}
 		if strings.HasSuffix(r.URL.Path, "/api/pool/22") {
 			if r.Method == http.MethodGet {
-				json.NewEncoder(w).Encode(&commonPostResponse{Status: map[string]string{"1": STATUS_OK}})
 				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(&commonPostResponse{Status: map[string]string{"": STATUS_OK}})
 			}
 			if r.Method == http.MethodPatch {
 				w.WriteHeader(http.StatusNoContent)
@@ -341,9 +333,10 @@ func (s *S) TestUpdatePoolProperties(c *check.C) {
 	}
 	err := s.client.UpdatePoolProperties("mypool", props)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "PATCH", "GET"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
 		"/api/pool/search/findByName?name=mypool",
+		"/api/pool/22",
 		"/api/pool/22",
 		"/api/pool/22",
 	})
