@@ -127,40 +127,38 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 	ruleName := r.ruleName(name)
 	vhName := r.virtualHostName(name)
 	backendExists := false
+	anyResourceCreated := false
+	defer func() {
+		if err != nil && anyResourceCreated && !backendExists {
+			cleanupErr := r.forceCleanupBackend(name)
+			if cleanupErr != nil {
+				log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
+			}
+		}
+	}()
 	_, err = r.client.AddBackendPool(poolName)
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
 		return err
 	}
+	anyResourceCreated = true
 	_, err = r.client.AddVirtualHost(vhName)
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
-		cleanupErr := r.forceCleanupBackend(name)
-		if cleanupErr != nil {
-			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
-		}
 		return err
 	}
 	_, err = r.client.AddRuleToPool(ruleName, poolName)
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
-		cleanupErr := r.forceCleanupBackend(name)
-		if cleanupErr != nil {
-			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
-		}
 		return err
 	}
 	err = r.client.SetRuleVirtualHost(ruleName, vhName)
 	if galebClient.IsErrExists(err) {
 		backendExists = true
 	} else if err != nil {
-		cleanupErr := r.forceCleanupBackend(name)
-		if cleanupErr != nil {
-			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
-		}
 		return err
 	}
 	if backendExists {
@@ -168,10 +166,6 @@ func (r *galebRouter) AddBackend(app router.App) (err error) {
 	}
 	err = router.Store(name, name, routerType)
 	if err != nil {
-		cleanupErr := r.forceCleanupBackend(name)
-		if cleanupErr != nil {
-			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
-		}
 		return err
 	}
 	return nil
