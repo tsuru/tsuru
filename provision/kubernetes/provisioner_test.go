@@ -1377,6 +1377,7 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
+	s.mock.HandleSize = true
 	err = s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
 		Stdin:  conn,
@@ -1400,6 +1401,40 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
+func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	err = s.p.ExecuteCommand(provision.ExecOptions{
+		App:    a,
+		Stdin:  conn,
+		Stdout: conn,
+		Stderr: conn,
+		Term:   "xterm",
+		Units:  []string{"myapp-web-pod-1-1"},
+		Cmds:   []string{"mycmd", "arg1"},
+	})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	rollback()
+	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
+	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+}
+
 func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1417,6 +1452,7 @@ func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
+	s.mock.HandleSize = true
 	err = s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
 		Stdin:  conn,
