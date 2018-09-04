@@ -948,11 +948,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.SetEnvs(bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          variables,
 		ShouldRestart: !e.NoRestart,
 		Writer:        writer,
 	})
+	if v, ok := err.(*errors.ValidationError); ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
+	}
+	return err
 }
 
 // title: unset envs

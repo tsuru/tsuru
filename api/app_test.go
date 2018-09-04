@@ -3465,6 +3465,28 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
+func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	d := apiTypes.Envs{
+		Envs: []struct{ Name, Value string }{
+			{"INVALID ENV", "value"},
+		},
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest(http.MethodPost, url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestUnsetEnv(c *check.C) {
 	a := app.App{
 		Name:     "swift",

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -62,6 +63,7 @@ var (
 		Name: "tsuru_node_status_not_found",
 		Help: "The number of not found nodes received in tsuru node status.",
 	})
+	envVarNameRegexp = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
 )
 
 func init() {
@@ -1510,6 +1512,12 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if len(setEnvs.Envs) == 0 {
 		return nil
 	}
+	for _, env := range setEnvs.Envs {
+		err := validateEnv(env.Name)
+		if err != nil {
+			return err
+		}
+	}
 	if setEnvs.Writer != nil {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
 	}
@@ -2470,4 +2478,11 @@ func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
 		return router.HealthcheckData{}, err
 	}
 	return yamlData.Healthcheck.ToRouterHC(), nil
+}
+
+func validateEnv(envName string) error {
+	if !envVarNameRegexp.MatchString(envName) {
+		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", envName)}
+	}
+	return nil
 }
