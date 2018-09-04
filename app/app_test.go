@@ -1392,6 +1392,45 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
+func (s *S) TestSetEnvsValidation(c *check.C) {
+	a := App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+	}
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+
+	var tests = []struct {
+		envName string
+		isValid bool
+	}{
+		{"VALID_ENV", true},
+		{"ENV123", true},
+		{"lowcase", true},
+		{"ENV-WITH-DASHES", true},
+		{"-NO_LEADING_DASH", false},
+		{"_NO_LEADING_UNDERSCORE", false},
+		{"ENV.WITH.DOTS", false},
+		{"ENV VAR WITH SPACES", false},
+		{"0NO_LEADING_NUMBER", false},
+	}
+	for _, test := range tests {
+		envs := []bind.EnvVar{
+			{
+				Name:  test.envName,
+				Value: "any value",
+			},
+		}
+		err = a.SetEnvs(bind.SetEnvArgs{Envs: envs})
+		if test.isValid {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, fmt.Sprintf("Invalid environment variable name: '%s'", test.envName))
+		}
+	}
+}
+
 func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
