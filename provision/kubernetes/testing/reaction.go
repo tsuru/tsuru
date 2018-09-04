@@ -65,6 +65,7 @@ type KubeMock struct {
 	DefaultHook func(w http.ResponseWriter, r *http.Request)
 	p           provision.Provisioner
 	factory     informers.SharedInformerFactory
+	HandleSize  bool
 }
 
 func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, factory informers.SharedInformerFactory) *KubeMock {
@@ -236,7 +237,7 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 		}
 		if resize := streamMap[apiv1.StreamTypeResize]; resize != nil {
 			scanner := bufio.NewScanner(resize)
-			if scanner.Scan() {
+			if s.HandleSize && scanner.Scan() {
 				mu.Lock()
 				res := s.Stream[cont]
 				res.Resize = scanner.Text()

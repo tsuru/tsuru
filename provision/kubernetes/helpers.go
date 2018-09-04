@@ -554,7 +554,7 @@ func execCommand(opts execOpts) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	var sizeQueue *fixedSizeQueue
+	var sizeQueue remotecommand.TerminalSizeQueue
 	if opts.termSize != nil {
 		sizeQueue = &fixedSizeQueue{
 			sz: opts.termSize,

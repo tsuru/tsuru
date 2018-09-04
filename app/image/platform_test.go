@@ -190,3 +190,40 @@ func (s *S) TestPlatformAppendImage(c *check.C) {
 	err := service.AppendImage(platformName, imageName)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestPlatformCheckImageExists(c *check.C) {
+	platformName := "myplatform"
+	imageName := "tsuru/myplatform:v1"
+	storage := &imageTypes.MockPlatformImageStorage{}
+	service := &platformImageService{
+		storage: storage,
+	}
+	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
+		c.Assert(n, check.Equals, platformName)
+		return &imageTypes.PlatformImage{Name: n, Images: []string{
+			"tsuru/" + platformName + ":v1",
+			"tsuru/" + platformName + ":v2",
+		}}, nil
+	}
+	ok, err := service.CheckImageExists(platformName, imageName)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, true)
+
+	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
+		c.Assert(n, check.Equals, platformName)
+		return &imageTypes.PlatformImage{Name: n, Images: []string{
+			"tsuru/" + platformName + ":v2",
+		}}, nil
+	}
+	ok, err = service.CheckImageExists(platformName, imageName)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, false)
+
+	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
+		c.Assert(n, check.Equals, platformName)
+		return nil, imageTypes.ErrPlatformImageNotFound
+	}
+	ok, err = service.CheckImageExists(platformName, imageName)
+	c.Assert(err, check.NotNil)
+	c.Assert(ok, check.Equals, false)
+}

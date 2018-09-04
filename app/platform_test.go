@@ -544,3 +544,44 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 	err = ps.Remove(name)
 	c.Assert(err, check.NotNil)
 }
+
+func (s *PlatformSuite) TestPlatformRollbackInvalidImage(c *check.C) {
+	name := "test-platform-rollback"
+	image := "tsuru/no-valid-image"
+	s.mockService.PlatformImage.OnCheckImageExists = func(name, image string) (bool, error) {
+		return false, nil
+	}
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				return nil, nil
+			},
+		},
+	}
+	err := ps.Rollback(appTypes.PlatformOptions{Name: name, ImageName: image})
+	c.Assert(err.Error(), check.Equals, "Image tsuru/no-valid-image not found in platform \"test-platform-rollback\"")
+}
+
+func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
+	name := "test-platform-rollback"
+	image := "tsuru/test-platform-rollback:v1"
+	s.mockService.PlatformImage.OnCheckImageExists = func(name, image string) (bool, error) {
+		return true, nil
+	}
+	ps := &platformService{
+		storage: &appTypes.MockPlatformStorage{
+			OnFindByName: func(n string) (*appTypes.Platform, error) {
+				if n == name {
+					return &appTypes.Platform{Name: name}, nil
+				}
+				return nil, appTypes.ErrPlatformNotFound
+			},
+		},
+	}
+	s.builder.OnPlatformUpdate = func(o appTypes.PlatformOptions) error {
+		c.Assert(o.Data, check.NotNil)
+		return nil
+	}
+	err := ps.Rollback(appTypes.PlatformOptions{Name: name, ImageName: image})
+	c.Assert(err, check.IsNil)
+}

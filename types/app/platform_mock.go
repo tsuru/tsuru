@@ -50,6 +50,7 @@ type MockPlatformService struct {
 	OnFindByName func(string) (*Platform, error)
 	OnUpdate     func(PlatformOptions) error
 	OnRemove     func(string) error
+	OnRollback   func(PlatformOptions) error
 }
 
 func (m *MockPlatformService) Create(opts PlatformOptions) error {
@@ -85,4 +86,11 @@ func (m *MockPlatformService) Remove(name string) error {
 		return nil
 	}
 	return m.OnRemove(name)
+}
+
+func (m *MockPlatformService) Rollback(opts PlatformOptions) error {
+	if m.OnRollback == nil {
+		return nil
+	}
+	return m.OnRollback(opts)
 }

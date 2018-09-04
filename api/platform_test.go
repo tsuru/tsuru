@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -521,4 +522,66 @@ func (s *PlatformSuite) TestPlatformInfoNoContent(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
+	name := "myplatform"
+	imageName := "tsuru/myplatform:v1"
+	s.mockService.Platform.OnRollback = func(opts appTypes.PlatformOptions) error {
+		c.Assert(opts.ImageName, check.Equals, imageName)
+		c.Assert(opts.Name, check.Equals, name)
+		return nil
+	}
+	v := url.Values{}
+	v.Set("image", imageName)
+	request, _ := http.NewRequest("POST", "/platforms/"+name+"/rollback", strings.NewReader(v.Encode()))
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": name},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *PlatformSuite) TestPlatformRollbackNoImage(c *check.C) {
+	name := "myplatform"
+	s.mockService.Platform.OnRollback = func(opts appTypes.PlatformOptions) error {
+		c.Errorf("service not expected to be called.")
+		return nil
+	}
+	var buf bytes.Buffer
+	request, err := http.NewRequest("POST", "/platforms/"+name+"/rollback", &buf)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *PlatformSuite) TestPlatformRollbackError(c *check.C) {
+	name := "myplatform"
+	s.mockService.Platform.OnRollback = func(opts appTypes.PlatformOptions) error {
+		c.Errorf("service not expected to be called.")
+		return nil
+	}
+	request, err := http.NewRequest("POST", "/platforms/"+name+"/rollback", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }

@@ -5,6 +5,7 @@
 package app
 
 import (
+	"fmt"
 	"io/ioutil"
 	"strconv"
 
@@ -175,6 +176,54 @@ func (s *platformService) Remove(name string) error {
 		log.Errorf("Failed to remove platform images from storage: %s", err)
 	}
 	return s.storage.Delete(appTypes.Platform{Name: name})
+}
+
+// Rollback implements Rollback method of PlatformService interface
+func (s *platformService) Rollback(opts appTypes.PlatformOptions) error {
+	if opts.Name == "" {
+		return appTypes.ErrPlatformNameMissing
+	}
+	if opts.ImageName == "" {
+		return appTypes.ErrPlatformImageMissing
+	}
+	_, err := s.FindByName(opts.Name)
+	if err != nil {
+		return err
+	}
+	ok, err := servicemanager.PlatformImage.CheckImageExists(opts.Name, opts.ImageName)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("Image %s not found in platform %q", opts.ImageName, opts.Name)
+	}
+	opts.Data = []byte("FROM " + opts.ImageName)
+	opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
+	if err != nil {
+		return err
+	}
+	err = builder.PlatformUpdate(opts)
+	if err != nil {
+		return err
+	}
+	err = servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var apps []App
+	err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
+	if err != nil {
+		return err
+	}
+	for _, app := range apps {
+		app.SetUpdatePlatform(true)
+	}
+	return nil
 }
 
 func (s *platformService) validate(p appTypes.Platform) error {

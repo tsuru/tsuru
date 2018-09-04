@@ -92,7 +92,9 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
 	name := r.URL.Query().Get(":name")
 	file, _, _ := r.FormFile("dockerfile_content")
 	if file != nil {
@@ -149,7 +151,9 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
@@ -206,7 +210,9 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
 	name := r.URL.Query().Get(":name")
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 		permission.Check(t, permission.PermPlatformCreate)
@@ -234,4 +240,63 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(msg)
+}
+
+// title: rollback platform
+// path: /platforms/{name}/rollback
+// method: POST
+// produce: application/x-json-stream
+// responses:
+//   200: OK
+//   400: BadRequest
+//   401: Unauthorized
+//   404: Not found
+func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
+	name := r.URL.Query().Get(":name")
+	image := r.FormValue("image")
+	if image == "" {
+		return &tErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you cannot rollback without an image name",
+		}
+	}
+	canUpdatePlatform := permission.Check(t, permission.PermPlatformUpdate)
+	if !canUpdatePlatform {
+		return permission.ErrUnauthorized
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:       permission.PermPlatformUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	evt.SetLogWriter(writer)
+	ctx, cancel := evt.CancelableContext(context.Background())
+	err = servicemanager.Platform.Rollback(appTypes.PlatformOptions{
+		Name:      name,
+		ImageName: image,
+		Output:    evt,
+		Ctx:       ctx,
+	})
+	cancel()
+	if err == appTypes.ErrPlatformNotFound {
+		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
+	}
+	writer.Write([]byte("Platform successfully updated!\n"))
+	return nil
 }
