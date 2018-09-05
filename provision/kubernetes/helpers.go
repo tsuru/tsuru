@@ -93,7 +93,7 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 func appLabelForApp(a provision.App, process string) string {
 	name := validKubeName(a.GetName())
 	process = validKubeName(process)
-	return fmt.Sprintf("tsuru-app-%s-%s", name, process)
+	return fmt.Sprintf("%s-%s", name, process)
 }
 
 func execCommandPodNameForApp(a provision.App) string {
