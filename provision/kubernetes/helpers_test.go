@@ -59,10 +59,14 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 		{"myapp", "p1", "myapp-p1"},
 		{"MYAPP", "p-1", "myapp-p-1"},
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -73,10 +77,14 @@ func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
 		{"myapp", "p1", "myapp-p1-units"},
 		{"MYAPP", "p-1", "myapp-p-1-units"},
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1-units"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123-units"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08-units"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0-units"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 

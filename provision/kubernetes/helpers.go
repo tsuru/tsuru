@@ -60,15 +60,11 @@ func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContaine
 }
 
 func deploymentNameForApp(a provision.App, process string) string {
-	name := validKubeName(a.GetName())
-	process = validKubeName(process)
-	return fmt.Sprintf("%s-%s", name, process)
+	return appProcessName(a, process)
 }
 
 func headlessServiceNameForApp(a provision.App, process string) string {
-	name := validKubeName(a.GetName())
-	process = validKubeName(process)
-	return fmt.Sprintf("%s-%s-units", name, process)
+	return fmt.Sprintf("%s-units", appProcessName(a, process))
 }
 
 func deployPodNameForApp(a provision.App) (string, error) {
@@ -93,6 +89,10 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 }
 
 func appLabelForApp(a provision.App, process string) string {
+	return appProcessName(a, process)
+}
+
+func appProcessName(a provision.App, process string) string {
 	name := validKubeName(a.GetName())
 	process = validKubeName(process)
 	label := fmt.Sprintf("%s-%s", name, process)
