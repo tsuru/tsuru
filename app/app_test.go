@@ -441,7 +441,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *check.C) {
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, check.Equals, true)
-	msg := "Invalid app name, your app should have at most 63 " +
+	msg := "Invalid app name, your app should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
 	c.Assert(e.Message, check.Equals, msg)
@@ -2331,7 +2331,7 @@ func (s *S) TestIsValid(c *check.C) {
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
-	errMsg := "Invalid app name, your app should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter."
+	errMsg := "Invalid app name, your app should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter."
 	var data = []struct {
 		name      string
 		teamOwner string
@@ -2339,9 +2339,9 @@ func (s *S) TestIsValid(c *check.C) {
 		router    string
 		expected  string
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", s.team.Name, "pool1", "fake", ""},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmy", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappm", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", ""},
 		{"myApp", s.team.Name, "pool1", "fake", errMsg},
 		{"my app", s.team.Name, "pool1", "fake", errMsg},
 		{"123myapp", s.team.Name, "pool1", "fake", errMsg},
