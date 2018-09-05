@@ -143,13 +143,13 @@ func (s *S) TestAppLabelForApp(c *check.C) {
 	var tests = []struct {
 		name, process, expected string
 	}{
-		{"myapp", "p1", "tsuru-app-myapp-p1"},
-		{"MYAPP", "p-1", "tsuru-app-myapp-p-1"},
-		{"my-app_app", "P_1-1", "tsuru-app-my-app-app-p-1-1"},
+		{"myapp", "p1", "myapp-p1"},
+		{"MYAPP", "p-1", "myapp-p-1"},
+		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(appLabelForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(appLabelForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
