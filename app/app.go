@@ -1151,7 +1151,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 // validate checks app name format
 func (app *App) validate() error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
-		msg := "Invalid app name, your app should have at most 63 " +
+		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
