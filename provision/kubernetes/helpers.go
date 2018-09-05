@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"regexp"
@@ -39,6 +40,7 @@ const (
 	tsuruNodeDisabledTaint = tsuruLabelPrefix + "disabled"
 	replicaDepRevision     = "deployment.kubernetes.io/revision"
 	kubeKindReplicaSet     = "ReplicaSet"
+	kubeLabelNameMaxLen    = 55
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
@@ -93,7 +95,18 @@ func buildPodNameForApp(a provision.App, suffix string) (string, error) {
 func appLabelForApp(a provision.App, process string) string {
 	name := validKubeName(a.GetName())
 	process = validKubeName(process)
-	return fmt.Sprintf("%s-%s", name, process)
+	label := fmt.Sprintf("%s-%s", name, process)
+	if len(label) > kubeLabelNameMaxLen {
+		h := sha256.New()
+		h.Write([]byte(process))
+		hash := fmt.Sprintf("%x", h.Sum(nil))
+		maxLen := kubeLabelNameMaxLen - len(name) - 1
+		if len(hash) > maxLen {
+			hash = hash[:maxLen]
+		}
+		label = fmt.Sprintf("%s-%s", name, hash)
+	}
+	return label
 }
 
 func execCommandPodNameForApp(a provision.App) string {
