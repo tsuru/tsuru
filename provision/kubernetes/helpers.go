@@ -76,15 +76,12 @@ func deployPodNameForApp(a provision.App) (string, error) {
 	return fmt.Sprintf("%s-%s-deploy", name, version), nil
 }
 
-func buildPodNameForApp(a provision.App, suffix string) (string, error) {
+func buildPodNameForApp(a provision.App) (string, error) {
 	version, err := image.AppCurrentImageVersion(a.GetName())
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to retrieve app current image version")
 	}
 	name := validKubeName(a.GetName())
-	if suffix != "" {
-		return fmt.Sprintf("%s-%s-build-%s", name, version, suffix), nil
-	}
 	return fmt.Sprintf("%s-%s-build", name, version), nil
 }
 
