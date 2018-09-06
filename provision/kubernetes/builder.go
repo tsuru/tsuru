@@ -33,7 +33,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	buildPodName, err := buildPodNameForApp(a, "")
+	buildPodName, err := buildPodNameForApp(a)
 	if err != nil {
 		return "", err
 	}

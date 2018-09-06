@@ -174,7 +174,7 @@ func createBuildPod(ctx context.Context, params createPodParams) error {
 	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
 	if params.podName == "" {
 		var err error
-		if params.podName, err = buildPodNameForApp(params.app, ""); err != nil {
+		if params.podName, err = buildPodNameForApp(params.app); err != nil {
 			return err
 		}
 	}
