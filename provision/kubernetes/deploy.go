@@ -926,6 +926,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			oldDep.ResourceVersion = ""
 			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 			_, rollbackErr = m.client.AppsV1beta2().Deployments(ns).Update(oldDep)
+		} else if oldDep == nil && newDep != nil {
+			// We have just created the deployment, so we need to remove it
+			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n ---> %s <---\n", err)
+			rollbackErr = m.client.AppsV1beta2().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
