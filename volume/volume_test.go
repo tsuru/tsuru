@@ -578,7 +578,7 @@ volume-plans:
     other:
       storage-class: my-ebs-storage-class
 `)
-	msg := "Invalid volume name, volume name should have at most 63 " +
+	msg := "Invalid volume name, volume name should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
 	nameErr := &tsuruErrors.ValidationError{Message: msg}
@@ -587,14 +587,18 @@ volume-plans:
 		expectedErr error
 	}{
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
+		{Volume{Name: "MYVOLUME", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
 		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
+		{Volume{Name: "an *invalid* name", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
+		{Volume{Name: "volume-with-a-name-longer-than-40-characters", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
+		{Volume{Name: "volume-with-exactly-40-characters-123456", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
 		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {
-		c.Assert(errors.Cause(t.volume.Validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
+		c.Check(errors.Cause(t.volume.Validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }
 

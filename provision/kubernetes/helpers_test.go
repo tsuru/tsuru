@@ -33,7 +33,7 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
 		{"my-nc_nc", "node-container-my-nc-nc"},
 	}
 	for i, tt := range tests {
-		c.Assert(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
+		c.Check(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
 			Name: tt.name,
 		}), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
@@ -99,8 +99,8 @@ func (s *S) TestDeployPodNameForApp(c *check.C) {
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
 		name, err := deployPodNameForApp(a)
-		c.Assert(err, check.IsNil)
-		c.Assert(name, check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(err, check.IsNil)
+		c.Check(name, check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -114,7 +114,7 @@ func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -131,7 +131,7 @@ func (s *S) TestDaemonSetName(c *check.C) {
 		{"d1", "P-x_1", "node-container-d1-pool-p-x-1"},
 	}
 	for i, tt := range tests {
-		c.Assert(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -143,7 +143,7 @@ func (s *S) TestRegistrySecretName(c *check.C) {
 		{"my-registry", "registry-my-registry"},
 	}
 	for i, tt := range tests {
-		c.Assert(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 

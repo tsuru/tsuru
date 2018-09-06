@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -75,6 +76,29 @@ func (s *S) Test_TeamTokenService_Create_WithExpires(c *check.C) {
 	t.CreatedAt = expected.CreatedAt
 	t.ExpiresAt = expected.ExpiresAt
 	c.Assert(t, check.DeepEquals, expected)
+}
+
+func (s *S) Test_TeamTokenService_Create_ValidationError(c *check.C) {
+	invalidTokenErr := errors.New("invalid token_id")
+	var tests = []struct {
+		tokenID     string
+		expectedErr error
+	}{
+		{"valid-token", nil},
+		{"invalid token", invalidTokenErr},
+		{"UPPERCASE", invalidTokenErr},
+		{"loooooooooooooooooong-token-41-characters", invalidTokenErr},
+		{"not-so-loooooooooong-token-40-characters", nil},
+	}
+
+	for _, test := range tests {
+		_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name, TokenID: test.tokenID}, &userToken{user: s.user})
+		if test.expectedErr == nil {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, test.expectedErr.Error())
+		}
+	}
 }
 
 func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {

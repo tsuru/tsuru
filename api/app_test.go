@@ -1393,7 +1393,7 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	msg := "Invalid app name, your app should have at most 63 " +
+	msg := "Invalid app name, your app should have at most 40 " +
 		"characters, containing only lower case letters, numbers " +
 		"or dashes, starting with a letter."
 	c.Assert(recorder.Body.String(), check.Equals, msg+"\n")

@@ -166,7 +166,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "fake",
 			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
+			err: "Invalid cluster name, cluster name should have at most 40 " +
 				"characters, containing only lower case letters, numbers or dashes, " +
 				"starting with a letter.",
 		},
@@ -177,7 +177,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "fake",
 			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
+			err: "Invalid cluster name, cluster name should have at most 40 " +
 				"characters, containing only lower case letters, numbers or dashes, " +
 				"starting with a letter.",
 		},
@@ -188,18 +188,18 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "fake",
 			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
+			err: "Invalid cluster name, cluster name should have at most 40 " +
 				"characters, containing only lower case letters, numbers or dashes, " +
 				"starting with a letter.",
 		},
 		{
 			c: provTypes.Cluster{
-				Name:        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				Name:        "41-characters-ccccccccccccccccccccccccccc",
 				Addresses:   []string{"addr1", "addr2"},
 				Default:     true,
 				Provisioner: "fake",
 			},
-			err: "Invalid cluster name, cluster name should have at most 63 " +
+			err: "Invalid cluster name, cluster name should have at most 40 " +
 				"characters, containing only lower case letters, numbers or dashes, " +
 				"starting with a letter.",
 		},

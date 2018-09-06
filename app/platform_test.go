@@ -88,13 +88,12 @@ func (s *PlatformSuite) TestPlatformCreateValidatesPlatformName(c *check.C) {
 		{"plat_form", appTypes.ErrInvalidPlatformName},
 		{"123platform", appTypes.ErrInvalidPlatformName},
 		{"plat-form", nil},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", appTypes.ErrInvalidPlatformName},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", appTypes.ErrInvalidPlatformName},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", nil},
+		{"myapp-41-characters-ppmyappmyappmyappmyap", appTypes.ErrInvalidPlatformName},
+		{"myapp-40-characters-ppmyappmyappmyappmya", nil},
 	}
 	for _, t := range tt {
 		err := ps.Create(appTypes.PlatformOptions{Name: t.name})
-		c.Assert(err, check.DeepEquals, t.expectedErr)
+		c.Check(err, check.DeepEquals, t.expectedErr)
 	}
 }
 
