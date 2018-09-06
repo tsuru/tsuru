@@ -248,7 +248,7 @@ func (p *Pool) validate() error {
 		return ErrPoolNameIsRequired
 	}
 	if !validation.ValidateName(p.Name) {
-		msg := "Invalid pool name, pool name should have at most 63 " +
+		msg := "Invalid pool name, pool name should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}

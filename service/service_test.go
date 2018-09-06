@@ -155,7 +155,7 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.Username, check.Equals, "test")
 }
 
-func (s *S) TestCreateServiceMissingFields(c *check.C) {
+func (s *S) TestCreateServiceValidation(c *check.C) {
 	endpt := map[string]string{
 		"production": "somehost.com",
 	}
@@ -169,7 +169,10 @@ func (s *S) TestCreateServiceMissingFields(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "Service id is required")
 	service.Name = "INVALID NAME"
 	err = Create(*service)
-	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
+	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
+	service.Name = "a-very-loooooooooooong-name-41-characters"
+	err = Create(*service)
+	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
 	service.Name = "servicename"
 	service.Password = ""
 	err = Create(*service)

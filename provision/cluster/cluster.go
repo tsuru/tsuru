@@ -112,7 +112,7 @@ func (s *clusterService) validate(c provTypes.Cluster) error {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "cluster name is mandatory"})
 	}
 	if !validation.ValidateName(c.Name) {
-		msg := "Invalid cluster name, cluster name should have at most 63 " +
+		msg := "Invalid cluster name, cluster name should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
