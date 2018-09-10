@@ -433,7 +433,7 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
-	err = app.validate()
+	err = app.validateNew()
 	if err != nil {
 		return err
 	}
@@ -1148,14 +1148,19 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
 }
 
-// validate checks app name format
-func (app *App) validate() error {
+// validateNew checks app name format and pool
+func (app *App) validateNew() error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
+	return app.validate()
+}
+
+// validate checks app pool
+func (app *App) validate() error {
 	return app.validatePool()
 }
 

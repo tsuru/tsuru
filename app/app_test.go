@@ -2358,7 +2358,7 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 	for _, d := range data {
 		a := App{Name: d.name, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
-		if valid := a.validate(); valid != nil && valid.Error() != d.expected {
+		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
@@ -4564,6 +4564,19 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 		"METRICS_BACKEND":      "LOGSTASH",
 	}
 	c.Assert(envs, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
+	app := App{Name: "app with invalid name", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Name: app.Name, Description: "bleble"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
 
 func (s *S) TestUpdateDescription(c *check.C) {
