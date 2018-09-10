@@ -163,7 +163,7 @@ volume-plans:
 	})
 	c.Assert(err, check.IsNil)
 	v1 := Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}
-	err = v1.Validate()
+	err = v1.validate()
 	c.Assert(err, check.IsNil)
 	var resultFake fakePlan
 	err = v1.UnmarshalPlan(&resultFake)
@@ -175,7 +175,7 @@ volume-plans:
 		},
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.Validate()
+	err = v1.validate()
 	c.Assert(err, check.IsNil)
 	resultFake = fakePlan{}
 	err = v1.UnmarshalPlan(&resultFake)
@@ -185,7 +185,7 @@ volume-plans:
 	})
 	v1.Plan.Name = "nfs"
 	v1.Pool = "mypool2"
-	err = v1.Validate()
+	err = v1.validate()
 	c.Assert(err, check.IsNil)
 	var resultFakeOther fakeOtherPlan
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -194,7 +194,7 @@ volume-plans:
 		Plugin: "nfs",
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.Validate()
+	err = v1.validate()
 	c.Assert(err, check.IsNil)
 	resultFakeOther = fakeOtherPlan{}
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -204,7 +204,7 @@ volume-plans:
 	})
 }
 
-func (s *S) TestVolumeSaveLoad(c *check.C) {
+func (s *S) TestVolumeCreateLoad(c *check.C) {
 	tests := []struct {
 		v   Volume
 		err string
@@ -252,7 +252,76 @@ func (s *S) TestVolumeSaveLoad(c *check.C) {
 		},
 	}
 	for i, tt := range tests {
-		err := tt.v.Save()
+		err := tt.v.Create()
+		if tt.err != "" {
+			c.Assert(err, check.ErrorMatches, tt.err)
+			continue
+		}
+		c.Assert(err, check.IsNil)
+		c.Assert(tt.v.Plan.Opts, check.DeepEquals, map[string]interface{}{
+			"driver": "local",
+			"opt": map[string]interface{}{
+				"type": "nfs",
+			},
+		})
+		dbV, err := Load(tt.v.Name)
+		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
+		c.Assert(dbV, check.DeepEquals, &tt.v)
+		var planOpts fakePlanOpts
+		err = dbV.UnmarshalPlan(&planOpts)
+		c.Assert(err, check.IsNil)
+		c.Assert(planOpts, check.DeepEquals, fakePlanOpts{
+			Driver: "local",
+			Opt:    struct{ Type string }{Type: "nfs"},
+		})
+	}
+}
+
+func (s *S) TestVolumeUpdateLoad(c *check.C) {
+	tests := []struct {
+		v   Volume
+		err string
+	}{
+		{
+			v:   Volume{Name: "v1"},
+			err: pool.ErrPoolNotFound.Error(),
+		},
+		{
+			v:   Volume{Name: "v1", Pool: "mypool"},
+			err: authTypes.ErrTeamNotFound.Error(),
+		},
+		{
+			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
+			err: "key \"volume-plans::fake\" not found",
+		},
+		{
+			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "bogus"}},
+			err: "key \"volume-plans:bogus:fake\" not found",
+		},
+		{
+			v: Volume{
+				Name: "v1",
+				Plan: VolumePlan{
+					Name: "p1",
+				},
+				Pool:      "mypool",
+				TeamOwner: "myteam",
+			},
+		},
+		{
+			v: Volume{
+				Name: "v1",
+				Plan: VolumePlan{
+					Name: "p1",
+				},
+				Pool:      "mypool",
+				TeamOwner: "myteam",
+				Opts:      map[string]string{"opt1": "val1"},
+			},
+		},
+	}
+	for i, tt := range tests {
+		err := tt.v.Update()
 		if tt.err != "" {
 			c.Assert(err, check.ErrorMatches, tt.err)
 			continue
@@ -284,7 +353,7 @@ func (s *S) TestVolumeBindApp(c *check.C) {
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt1", true)
 	c.Assert(err, check.IsNil)
@@ -306,7 +375,7 @@ func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt1", false)
 	c.Assert(err, check.IsNil)
@@ -333,7 +402,7 @@ func (s *S) TestLoadBindsForApp(c *check.C) {
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt1", false)
 	c.Assert(err, check.IsNil)
@@ -359,7 +428,7 @@ func (s *S) TestVolumeUnbindApp(c *check.C) {
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("myapp", "/mnt1", true)
 	c.Assert(err, check.IsNil)
@@ -404,7 +473,7 @@ func (s *S) TestListByApp(c *check.C) {
 		{ID: VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
 	}
 	for i, v := range volumes {
-		err := v.Save()
+		err := v.Create()
 		c.Assert(err, check.IsNil)
 		volumes[i].Plan.Opts = map[string]interface{}{
 			"driver": "local",
@@ -441,7 +510,7 @@ func (s *S) TestVolumeDelete(c *check.C) {
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.Delete()
 	c.Assert(err, check.IsNil)
@@ -472,10 +541,10 @@ volume-plans:
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = v.Save()
+	err = v.Create()
 	c.Assert(err, check.IsNil)
 	volumeProv.isProvisioned = true
-	err = v.Save()
+	err = v.Create()
 	c.Assert(err, check.Equals, ErrVolumeAlreadyProvisioned)
 }
 
@@ -502,7 +571,7 @@ volume-plans:
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = v.Save()
+	err = v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.Delete()
 	c.Assert(err, check.IsNil)
@@ -534,7 +603,7 @@ func (s *S) TestListByFilter(c *check.C) {
 		},
 	}
 	for i, v := range volumes {
-		err := v.Save()
+		err := v.Create()
 		c.Assert(err, check.IsNil)
 		volumes[i].Plan.Opts = map[string]interface{}{
 			"driver": "local",
@@ -562,6 +631,31 @@ func (s *S) TestListByFilter(c *check.C) {
 	}
 }
 
+func (s *S) TestVolumeValidateNew(c *check.C) {
+	vol := Volume{Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "p1"}}
+	msg := "Invalid volume name, volume name should have at most 40 " +
+		"characters, containing only lower case letters, numbers or dashes, " +
+		"starting with a letter."
+	nameErr := &tsuruErrors.ValidationError{Message: msg}
+	tt := []struct {
+		name        string
+		expectedErr error
+	}{
+		{"volume1", nil},
+		{"volume1", nil},
+		{"MYVOLUME", nameErr},
+		{"volume_1", nameErr},
+		{"123volume", nameErr},
+		{"an *invalid* name", nameErr},
+		{"volume-with-a-name-longer-than-40-characters", nameErr},
+		{"volume-with-exactly-40-characters-123456", nil},
+	}
+	for _, t := range tt {
+		vol.Name = t.name
+		c.Check(errors.Cause(vol.validateNew()), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
+	}
+}
+
 func (s *S) TestVolumeValidate(c *check.C) {
 	updateConfig(`
 volume-plans:
@@ -578,36 +672,27 @@ volume-plans:
     other:
       storage-class: my-ebs-storage-class
 `)
-	msg := "Invalid volume name, volume name should have at most 40 " +
-		"characters, containing only lower case letters, numbers or dashes, " +
-		"starting with a letter."
-	nameErr := &tsuruErrors.ValidationError{Message: msg}
 	tt := []struct {
 		volume      Volume
 		expectedErr error
 	}{
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
-		{Volume{Name: "MYVOLUME", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "volume_1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "123volume", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "an *invalid* name", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "volume-with-a-name-longer-than-40-characters", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nameErr},
-		{Volume{Name: "volume-with-exactly-40-characters-123456", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
+		{Volume{Name: "volume-with-a-name-longer-than-40-characters", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
 		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {
-		c.Check(errors.Cause(t.volume.Validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
+		c.Check(errors.Cause(t.volume.validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }
 
 func (s *S) TestRenameTeam(c *check.C) {
 	v1 := Volume{Name: "v1", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	v2 := Volume{Name: "v2", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
-	err = v2.Save()
+	err = v2.Create()
 	c.Assert(err, check.IsNil)
 	err = RenameTeam("myteam", "mynewteam")
 	c.Assert(err, check.IsNil)

@@ -137,7 +137,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
 	}
-	err = inputVolume.Save()
+	err = inputVolume.Create()
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return inputVolume.Save()
+	return inputVolume.Update()
 }
 
 // title: volume plan list
