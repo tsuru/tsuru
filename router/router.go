@@ -173,6 +173,8 @@ type InfoRouter interface {
 }
 
 type AsyncRouter interface {
+	AddBackendAsync(app App) error
+	SetCNameAsync(cname, name string) error
 	AddRoutesAsync(name string, address []*url.URL) error
 }
 
