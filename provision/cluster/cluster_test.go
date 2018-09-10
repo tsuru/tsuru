@@ -112,6 +112,30 @@ func (s *S) TestClusterServiceCreateError(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestClusterServiceCreateNameValidation(c *check.C) {
+	mycluster := provTypes.Cluster{Provisioner: "fake", Pools: []string{"mypool"}}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{},
+	}
+	invalidNameMsg := "Invalid cluster name, cluster name should have at most 40 " +
+		"characters, containing only lower case letters, numbers or dashes, " +
+		"starting with a letter."
+	tests := []struct {
+		name, err string
+	}{
+		{" ", "cluster name is mandatory"},
+		{"1c", invalidNameMsg},
+		{"c_1", invalidNameMsg},
+		{"C1", invalidNameMsg},
+		{"41-characters-ccccccccccccccccccccccccccc", invalidNameMsg},
+	}
+	for _, tt := range tests {
+		mycluster.Name = tt.name
+		err := cs.Create(mycluster)
+		c.Check(err, check.ErrorMatches, tt.err)
+	}
+}
+
 func (s *S) TestClusterServiceUpdate(c *check.C) {
 	mycluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake", Pools: []string{"mypool"}}
 	cs := &clusterService{
@@ -166,42 +190,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "fake",
 			},
-			err: "Invalid cluster name, cluster name should have at most 40 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: provTypes.Cluster{
-				Name:        "c_1",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 40 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: provTypes.Cluster{
-				Name:        "C1",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 40 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
-		},
-		{
-			c: provTypes.Cluster{
-				Name:        "41-characters-ccccccccccccccccccccccccccc",
-				Addresses:   []string{"addr1", "addr2"},
-				Default:     true,
-				Provisioner: "fake",
-			},
-			err: "Invalid cluster name, cluster name should have at most 40 " +
-				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter.",
+			err: "",
 		},
 		{
 			c: provTypes.Cluster{
@@ -243,7 +232,11 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 	}
 	for _, tt := range tests {
 		err := cs.Update(tt.c)
-		c.Assert(err, check.ErrorMatches, tt.err)
+		if len(tt.err) == 0 {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, tt.err)
+		}
 	}
 }
 
