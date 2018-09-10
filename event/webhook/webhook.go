@@ -267,11 +267,12 @@ func (s *webhookService) Create(w eventTypes.Webhook) error {
 	if w.Name == "" {
 		return &tsuruErrors.ValidationError{Message: "webhook name must not be empty"}
 	}
-	err := validation.EnsureValidateName(w.Name)
-	if err != nil {
-		return err
+	if !validation.ValidateName(w.Name) {
+		return &tsuruErrors.ValidationError{Message: "Invalid webhook name, webhook name should have at most 40 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter."}
 	}
-	err = validateURLs(w)
+	err := validateURLs(w)
 	if err != nil {
 		return err
 	}

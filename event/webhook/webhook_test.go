@@ -289,9 +289,11 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 			expectedErr: &errors.ValidationError{Message: "webhook name must not be empty"},
 		},
 		{
-			name:        "_-*x",
-			url:         "http://a",
-			expectedErr: &errors.ValidationError{Message: "name does not match regex \"^[a-z][a-z0-9-]{0,39}$\""},
+			name: "_-*x",
+			url:  "http://a",
+			expectedErr: &errors.ValidationError{Message: "Invalid webhook name, webhook name should have at most 40 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter."},
 		},
 		{
 			name: "c",
