@@ -2141,6 +2141,16 @@ definitions:
         type: boolean
       provisioner:
         type: string
+      public:
+        type: boolean
+      teams:
+        type: string
+      allowed:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
   PoolCreateData:
     type: object
     properties:
