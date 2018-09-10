@@ -1934,6 +1934,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	var rollbackObj *extensions.DeploymentRollback
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
