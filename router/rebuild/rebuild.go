@@ -79,7 +79,11 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 	if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(app, appRouter.Opts)
 	} else {
-		err = r.AddBackend(app)
+		if asyncR == nil {
+			err = r.AddBackend(app)
+		} else {
+			err = asyncR.AddBackendAsync(app)
+		}
 	}
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err
@@ -97,7 +101,11 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		}
 		_, toRemove := diffRoutes(oldCnames, cnameAddrs)
 		for _, cname := range appCnames {
-			err = cnameRouter.SetCName(cname, app.GetName())
+			if asyncR == nil {
+				err = cnameRouter.SetCName(cname, app.GetName())
+			} else {
+				err = asyncR.SetCNameAsync(cname, app.GetName())
+			}
 			if err != nil && err != router.ErrCNameExists {
 				return nil, err
 			}
@@ -141,10 +149,10 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", app.GetName())
 		return &result, nil
 	}
-	if asyncR != nil {
-		err = asyncR.AddRoutesAsync(app.GetName(), toAdd)
-	} else {
+	if asyncR == nil {
 		err = r.AddRoutes(app.GetName(), toAdd)
+	} else {
+		err = asyncR.AddRoutesAsync(app.GetName(), toAdd)
 	}
 	if err != nil {
 		return nil, err
