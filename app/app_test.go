@@ -241,7 +241,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt", false)
 	c.Assert(err, check.IsNil)

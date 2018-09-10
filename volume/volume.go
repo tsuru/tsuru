@@ -62,7 +62,7 @@ func (v *Volume) UnmarshalPlan(result interface{}) error {
 	return errors.WithStack(json.Unmarshal(jsonData, result))
 }
 
-func (v *Volume) Validate() error {
+func (v *Volume) validateNew() error {
 	if v.Name == "" {
 		return errors.New("volume name cannot be empty")
 	}
@@ -72,6 +72,10 @@ func (v *Volume) Validate() error {
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
+	return v.validate()
+}
+
+func (v *Volume) validate() error {
 	p, err := pool.GetPoolByName(v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
@@ -96,11 +100,23 @@ func (v *Volume) Validate() error {
 	return nil
 }
 
-func (v *Volume) Save() error {
-	err := v.Validate()
+func (v *Volume) Create() error {
+	err := v.validateNew()
 	if err != nil {
 		return err
 	}
+	return v.save()
+}
+
+func (v *Volume) Update() error {
+	err := v.validate()
+	if err != nil {
+		return err
+	}
+	return v.save()
+}
+
+func (v *Volume) save() error {
 	isProv, err := v.isProvisioned()
 	if err != nil {
 		return err

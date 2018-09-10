@@ -1727,7 +1727,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Save()
+	err = v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
