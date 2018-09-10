@@ -2144,7 +2144,9 @@ definitions:
       public:
         type: boolean
       teams:
-        type: string
+        type: array
+        items:
+          type: string
       allowed:
         type: object
         additionalProperties:
