@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -288,6 +289,40 @@ cat >/dev/null && /bin/deploy-agent`)
 }
 
 func (s *S) TestBuildImage(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	fakePods, ok := s.client.Core().Pods(s.client.Namespace()).(*kfake.FakePods)
+	c.Assert(ok, check.Equals, true)
+	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		containers := pod.Spec.Containers
+		c.Assert(containers, check.HasLen, 1)
+		cmds := cleanCmds(containers[0].Command[2])
+		c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
+		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:latest"},
+			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
+			{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
+			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/data/context.tar.gz"},
+			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
+			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
+		})
+		return false, nil, nil
+	})
+	inputStream := strings.NewReader("FROM tsuru/myplatform")
+	client := KubeClient{}
+	out := &safe.Buffer{}
+	err := client.BuildImage("myplatform", "tsuru/myplatform:latest", ioutil.NopCloser(inputStream), out, context.Background())
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
 	fakePods, ok := s.client.Core().Pods(s.client.Namespace()).(*kfake.FakePods)

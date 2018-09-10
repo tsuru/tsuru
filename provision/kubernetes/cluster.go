@@ -289,6 +289,20 @@ func clusterForPool(pool string) (*ClusterClient, error) {
 	return NewClusterClient(clust)
 }
 
+func clusterForPoolOrAny(pool string) (*ClusterClient, error) {
+	clust, err := clusterForPool(pool)
+	if err == nil {
+		return clust, err
+	}
+	if err == provTypes.ErrNoCluster {
+		clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
+		if err == nil {
+			return NewClusterClient(&clusters[0])
+		}
+	}
+	return nil, err
+}
+
 func allClusters() ([]*ClusterClient, error) {
 	clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
 	if err != nil {
