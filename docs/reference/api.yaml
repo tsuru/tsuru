@@ -2496,6 +2496,12 @@ definitions:
         items:
           type: string
       cname:
+        type: array
+        items:
+          type: string
+      ip:
+        type: string
+      owner:
         type: string
   AppCreateResponse:
     description: Newly created app information.
@@ -2564,6 +2570,8 @@ definitions:
         minimum: 0
       default:
         type: boolean
+      router:
+        type: string
   Env:
     description: Environment variable.
     type: object
