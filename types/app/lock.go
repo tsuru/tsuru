@@ -18,10 +18,6 @@ type AppLock struct {
 	AcquireDate time.Time
 }
 
-type ErrAppNotLocked struct {
-	App string
-}
-
 func (l *AppLock) String() string {
 	if !l.Locked {
 		return "Not locked"
@@ -61,8 +57,4 @@ func (l *AppLock) GetOwner() string {
 
 func (l *AppLock) GetAcquireDate() time.Time {
 	return l.AcquireDate
-}
-
-func (e ErrAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.App)
 }

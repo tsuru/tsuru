@@ -383,7 +383,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := CreateApp(&app, s.user)
-	e, ok := err.(*AppCreationError)
+	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
 	qe, ok := e.Err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
@@ -424,9 +424,9 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
 	a := App{Name: "appname", Platform: "python", TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*AppCreationError)
+	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.app, check.Equals, "appname")
+	c.Assert(e.App, check.Equals, "appname")
 	c.Assert(e.Err, check.NotNil)
 	c.Assert(e.Err.Error(), check.Equals, "there is already an app with this name")
 }
