@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -144,7 +145,7 @@ func minifyApp(app app.App, unitData app.AppUnitsResponse) (miniApp, error) {
 	return ma, nil
 }
 
-func appFilterByContext(contexts []permission.PermissionContext, filter *app.Filter) *app.Filter {
+func appFilterByContext(contexts []permTypes.PermissionContext, filter *app.Filter) *app.Filter {
 	if filter == nil {
 		filter = &app.Filter{}
 	}
@@ -1956,7 +1957,7 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return json.NewEncoder(w).Encode(&result)
 }
 
-func contextsForApp(a *app.App) []permission.PermissionContext {
+func contextsForApp(a *app.App) []permTypes.PermissionContext {
 	return append(permission.Contexts(permission.CtxTeam, a.Teams),
 		permission.Context(permission.CtxApp, a.Name),
 		permission.Context(permission.CtxPool, a.Pool),

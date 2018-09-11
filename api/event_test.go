@@ -11,8 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -28,6 +26,8 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -469,7 +469,7 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	expectedBlocks := addBlocks(c)
 	request, err := http.NewRequest("GET", "/events/blocks", nil)
@@ -489,7 +489,7 @@ func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
 func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	blocks := addBlocks(c)
 	err := event.RemoveBlock(blocks[1].ID)
@@ -523,7 +523,7 @@ func (s *EventSuite) TestEventBlockListWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
 	c.Assert(err, check.IsNil)
@@ -538,7 +538,7 @@ func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
 func (s *EventSuite) TestEventBlockAdd(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	block := &event.Block{KindName: "app.deploy", Reason: "block reason"}
 	values, err := form.EncodeToValues(block)
@@ -579,7 +579,7 @@ func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	block := &event.Block{KindName: "app.deploy"}
 	values, err := form.EncodeToValues(block)
@@ -601,7 +601,7 @@ func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	blocks := addBlocks(c)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", blocks[0].ID.Hex()), nil)
@@ -630,7 +630,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	request, err := http.NewRequest("DELETE", "/events/blocks/abc", nil)
 	c.Assert(err, check.IsNil)
@@ -646,7 +646,7 @@ func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 func (s *EventSuite) TestEventBlockRemoveUUIDNotFound(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
 	})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", bson.NewObjectId().Hex()), nil)
 	c.Assert(err, check.IsNil)

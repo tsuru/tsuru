@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 type registry struct {
@@ -22,7 +23,7 @@ func (r *registry) add(names ...string) *registry {
 	return r
 }
 
-func (r *registry) addWithCtx(name string, contextTypes []contextType) *registry {
+func (r *registry) addWithCtx(name string, contextTypes []permTypes.ContextType) *registry {
 	parts := strings.Split(name, ".")
 	parent := r
 	for i, part := range parts {
@@ -67,7 +68,7 @@ func (r *registry) getSubRegistry(name string) *registry {
 	return parent
 }
 
-func (r *registry) PermissionsWithContextType(ctxType contextType) PermissionSchemeList {
+func (r *registry) PermissionsWithContextType(ctxType permTypes.ContextType) PermissionSchemeList {
 	perms := r.Permissions()
 	var ret []*PermissionScheme
 	for _, p := range perms {

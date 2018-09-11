@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -26,6 +25,7 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func serviceInstanceTarget(name, instance string) event.Target {
@@ -288,7 +288,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-func readableInstances(t auth.Token, contexts []permission.PermissionContext, appName, serviceName string) ([]service.ServiceInstance, error) {
+func readableInstances(t auth.Token, contexts []permTypes.PermissionContext, appName, serviceName string) ([]service.ServiceInstance, error) {
 	teams := []string{}
 	instanceNames := []string{}
 	for _, c := range contexts {
@@ -310,7 +310,7 @@ func readableInstances(t auth.Token, contexts []permission.PermissionContext, ap
 	return service.GetServicesInstancesByTeamsAndNames(teams, instanceNames, appName, serviceName)
 }
 
-func filtersForServiceList(t auth.Token, contexts []permission.PermissionContext) ([]string, []string) {
+func filtersForServiceList(t auth.Token, contexts []permTypes.PermissionContext) ([]string, []string) {
 	teams := []string{}
 	serviceNames := []string{}
 	for _, c := range contexts {
@@ -329,7 +329,7 @@ func filtersForServiceList(t auth.Token, contexts []permission.PermissionContext
 	return teams, serviceNames
 }
 
-func readableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
+func readableServices(t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
 	teams, serviceNames := filtersForServiceList(t, contexts)
 	return service.GetServicesByTeamsAndServices(teams, serviceNames)
 }
@@ -707,14 +707,14 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	return serviceInstance.Revoke(teamName)
 }
 
-func contextsForServiceInstance(si *service.ServiceInstance, serviceName string) []permission.PermissionContext {
+func contextsForServiceInstance(si *service.ServiceInstance, serviceName string) []permTypes.PermissionContext {
 	permissionValue := serviceIntancePermName(serviceName, si.Name)
 	return append(permission.Contexts(permission.CtxTeam, si.Teams),
 		permission.Context(permission.CtxServiceInstance, permissionValue),
 	)
 }
 
-func contextsForService(s *service.Service) []permission.PermissionContext {
+func contextsForService(s *service.Service) []permTypes.PermissionContext {
 	return append(permission.Contexts(permission.CtxTeam, s.Teams),
 		permission.Context(permission.CtxService, s.Name),
 	)

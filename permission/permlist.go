@@ -4,12 +4,16 @@
 
 package permission
 
+import (
+	permTypes "github.com/tsuru/tsuru/types/permission"
+)
+
 //go:generate bash -c "rm -f permitems.go && go run ./generator/main.go -o permitems.go"
 
 var PermissionRegistry = (&registry{}).addWithCtx(
-	"app", []contextType{CtxApp, CtxTeam, CtxPool},
+	"app", []permTypes.ContextType{CtxApp, CtxTeam, CtxPool},
 ).addWithCtx(
-	"app.create", []contextType{CtxTeam},
+	"app.create", []permTypes.ContextType{CtxTeam},
 ).add(
 	"app.update.description",
 	"app.update.tags",
@@ -68,7 +72,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.quota",
 	"app.build",
 ).addWithCtx(
-	"node", []contextType{CtxPool},
+	"node", []permTypes.ContextType{CtxPool},
 ).add(
 	"node.create",
 	"node.read",
@@ -77,14 +81,14 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"node.update.rebalance",
 	"node.delete",
 ).addWithCtx(
-	"node.autoscale", []contextType{},
+	"node.autoscale", []permTypes.ContextType{},
 ).add(
 	"node.autoscale.update",
 	"node.autoscale.update.run",
 	"node.autoscale.read",
 	"node.autoscale.delete",
 ).addWithCtx(
-	"machine", []contextType{CtxIaaS},
+	"machine", []permTypes.ContextType{CtxIaaS},
 ).add(
 	"machine.delete",
 	"machine.read",
@@ -94,9 +98,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"machine.template.update",
 	"machine.template.read",
 ).addWithCtx(
-	"team", []contextType{CtxTeam},
+	"team", []permTypes.ContextType{CtxTeam},
 ).addWithCtx(
-	"team.create", []contextType{},
+	"team.create", []permTypes.ContextType{},
 ).add(
 	"team.read.events",
 	"team.delete",
@@ -106,9 +110,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"team.token.delete",
 	"team.token.update",
 ).addWithCtx(
-	"user", []contextType{CtxUser},
+	"user", []permTypes.ContextType{CtxUser},
 ).addWithCtx(
-	"user.create", []contextType{},
+	"user.create", []permTypes.ContextType{},
 ).add(
 	"user.delete",
 	"user.read.events",
@@ -119,9 +123,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.update.key.add",
 	"user.update.key.remove",
 ).addWithCtx(
-	"service", []contextType{CtxService, CtxTeam},
+	"service", []permTypes.ContextType{CtxService, CtxTeam},
 ).addWithCtx(
-	"service.create", []contextType{CtxTeam},
+	"service.create", []permTypes.ContextType{CtxTeam},
 ).add(
 	"service.read.doc",
 	"service.read.plans",
@@ -137,9 +141,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service-broker.delete",
 	"service-broker.update",
 ).addWithCtx(
-	"service-instance", []contextType{CtxServiceInstance, CtxTeam},
+	"service-instance", []permTypes.ContextType{CtxServiceInstance, CtxTeam},
 ).addWithCtx(
-	"service-instance.create", []contextType{CtxTeam},
+	"service-instance.create", []permTypes.ContextType{CtxTeam},
 ).add(
 	"service-instance.read.events",
 	"service-instance.read.status",
@@ -176,9 +180,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"plan.delete",
 	"plan.read.events",
 ).addWithCtx(
-	"pool", []contextType{CtxPool},
+	"pool", []permTypes.ContextType{CtxPool},
 ).addWithCtx(
-	"pool.create", []contextType{},
+	"pool.create", []permTypes.ContextType{},
 ).add(
 	"pool.read.events",
 	"pool.update.team.add",
@@ -192,13 +196,13 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"healing.read",
 ).addWithCtx(
-	"healing", []contextType{CtxPool},
+	"healing", []permTypes.ContextType{CtxPool},
 ).add(
 	"healing.read",
 	"healing.update",
 	"healing.delete",
 ).addWithCtx(
-	"nodecontainer", []contextType{CtxPool},
+	"nodecontainer", []permTypes.ContextType{CtxPool},
 ).add(
 	"nodecontainer.create",
 	"nodecontainer.read",
@@ -218,16 +222,16 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"cluster.update",
 	"cluster.delete",
 ).addWithCtx(
-	"volume", []contextType{CtxVolume, CtxTeam, CtxPool},
+	"volume", []permTypes.ContextType{CtxVolume, CtxTeam, CtxPool},
 ).addWithCtx(
-	"volume.create", []contextType{CtxTeam, CtxPool},
+	"volume.create", []permTypes.ContextType{CtxTeam, CtxPool},
 ).add(
 	"volume.read.events",
 	"volume.update.bind",
 	"volume.update.unbind",
 	"volume.delete",
 ).addWithCtx(
-	"webhook", []contextType{CtxTeam},
+	"webhook", []permTypes.ContextType{CtxTeam},
 ).add(
 	"webhook.read",
 	"webhook.read.events",

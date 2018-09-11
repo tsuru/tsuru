@@ -45,6 +45,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
@@ -964,11 +965,11 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	permissions := []permission.Permission{
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: t1.Name},
+			Context: permTypes.PermissionContext{CtxType: permission.CtxTeam, Value: t1.Name},
 		},
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: t2.Name},
+			Context: permTypes.PermissionContext{CtxType: permission.CtxTeam, Value: t2.Name},
 		},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "anotheruser", permissions...)

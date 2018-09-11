@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func validateNodeAddress(address string) error {
@@ -499,7 +500,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	poolName := r.FormValue("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
@@ -539,7 +540,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	poolName := r.URL.Query().Get("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
@@ -593,7 +594,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	params.Force = true
-	var permContexts []permission.PermissionContext
+	var permContexts []permTypes.PermissionContext
 	var ok bool
 	evtTarget := event.Target{Type: event.TargetTypeGlobal}
 	params.Pool, ok = params.MetadataFilter[provision.PoolMetadataName]

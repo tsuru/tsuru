@@ -15,10 +15,11 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 )
 
-func volumeFilterByContext(contexts []permission.PermissionContext) *volume.Filter {
+func volumeFilterByContext(contexts []permTypes.PermissionContext) *volume.Filter {
 	filter := &volume.Filter{}
 contextsLoop:
 	for _, c := range contexts {
@@ -37,8 +38,8 @@ contextsLoop:
 	return filter
 }
 
-func contextsForVolume(v *volume.Volume) []permission.PermissionContext {
-	return []permission.PermissionContext{
+func contextsForVolume(v *volume.Volume) []permTypes.PermissionContext {
+	return []permTypes.PermissionContext{
 		permission.Context(permission.CtxVolume, v.Name),
 		permission.Context(permission.CtxTeam, v.TeamOwner),
 		permission.Context(permission.CtxPool, v.Pool),

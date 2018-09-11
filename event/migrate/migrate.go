@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/service"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func MigrateRCEvents() error {
@@ -117,7 +118,7 @@ func setAllowed(evt *event.Event) (err error) {
 		if err != nil {
 			return err
 		}
-		var ctxs []permission.PermissionContext
+		var ctxs []permTypes.PermissionContext
 		for _, p := range provisioners {
 			if nodeProvisioner, ok := p.(provision.NodeProvisioner); ok {
 				var nodes []provision.Node
