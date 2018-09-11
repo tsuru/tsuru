@@ -523,20 +523,18 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 
 func getPlatformNameAndVersion(platform string) (string, string, error) {
 	repo, version := image.SplitImageName(platform)
-	p, errPlat := servicemanager.Platform.FindByName(repo)
-	if errPlat != nil {
-		return "", "", errPlat
+	p, err := servicemanager.Platform.FindByName(repo)
+	if err != nil {
+		return "", "", err
 	}
 
 	if version != "latest" {
-		image, err := servicemanager.PlatformImage.FindImage(p.Name, version)
+		_, err := servicemanager.PlatformImage.FindImage(p.Name, version)
 		if err != nil {
 			return p.Name, "", err
 		}
-		if image == "" {
-			return p.Name, "", fmt.Errorf("Image %s not found in platform %q", platform, p.Name)
-		}
 	}
+
 	return p.Name, version, nil
 }
 
@@ -1471,6 +1469,9 @@ func (app *App) GetPlatform() string {
 
 // GetPlatformVersion returns the platform version of the app.
 func (app *App) GetPlatformVersion() string {
+	if app.PlatformVersion == "" {
+		return "latest"
+	}
 	return app.PlatformVersion
 }
 
