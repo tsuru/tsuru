@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: get autoscale config
@@ -85,7 +86,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if rule.MetadataFilter != "" {
 		ctxs = append(ctxs, permission.Context(permission.CtxPool, rule.MetadataFilter))
 	}
@@ -117,7 +118,7 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	rulePool := r.URL.Query().Get(":id")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if rulePool != "" {
 		ctxs = append(ctxs, permission.Context(permission.CtxPool, rulePool))
 	}

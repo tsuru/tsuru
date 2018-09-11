@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var (
@@ -59,7 +60,7 @@ func (e ErrPermissionNotFound) Error() string {
 
 type ErrPermissionNotAllowed struct {
 	permission  string
-	contextType contextType
+	contextType permTypes.ContextType
 }
 
 func (e ErrPermissionNotAllowed) Error() string {
@@ -68,7 +69,7 @@ func (e ErrPermissionNotAllowed) Error() string {
 
 type RoleEvent struct {
 	name        string
-	context     contextType
+	context     permTypes.ContextType
 	Description string
 }
 
@@ -77,8 +78,8 @@ func (e *RoleEvent) String() string {
 }
 
 type Role struct {
-	Name        string      `bson:"_id" json:"name"`
-	ContextType contextType `json:"context"`
+	Name        string                `bson:"_id" json:"name"`
+	ContextType permTypes.ContextType `json:"context"`
 	Description string
 	SchemeNames []string `json:"scheme_names,omitempty"`
 	Events      []string `json:"events,omitempty"`
@@ -279,7 +280,7 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 	for i, scheme := range schemes {
 		permissions[i] = Permission{
 			Scheme: scheme,
-			Context: PermissionContext{
+			Context: permTypes.PermissionContext{
 				CtxType: r.ContextType,
 				Value:   contextValue,
 			},

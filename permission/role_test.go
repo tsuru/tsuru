@@ -7,6 +7,7 @@ package permission
 import (
 	"sort"
 
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -132,8 +133,8 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
 	expected := []Permission{
-		{Scheme: PermissionRegistry.get("app.update"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
-		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update"), Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "something"}},
 	}
 	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)

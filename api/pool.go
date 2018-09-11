@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: pool list
@@ -161,7 +162,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	poolName := r.URL.Query().Get(":name")
 	filter := &app.Filter{}
 	filter.Pool = poolName
-	apps, err := app.List(appFilterByContext([]permission.PermissionContext{}, filter))
+	apps, err := app.List(appFilterByContext([]permTypes.PermissionContext{}, filter))
 	if err != nil {
 		return err
 	}

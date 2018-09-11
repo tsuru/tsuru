@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -1178,7 +1179,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed: AllowedPermission{
 			Scheme:   permission.PermAppReadEvents.FullName(),
-			Contexts: []permission.PermissionContext{permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")},
+			Contexts: []permTypes.PermissionContext{permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")},
 		},
 	}}
 	expected.Init()
