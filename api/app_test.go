@@ -266,7 +266,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		Name:      "app2",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Lock:      app.AppLock{Locked: true},
+		Lock:      appTypes.AppLock{Locked: true},
 		Tags:      []string{"mytag"},
 	}
 	err = app.CreateApp(&app2, s.user)
@@ -458,7 +458,7 @@ func (s *S) TestAppList(c *check.C) {
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app2"},
 		Pool:      "pool1",
-		Lock: app.AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "wanted",
 			Owner:       s.user.Email,
@@ -5431,10 +5431,10 @@ func (s *S) TestSwap(c *check.C) {
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
 	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(app1.Name),
 		ExtraTargets: []event.ExtraTarget{
@@ -5468,10 +5468,10 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
 	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(app1.Name),
 		ExtraTargets: []event.ExtraTarget{
@@ -5488,7 +5488,7 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 }
 
 func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Lock: app.AppLock{
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Lock: appTypes.AppLock{
 		Locked: true, Reason: "/test", Owner: "x",
 	}}
 	err := app.CreateApp(&app1, s.user)
@@ -5511,7 +5511,7 @@ func (s *S) TestSwapApp2Locked(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Lock: app.AppLock{
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Lock: appTypes.AppLock{
 		Locked: true, Reason: "/test", Owner: "x",
 	}}
 	err = app.CreateApp(&app2, s.user)
@@ -5671,7 +5671,7 @@ func (s *S) TestStopHandler(c *check.C) {
 }
 
 func (s *S) TestForceDeleteLock(c *check.C) {
-	a := app.App{Name: "locked", Lock: app.AppLock{Locked: true}}
+	a := app.App{Name: "locked", Lock: appTypes.AppLock{Locked: true}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -5696,7 +5696,7 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 }
 
 func (s *S) TestForceDeleteLockOnlyWithPermission(c *check.C) {
-	a := app.App{Name: "locked", Lock: app.AppLock{Locked: true}, Teams: []string{s.team.Name}}
+	a := app.App{Name: "locked", Lock: appTypes.AppLock{Locked: true}, Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)

@@ -80,55 +80,6 @@ const (
 	defaultAppDir       = "/home/application/current"
 )
 
-// AppLock stores information about a lock hold on the app
-type AppLock struct {
-	Locked      bool
-	Reason      string
-	Owner       string
-	AcquireDate time.Time
-}
-
-func (l *AppLock) String() string {
-	if !l.Locked {
-		return "Not locked"
-	}
-	return fmt.Sprintf("App locked by %s, running %s. Acquired in %s",
-		l.Owner,
-		l.Reason,
-		l.AcquireDate.Format(time.RFC3339),
-	)
-}
-
-func (l *AppLock) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Locked      bool   `json:"Locked"`
-		Reason      string `json:"Reason"`
-		Owner       string `json:"Owner"`
-		AcquireDate string `json:"AcquireDate"`
-	}{
-		Locked:      l.Locked,
-		Reason:      l.Reason,
-		Owner:       l.Owner,
-		AcquireDate: l.AcquireDate.Format(time.RFC3339),
-	})
-}
-
-func (l *AppLock) GetLocked() bool {
-	return l.Locked
-}
-
-func (l *AppLock) GetReason() string {
-	return l.Reason
-}
-
-func (l *AppLock) GetOwner() string {
-	return l.Owner
-}
-
-func (l *AppLock) GetAcquireDate() time.Time {
-	return l.AcquireDate
-}
-
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -143,7 +94,7 @@ type App struct {
 	Owner          string
 	Plan           appTypes.Plan
 	UpdatePlatform bool
-	Lock           AppLock
+	Lock           appTypes.AppLock
 	Pool           string
 	Description    string
 	Router         string
@@ -273,14 +224,6 @@ type Applog struct {
 	Unit    string
 }
 
-type ErrAppNotLocked struct {
-	App string
-}
-
-func (e ErrAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.App)
-}
-
 // AcquireApplicationLock acquires an application lock by setting the lock
 // field in the database.  This method is already called by a connection
 // middleware on requests with :app or :appname params that have side-effects.
@@ -293,7 +236,7 @@ func AcquireApplicationLock(appName string, owner string, reason string) (bool, 
 func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
 	timeoutChan := time.After(timeout)
 	for {
-		appLock := AppLock{
+		appLock := appTypes.AppLock{
 			Locked:      true,
 			Reason:      reason,
 			Owner:       owner,
@@ -333,7 +276,7 @@ func AcquireApplicationLockWaitMany(appNames []string, owner string, reason stri
 				return
 			}
 			if !locked {
-				errCh <- ErrAppNotLocked{App: appName}
+				errCh <- appTypes.ErrAppNotLocked{App: appName}
 				return
 			}
 			lockedApps <- appName
@@ -380,7 +323,7 @@ func releaseApplicationLockOnce(appName string) error {
 		return errors.Wrapf(err, "error getting DB, couldn't unlock %s", appName)
 	}
 	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": AppLock{}}})
+	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": appTypes.AppLock{}}})
 	if err != nil {
 		return errors.Wrapf(err, "Error updating entry, couldn't unlock %s", appName)
 	}
