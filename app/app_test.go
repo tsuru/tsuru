@@ -3132,7 +3132,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	a2 := App{
 		Name:  "othertestapp",
 		Owner: "bar",
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "something",
 			Owner:       s.user.Email,
@@ -3677,7 +3677,7 @@ func (s *S) TestGetCname(c *check.C) {
 
 func (s *S) TestGetLock(c *check.C) {
 	a := App{
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Owner:       "someone",
 			Reason:      "/app/my-app/deploy",
@@ -3888,7 +3888,7 @@ func (s *S) TestAppAcquireApplicationLockNonExistentApp(c *check.C) {
 func (s *S) TestAppAcquireApplicationLockAlreadyLocked(c *check.C) {
 	a := App{
 		Name: "someapp",
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "/app/my-app/deploy",
 			Owner:       "someone",
@@ -3997,7 +3997,7 @@ func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 0)
-	c.Assert(err, check.DeepEquals, ErrAppNotLocked{
+	c.Assert(err, check.DeepEquals, appTypes.ErrAppNotLocked{
 		App: a2.Name,
 	})
 	app1, err := GetByName(a1.Name)
@@ -4012,12 +4012,12 @@ func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
 }
 
 func (s *S) TestAppLockStringUnlocked(c *check.C) {
-	lock := AppLock{Locked: false}
+	lock := appTypes.AppLock{Locked: false}
 	c.Assert(lock.String(), check.Equals, "Not locked")
 }
 
 func (s *S) TestAppLockStringLocked(c *check.C) {
-	lock := AppLock{
+	lock := appTypes.AppLock{
 		Locked:      true,
 		Reason:      "/app/my-app/deploy",
 		Owner:       "someone",
@@ -4027,7 +4027,7 @@ func (s *S) TestAppLockStringLocked(c *check.C) {
 }
 
 func (s *S) TestAppLockMarshalJSON(c *check.C) {
-	lock := AppLock{
+	lock := appTypes.AppLock{
 		Locked:      true,
 		Reason:      "/app/my-app/deploy",
 		Owner:       "someone",
@@ -4035,29 +4035,29 @@ func (s *S) TestAppLockMarshalJSON(c *check.C) {
 	}
 	data, err := lock.MarshalJSON()
 	c.Assert(err, check.IsNil)
-	var a AppLock
+	var a appTypes.AppLock
 	err = json.Unmarshal(data, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(a, check.DeepEquals, lock)
 }
 
 func (s *S) TestAppLockGetLocked(c *check.C) {
-	lock := AppLock{Locked: true}
+	lock := appTypes.AppLock{Locked: true}
 	c.Assert(lock.GetLocked(), check.Equals, lock.Locked)
 }
 
 func (s *S) TestAppLockGetReason(c *check.C) {
-	lock := AppLock{Reason: "/app/my-app/deploy"}
+	lock := appTypes.AppLock{Reason: "/app/my-app/deploy"}
 	c.Assert(lock.GetReason(), check.Equals, lock.Reason)
 }
 
 func (s *S) TestAppLockGetOwner(c *check.C) {
-	lock := AppLock{Owner: "someone"}
+	lock := appTypes.AppLock{Owner: "someone"}
 	c.Assert(lock.GetOwner(), check.Equals, lock.Owner)
 }
 
 func (s *S) TestAppLockGetAcquireDate(c *check.C) {
-	lock := AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
+	lock := appTypes.AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
 	c.Assert(lock.GetAcquireDate(), check.Equals, lock.AcquireDate)
 }
 
