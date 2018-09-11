@@ -90,7 +90,7 @@ func GetBuildImage(app provision.App) (string, error) {
 
 func getPlatformImage(app provision.App) (string, error) {
 	version := app.GetPlatformVersion()
-	if version != "" && version != "latest" {
+	if version != "latest" {
 		return servicemanager.PlatformImage.FindImage(app.GetPlatform(), version)
 	}
 	return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())

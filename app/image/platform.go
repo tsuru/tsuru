@@ -96,7 +96,7 @@ func (s *platformImageService) FindImage(platformName, image string) (string, er
 			return img, nil
 		}
 	}
-	return "", nil
+	return "", imageTypes.ErrPlatformImageNotFound
 }
 
 func platformBasicImageName(platformName string) string {

@@ -224,7 +224,7 @@ func (s *S) TestPlatformFindImage(c *check.C) {
 		}}, nil
 	}
 	image, err = service.FindImage(platformName, imageName)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.Equals, imageTypes.ErrPlatformImageNotFound)
 	c.Assert(image, check.Equals, "")
 
 	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
