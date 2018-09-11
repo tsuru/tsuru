@@ -190,14 +190,14 @@ func (s *platformService) Rollback(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	ok, err := servicemanager.PlatformImage.CheckImageExists(opts.Name, opts.ImageName)
+	image, err := servicemanager.PlatformImage.FindImage(opts.Name, opts.ImageName)
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if image == "" {
 		return fmt.Errorf("Image %s not found in platform %q", opts.ImageName, opts.Name)
 	}
-	opts.Data = []byte("FROM " + opts.ImageName)
+	opts.Data = []byte("FROM " + image)
 	opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
 	if err != nil {
 		return err

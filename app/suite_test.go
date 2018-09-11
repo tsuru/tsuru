@@ -193,11 +193,4 @@ func setupMocks(s *S) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &s.defaultPlan, nil
 	}
-
-	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
-		if name == "python" || name == "heimerdinger" {
-			return &appTypes.Platform{Name: name}, nil
-		}
-		return nil, appTypes.ErrPlatformNotFound
-	}
 }

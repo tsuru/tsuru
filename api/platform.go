@@ -206,7 +206,6 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // produce: application/json
 // responses:
 //   200: Platform info
-//   204: No content
 //   401: Unauthorized
 //   404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -225,10 +224,6 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if err != nil {
 		return err
-	}
-	if platform == nil {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
 	}
 	images, err := servicemanager.PlatformImage.ListImagesOrDefault(name)
 	if err != nil {

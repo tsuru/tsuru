@@ -1553,7 +1553,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
-	s.setupMockForCreateApp(c, "heimerdinger")
+	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1561,6 +1561,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
+	s.setupMockForCreateApp(c, "heimerdinger")
 	b := strings.NewReader("platform=heimerdinger")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
@@ -1582,6 +1583,45 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":appname", "value": a.Name},
 			{"name": "platform", "value": "heimerdinger"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
+	s.setupMockForCreateApp(c, "myplatform")
+	a := app.App{Name: "myapp", Platform: "myplatform", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
+		c.Assert(name, check.Equals, "myplatform")
+		c.Assert(image, check.Equals, "v1")
+		return "tsuru/myplatform:v1", nil
+	}
+	b := strings.NewReader("platform=myplatform:v1")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.PlatformVersion, check.Equals, "v1")
+	c.Assert(gotApp.UpdatePlatform, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "platform", "value": "myplatform:v1"},
 		},
 	}, eventtest.HasEvent)
 }

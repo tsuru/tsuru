@@ -41,7 +41,7 @@ type MockPlatformImageService struct {
 	OnDeleteImages        func(string) error
 	OnListImages          func(string) ([]string, error)
 	OnListImagesOrDefault func(string) ([]string, error)
-	OnCheckImageExists    func(string, string) (bool, error)
+	OnFindImage           func(string, string) (string, error)
 }
 
 func (m *MockPlatformImageService) NewImage(platformName string) (string, error) {
@@ -86,9 +86,9 @@ func (m *MockPlatformImageService) ListImagesOrDefault(platformName string) ([]s
 	return m.OnListImagesOrDefault(platformName)
 }
 
-func (m *MockPlatformImageService) CheckImageExists(platformName, image string) (bool, error) {
-	if m.OnCheckImageExists == nil {
-		return false, nil
+func (m *MockPlatformImageService) FindImage(platformName, image string) (string, error) {
+	if m.OnFindImage == nil {
+		return image, nil
 	}
-	return m.OnCheckImageExists(platformName, image)
+	return m.OnFindImage(platformName, image)
 }

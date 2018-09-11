@@ -4592,7 +4592,7 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
 
-func (s *S) TestUpdatePlatformLanguage(c *check.C) {
+func (s *S) TestUpdateAppPlatform(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
@@ -4602,6 +4602,20 @@ func (s *S) TestUpdatePlatformLanguage(c *check.C) {
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Platform, check.Equals, updateData.Platform)
+	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
+}
+
+func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "example", Platform: "python:v3"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Platform, check.Equals, "python")
+	c.Assert(dbApp.PlatformVersion, check.Equals, "v3")
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
 }
 

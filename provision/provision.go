@@ -215,6 +215,9 @@ type App interface {
 	// to the Unit `Type` field.
 	GetPlatform() string
 
+	// GetPlatformVersion returns the locked platform version of the app.
+	GetPlatformVersion() string
+
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 

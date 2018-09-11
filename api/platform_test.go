@@ -515,16 +515,6 @@ func (s *PlatformSuite) TestPlatformInfoDefaultImage(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 }
 
-func (s *PlatformSuite) TestPlatformInfoNoContent(c *check.C) {
-	request, err := http.NewRequest("GET", "/platforms/myplatform", nil)
-	c.Assert(err, check.IsNil)
-	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-}
-
 func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	name := "myplatform"
 	imageName := "tsuru/myplatform:v1"

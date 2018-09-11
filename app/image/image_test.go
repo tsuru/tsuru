@@ -516,3 +516,22 @@ func (s *S) TestListAllAppImages(c *check.C) {
 		},
 	})
 }
+
+func (s *S) TestSplitImageName(c *check.C) {
+	tests := []struct {
+		image        string
+		expectedRepo string
+		expectedTag  string
+	}{
+		{image: "tsuru", expectedRepo: "tsuru", expectedTag: "latest"},
+		{image: "tsuru:v1", expectedRepo: "tsuru", expectedTag: "v1"},
+		{image: "tsuru/platform", expectedRepo: "tsuru/platform", expectedTag: "latest"},
+		{image: "tsuru/platform:v1", expectedRepo: "tsuru/platform", expectedTag: "v1"},
+		{image: "registry.com/tsuru/platform:v1", expectedRepo: "registry.com/tsuru/platform", expectedTag: "v1"},
+	}
+	for i, t := range tests {
+		repo, tag := SplitImageName(t.image)
+		c.Check(repo, check.DeepEquals, t.expectedRepo, check.Commentf("failed test %d", i))
+		c.Check(tag, check.DeepEquals, t.expectedTag, check.Commentf("failed test %d", i))
+	}
+}

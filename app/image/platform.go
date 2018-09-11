@@ -86,17 +86,17 @@ func (s *platformImageService) ListImagesOrDefault(platformName string) ([]strin
 	return imgs, err
 }
 
-func (s *platformImageService) CheckImageExists(platformName, image string) (bool, error) {
+func (s *platformImageService) FindImage(platformName, image string) (string, error) {
 	imgs, err := s.ListImages(platformName)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	for _, img := range imgs {
 		if strings.HasSuffix(img, image) {
-			return true, nil
+			return img, nil
 		}
 	}
-	return false, nil
+	return "", nil
 }
 
 func platformBasicImageName(platformName string) string {
