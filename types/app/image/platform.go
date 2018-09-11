@@ -21,7 +21,7 @@ type PlatformImageService interface {
 	DeleteImages(string) error
 	ListImages(string) ([]string, error)
 	ListImagesOrDefault(string) ([]string, error)
-	CheckImageExists(string, string) (bool, error)
+	FindImage(string, string) (string, error)
 }
 
 type PlatformImageStorage interface {

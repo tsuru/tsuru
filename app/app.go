@@ -85,25 +85,26 @@ const (
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env            map[string]bind.EnvVar
-	ServiceEnvs    []bind.ServiceEnvVar
-	Platform       string `bson:"framework"`
-	Name           string
-	CName          []string
-	Teams          []string
-	TeamOwner      string
-	Owner          string
-	Plan           appTypes.Plan
-	UpdatePlatform bool
-	Lock           appTypes.AppLock
-	Pool           string
-	Description    string
-	Router         string
-	RouterOpts     map[string]string
-	Deploys        uint
-	Tags           []string
-	Error          string
-	Routers        []appTypes.AppRouter
+	Env             map[string]bind.EnvVar
+	ServiceEnvs     []bind.ServiceEnvVar
+	Platform        string `bson:"framework"`
+	PlatformVersion string
+	Name            string
+	CName           []string
+	Teams           []string
+	TeamOwner       string
+	Owner           string
+	Plan            appTypes.Plan
+	UpdatePlatform  bool
+	Lock            appTypes.AppLock
+	Pool            string
+	Description     string
+	Router          string
+	RouterOpts      map[string]string
+	Deploys         uint
+	Tags            []string
+	Error           string
+	Routers         []appTypes.AppRouter
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -377,6 +378,14 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
+	if app.Platform != "" {
+		p, v, err := getPlatformNameAndVersion(app.Platform)
+		if err != nil {
+			return err
+		}
+		app.Platform = p
+		app.PlatformVersion = v
+	}
 	err = app.validateNew()
 	if err != nil {
 		return err
@@ -434,6 +443,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	platform := updateData.Platform
 	tags := processTags(updateData.Tags)
 	oldApp := *app
+
 	if description != "" {
 		app.Description = description
 	}
@@ -476,18 +486,20 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Tags = tags
 	}
 	if platform != "" {
-		p, errPlat := servicemanager.Platform.FindByName(platform)
-		if errPlat != nil {
-			return errPlat
+		p, v, err := getPlatformNameAndVersion(platform)
+		if err != nil {
+			return err
 		}
-		if app.Platform != p.Name {
+		if app.Platform != p || app.PlatformVersion != v {
 			app.UpdatePlatform = true
 		}
-		app.Platform = p.Name
+		app.Platform = p
+		app.PlatformVersion = v
 	}
 	if updateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
+
 	err = app.validate()
 	if err != nil {
 		return err
@@ -507,6 +519,25 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app, &oldApp, w)
+}
+
+func getPlatformNameAndVersion(platform string) (string, string, error) {
+	repo, version := image.SplitImageName(platform)
+	p, errPlat := servicemanager.Platform.FindByName(repo)
+	if errPlat != nil {
+		return "", "", errPlat
+	}
+
+	if version != "latest" {
+		image, err := servicemanager.PlatformImage.FindImage(p.Name, version)
+		if err != nil {
+			return p.Name, "", err
+		}
+		if image == "" {
+			return p.Name, "", fmt.Errorf("Image %s not found in platform %q", platform, p.Name)
+		}
+	}
+	return p.Name, version, nil
 }
 
 func processTags(tags []string) []string {
@@ -1436,6 +1467,11 @@ func (app *App) GetLock() provision.AppLock {
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform
+}
+
+// GetPlatformVersion returns the platform version of the app.
+func (app *App) GetPlatformVersion() string {
+	return app.PlatformVersion
 }
 
 // GetDeploys returns the amount of deploys of an app.

@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -333,7 +334,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	if a.Platform != "" {
-		platform, errPlat := servicemanager.Platform.FindByName(a.Platform)
+		repo, _ := image.SplitImageName(a.Platform)
+		platform, errPlat := servicemanager.Platform.FindByName(repo)
 		if errPlat != nil {
 			return errPlat
 		}
@@ -464,6 +466,18 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTeamowner)
 	}
 	if updateData.Platform != "" {
+		repo, _ := image.SplitImageName(updateData.Platform)
+		platform, errPlat := servicemanager.Platform.FindByName(repo)
+		if errPlat != nil {
+			return errPlat
+		}
+		if platform.Disabled {
+			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+				permission.Check(t, permission.PermPlatformCreate)
+			if !canUsePlat {
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
+			}
+		}
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlatform)
 		updateData.UpdatePlatform = true
 	}

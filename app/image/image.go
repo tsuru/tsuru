@@ -79,13 +79,21 @@ func (i *ImageMetadata) Save() error {
 // in all other cases the app image name will be returned.
 func GetBuildImage(app provision.App) (string, error) {
 	if usePlatformImage(app) {
-		return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
+		return getPlatformImage(app)
 	}
 	appImageName, err := AppCurrentImageName(app.GetName())
 	if err != nil {
-		return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
+		return getPlatformImage(app)
 	}
 	return appImageName, nil
+}
+
+func getPlatformImage(app provision.App) (string, error) {
+	version := app.GetPlatformVersion()
+	if version != "" && version != "latest" {
+		return servicemanager.PlatformImage.FindImage(app.GetPlatform(), version)
+	}
+	return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
 }
 
 func customDataToImageMetadata(imageName string, customData map[string]interface{}) (*ImageMetadata, error) {
