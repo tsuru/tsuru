@@ -392,7 +392,7 @@ func CreateApp(app *App, user *auth.User) error {
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)
 	if err != nil {
-		return &AppCreationError{app: app.Name, Err: err}
+		return &appTypes.AppCreationError{App: app.Name, Err: err}
 	}
 	return nil
 }

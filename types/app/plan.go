@@ -4,11 +4,6 @@
 
 package app
 
-import (
-	"errors"
-	"fmt"
-)
-
 type Plan struct {
 	Name     string `json:"name"`
 	Memory   int64  `json:"memory"`
@@ -32,20 +27,3 @@ type PlanStorage interface {
 	FindByName(string) (*Plan, error)
 	Delete(Plan) error
 }
-
-type PlanValidationError struct {
-	Field string
-}
-
-func (p PlanValidationError) Error() string {
-	return fmt.Sprintf("invalid value for %s", p.Field)
-}
-
-var (
-	ErrPlanNotFound         = errors.New("plan not found")
-	ErrPlanAlreadyExists    = errors.New("plan already exists")
-	ErrPlanDefaultAmbiguous = errors.New("more than one default plan found")
-	ErrPlanDefaultNotFound  = errors.New("default plan not found")
-	ErrLimitOfCpuShare      = errors.New("The minimum allowed cpu-shares is 2")
-	ErrLimitOfMemory        = errors.New("The minimum allowed memory is 4MB")
-)

@@ -359,13 +359,13 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
-		if _, ok := err.(app.NoTeamsError); ok {
+		if _, ok := err.(appTypes.NoTeamsError); ok {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "In order to create an app, you should be member of at least one team",
 			}
 		}
-		if e, ok := err.(*app.AppCreationError); ok {
+		if e, ok := err.(*appTypes.AppCreationError); ok {
 			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
