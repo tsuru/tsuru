@@ -2342,14 +2342,6 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	return allCertificates, nil
 }
 
-type ProcfileError struct {
-	yamlErr error
-}
-
-func (e *ProcfileError) Error() string {
-	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
-}
-
 func (app *App) RoutableAddresses() ([]url.URL, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
