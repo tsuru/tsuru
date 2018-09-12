@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var (
@@ -135,7 +136,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		InternalKind: "bindsyncer",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, a.GetName())),
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.GetName())),
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {

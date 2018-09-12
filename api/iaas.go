@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: machine list
@@ -33,11 +34,11 @@ func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) erro
 	contexts := permission.ContextsForPermission(token, permission.PermMachineRead)
 	allowedIaaS := map[string]struct{}{}
 	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			allowedIaaS = nil
 			break
 		}
-		if c.CtxType == permission.CtxIaaS {
+		if c.CtxType == permTypes.CtxIaaS {
 			allowedIaaS[c.Value] = struct{}{}
 		}
 	}
@@ -72,7 +73,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		}
 		return err
 	}
-	iaasCtx := permission.Context(permission.CtxIaaS, m.Iaas)
+	iaasCtx := permission.Context(permTypes.CtxIaaS, m.Iaas)
 	allowed := permission.Check(token, permission.PermMachineDelete, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -106,11 +107,11 @@ func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) err
 	contexts := permission.ContextsForPermission(token, permission.PermMachineTemplateRead)
 	allowedIaaS := map[string]struct{}{}
 	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			allowedIaaS = nil
 			break
 		}
-		if c.CtxType == permission.CtxIaaS {
+		if c.CtxType == permTypes.CtxIaaS {
 			allowedIaaS[c.Value] = struct{}{}
 		}
 	}
@@ -146,7 +147,7 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	iaasCtx := permission.Context(permission.CtxIaaS, paramTemplate.IaaSName)
+	iaasCtx := permission.Context(permTypes.CtxIaaS, paramTemplate.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateCreate, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -194,7 +195,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		}
 		return err
 	}
-	iaasCtx := permission.Context(permission.CtxIaaS, t.IaaSName)
+	iaasCtx := permission.Context(permTypes.CtxIaaS, t.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateDelete, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -246,7 +247,7 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if r.Form.Get("IaaSName") != "" {
 		dbTpl.IaaSName = r.Form.Get("IaaSName")
 	}
-	iaasCtx := permission.Context(permission.CtxIaaS, dbTpl.IaaSName)
+	iaasCtx := permission.Context(permTypes.CtxIaaS, dbTpl.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateUpdate, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized

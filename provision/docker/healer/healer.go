@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var (
@@ -138,16 +139,16 @@ func healingEventToEvent(data *types.HealingEvent) error {
 		}
 		endOpts = data.CreatedNode
 		poolName := data.FailingNode.Metadata[provision.PoolMetadataName]
-		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName))
+		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName))
 	case "container-healing":
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}
 		startOpts = data.FailingContainer
 		endOpts = data.CreatedContainer
 		a, err := app.GetByName(data.FailingContainer.AppName)
 		if err == nil {
-			evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
-				permission.Context(permission.CtxApp, a.Name),
-				permission.Context(permission.CtxPool, a.Pool),
+			evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+				permission.Context(permTypes.CtxApp, a.Name),
+				permission.Context(permTypes.CtxPool, a.Pool),
 			)...)
 		} else {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents)

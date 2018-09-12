@@ -37,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -101,7 +102,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 func (s *AuthSuite) createUser(c *check.C) {
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-auth-toremove", permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())
@@ -462,7 +463,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *check.C) {
 func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamDelete,
-		Context: permission.Context(permission.CtxTeam, "other-team"),
+		Context: permission.Context(permTypes.CtxTeam, "other-team"),
 	})
 	teamName := "painofsalvation"
 	request, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/teams/%s?:name=%s", teamName, teamName), nil)
@@ -514,7 +515,7 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request, err := http.NewRequest(http.MethodGet, "/teams", nil)
 	c.Assert(err, check.IsNil)
@@ -538,10 +539,10 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermApp,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request, err := http.NewRequest(http.MethodGet, "/teams", nil)
 	c.Assert(err, check.IsNil)
@@ -1289,7 +1290,7 @@ func (s *AuthSuite) TestShowAPITokenOtherUserWithoutPermission(c *check.C) {
 func (s *AuthSuite) TestListUsers(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request, err := http.NewRequest(http.MethodGet, "/users", nil)
 	c.Assert(err, check.IsNil)
@@ -1312,7 +1313,7 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	expected := token.GetUserName()
 	url := fmt.Sprintf("/users?userEmail=%s", expected)
@@ -1333,7 +1334,7 @@ func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
 func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	expectedUser, err := token.User()
 	c.Assert(err, check.IsNil)
@@ -1357,10 +1358,10 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team2.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
 	expectedUser, err := token.User()
 	c.Assert(err, check.IsNil)
@@ -1388,10 +1389,10 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team2.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team2.Name),
 	})
 	expectedUser, err := token.User()
 	c.Assert(err, check.IsNil)
@@ -1418,7 +1419,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request, err := http.NewRequest(http.MethodGet, "/users", nil)
 	c.Assert(err, check.IsNil)
@@ -1436,14 +1437,14 @@ func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "jerry", permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "another-team"),
+		Context: permission.Context(permTypes.CtxTeam, "another-team"),
 	})
 	request, err := http.NewRequest(http.MethodGet, "/users", nil)
 	c.Assert(err, check.IsNil)
@@ -1568,7 +1569,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	c.StopTimer()
 	perm := permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}
 	expectedNames := []string{}
 	nUsers := 100
@@ -1608,11 +1609,11 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 	perm1 := permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}
 	perm2 := permission.Permission{
 		Scheme:  permission.PermTeamCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}
 	token := userWithPermission(c, perm1, perm2)
 	request, err := http.NewRequest(http.MethodGet, "/users", nil)

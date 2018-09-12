@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -261,7 +262,7 @@ func migrateServiceProxyActions() error {
 
 func createRole(name, contextType string) (permission.Role, error) {
 	role, err := permission.NewRole(name, contextType, "")
-	if err == permission.ErrRoleAlreadyExists {
+	if err == permTypes.ErrRoleAlreadyExists {
 		role, err = permission.FindRole(name)
 	}
 	return role, err
@@ -290,7 +291,7 @@ func migrateRoles() error {
 	if err != nil {
 		return err
 	}
-	err = teamMember.AddEvent(permission.RoleEventTeamCreate.String())
+	err = teamMember.AddEvent(permTypes.RoleEventTeamCreate.String())
 	if err != nil {
 		return err
 	}
@@ -302,7 +303,7 @@ func migrateRoles() error {
 	if err != nil {
 		return err
 	}
-	err = teamCreator.AddEvent(permission.RoleEventUserCreate.String())
+	err = teamCreator.AddEvent(permTypes.RoleEventUserCreate.String())
 	if err != nil {
 		return err
 	}

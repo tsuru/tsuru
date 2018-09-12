@@ -11,9 +11,9 @@ import (
 //go:generate bash -c "rm -f permitems.go && go run ./generator/main.go -o permitems.go"
 
 var PermissionRegistry = (&registry{}).addWithCtx(
-	"app", []permTypes.ContextType{CtxApp, CtxTeam, CtxPool},
+	"app", []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool},
 ).addWithCtx(
-	"app.create", []permTypes.ContextType{CtxTeam},
+	"app.create", []permTypes.ContextType{permTypes.CtxTeam},
 ).add(
 	"app.update.description",
 	"app.update.tags",
@@ -72,7 +72,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.quota",
 	"app.build",
 ).addWithCtx(
-	"node", []permTypes.ContextType{CtxPool},
+	"node", []permTypes.ContextType{permTypes.CtxPool},
 ).add(
 	"node.create",
 	"node.read",
@@ -88,7 +88,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"node.autoscale.read",
 	"node.autoscale.delete",
 ).addWithCtx(
-	"machine", []permTypes.ContextType{CtxIaaS},
+	"machine", []permTypes.ContextType{permTypes.CtxIaaS},
 ).add(
 	"machine.delete",
 	"machine.read",
@@ -98,7 +98,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"machine.template.update",
 	"machine.template.read",
 ).addWithCtx(
-	"team", []permTypes.ContextType{CtxTeam},
+	"team", []permTypes.ContextType{permTypes.CtxTeam},
 ).addWithCtx(
 	"team.create", []permTypes.ContextType{},
 ).add(
@@ -110,7 +110,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"team.token.delete",
 	"team.token.update",
 ).addWithCtx(
-	"user", []permTypes.ContextType{CtxUser},
+	"user", []permTypes.ContextType{permTypes.CtxUser},
 ).addWithCtx(
 	"user.create", []permTypes.ContextType{},
 ).add(
@@ -123,9 +123,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.update.key.add",
 	"user.update.key.remove",
 ).addWithCtx(
-	"service", []permTypes.ContextType{CtxService, CtxTeam},
+	"service", []permTypes.ContextType{permTypes.CtxService, permTypes.CtxTeam},
 ).addWithCtx(
-	"service.create", []permTypes.ContextType{CtxTeam},
+	"service.create", []permTypes.ContextType{permTypes.CtxTeam},
 ).add(
 	"service.read.doc",
 	"service.read.plans",
@@ -141,9 +141,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service-broker.delete",
 	"service-broker.update",
 ).addWithCtx(
-	"service-instance", []permTypes.ContextType{CtxServiceInstance, CtxTeam},
+	"service-instance", []permTypes.ContextType{permTypes.CtxServiceInstance, permTypes.CtxTeam},
 ).addWithCtx(
-	"service-instance.create", []permTypes.ContextType{CtxTeam},
+	"service-instance.create", []permTypes.ContextType{permTypes.CtxTeam},
 ).add(
 	"service-instance.read.events",
 	"service-instance.read.status",
@@ -180,7 +180,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"plan.delete",
 	"plan.read.events",
 ).addWithCtx(
-	"pool", []permTypes.ContextType{CtxPool},
+	"pool", []permTypes.ContextType{permTypes.CtxPool},
 ).addWithCtx(
 	"pool.create", []permTypes.ContextType{},
 ).add(
@@ -196,13 +196,13 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"healing.read",
 ).addWithCtx(
-	"healing", []permTypes.ContextType{CtxPool},
+	"healing", []permTypes.ContextType{permTypes.CtxPool},
 ).add(
 	"healing.read",
 	"healing.update",
 	"healing.delete",
 ).addWithCtx(
-	"nodecontainer", []permTypes.ContextType{CtxPool},
+	"nodecontainer", []permTypes.ContextType{permTypes.CtxPool},
 ).add(
 	"nodecontainer.create",
 	"nodecontainer.read",
@@ -222,16 +222,16 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"cluster.update",
 	"cluster.delete",
 ).addWithCtx(
-	"volume", []permTypes.ContextType{CtxVolume, CtxTeam, CtxPool},
+	"volume", []permTypes.ContextType{permTypes.CtxVolume, permTypes.CtxTeam, permTypes.CtxPool},
 ).addWithCtx(
-	"volume.create", []permTypes.ContextType{CtxTeam, CtxPool},
+	"volume.create", []permTypes.ContextType{permTypes.CtxTeam, permTypes.CtxPool},
 ).add(
 	"volume.read.events",
 	"volume.update.bind",
 	"volume.update.unbind",
 	"volume.delete",
 ).addWithCtx(
-	"webhook", []permTypes.ContextType{CtxTeam},
+	"webhook", []permTypes.ContextType{permTypes.CtxTeam},
 ).add(
 	"webhook.read",
 	"webhook.read.events",

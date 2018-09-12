@@ -78,7 +78,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		instance.TeamOwner = teamOwner
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceCreate,
-		permission.Context(permission.CtxTeam, instance.TeamOwner),
+		permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -292,18 +292,18 @@ func readableInstances(t auth.Token, contexts []permTypes.PermissionContext, app
 	teams := []string{}
 	instanceNames := []string{}
 	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			instanceNames = nil
 			break
 		}
 		switch c.CtxType {
-		case permission.CtxServiceInstance:
+		case permTypes.CtxServiceInstance:
 			parts := strings.SplitN(c.Value, "/", 2)
 			if len(parts) == 2 && (serviceName == "" || parts[0] == serviceName) {
 				instanceNames = append(instanceNames, parts[1])
 			}
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			teams = append(teams, c.Value)
 		}
 	}
@@ -314,15 +314,15 @@ func filtersForServiceList(t auth.Token, contexts []permTypes.PermissionContext)
 	teams := []string{}
 	serviceNames := []string{}
 	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			serviceNames = nil
 			break
 		}
 		switch c.CtxType {
-		case permission.CtxService:
+		case permTypes.CtxService:
 			serviceNames = append(serviceNames, c.Value)
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			teams = append(teams, c.Value)
 		}
 	}
@@ -709,14 +709,14 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 
 func contextsForServiceInstance(si *service.ServiceInstance, serviceName string) []permTypes.PermissionContext {
 	permissionValue := serviceIntancePermName(serviceName, si.Name)
-	return append(permission.Contexts(permission.CtxTeam, si.Teams),
-		permission.Context(permission.CtxServiceInstance, permissionValue),
+	return append(permission.Contexts(permTypes.CtxTeam, si.Teams),
+		permission.Context(permTypes.CtxServiceInstance, permissionValue),
 	)
 }
 
 func contextsForService(s *service.Service) []permTypes.PermissionContext {
-	return append(permission.Contexts(permission.CtxTeam, s.Teams),
-		permission.Context(permission.CtxService, s.Name),
+	return append(permission.Contexts(permTypes.CtxTeam, s.Teams),
+		permission.Context(permTypes.CtxService, s.Name),
 	)
 }
 

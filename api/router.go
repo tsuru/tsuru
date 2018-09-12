@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: router list
@@ -32,10 +33,10 @@ func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 contexts:
 	for _, c := range contexts {
 		switch c.CtxType {
-		case permission.CtxGlobal:
+		case permTypes.CtxGlobal:
 			global = true
 			break contexts
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			teams = append(teams, c.Value)
 		}
 	}

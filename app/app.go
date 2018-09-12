@@ -44,6 +44,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -945,7 +946,7 @@ func (app *App) Grant(team *authTypes.Team) error {
 	}
 	users, err := auth.ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	if err != nil {
 		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
@@ -985,7 +986,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 	}
 	users, err := auth.ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	if err != nil {
 		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
@@ -998,9 +999,9 @@ func (app *App) Revoke(team *authTypes.Team) error {
 			return err
 		}
 		canDeploy := permission.CheckFromPermList(perms, permission.PermAppDeploy,
-			append(permission.Contexts(permission.CtxTeam, app.Teams),
-				permission.Context(permission.CtxApp, app.Name),
-				permission.Context(permission.CtxPool, app.Pool),
+			append(permission.Contexts(permTypes.CtxTeam, app.Teams),
+				permission.Context(permTypes.CtxApp, app.Name),
+				permission.Context(permTypes.CtxPool, app.Pool),
 			)...,
 		)
 		if canDeploy {

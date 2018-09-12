@@ -33,6 +33,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -82,7 +83,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	// own user with specific permissions.
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-root-toremove", permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())

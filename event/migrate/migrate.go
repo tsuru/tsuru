@@ -39,16 +39,16 @@ func setAllowed(evt *event.Event) (err error) {
 			}
 			return err
 		}
-		ctxs := append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
+		ctxs := append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+			permission.Context(permTypes.CtxApp, a.Name),
+			permission.Context(permTypes.CtxPool, a.Pool),
 		)
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents, ctxs...)
 		if evt.Cancelable {
 			evt.Allowed = event.Allowed(permission.PermAppUpdateEvents, ctxs...)
 		}
 	case event.TargetTypeTeam:
-		evt.Allowed = event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, evt.Target.Value))
+		evt.Allowed = event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, evt.Target.Value))
 	case event.TargetTypeService:
 		s, errGet := service.Get(evt.Target.Value)
 		if errGet != nil {
@@ -56,8 +56,8 @@ func setAllowed(evt *event.Event) (err error) {
 			return errGet
 		}
 		evt.Allowed = event.Allowed(permission.PermServiceReadEvents,
-			append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-				permission.Context(permission.CtxService, s.Name),
+			append(permission.Contexts(permTypes.CtxTeam, s.OwnerTeams),
+				permission.Context(permTypes.CtxService, s.Name),
 			)...,
 		)
 	case event.TargetTypeServiceInstance:
@@ -73,16 +73,16 @@ func setAllowed(evt *event.Event) (err error) {
 			return err
 		}
 		evt.Allowed = event.Allowed(permission.PermServiceReadEvents,
-			append(permission.Contexts(permission.CtxTeam, si.Teams),
-				permission.Context(permission.CtxServiceInstance, evt.Target.Value),
+			append(permission.Contexts(permTypes.CtxTeam, si.Teams),
+				permission.Context(permTypes.CtxServiceInstance, evt.Target.Value),
 			)...,
 		)
 	case event.TargetTypePool:
-		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, evt.Target.Value))
+		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, evt.Target.Value))
 	case event.TargetTypeUser:
-		evt.Allowed = event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, evt.Target.Value))
+		evt.Allowed = event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, evt.Target.Value))
 	case event.TargetTypeIaas:
-		evt.Allowed = event.Allowed(permission.PermMachineReadEvents, permission.Context(permission.CtxIaaS, evt.Target.Value))
+		evt.Allowed = event.Allowed(permission.PermMachineReadEvents, permission.Context(permTypes.CtxIaaS, evt.Target.Value))
 	case event.TargetTypeContainer:
 		var provisioners []provision.Provisioner
 		provisioners, err = provision.Registry()
@@ -107,9 +107,9 @@ func setAllowed(evt *event.Event) (err error) {
 			return err
 		}
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents,
-			append(permission.Contexts(permission.CtxTeam, a.GetTeamsName()),
-				permission.Context(permission.CtxApp, a.GetName()),
-				permission.Context(permission.CtxPool, a.GetPool()),
+			append(permission.Contexts(permTypes.CtxTeam, a.GetTeamsName()),
+				permission.Context(permTypes.CtxApp, a.GetName()),
+				permission.Context(permTypes.CtxPool, a.GetPool()),
 			)...,
 		)
 	case event.TargetTypeNode:
@@ -126,7 +126,7 @@ func setAllowed(evt *event.Event) (err error) {
 				if err != nil {
 					return err
 				}
-				ctxs = append(ctxs, permission.Context(permission.CtxPool, nodes[0].Pool()))
+				ctxs = append(ctxs, permission.Context(permTypes.CtxPool, nodes[0].Pool()))
 			}
 		}
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, ctxs...)

@@ -483,7 +483,7 @@ func (f *Filter) toQuery() (bson.M, error) {
 		for perm, ctxs := range permMap {
 			ctxsBson := []bson.D{}
 			for _, ctx := range ctxs {
-				if ctx.CtxType == permission.CtxGlobal {
+				if ctx.CtxType == permTypes.CtxGlobal {
 					ctxsBson = nil
 					break
 				}

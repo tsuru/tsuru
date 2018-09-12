@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -90,7 +91,7 @@ func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())
@@ -220,11 +221,11 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions
 	token := userWithPermission(c,
 		permission.Permission{
 			Scheme:  permission.PermService,
-			Context: permission.Context(permission.CtxTeam, s.team.Name),
+			Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 		},
 		permission.Permission{
 			Scheme:  permission.PermService,
-			Context: permission.Context(permission.CtxTeam, "other-team"),
+			Context: permission.Context(permTypes.CtxTeam, "other-team"),
 		},
 	)
 	request.Header.Set("Authorization", "b "+token.GetValue())

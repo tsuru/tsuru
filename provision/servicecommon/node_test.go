@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -33,7 +34,7 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 	app.AuthScheme = auth.ManagedScheme(native.NativeScheme{})
 	u, _ := permissiontest.CustomUserWithPermission(c, app.AuthScheme, "majortom", permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	err = pool.AddPool(pool.AddPoolOptions{
 		Name: "p1",

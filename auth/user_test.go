@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -303,7 +304,7 @@ func (s *S) TestUserAddRole(c *check.C) {
 	err = u.AddRole("r2", "x")
 	c.Assert(err, check.IsNil)
 	err = u.AddRole("r3", "a")
-	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
+	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 	expected := []authTypes.RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
 		{Name: "r1", ContextValue: "c2"},
@@ -380,7 +381,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
+		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
@@ -393,11 +394,11 @@ func (s *S) TestUserPermissions(c *check.C) {
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp2")},
+		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp2")},
 	})
 }
 
@@ -417,7 +418,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
+		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
@@ -430,11 +431,11 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp2")},
+		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp2")},
 	})
 }
 
@@ -455,14 +456,14 @@ func (s *S) TestListUsersWithPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	users, err := ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxApp, "myapp1"),
+		Context: permission.Context(permTypes.CtxApp, "myapp1"),
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(users, check.HasLen, 1)
 	c.Assert(users[0].Email, check.Equals, u1.Email)
 	users, err = ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxApp, "myapp2"),
+		Context: permission.Context(permTypes.CtxApp, "myapp2"),
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(users, check.HasLen, 1)
@@ -472,12 +473,12 @@ func (s *S) TestListUsersWithPermissions(c *check.C) {
 func (s *S) TestAddRolesForEvent(c *check.C) {
 	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
+	err = r1.AddEvent(permTypes.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)
 	u1 := User{Email: "me1@tsuru.com", Password: "123"}
 	err = u1.Create()
 	c.Assert(err, check.IsNil)
-	err = u1.AddRolesForEvent(permission.RoleEventTeamCreate, "team1")
+	err = u1.AddRolesForEvent(permTypes.RoleEventTeamCreate, "team1")
 	c.Assert(err, check.IsNil)
 	u, err := GetUserByEmail(u1.Email)
 	c.Assert(err, check.IsNil)

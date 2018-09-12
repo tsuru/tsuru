@@ -11,21 +11,21 @@ import (
 
 func (s *S) TestRecorderPermissions(c *check.C) {
 	r := &registry{}
-	r.addWithCtx("app", []permTypes.ContextType{CtxApp, CtxTeam, CtxPool}).
+	r.addWithCtx("app", []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool}).
 		add("app.update.env.set", "app.update.env.unset", "app.update.restart", "app.deploy").
-		addWithCtx("team", []permTypes.ContextType{CtxTeam}).
+		addWithCtx("team", []permTypes.ContextType{permTypes.CtxTeam}).
 		addWithCtx("team.create", []permTypes.ContextType{}).
 		add("team.update")
 	expected := PermissionSchemeList{
 		{},
-		{name: "app", contexts: []permTypes.ContextType{CtxApp, CtxTeam, CtxPool}},
+		{name: "app", contexts: []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool}},
 		{name: "update"},
 		{name: "env"},
 		{name: "set"},
 		{name: "unset"},
 		{name: "restart"},
 		{name: "deploy"},
-		{name: "team", contexts: []permTypes.ContextType{CtxTeam}},
+		{name: "team", contexts: []permTypes.ContextType{permTypes.CtxTeam}},
 		{name: "create", contexts: []permTypes.ContextType{}},
 		{name: "update"},
 	}
@@ -52,10 +52,10 @@ func (s *S) TestRecorderPermissions(c *check.C) {
 	c.Assert(perms[8].FullName(), check.Equals, "team")
 	c.Assert(perms[9].FullName(), check.Equals, "team.create")
 	c.Assert(perms[10].FullName(), check.Equals, "team.update")
-	c.Assert(perms[1].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
-	c.Assert(perms[5].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
-	c.Assert(perms[9].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal})
-	c.Assert(perms[10].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal, CtxTeam})
+	c.Assert(perms[1].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool})
+	c.Assert(perms[5].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool})
+	c.Assert(perms[9].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal})
+	c.Assert(perms[10].AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxTeam})
 }
 
 func (s *S) TestRecorderGet(c *check.C) {
@@ -63,16 +63,16 @@ func (s *S) TestRecorderGet(c *check.C) {
 	perm := r.get("app.update")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update")
-	r = (&registry{}).addWithCtx("app", []permTypes.ContextType{CtxApp, CtxTeam, CtxPool}).
+	r = (&registry{}).addWithCtx("app", []permTypes.ContextType{permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool}).
 		add("app.update.env.set")
 	perm = r.get("app.update")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update")
-	c.Assert(perm.AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
+	c.Assert(perm.AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool})
 	perm = r.get("app.update.env.set")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update.env.set")
-	c.Assert(perm.AllowedContexts(), check.DeepEquals, []permTypes.ContextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
+	c.Assert(perm.AllowedContexts(), check.DeepEquals, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp, permTypes.CtxTeam, permTypes.CtxPool})
 	perm = r.get("")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "")

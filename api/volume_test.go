@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 )
@@ -67,11 +68,11 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token1 := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermVolumeRead,
-		Context: permission.Context(permission.CtxPool, "otherpool"),
+		Context: permission.Context(permTypes.CtxPool, "otherpool"),
 	})
 	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom2", permission.Permission{
 		Scheme:  permission.PermVolumeRead,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)

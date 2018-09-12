@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/set"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 type DeployKind string
@@ -399,9 +400,9 @@ func deployDataToEvent(data *DeployData) error {
 	evt.RemoveDate = data.RemoveDate
 	a, err := GetByName(data.App)
 	if err == nil {
-		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
+		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+			permission.Context(permTypes.CtxApp, a.Name),
+			permission.Context(permTypes.CtxPool, a.Pool),
 		)...)
 	} else {
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents)

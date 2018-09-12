@@ -38,28 +38,12 @@ func Contexts(t permTypes.ContextType, values []string) []permTypes.PermissionCo
 	return contexts
 }
 
-var (
-	CtxGlobal          = permTypes.ContextType("global")
-	CtxApp             = permTypes.ContextType("app")
-	CtxTeam            = permTypes.ContextType("team")
-	CtxUser            = permTypes.ContextType("user")
-	CtxPool            = permTypes.ContextType("pool")
-	CtxIaaS            = permTypes.ContextType("iaas")
-	CtxService         = permTypes.ContextType("service")
-	CtxServiceInstance = permTypes.ContextType("service-instance")
-	CtxVolume          = permTypes.ContextType("volume")
-
-	ContextTypes = []permTypes.ContextType{
-		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxService, CtxServiceInstance,
-	}
-)
-
 func ParseContext(ctx string) (permTypes.ContextType, error) {
 	return parseContext(ctx)
 }
 
 func parseContext(ctx string) (permTypes.ContextType, error) {
-	for _, t := range ContextTypes {
+	for _, t := range permTypes.ContextTypes {
 		if string(t) == ctx {
 			return t, nil
 		}
@@ -120,7 +104,7 @@ func (s *PermissionScheme) Identifier() string {
 }
 
 func (s *PermissionScheme) AllowedContexts() []permTypes.ContextType {
-	contexts := []permTypes.ContextType{CtxGlobal}
+	contexts := []permTypes.ContextType{permTypes.CtxGlobal}
 	if s.contexts != nil {
 		return append(contexts, s.contexts...)
 	}
@@ -158,7 +142,7 @@ func ListContextValues(t Token, scheme *PermissionScheme, failIfEmpty bool) ([]s
 	}
 	values := make([]string, 0, len(contexts))
 	for _, ctx := range contexts {
-		if ctx.CtxType == CtxGlobal {
+		if ctx.CtxType == permTypes.CtxGlobal {
 			return nil, nil
 		}
 		values = append(values, ctx.Value)
@@ -204,7 +188,7 @@ func Check(token Token, scheme *PermissionScheme, contexts ...permTypes.Permissi
 func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	for _, perm := range perms {
 		if perm.Scheme.IsParent(scheme) {
-			if perm.Context.CtxType == CtxGlobal {
+			if perm.Context.CtxType == permTypes.CtxGlobal {
 				return true
 			}
 			for _, ctx := range contexts {
@@ -221,11 +205,11 @@ func TeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
 	allContexts := ContextsForPermission(t, scheme)
 	teams := make([]string, 0, len(allContexts))
 	for _, ctx := range allContexts {
-		if ctx.CtxType == CtxGlobal {
+		if ctx.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			break
 		}
-		if ctx.CtxType == CtxTeam {
+		if ctx.CtxType == permTypes.CtxTeam {
 			teams = append(teams, ctx.Value)
 		}
 	}

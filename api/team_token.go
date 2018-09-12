@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: token list
@@ -63,7 +64,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		}
 	}
 	allowed := permission.Check(t, permission.PermTeamTokenCreate,
-		permission.Context(permission.CtxTeam, args.Team),
+		permission.Context(permTypes.CtxTeam, args.Team),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -73,7 +74,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, args.Team)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, args.Team)),
 	})
 	if err != nil {
 		return err
@@ -126,7 +127,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	allowed := permission.Check(t, permission.PermTeamTokenUpdate,
-		permission.Context(permission.CtxTeam, teamToken.Team),
+		permission.Context(permTypes.CtxTeam, teamToken.Team),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -136,7 +137,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, teamToken.Team)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamToken.Team)),
 	})
 	if err != nil {
 		return err
@@ -178,7 +179,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	}
 	teamName := teamToken.Team
 	allowed := permission.Check(t, permission.PermTeamTokenDelete,
-		permission.Context(permission.CtxTeam, teamName),
+		permission.Context(permTypes.CtxTeam, teamName),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -188,7 +189,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Kind:       permission.PermTeamTokenDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, teamName)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamName)),
 	})
 	if err != nil {
 		return err

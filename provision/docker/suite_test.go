@@ -117,7 +117,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token = permissiontest.ExistingUserWithPermission(c, nativeScheme, s.user, permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permTypes.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 }
 
