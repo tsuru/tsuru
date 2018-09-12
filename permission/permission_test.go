@@ -46,11 +46,11 @@ func (s *S) TestPermissionSchemeAllowedContexts(c *check.C) {
 		p   PermissionScheme
 		ctx []permTypes.ContextType
 	}{
-		{PermissionScheme{}, []permTypes.ContextType{CtxGlobal}},
-		{PermissionScheme{contexts: []permTypes.ContextType{CtxApp}}, []permTypes.ContextType{CtxGlobal, CtxApp}},
-		{PermissionScheme{parent: &PermissionScheme{contexts: []permTypes.ContextType{CtxApp}}}, []permTypes.ContextType{CtxGlobal, CtxApp}},
-		{PermissionScheme{contexts: []permTypes.ContextType{}, parent: &PermissionScheme{contexts: []permTypes.ContextType{CtxApp}}}, []permTypes.ContextType{CtxGlobal}},
-		{PermissionScheme{contexts: []permTypes.ContextType{CtxTeam}, parent: &PermissionScheme{contexts: []permTypes.ContextType{CtxApp}}}, []permTypes.ContextType{CtxGlobal, CtxTeam}},
+		{PermissionScheme{}, []permTypes.ContextType{permTypes.CtxGlobal}},
+		{PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
+		{PermissionScheme{parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxApp}},
+		{PermissionScheme{contexts: []permTypes.ContextType{}, parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal}},
+		{PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxTeam}, parent: &PermissionScheme{contexts: []permTypes.ContextType{permTypes.CtxApp}}}, []permTypes.ContextType{permTypes.CtxGlobal, permTypes.CtxTeam}},
 	}
 	for _, el := range table {
 		c.Check(el.p.AllowedContexts(), check.DeepEquals, el.ctx)
@@ -68,35 +68,35 @@ func (t *userToken) Permissions() ([]Permission, error) {
 func (s *S) TestCheck(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}},
-			{Scheme: PermAppDeploy, Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "team3"}},
-			{Scheme: PermAppUpdateEnvUnset, Context: permTypes.PermissionContext{CtxType: CtxGlobal}},
+			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
+			{Scheme: PermAppDeploy, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team3"}},
+			{Scheme: PermAppUpdateEnvUnset, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppUpdateEnvSet, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, false)
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team3"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team2"}), check.Equals, false)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team10"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvSet, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, false)
+	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team3"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}), check.Equals, false)
+	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvUnset, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team10"}), check.Equals, true)
 	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
 }
 
 func (s *S) TestCheckSuperToken(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: CtxGlobal}},
+			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppDeploy, permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}), check.Equals, true)
 	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
 }
 
 func (s *S) TestGetTeamForPermission(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}},
+			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
 		},
 	}
 	team, err := TeamForPermission(t, PermAppUpdate)
@@ -107,8 +107,8 @@ func (s *S) TestGetTeamForPermission(c *check.C) {
 func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "team1"}},
-			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "team2"}},
+			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team1"}},
+			{Scheme: PermAppUpdate, Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "team2"}},
 		},
 	}
 	_, err := TeamForPermission(t, PermAppUpdate)
@@ -119,7 +119,7 @@ func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 func (s *S) TestGetTeamForPermissionGlobalMustSpecifyTeam(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: CtxGlobal, Value: ""}},
+			{Scheme: PermAll, Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal, Value: ""}},
 		},
 	}
 	_, err := TeamForPermission(t, PermAppUpdate)

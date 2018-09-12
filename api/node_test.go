@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	apiTypes "github.com/tsuru/tsuru/types/api"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -575,7 +576,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	req.Header.Set("Authorization", "bearer "+t.GetValue())
 	rec := httptest.NewRecorder()
@@ -942,10 +943,10 @@ func (s *S) TestNodeHealingConfigUpdateReadLimited(c *check.C) {
 	}
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermHealingUpdate,
-		Context: permission.Context(permission.CtxPool, "p2"),
+		Context: permission.Context(permTypes.CtxPool, "p2"),
 	}, permission.Permission{
 		Scheme:  permission.PermHealingRead,
-		Context: permission.Context(permission.CtxPool, "p2"),
+		Context: permission.Context(permTypes.CtxPool, "p2"),
 	})
 	data := doRequest(t, http.StatusForbidden, "Enabled=true&MaxTimeSinceSuccess=60")
 	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{

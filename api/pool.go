@@ -33,14 +33,14 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
 	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermPoolRead)...)
 	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			isGlobal = true
 			break
 		}
-		if c.CtxType == permission.CtxTeam {
+		if c.CtxType == permTypes.CtxTeam {
 			teams = append(teams, c.Value)
 		}
-		if c.CtxType == permission.CtxPool {
+		if c.CtxType == permTypes.CtxPool {
 			poolNames = append(poolNames, c.Value)
 		}
 	}
@@ -120,7 +120,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, addOpts.Name)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, addOpts.Name)),
 	})
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermPoolDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -202,7 +202,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return &terrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	poolName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permission.CtxPool, poolName))
+	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -211,7 +211,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Kind:       permission.PermPoolUpdateTeamAdd,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -238,7 +238,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	poolName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permission.CtxPool, poolName))
+	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -247,7 +247,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Kind:       permission.PermPoolUpdateTeamRemove,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -287,7 +287,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermPoolUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err

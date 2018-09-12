@@ -95,7 +95,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 	s.OwnerTeams = []string{team}
 	allowed := permission.Check(t, permission.PermServiceCreate,
-		permission.Context(permission.CtxTeam, s.OwnerTeams[0]),
+		permission.Context(permTypes.CtxTeam, s.OwnerTeams[0]),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -400,7 +400,7 @@ func getService(name string) (service.Service, error) {
 }
 
 func contextsForServiceProvision(s *service.Service) []permTypes.PermissionContext {
-	return append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-		permission.Context(permission.CtxService, s.Name),
+	return append(permission.Contexts(permTypes.CtxTeam, s.OwnerTeams),
+		permission.Context(permTypes.CtxService, s.Name),
 	)
 }

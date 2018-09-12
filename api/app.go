@@ -152,14 +152,14 @@ func appFilterByContext(contexts []permTypes.PermissionContext, filter *app.Filt
 contextsLoop:
 	for _, c := range contexts {
 		switch c.CtxType {
-		case permission.CtxGlobal:
+		case permTypes.CtxGlobal:
 			filter.Extra = nil
 			break contextsLoop
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			filter.ExtraIn("teams", c.Value)
-		case permission.CtxApp:
+		case permTypes.CtxApp:
 			filter.ExtraIn("name", c.Value)
-		case permission.CtxPool:
+		case permTypes.CtxPool:
 			filter.ExtraIn("pool", c.Value)
 		}
 	}
@@ -323,7 +323,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,
-		permission.Context(permission.CtxTeam, a.TeamOwner),
+		permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	)
 	if !canCreate {
 		return permission.ErrUnauthorized
@@ -1241,8 +1241,8 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, instance.Name),
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
 		)...,
 	)
 	if !allowed {
@@ -1311,8 +1311,8 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, instance.Name),
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
 		)...,
 	)
 	if !allowed {
@@ -1958,8 +1958,8 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 }
 
 func contextsForApp(a *app.App) []permTypes.PermissionContext {
-	return append(permission.Contexts(permission.CtxTeam, a.Teams),
-		permission.Context(permission.CtxApp, a.Name),
-		permission.Context(permission.CtxPool, a.Pool),
+	return append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+		permission.Context(permTypes.CtxApp, a.Name),
+		permission.Context(permTypes.CtxPool, a.Pool),
 	)
 }

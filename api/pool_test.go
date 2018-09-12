@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -266,7 +267,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 func (s *S) TestAddTeamsToPoolWithPoolContextPermission(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermPoolUpdateTeamAdd,
-		Context: permission.Context(permission.CtxPool, "pool1"),
+		Context: permission.Context(permTypes.CtxPool, "pool1"),
 	})
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}
@@ -360,7 +361,7 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermPoolUpdateTeamRemove,
-		Context: permission.Context(permission.CtxPool, "pool1"),
+		Context: permission.Context(permTypes.CtxPool, "pool1"),
 	})
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}
@@ -414,7 +415,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	teamName := "angra"
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, teamName),
+		Context: permission.Context(permTypes.CtxTeam, teamName),
 	})
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}
@@ -463,11 +464,11 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	perms := []permission.Permission{
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.Context(permission.CtxGlobal, ""),
+			Context: permission.Context(permTypes.CtxGlobal, ""),
 		},
 		{
 			Scheme:  permission.PermPoolUpdate,
-			Context: permission.Context(permission.CtxGlobal, ""),
+			Context: permission.Context(permTypes.CtxGlobal, ""),
 		},
 	}
 	token := userWithPermission(c, perms...)
@@ -494,7 +495,7 @@ func (s *S) TestPoolListHandlerWithGlobalContext(c *check.C) {
 	perms := []permission.Permission{
 		{
 			Scheme:  permission.PermAll,
-			Context: permission.Context(permission.CtxGlobal, ""),
+			Context: permission.Context(permTypes.CtxGlobal, ""),
 		},
 	}
 	token := userWithPermission(c, perms...)
@@ -519,7 +520,7 @@ func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 	perms := []permission.Permission{
 		{
 			Scheme:  permission.PermPoolRead,
-			Context: permission.Context(permission.CtxPool, "pool1"),
+			Context: permission.Context(permTypes.CtxPool, "pool1"),
 		},
 	}
 	token := userWithPermission(c, perms...)

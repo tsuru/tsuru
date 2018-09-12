@@ -32,6 +32,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -67,7 +68,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	s.user, _ = permissiontest.CustomUserWithPermission(c, app.AuthScheme, "majortom", permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	s.team = "myteam"
 	err := pool.AddPool(pool.AddPoolOptions{

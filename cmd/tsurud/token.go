@@ -15,6 +15,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 type createRootUserCmd struct{}
@@ -74,7 +75,7 @@ func addSuperRole(u *auth.User) error {
 	defaultRoleName := "AllowAll"
 	r, err := permission.FindRole(defaultRoleName)
 	if err != nil {
-		r, err = permission.NewRole(defaultRoleName, string(permission.CtxGlobal), "")
+		r, err = permission.NewRole(defaultRoleName, string(permTypes.CtxGlobal), "")
 		if err != nil {
 			return err
 		}

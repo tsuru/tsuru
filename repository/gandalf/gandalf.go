@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func init() {
@@ -86,17 +87,17 @@ func Sync(w io.Writer) error {
 		allowedPerms := []permission.Permission{
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxGlobal, ""),
+				Context: permission.Context(permTypes.CtxGlobal, ""),
 			},
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxPool, app.GetPool()),
+				Context: permission.Context(permTypes.CtxPool, app.GetPool()),
 			},
 		}
 		for _, name := range app.GetTeamsName() {
 			allowedPerms = append(allowedPerms, permission.Permission{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxTeam, name),
+				Context: permission.Context(permTypes.CtxTeam, name),
 			})
 		}
 		users, err := auth.ListUsersWithPermissions(allowedPerms...)

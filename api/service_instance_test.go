@@ -36,6 +36,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -78,10 +79,10 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermServiceRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
@@ -235,7 +236,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 	p := permission.Permission{
 		Scheme:  permission.PermServiceInstance,
-		Context: permission.Context(permission.CtxTeam, "anotherTeam"),
+		Context: permission.Context(permTypes.CtxTeam, "anotherTeam"),
 	}
 	role, err := permission.NewRole("instance-user", string(p.Context.CtxType), "")
 	c.Assert(err, check.IsNil)
@@ -539,7 +540,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateDescription,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
@@ -588,7 +589,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTeamowner,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -635,7 +636,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -682,7 +683,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -758,7 +759,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)

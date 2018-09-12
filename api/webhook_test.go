@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -84,7 +85,7 @@ func (s *S) TestWebhookListEmpty(c *check.C) {
 func (s *S) TestWebhookListByTeam(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermWebhookRead,
-		Context: permission.Context(permission.CtxTeam, "t2"),
+		Context: permission.Context(permTypes.CtxTeam, "t2"),
 	})
 	webhook1 := eventTypes.Webhook{
 		TeamOwner: s.team.Name,

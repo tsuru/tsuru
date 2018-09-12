@@ -10,12 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/types/quota"
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -27,7 +21,13 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -59,10 +59,10 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "superteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermUserUpdateQuota,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())
@@ -284,7 +284,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request, _ := http.NewRequest("GET", "/apps/civil/quota", nil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -388,7 +388,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "other", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
-		Context: permission.Context(permission.CtxTeam, "-other-"),
+		Context: permission.Context(permTypes.CtxTeam, "-other-"),
 	})
 	body := bytes.NewBufferString("limit=40")
 	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)

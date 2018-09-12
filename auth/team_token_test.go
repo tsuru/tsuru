@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -163,7 +164,7 @@ func (s *S) Test_TeamTokenService_AddRole_RoleNotFound(c *check.C) {
 	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp")
-	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
+	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 }
 
 func (s *S) Test_TeamTokenService_RemoveRole(c *check.C) {
@@ -241,7 +242,7 @@ func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C
 		permissions: []permission.Permission{
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxApp, "myapp"),
+				Context: permission.Context(permTypes.CtxApp, "myapp"),
 			},
 		},
 	}
@@ -401,8 +402,8 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppUpdate, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdate, Context: permission.Context(permTypes.CtxApp, "myapp")},
 	})
 }

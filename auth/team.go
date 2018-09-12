@@ -12,9 +12,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
@@ -54,7 +54,7 @@ func (t *teamService) Create(name string, tags []string, user *authTypes.User) e
 		return err
 	}
 	u := User(*user)
-	err = u.AddRolesForEvent(permission.RoleEventTeamCreate, name)
+	err = u.AddRolesForEvent(permTypes.RoleEventTeamCreate, name)
 	if err != nil {
 		log.Errorf("unable to add default roles during team %q creation for %q: %s", name, user.Email, err)
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/scopedconfig"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -217,7 +218,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			Reason:    reason,
 			LastCheck: lastCheck,
 		},
-		Allowed: event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
+		Allowed: event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {

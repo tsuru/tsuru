@@ -1165,7 +1165,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 		Allowed: Allowed(permission.PermAppReadEvents,
-			permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")),
+			permission.Context(permTypes.CtxApp, "myapp"), permission.Context(permTypes.CtxTeam, "myteam")),
 	})
 	c.Assert(err, check.IsNil)
 	expected := &Event{eventData: eventData{
@@ -1179,7 +1179,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed: AllowedPermission{
 			Scheme:   permission.PermAppReadEvents.FullName(),
-			Contexts: []permTypes.PermissionContext{permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")},
+			Contexts: []permTypes.PermissionContext{permission.Context(permTypes.CtxApp, "myapp"), permission.Context(permTypes.CtxTeam, "myteam")},
 		},
 	}}
 	expected.Init()

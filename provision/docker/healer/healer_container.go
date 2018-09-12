@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 type ContainerHealer struct {
@@ -129,9 +130,9 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		},
 		InternalKind: "healer",
 		CustomData:   cont,
-		Allowed: event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
+		Allowed: event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+			permission.Context(permTypes.CtxApp, a.Name),
+			permission.Context(permTypes.CtxPool, a.Pool),
 		)...),
 	})
 	if err != nil {

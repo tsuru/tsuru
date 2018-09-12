@@ -9,14 +9,14 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/tsuru/tsuru/servicemanager"
-	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/types/quota"
-
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
+	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 // title: user quota
@@ -60,7 +60,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	email := r.URL.Query().Get(":email")
-	allowed := permission.Check(t, permission.PermUserUpdateQuota, permission.Context(permission.CtxUser, email))
+	allowed := permission.Check(t, permission.PermUserUpdateQuota, permission.Context(permTypes.CtxUser, email))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -78,7 +78,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err

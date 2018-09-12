@@ -9,11 +9,6 @@ import (
 	"io"
 	"regexp"
 
-	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/servicemanager"
-	appTypes "github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/quota"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -25,8 +20,13 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 var (
@@ -206,17 +206,17 @@ var createRepository = action.Action{
 		allowedPerms := []permission.Permission{
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxGlobal, ""),
+				Context: permission.Context(permTypes.CtxGlobal, ""),
 			},
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxPool, app.Pool),
+				Context: permission.Context(permTypes.CtxPool, app.Pool),
 			},
 		}
 		for _, t := range app.GetTeams() {
 			allowedPerms = append(allowedPerms, permission.Permission{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxTeam, t.Name),
+				Context: permission.Context(permTypes.CtxTeam, t.Name),
 			})
 		}
 		users, err := auth.ListUsersWithPermissions(allowedPerms...)

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -118,7 +119,7 @@ func (u *User) Create() error {
 		u.Delete()
 		return err
 	}
-	err = u.AddRolesForEvent(permission.RoleEventUserCreate, "")
+	err = u.AddRolesForEvent(permTypes.RoleEventUserCreate, "")
 	if err != nil {
 		log.Errorf("unable to add default roles during user creation for %q: %s", u.Email, err)
 	}
@@ -234,7 +235,7 @@ func expandRolePermissions(roleInstances []authTypes.RoleInstance) ([]permission
 		role := roles[roleData.Name]
 		if role == nil {
 			foundRole, err := permission.FindRole(roleData.Name)
-			if err != nil && err != permission.ErrRoleNotFound {
+			if err != nil && err != permTypes.ErrRoleNotFound {
 				return nil, err
 			}
 			role = &foundRole
@@ -252,7 +253,7 @@ func (u *User) Permissions() ([]permission.Permission, error) {
 	}
 	return append([]permission.Permission{{
 		Scheme:  permission.PermUser,
-		Context: permission.Context(permission.CtxUser, u.Email),
+		Context: permission.Context(permTypes.CtxUser, u.Email),
 	}}, permissions...), nil
 }
 
@@ -285,7 +286,7 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
 	role, err := permission.FindRole(roleName)
 	if err != nil {
-		return permission.ErrRoleNotFound
+		return permTypes.ErrRoleNotFound
 	}
 	if ctx != "" {
 		role.ContextType, err = permission.ParseContext(ctx)
@@ -367,7 +368,7 @@ func (u *User) RemoveRole(roleName string, contextValue string) error {
 	return u.Reload()
 }
 
-func (u *User) AddRolesForEvent(roleEvent *permission.RoleEvent, contextValue string) error {
+func (u *User) AddRolesForEvent(roleEvent *permTypes.RoleEvent, contextValue string) error {
 	roles, err := permission.ListRolesForEvent(roleEvent)
 	if err != nil {
 		return errors.Wrap(err, "unable to list roles")

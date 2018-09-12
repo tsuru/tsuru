@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
@@ -47,7 +48,7 @@ func createToken(c *check.C) auth.Token {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("platform-admin", string(permission.CtxGlobal), "")
+	role, err := permission.NewRole("platform-admin", string(permTypes.CtxGlobal), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("*")
 	c.Assert(err, check.IsNil)
@@ -429,7 +430,7 @@ func (s *PlatformSuite) TestPlatformListGetOnlyEnabledPlatforms(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()

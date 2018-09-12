@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -62,7 +63,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -116,7 +117,7 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -160,7 +161,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -214,7 +215,7 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)

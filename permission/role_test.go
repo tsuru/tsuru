@@ -15,9 +15,9 @@ func (s *S) TestNewRole(c *check.C) {
 	r, err := NewRole("myrole", "app", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "myrole")
-	c.Assert(r.ContextType, check.Equals, CtxApp)
+	c.Assert(r.ContextType, check.Equals, permTypes.CtxApp)
 	_, err = NewRole("myrole", "global", "")
-	c.Assert(err, check.Equals, ErrRoleAlreadyExists)
+	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
 	_, err = NewRole("  ", "app", "")
 	c.Assert(err, check.ErrorMatches, "invalid role name")
 	_, err = NewRole("myrole2", "invalid", "")
@@ -53,9 +53,9 @@ func (s *S) TestFindRole(c *check.C) {
 	r, err := FindRole("myrole")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "myrole")
-	c.Assert(r.ContextType, check.Equals, CtxTeam)
+	c.Assert(r.ContextType, check.Equals, permTypes.CtxTeam)
 	_, err = FindRole("something")
-	c.Assert(err, check.Equals, ErrRoleNotFound)
+	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 }
 
 func (s *S) TestRoleAddPermissions(c *check.C) {
@@ -122,7 +122,7 @@ func (s *S) TestDestroyRole(c *check.C) {
 	err = DestroyRole("myrole")
 	c.Assert(err, check.IsNil)
 	err = DestroyRole("myrole")
-	c.Assert(err, check.Equals, ErrRoleNotFound)
+	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 }
 
 func (s *S) TestPermissionsFor(c *check.C) {
@@ -133,8 +133,8 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
 	expected := []Permission{
-		{Scheme: PermissionRegistry.get("app.update"), Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "something"}},
-		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permTypes.PermissionContext{CtxType: CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permTypes.PermissionContext{CtxType: permTypes.CtxTeam, Value: "something"}},
 	}
 	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
@@ -148,13 +148,13 @@ func (s *S) TestRoleAddEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Events, check.DeepEquals, []string{RoleEventTeamCreate.name})
+	c.Assert(r.Events, check.DeepEquals, []string{permTypes.RoleEventTeamCreate.Name})
 	err = r.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Events, check.DeepEquals, []string{RoleEventTeamCreate.name})
+	c.Assert(r.Events, check.DeepEquals, []string{permTypes.RoleEventTeamCreate.Name})
 	dbR, err := FindRole("myrole")
 	c.Assert(err, check.IsNil)
-	c.Assert(dbR.Events, check.DeepEquals, []string{RoleEventTeamCreate.name})
+	c.Assert(dbR.Events, check.DeepEquals, []string{permTypes.RoleEventTeamCreate.Name})
 }
 
 func (s *S) TestRoleRemoveEvent(c *check.C) {
@@ -204,7 +204,7 @@ func (s *S) TestListRolesForEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r3.AddEvent("user-create")
 	c.Assert(err, check.IsNil)
-	roles, err := ListRolesForEvent(RoleEventTeamCreate)
+	roles, err := ListRolesForEvent(permTypes.RoleEventTeamCreate)
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 1)
 	c.Assert(roles[0].Name, check.Equals, "myrole2")
@@ -229,5 +229,5 @@ func (s *S) TestAdd(c *check.C) {
 	err = r2.Add()
 	c.Assert(err, check.IsNil)
 	err = r2.Add()
-	c.Assert(err, check.Equals, ErrRoleAlreadyExists)
+	c.Assert(err, check.Equals, permTypes.ErrRoleAlreadyExists)
 }

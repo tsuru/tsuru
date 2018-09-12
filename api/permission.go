@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: role create
@@ -38,7 +39,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if roleName == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: permission.ErrInvalidRoleName.Error(),
+			Message: permTypes.ErrInvalidRoleName.Error(),
 		}
 	}
 	evt, err := event.New(&event.Opts{
@@ -53,13 +54,13 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.Done(err) }()
 	_, err = permission.NewRole(roleName, r.FormValue("context"), r.FormValue("description"))
-	if err == permission.ErrInvalidRoleName {
+	if err == permTypes.ErrInvalidRoleName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
 	}
-	if err == permission.ErrRoleAlreadyExists {
+	if err == permTypes.ErrRoleAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),
@@ -100,7 +101,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	err = permission.DestroyRole(roleName)
-	if err == permission.ErrRoleNotFound {
+	if err == permTypes.ErrRoleNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
@@ -152,7 +153,7 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	roleName := r.URL.Query().Get(":name")
 	role, err := permission.FindRole(roleName)
-	if err == permission.ErrRoleNotFound {
+	if err == permTypes.ErrRoleNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
 			Message: err.Error(),
@@ -299,19 +300,19 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	err = runWithPermSync(users, func() error {
 		return role.AddPermissions(r.Form["permission"]...)
 	})
-	if err == permission.ErrInvalidPermissionName {
+	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
 	}
-	if perr, ok := err.(*permission.ErrPermissionNotFound); ok {
+	if perr, ok := err.(*permTypes.ErrPermissionNotFound); ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: perr.Error(),
 		}
 	}
-	if perr, ok := err.(*permission.ErrPermissionNotAllowed); ok {
+	if perr, ok := err.(*permTypes.ErrPermissionNotAllowed); ok {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
 			Message: perr.Error(),
@@ -347,7 +348,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	permName := r.URL.Query().Get(":permission")
 	role, err := permission.FindRole(roleName)
 	if err != nil {
-		if err == permission.ErrRoleNotFound {
+		if err == permTypes.ErrRoleNotFound {
 			return &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
@@ -368,7 +369,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 func canUseRole(t auth.Token, roleName, contextValue string) error {
 	role, err := permission.FindRole(roleName)
 	if err != nil {
-		if err == permission.ErrRoleNotFound {
+		if err == permTypes.ErrRoleNotFound {
 			return &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
@@ -526,7 +527,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	rolesMap := map[string][]string{}
-	for evtName := range permission.RoleEventMap {
+	for evtName := range permTypes.RoleEventMap {
 		roles := r.Form[evtName]
 		for _, roleName := range roles {
 			rolesMap[roleName] = append(rolesMap[roleName], evtName)
@@ -546,7 +547,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		defer func() { evt.Done(err) }()
 		role, err := permission.FindRole(roleName)
 		if err != nil {
-			if err == permission.ErrRoleNotFound {
+			if err == permTypes.ErrRoleNotFound {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),
@@ -557,7 +558,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		for _, evtName := range evts {
 			err = role.AddEvent(evtName)
 			if err != nil {
-				if _, ok := err.(permission.ErrRoleEventWrongContext); ok {
+				if _, ok := err.(permTypes.ErrRoleEventWrongContext); ok {
 					return &errors.HTTP{
 						Code:    http.StatusBadRequest,
 						Message: err.Error(),
@@ -583,7 +584,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	r.ParseForm()
 	rolesMap := map[string][]string{}
-	for evtName := range permission.RoleEventMap {
+	for evtName := range permTypes.RoleEventMap {
 		roles := r.Form[evtName]
 		for _, roleName := range roles {
 			rolesMap[roleName] = append(rolesMap[roleName], evtName)
@@ -603,7 +604,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		defer func() { evt.Done(err) }()
 		role, err := permission.FindRole(roleName)
 		if err != nil {
-			if err == permission.ErrRoleNotFound {
+			if err == permTypes.ErrRoleNotFound {
 				return &errors.HTTP{
 					Code:    http.StatusBadRequest,
 					Message: err.Error(),

@@ -47,6 +47,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -1090,7 +1091,7 @@ func (s *S) TestUpdateNodeStatusUnrelatedProvError(c *check.C) {
 func (s *S) TestGrantAccess(c *check.C) {
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	app := App{Name: "app-name", Platform: "django", Teams: []string{"acid-rain", "zito"}}
 	err := s.conn.Apps().Insert(app)
@@ -1116,7 +1117,7 @@ func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 func (s *S) TestRevokeAccess(c *check.C) {
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	team := authTypes.Team{Name: "abcd"}
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
@@ -1141,10 +1142,10 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "abcd"}
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err := s.conn.Apps().Insert(app)

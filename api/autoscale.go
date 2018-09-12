@@ -88,7 +88,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	var ctxs []permTypes.PermissionContext
 	if rule.MetadataFilter != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, rule.MetadataFilter))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, rule.MetadataFilter))
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
@@ -120,7 +120,7 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	rulePool := r.URL.Query().Get(":id")
 	var ctxs []permTypes.PermissionContext
 	if rulePool != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, rulePool))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, rulePool))
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},

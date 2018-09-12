@@ -24,14 +24,14 @@ func volumeFilterByContext(contexts []permTypes.PermissionContext) *volume.Filte
 contextsLoop:
 	for _, c := range contexts {
 		switch c.CtxType {
-		case permission.CtxGlobal:
+		case permTypes.CtxGlobal:
 			filter = nil
 			break contextsLoop
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			filter.Teams = append(filter.Teams, c.Value)
-		case permission.CtxVolume:
+		case permTypes.CtxVolume:
 			filter.Names = append(filter.Names, c.Value)
-		case permission.CtxPool:
+		case permTypes.CtxPool:
 			filter.Pools = append(filter.Pools, c.Value)
 		}
 	}
@@ -40,9 +40,9 @@ contextsLoop:
 
 func contextsForVolume(v *volume.Volume) []permTypes.PermissionContext {
 	return []permTypes.PermissionContext{
-		permission.Context(permission.CtxVolume, v.Name),
-		permission.Context(permission.CtxTeam, v.TeamOwner),
-		permission.Context(permission.CtxPool, v.Pool),
+		permission.Context(permTypes.CtxVolume, v.Name),
+		permission.Context(permTypes.CtxTeam, v.TeamOwner),
+		permission.Context(permTypes.CtxPool, v.Pool),
 	}
 }
 
@@ -117,8 +117,8 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
 	canCreate := permission.Check(t, permission.PermVolumeCreate,
-		permission.Context(permission.CtxTeam, inputVolume.TeamOwner),
-		permission.Context(permission.CtxPool, inputVolume.Pool),
+		permission.Context(permTypes.CtxTeam, inputVolume.TeamOwner),
+		permission.Context(permTypes.CtxPool, inputVolume.Pool),
 	)
 	if !canCreate {
 		return permission.ErrUnauthorized
