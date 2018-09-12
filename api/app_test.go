@@ -1594,7 +1594,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdate,
-		Context: permission.Context(permission.CtxApp, a.Name),
+		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
 	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
 		c.Assert(name, check.Equals, "myplatform")
