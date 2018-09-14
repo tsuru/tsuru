@@ -1277,7 +1277,11 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = instance.BindApp(a, req.Parameters, !req.NoRestart, writer, evt, requestIDHeader(r))
 	if err != nil {
-		return err
+		status, errStatus := instance.Status(requestIDHeader(r))
+		if errStatus != nil {
+			return fmt.Errorf("%v (failed to retrieve instance status: %v)", err, errStatus)
+		}
+		return fmt.Errorf("%v (%q is %v)", err, instanceName, status)
 	}
 	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
 	envs := a.InstanceEnvs(serviceName, instanceName)
