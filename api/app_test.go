@@ -4550,6 +4550,43 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
+func (s *S) TestBindHandlerErrorShowsStatusMessage(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(srvc)
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env:       map[string]bind.EnvVar{},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
+	v := url.Values{}
+	v.Set("noRestart", "false")
+	request, err := http.NewRequest("PUT", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "Failed to bind the instance \"mysql/my-mysql\" to the app \"painkiller\": invalid response:  (code: 500) (\"my-mysql\" is down)\n")
+}
+
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
