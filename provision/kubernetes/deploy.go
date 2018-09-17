@@ -565,6 +565,11 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
 		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
 	}
+	cpu := int64(a.GetCpuShare())
+	if cpu != 0 {
+		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(cpu, resource.BinarySI)
+		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(cpu/overcommit, resource.BinarySI)
+	}
 	volumes, mounts, err := createVolumesForApp(client, a)
 	if err != nil {
 		return nil, nil, nil, err
