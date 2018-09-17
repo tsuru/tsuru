@@ -25,6 +25,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
@@ -374,7 +375,7 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
 	defer func() { lockWaitDuration = oldDuration }()
 	myApp := app.App{
 		Name: "my-app",
-		Lock: app.AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "/app/my-app/deploy",
 			Owner:       "someone",
@@ -459,7 +460,7 @@ func (s *S) TestAppLockMiddlewareDoesNothingForExcludedHandlers(c *check.C) {
 func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
 	myApp := app.App{
 		Name: "my-app",
-		Lock: app.AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "/app/my-app/deploy",
 			Owner:       "someone",

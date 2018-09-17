@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/tsurutest"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
 )
@@ -77,7 +78,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxApp, a.Name),
+		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
 	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
 	config, err := websocket.NewConfig(url, "ws://localhost/")

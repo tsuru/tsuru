@@ -40,6 +40,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -116,7 +117,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token = permissiontest.ExistingUserWithPermission(c, nativeScheme, s.user, permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 }
 

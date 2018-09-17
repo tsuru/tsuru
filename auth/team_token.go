@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -168,13 +169,13 @@ func (s *teamTokenService) FindByTokenID(tokenID string) (authTypes.TeamToken, e
 
 func getTokenTeams(t Token) []string {
 	var teams []string
-	contexts := permission.ContextsForPermission(t, permission.PermTeamTokenRead, permission.CtxGlobal, permission.CtxTeam)
+	contexts := permission.ContextsForPermission(t, permission.PermTeamTokenRead, permTypes.CtxGlobal, permTypes.CtxTeam)
 	for _, ctx := range contexts {
-		if ctx.CtxType == permission.CtxGlobal {
+		if ctx.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			break
 		}
-		if ctx.CtxType == permission.CtxTeam {
+		if ctx.CtxType == permTypes.CtxTeam {
 			teams = append(teams, ctx.Value)
 		}
 	}

@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"regexp"
@@ -39,6 +40,7 @@ const (
 	tsuruNodeDisabledTaint = tsuruLabelPrefix + "disabled"
 	replicaDepRevision     = "deployment.kubernetes.io/revision"
 	kubeKindReplicaSet     = "ReplicaSet"
+	kubeLabelNameMaxLen    = 55
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
@@ -58,15 +60,11 @@ func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContaine
 }
 
 func deploymentNameForApp(a provision.App, process string) string {
-	name := validKubeName(a.GetName())
-	process = validKubeName(process)
-	return fmt.Sprintf("%s-%s", name, process)
+	return appProcessName(a, process)
 }
 
 func headlessServiceNameForApp(a provision.App, process string) string {
-	name := validKubeName(a.GetName())
-	process = validKubeName(process)
-	return fmt.Sprintf("%s-%s-units", name, process)
+	return fmt.Sprintf("%s-units", appProcessName(a, process))
 }
 
 func deployPodNameForApp(a provision.App) (string, error) {
@@ -78,22 +76,34 @@ func deployPodNameForApp(a provision.App) (string, error) {
 	return fmt.Sprintf("%s-%s-deploy", name, version), nil
 }
 
-func buildPodNameForApp(a provision.App, suffix string) (string, error) {
+func buildPodNameForApp(a provision.App) (string, error) {
 	version, err := image.AppCurrentImageVersion(a.GetName())
 	if err != nil {
 		return "", errors.WithMessage(err, "failed to retrieve app current image version")
 	}
 	name := validKubeName(a.GetName())
-	if suffix != "" {
-		return fmt.Sprintf("%s-%s-build-%s", name, version, suffix), nil
-	}
 	return fmt.Sprintf("%s-%s-build", name, version), nil
 }
 
 func appLabelForApp(a provision.App, process string) string {
+	return appProcessName(a, process)
+}
+
+func appProcessName(a provision.App, process string) string {
 	name := validKubeName(a.GetName())
 	process = validKubeName(process)
-	return fmt.Sprintf("tsuru-app-%s-%s", name, process)
+	label := fmt.Sprintf("%s-%s", name, process)
+	if len(label) > kubeLabelNameMaxLen {
+		h := sha256.New()
+		h.Write([]byte(process))
+		hash := fmt.Sprintf("%x", h.Sum(nil))
+		maxLen := kubeLabelNameMaxLen - len(name) - 1
+		if len(hash) > maxLen {
+			hash = hash[:maxLen]
+		}
+		label = fmt.Sprintf("%s-%s", name, hash)
+	}
+	return label
 }
 
 func execCommandPodNameForApp(a provision.App) string {

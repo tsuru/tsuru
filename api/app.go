@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -35,6 +36,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -144,21 +146,21 @@ func minifyApp(app app.App, unitData app.AppUnitsResponse) (miniApp, error) {
 	return ma, nil
 }
 
-func appFilterByContext(contexts []permission.PermissionContext, filter *app.Filter) *app.Filter {
+func appFilterByContext(contexts []permTypes.PermissionContext, filter *app.Filter) *app.Filter {
 	if filter == nil {
 		filter = &app.Filter{}
 	}
 contextsLoop:
 	for _, c := range contexts {
 		switch c.CtxType {
-		case permission.CtxGlobal:
+		case permTypes.CtxGlobal:
 			filter.Extra = nil
 			break contextsLoop
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			filter.ExtraIn("teams", c.Value)
-		case permission.CtxApp:
+		case permTypes.CtxApp:
 			filter.ExtraIn("name", c.Value)
-		case permission.CtxPool:
+		case permTypes.CtxPool:
 			filter.ExtraIn("pool", c.Value)
 		}
 	}
@@ -322,7 +324,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,
-		permission.Context(permission.CtxTeam, a.TeamOwner),
+		permission.Context(permTypes.CtxTeam, a.TeamOwner),
 	)
 	if !canCreate {
 		return permission.ErrUnauthorized
@@ -332,7 +334,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	if a.Platform != "" {
-		platform, errPlat := servicemanager.Platform.FindByName(a.Platform)
+		repo, _ := image.SplitImageName(a.Platform)
+		platform, errPlat := servicemanager.Platform.FindByName(repo)
 		if errPlat != nil {
 			return errPlat
 		}
@@ -358,13 +361,13 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
-		if _, ok := err.(app.NoTeamsError); ok {
+		if _, ok := err.(appTypes.NoTeamsError); ok {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "In order to create an app, you should be member of at least one team",
 			}
 		}
-		if e, ok := err.(*app.AppCreationError); ok {
+		if e, ok := err.(*appTypes.AppCreationError); ok {
 			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
@@ -463,6 +466,18 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTeamowner)
 	}
 	if updateData.Platform != "" {
+		repo, _ := image.SplitImageName(updateData.Platform)
+		platform, errPlat := servicemanager.Platform.FindByName(repo)
+		if errPlat != nil {
+			return errPlat
+		}
+		if platform.Disabled {
+			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+				permission.Check(t, permission.PermPlatformCreate)
+			if !canUsePlat {
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
+			}
+		}
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlatform)
 		updateData.UpdatePlatform = true
 	}
@@ -948,11 +963,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.SetEnvs(bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          variables,
 		ShouldRestart: !e.NoRestart,
 		Writer:        writer,
 	})
+	if v, ok := err.(*errors.ValidationError); ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
+	}
+	return err
 }
 
 // title: unset envs
@@ -1236,8 +1255,8 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, instance.Name),
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
 		)...,
 	)
 	if !allowed {
@@ -1273,7 +1292,11 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = instance.BindApp(a, req.Parameters, !req.NoRestart, writer, evt, requestIDHeader(r))
 	if err != nil {
-		return err
+		status, errStatus := instance.Status(requestIDHeader(r))
+		if errStatus != nil {
+			return fmt.Errorf("%v (failed to retrieve instance status: %v)", err, errStatus)
+		}
+		return fmt.Errorf("%v (%q is %v)", err, instanceName, status)
 	}
 	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
 	envs := a.InstanceEnvs(serviceName, instanceName)
@@ -1306,8 +1329,8 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, instance.Name),
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
 		)...,
 	)
 	if !allowed {
@@ -1952,9 +1975,9 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return json.NewEncoder(w).Encode(&result)
 }
 
-func contextsForApp(a *app.App) []permission.PermissionContext {
-	return append(permission.Contexts(permission.CtxTeam, a.Teams),
-		permission.Context(permission.CtxApp, a.Name),
-		permission.Context(permission.CtxPool, a.Pool),
+func contextsForApp(a *app.App) []permTypes.PermissionContext {
+	return append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+		permission.Context(permTypes.CtxApp, a.Name),
+		permission.Context(permTypes.CtxPool, a.Pool),
 	)
 }

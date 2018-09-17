@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -101,7 +102,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.user, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provisioner-docker", permission.Permission{
 		Scheme:  permission.PermAll,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 }
 

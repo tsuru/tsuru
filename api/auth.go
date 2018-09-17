@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 )
 
@@ -90,7 +91,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		Kind:       permission.PermUserCreate,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err
@@ -165,7 +166,7 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:  userTarget(t.GetUserName()),
 		Kind:    permission.PermUserUpdatePassword,
 		Owner:   t,
-		Allowed: event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, t.GetUserName())),
+		Allowed: event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
 	})
 	if err != nil {
 		return err
@@ -215,7 +216,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		Kind:       permission.PermUserUpdateReset,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err
@@ -269,7 +270,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	changeRequest.Tags = append(changeRequest.Tags, r.Form["tag"]...) // for compatibility
 	allowed := permission.Check(t, permission.PermTeamUpdate,
-		permission.Context(permission.CtxTeam, name),
+		permission.Context(permTypes.CtxTeam, name),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -286,7 +287,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Kind:       permission.PermTeamUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, name)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, name)),
 	})
 	if err != nil {
 		return err
@@ -360,7 +361,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Kind:       permission.PermTeamCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, team.Name)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, team.Name)),
 	})
 	if err != nil {
 		return err
@@ -395,7 +396,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamDelete,
-		permission.Context(permission.CtxTeam, name),
+		permission.Context(permTypes.CtxTeam, name),
 	)
 	if !allowed {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
@@ -405,7 +406,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Kind:       permission.PermTeamDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permission.CtxTeam, name)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, name)),
 	})
 	if err != nil {
 		return err
@@ -434,7 +435,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   204: No content
 //   401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
+	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permTypes.CtxTeam)
 	teams, err := servicemanager.Team.List()
 	if err != nil {
 		return err
@@ -447,7 +448,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	for _, team := range teams {
 		teamsMap[team.Name] = team
-		teamCtx := permission.Context(permission.CtxTeam, team.Name)
+		teamCtx := permission.Context(permTypes.CtxTeam, team.Name)
 		var parent *permission.PermissionScheme
 		for _, p := range permsForTeam {
 			if parent != nil && parent.IsParent(p) {
@@ -520,7 +521,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				cachedRoles[roleInstance.Name] = roleFound
 				role = cachedRoles[roleInstance.Name]
 			}
-			if role.ContextType == permission.CtxGlobal || (role.ContextType == permission.CtxTeam && roleInstance.ContextValue == team.Name) {
+			if role.ContextType == permTypes.CtxGlobal || (role.ContextType == permTypes.CtxTeam && roleInstance.ContextValue == team.Name) {
 				canInclude := permission.Check(t, permission.PermTeam)
 				if canInclude {
 					roleMap := make(map[string]*permission.Role)
@@ -568,7 +569,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		force = true
 	}
 	allowed := permission.Check(t, permission.PermUserUpdateKeyAdd,
-		permission.Context(permission.CtxUser, t.GetUserName()),
+		permission.Context(permTypes.CtxUser, t.GetUserName()),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -578,7 +579,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Kind:       permission.PermUserUpdateKeyAdd,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, t.GetUserName())),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
 	})
 	if err != nil {
 		return err
@@ -618,7 +619,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
 	}
 	allowed := permission.Check(t, permission.PermUserUpdateKeyRemove,
-		permission.Context(permission.CtxUser, t.GetUserName()),
+		permission.Context(permTypes.CtxUser, t.GetUserName()),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -628,7 +629,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermUserUpdateKeyRemove,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, t.GetUserName())),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
 	})
 	if err != nil {
 		return err
@@ -686,7 +687,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		email = t.GetUserName()
 	}
 	allowed := permission.Check(t, permission.PermUserDelete,
-		permission.Context(permission.CtxUser, email),
+		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -696,7 +697,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Kind:       permission.PermUserDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err
@@ -756,7 +757,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		email = t.GetUserName()
 	}
 	allowed := permission.Check(t, permission.PermUserUpdateToken,
-		permission.Context(permission.CtxUser, email),
+		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -766,7 +767,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Kind:       permission.PermUserUpdateToken,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err
@@ -870,7 +871,7 @@ func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[s
 			ContextValue: userRole.ContextValue,
 		})
 		permData = append(permData, rolePerms...)
-		if role.ContextType != permission.CtxGlobal {
+		if role.ContextType != permTypes.CtxGlobal {
 			allGlobal = false
 		}
 	}

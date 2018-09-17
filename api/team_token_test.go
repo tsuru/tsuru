@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -147,7 +148,7 @@ func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamTokenRead,
-		Context: permission.Context(permission.CtxTeam, "teamx"),
+		Context: permission.Context(permTypes.CtxTeam, "teamx"),
 	})
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -192,7 +193,7 @@ func (s *S) TestTeamTokenDelete(c *check.C) {
 func (s *S) TestTeamTokenDeleteNoPermission(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamTokenDelete,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,

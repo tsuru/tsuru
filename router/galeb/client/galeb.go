@@ -243,7 +243,7 @@ func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHost) {
 	}
 }
 
-func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
+func (c *GalebClient) AddVirtualHost(addr string, wait bool) (string, error) {
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
@@ -251,15 +251,17 @@ func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = c.waitStatusOK(resource)
-	if err != nil {
-		c.removeResource(resource)
-		return "", err
+	if wait {
+		err = c.waitStatusOK(resource)
+		if err != nil {
+			c.removeResource(resource)
+			return "", err
+		}
 	}
 	return resource, nil
 }
 
-func (c *GalebClient) AddBackendPool(name string) (string, error) {
+func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {
 	var params Pool
 	c.fillDefaultPoolValues(&params)
 	params.Name = name
@@ -267,10 +269,12 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = c.waitStatusOK(resource)
-	if err != nil {
-		c.removeResource(resource)
-		return "", err
+	if wait {
+		err = c.waitStatusOK(resource)
+		if err != nil {
+			c.removeResource(resource)
+			return "", err
+		}
 	}
 	return resource, nil
 }
@@ -395,7 +399,7 @@ func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	return c.doCreateResource("/rule", &params)
 }
 
-func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error {
+func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait bool) error {
 	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
 	rsp, err := c.doRequest("PATCH", path, virtualHostID)
 	if err != nil {
@@ -406,15 +410,17 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	err = c.waitStatusOK(ruleID)
-	if err != nil {
-		c.removeRuleVirtualHostByID(ruleID, virtualHostID)
-		return err
+	if wait {
+		err = c.waitStatusOK(ruleID)
+		if err != nil {
+			c.removeRuleVirtualHostByID(ruleID, virtualHostID)
+			return err
+		}
 	}
 	return nil
 }
 
-func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
+func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string, wait bool) error {
 	ruleID, err := c.findItemByName("rule", ruleName)
 	if err != nil {
 		return err
@@ -423,7 +429,7 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error
 	if err != nil {
 		return err
 	}
-	return c.setRuleVirtualHostIDs(ruleID, virtualHostID)
+	return c.setRuleVirtualHostIDs(ruleID, virtualHostID, wait)
 }
 
 func (c *GalebClient) RemoveBackendByID(backendID string) error {
@@ -602,7 +608,7 @@ func (c *GalebClient) Healthcheck() error {
 	return nil
 }
 
-func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string) error {
+func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string, wait bool) error {
 	vhID, err := c.findItemByName("virtualhost", virtualHostName)
 	if err != nil {
 		return err
@@ -629,7 +635,10 @@ func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string) er
 		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return c.waitStatusOK(vhID)
+	if wait {
+		return c.waitStatusOK(vhID)
+	}
+	return nil
 }
 
 func (c *GalebClient) removeResource(resourceURI string) error {

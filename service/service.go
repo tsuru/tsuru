@@ -253,7 +253,7 @@ func (s *Service) validate(skipName bool) (err error) {
 		return fmt.Errorf("Brokered services are not managed.")
 	}
 	if !skipName && !validation.ValidateName(s.Name) {
-		return fmt.Errorf("Invalid service id, should have at most 63 " +
+		return fmt.Errorf("Invalid service id, should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter.")
 	}

@@ -12,14 +12,14 @@ import (
 
 	"github.com/tsuru/tsuru/install"
 	"github.com/tsuru/tsuru/permission"
-
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestInstallHostAdd(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermInstallManage,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`name=xyz&driverName=amazonec2&driver={"SSHPort": 22}`)
@@ -59,7 +59,7 @@ func (s *S) TestInstallHostReturnsForbiddenIfNoPermissions(c *check.C) {
 func (s *S) TestInstallHostInfo(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermInstallManage,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	expectedHost := &install.Host{Name: "my-host", DriverName: "amazonec2", Driver: make(map[string]interface{})}
 	err := install.AddHost(expectedHost)
@@ -94,7 +94,7 @@ func (s *S) TestInstallHostInfoReturnsForbiddenIfNoPermissions(c *check.C) {
 func (s *S) TestInstallHostInfoReturnsNotFoundWhenHostDoesNotExist(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermInstallManage,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/install/hosts/unknown-host", nil)
@@ -109,7 +109,7 @@ func (s *S) TestInstallHostInfoReturnsNotFoundWhenHostDoesNotExist(c *check.C) {
 func (s *S) TestInstallHostList(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermInstallManage,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	host1 := &install.Host{Name: "my-host-1", DriverName: "amazonec2", Driver: make(map[string]interface{})}
 	err := install.AddHost(host1)

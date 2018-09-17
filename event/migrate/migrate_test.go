@@ -25,6 +25,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -110,9 +111,9 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	expected.Error = "err1"
 	expected.Log = "log1"
 	expected.Allowed = event.Allowed(permission.PermAppReadEvents,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
+		append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+			permission.Context(permTypes.CtxApp, a.Name),
+			permission.Context(permTypes.CtxPool, a.Pool),
 		)...,
 	)
 	s.checkEvtMatch(&expected, c)

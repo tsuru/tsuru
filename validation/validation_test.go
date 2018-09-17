@@ -36,7 +36,7 @@ func (s *S) TestValidateEmail(c *check.C) {
 		{"invalid@validate", false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateEmail(d.input), check.Equals, d.expected)
+		c.Check(ValidateEmail(d.input), check.Equals, d.expected)
 	}
 }
 
@@ -52,7 +52,7 @@ func (s *S) TestValidateLength(c *check.C) {
 		{"gopher", -1, 3, false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateLength(d.input, d.min, d.max), check.Equals, d.expected)
+		c.Check(ValidateLength(d.input, d.min, d.max), check.Equals, d.expected)
 	}
 }
 
@@ -61,9 +61,9 @@ func (s *S) TestValidateName(c *check.C) {
 		input    string
 		expected bool
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", false},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", false},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", true},
+		{"myappmyappmyappmpmyappmyappmyappmyappmyapp", false},
+		{"myappmyappmyappmpmyappmyappmyappmyappmyap", false},
+		{"myappmyappmyappmpmyappmyappmyappmyappmya", true},
 		{"myApp", false},
 		{"my app", false},
 		{"123myapp", false},
@@ -75,6 +75,6 @@ func (s *S) TestValidateName(c *check.C) {
 		{"b", true},
 	}
 	for _, d := range data {
-		c.Assert(ValidateName(d.input), check.Equals, d.expected)
+		c.Check(ValidateName(d.input), check.Equals, d.expected)
 	}
 }

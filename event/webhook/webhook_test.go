@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -62,7 +63,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -116,7 +117,7 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -160,7 +161,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -214,7 +215,7 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 			Name: "me@me.com",
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
@@ -279,41 +280,56 @@ func (s *S) TestWebhookServiceCreate(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
-		Name: "",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook name must not be empty"})
-	err = s.service.Create(eventTypes.Webhook{
-		Name: "_-*x",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "name does not match regex \"^[a-z][a-z0-9-]{0,62}$\""})
-	err = s.service.Create(eventTypes.Webhook{
-		Name: "c",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.IsNil)
-	err = s.service.Create(eventTypes.Webhook{
-		Name: "c",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.Equals, eventTypes.ErrWebhookAlreadyExists)
-	err = s.service.Create(eventTypes.Webhook{
-		Name: "d",
-	})
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook url must not be empty"})
-	err = s.service.Create(eventTypes.Webhook{
-		Name: "d",
-		URL:  ":/:x",
-	})
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook url is not valid: parse :/:x: missing protocol scheme"})
-	err = s.service.Create(eventTypes.Webhook{
-		Name:     "d",
-		URL:      "http://valid",
-		ProxyURL: ":/:x",
-	})
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "webhook proxy url is not valid: parse :/:x: missing protocol scheme"})
+	var tests = []struct {
+		name, url, proxyURL string
+		expectedErr         error
+	}{
+		{
+			name:        "",
+			url:         "http://a",
+			expectedErr: &errors.ValidationError{Message: "webhook name must not be empty"},
+		},
+		{
+			name: "_-*x",
+			url:  "http://a",
+			expectedErr: &errors.ValidationError{Message: "Invalid webhook name, webhook name should have at most 40 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter."},
+		},
+		{
+			name: "c",
+			url:  "http://a",
+		},
+		{
+			name:        "c",
+			url:         "http://a",
+			expectedErr: eventTypes.ErrWebhookAlreadyExists,
+		},
+		{
+			name:        "d",
+			expectedErr: &errors.ValidationError{Message: "webhook url must not be empty"},
+		},
+		{
+			name:        "d",
+			url:         ":/:x",
+			expectedErr: &errors.ValidationError{Message: "webhook url is not valid: parse :/:x: missing protocol scheme"},
+		},
+		{
+			name:        "d",
+			url:         "http://valid",
+			proxyURL:    ":/:x",
+			expectedErr: &errors.ValidationError{Message: "webhook proxy url is not valid: parse :/:x: missing protocol scheme"},
+		},
+	}
+
+	for _, test := range tests {
+		err := s.service.Create(eventTypes.Webhook{
+			Name:     test.name,
+			URL:      test.url,
+			ProxyURL: test.proxyURL,
+		})
+		c.Check(err, check.DeepEquals, test.expectedErr)
+	}
 }
 
 func (s *S) TestWebhookServiceUpdate(c *check.C) {

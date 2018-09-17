@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: remove node container list
@@ -82,9 +83,9 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	poolName := r.FormValue("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermNodecontainerCreate, ctxs...) {
 		return permission.ErrUnauthorized
@@ -178,9 +179,9 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	poolName := r.FormValue("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermNodecontainerUpdate, ctxs...) {
 		return permission.ErrUnauthorized
@@ -228,9 +229,9 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	name := r.URL.Query().Get(":name")
 	poolName := r.URL.Query().Get("pool")
 	kill, _ := strconv.ParseBool(r.URL.Query().Get("kill"))
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermNodecontainerDelete, ctxs...) {
 		return permission.ErrUnauthorized
@@ -295,9 +296,9 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	poolName := r.FormValue("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade, ctxs...) {
 		return permission.ErrUnauthorized

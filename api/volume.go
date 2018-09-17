@@ -15,33 +15,34 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 )
 
-func volumeFilterByContext(contexts []permission.PermissionContext) *volume.Filter {
+func volumeFilterByContext(contexts []permTypes.PermissionContext) *volume.Filter {
 	filter := &volume.Filter{}
 contextsLoop:
 	for _, c := range contexts {
 		switch c.CtxType {
-		case permission.CtxGlobal:
+		case permTypes.CtxGlobal:
 			filter = nil
 			break contextsLoop
-		case permission.CtxTeam:
+		case permTypes.CtxTeam:
 			filter.Teams = append(filter.Teams, c.Value)
-		case permission.CtxVolume:
+		case permTypes.CtxVolume:
 			filter.Names = append(filter.Names, c.Value)
-		case permission.CtxPool:
+		case permTypes.CtxPool:
 			filter.Pools = append(filter.Pools, c.Value)
 		}
 	}
 	return filter
 }
 
-func contextsForVolume(v *volume.Volume) []permission.PermissionContext {
-	return []permission.PermissionContext{
-		permission.Context(permission.CtxVolume, v.Name),
-		permission.Context(permission.CtxTeam, v.TeamOwner),
-		permission.Context(permission.CtxPool, v.Pool),
+func contextsForVolume(v *volume.Volume) []permTypes.PermissionContext {
+	return []permTypes.PermissionContext{
+		permission.Context(permTypes.CtxVolume, v.Name),
+		permission.Context(permTypes.CtxTeam, v.TeamOwner),
+		permission.Context(permTypes.CtxPool, v.Pool),
 	}
 }
 
@@ -116,8 +117,8 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
 	canCreate := permission.Check(t, permission.PermVolumeCreate,
-		permission.Context(permission.CtxTeam, inputVolume.TeamOwner),
-		permission.Context(permission.CtxPool, inputVolume.Pool),
+		permission.Context(permTypes.CtxTeam, inputVolume.TeamOwner),
+		permission.Context(permTypes.CtxPool, inputVolume.Pool),
 	)
 	if !canCreate {
 		return permission.ErrUnauthorized
@@ -137,7 +138,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
 	}
-	err = inputVolume.Save()
+	err = inputVolume.Create()
 	if err != nil {
 		return err
 	}
@@ -188,7 +189,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return inputVolume.Save()
+	return inputVolume.Update()
 }
 
 // title: volume plan list

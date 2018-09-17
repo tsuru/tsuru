@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -33,7 +34,7 @@ func (s *S) TestAddRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -74,7 +75,7 @@ func (s *S) TestAddRoleInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -82,7 +83,7 @@ func (s *S) TestAddRoleInvalidName(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, permission.ErrInvalidRoleName.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, permTypes.ErrInvalidRoleName.Error()+"\n")
 }
 
 func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
@@ -94,7 +95,7 @@ func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -102,7 +103,7 @@ func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Equals, permission.ErrRoleAlreadyExists.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, permTypes.ErrRoleAlreadyExists.Error()+"\n")
 }
 
 func (s *S) TestRemoveRole(c *check.C) {
@@ -113,7 +114,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDelete,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
@@ -162,7 +163,7 @@ func (s *S) TestListRoles(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	expected := `[{"name":"majortomrole.update","context":"global","Description":"","scheme_names":["role.update"]}]`
@@ -179,7 +180,7 @@ func (s *S) TestRoleInfoNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
@@ -194,7 +195,7 @@ func (s *S) TestRoleInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	expected := `{"name":"majortomrole.update","context":"global","Description":"","scheme_names":["role.update"]}`
@@ -213,7 +214,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -243,7 +244,7 @@ func (s *S) TestAddPermissionsToARolePermissionNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -262,14 +263,14 @@ func (s *S) TestAddPermissionsToARoleInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(rec.Body.String(), check.Equals, permission.ErrInvalidPermissionName.Error()+"\n")
+	c.Assert(rec.Body.String(), check.Equals, permTypes.ErrInvalidPermissionName.Error()+"\n")
 }
 
 func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
@@ -281,7 +282,7 @@ func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -311,7 +312,7 @@ func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -329,7 +330,7 @@ func (s *S) TestRemovePermissionsRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
@@ -348,7 +349,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -390,7 +391,7 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -416,10 +417,10 @@ func (s *S) TestAssignRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -448,10 +449,10 @@ func (s *S) TestAssignRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -472,10 +473,10 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -503,10 +504,10 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxApp, "myapp"),
+		Context: permission.Context(permTypes.CtxApp, "myapp"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -529,10 +530,10 @@ func (s *S) TestDissociateRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -557,10 +558,10 @@ func (s *S) TestDissociateRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -597,10 +598,10 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -632,10 +633,10 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxApp, "myapp"),
+		Context: permission.Context(permTypes.CtxApp, "myapp"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -661,7 +662,7 @@ func (s *S) TestListPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
@@ -690,7 +691,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -699,13 +700,13 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	r1, err := permission.FindRole("r1")
 	c.Assert(err, check.IsNil)
-	c.Assert(r1.Events, check.DeepEquals, []string{permission.RoleEventTeamCreate.String()})
+	c.Assert(r1.Events, check.DeepEquals, []string{permTypes.RoleEventTeamCreate.String()})
 	r2, err := permission.FindRole("r2")
 	c.Assert(err, check.IsNil)
-	c.Assert(r2.Events, check.DeepEquals, []string{permission.RoleEventTeamCreate.String()})
+	c.Assert(r2.Events, check.DeepEquals, []string{permTypes.RoleEventTeamCreate.String()})
 	r3, err := permission.FindRole("r3")
 	c.Assert(err, check.IsNil)
-	c.Assert(r3.Events, check.DeepEquals, []string{permission.RoleEventUserCreate.String()})
+	c.Assert(r3.Events, check.DeepEquals, []string{permTypes.RoleEventUserCreate.String()})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
@@ -744,7 +745,7 @@ func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -761,7 +762,7 @@ func (s *S) TestAddDefaultRoleInvalidRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDefaultCreate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -774,14 +775,14 @@ func (s *S) TestAddDefaultRoleInvalidRole(c *check.C) {
 func (s *S) TestRemoveDefaultRole(c *check.C) {
 	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
-	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
+	err = r1.AddEvent(permTypes.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodDelete, "/role/default?team-create=r1", nil)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDefaultDelete,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
@@ -856,7 +857,7 @@ func (s *S) BenchmarkAddPermissionToRoleWithoutDeploy(c *check.C) {
 func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
@@ -909,7 +910,7 @@ func (s *S) TestRoleUpdateUnauthorized(c *check.C) {
 func (s *S) TestRoleUpdateWithoutFields(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	role := bytes.NewBufferString("name=r1&newName=&contextType=&description=")
 	req, err := http.NewRequest(http.MethodPut, "/roles", role)
@@ -925,7 +926,7 @@ func (s *S) TestRoleUpdateWithoutFields(c *check.C) {
 func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
@@ -948,7 +949,7 @@ func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
 func (s *S) TestRoleUpdateSingleField(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	user, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
@@ -997,10 +998,10 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1035,10 +1036,10 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1071,7 +1072,7 @@ func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1098,10 +1099,10 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -1139,10 +1140,10 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	}, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -1181,7 +1182,7 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "myteam"),
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()

@@ -34,6 +34,7 @@ import (
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,6 +73,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -95,7 +97,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/app-pool":             "test-default",
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
-		"app":                           "tsuru-app-myapp-p1",
+		"app":                           "myapp-p1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -320,6 +322,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(len(processes)+1))
 }
 
@@ -341,6 +344,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	srv, err := s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
@@ -509,6 +513,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				"p1": s,
 			}, nil)
 			c.Assert(err, check.IsNil)
+			waitDep()
 		}
 		var dep *v1beta2.Deployment
 		nsName, err := s.client.AppNamespace(a)
@@ -670,6 +675,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			"p2":  servicecommon.ProcessState{Start: true},
 		}, nil)
 		c.Assert(err, check.IsNil)
+		waitDep()
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
 		dep, err := s.client.Clientset.AppsV1beta2().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
@@ -710,6 +716,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
@@ -755,6 +762,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
@@ -842,15 +850,43 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
 }
 
-func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
+	buf := bytes.NewBuffer(nil)
+	m := serviceManager{client: s.clusterClient, writer: buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Allowed:       event.Allowed(permission.PermAppDeploy),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
+		Cancelable:    true,
+	})
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cmd1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	var deleteCalled bool
+	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		name := action.(ktesting.DeleteAction).GetName()
+		c.Assert(name, check.DeepEquals, "myapp-web")
+		deleteCalled = true
+		return false, nil, nil
+	})
 	deployCreated := make(chan struct{})
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -863,16 +899,31 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		}
 		return false, nil, nil
 	})
+	go func(evt event.Event) {
+		<-deployCreated
+		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
+		c.Assert(errCancel, check.IsNil)
+	}(*evt)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	}, evt)
+	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
+	waitDep()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
+	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? DELETING CREATED DEPLOYMENT AFTER FAILURE .*? ---> context canceled <---.*`)
+	c.Assert(deleteCalled, check.DeepEquals, true)
+}
+
+func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "cmd1",
-		},
-	})
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -883,6 +934,29 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cmd1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	}, evt)
+	c.Assert(err, check.IsNil)
+	waitDep()
+	deployCreated := make(chan struct{})
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		if dep, ok := obj.(*v1beta2.Deployment); ok {
+			rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
+			rev++
+			dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+			dep.Status.UnavailableReplicas = 1
+			deployCreated <- struct{}{}
+		}
+		return false, nil, nil
+	})
 	go func(evt event.Event) {
 		<-deployCreated
 		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
@@ -892,6 +966,7 @@ func (s *S) TestServiceManagerDeployServiceCancel(c *check.C) {
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.DeepEquals, provision.ErrUnitStartup{Err: context.Canceled})
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
@@ -924,6 +999,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -935,6 +1011,8 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -976,6 +1054,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -1004,6 +1083,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -1038,6 +1118,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -1074,6 +1155,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -1645,7 +1727,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Save()
+	err = v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -1653,6 +1735,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -1696,8 +1779,13 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
 	var rollbackObj *extensions.DeploymentRollback
-	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
 		if action.GetSubresource() == "rollback" {
 			rollbackObj = obj.(*extensions.DeploymentRollback)
@@ -1709,7 +1797,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		rev++
 		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
 		return false, nil, nil
-	})
+	}
+	s.client.PrependReactor("create", "deployments", reaction)
+	s.client.PrependReactor("update", "deployments", reaction)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		pod.Status.Conditions = append(pod.Status.Conditions, apiv1.PodCondition{
@@ -1721,12 +1811,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
+	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\"$")
+	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
 	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.clusterClient, a, "p1")
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" <---\s*$`)
+	err = cleanupDeployment(s.clusterClient, a, "p1")
+	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
@@ -1741,7 +1833,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
+	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-3-1: invalid pod phase \"Running\" - last event: my evt message$")
 }
 
 func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C) {
@@ -1763,10 +1855,15 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		},
 	})
 	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
 	var rollbackObj *extensions.DeploymentRollback
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
 		if action.GetSubresource() == "rollback" {
 			rollbackObj = obj.(*extensions.DeploymentRollback)
@@ -1794,7 +1891,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			c.Assert(repErr, check.IsNil)
 		}()
 		return false, nil, nil
-	})
+	}
+	s.client.PrependReactor("create", "deployments", reaction)
+	s.client.PrependReactor("update", "deployments", reaction)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		pod.Status.Conditions = append(pod.Status.Conditions, apiv1.PodCondition{
@@ -1810,12 +1909,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
+	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\"$")
+	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
 	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting healthcheck after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
-	cleanupDeployment(s.clusterClient, a, "p1")
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout waiting healthcheck after .* waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" <---\s*$`)
+	err = cleanupDeployment(s.clusterClient, a, "p1")
+	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
@@ -1828,7 +1929,8 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Running\" - last event: my evt message$")
+	c.Assert(err, check.ErrorMatches, "^timeout waiting healthcheck after .+ waiting for units: Pod myapp-p1-pod-3-1: invalid pod phase \"Running\" - last event: my evt message$")
+	waitDep()
 }
 
 func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
@@ -1849,6 +1951,11 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
 	var rollbackObj *extensions.DeploymentRollback
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -1856,6 +1963,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			rollbackObj = obj.(*extensions.DeploymentRollback)
 			return true, rollbackObj, nil
 		}
+		return false, nil, nil
+	})
+	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
 		dep := obj.(*v1beta2.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
@@ -1898,7 +2009,8 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
-	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Pending\"$")
+	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-2-1: invalid pod phase \"Pending\"$")
+	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
 		Name: "myapp-p1",
 	})
@@ -1959,6 +2071,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "^timeout waiting full rollout after .+ waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\"$")
+	waitDep()
 	c.Assert(rollbackCalled, check.Equals, false)
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*UPDATING BACK AFTER FAILURE.*---> timeout waiting full rollout after .* waiting for units: Pod myapp-p1-pod-1-1: invalid pod phase \"Running\" <---\s*$`)
 }

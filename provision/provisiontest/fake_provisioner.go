@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -51,30 +52,31 @@ func init() {
 
 // Fake implementation for provision.App.
 type FakeApp struct {
-	name           string
-	uuid           string
-	cname          []string
-	IP             string
-	platform       string
-	units          []provision.Unit
-	logs           []string
-	logMut         sync.Mutex
-	Commands       []string
-	Memory         int64
-	Swap           int64
-	CpuShare       int
-	commMut        sync.Mutex
-	Deploys        uint
-	env            map[string]bind.EnvVar
-	bindCalls      []*provision.Unit
-	bindLock       sync.Mutex
-	serviceEnvs    []bind.ServiceEnvVar
-	serviceLock    sync.Mutex
-	Pool           string
-	UpdatePlatform bool
-	TeamOwner      string
-	Teams          []string
-	Quota          quota.Quota
+	name            string
+	uuid            string
+	cname           []string
+	IP              string
+	platform        string
+	platformVersion string
+	units           []provision.Unit
+	logs            []string
+	logMut          sync.Mutex
+	Commands        []string
+	Memory          int64
+	Swap            int64
+	CpuShare        int
+	commMut         sync.Mutex
+	Deploys         uint
+	env             map[string]bind.EnvVar
+	bindCalls       []*provision.Unit
+	bindLock        sync.Mutex
+	serviceEnvs     []bind.ServiceEnvVar
+	serviceLock     sync.Mutex
+	Pool            string
+	UpdatePlatform  bool
+	TeamOwner       string
+	Teams           []string
+	Quota           quota.Quota
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -82,12 +84,14 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 }
 
 func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
+	repo, version := image.SplitImageName(platform)
 	app := FakeApp{
-		name:     name,
-		platform: platform,
-		units:    make([]provision.Unit, units),
-		Quota:    quota.UnlimitedQuota,
-		Pool:     pool,
+		name:            name,
+		platform:        repo,
+		platformVersion: version,
+		units:           make([]provision.Unit, units),
+		Quota:           quota.UnlimitedQuota,
+		Pool:            pool,
 	}
 	routertest.FakeRouter.AddBackend(&app)
 	namefmt := "%s-%d"
@@ -269,6 +273,10 @@ func (a *FakeApp) GetPool() string {
 
 func (a *FakeApp) GetPlatform() string {
 	return a.platform
+}
+
+func (a *FakeApp) GetPlatformVersion() string {
+	return a.platformVersion
 }
 
 func (a *FakeApp) GetDeploys() uint {

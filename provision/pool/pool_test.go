@@ -90,7 +90,7 @@ func (s *S) TestValidateRouters(c *check.C) {
 }
 
 func (s *S) TestAddPool(c *check.C) {
-	msg := "Invalid pool name, pool name should have at most 63 " +
+	msg := "Invalid pool name, pool name should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
 	vErr := &tsuruErrors.ValidationError{Message: msg}
@@ -102,6 +102,7 @@ func (s *S) TestAddPool(c *check.C) {
 		{"myPool", vErr},
 		{"my pool", vErr},
 		{"123mypool", vErr},
+		{"my-pool-with-very-long-name-41-characters", vErr},
 		{"", ErrPoolNameIsRequired},
 		{"p", nil},
 	}

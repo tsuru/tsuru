@@ -33,7 +33,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	buildPodName, err := buildPodNameForApp(a, "")
+	buildPodName, err := buildPodNameForApp(a)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +79,7 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 
 func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
 	buildPodName := fmt.Sprintf("%s-image-build", name)
-	client, err := clusterForPool("")
+	client, err := clusterForPoolOrAny("")
 	if err != nil {
 		return err
 	}

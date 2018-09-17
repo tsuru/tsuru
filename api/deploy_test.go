@@ -38,6 +38,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -64,10 +65,10 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
@@ -820,7 +821,7 @@ func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
 				Commit: d.Commit,
 				Origin: d.Origin,
 			},
-			Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, d.App)),
+			Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, d.App)),
 		})
 		c.Assert(err, check.IsNil)
 		evt.StartTime = d.Timestamp
@@ -845,7 +846,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
-		Context: permission.Context(permission.CtxApp, "g1"),
+		Context: permission.Context(permTypes.CtxApp, "g1"),
 	})
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -988,7 +989,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
@@ -1425,7 +1426,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1458,7 +1459,7 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1482,7 +1483,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1504,7 +1505,7 @@ func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1528,7 +1529,7 @@ func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
-		Context: permission.Context(permission.CtxGlobal, ""),
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())

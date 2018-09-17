@@ -6,10 +6,7 @@ package app
 
 import (
 	"context"
-	"errors"
 	"io"
-
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 )
 
 type Platform struct {
@@ -44,18 +41,3 @@ type PlatformStorage interface {
 	Update(Platform) error
 	Delete(Platform) error
 }
-
-var (
-	ErrPlatformNameMissing    = errors.New("Platform name is required.")
-	ErrPlatformImageMissing   = errors.New("Platform image is required.")
-	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
-	ErrDuplicatePlatform      = errors.New("Duplicate platform")
-	ErrInvalidPlatform        = errors.New("Invalid platform")
-	ErrMissingFileContent     = errors.New("Missing file content.")
-	ErrDeletePlatformWithApps = errors.New("Platform has apps. You must remove them before remove the platform.")
-	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
-		Message: "Invalid platform name, should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter.",
-	}
-)

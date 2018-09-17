@@ -25,6 +25,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/safe"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -219,7 +221,7 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypePool, Value: pool},
 		InternalKind: EventKind,
-		Allowed:      event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
+		Allowed:      event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, pool)),
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {
@@ -267,7 +269,7 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
 	customData.Result, err = scaler.scale(pool, nodes)
 	if err != nil {
-		if _, ok := err.(app.ErrAppNotLocked); ok {
+		if _, ok := err.(appTypes.ErrAppNotLocked); ok {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
 			return
 		}

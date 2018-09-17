@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -78,7 +79,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 		},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	time.Sleep(100 * time.Millisecond)
 	t0 := time.Now().UTC()
@@ -160,17 +161,17 @@ func (s *S) TestListFilterMany(c *check.C) {
 		{Type: "app", Values: []string{"xapp2"}},
 	}, Sort: "_id"}, allEvts[0])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
-		{Scheme: permission.PermAll, Context: permission.Context(permission.CtxGlobal, "")},
+		{Scheme: permission.PermAll, Context: permission.Context(permTypes.CtxGlobal, "")},
 	}, Sort: "_id"}, allEvts[:len(allEvts)-1])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
 		{Scheme: permission.PermAll},
 	}, Sort: "_id"}, allEvts[:0])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
-		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "invalid-app")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "invalid-app")},
 	}, Sort: "_id"}, allEvts[:1])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
-		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "invalid-app")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "invalid-app")},
 	}, Sort: "_id"}, allEvts[:0])
 }
 

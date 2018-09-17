@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -92,7 +93,7 @@ func (s *S) TestNodeContainerListLimited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermNodecontainerRead,
-		Context: permission.Context(permission.CtxPool, "p3"),
+		Context: permission.Context(permTypes.CtxPool, "p3"),
 	})
 	request, err := http.NewRequest("GET", "/1.2/nodecontainers", nil)
 	c.Assert(err, check.IsNil)
@@ -187,7 +188,7 @@ func (s *S) TestNodeContainerInfoLimited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermNodecontainerRead,
-		Context: permission.Context(permission.CtxPool, "p-none"),
+		Context: permission.Context(permTypes.CtxPool, "p-none"),
 	})
 	request, err := http.NewRequest("GET", "/1.2/nodecontainers/c1", nil)
 	c.Assert(err, check.IsNil)
@@ -321,7 +322,7 @@ func (s *S) TestNodeContainerCreateInvalid(c *check.C) {
 func (s *S) TestNodeContainerCreateLimited(c *check.C) {
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermNodecontainerCreate,
-		Context: permission.Context(permission.CtxPool, "p1"),
+		Context: permission.Context(permTypes.CtxPool, "p1"),
 	})
 	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
 	c.Assert(err, check.IsNil)
@@ -441,7 +442,7 @@ func (s *S) TestNodeContainerUpdateLimited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermNodecontainerUpdate,
-		Context: permission.Context(permission.CtxPool, "p1"),
+		Context: permission.Context(permTypes.CtxPool, "p1"),
 	})
 	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1"})
 	c.Assert(err, check.IsNil)

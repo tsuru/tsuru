@@ -88,13 +88,12 @@ func (s *PlatformSuite) TestPlatformCreateValidatesPlatformName(c *check.C) {
 		{"plat_form", appTypes.ErrInvalidPlatformName},
 		{"123platform", appTypes.ErrInvalidPlatformName},
 		{"plat-form", nil},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", appTypes.ErrInvalidPlatformName},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", appTypes.ErrInvalidPlatformName},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", nil},
+		{"myapp-41-characters-ppmyappmyappmyappmyap", appTypes.ErrInvalidPlatformName},
+		{"myapp-40-characters-ppmyappmyappmyappmya", nil},
 	}
 	for _, t := range tt {
 		err := ps.Create(appTypes.PlatformOptions{Name: t.name})
-		c.Assert(err, check.DeepEquals, t.expectedErr)
+		c.Check(err, check.DeepEquals, t.expectedErr)
 	}
 }
 
@@ -548,8 +547,8 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 func (s *PlatformSuite) TestPlatformRollbackInvalidImage(c *check.C) {
 	name := "test-platform-rollback"
 	image := "tsuru/no-valid-image"
-	s.mockService.PlatformImage.OnCheckImageExists = func(name, image string) (bool, error) {
-		return false, nil
+	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
+		return "", nil
 	}
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
@@ -565,8 +564,8 @@ func (s *PlatformSuite) TestPlatformRollbackInvalidImage(c *check.C) {
 func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	name := "test-platform-rollback"
 	image := "tsuru/test-platform-rollback:v1"
-	s.mockService.PlatformImage.OnCheckImageExists = func(name, image string) (bool, error) {
-		return true, nil
+	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
+		return image, nil
 	}
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{

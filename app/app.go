@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
@@ -62,6 +64,7 @@ var (
 		Name: "tsuru_node_status_not_found",
 		Help: "The number of not found nodes received in tsuru node status.",
 	})
+	envVarNameRegexp = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
 )
 
 func init() {
@@ -78,78 +81,30 @@ const (
 	defaultAppDir       = "/home/application/current"
 )
 
-// AppLock stores information about a lock hold on the app
-type AppLock struct {
-	Locked      bool
-	Reason      string
-	Owner       string
-	AcquireDate time.Time
-}
-
-func (l *AppLock) String() string {
-	if !l.Locked {
-		return "Not locked"
-	}
-	return fmt.Sprintf("App locked by %s, running %s. Acquired in %s",
-		l.Owner,
-		l.Reason,
-		l.AcquireDate.Format(time.RFC3339),
-	)
-}
-
-func (l *AppLock) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Locked      bool   `json:"Locked"`
-		Reason      string `json:"Reason"`
-		Owner       string `json:"Owner"`
-		AcquireDate string `json:"AcquireDate"`
-	}{
-		Locked:      l.Locked,
-		Reason:      l.Reason,
-		Owner:       l.Owner,
-		AcquireDate: l.AcquireDate.Format(time.RFC3339),
-	})
-}
-
-func (l *AppLock) GetLocked() bool {
-	return l.Locked
-}
-
-func (l *AppLock) GetReason() string {
-	return l.Reason
-}
-
-func (l *AppLock) GetOwner() string {
-	return l.Owner
-}
-
-func (l *AppLock) GetAcquireDate() time.Time {
-	return l.AcquireDate
-}
-
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env            map[string]bind.EnvVar
-	ServiceEnvs    []bind.ServiceEnvVar
-	Platform       string `bson:"framework"`
-	Name           string
-	CName          []string
-	Teams          []string
-	TeamOwner      string
-	Owner          string
-	Plan           appTypes.Plan
-	UpdatePlatform bool
-	Lock           AppLock
-	Pool           string
-	Description    string
-	Router         string
-	RouterOpts     map[string]string
-	Deploys        uint
-	Tags           []string
-	Error          string
-	Routers        []appTypes.AppRouter
+	Env             map[string]bind.EnvVar
+	ServiceEnvs     []bind.ServiceEnvVar
+	Platform        string `bson:"framework"`
+	PlatformVersion string
+	Name            string
+	CName           []string
+	Teams           []string
+	TeamOwner       string
+	Owner           string
+	Plan            appTypes.Plan
+	UpdatePlatform  bool
+	Lock            appTypes.AppLock
+	Pool            string
+	Description     string
+	Router          string
+	RouterOpts      map[string]string
+	Deploys         uint
+	Tags            []string
+	Error           string
+	Routers         []appTypes.AppRouter
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -271,14 +226,6 @@ type Applog struct {
 	Unit    string
 }
 
-type ErrAppNotLocked struct {
-	App string
-}
-
-func (e ErrAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.App)
-}
-
 // AcquireApplicationLock acquires an application lock by setting the lock
 // field in the database.  This method is already called by a connection
 // middleware on requests with :app or :appname params that have side-effects.
@@ -291,7 +238,7 @@ func AcquireApplicationLock(appName string, owner string, reason string) (bool, 
 func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
 	timeoutChan := time.After(timeout)
 	for {
-		appLock := AppLock{
+		appLock := appTypes.AppLock{
 			Locked:      true,
 			Reason:      reason,
 			Owner:       owner,
@@ -331,7 +278,7 @@ func AcquireApplicationLockWaitMany(appNames []string, owner string, reason stri
 				return
 			}
 			if !locked {
-				errCh <- ErrAppNotLocked{App: appName}
+				errCh <- appTypes.ErrAppNotLocked{App: appName}
 				return
 			}
 			lockedApps <- appName
@@ -378,7 +325,7 @@ func releaseApplicationLockOnce(appName string) error {
 		return errors.Wrapf(err, "error getting DB, couldn't unlock %s", appName)
 	}
 	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": AppLock{}}})
+	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": appTypes.AppLock{}}})
 	if err != nil {
 		return errors.Wrapf(err, "Error updating entry, couldn't unlock %s", appName)
 	}
@@ -431,7 +378,15 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
-	err = app.validate()
+	if app.Platform != "" {
+		p, v, err := getPlatformNameAndVersion(app.Platform)
+		if err != nil {
+			return err
+		}
+		app.Platform = p
+		app.PlatformVersion = v
+	}
+	err = app.validateNew()
 	if err != nil {
 		return err
 	}
@@ -447,7 +402,7 @@ func CreateApp(app *App, user *auth.User) error {
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)
 	if err != nil {
-		return &AppCreationError{app: app.Name, Err: err}
+		return &appTypes.AppCreationError{App: app.Name, Err: err}
 	}
 	return nil
 }
@@ -488,6 +443,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	platform := updateData.Platform
 	tags := processTags(updateData.Tags)
 	oldApp := *app
+
 	if description != "" {
 		app.Description = description
 	}
@@ -530,18 +486,20 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Tags = tags
 	}
 	if platform != "" {
-		p, errPlat := servicemanager.Platform.FindByName(platform)
-		if errPlat != nil {
-			return errPlat
+		p, v, err := getPlatformNameAndVersion(platform)
+		if err != nil {
+			return err
 		}
-		if app.Platform != p.Name {
+		if app.Platform != p || app.PlatformVersion != v {
 			app.UpdatePlatform = true
 		}
-		app.Platform = p.Name
+		app.Platform = p
+		app.PlatformVersion = v
 	}
 	if updateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
+
 	err = app.validate()
 	if err != nil {
 		return err
@@ -561,6 +519,23 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app, &oldApp, w)
+}
+
+func getPlatformNameAndVersion(platform string) (string, string, error) {
+	repo, version := image.SplitImageName(platform)
+	p, err := servicemanager.Platform.FindByName(repo)
+	if err != nil {
+		return "", "", err
+	}
+
+	if version != "latest" {
+		_, err := servicemanager.PlatformImage.FindImage(p.Name, version)
+		if err != nil {
+			return p.Name, "", err
+		}
+	}
+
+	return p.Name, version, nil
 }
 
 func processTags(tags []string) []string {
@@ -1000,7 +975,7 @@ func (app *App) Grant(team *authTypes.Team) error {
 	}
 	users, err := auth.ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	if err != nil {
 		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
@@ -1040,7 +1015,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 	}
 	users, err := auth.ListUsersWithPermissions(permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	if err != nil {
 		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
@@ -1053,9 +1028,9 @@ func (app *App) Revoke(team *authTypes.Team) error {
 			return err
 		}
 		canDeploy := permission.CheckFromPermList(perms, permission.PermAppDeploy,
-			append(permission.Contexts(permission.CtxTeam, app.Teams),
-				permission.Context(permission.CtxApp, app.Name),
-				permission.Context(permission.CtxPool, app.Pool),
+			append(permission.Contexts(permTypes.CtxTeam, app.Teams),
+				permission.Context(permTypes.CtxApp, app.Name),
+				permission.Context(permTypes.CtxPool, app.Pool),
 			)...,
 		)
 		if canDeploy {
@@ -1146,14 +1121,19 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
 }
 
-// validate checks app name format
-func (app *App) validate() error {
+// validateNew checks app name format and pool
+func (app *App) validateNew() error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
-		msg := "Invalid app name, your app should have at most 63 " +
+		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
+	return app.validate()
+}
+
+// validate checks app pool
+func (app *App) validate() error {
 	return app.validatePool()
 }
 
@@ -1487,6 +1467,14 @@ func (app *App) GetPlatform() string {
 	return app.Platform
 }
 
+// GetPlatformVersion returns the platform version of the app.
+func (app *App) GetPlatformVersion() string {
+	if app.PlatformVersion == "" {
+		return "latest"
+	}
+	return app.PlatformVersion
+}
+
 // GetDeploys returns the amount of deploys of an app.
 func (app *App) GetDeploys() uint {
 	return app.Deploys
@@ -1509,6 +1497,12 @@ func (app *App) Envs() map[string]bind.EnvVar {
 func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if len(setEnvs.Envs) == 0 {
 		return nil
+	}
+	for _, env := range setEnvs.Envs {
+		err := validateEnv(env.Name)
+		if err != nil {
+			return err
+		}
 	}
 	if setEnvs.Writer != nil {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
@@ -2386,14 +2380,6 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	return allCertificates, nil
 }
 
-type ProcfileError struct {
-	yamlErr error
-}
-
-func (e *ProcfileError) Error() string {
-	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
-}
-
 func (app *App) RoutableAddresses() ([]url.URL, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -2470,4 +2456,11 @@ func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
 		return router.HealthcheckData{}, err
 	}
 	return yamlData.Healthcheck.ToRouterHC(), nil
+}
+
+func validateEnv(envName string) error {
+	if !envVarNameRegexp.MatchString(envName) {
+		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", envName)}
+	}
+	return nil
 }

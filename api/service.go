@@ -16,13 +16,14 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func serviceTarget(name string) event.Target {
 	return event.Target{Type: event.TargetTypeService, Value: name}
 }
 
-func provisionReadableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
+func provisionReadableServices(t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
 	teams, serviceNames := filtersForServiceList(t, contexts)
 	return service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
 }
@@ -94,7 +95,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 	s.OwnerTeams = []string{team}
 	allowed := permission.Check(t, permission.PermServiceCreate,
-		permission.Context(permission.CtxTeam, s.OwnerTeams[0]),
+		permission.Context(permTypes.CtxTeam, s.OwnerTeams[0]),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -398,8 +399,8 @@ func getService(name string) (service.Service, error) {
 	return s, err
 }
 
-func contextsForServiceProvision(s *service.Service) []permission.PermissionContext {
-	return append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-		permission.Context(permission.CtxService, s.Name),
+func contextsForServiceProvision(s *service.Service) []permTypes.PermissionContext {
+	return append(permission.Contexts(permTypes.CtxTeam, s.OwnerTeams),
+		permission.Context(permTypes.CtxService, s.Name),
 	)
 }

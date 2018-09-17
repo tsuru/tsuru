@@ -69,7 +69,7 @@ func (m *MockPlatformService) List(enabledOnly bool) ([]Platform, error) {
 
 func (m *MockPlatformService) FindByName(name string) (*Platform, error) {
 	if m.OnFindByName == nil {
-		return nil, nil
+		return &Platform{Name: name}, nil
 	}
 	return m.OnFindByName(name)
 }

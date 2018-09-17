@@ -9,9 +9,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -77,6 +79,29 @@ func (s *S) Test_TeamTokenService_Create_WithExpires(c *check.C) {
 	c.Assert(t, check.DeepEquals, expected)
 }
 
+func (s *S) Test_TeamTokenService_Create_ValidationError(c *check.C) {
+	invalidTokenErr := errors.New("invalid token_id")
+	var tests = []struct {
+		tokenID     string
+		expectedErr error
+	}{
+		{"valid-token", nil},
+		{"invalid token", invalidTokenErr},
+		{"UPPERCASE", invalidTokenErr},
+		{"loooooooooooooooooong-token-41-characters", invalidTokenErr},
+		{"not-so-loooooooooong-token-40-characters", nil},
+	}
+
+	for _, test := range tests {
+		_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name, TokenID: test.tokenID}, &userToken{user: s.user})
+		if test.expectedErr == nil {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, test.expectedErr.Error())
+		}
+	}
+}
+
 func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
@@ -139,7 +164,7 @@ func (s *S) Test_TeamTokenService_AddRole_RoleNotFound(c *check.C) {
 	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
 	c.Assert(err, check.IsNil)
 	err = servicemanager.TeamToken.AddRole(token.TokenID, "app-deployer", "myapp")
-	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
+	c.Assert(err, check.Equals, permTypes.ErrRoleNotFound)
 }
 
 func (s *S) Test_TeamTokenService_RemoveRole(c *check.C) {
@@ -217,7 +242,7 @@ func (s *S) Test_TeamTokenService_FindByUserToken_ValidatePermissions(c *check.C
 		permissions: []permission.Permission{
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxApp, "myapp"),
+				Context: permission.Context(permTypes.CtxApp, "myapp"),
 			},
 		},
 	}
@@ -377,8 +402,8 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 	c.Assert(perms, check.HasLen, 3)
 	sort.Slice(perms, func(i, j int) bool { return perms[i].Scheme.FullName() < perms[j].Scheme.FullName() })
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "myapp")},
-		{Scheme: permission.PermAppUpdate, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdate, Context: permission.Context(permTypes.CtxApp, "myapp")},
 	})
 }

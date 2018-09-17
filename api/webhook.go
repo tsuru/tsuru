@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // title: webhook list
@@ -26,10 +27,10 @@ import (
 //   200: List webhooks
 //   204: No content
 func webhookList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctxs := permission.ContextsForPermission(t, permission.PermWebhookRead, permission.CtxTeam)
+	ctxs := permission.ContextsForPermission(t, permission.PermWebhookRead, permTypes.CtxTeam)
 	var teams []string
 	for _, c := range ctxs {
-		if c.CtxType == permission.CtxGlobal {
+		if c.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			break
 		}
@@ -64,7 +65,7 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
+	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookRead, ctx) {
 		return permission.ErrUnauthorized
 	}
@@ -96,7 +97,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
+	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookCreate, ctx) {
 		return permission.ErrUnauthorized
 	}
@@ -139,7 +140,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse webhook: %v", err)}
 	}
 	webhook.Name = r.URL.Query().Get(":name")
-	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
+	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookUpdate, ctx) {
 		return permission.ErrUnauthorized
 	}
@@ -179,7 +180,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	ctx := permission.Context(permission.CtxTeam, webhook.TeamOwner)
+	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookDelete, ctx) {
 		return permission.ErrUnauthorized
 	}

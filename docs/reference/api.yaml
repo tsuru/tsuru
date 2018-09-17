@@ -18,14 +18,14 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Services
           schema:
             type: array
             items:
               type: object
-              $ref: '#/definitions/Service'
-        '204':
+              $ref: "#/definitions/Service"
+        "204":
           description: No content
       tags:
         - service
@@ -36,26 +36,26 @@ paths:
       operationId: InstancesList
       description: List service instances
       produces:
-      - application/json
+        - application/json
       parameters:
         - name: app
           description: Filter instances by app name
           type: string
           in: query
       responses:
-        '200':
+        "200":
           description: Service instances
           schema:
             type: array
             items:
               type: object
-              $ref: '#/definitions/Service'
-        '204':
+              $ref: "#/definitions/Service"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -78,20 +78,20 @@ paths:
       operationId: InstanceGet
       description: Get service instance information
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Service instance
           schema:
-            $ref: '#/definitions/ServiceInstanceInfo'
-        '401':
+            $ref: "#/definitions/ServiceInstanceInfo"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Service instance not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -100,27 +100,27 @@ paths:
       operationId: InstanceUpdate
       description: Update a service instance
       consumes:
-      - application/json
+        - application/json
       parameters:
         - name: updateData
           in: body
           schema:
-            $ref: '#/definitions/ServiceInstanceUpdateData'
+            $ref: "#/definitions/ServiceInstanceUpdateData"
       responses:
-        '200':
+        "200":
           description: Service instance updated
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Service instance not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -129,7 +129,7 @@ paths:
       operationId: InstanceDelete
       description: Remove service instance
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       parameters:
         - name: unbindall
           description: Remove current binds to this instance
@@ -137,18 +137,18 @@ paths:
           type: boolean
           required: true
       responses:
-        '200':
+        "200":
           description: Service removed
-        '400':
+        "400":
           description: Bad request
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Service instance not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -160,17 +160,17 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: List service brokers
           schema:
             type: object
-            $ref: '#/definitions/ServiceBrokerList'
-        '204':
+            $ref: "#/definitions/ServiceBrokerList"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -185,22 +185,22 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/ServiceBroker'
+            $ref: "#/definitions/ServiceBroker"
       responses:
-        '200':
+        "200":
           description: Service Broker created.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Service Broker already exists.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -216,20 +216,20 @@ paths:
     delete:
       operationId: ServiceBrokerDelete
       responses:
-        '200':
+        "200":
           description: Service Broker deleted.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Service Broker not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -244,22 +244,22 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/ServiceBroker'
+            $ref: "#/definitions/ServiceBroker"
       responses:
-        '200':
+        "200":
           description: Service Broker updated.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Service Broker not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - service
       security:
@@ -304,21 +304,21 @@ paths:
           in: query
           type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: List apps
           schema:
             type: array
             items:
               type: object
-              $ref: '#/definitions/MiniApp'
-        '204':
+              $ref: "#/definitions/MiniApp"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -331,32 +331,32 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/App'
+            $ref: "#/definitions/App"
       produces:
-      - application/json
+        - application/json
       consumes:
-      - application/json
+        - application/json
       responses:
-        '201':
+        "201":
           description: App created
           schema:
-            $ref: '#/definitions/AppCreateResponse'
-        '400':
+            $ref: "#/definitions/AppCreateResponse"
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Quota exceeded
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: App already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -373,20 +373,20 @@ paths:
           minLength: 1
           description: Appname.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
-          description: 'App info'
+        "200":
+          description: "App info"
           schema:
-            $ref: '#/definitions/App'
-        '401':
+            $ref: "#/definitions/App"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: App not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -402,16 +402,47 @@ paths:
           minLength: 1
           description: App name.
       produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: App removed.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    put:
+      operationId: AppUpdate
+      description: Update a tsuru app.
+      parameters:
+        - name: app
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: App name.
+      produces:
       - application/x-json-stream
       responses:
         '200':
-          description: App removed.
+          description: App updated
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
         '401':
-          description: Unauthorized.
+          description: Unauthorized
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
-          description: App not found.
+          description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
@@ -434,29 +465,29 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/EnvSetData'
+            $ref: "#/definitions/EnvSetData"
           description: Environment variables.
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       consumes:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Envs updated
           schema:
-            $ref: '#/definitions/EnvSetResponse'
-        '400':
+            $ref: "#/definitions/EnvSetResponse"
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: App not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -472,20 +503,20 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Environment variables
           schema:
             type: array
             items:
-              $ref: '#/definitions/Env'
-        '401':
+              $ref: "#/definitions/Env"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: App not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -509,20 +540,20 @@ paths:
       produces:
         - application/x-json-stream
       responses:
-        '200':
+        "200":
           description: Envs deleted
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: App not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -539,16 +570,16 @@ paths:
       operationId: PlatformDelete
       description: Delete platform.
       responses:
-        '200':
+        "200":
           description: Platform removed
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -562,20 +593,20 @@ paths:
           required: true
           type: file
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       consumes:
-      - multipart/form-data
+        - multipart/form-data
       responses:
-        '200':
+        "200":
           description: Platform updated
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -585,20 +616,20 @@ paths:
       operationId: PlatformList
       description: List platforms.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Platform list
           schema:
             type: array
             items:
-              $ref: '#/definitions/Platform'
-        '204':
+              $ref: "#/definitions/Platform"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -607,9 +638,9 @@ paths:
       operationId: PlatformAdd
       description: Add new platform.
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       consumes:
-      - multipart/form-data
+        - multipart/form-data
       parameters:
         - name: name
           in: formData
@@ -620,16 +651,16 @@ paths:
           required: true
           type: file
       responses:
-        '200':
+        "200":
           description: Platform created
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -646,22 +677,20 @@ paths:
       operationId: PlatformInfo
       description: Platform info.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Platform info
           schema:
-            $ref: '#/definitions/PlatformInfo'
-        '204':
-          description: No content.
-        '401':
+            $ref: "#/definitions/PlatformInfo"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -678,27 +707,27 @@ paths:
       operationId: PlatformRollback
       description: Platform rollback.
       parameters:
-      - name: image
-        in: query
-        required: true
-        type: string
+        - name: image
+          in: query
+          required: true
+          type: string
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - platform
       security:
@@ -708,20 +737,20 @@ paths:
       operationId: TeamsList
       description: List teams.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Team list.
           schema:
             type: array
             items:
-              $ref: '#/definitions/Team'
-        '204':
+              $ref: "#/definitions/Team"
+        "204":
           description: No content.
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - team
       security:
@@ -730,7 +759,7 @@ paths:
       operationId: TeamCreate
       description: Create a team.
       consumes:
-      - application/json
+        - application/json
       parameters:
         - name: teamData
           in: body
@@ -746,20 +775,20 @@ paths:
                   type: string
           description: Team name.
       responses:
-        '201':
+        "201":
           description: Team created.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Team already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - team
       security:
@@ -775,20 +804,20 @@ paths:
       operationId: TeamDelete
       description: Delete a team.
       responses:
-        '200':
+        "200":
           description: Team removed.
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Team not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - team
       security:
@@ -804,20 +833,20 @@ paths:
       operationId: TeamGet
       description: Get a team.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Team data
           schema:
-            $ref: '#/definitions/TeamInfo'
-        '401':
+            $ref: "#/definitions/TeamInfo"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Team not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - team
       security:
@@ -847,22 +876,22 @@ paths:
                 items:
                   type: string
       consumes:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Team updated
-        '400':
+        "400":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Team not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - team
       security:
@@ -883,20 +912,20 @@ paths:
           in: query
           type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: List users.
           schema:
             type: array
             items:
-              $ref: '#/definitions/User'
-        '401':
+              $ref: "#/definitions/User"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
-      - user
+        - user
       security:
         - Bearer: []
     post:
@@ -907,30 +936,30 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/UserData'
+            $ref: "#/definitions/UserData"
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       consumes:
-      - application/json
+        - application/json
       responses:
-        '201':
+        "201":
           description: User created.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: User already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -946,16 +975,16 @@ paths:
           minLength: 1
           description: User e-mail.
       responses:
-        '200':
+        "200":
           description: User removed
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -972,18 +1001,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: API TOKEN
           schema:
             type: string
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: User not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -999,18 +1028,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: API TOKEN
           schema:
             type: string
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: User not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1022,18 +1051,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: OK
           schema:
-            $ref: '#/definitions/SSHKeyListResponse'
-        '400':
+            $ref: "#/definitions/SSHKeyListResponse"
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1046,26 +1075,26 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/SSHKeyAddData'
+            $ref: "#/definitions/SSHKeyAddData"
       consumes:
         - application/json
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Key already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1081,20 +1110,20 @@ paths:
           type: string
           minLength: 1
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1106,14 +1135,14 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: OK
           schema:
-            $ref: '#/definitions/User'
-        '401':
+            $ref: "#/definitions/User"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1132,18 +1161,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: OK
           schema:
-            $ref: '#/definitions/UserQuotaViewResponse'
-        '401':
+            $ref: "#/definitions/UserQuotaViewResponse"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: User not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1166,20 +1195,20 @@ paths:
       consumes:
         - application/json
       responses:
-        '200':
+        "200":
           description: Quota successfully updated
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: User not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1193,28 +1222,28 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/ChangePasswordData'
+            $ref: "#/definitions/ChangePasswordData"
       consumes:
-       - application/x-www-form-urlencoded
+        - application/x-www-form-urlencoded
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1236,26 +1265,26 @@ paths:
             type: string
             minLength: 1
       consumes:
-       - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - user
       security:
@@ -1265,7 +1294,7 @@ paths:
       operationId: UserTokenDelete
       description: Logout.
       responses:
-        '200':
+        "200":
           description: Ok
       tags:
         - user
@@ -1276,13 +1305,13 @@ paths:
       operationId: NodeList
       description: List nodes.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Nodes List.
           schema:
-            $ref: '#/definitions/NodeListResponse'
-        '204':
+            $ref: "#/definitions/NodeListResponse"
+        "204":
           description: No content.
       tags:
         - node
@@ -1296,22 +1325,22 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/NodeAddData'
+            $ref: "#/definitions/NodeAddData"
       produces:
-      - application/x-json-stream
+        - application/x-json-stream
       consumes:
-      - application/json
+        - application/json
       responses:
-        '201':
+        "201":
           description: Ok
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '400':
+            $ref: "#/definitions/ErrorMessage"
+        "400":
           description: Invalid parameters
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - node
       security:
@@ -1324,24 +1353,24 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/NodeUpdateData'
+            $ref: "#/definitions/NodeUpdateData"
       consumes:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Ok
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - node
       security:
@@ -1369,16 +1398,16 @@ paths:
           type: boolean
           description: Remove machine from IaaS.
       responses:
-        '200':
+        "200":
           description: Ok
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - node
       security:
@@ -1389,18 +1418,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Ok
           schema:
-            $ref: '#/definitions/NodeGetResponse'
-        '401':
+            $ref: "#/definitions/NodeGetResponse"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - node
       security:
@@ -1410,20 +1439,20 @@ paths:
       operationId: VolumeList
       description: List volumes.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: List volumes
           schema:
             type: array
             items:
-              $ref: '#/definitions/Volume'
-        '204':
+              $ref: "#/definitions/Volume"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1436,20 +1465,20 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/Volume'
+            $ref: "#/definitions/Volume"
       produces:
         - application/json
       responses:
-        '201':
+        "201":
           description: Volume created
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Volume already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1461,18 +1490,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Pools list
           schema:
             type: array
             items:
-              $ref: '#/definitions/Pool'
-        '204':
+              $ref: "#/definitions/Pool"
+        "204":
           description: No content
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - pool
       security:
@@ -1485,24 +1514,24 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/PoolCreateData'
+            $ref: "#/definitions/PoolCreateData"
       consumes:
         - application/json
       responses:
-        '201':
+        "201":
           description: Pool created
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Pool already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - pool
       security:
@@ -1517,20 +1546,20 @@ paths:
       operationId: PoolDelete
       description: Deletes a pool.
       responses:
-        '200':
+        "200":
           description: Pool deleted
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '403':
+            $ref: "#/definitions/ErrorMessage"
+        "403":
           description: Pool still has apps
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Pool not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - pool
       security:
@@ -1543,24 +1572,24 @@ paths:
           in: body
           required: true
           schema:
-            $ref: '#/definitions/PoolUpdateData'
+            $ref: "#/definitions/PoolUpdateData"
       consumes:
         - application/json
       responses:
-        '200':
+        "200":
           description: Pool updated
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Pool not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Default pool already defined
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - pool
       security:
@@ -1577,18 +1606,18 @@ paths:
       operationId: VolumeDelete
       description: Delete volume.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Volume deleted
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Volume not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1599,18 +1628,18 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Volume
           schema:
-            $ref: '#/definitions/Volume'
-        '401':
+            $ref: "#/definitions/Volume"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Volume already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1627,27 +1656,27 @@ paths:
         in: body
         schema:
           type: object
-          $ref: '#/definitions/VolumeBindData'
+          $ref: "#/definitions/VolumeBindData"
     post:
       operationId: VolumeBind
       description: Bind volume.
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Volume bind
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Volume not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Volume bind already exists
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1656,18 +1685,18 @@ paths:
       operationId: VolumeUnbind
       description: Unbind volume.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Volume unbinded
-        '401':
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Volume not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1677,16 +1706,16 @@ paths:
       operationId: VolumePlansList
       description: List volume plans.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Volume plans list
           schema:
-            $ref: '#/definitions/VolumePlansListResponse'
-        '401':
+            $ref: "#/definitions/VolumePlansListResponse"
+        "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - volume
       security:
@@ -1696,7 +1725,7 @@ paths:
       operationId: AssignRoleToToken
       description: Assigns a role to a team token.
       consumes:
-      - application/json
+        - application/json
       parameters:
         - name: role_name
           required: true
@@ -1706,18 +1735,18 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/AssignTokenArgs'
+            $ref: "#/definitions/AssignTokenArgs"
       responses:
-        '200':
+        "200":
           description: Role assigned.
-        '401':
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Role or token not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1740,16 +1769,16 @@ paths:
           in: query
           type: string
       responses:
-        '200':
+        "200":
           description: Role dissociated.
-        '401':
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Role or token not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1759,21 +1788,21 @@ paths:
       operationId: TeamTokensList
       description: List team tokens.
       produces:
-      - application/json
+        - application/json
       responses:
-        '200':
+        "200":
           description: Team tokens list.
           schema:
             type: array
             items:
               type: object
-              $ref: '#/definitions/TeamToken'
-        '204':
+              $ref: "#/definitions/TeamToken"
+        "204":
           description: No content.
-        '401':
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1782,28 +1811,28 @@ paths:
       operationId: TeamTokenCreate
       description: Creates a team token.
       consumes:
-      - application/json
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
         - name: token
           required: true
           in: body
           schema:
-            $ref: '#/definitions/TeamTokenCreateArgs'
+            $ref: "#/definitions/TeamTokenCreateArgs"
       responses:
-        '201':
+        "201":
           description: Team token created.
           schema:
-            $ref: '#/definitions/TeamToken'
-        '401':
+            $ref: "#/definitions/TeamToken"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Token with the same ID already exists.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1820,16 +1849,16 @@ paths:
       operationId: TeamTokenDelete
       description: Deletes a team token.
       responses:
-        '200':
+        "200":
           description: Team token deleted.
-        '401':
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Team token not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1838,28 +1867,28 @@ paths:
       operationId: TeamTokenUpdate
       description: Updates a team token.
       consumes:
-      - application/json
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
         - name: token
           required: true
           in: body
           schema:
-            $ref: '#/definitions/TeamTokenUpdateArgs'
+            $ref: "#/definitions/TeamTokenUpdateArgs"
       responses:
-        '200':
+        "200":
           description: Team token updated.
           schema:
-            $ref: '#/definitions/TeamToken'
-        '401':
+            $ref: "#/definitions/TeamToken"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Team token not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - auth
       security:
@@ -1868,9 +1897,9 @@ paths:
     post:
       operationId: EventCancel
       consumes:
-      - application/json
+        - application/json
       produces:
-      - application/json
+        - application/json
       parameters:
         - name: eventid
           required: true
@@ -1880,22 +1909,22 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/EventCancelArgs'
+            $ref: "#/definitions/EventCancelArgs"
       responses:
-        '204':
+        "204":
           description: Event cancelation requested.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - event
       security:
@@ -1906,14 +1935,14 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Webhooks list.
           schema:
             type: array
             items:
               type: object
-              $ref: '#/definitions/Webhook'
-        '204':
+              $ref: "#/definitions/Webhook"
+        "204":
           description: No content.
       tags:
         - event
@@ -1928,22 +1957,22 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/Webhook'
+            $ref: "#/definitions/Webhook"
       responses:
-        '200':
+        "200":
           description: Webhook created.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '409':
+            $ref: "#/definitions/ErrorMessage"
+        "409":
           description: Webhook already exists.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - event
       security:
@@ -1961,19 +1990,19 @@ paths:
       produces:
         - application/json
       responses:
-        '200':
+        "200":
           description: Webhook.
           schema:
             type: object
-            $ref: '#/definitions/Webhook'
-        '404':
+            $ref: "#/definitions/Webhook"
+        "404":
           description: Not founds.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - event
       security:
@@ -1987,22 +2016,22 @@ paths:
           required: true
           in: body
           schema:
-            $ref: '#/definitions/Webhook'
+            $ref: "#/definitions/Webhook"
       responses:
-        '200':
+        "200":
           description: Webhook updated.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Webhook not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - event
       security:
@@ -2010,20 +2039,20 @@ paths:
     delete:
       operationId: WebhookDelete
       responses:
-        '200':
+        "200":
           description: Webhook created.
-        '400':
+        "400":
           description: Invalid data
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '401':
+            $ref: "#/definitions/ErrorMessage"
+        "401":
           description: Unauthorized.
           schema:
-            $ref: '#/definitions/ErrorMessage'
-        '404':
+            $ref: "#/definitions/ErrorMessage"
+        "404":
           description: Webhook not found.
           schema:
-            $ref: '#/definitions/ErrorMessage'
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - event
       security:
@@ -2050,7 +2079,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/ServiceInstance'
+          $ref: "#/definitions/ServiceInstance"
   ServiceInstance:
     type: object
     properties:
@@ -2074,7 +2103,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/ServiceInstanceBoundUnit'
+          $ref: "#/definitions/ServiceInstanceBoundUnit"
       teams:
         type: array
         items:
@@ -2141,6 +2170,18 @@ definitions:
         type: boolean
       provisioner:
         type: string
+      public:
+        type: boolean
+      teams:
+        type: array
+        items:
+          type: string
+      allowed:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
   PoolCreateData:
     type: object
     properties:
@@ -2208,13 +2249,13 @@ definitions:
     properties:
       node:
         type: object
-        $ref: '#/definitions/Node'
+        $ref: "#/definitions/Node"
       status:
         type: object
-        $ref: '#/definitions/NodeStatus'
+        $ref: "#/definitions/NodeStatus"
       units:
         type: object
-        $ref: '#/definitions/Unit'
+        $ref: "#/definitions/Unit"
   NodeListResponse:
     type: object
     properties:
@@ -2222,12 +2263,12 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Node'
+          $ref: "#/definitions/Node"
       machines:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Machine'
+          $ref: "#/definitions/Machine"
   Node:
     type: object
     properties:
@@ -2254,7 +2295,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/NodeCheck'
+          $ref: "#/definitions/NodeCheck"
       lastsuccess:
         type: string
         format: date-time
@@ -2271,7 +2312,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/NodeCheckResult'
+          $ref: "#/definitions/NodeCheckResult"
   NodeCheckResult:
     type: object
     properties:
@@ -2328,12 +2369,12 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/RoleUser'
+          $ref: "#/definitions/RoleUser"
       permissions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/PermissionUser'
+          $ref: "#/definitions/PermissionUser"
   SSHKeyListResponse:
     description: Response returned by User SSH Key List.
     type: object
@@ -2399,13 +2440,13 @@ definitions:
       plan:
         type: object
         description: Volume plan.
-        $ref: '#/definitions/VolumePlan'
+        $ref: "#/definitions/VolumePlan"
       binds:
         type: array
         description: Volume binds.
         items:
           type: object
-          $ref: '#/definitions/VolumeBind'
+          $ref: "#/definitions/VolumeBind"
       opts:
         type: object
         description: Custom volume options.
@@ -2429,7 +2470,7 @@ definitions:
       id:
         description: Volume bind ID.
         type: object
-        $ref: '#/definitions/VolumeBindID'
+        $ref: "#/definitions/VolumeBindID"
       readonly:
         description: Volume is read-only.
         type: boolean
@@ -2463,7 +2504,7 @@ definitions:
       name:
         type: string
         description: App name.
-      tag:
+      tags:
         type: array
         items:
           type: string
@@ -2477,8 +2518,8 @@ definitions:
           type: string
         description: Custom router options.
       plan:
-        type: string
-        description: App plan.
+        type: object
+        $ref: "#/definitions/Plan"
       pool:
         type: string
         description: App pool.
@@ -2491,6 +2532,18 @@ definitions:
       teamOwner:
         type: string
         description: Team that owns the app.
+      teams:
+        type: array
+        items:
+          type: string
+      cname:
+        type: array
+        items:
+          type: string
+      ip:
+        type: string
+      owner:
+        type: string
   AppCreateResponse:
     description: Newly created app information.
     type: object
@@ -2513,12 +2566,12 @@ definitions:
         type: string
       plan:
         type: object
-        $ref: '#/definitions/Plan'
+        $ref: "#/definitions/Plan"
       units:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Unit'
+          $ref: "#/definitions/Unit"
       cname:
         type: array
         items:
@@ -2529,10 +2582,10 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Router'
+          $ref: "#/definitions/Router"
       lock:
         type: object
-        $ref: '#/definitions/Lock'
+        $ref: "#/definitions/Lock"
       tags:
         type: array
         items:
@@ -2558,6 +2611,8 @@ definitions:
         minimum: 0
       default:
         type: boolean
+      router:
+        type: string
   Env:
     description: Environment variable.
     type: object
@@ -2574,7 +2629,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Env'
+          $ref: "#/definitions/Env"
         minItems: 1
       norestart:
         type: boolean
@@ -2611,7 +2666,7 @@ definitions:
         type: string
       address:
         type: object
-        $ref: '#/definitions/URL'
+        $ref: "#/definitions/URL"
   Router:
     type: object
     properties:
@@ -2673,17 +2728,17 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/User'
+          $ref: "#/definitions/User"
       pools:
         type: array
         items:
           type: object
-          $ref: '#/definitions/Pool'
+          $ref: "#/definitions/Pool"
       apps:
         type: array
         items:
           type: object
-          $ref: '#/definitions/App'
+          $ref: "#/definitions/App"
   TeamTokenUpdateArgs:
     description: Arguments for updating an existing team token.
     properties:
@@ -2736,7 +2791,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/RoleInstance'
+          $ref: "#/definitions/RoleInstance"
   RoleInstance:
     description: Association between a role and a context value.
     type: object
@@ -2765,7 +2820,7 @@ definitions:
     properties:
       platform:
         type: object
-        $ref: '#/definitions/Platform'
+        $ref: "#/definitions/Platform"
       images:
         type: array
         items:
@@ -2786,7 +2841,7 @@ definitions:
         type: string
       event_filter:
         type: object
-        $ref: '#/definitions/WebhookEventFilter'
+        $ref: "#/definitions/WebhookEventFilter"
       url:
         type: string
       proxy_url:
@@ -2833,7 +2888,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/ServiceBroker'
+          $ref: "#/definitions/ServiceBroker"
   ServiceBroker:
     type: object
     properties:

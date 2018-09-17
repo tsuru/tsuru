@@ -5,7 +5,6 @@
 package permission
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -14,71 +13,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
-
-var (
-	ErrRoleNotFound          = errors.New("role not found")
-	ErrRoleAlreadyExists     = errors.New("role already exists")
-	ErrRoleEventNotFound     = errors.New("role event not found")
-	ErrInvalidRoleName       = errors.New("invalid role name")
-	ErrInvalidPermissionName = errors.New("invalid permission name")
-
-	RoleEventUserCreate = &RoleEvent{
-		name:        "user-create",
-		context:     CtxGlobal,
-		Description: "role added to user when user is created",
-	}
-	RoleEventTeamCreate = &RoleEvent{
-		name:        "team-create",
-		context:     CtxTeam,
-		Description: "role added to user when a new team is created",
-	}
-
-	RoleEventMap = map[string]*RoleEvent{
-		RoleEventUserCreate.name: RoleEventUserCreate,
-		RoleEventTeamCreate.name: RoleEventTeamCreate,
-	}
-)
-
-type ErrRoleEventWrongContext struct {
-	expected string
-	role     string
-}
-
-func (e ErrRoleEventWrongContext) Error() string {
-	return fmt.Sprintf("wrong context type for role event, expected %q role has %q", e.expected, e.role)
-}
-
-type ErrPermissionNotFound struct {
-	permission string
-}
-
-func (e ErrPermissionNotFound) Error() string {
-	return fmt.Sprintf("permission named %q not found", e.permission)
-}
-
-type ErrPermissionNotAllowed struct {
-	permission  string
-	contextType contextType
-}
-
-func (e ErrPermissionNotAllowed) Error() string {
-	return fmt.Sprintf("permission %q not allowed with context of type %q", e.permission, e.contextType)
-}
-
-type RoleEvent struct {
-	name        string
-	context     contextType
-	Description string
-}
-
-func (e *RoleEvent) String() string {
-	return e.name
-}
 
 type Role struct {
-	Name        string      `bson:"_id" json:"name"`
-	ContextType contextType `json:"context"`
+	Name        string                `bson:"_id" json:"name"`
+	ContextType permTypes.ContextType `json:"context"`
 	Description string
 	SchemeNames []string `json:"scheme_names,omitempty"`
 	Events      []string `json:"events,omitempty"`
@@ -91,7 +31,7 @@ func NewRole(name string, ctx string, description string) (Role, error) {
 	}
 	name = strings.TrimSpace(name)
 	if len(name) == 0 {
-		return Role{}, ErrInvalidRoleName
+		return Role{}, permTypes.ErrInvalidRoleName
 	}
 	coll, err := rolesCollection()
 	if err != nil {
@@ -101,7 +41,7 @@ func NewRole(name string, ctx string, description string) (Role, error) {
 	role := Role{Name: name, ContextType: ctxType, Description: description}
 	err = coll.Insert(role)
 	if mgo.IsDup(err) {
-		return Role{}, ErrRoleAlreadyExists
+		return Role{}, permTypes.ErrRoleAlreadyExists
 	}
 	return role, err
 }
@@ -140,7 +80,7 @@ func ListRolesWithEvents() ([]Role, error) {
 	return roles, nil
 }
 
-func ListRolesForEvent(evt *RoleEvent) ([]Role, error) {
+func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
 	if evt == nil {
 		return nil, errors.New("invalid role event")
 	}
@@ -150,7 +90,7 @@ func ListRolesForEvent(evt *RoleEvent) ([]Role, error) {
 		return roles, err
 	}
 	defer coll.Close()
-	err = coll.Find(bson.M{"events": evt.name}).All(&roles)
+	err = coll.Find(bson.M{"events": evt.Name}).All(&roles)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +109,7 @@ func FindRole(name string) (Role, error) {
 	defer coll.Close()
 	err = coll.FindId(name).One(&role)
 	if err == mgo.ErrNotFound {
-		return role, ErrRoleNotFound
+		return role, permTypes.ErrRoleNotFound
 	}
 	if err != nil {
 		return role, err
@@ -186,7 +126,7 @@ func DestroyRole(name string) error {
 	defer coll.Close()
 	err = coll.RemoveId(name)
 	if err == mgo.ErrNotFound {
-		return ErrRoleNotFound
+		return permTypes.ErrRoleNotFound
 	}
 	return err
 }
@@ -194,14 +134,14 @@ func DestroyRole(name string) error {
 func (r *Role) AddPermissions(permNames ...string) error {
 	for _, permName := range permNames {
 		if permName == "" {
-			return ErrInvalidPermissionName
+			return permTypes.ErrInvalidPermissionName
 		}
 		if permName == "*" {
 			permName = ""
 		}
 		reg := PermissionRegistry.getSubRegistry(permName)
 		if reg == nil {
-			return &ErrPermissionNotFound{permission: permName}
+			return &permTypes.ErrPermissionNotFound{Permission: permName}
 		}
 		var found bool
 		for _, ctxType := range reg.AllowedContexts() {
@@ -211,9 +151,9 @@ func (r *Role) AddPermissions(permNames ...string) error {
 			}
 		}
 		if !found {
-			return &ErrPermissionNotAllowed{
-				permission:  permName,
-				contextType: r.ContextType,
+			return &permTypes.ErrPermissionNotAllowed{
+				Permission:  permName,
+				ContextType: r.ContextType,
 			}
 		}
 	}
@@ -279,7 +219,7 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 	for i, scheme := range schemes {
 		permissions[i] = Permission{
 			Scheme: scheme,
-			Context: PermissionContext{
+			Context: permTypes.PermissionContext{
 				CtxType: r.ContextType,
 				Value:   contextValue,
 			},
@@ -289,12 +229,12 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 }
 
 func (r *Role) AddEvent(eventName string) error {
-	roleEvent := RoleEventMap[eventName]
+	roleEvent := permTypes.RoleEventMap[eventName]
 	if roleEvent == nil {
-		return ErrRoleEventNotFound
+		return permTypes.ErrRoleEventNotFound
 	}
-	if r.ContextType != roleEvent.context {
-		return ErrRoleEventWrongContext{expected: string(roleEvent.context), role: string(r.ContextType)}
+	if r.ContextType != roleEvent.Context {
+		return permTypes.ErrRoleEventWrongContext{Expected: string(roleEvent.Context), Role: string(r.ContextType)}
 	}
 	coll, err := rolesCollection()
 	if err != nil {
@@ -351,7 +291,7 @@ func (r *Role) Update() error {
 func (r *Role) Add() error {
 	name := strings.TrimSpace(r.Name)
 	if len(name) == 0 {
-		return ErrInvalidRoleName
+		return permTypes.ErrInvalidRoleName
 	}
 	coll, err := rolesCollection()
 	if err != nil {
@@ -361,7 +301,7 @@ func (r *Role) Add() error {
 	insertRole := Role{Name: name, ContextType: r.ContextType, Description: r.Description, SchemeNames: r.SchemeNames, Events: r.Events}
 	err = coll.Insert(insertRole)
 	if mgo.IsDup(err) {
-		return ErrRoleAlreadyExists
+		return permTypes.ErrRoleAlreadyExists
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ func (s *S) TestMountsForApp(c *check.C) {
 		Pool:      "bonehunters",
 		TeamOwner: "admin",
 	}
-	err := v.Save()
+	err := v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)

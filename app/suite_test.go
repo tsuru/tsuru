@@ -106,7 +106,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
-	data, err := json.Marshal(AppLock{})
+	data, err := json.Marshal(appTypes.AppLock{})
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(data, &s.zeroLock)
 	c.Assert(err, check.IsNil)
@@ -192,12 +192,5 @@ func setupMocks(s *S) {
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &s.defaultPlan, nil
-	}
-
-	s.mockService.Platform.OnFindByName = func(name string) (*appTypes.Platform, error) {
-		if name == "python" || name == "heimerdinger" {
-			return &appTypes.Platform{Name: name}, nil
-		}
-		return nil, appTypes.ErrPlatformNotFound
 	}
 }

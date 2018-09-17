@@ -38,22 +38,27 @@ func ClusterService() (provTypes.ClusterService, error) {
 }
 
 func (s *clusterService) Create(c provTypes.Cluster) error {
-	if err := s.createClusterMachine(&c); err != nil {
+	err := s.createClusterMachine(&c)
+	if err != nil {
+		return err
+	}
+	err = s.validate(c, true)
+	if err != nil {
 		return err
 	}
 	return s.save(c)
 }
 
 func (s *clusterService) Update(c provTypes.Cluster) error {
+	err := s.validate(c, false)
+	if err != nil {
+		return err
+	}
 	return s.save(c)
 }
 
 func (s *clusterService) save(c provTypes.Cluster) error {
-	err := s.validate(c)
-	if err != nil {
-		return err
-	}
-	err = s.initCluster(c)
+	err := s.initCluster(c)
 	if err != nil {
 		return err
 	}
@@ -106,13 +111,13 @@ func (s *clusterService) Delete(c provTypes.Cluster) error {
 	return s.storage.Delete(c)
 }
 
-func (s *clusterService) validate(c provTypes.Cluster) error {
+func (s *clusterService) validate(c provTypes.Cluster, isNewCluster bool) error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "cluster name is mandatory"})
 	}
-	if !validation.ValidateName(c.Name) {
-		msg := "Invalid cluster name, cluster name should have at most 63 " +
+	if isNewCluster && !validation.ValidateName(c.Name) {
+		msg := "Invalid cluster name, cluster name should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})

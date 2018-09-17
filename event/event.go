@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var (
@@ -387,7 +388,7 @@ type Opts struct {
 	AllowedCancel AllowedPermission
 }
 
-func Allowed(scheme *permission.PermissionScheme, contexts ...permission.PermissionContext) AllowedPermission {
+func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) AllowedPermission {
 	return AllowedPermission{
 		Scheme:   scheme.FullName(),
 		Contexts: contexts,
@@ -396,7 +397,7 @@ func Allowed(scheme *permission.PermissionScheme, contexts ...permission.Permiss
 
 type AllowedPermission struct {
 	Scheme   string
-	Contexts []permission.PermissionContext `bson:",omitempty"`
+	Contexts []permTypes.PermissionContext `bson:",omitempty"`
 }
 
 func (ap *AllowedPermission) GetBSON() (interface{}, error) {
@@ -472,7 +473,7 @@ func (f *Filter) LoadKindNames(form map[string][]string) {
 
 func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
-	permMap := map[string][]permission.PermissionContext{}
+	permMap := map[string][]permTypes.PermissionContext{}
 	andBlock := []bson.M{}
 	if f.Permissions != nil {
 		for _, p := range f.Permissions {
@@ -482,7 +483,7 @@ func (f *Filter) toQuery() (bson.M, error) {
 		for perm, ctxs := range permMap {
 			ctxsBson := []bson.D{}
 			for _, ctx := range ctxs {
-				if ctx.CtxType == permission.CtxGlobal {
+				if ctx.CtxType == permTypes.CtxGlobal {
 					ctxsBson = nil
 					break
 				}

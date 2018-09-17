@@ -11,8 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -28,6 +26,8 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -49,7 +49,7 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermApp,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 }
 
@@ -102,8 +102,8 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 			Cancelable: i == 0,
 		}
 		if t == event.TargetTypeApp {
-			opts.Allowed = event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxTeam, s.team.Name))
-			opts.AllowedCancel = event.Allowed(permission.PermAppUpdateEvents, permission.Context(permission.CtxTeam, s.team.Name))
+			opts.Allowed = event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
+			opts.AllowedCancel = event.Allowed(permission.PermAppUpdateEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
 		} else {
 			opts.Allowed = event.Allowed(permission.PermApp)
 			opts.AllowedCancel = event.Allowed(permission.PermApp)
@@ -368,13 +368,13 @@ func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
 func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxTeam, s.team.Name)),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
 	})
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
@@ -395,13 +395,13 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, "some-other-team"),
+		Context: permission.Context(permTypes.CtxTeam, "some-other-team"),
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
-		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxTeam, s.team.Name)),
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
 	})
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
@@ -417,15 +417,15 @@ func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppUpdate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
-		Allowed:       event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxTeam, s.team.Name)),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, permission.Context(permission.CtxTeam, s.team.Name)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
 	})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("reason=we ain't gonna take it")
@@ -443,15 +443,15 @@ func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
-		Allowed:       event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxTeam, s.team.Name)),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, permission.Context(permission.CtxTeam, "other-team")),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, permission.Context(permTypes.CtxTeam, "other-team")),
 	})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("reason=we ain't gonna take it")
@@ -469,7 +469,7 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	expectedBlocks := addBlocks(c)
 	request, err := http.NewRequest("GET", "/events/blocks", nil)
@@ -489,7 +489,7 @@ func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
 func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	blocks := addBlocks(c)
 	err := event.RemoveBlock(blocks[1].ID)
@@ -523,7 +523,7 @@ func (s *EventSuite) TestEventBlockListWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
 	c.Assert(err, check.IsNil)
@@ -538,7 +538,7 @@ func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
 func (s *EventSuite) TestEventBlockAdd(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	block := &event.Block{KindName: "app.deploy", Reason: "block reason"}
 	values, err := form.EncodeToValues(block)
@@ -579,7 +579,7 @@ func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
 func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	block := &event.Block{KindName: "app.deploy"}
 	values, err := form.EncodeToValues(block)
@@ -601,7 +601,7 @@ func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	blocks := addBlocks(c)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", blocks[0].ID.Hex()), nil)
@@ -630,7 +630,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	request, err := http.NewRequest("DELETE", "/events/blocks/abc", nil)
 	c.Assert(err, check.IsNil)
@@ -646,7 +646,7 @@ func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 func (s *EventSuite) TestEventBlockRemoveUUIDNotFound(c *check.C) {
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", bson.NewObjectId().Hex()), nil)
 	c.Assert(err, check.IsNil)

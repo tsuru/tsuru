@@ -6,15 +6,12 @@
 package validation
 
 import (
-	"fmt"
 	"regexp"
-
-	"github.com/tsuru/tsuru/errors"
 )
 
 var (
 	emailRegexp = regexp.MustCompile(`^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$`)
-	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
+	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)
 )
 
 func ValidateEmail(email string) bool {
@@ -40,15 +37,8 @@ func ValidateLength(value string, min, max int) bool {
 	return true
 }
 
-// ValidateName checks wether the given data contains at most 63 characters
+// ValidateName checks wether the given data contains at most 40 characters
 // containing only lower case letters, numbers or dashes and starts with a letter
 func ValidateName(name string) bool {
 	return nameRegexp.MatchString(name)
-}
-
-func EnsureValidateName(name string) error {
-	if !ValidateName(name) {
-		return &errors.ValidationError{Message: fmt.Sprintf("name does not match regex %q", nameRegexp.String())}
-	}
-	return nil
 }

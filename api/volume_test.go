@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 )
@@ -27,7 +28,7 @@ func (s *S) TestVolumeList(c *check.C) {
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
@@ -60,18 +61,18 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	err := pool.AddPool(pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	v2 := volume.Volume{Name: "v2", Pool: "otherpool", TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v2.Save()
+	err = v2.Create()
 	c.Assert(err, check.IsNil)
 	token1 := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermVolumeRead,
-		Context: permission.Context(permission.CtxPool, "otherpool"),
+		Context: permission.Context(permTypes.CtxPool, "otherpool"),
 	})
 	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom2", permission.Permission{
 		Scheme:  permission.PermVolumeRead,
-		Context: permission.Context(permission.CtxTeam, "otherteam"),
+		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
@@ -109,7 +110,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -162,7 +163,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
@@ -229,7 +230,7 @@ func (s *S) TestVolumeCreateConflict(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored`)
 	url := "/1.4/volumes"
@@ -246,7 +247,7 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
 	url := "/1.4/volumes/v1"
@@ -320,7 +321,7 @@ func (s *S) TestVolumeDelete(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -342,7 +343,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -407,7 +408,7 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -439,7 +440,7 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Save()
+	err := v1.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
@@ -467,7 +468,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt1", false)
 	c.Assert(err, check.IsNil)
@@ -518,7 +519,7 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -540,7 +541,7 @@ func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt1", false)
 	c.Assert(err, check.IsNil)

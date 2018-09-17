@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 var ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
@@ -20,52 +21,29 @@ var ErrTooManyTeams = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "Y
 type PermissionScheme struct {
 	name     string
 	parent   *PermissionScheme
-	contexts []contextType
+	contexts []permTypes.ContextType
 }
 
 type PermissionSchemeList []*PermissionScheme
 
-type PermissionContext struct {
-	CtxType contextType
-	Value   string
+func Context(t permTypes.ContextType, v string) permTypes.PermissionContext {
+	return permTypes.PermissionContext{CtxType: t, Value: v}
 }
 
-func Context(t contextType, v string) PermissionContext {
-	return PermissionContext{CtxType: t, Value: v}
-}
-
-func Contexts(t contextType, values []string) []PermissionContext {
-	contexts := make([]PermissionContext, len(values))
+func Contexts(t permTypes.ContextType, values []string) []permTypes.PermissionContext {
+	contexts := make([]permTypes.PermissionContext, len(values))
 	for i, v := range values {
-		contexts[i] = PermissionContext{CtxType: t, Value: v}
+		contexts[i] = permTypes.PermissionContext{CtxType: t, Value: v}
 	}
 	return contexts
 }
 
-type contextType string
-
-var (
-	CtxGlobal          = contextType("global")
-	CtxApp             = contextType("app")
-	CtxTeam            = contextType("team")
-	CtxUser            = contextType("user")
-	CtxPool            = contextType("pool")
-	CtxIaaS            = contextType("iaas")
-	CtxService         = contextType("service")
-	CtxServiceInstance = contextType("service-instance")
-	CtxVolume          = contextType("volume")
-
-	ContextTypes = []contextType{
-		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxService, CtxServiceInstance,
-	}
-)
-
-func ParseContext(ctx string) (contextType, error) {
+func ParseContext(ctx string) (permTypes.ContextType, error) {
 	return parseContext(ctx)
 }
 
-func parseContext(ctx string) (contextType, error) {
-	for _, t := range ContextTypes {
+func parseContext(ctx string) (permTypes.ContextType, error) {
+	for _, t := range permTypes.ContextTypes {
 		if string(t) == ctx {
 			return t, nil
 		}
@@ -125,8 +103,8 @@ func (s *PermissionScheme) Identifier() string {
 	return str
 }
 
-func (s *PermissionScheme) AllowedContexts() []contextType {
-	contexts := []contextType{CtxGlobal}
+func (s *PermissionScheme) AllowedContexts() []permTypes.ContextType {
+	contexts := []permTypes.ContextType{permTypes.CtxGlobal}
 	if s.contexts != nil {
 		return append(contexts, s.contexts...)
 	}
@@ -142,7 +120,7 @@ func (s *PermissionScheme) AllowedContexts() []contextType {
 
 type Permission struct {
 	Scheme  *PermissionScheme
-	Context PermissionContext
+	Context permTypes.PermissionContext
 }
 
 func (p *Permission) String() string {
@@ -164,7 +142,7 @@ func ListContextValues(t Token, scheme *PermissionScheme, failIfEmpty bool) ([]s
 	}
 	values := make([]string, 0, len(contexts))
 	for _, ctx := range contexts {
-		if ctx.CtxType == CtxGlobal {
+		if ctx.CtxType == permTypes.CtxGlobal {
 			return nil, nil
 		}
 		values = append(values, ctx.Value)
@@ -172,8 +150,8 @@ func ListContextValues(t Token, scheme *PermissionScheme, failIfEmpty bool) ([]s
 	return values, nil
 }
 
-func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
-	var contexts []PermissionContext
+func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
+	var contexts []permTypes.PermissionContext
 	for _, perm := range perms {
 		if perm.Scheme.IsParent(scheme) {
 			if len(ctxTypes) > 0 {
@@ -191,15 +169,15 @@ func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme,
 	return contexts
 }
 
-func ContextsForPermission(token Token, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
+func ContextsForPermission(token Token, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
 	perms, err := token.Permissions()
 	if err != nil {
-		return []PermissionContext{}
+		return []permTypes.PermissionContext{}
 	}
 	return ContextsFromListForPermission(perms, scheme, ctxTypes...)
 }
 
-func Check(token Token, scheme *PermissionScheme, contexts ...PermissionContext) bool {
+func Check(token Token, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
@@ -207,10 +185,10 @@ func Check(token Token, scheme *PermissionScheme, contexts ...PermissionContext)
 	return CheckFromPermList(perms, scheme, contexts...)
 }
 
-func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...PermissionContext) bool {
+func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	for _, perm := range perms {
 		if perm.Scheme.IsParent(scheme) {
-			if perm.Context.CtxType == CtxGlobal {
+			if perm.Context.CtxType == permTypes.CtxGlobal {
 				return true
 			}
 			for _, ctx := range contexts {
@@ -227,11 +205,11 @@ func TeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
 	allContexts := ContextsForPermission(t, scheme)
 	teams := make([]string, 0, len(allContexts))
 	for _, ctx := range allContexts {
-		if ctx.CtxType == CtxGlobal {
+		if ctx.CtxType == permTypes.CtxGlobal {
 			teams = nil
 			break
 		}
-		if ctx.CtxType == CtxTeam {
+		if ctx.CtxType == permTypes.CtxTeam {
 			teams = append(teams, ctx.Value)
 		}
 	}

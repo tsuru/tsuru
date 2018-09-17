@@ -186,6 +186,19 @@ func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:v1", repoNamespace))
 }
 
+func (s *S) TestGetImageFromAppPlatformWithAppLockedImage(c *check.C) {
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	c.Assert(err, check.IsNil)
+	expectedImage := fmt.Sprintf("%s/python:locked", repoNamespace)
+	s.mockService.PlatformImage.OnFindImage = func(platform, version string) (string, error) {
+		return expectedImage, nil
+	}
+	app := provisiontest.NewFakeApp("myapp", "python:locked", 1)
+	img, err := image.GetBuildImage(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, expectedImage)
+}
+
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
 	err := s.conn.Apps().Insert(app)

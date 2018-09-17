@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func init() {
@@ -161,7 +162,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-func moveContainersPermissionContexts(from, to string) ([]permission.PermissionContext, error) {
+func moveContainersPermissionContexts(from, to string) ([]permTypes.PermissionContext, error) {
 	originHost, err := dockercommon.GetNodeByHost(mainDockerProvisioner.Cluster(), from)
 	if err != nil {
 		return nil, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -170,13 +171,13 @@ func moveContainersPermissionContexts(from, to string) ([]permission.PermissionC
 	if err != nil {
 		return nil, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	var permContexts []permission.PermissionContext
+	var permContexts []permTypes.PermissionContext
 	originPool, ok := originHost.Metadata[provision.PoolMetadataName]
 	if ok {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, originPool))
+		permContexts = append(permContexts, permission.Context(permTypes.CtxPool, originPool))
 	}
 	if pool, ok := destinationHost.Metadata[provision.PoolMetadataName]; ok && pool != originPool {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
+		permContexts = append(permContexts, permission.Context(permTypes.CtxPool, pool))
 	}
 	return permContexts, nil
 }
@@ -251,9 +252,9 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("unable to parse fields in docker log config: %s", err),
 		}
 	}
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if pool != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, pool))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, pool))
 	}
 	hasPermission := permission.Check(t, permission.PermPoolUpdateLogs, ctxs...)
 	if !hasPermission {

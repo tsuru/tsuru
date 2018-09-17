@@ -33,7 +33,7 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
 		{"my-nc_nc", "node-container-my-nc-nc"},
 	}
 	for i, tt := range tests {
-		c.Assert(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
+		c.Check(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
 			Name: tt.name,
 		}), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
@@ -59,10 +59,14 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 		{"myapp", "p1", "myapp-p1"},
 		{"MYAPP", "p-1", "myapp-p-1"},
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -73,10 +77,14 @@ func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
 		{"myapp", "p1", "myapp-p1-units"},
 		{"MYAPP", "p-1", "myapp-p-1-units"},
 		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1-units"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123-units"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08-units"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0-units"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -91,8 +99,8 @@ func (s *S) TestDeployPodNameForApp(c *check.C) {
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
 		name, err := deployPodNameForApp(a)
-		c.Assert(err, check.IsNil)
-		c.Assert(name, check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(err, check.IsNil)
+		c.Check(name, check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -106,7 +114,7 @@ func (s *S) TestExecCommandPodNameForApp(c *check.C) {
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -123,7 +131,7 @@ func (s *S) TestDaemonSetName(c *check.C) {
 		{"d1", "P-x_1", "node-container-d1-pool-p-x-1"},
 	}
 	for i, tt := range tests {
-		c.Assert(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -135,7 +143,7 @@ func (s *S) TestRegistrySecretName(c *check.C) {
 		{"my-registry", "registry-my-registry"},
 	}
 	for i, tt := range tests {
-		c.Assert(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -143,13 +151,17 @@ func (s *S) TestAppLabelForApp(c *check.C) {
 	var tests = []struct {
 		name, process, expected string
 	}{
-		{"myapp", "p1", "tsuru-app-myapp-p1"},
-		{"MYAPP", "p-1", "tsuru-app-myapp-p-1"},
-		{"my-app_app", "P_1-1", "tsuru-app-my-app-app-p-1-1"},
+		{"myapp", "p1", "myapp-p1"},
+		{"MYAPP", "p-1", "myapp-p-1"},
+		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Assert(appLabelForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+		c.Check(appLabelForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 

@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 func validateNodeAddress(address string) error {
@@ -124,7 +125,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if params.Pool == "" {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
-	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, params.Pool)) {
+	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permTypes.CtxPool, params.Pool)) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
@@ -133,7 +134,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, params.Pool)),
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, params.Pool)),
 	})
 	if err != nil {
 		return err
@@ -191,7 +192,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	pool := n.Pool()
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
-		permission.Context(permission.CtxPool, pool),
+		permission.Context(permTypes.CtxPool, pool),
 	)
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized
@@ -201,7 +202,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermNodeDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, pool)),
 	})
 	if err != nil {
 		return err
@@ -342,7 +343,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	nodeProv := prov.(provision.NodeProvisioner)
 	oldPool := node.Pool()
 	allowedOldPool := permission.Check(t, permission.PermNodeUpdate,
-		permission.Context(permission.CtxPool, oldPool),
+		permission.Context(permTypes.CtxPool, oldPool),
 	)
 	if !allowedOldPool {
 		return permission.ErrUnauthorized
@@ -352,7 +353,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if ok {
 		delete(params.Metadata, provision.PoolMetadataName)
 		allowedNewPool := permission.Check(t, permission.PermNodeUpdate,
-			permission.Context(permission.CtxPool, params.Pool),
+			permission.Context(permTypes.CtxPool, params.Pool),
 		)
 		if !allowedNewPool {
 			return permission.ErrUnauthorized
@@ -364,8 +365,8 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed: event.Allowed(permission.PermPoolReadEvents,
-			permission.Context(permission.CtxPool, oldPool),
-			permission.Context(permission.CtxPool, params.Pool),
+			permission.Context(permTypes.CtxPool, oldPool),
+			permission.Context(permTypes.CtxPool, params.Pool),
 		),
 	})
 	if err != nil {
@@ -397,7 +398,7 @@ func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	hasAccess := permission.Check(t, permission.PermNodeRead,
-		permission.Context(permission.CtxPool, node.Pool()))
+		permission.Context(permTypes.CtxPool, node.Pool()))
 	if !hasAccess {
 		return permission.ErrUnauthorized
 	}
@@ -499,9 +500,9 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	poolName := r.FormValue("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermHealingUpdate, ctxs...) {
 		return permission.ErrUnauthorized
@@ -539,9 +540,9 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	poolName := r.URL.Query().Get("pool")
-	var ctxs []permission.PermissionContext
+	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
+		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
 	}
 	if !permission.Check(t, permission.PermHealingDelete, ctxs...) {
 		return permission.ErrUnauthorized
@@ -593,13 +594,13 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	params.Force = true
-	var permContexts []permission.PermissionContext
+	var permContexts []permTypes.PermissionContext
 	var ok bool
 	evtTarget := event.Target{Type: event.TargetTypeGlobal}
 	params.Pool, ok = params.MetadataFilter[provision.PoolMetadataName]
 	if ok {
 		delete(params.MetadataFilter, provision.PoolMetadataName)
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, params.Pool))
+		permContexts = append(permContexts, permission.Context(permTypes.CtxPool, params.Pool))
 		evtTarget = event.Target{Type: event.TargetTypePool, Value: params.Pool}
 	}
 	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
@@ -685,7 +686,7 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	hasAccess := permission.Check(t, permission.PermNodeRead,
-		permission.Context(permission.CtxPool, node.Pool()))
+		permission.Context(permTypes.CtxPool, node.Pool()))
 	if !hasAccess {
 		return permission.ErrUnauthorized
 	}

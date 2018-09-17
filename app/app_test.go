@@ -47,6 +47,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
@@ -241,7 +242,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Save()
+	err = v1.Create()
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -383,7 +384,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := CreateApp(&app, s.user)
-	e, ok := err.(*AppCreationError)
+	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
 	qe, ok := e.Err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
@@ -424,9 +425,9 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
 	a := App{Name: "appname", Platform: "python", TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*AppCreationError)
+	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.app, check.Equals, "appname")
+	c.Assert(e.App, check.Equals, "appname")
 	c.Assert(e.Err, check.NotNil)
 	c.Assert(e.Err.Error(), check.Equals, "there is already an app with this name")
 }
@@ -441,7 +442,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *check.C) {
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, check.Equals, true)
-	msg := "Invalid app name, your app should have at most 63 " +
+	msg := "Invalid app name, your app should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
 	c.Assert(e.Message, check.Equals, msg)
@@ -1090,7 +1091,7 @@ func (s *S) TestUpdateNodeStatusUnrelatedProvError(c *check.C) {
 func (s *S) TestGrantAccess(c *check.C) {
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	app := App{Name: "app-name", Platform: "django", Teams: []string{"acid-rain", "zito"}}
 	err := s.conn.Apps().Insert(app)
@@ -1116,7 +1117,7 @@ func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 func (s *S) TestRevokeAccess(c *check.C) {
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	team := authTypes.Team{Name: "abcd"}
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
@@ -1141,10 +1142,10 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := authTypes.Team{Name: "abcd"}
 	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permission.CtxTeam, team.Name),
+		Context: permission.Context(permTypes.CtxTeam, team.Name),
 	})
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err := s.conn.Apps().Insert(app)
@@ -1390,6 +1391,45 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
+}
+
+func (s *S) TestSetEnvsValidation(c *check.C) {
+	a := App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+	}
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+
+	var tests = []struct {
+		envName string
+		isValid bool
+	}{
+		{"VALID_ENV", true},
+		{"ENV123", true},
+		{"lowcase", true},
+		{"ENV-WITH-DASHES", true},
+		{"-NO_LEADING_DASH", false},
+		{"_NO_LEADING_UNDERSCORE", false},
+		{"ENV.WITH.DOTS", false},
+		{"ENV VAR WITH SPACES", false},
+		{"0NO_LEADING_NUMBER", false},
+	}
+	for _, test := range tests {
+		envs := []bind.EnvVar{
+			{
+				Name:  test.envName,
+				Value: "any value",
+			},
+		}
+		err = a.SetEnvs(bind.SetEnvArgs{Envs: envs})
+		if test.isValid {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, fmt.Sprintf("Invalid environment variable name: '%s'", test.envName))
+		}
+	}
 }
 
 func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
@@ -2292,7 +2332,7 @@ func (s *S) TestIsValid(c *check.C) {
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
-	errMsg := "Invalid app name, your app should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter."
+	errMsg := "Invalid app name, your app should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter."
 	var data = []struct {
 		name      string
 		teamOwner string
@@ -2300,9 +2340,9 @@ func (s *S) TestIsValid(c *check.C) {
 		router    string
 		expected  string
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", s.team.Name, "pool1", "fake", ""},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmy", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappm", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", ""},
 		{"myApp", s.team.Name, "pool1", "fake", errMsg},
 		{"my app", s.team.Name, "pool1", "fake", errMsg},
 		{"123myapp", s.team.Name, "pool1", "fake", errMsg},
@@ -2319,7 +2359,7 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 	for _, d := range data {
 		a := App{Name: d.name, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
-		if valid := a.validate(); valid != nil && valid.Error() != d.expected {
+		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
@@ -3093,7 +3133,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	a2 := App{
 		Name:  "othertestapp",
 		Owner: "bar",
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "something",
 			Owner:       s.user.Email,
@@ -3638,7 +3678,7 @@ func (s *S) TestGetCname(c *check.C) {
 
 func (s *S) TestGetLock(c *check.C) {
 	a := App{
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Owner:       "someone",
 			Reason:      "/app/my-app/deploy",
@@ -3849,7 +3889,7 @@ func (s *S) TestAppAcquireApplicationLockNonExistentApp(c *check.C) {
 func (s *S) TestAppAcquireApplicationLockAlreadyLocked(c *check.C) {
 	a := App{
 		Name: "someapp",
-		Lock: AppLock{
+		Lock: appTypes.AppLock{
 			Locked:      true,
 			Reason:      "/app/my-app/deploy",
 			Owner:       "someone",
@@ -3958,7 +3998,7 @@ func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 0)
-	c.Assert(err, check.DeepEquals, ErrAppNotLocked{
+	c.Assert(err, check.DeepEquals, appTypes.ErrAppNotLocked{
 		App: a2.Name,
 	})
 	app1, err := GetByName(a1.Name)
@@ -3973,12 +4013,12 @@ func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
 }
 
 func (s *S) TestAppLockStringUnlocked(c *check.C) {
-	lock := AppLock{Locked: false}
+	lock := appTypes.AppLock{Locked: false}
 	c.Assert(lock.String(), check.Equals, "Not locked")
 }
 
 func (s *S) TestAppLockStringLocked(c *check.C) {
-	lock := AppLock{
+	lock := appTypes.AppLock{
 		Locked:      true,
 		Reason:      "/app/my-app/deploy",
 		Owner:       "someone",
@@ -3988,7 +4028,7 @@ func (s *S) TestAppLockStringLocked(c *check.C) {
 }
 
 func (s *S) TestAppLockMarshalJSON(c *check.C) {
-	lock := AppLock{
+	lock := appTypes.AppLock{
 		Locked:      true,
 		Reason:      "/app/my-app/deploy",
 		Owner:       "someone",
@@ -3996,29 +4036,29 @@ func (s *S) TestAppLockMarshalJSON(c *check.C) {
 	}
 	data, err := lock.MarshalJSON()
 	c.Assert(err, check.IsNil)
-	var a AppLock
+	var a appTypes.AppLock
 	err = json.Unmarshal(data, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(a, check.DeepEquals, lock)
 }
 
 func (s *S) TestAppLockGetLocked(c *check.C) {
-	lock := AppLock{Locked: true}
+	lock := appTypes.AppLock{Locked: true}
 	c.Assert(lock.GetLocked(), check.Equals, lock.Locked)
 }
 
 func (s *S) TestAppLockGetReason(c *check.C) {
-	lock := AppLock{Reason: "/app/my-app/deploy"}
+	lock := appTypes.AppLock{Reason: "/app/my-app/deploy"}
 	c.Assert(lock.GetReason(), check.Equals, lock.Reason)
 }
 
 func (s *S) TestAppLockGetOwner(c *check.C) {
-	lock := AppLock{Owner: "someone"}
+	lock := appTypes.AppLock{Owner: "someone"}
 	c.Assert(lock.GetOwner(), check.Equals, lock.Owner)
 }
 
 func (s *S) TestAppLockGetAcquireDate(c *check.C) {
-	lock := AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
+	lock := appTypes.AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
 	c.Assert(lock.GetAcquireDate(), check.Equals, lock.AcquireDate)
 }
 
@@ -4527,6 +4567,19 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	c.Assert(envs, check.DeepEquals, expected)
 }
 
+func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
+	app := App{Name: "app with invalid name", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Name: app.Name, Description: "bleble"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Description, check.Equals, "bleble")
+}
+
 func (s *S) TestUpdateDescription(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)
@@ -4539,7 +4592,7 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
 
-func (s *S) TestUpdatePlatformLanguage(c *check.C) {
+func (s *S) TestUpdateAppPlatform(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
@@ -4549,6 +4602,20 @@ func (s *S) TestUpdatePlatformLanguage(c *check.C) {
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Platform, check.Equals, updateData.Platform)
+	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
+}
+
+func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "example", Platform: "python:v3"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Platform, check.Equals, "python")
+	c.Assert(dbApp.PlatformVersion, check.Equals, "v3")
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
 }
 

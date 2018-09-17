@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -71,7 +72,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	defer router.Unregister("bar")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeRouter, Values: []string{"router1", "router2"}})
 	c.Assert(err, check.IsNil)
@@ -120,7 +121,7 @@ func (s *S) TestListRoutersWithInfo(c *check.C) {
 func (s *S) TestListAppRouters(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadRouter,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -147,7 +148,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 	defer routertest.StatusRouter.Reset()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadRouter,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -174,7 +175,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 func (s *S) TestListAppRoutersEmpty(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadRouter,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -192,7 +193,7 @@ func (s *S) TestListAppRoutersEmpty(c *check.C) {
 func (s *S) TestAddAppRouter(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -218,7 +219,7 @@ func (s *S) TestAddAppRouter(c *check.C) {
 func (s *S) TestAddAppRouterInvalidRouter(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -236,7 +237,7 @@ func (s *S) TestAddAppRouterInvalidRouter(c *check.C) {
 func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -258,7 +259,7 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 	defer config.Unset("routers:fake-opts:type")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -285,7 +286,7 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -305,7 +306,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 	defer config.Unset("routers:fake-opts:type")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "apptest", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -327,7 +328,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 func (s *S) TestRemoveAppRouter(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
@@ -348,7 +349,7 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 func (s *S) TestRemoveAppRouterNotFound(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
-		Context: permission.Context(permission.CtxTeam, "tsuruteam"),
+		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(&myapp, s.user)
