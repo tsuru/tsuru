@@ -198,7 +198,7 @@ func (o *DeployOptions) GetKind() (kind DeployKind) {
 		}
 		return DeployUpload
 	}
-	if o.Commit != "" {
+	if o.Commit != "" && o.ArchiveURL == "" {
 		return DeployGit
 	}
 	return DeployArchiveURL
