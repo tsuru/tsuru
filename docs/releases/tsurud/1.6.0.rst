@@ -17,11 +17,21 @@ These release notes cover the :ref:`new features <new-1.6.0>`, :ref:`bug fixes
 New features
 ============
 
+* Add support to Open Service Broker API.  (`#2049 <https://github.com/tsuru/tsuru/issues/2049>`_)
+
+  Service brokers may be registered on tsuru API to make their services
+  available to be bound to apps, just like any regular tsuru service.
+
 * The API now has an official openapi v2 specification, it's not complete yet
   but we're constantly updating it adding missing API calls. (`#1993 <https://github.com/tsuru/tsuru/issues/1993>`_)
 
 * API requests now accept json messages if Content-Type is application/json
   (`#1995 <https://github.com/tsuru/tsuru/issues/1995>`_)
+
+* Add platforms versioning. (`#2087 <https://github.com/tsuru/tsuru/issues/2087>`)
+
+  Now every time a platform is updated, it's tagged with a new version number.
+  It's possible to lock an app to a specific platform version.
 
 * Support for auth tokens associated with a team was added. (`#1433 <https://github.com/tsuru/tsuru/issues/1433>`_)
 
@@ -77,6 +87,12 @@ New features
 * Add app-build support to kubernetes provisioner (`#1838
   <https://github.com/tsuru/tsuru/issues/1838>`_) (backported to 1.5 branch)
 
+* Add support to building platforms in Kubernetes pools (`#2006
+  <https://github.com/tsuru/tsuru/issues/2006>`_)
+
+* Add support for tagging teams (`#2117`
+  <https://github.com/tsuru/tsuru/issues/2117>`_)
+
 .. _bug-1.6.0:
 
 Bug fixes
@@ -102,3 +118,13 @@ Bug fixes
 
 * Fixed race causing server to possibly skip shutdown handlers. (`#1956
   <https://github.com/tsuru/tsuru/issues/1956>`_) (backported to 1.5 branch)
+
+* Add validation to environment variable names. (`#2144
+  <https://github.com/tsuru/tsuru/issues/2144>`_)
+
+* Fix name handling for apps, platforms, event webhooks, pools, clusters,
+  volumes and services, to be compatible with Kubernetes naming conventions.
+  (`#2145 <https://github.com/tsuru/tsuru/issues/2145>`_)
+
+* Fix rollback on an app's first deploy on Kubernetes provisioner. (`#2132
+  <https://github.com/tsuru/tsuru/issues/2132>`_)
