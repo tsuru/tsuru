@@ -17,11 +17,6 @@ These release notes cover the :ref:`new features <new-1.6.0>`, :ref:`bug fixes
 New features
 ============
 
-* Add support to Open Service Broker API.  (`#2049 <https://github.com/tsuru/tsuru/issues/2049>`_)
-
-  Service brokers may be registered on tsuru API to make their services
-  available to be bound to apps, just like any regular tsuru service.
-
 * The API now has an official openapi v2 specification, it's not complete yet
   but we're constantly updating it adding missing API calls. (`#1993 <https://github.com/tsuru/tsuru/issues/1993>`_)
 
