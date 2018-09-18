@@ -28,7 +28,7 @@ New features
 * API requests now accept json messages if Content-Type is application/json
   (`#1995 <https://github.com/tsuru/tsuru/issues/1995>`_)
 
-* Add platforms versioning. (`#2087 <https://github.com/tsuru/tsuru/issues/2087>`)
+* Add platforms versioning. (`#2087 <https://github.com/tsuru/tsuru/issues/2087>`_)
 
   Now every time a platform is updated, it's tagged with a new version number.
   It's possible to lock an app to a specific platform version.
@@ -90,7 +90,7 @@ New features
 * Add support to building platforms in Kubernetes pools (`#2006
   <https://github.com/tsuru/tsuru/issues/2006>`_)
 
-* Add support for tagging teams (`#2117`
+* Add support for tagging teams (`#2117
   <https://github.com/tsuru/tsuru/issues/2117>`_)
 
 .. _bug-1.6.0:
