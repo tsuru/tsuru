@@ -9,12 +9,12 @@ Open Service Broker
 Overview
 ========
 
-The `Open Service Broker API <https://www.openservicebrokerapi.org/>`_ project allows developers, ISVs, and SaaS vendors a single, 
-simple, and elegant way to deliver services to applications running within cloud native platforms. 
+The `Open Service Broker API <https://www.openservicebrokerapi.org/>`_ project allows developers, ISVs, and SaaS vendors a single,
+simple, and elegant way to deliver services to applications running within cloud native platforms.
 
-Tsuru supports services provided by a service broker since version 1.6.0. Service brokers may be registered on the tsuru API to make
+Tsuru supports services provided by a service broker since version 1.7.0. Service brokers may be registered on the tsuru API to make
 their services available for applications running on the platform. Users can create instances from these services, bind and unbind those instances
-as if they were tsuru native services. 
+as if they were tsuru native services.
 
 The next section explains how service brokers are managed by tsuru admins. The usage of services from those brokers do not differ from regular
 tsuru services, except for the support for instance creation and binding parameters.
@@ -66,7 +66,7 @@ the list displayed after adding the `AWS Service Broker <https://github.com/awsl
     +-----------------------+-----------+
 
 
-The name of each service is prefixed with the name of the broker that provides the service ("aws" in this case). 
+The name of each service is prefixed with the name of the broker that provides the service ("aws" in this case).
 tsuru will cache the service catalog returned by the service broker for a few minutes (configurable by broker).
 
 OSB services support creation and binding parameters. Available parameters are displayed using the ``tsuru service info`` command:
