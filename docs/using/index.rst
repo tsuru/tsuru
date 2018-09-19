@@ -32,3 +32,4 @@ Using
     cli/plugins
     deployment
     application-pool
+    team-tokens
