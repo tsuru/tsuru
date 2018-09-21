@@ -69,7 +69,7 @@ type RuleOrdered struct {
 	VirtualHostGroup string `json:"virtualhostgroup"`
 	Environment      string `json:"environment"`
 	Rule             string `json:"rule"`
-	Order            string `json:"order"`
+	Order            int    `json:"order"`
 }
 
 type VirtualHostGroup struct {

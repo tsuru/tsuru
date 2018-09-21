@@ -243,7 +243,7 @@ func (c *GalebClient) fillDefaultRuleOrderedValues(params *RuleOrdered) {
 	if params.Environment == "" {
 		params.Environment = c.Environment
 	}
-	params.Order = "1"
+	params.Order = 1
 }
 
 func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHost) {
