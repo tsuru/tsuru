@@ -781,6 +781,11 @@ func (s *RouterSuite) TestRouteAddRoutesAsync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Sort(URLList(routes))
 	c.Assert(routes, HostEquals, []*url.URL{addr1, addr2})
+	err = asyncRouter.RemoveRoutesAsync(testBackend1, []*url.URL{addr2})
+	c.Assert(err, check.IsNil)
+	routes, err = s.Router.Routes(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, HostEquals, []*url.URL{addr1})
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }
