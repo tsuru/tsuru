@@ -32,6 +32,18 @@ const (
 var (
 	tokenExpire time.Duration
 	cost        int
+	// LDAP Wise vars
+	ldapBaseDn             string
+	ldapHost               string
+	ldapPort               int
+	ldapUseSSL             bool
+	ldapSkipTLS            bool
+	ldapInsecureSkipVerify bool
+	ldapServerName         string
+	ldapBindDN             string
+	ldapBindPassword       string
+	ldapUserFilter         string
+	ldapGroupFilter        string
 )
 
 type Token struct {
@@ -67,8 +79,8 @@ func (t *Token) Permissions() ([]permission.Permission, error) {
 }
 
 func loadConfig() error {
+	var err error
 	if cost == 0 && tokenExpire == 0 {
-		var err error
 		var days int
 		if days, err = config.GetInt("auth:token-expire-days"); err == nil {
 			tokenExpire = time.Duration(int64(days) * 24 * int64(time.Hour))
@@ -82,6 +94,40 @@ func loadConfig() error {
 			return errors.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
 		}
 	}
+	if ldapBaseDn, err = config.GetString("auth:ldap:basedn"); err != nil {
+		ldapBaseDn = ""
+	}
+	if ldapHost, err = config.GetString("auth:ldap:host"); err != nil {
+		return errors.Errorf("You must set LDAP authentication Hostname, in auth:ldap:host")
+	}
+	if ldapPort, err = config.GetInt("auth:ldap:port"); err != nil {
+		ldapPort = 389
+	}
+	if ldapUseSSL, err = config.GetBool("auth:ldap:usessl"); err != nil {
+		ldapUseSSL = false
+	}
+	if ldapSkipTLS, err = config.GetBool("auth:ldap:skiptls"); err != nil {
+		ldapSkipTLS = false
+	}
+	if ldapInsecureSkipVerify, err = config.GetBool("auth:ldap:sslskipverify"); err != nil {
+		ldapInsecureSkipVerify = false
+	}
+	if ldapServerName, err = config.GetString("auth:ldap:servername"); err != nil {
+		ldapServerName = ldapHost
+	}
+	if ldapBindDN, err = config.GetString("auth:ldap:binddn"); err != nil {
+		ldapBindDN = ""
+	}
+	if ldapBindPassword, err = config.GetString("auth:ldap:bindpassword"); err != nil {
+		ldapBindPassword = ""
+	}
+	if ldapUserFilter, err = config.GetString("auth:ldap:userfilter"); err != nil {
+		ldapUserFilter = "(email=%s)"
+	}
+	if ldapGroupFilter, err = config.GetString("auth:ldap:groupfilter"); err != nil {
+		ldapGroupFilter = "(memberUid=%s)"
+	}
+
 	return nil
 }
 
@@ -252,37 +298,41 @@ func createApplicationToken(appName string) (*Token, error) {
 }
 
 func ldapBind(uid, password string) error {
+	err := loadConfig()
+	if err != nil {
+		panic(fmt.Sprintf("ERROR: %v", err.Error()))
+	}
 	client := &ldap.LDAPClient{
-		Base:               "dc=trustyou,dc=com",
-		Host:               "localhost",
-		Port:               6360,
-		UseSSL:             false,
-		SkipTLS:            false,
-		InsecureSkipVerify: true,
-		ServerName:         "ldap02.trustyou.com",
-		BindDN:             "",
-		BindPassword:       "",
-		UserFilter:         "(uid=%s)",
-		GroupFilter:        "(memberUid=%s)",
-		Attributes:         []string{"givenName", "sn", "mail", "uid"},
+		Base:               ldapBaseDn,
+		Host:               ldapHost,
+		Port:               ldapPort,
+		UseSSL:             ldapUseSSL,
+		SkipTLS:            ldapSkipTLS,
+		InsecureSkipVerify: ldapInsecureSkipVerify,
+		ServerName:         ldapServerName,
+		BindDN:             ldapBindDN,
+		BindPassword:       ldapBindPassword,
+		UserFilter:         ldapUserFilter,
+		GroupFilter:        ldapGroupFilter,
+		Attributes:         []string{"uidNumber", "cn", "email", "uid"},
 	}
 
 	// It is the responsibility of the caller to close the connection
 	defer client.Close()
 
-	ok, user, err := client.Authenticate("georgef", "")
+	ok, user, err := client.Authenticate(uid, password)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return err
 	}
-	log.Printf("User: %+v", user)
+	log.Printf("Authenticated user: %+v", user)
 
-	groups, err := client.GetGroupsOfUser("username")
+	groups, err := client.GetGroupsOfUser(user["uid"])
 	if err != nil {
 		return err
 	}
-	log.Printf("Groups: %+v", groups)
+	log.Printf("Authenticated user groups: %+v", groups)
 	return err
 }
