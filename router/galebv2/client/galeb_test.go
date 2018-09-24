@@ -277,14 +277,14 @@ func (s *S) TestUpdatePoolPropertiesNoChanges(c *check.C) {
 	s.handler.ConditionalContent["/api/pool/22"] = `{
 		"id": 22,
 		"_lastmodified_by": "system",
-		"hcPath": "/",
-		"hcHttpStatusCode": "200",
-		"hcBody": ""
+		"hc_path": "/",
+		"hc_http_status_code": "200",
+		"hc_body": ""
 	}`
 	props := BackendPoolHealthCheck{
 		HcPath:           "/",
 		HcBody:           "",
-		HcHttpStatusCode: "200",
+		HcHTTPStatusCode: "200",
 	}
 	err := s.client.UpdatePoolProperties("mypool", props)
 	c.Assert(err, check.IsNil)
@@ -329,7 +329,7 @@ func (s *S) TestUpdatePoolProperties(c *check.C) {
 	props := BackendPoolHealthCheck{
 		HcPath:           "/",
 		HcBody:           "",
-		HcHttpStatusCode: "200",
+		HcHTTPStatusCode: "200",
 	}
 	err := s.client.UpdatePoolProperties("mypool", props)
 	c.Assert(err, check.IsNil)

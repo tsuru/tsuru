@@ -40,9 +40,9 @@ type Target struct {
 }
 
 type BackendPoolHealthCheck struct {
-	HcPath           string `json:"hcPath,omitempty"`
-	HcBody           string `json:"hcBody,omitempty"`
-	HcHttpStatusCode string `json:"hcHttpStatusCode,omitempty"`
+	HcPath           string `json:"hc_path,omitempty"`
+	HcBody           string `json:"hc_body,omitempty"`
+	HcHTTPStatusCode string `json:"hc_http_status_code,omitempty"`
 }
 
 type Pool struct {
