@@ -258,7 +258,7 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	c.Check(web1, check.Equals, "web")
 	web2, err := GetImageWebProcessName(img2)
 	c.Check(err, check.IsNil)
-	c.Check(web2, check.Equals, "web")
+	c.Check(web2, check.Equals, "worker1")
 	web3, err := GetImageWebProcessName(img3)
 	c.Check(err, check.IsNil)
 	c.Check(web3, check.Equals, "api")
