@@ -19,6 +19,8 @@ import (
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
 )
 
+var _ router.AsyncRouter = &galebRouter{}
+
 const routerType = "galeb"
 
 var clientCache struct {
@@ -204,6 +206,10 @@ func (r *galebRouter) addRoutes(name string, addresses []*url.URL, wait bool) (e
 		a.Scheme = router.HttpScheme
 	}
 	return r.client.AddBackends(addresses, r.poolName(backendName), wait)
+}
+
+func (r *galebRouter) RemoveRoutesAsync(name string, addresses []*url.URL) error {
+	return r.RemoveRoutes(name, addresses)
 }
 
 func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
