@@ -169,17 +169,16 @@ func GetImageMetaData(imageName string) (ImageMetadata, error) {
 }
 
 func GetImageWebProcessName(imageName string) (string, error) {
-	const processName = "web"
 	data, err := GetImageMetaData(imageName)
 	if err != nil {
-		return processName, err
+		return "", err
 	}
 	if len(data.Processes) == 0 {
 		return "", nil
 	}
 	var processes []string
 	for name := range data.Processes {
-		if name == processName || len(data.Processes) == 1 {
+		if name == "web" || len(data.Processes) == 1 {
 			return name, nil
 		}
 		processes = append(processes, name)
