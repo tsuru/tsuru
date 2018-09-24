@@ -230,7 +230,7 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
 	}
-	fullId, err := s.client.AddBackendPool("myname")
+	fullId, err := s.client.AddBackendPool("myname", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool", "/api/target/3"})
@@ -245,7 +245,7 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
 	s.handler.RspCode = http.StatusOK
 	s.handler.Content = "invalid content"
-	fullId, err := s.client.AddBackendPool("")
+	fullId, err := s.client.AddBackendPool("", true)
 	c.Assert(err, check.ErrorMatches,
 		"POST /pool: invalid response code: 200: invalid content - PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
@@ -254,7 +254,7 @@ func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
 func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = "invalid content"
-	fullId, err := s.client.AddBackendPool("")
+	fullId, err := s.client.AddBackendPool("", true)
 	c.Assert(err, check.ErrorMatches,
 		"POST /pool: empty location header. PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
@@ -348,7 +348,7 @@ func (s *S) TestGalebAddVirtualHost(c *check.C) {
 	}
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/virtualhost/999", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
-	fullId, err := s.client.AddVirtualHost("myvirtualhost.com")
+	fullId, err := s.client.AddVirtualHost("myvirtualhost.com", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/virtualhost/999", s.client.ApiURL))
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
@@ -529,7 +529,7 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)}
-	_ = s.client.SetRuleVirtualHost("myrule", "myvh")
+	_ = s.client.SetRuleVirtualHost("myrule", "myvh", true)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
@@ -626,7 +626,7 @@ func (s *S) TestGalebAddBackendPoolPendingTimeout(c *check.C) {
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
 	}
-	_, err := s.client.AddBackendPool("myname")
+	_, err := s.client.AddBackendPool("myname", true)
 	c.Assert(err, check.ErrorMatches, `GET /target/3: timeout after [0-9]+ms waiting for status change from {"1":"PENDING"}`)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool", "/api/target/3", "/api/target/3"})
