@@ -255,7 +255,7 @@ func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHost) {
 	}
 }
 
-func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
+func (c *GalebClient) AddVirtualHost(addr string, wait bool) (string, error) {
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
@@ -263,10 +263,12 @@ func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = c.waitStatusOK(resource)
-	if err != nil {
-		c.removeResource(resource)
-		return "", err
+	if wait {
+		err = c.waitStatusOK(resource)
+		if err != nil {
+			c.removeResource(resource)
+			return "", err
+		}
 	}
 	return resource, nil
 }
@@ -288,7 +290,7 @@ func (c *GalebClient) getVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	return params, nil
 }
 
-func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup string) (string, error) {
+func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup string, wait bool) (string, error) {
 	params, err := c.getVirtualHostWithGroup(addr, virtualHostWithGroup)
 	if err != nil {
 		return "", err
@@ -297,7 +299,10 @@ func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	if err != nil {
 		return "", err
 	}
-	return resource, c.waitStatusOK(resource)
+	if wait {
+		err = c.waitStatusOK(resource)
+	}
+	return resource, err
 }
 
 func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGroup string) error {
@@ -323,7 +328,7 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGro
 	return c.waitStatusOK(virtualHostFullID)
 }
 
-func (c *GalebClient) AddBackendPool(name string) (string, error) {
+func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {
 	var params Pool
 	c.fillDefaultPoolValues(&params)
 	params.Name = name
@@ -331,7 +336,10 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return resource, c.waitStatusOK(resource)
+	if wait {
+		err = c.waitStatusOK(resource)
+	}
+	return resource, err
 }
 
 func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolHealthCheck, error) {
@@ -437,7 +445,7 @@ func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	return c.doCreateResource("/rule", &params)
 }
 
-func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error {
+func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait bool) error {
 	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
 	if err != nil {
 		return err
@@ -452,10 +460,13 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	if err != nil {
 		return err
 	}
-	return c.waitStatusOK(resource)
+	if wait {
+		return c.waitStatusOK(resource)
+	}
+	return nil
 }
 
-func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
+func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string, wait bool) error {
 	ruleID, err := c.findItemByName("rule", ruleName)
 	if err != nil {
 		return err
@@ -464,7 +475,7 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error
 	if err != nil {
 		return err
 	}
-	return c.setRuleVirtualHostIDs(ruleID, virtualHostID)
+	return c.setRuleVirtualHostIDs(ruleID, virtualHostID, wait)
 }
 
 func (c *GalebClient) RemoveResourceByID(resourceID string) error {
@@ -476,7 +487,7 @@ func (c *GalebClient) RemoveResourceByID(resourceID string) error {
 	return err
 }
 
-func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string) error {
+func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string, wait bool) error {
 	errCh := make(chan error, len(resourceIDs))
 	wg := sync.WaitGroup{}
 	var limiter chan struct{}
@@ -496,7 +507,9 @@ func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string) error {
 				errCh <- err
 				return
 			}
-			errCh <- c.waitStatusOK(resource)
+			if wait {
+				errCh <- c.waitStatusOK(resource)
+			}
 		}(i)
 	}
 	done := make(chan bool)
