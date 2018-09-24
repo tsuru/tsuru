@@ -250,7 +250,7 @@ func (s *fakeGalebServer) updatePool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	existingPool.HcBody = pool.HcBody
-	existingPool.HcHttpStatusCode = pool.HcHttpStatusCode
+	existingPool.HcHTTPStatusCode = pool.HcHTTPStatusCode
 	existingPool.HcPath = pool.HcPath
 	w.WriteHeader(http.StatusNoContent)
 }

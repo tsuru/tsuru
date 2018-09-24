@@ -468,7 +468,7 @@ func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) (
 		HcBody: data.Body,
 	}
 	if data.Status != 0 {
-		poolHealthCheck.HcHttpStatusCode = fmt.Sprintf("%d", data.Status)
+		poolHealthCheck.HcHTTPStatusCode = fmt.Sprintf("%d", data.Status)
 	}
 	return r.client.UpdatePoolProperties(r.poolName(backendName), poolHealthCheck)
 }
