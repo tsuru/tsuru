@@ -179,11 +179,13 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 			code = rsp.StatusCode
 		}
 		var rspData []byte
-		rspData, err = ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error reading request body %s %s", method, url)
+		if rsp != nil {
+			rspData, err = ioutil.ReadAll(rsp.Body)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error reading request body %s %s", method, url)
+			}
+			rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
 		}
-		rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
 		log.Debugf("galebv2 debug %s %s %q: %d %q", method, url, bodyData, code, rspData)
 	}
 	if retryCount < maxConnRetries {
