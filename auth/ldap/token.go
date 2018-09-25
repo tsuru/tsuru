@@ -44,6 +44,7 @@ var (
 	ldapBindPassword       string
 	ldapUserFilter         string
 	ldapGroupFilter        string
+	ldapGroupMustBePresent string
 )
 
 type Token struct {
@@ -126,6 +127,9 @@ func loadConfig() error {
 	}
 	if ldapGroupFilter, err = config.GetString("auth:ldap:groupfilter"); err != nil {
 		ldapGroupFilter = "(memberUid=%s)"
+	}
+	if ldapGroupMustBePresent, err = config.GetString("auth:ldap:groupmustbepresent"); err != nil {
+		ldapGroupMustBePresent = ""
 	}
 
 	return nil
@@ -327,12 +331,20 @@ func ldapBind(uid, password string) error {
 	if !ok {
 		return err
 	}
-	log.Printf("Authenticated user: %+v", user)
+	log.Printf("LDAP Authenticated user: %+v", user)
 
 	groups, err := client.GetGroupsOfUser(user["uid"])
 	if err != nil {
 		return err
 	}
-	log.Printf("Authenticated user groups: %+v", groups)
+	log.Printf("LDAP Authenticated user groups: %+v", groups)
+	if ldapGroupMustBePresent != "" {
+		err = errors.Errorf("LDAP user %s not present member on group %s.", user["uid"], ldapGroupMustBePresent)
+		for _, group := range groups {
+			if group == ldapGroupMustBePresent {
+				return nil
+			}
+		}
+	}
 	return err
 }
