@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -13,20 +14,14 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"github.com/tsuru/tsuru/validation"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 )
 
 const (
 	keySize           = 32
 	defaultExpiration = 7 * 24 * time.Hour
-	passwordError     = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen    = 6
-	passwordMaxLen    = 50
 )
 
 var (
@@ -206,16 +201,6 @@ func removeOldTokens(userEmail string) error {
 	}
 	_, err = conn.Tokens().RemoveAll(bson.M{"_id": bson.M{"$in": ids}})
 	return err
-}
-
-func checkPassword(passwordHash string, password string) error {
-	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
-		return &tsuruErrors.ValidationError{Message: passwordError}
-	}
-	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)) == nil {
-		return nil
-	}
-	return auth.AuthenticationFailure{Message: "Authentication failed, wrong password."}
 }
 
 func createToken(u *auth.User, password string) (*Token, error) {
