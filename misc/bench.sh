@@ -3,7 +3,7 @@ IFS=
 
 if [[ "$BENCH_FORM" == "" ]]; then
     echo "BENCH_FORM environment required"
-    exit 1
+    exit 0
 fi
 
 benchLines="$(go list -f '{{.Dir}}' ./... | xargs -I{} bash -c 'pushd {}; go test -check.b -check.bmem 2>&1; popd' | egrep -o 'Benchmark.*' | tee /dev/stderr)"
