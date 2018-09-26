@@ -237,6 +237,9 @@ required = [
 [[override]]
   name = "gopkg.in/inf.v0"
   version = "v0.9.0"
+[[override]]
+  name = "github.com/jtblin/go-ldap-client"
+  branch = "master"
 
 [[constraint]]
   branch = "master"

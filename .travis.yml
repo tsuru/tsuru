@@ -7,6 +7,7 @@ addons:
       - rsyslog
       - xmlsec1
       - rpm
+go_import_path: github.com/tsuru/tsuru
 # test stage automatically added for each go version
 go:
   - 1.10.x

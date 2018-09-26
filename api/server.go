@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/auth"
+	_ "github.com/tsuru/tsuru/auth/ldap"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/saml"
