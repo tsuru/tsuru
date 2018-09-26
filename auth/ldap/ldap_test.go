@@ -5,11 +5,11 @@
 package ldap
 
 import (
-	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 
@@ -17,7 +17,7 @@ func (s *S) TestNativeLoginWithoutEmail(c *check.C) {
 	scheme := LdapNativeScheme{}
 	params := make(map[string]string)
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrMissingEmailError)
+	c.Assert(err, check.Equals, native.ErrMissingEmailError)
 }
 
 func (s *S) TestNativeLoginWithoutPassword(c *check.C) {
@@ -25,7 +25,7 @@ func (s *S) TestNativeLoginWithoutPassword(c *check.C) {
 	params := make(map[string]string)
 	params["email"] = "a@a.com"
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrMissingPasswordError)
+	c.Assert(err, check.Equals, native.ErrMissingPasswordError)
 }
 
 func (s *S) TestNativeLogin(c *check.C) {
@@ -67,7 +67,7 @@ func (s *S) TestNativeCreateNoEmail(c *check.C) {
 	scheme := LdapNativeScheme{}
 	user := &auth.User{Password: "123455"}
 	_, err := scheme.Create(user)
-	c.Assert(err, check.Equals, ErrInvalidEmail)
+	c.Assert(err, check.Equals, native.ErrInvalidEmail)
 }
 
 func (s *S) TestNativeCreateExistingEmail(c *check.C) {
@@ -76,7 +76,7 @@ func (s *S) TestNativeCreateExistingEmail(c *check.C) {
 	scheme := LdapNativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
 	_, err := scheme.Create(user)
-	c.Assert(err, check.Equals, ErrEmailRegistered)
+	c.Assert(err, check.Equals, native.ErrEmailRegistered)
 }
 
 func (s *S) TestNativeCreate(c *check.C) {
@@ -96,7 +96,7 @@ func (s *S) TestResetPasswordEmptyToken(c *check.C) {
 	scheme := LdapNativeScheme{}
 	u := auth.User{Email: "presto@rush.com"}
 	err := scheme.ResetPassword(&u, "")
-	c.Assert(err, check.Equals, auth.ErrInvalidToken)
+	c.Assert(err, check.Equals, ErrNotImplementedLdap)
 }
 
 func (s *S) TestNativeRemove(c *check.C) {
