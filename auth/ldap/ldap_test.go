@@ -113,7 +113,7 @@ func (s *S) TestNativeRemove(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	var tokens []Token
+	var tokens []native.Token
 	err = conn.Tokens().Find(bson.M{"useremail": "timeredbull@globo.com"}).All(&tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)

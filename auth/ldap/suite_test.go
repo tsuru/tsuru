@@ -130,8 +130,6 @@ func (s *S) TearDownTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Users().Database)
 	c.Assert(err, check.IsNil)
 	s.conn.Close()
-	cost = 0
-	tokenExpire = 0
 }
 
 func (s *S) TearDownSuite(c *check.C) {

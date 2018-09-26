@@ -4,6 +4,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/validation"
 )
 
 var (
@@ -36,6 +37,20 @@ func (s LdapNativeScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, err
 	}
 	return token, nil
+}
+
+func (s LdapNativeScheme) Create(user *auth.User) (*auth.User, error) {
+	if !validation.ValidateEmail(user.Email) {
+		return nil, native.ErrInvalidEmail
+	}
+	if _, err := auth.GetUserByEmail(user.Email); err == nil {
+		return nil, native.ErrEmailRegistered
+	}
+	user.Password = "ldapUserNoPassword"
+	if err := user.Create(); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s LdapNativeScheme) ChangePassword(token auth.Token, oldPassword string, newPassword string) error {

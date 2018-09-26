@@ -110,7 +110,7 @@ func token(data string, hash crypto.Hash) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func newUserToken(u *auth.User) (*Token, error) {
+func NewUserToken(u *auth.User) (*Token, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
 	}
@@ -128,7 +128,7 @@ func newUserToken(u *auth.User) (*Token, error) {
 	return &t, nil
 }
 
-func removeOldTokens(userEmail string) error {
+func RemoveOldTokens(userEmail string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -182,12 +182,12 @@ func createToken(u *auth.User, password string) (*Token, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	token, err := newUserToken(u)
+	token, err := NewUserToken(u)
 	if err != nil {
 		return nil, err
 	}
 	err = conn.Tokens().Insert(token)
-	go removeOldTokens(u.Email)
+	go RemoveOldTokens(u.Email)
 	return token, err
 }
 

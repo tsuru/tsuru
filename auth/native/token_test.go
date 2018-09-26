@@ -118,7 +118,7 @@ func (s *S) TestTokenCannotRepeat(c *check.C) {
 
 func (s *S) TestNewUserToken(c *check.C) {
 	u := auth.User{Email: "girl@mj.com"}
-	t, err := newUserToken(&u)
+	t, err := NewUserToken(&u)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Expires, check.Equals, tokenExpire)
 	c.Assert(t.UserEmail, check.Equals, u.Email)
@@ -126,14 +126,14 @@ func (s *S) TestNewUserToken(c *check.C) {
 
 func (s *S) TestNewTokenReturnsErrorWhenUserReferenceDoesNotContainsEmail(c *check.C) {
 	u := auth.User{}
-	t, err := newUserToken(&u)
+	t, err := NewUserToken(&u)
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^Impossible to generate tokens for users without email$")
 }
 
 func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *check.C) {
-	t, err := newUserToken(nil)
+	t, err := NewUserToken(nil)
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^User is nil$")
@@ -155,7 +155,7 @@ func (s *S) TestRemoveOld(c *check.C) {
 		err := s.conn.Tokens().Insert(token)
 		c.Check(err, check.IsNil)
 	}
-	err := removeOldTokens(user)
+	err := RemoveOldTokens(user)
 	c.Assert(err, check.IsNil)
 	var tokens []Token
 	err = s.conn.Tokens().Find(bson.M{"useremail": user}).All(&tokens)
@@ -185,7 +185,7 @@ func (s *S) TestRemoveOldNothingToRemove(c *check.C) {
 	}
 	err := s.conn.Tokens().Insert(t)
 	c.Assert(err, check.IsNil)
-	err = removeOldTokens(user)
+	err = RemoveOldTokens(user)
 	c.Assert(err, check.IsNil)
 	count, err := s.conn.Tokens().Find(bson.M{"useremail": user}).Count()
 	c.Assert(err, check.IsNil)
@@ -193,7 +193,7 @@ func (s *S) TestRemoveOldNothingToRemove(c *check.C) {
 }
 
 func (s *S) TestRemoveOldWithoutSetting(c *check.C) {
-	err := removeOldTokens("something@tsuru.io")
+	err := RemoveOldTokens("something@tsuru.io")
 	c.Assert(err, check.NotNil)
 }
 
@@ -217,7 +217,7 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
-	t1, err := newUserToken(&u)
+	t1, err := NewUserToken(&u)
 	c.Assert(err, check.IsNil)
 	t2 := t1
 	t2.Token += "aa"
