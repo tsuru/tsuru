@@ -7,6 +7,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/validation"
 )
 
 var (
@@ -77,6 +78,9 @@ func (s LdapNativeScheme) AppLogout(token string) error {
 }
 
 func (s LdapNativeScheme) Create(user *auth.User) (*auth.User, error) {
+	if !validation.ValidateEmail(user.Email) {
+		return nil, ErrInvalidEmail
+	}
 	if _, err := getUser(user.Email); err == nil {
 		return nil, ErrEmailRegistered
 	}

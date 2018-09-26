@@ -17,6 +17,8 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/crypto/bcrypt"
+
+	ldapv2 "gopkg.in/ldap.v2"
 )
 
 const (
@@ -208,6 +210,12 @@ func createToken(u *auth.User, password string) (*Token, error) {
 		return nil, errors.New("User does not have an email")
 	}
 	if err := ldapBind(u.Email, password); err != nil {
+		ldapError, isLdapError := err.(*ldapv2.Error)
+		if isLdapError {
+			if ldapError.ResultCode == 49 {
+				return nil, auth.AuthenticationFailure{Message: "Authentication failed, wrong password."}
+			}
+		}
 		return nil, err
 	}
 	conn, err := db.Conn()

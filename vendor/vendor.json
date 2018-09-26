@@ -15,6 +15,18 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "Nqirmnv7n8ZJDAT361Gez10KEcM=",
+			"path": "github.com/bradleypeabody/godap",
+			"revision": "c249933bc092493dd8f0d39a7254f3c2d6d28735",
+			"revisionTime": "2017-02-16T00:23:49Z"
+		},
+		{
+			"checksumSHA1": "NBJPiVEmgvvFAWfKdhHibfrYxk4=",
+			"path": "github.com/go-asn1-ber/asn1-ber",
+			"revision": "00e08cc179d12a869b3328f2feba1d0684bf7d72",
+			"revisionTime": "2018-06-02T04:55:57Z"
+		},
+		{
 			"checksumSHA1": "Gay+mu0LGL3M53eDVwTEbe2CjuY=",
 			"path": "github.com/gogo/protobuf/gogoproto",
 			"revision": "636bf0302bc95575d69441b25a2603156ffdddf1",
