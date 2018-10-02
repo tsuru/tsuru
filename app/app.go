@@ -511,6 +511,11 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &updateAppProvisioner)
 	}
 	if newProv.GetName() != oldProv.GetName() {
+		err = validateVolumes(app)
+		if err != nil {
+			return err
+		}
+
 		actions = append(actions,
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
@@ -519,6 +524,17 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app, &oldApp, w)
+}
+
+func validateVolumes(app *App) error {
+	volumes, err := volume.ListByApp(app.Name)
+	if err != nil {
+		return err
+	}
+	if len(volumes) > 0 {
+		return fmt.Errorf("can't change the provisioner of an app with binded volumes")
+	}
+	return nil
 }
 
 func getPlatformNameAndVersion(platform string) (string, string, error) {
@@ -1160,6 +1176,7 @@ func (app *App) validatePool() error {
 			return err
 		}
 	}
+
 	return pool.ValidateRouters(app.GetRouters())
 }
 

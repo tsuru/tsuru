@@ -4735,6 +4735,83 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	c.Assert(dbApp.Pool, check.Equals, "test")
 }
 
+func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p2 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	p2.Name = "fake2"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	provision.Register("fake2", func() (provision.Provisioner, error) {
+		return p2, nil
+	})
+	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake2", Public: true}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Create()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(app.Name, "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(1, "", nil)
+	c.Assert(err, check.IsNil)
+	prov, err := app.getProvisioner()
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake1")
+	c.Assert(p1.GetUnits(&app), check.HasLen, 1)
+	c.Assert(p2.GetUnits(&app), check.HasLen, 0)
+	c.Assert(p1.Provisioned(&app), check.Equals, true)
+	c.Assert(p2.Provisioned(&app), check.Equals, false)
+	updateData := App{Name: "test", Pool: "test2"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.ErrorMatches, "can't change the provisioner of an app with binded volumes")
+}
+
+func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p1.Name = "fake1"
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake1", Public: true}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Create()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(app.Name, "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(1, "", nil)
+	c.Assert(err, check.IsNil)
+	prov, err := app.getProvisioner()
+	c.Assert(err, check.IsNil)
+	c.Assert(prov.GetName(), check.Equals, "fake1")
+	c.Assert(p1.GetUnits(&app), check.HasLen, 1)
+	c.Assert(p1.Provisioned(&app), check.Equals, true)
+	updateData := App{Name: "test", Pool: "test2"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestUpdatePlan(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
