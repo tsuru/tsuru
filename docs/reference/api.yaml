@@ -1679,7 +1679,7 @@ paths:
         type: string
         minLength: 1
         description: Cluster name.
-    put:
+    post:
       operationId: ClusterUpdate
       description: Update cluster.
       parameters:

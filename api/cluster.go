@@ -89,7 +89,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 
 // title: update provisioner cluster
 // path: /provisioner/clusters/{name}
-// method: PUT
+// method: POST
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
