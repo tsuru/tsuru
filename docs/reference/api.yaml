@@ -1594,7 +1594,7 @@ paths:
         - pool
       security:
         - Bearer: []
-  /1.3/provisioners/clusters:
+  /1.3/provisioner/clusters:
     get:
       operationId: ClusterList
       description: List cluster
@@ -1603,7 +1603,7 @@ paths:
       responses:
         '200':
           description: Cluster
-          schema: 
+          schema:
             type: array
             items:
               $ref: '#/definitions/Cluster'
@@ -1645,7 +1645,7 @@ paths:
         - cluster
       security:
         - Bearer: []
-  /1.3/provisioners/clusters/{cluster}:
+  /1.3/provisioner/clusters/{cluster}:
     parameters:
       - name: cluster
         in: path
@@ -1671,7 +1671,7 @@ paths:
         - cluster
       security:
         - Bearer: []
-  /1.4/provisioners/clusters/{cluster}:
+  /1.4/provisioner/clusters/{cluster}:
     parameters:
       - name: cluster
         in: path
@@ -3051,18 +3051,19 @@ definitions:
         type: string
       clientcert:
         type: string
+      clientkey:
+        type: string
       pools:
         type: array
         items:
-          type: object
-          $ref: '#/definitions/Pool'
+          type: string
       custom_data:
         type: object
-        additionalProperties: 
+        additionalProperties:
           type: string
       create_data:
         type: object
-        additionalProperties: 
+        additionalProperties:
           type: string
       default:
         type: boolean
