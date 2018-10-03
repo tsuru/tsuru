@@ -878,7 +878,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 }
 
 func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
-	err := ensureNodeContainers()
+	err := ensureNodeContainers(a)
 	if err != nil {
 		return err
 	}

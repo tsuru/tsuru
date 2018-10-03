@@ -12,18 +12,144 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
+	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
+
+func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper) {
+	cluster1 := &provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"https://clusteraddr1"},
+		Default:     true,
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
+	}
+	clusterClient1, err := NewClusterClient(cluster1)
+	c.Assert(err, check.IsNil)
+	client1 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		ClusterInterface:       clusterClient1,
+	}
+	cluster2 := &provTypes.Cluster{
+		Name:        "c2",
+		Addresses:   []string{"https://clusteraddr2"},
+		Pools:       []string{"pool2"},
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
+	}
+	clusterClient2, err := NewClusterClient(cluster2)
+	c.Assert(err, check.IsNil)
+	client2 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*cluster1, *cluster2}, nil
+	}
+
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
+		if poolName == "pool2" {
+			return cluster2, nil
+		}
+		return cluster1, nil
+	}
+
+	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+		if conf.Host == "https://clusteraddr1" {
+			return client1, nil
+		}
+		return client2, nil
+	}
+
+	return client1, client2
+}
+
+func (s *S) TestManagerDeployNodeContainerMultiClusterNoApp(c *check.C) {
+	client1, client2 := s.prepareMultiCluster(c)
+	nc := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &nc)
+	c.Assert(err, check.IsNil)
+
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+
+	daemons, err := client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 1)
+
+	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 1)
+}
+
+func (s *S) TestManagerDeployNodeContainerMultiClusterWithApp(c *check.C) {
+	client1, client2 := s.prepareMultiCluster(c)
+	nc := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &nc)
+	c.Assert(err, check.IsNil)
+
+	app1 := provisiontest.NewFakeAppWithPool("myapp", "xxx", "pool2", 1)
+	m := nodeContainerManager{
+		app: app1,
+	}
+	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+
+	daemons, err := client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 0)
+
+	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 1)
+
+	app2 := provisiontest.NewFakeAppWithPool("myapp", "xxx", "poolX", 1)
+	m = nodeContainerManager{
+		app: app2,
+	}
+	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+
+	daemons, err = client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 1)
+
+	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 1)
+}
 
 func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	s.mock.MockfakeNodes(c)

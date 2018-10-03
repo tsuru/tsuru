@@ -26,9 +26,18 @@ import (
 
 const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"
 
-type nodeContainerManager struct{}
+type nodeContainerManager struct {
+	app provision.App
+}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	if m.app != nil {
+		client, err := clusterForPool(m.app.GetPool())
+		if err != nil {
+			return err
+		}
+		return m.deployNodeContainerForCluster(client, *config, pool, filter, placementOnly)
+	}
 	err := forEachCluster(func(cluster *ClusterClient) error {
 		return m.deployNodeContainerForCluster(cluster, *config, pool, filter, placementOnly)
 	})
@@ -229,8 +238,10 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	return errors.WithStack(err)
 }
 
-func ensureNodeContainers() error {
-	m := nodeContainerManager{}
+func ensureNodeContainers(a provision.App) error {
+	m := nodeContainerManager{
+		app: a,
+	}
 	buf := &bytes.Buffer{}
 	err := servicecommon.EnsureNodeContainersCreated(&m, buf)
 	if err != nil {
