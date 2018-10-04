@@ -1594,6 +1594,121 @@ paths:
         - pool
       security:
         - Bearer: []
+  /1.3/provisioner/clusters:
+    get:
+      operationId: ClusterList
+      description: List cluster
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Cluster
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cluster'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Cluster not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - cluster
+      security:
+        - Bearer: []
+    post:
+      operationId: ClusterCreate
+      description: Create cluster.
+      parameters:
+        - name: ClusterCreateData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Cluster'
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: Cluster created
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Cluster not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - cluster
+      security:
+        - Bearer: []
+  /1.3/provisioner/clusters/{cluster}:
+    parameters:
+      - name: cluster
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Cluster name.
+    delete:
+      operationId: ClusterDelete
+      description: Delete cluster.
+      responses:
+        '200':
+          description: Cluster deleted
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Cluster not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - cluster
+      security:
+        - Bearer: []
+  /1.4/provisioner/clusters/{cluster}:
+    parameters:
+      - name: cluster
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Cluster name.
+    post:
+      operationId: ClusterUpdate
+      description: Update cluster.
+      parameters:
+        - name: ClusterUpdateData
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Cluster'
+      consumes:
+      - application/json
+      responses:
+        '200':
+          description: Cluster updated
+        '400':
+          description: Invalid data
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+        '404':
+          description: Cluster not found
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - cluster
+      security:
+        - Bearer: []
   /1.4/volumes/{volume}:
     parameters:
       - name: volume
@@ -2921,3 +3036,34 @@ definitions:
                     type: string
           CacheExpirationSeconds:
             type: integer
+  Cluster:
+    type: object
+    properties:
+      name:
+        type: string
+      addresses:
+        type: array
+        items:
+          type: string
+      provisioner:
+        type: string
+      cacert:
+        type: string
+      clientcert:
+        type: string
+      clientkey:
+        type: string
+      pools:
+        type: array
+        items:
+          type: string
+      custom_data:
+        type: object
+        additionalProperties:
+          type: string
+      create_data:
+        type: object
+        additionalProperties:
+          type: string
+      default:
+        type: boolean
