@@ -450,6 +450,7 @@ func (s *S) TestSimpleAppList(c *check.C) {
 		Tags:      []string{},
 	}
 	err = app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := app.App{
 		Name:      "app2",
