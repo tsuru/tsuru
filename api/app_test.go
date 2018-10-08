@@ -436,6 +436,53 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	}
 }
 
+func (s *S) TestSimpleAppList(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app1"},
+		Pool:      "pool1",
+		Tags:      []string{},
+	}
+	err = app.CreateApp(&app1, s.user)
+	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
+	app2 := app.App{
+		Name:      "app2",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app2"},
+		Pool:      "pool1",
+		Lock: appTypes.AppLock{
+			Locked:      true,
+			Reason:      "wanted",
+			Owner:       s.user.Email,
+			AcquireDate: acquireDate,
+		},
+		Tags: []string{"a"},
+	}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps?nameOnly=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 2)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+
+}
+
 func (s *S) TestAppList(c *check.C) {
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
