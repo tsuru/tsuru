@@ -215,11 +215,24 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json")
+	simple, _ := strconv.ParseBool(r.URL.Query().Get("nameOnly"))
+	if simple {
+		appsNames := make([]interface{}, len(apps))
+		for i, appName := range apps {
+			res := map[string]interface{}{
+				"name": appName.Name,
+			}
+			appsNames[i] = res
+		}
+		return json.NewEncoder(w).Encode(appsNames)
+	}
+
 	appUnits, err := app.Units(apps)
 	if err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
+
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
 		miniApps[i], err = minifyApp(app, appUnits[app.Name])
