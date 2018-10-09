@@ -601,8 +601,8 @@ paths:
         - name: limit
           in: formData
           type: number
-          minimum: 0
           required: true
+          description: Number of units allowed for use by the current app. Negative number indicates unlimited.
       produces:
         - application/json
       responses:
