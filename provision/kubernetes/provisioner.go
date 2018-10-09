@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	"github.com/tsuru/tsuru/volume"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -1031,6 +1032,15 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	newclient, err := clusterForPool(new.GetPool())
 	if err != nil {
 		return err
+	}
+	if client.Cluster.Name != newclient.Cluster.Name {
+		volumes, err := volume.ListByApp(old.GetName())
+		if err != nil {
+			return err
+		}
+		if len(volumes) > 0 {
+			return fmt.Errorf("can't change the provisioner of an app with binded volumes")
+		}
 	}
 	params := updatePipelineParams{
 		old: old,
