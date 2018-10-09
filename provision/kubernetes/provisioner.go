@@ -1031,7 +1031,7 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	if err != nil {
 		return err
 	}
-	if client.Cluster.Name != newclient.Cluster.Name {
+	if client.Cluster.Name != newclient.Cluster.Name || client.PoolNamespace(old.GetPool()) != client.PoolNamespace(new.GetPool()) {
 		volumes, err := volume.ListByApp(old.GetName())
 		if err != nil {
 			return err
