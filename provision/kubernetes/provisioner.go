@@ -1031,13 +1031,13 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	if err != nil {
 		return err
 	}
-	if client.Cluster.Name != newclient.Cluster.Name || client.PoolNamespace(old.GetPool()) != client.PoolNamespace(new.GetPool()) {
+	if client.Cluster.Name == newclient.Cluster.Name && client.PoolNamespace(old.GetPool()) != client.PoolNamespace(new.GetPool()) {
 		volumes, err := volume.ListByApp(old.GetName())
 		if err != nil {
 			return err
 		}
 		if len(volumes) > 0 {
-			return fmt.Errorf("can't change the provisioner of an app with binded volumes")
+			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
 	params := updatePipelineParams{

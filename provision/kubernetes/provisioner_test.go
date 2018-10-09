@@ -1962,7 +1962,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
 	err = s.p.UpdateApp(a, newApp, buf)
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "can't change the pool of an app with binded volumes")
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
@@ -2034,5 +2034,5 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
 	err = s.p.UpdateApp(a, newApp, buf)
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.IsNil)
 }
