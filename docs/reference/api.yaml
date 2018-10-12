@@ -649,10 +649,9 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - name: process
-          in: process
-          type: number
-          required: true
-          description: Process number to be restarted.
+          in: formData
+          type: string
+          description: Process number to be restarted. If the process number will not informed, whole application will be restarted.
       produces:
         - application/x-json-stream
       responses:
