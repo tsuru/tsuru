@@ -1173,12 +1173,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if follow != "1" {
 		return nil
 	}
-	var closeChan <-chan bool
-	if notifier, ok := w.(http.CloseNotifier); ok {
-		closeChan = notifier.CloseNotify()
-	} else {
-		closeChan = make(chan bool)
-	}
+	closeChan := r.Context().Done()
 	l, err := app.NewLogListener(&a, filterLog)
 	if err != nil {
 		return err

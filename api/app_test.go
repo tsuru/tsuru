@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -4032,15 +4033,6 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *check.C)
 	c.Assert(e.Message, check.Equals, `Parameter "lines" must be an integer.`)
 }
 
-type closeableRecorder struct {
-	*httptest.ResponseRecorder
-	ch chan bool
-}
-
-func (r *closeableRecorder) CloseNotify() <-chan bool {
-	return r.ch
-}
-
 func (s *S) TestAppLogFollow(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -4048,11 +4040,13 @@ func (s *S) TestAppLogFollow(c *check.C) {
 	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
 	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	request = request.WithContext(ctx)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
+	recorder := httptest.NewRecorder()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -4084,7 +4078,7 @@ func (s *S) TestAppLogFollow(c *check.C) {
 	err = a.Log("x", "", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	close(recorder.ch)
+	cancel()
 	wg.Wait()
 }
 
@@ -4095,11 +4089,13 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
 	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	request = request.WithContext(ctx)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
+	recorder := httptest.NewRecorder()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -4133,7 +4129,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	err = a.Log("y", "web", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	close(recorder.ch)
+	cancel()
 	wg.Wait()
 }
 

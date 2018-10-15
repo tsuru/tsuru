@@ -1866,14 +1866,6 @@ func (s *ServiceInstanceSuite) TestBrokeredServicePlans(c *check.C) {
 	c.Assert(plans, check.DeepEquals, expected)
 }
 
-type closeNotifierResponseRecorder struct {
-	*httptest.ResponseRecorder
-}
-
-func (r *closeNotifierResponseRecorder) CloseNotify() <-chan bool {
-	return make(chan bool)
-}
-
 func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	var proxyedRequest *http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1895,7 +1887,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -1938,7 +1930,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -1990,7 +1982,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "text/plain")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -2027,7 +2019,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -2049,7 +2041,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.Bytes(), check.DeepEquals, []byte("some error"))
@@ -2074,7 +2066,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyOnlyPath(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(proxyedRequest, check.NotNil)
@@ -2111,7 +2103,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyForbiddenPath(c *check.C)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "proxy request POST \"\" is forbidden\n")
