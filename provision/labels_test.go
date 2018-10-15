@@ -129,7 +129,7 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"provisioner":         "provisioner",
 			"node-container-name": "name",
 			"node-container-pool": "pool",
-			"a": "1",
+			"a":                   "1",
 		},
 	})
 }

@@ -295,7 +295,8 @@ func clusterForPoolOrAny(pool string) (*ClusterClient, error) {
 		return clust, err
 	}
 	if err == provTypes.ErrNoCluster {
-		clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
+		var clusters []provTypes.Cluster
+		clusters, err = servicemanager.Cluster.FindByProvisioner(provisionerName)
 		if err == nil {
 			return NewClusterClient(&clusters[0])
 		}

@@ -7,10 +7,6 @@ TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
-LINTER_ARGS = \
-	--deadline 30m -D errcheck -E goimports -E gofmt -E misspell -E maligned
-
-
 .PHONY: all check-path test race docs install
 
 all: check-path test
@@ -50,12 +46,10 @@ lint: metalint
 	misc/check-contributors.sh
 
 metalint:
-	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
-		go get -u github.com/golangci/golangci-lint/cmd/golangci-lint; \
-		go install $(TSR_PKGS); \
-		go test -i $(TSR_PKGS); \
-		golangci-lint run $(LINTER_ARGS); \
-	fi
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	go install $(TSR_PKGS)
+	go test -i $(TSR_PKGS)
+	golangci-lint run -c ./.golangci.yml
 
 race:
 	go test $(GO_EXTRAFLAGS) -race -i $(TSR_PKGS)
