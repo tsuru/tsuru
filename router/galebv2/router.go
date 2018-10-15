@@ -408,12 +408,6 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 	if err != nil {
 		return err
 	}
-	for _, target := range targets {
-		err = r.client.RemoveResourceByID(target.FullId())
-		if err != nil {
-			return err
-		}
-	}
 	err = r.client.RemoveRulesOrderedByRule(r.ruleName(backendName))
 	if err != nil {
 		return err
@@ -421,6 +415,12 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 	err = r.client.RemoveRule(r.ruleName(backendName))
 	if err != nil {
 		return err
+	}
+	for _, target := range targets {
+		err = r.client.RemoveResourceByID(target.FullId())
+		if err != nil {
+			return err
+		}
 	}
 	err = r.client.RemoveBackendPool(r.poolName(backendName))
 	if err != nil {
