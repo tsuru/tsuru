@@ -10,8 +10,6 @@ import (
 	"os"
 	"testing"
 
-	check "gopkg.in/check.v1"
-
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/docker/machine/drivers/fakedriver"
 	"github.com/docker/machine/libmachine/auth"
@@ -20,6 +18,7 @@ import (
 	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/persist/persisttest"
 	"github.com/docker/machine/libmachine/state"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

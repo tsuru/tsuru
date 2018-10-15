@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
 	"strings"
 
 	"github.com/pkg/errors"

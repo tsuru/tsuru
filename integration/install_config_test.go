@@ -60,9 +60,9 @@ func (s *S) getPlatforms() []string {
 	if _, ok := os.LookupEnv(integrationEnvID + "platforms"); !ok {
 		return availablePlatforms
 	}
-	platforms := s.env.All("platforms")
+	envPlatforms := s.env.All("platforms")
 	selectedPlatforms := make([]string, 0, len(availablePlatforms))
-	for _, name := range platforms {
+	for _, name := range envPlatforms {
 		name = strings.Trim(name, " ")
 		for i, platform := range availablePlatforms {
 			if name == platform || "tsuru/"+name == platform {

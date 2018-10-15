@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-
 	check "gopkg.in/check.v1"
 )
 

@@ -13,17 +13,16 @@ import (
 	"strings"
 	"sync/atomic"
 
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	kfake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
-	ktesting "k8s.io/client-go/testing"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	kfake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestBuildPod(c *check.C) {

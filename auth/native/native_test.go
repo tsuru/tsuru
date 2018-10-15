@@ -9,13 +9,12 @@ import (
 	"strings"
 	"time"
 
-	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/tsurutest"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"gopkg.in/check.v1"
 )
 

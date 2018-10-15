@@ -14,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/fsouza/go-dockerclient/testing"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globalsign/mgo"
@@ -39,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 

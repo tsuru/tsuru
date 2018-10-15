@@ -7,7 +7,6 @@ package auth
 import (
 	"github.com/globalsign/mgo/bson"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-
 	"gopkg.in/check.v1"
 )
 

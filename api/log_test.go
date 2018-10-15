@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http/httptest"
@@ -13,8 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"context"
 
 	"github.com/tsuru/tsuru/app"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
