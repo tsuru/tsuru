@@ -9,7 +9,7 @@ addons:
       - rpm
 # test stage automatically added for each go version
 go:
-  - 1.10.x
+  - 1.11.x
   - master
 # script used in the automatically added test stage
 script:
@@ -25,7 +25,7 @@ script:
 env:
   global:
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.10
+    - GO_FOR_RELEASE=1.11
     - IMAGE_NAME=tsuru/api
   matrix:
     - JOB=test
