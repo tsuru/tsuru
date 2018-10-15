@@ -483,7 +483,7 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string, wait 
 func (c *GalebClient) RemoveResourceByID(resourceID string) error {
 	resource, err := c.removeResource(resourceID)
 	if err != nil {
-		return nil
+		return err
 	}
 	err = c.waitStatusOK(resource)
 	return err

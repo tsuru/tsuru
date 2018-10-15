@@ -424,9 +424,23 @@ func (s *S) TestGalebAddRuleToPool(c *check.C) {
 }
 
 func (s *S) TestGalebRemoveBackendByID(c *check.C) {
-	s.handler.RspCode = http.StatusOK
+	s.handler.ConditionalContent["GET /api/target/mybackendID"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
+	s.handler.ConditionalContent["DELETE /api/target/mybackendID"] = []string{
+		"204", "",
+	}
+	s.handler.RspCode = http.StatusNoContent
 	err := s.client.RemoveResourceByID("/target/mybackendID")
 	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE", "GET"})
+	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/target/mybackendID", "/api/target/mybackendID"})
+}
+
+func (s *S) TestGalebRemoveBackendByIDError(c *check.C) {
+	s.handler.RspCode = http.StatusBadRequest
+	err := s.client.RemoveResourceByID("/target/mybackendID")
+	c.Assert(err, check.ErrorMatches, `.*invalid response code: 400.*`)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/target/mybackendID"})
 }
