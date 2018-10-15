@@ -1,0 +1,20 @@
+run:
+  deadline: 30m
+  tests: true
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  gofmt:
+    simplify: true
+  maligned:
+    suggest-new: true
+
+linters:
+  enable:
+    - goimports
+    - gofmt
+    - misspell
+    - maligned
+  disable:
+    - errcheck

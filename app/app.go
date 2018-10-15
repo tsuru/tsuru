@@ -379,12 +379,10 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
 	if app.Platform != "" {
-		p, v, err := getPlatformNameAndVersion(app.Platform)
+		app.Platform, app.PlatformVersion, err = getPlatformNameAndVersion(app.Platform)
 		if err != nil {
 			return err
 		}
-		app.Platform = p
-		app.PlatformVersion = v
 	}
 	err = app.validateNew()
 	if err != nil {
@@ -486,7 +484,8 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Tags = tags
 	}
 	if platform != "" {
-		p, v, err := getPlatformNameAndVersion(platform)
+		var p, v string
+		p, v, err = getPlatformNameAndVersion(platform)
 		if err != nil {
 			return err
 		}

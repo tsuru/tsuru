@@ -155,7 +155,7 @@ func (l *MongodbLimiter) Start(action string) func() {
 		coll.RemoveAll(bson.M{"elements.update": bson.M{"$lt": time.Now().Add(-l.maxStale).UTC()}})
 		pushedId = bson.NewObjectId()
 		_, err := coll.Upsert(bson.M{
-			"_id": action,
+			"_id":                                 action,
 			fmt.Sprintf("elements.%d", l.limit-1): bson.M{"$exists": false},
 		}, bson.M{
 			"$push": bson.M{"elements": bson.M{"id": pushedId, "update": time.Now().UTC()}},

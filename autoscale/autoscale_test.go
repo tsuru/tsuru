@@ -1088,15 +1088,15 @@ func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 	nodes := []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool2",
-			"zone": "zone2",
+			"zone":                     "zone2",
 		}},
 	}
 	ok, err := canRemoveNode(nodes[0], nodes)
@@ -1111,11 +1111,11 @@ func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 	}
 	ok, err = canRemoveNode(nodes[0], nodes)
@@ -1130,67 +1130,67 @@ func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 	nodes := []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 	}
 	metadata, err := chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
 		provision.PoolMetadataName: "pool1",
-		"zone": "zone1",
+		"zone":                     "zone1",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone2",
+			"zone":                     "zone2",
 		}},
 	}
 	metadata, err = chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
 		provision.PoolMetadataName: "pool1",
-		"zone": "zone2",
+		"zone":                     "zone2",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool2",
-			"zone": "zone2",
+			"zone":                     "zone2",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool2",
-			"zone": "zone2",
+			"zone":                     "zone2",
 		}},
 	}
 	metadata, err = chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
 		provision.PoolMetadataName: "pool1",
-		"zone": "zone1",
+		"zone":                     "zone1",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool1",
-			"zone": "zone1",
+			"zone":                     "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool2",
-			"zone": "zone2",
+			"zone":                     "zone2",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
 			provision.PoolMetadataName: "pool2",
-			"zone": "zone3",
+			"zone":                     "zone3",
 		}},
 	}
 	_, err = chooseMetadataFromNodes(nodes)

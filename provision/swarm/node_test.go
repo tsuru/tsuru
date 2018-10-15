@@ -36,7 +36,7 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	c.Assert(node.Status(), check.Equals, "ready (msg1)")
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
 		"tsuru.internal-node-addr": "myaddr:1234",
-		"l1": "v1",
+		"l1":                       "v1",
 	})
 	s.addCluster(c)
 	var err error
@@ -45,7 +45,7 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
 		"tsuru.io/cluster":         "c1",
 		"tsuru.internal-node-addr": "myaddr:1234",
-		"l1": "v1",
+		"l1":                       "v1",
 	})
 }
 
