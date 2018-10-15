@@ -664,8 +664,8 @@ func updateAppPools() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		poolNames := env.All("poolnames")
-		platforms := env.All("installedplatforms")
-		chosenPlatform := platforms[0]
+		installedPlatforms := env.All("installedplatforms")
+		chosenPlatform := installedPlatforms[0]
 		var combinations [][]string
 		for i := range poolNames {
 			for j := range poolNames {

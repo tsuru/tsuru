@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/tsuru/tsuru/iaas"
-
 	check "gopkg.in/check.v1"
 )
 

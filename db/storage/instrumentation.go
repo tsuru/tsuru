@@ -8,9 +8,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	mgo "github.com/globalsign/mgo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (

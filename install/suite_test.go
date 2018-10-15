@@ -9,7 +9,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-
 	"gopkg.in/check.v1"
 )
 

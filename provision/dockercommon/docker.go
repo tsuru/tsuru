@@ -5,11 +5,10 @@
 package dockercommon
 
 import (
+	"context"
 	"io"
 	"strings"
 	"time"
-
-	"context"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"

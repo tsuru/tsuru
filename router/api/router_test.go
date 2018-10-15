@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"sort"
 	"strings"
 	"testing"
-
-	"net/url"
-
-	"sort"
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/config"

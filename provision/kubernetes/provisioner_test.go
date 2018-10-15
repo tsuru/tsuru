@@ -18,10 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tsuru/tsuru/router/rebuild"
-	"github.com/tsuru/tsuru/router/routertest"
-	provTypes "github.com/tsuru/tsuru/types/provision"
-
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -33,7 +29,10 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
