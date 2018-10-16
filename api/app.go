@@ -219,18 +219,9 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	if simple {
-		for i, app := range apps {
-			ma := miniApp{
-				Name:      app.Name,
-				Pool:      app.Pool,
-				Plan:      app.Plan,
-				TeamOwner: app.TeamOwner,
-				CName:     app.CName,
-				Routers:   app.Routers,
-				Lock:      &app.Lock,
-				Tags:      app.Tags,
-			}
-			miniApps[i] = ma
+		for i, ap := range apps {
+			ur := app.AppUnitsResponse{Units: nil, Err: nil}
+			miniApps[i], err = minifyApp(ap, ur)
 		}
 		return json.NewEncoder(w).Encode(miniApps)
 	}
@@ -238,8 +229,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-
-	// miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
 		miniApps[i], err = minifyApp(app, appUnits[app.Name])
 		if err != nil {
