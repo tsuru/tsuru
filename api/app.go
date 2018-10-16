@@ -215,25 +215,31 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	simple, _ := strconv.ParseBool(r.URL.Query().Get("simplified"))
 	w.Header().Set("Content-Type", "application/json")
-	simple, _ := strconv.ParseBool(r.URL.Query().Get("nameOnly"))
+	miniApps := make([]miniApp, len(apps))
 	if simple {
-		appsNames := make([]interface{}, len(apps))
-		for i, appName := range apps {
-			res := map[string]interface{}{
-				"name": appName.Name,
+		for i, app := range apps {
+			ma := miniApp{
+				Name:      app.Name,
+				Pool:      app.Pool,
+				Plan:      app.Plan,
+				TeamOwner: app.TeamOwner,
+				CName:     app.CName,
+				Routers:   app.Routers,
+				Lock:      &app.Lock,
+				Tags:      app.Tags,
 			}
-			appsNames[i] = res
+			miniApps[i] = ma
 		}
-		return json.NewEncoder(w).Encode(appsNames)
+		return json.NewEncoder(w).Encode(miniApps)
 	}
-
 	appUnits, err := app.Units(apps)
 	if err != nil {
 		return err
 	}
 
-	miniApps := make([]miniApp, len(apps))
+	// miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
 		miniApps[i], err = minifyApp(app, appUnits[app.Name])
 		if err != nil {
