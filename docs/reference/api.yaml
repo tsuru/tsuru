@@ -303,6 +303,10 @@ paths:
           description: Filter applications by team owner.
           in: query
           type: string
+        - name: simplified
+          description: Returns applications without units list.
+          in: query
+          type: boolean 
       produces:
         - application/json
       responses:
