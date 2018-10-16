@@ -222,6 +222,9 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		for i, ap := range apps {
 			ur := app.AppUnitsResponse{Units: nil, Err: nil}
 			miniApps[i], err = minifyApp(ap, ur)
+			if err != nil {
+				return err
+			}
 		}
 		return json.NewEncoder(w).Encode(miniApps)
 	}
