@@ -41,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
@@ -1137,7 +1138,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
 }
 
-// validateNew checks app name format and pool
+// validateNew checks app name format, pool and plan
 func (app *App) validateNew() error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
@@ -1148,9 +1149,30 @@ func (app *App) validateNew() error {
 	return app.validate()
 }
 
-// validate checks app pool
+// validate checks app pool and plan
 func (app *App) validate() error {
-	return app.validatePool()
+	err := app.validatePool()
+	if err != nil {
+		return err
+	}
+	return app.validatePlan()
+}
+
+func (app *App) validatePlan() error {
+	pool, err := pool.GetPoolByName(app.Pool)
+	if err != nil {
+		return err
+	}
+	plans, err := pool.GetPlans()
+	if err != nil {
+		return err
+	}
+	planSet := set.FromSlice(plans)
+	if !planSet.Includes(app.Plan.Name) {
+		msg := fmt.Sprintf("App plan %q is not allowed on pool %q", app.Plan.Name, pool.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+	return nil
 }
 
 func (app *App) validatePool() error {
