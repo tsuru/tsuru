@@ -436,7 +436,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	}
 }
 
-func (s *S) TestSimpleAppList(c *check.C) {
+func (s *S) TestSimplifiedAppList(c *check.C) {
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
 	err := pool.AddPool(opts)
@@ -468,7 +468,7 @@ func (s *S) TestSimpleAppList(c *check.C) {
 	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/apps?nameOnly=true", nil)
+	request, err := http.NewRequest("GET", "/apps?simplified=true", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -481,7 +481,10 @@ func (s *S) TestSimpleAppList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
-
+	app1u, _ := apps[0].Units()
+	c.Assert(app1u, check.HasLen, 0)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+	c.Assert(app1u, check.HasLen, 0)
 }
 
 func (s *S) TestAppList(c *check.C) {
