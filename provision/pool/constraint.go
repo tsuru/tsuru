@@ -18,7 +18,7 @@ import (
 
 var (
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", validConstraintTypes)
-	validConstraintTypes     = []poolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter}
+	validConstraintTypes     = []poolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan}
 )
 
 type poolConstraintType string
@@ -27,6 +27,7 @@ const (
 	ConstraintTypeTeam    = poolConstraintType("team")
 	ConstraintTypeRouter  = poolConstraintType("router")
 	ConstraintTypeService = poolConstraintType("service")
+	ConstraintTypePlan    = poolConstraintType("plan")
 )
 
 type regexpCache struct {

@@ -32,6 +32,7 @@ var (
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
 	ErrPoolHasNoService               = errors.New("no service found for pool")
+	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 )
 
 type Pool struct {
@@ -92,6 +93,17 @@ func (p *Pool) GetRouters() ([]string, error) {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoRouter
+}
+
+func (p *Pool) GetPlans() ([]string, error) {
+	allowedValues, err := p.allowedValues()
+	if err != nil {
+		return nil, err
+	}
+	if c := allowedValues[ConstraintTypePlan]; len(c) > 0 {
+		return c, nil
+	}
+	return nil, ErrPoolHasNoPlan
 }
 
 func (p *Pool) GetDefaultRouter() (string, error) {
@@ -158,25 +170,22 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	plans, err := plansNames()
+	if err != nil {
+		return nil, err
+	}
 	resolved := map[poolConstraintType][]string{
 		ConstraintTypeRouter:  routers,
 		ConstraintTypeService: services,
 		ConstraintTypeTeam:    teams,
+		ConstraintTypePlan:    plans,
 	}
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService)
+	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range constraints {
-		var names []string
-		switch k {
-		case ConstraintTypeTeam:
-			names = teams
-		case ConstraintTypeRouter:
-			names = routers
-		case ConstraintTypeService:
-			names = services
-		}
+		names := resolved[k]
 		var validNames []string
 		for _, n := range names {
 			if v.check(n) {
@@ -220,6 +229,18 @@ func servicesNames() ([]string, error) {
 	var names []string
 	for _, r := range services {
 		names = append(names, r.Name)
+	}
+	return names, nil
+}
+
+func plansNames() ([]string, error) {
+	plans, err := servicemanager.Plan.List()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, p := range plans {
+		names = append(names, p.Name)
 	}
 	return names, nil
 }

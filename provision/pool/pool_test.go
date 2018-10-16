@@ -30,7 +30,9 @@ func Test(t *testing.T) {
 type S struct {
 	storage         *db.Storage
 	teams           []authTypes.Team
+	plans           []appTypes.Plan
 	mockTeamService *authTypes.MockTeamService
+	mockPlanService *appTypes.MockPlanService
 }
 
 var _ = check.Suite(&S{})
@@ -55,6 +57,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.teams = []authTypes.Team{{Name: "ateam"}, {Name: "test"}, {Name: "pteam"}}
+	s.plans = []appTypes.Plan{{Name: "plan1"}, {Name: "plan2"}}
 	s.mockTeamService = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return s.teams, nil
@@ -68,7 +71,13 @@ func (s *S) SetUpTest(c *check.C) {
 			return nil, authTypes.ErrTeamNotFound
 		},
 	}
+	s.mockPlanService = &appTypes.MockPlanService{
+		OnList: func() ([]appTypes.Plan, error) {
+			return s.plans, nil
+		},
+	}
 	servicemanager.Team = s.mockTeamService
+	servicemanager.Plan = s.mockPlanService
 }
 
 func (s *S) TestValidateRouters(c *check.C) {
@@ -518,6 +527,22 @@ func (s *S) TestGetRouters(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
 }
 
+func (s *S) TestGetPlans(c *check.C) {
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypePlan, Values: []string{"plan1"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	plans, err := pool.GetPlans()
+	c.Assert(err, check.IsNil)
+	c.Assert(plans, check.DeepEquals, []string{"plan2"})
+	pool.Name = "other"
+	plans, err = pool.GetPlans()
+	c.Assert(err, check.IsNil)
+	c.Assert(plans, check.DeepEquals, []string{"plan1", "plan2"})
+}
+
 func (s *S) TestGetServices(c *check.C) {
 	s.mockTeamService.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: "ateam"}}, nil
@@ -629,11 +654,12 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 		ConstraintTypeTeam:    {"team1"},
 		ConstraintTypeRouter:  {"router1", "router2"},
 		ConstraintTypeService: nil,
+		ConstraintTypePlan:    {"plan1", "plan2"},
 	})
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.HasLen, 3)
+	c.Assert(constraints, check.HasLen, 4)
 	sort.Strings(constraints[ConstraintTypeTeam])
 	c.Assert(constraints[ConstraintTypeTeam], check.DeepEquals, []string{
 		"ateam", "pteam", "pubteam", "team1", "test",

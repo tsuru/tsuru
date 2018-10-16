@@ -1067,6 +1067,9 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		c.Assert(name, check.Equals, expectedPlan.Name)
 		return &expectedPlan, nil
 	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{expectedPlan}, nil
+	}
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1788,6 +1791,9 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 		c.Errorf("plan name not expected, got: %s", name)
 		return nil, nil
 	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return plans, nil
+	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1812,6 +1818,9 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 			return &plan, nil
 		}
 		return nil, appTypes.ErrPlanNotFound
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
 	err := app.CreateApp(&a, s.user)
