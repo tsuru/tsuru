@@ -157,7 +157,11 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 	if err != nil {
 		return nil, err
 	}
-	err = r.RemoveRoutes(app.GetName(), toRemove)
+	if asyncR == nil {
+		err = r.RemoveRoutes(app.GetName(), toRemove)
+	} else {
+		err = asyncR.RemoveRoutesAsync(app.GetName(), toRemove)
+	}
 	if err != nil {
 		return nil, err
 	}

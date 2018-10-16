@@ -1,8 +1,8 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package galeb
+package galebv2
 
 import (
 	"fmt"
@@ -16,12 +16,12 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
-	galebClient "github.com/tsuru/tsuru/router/galeb/client"
+	galebClient "github.com/tsuru/tsuru/router/galebv2/client"
 )
 
-var _ router.AsyncRouter = &galebRouter{}
+const routerType = "galebv2"
 
-const routerType = "galeb"
+var _ router.AsyncRouter = &galebRouter{}
 
 var clientCache struct {
 	sync.Mutex
@@ -119,15 +119,15 @@ func (r *galebRouter) virtualHostName(base string) string {
 	return fmt.Sprintf("%s.%s", base, r.domain)
 }
 
-func (r *galebRouter) AddBackendAsync(app router.App) (err error) {
-	return r.addBackendAsync(app, false)
-}
-
 func (r *galebRouter) AddBackend(app router.App) (err error) {
-	return r.addBackendAsync(app, true)
+	return r.addBackend(app, true)
 }
 
-func (r *galebRouter) addBackendAsync(app router.App, wait bool) (err error) {
+func (r *galebRouter) AddBackendAsync(app router.App) (err error) {
+	return r.addBackend(app, false)
+}
+
+func (r *galebRouter) addBackend(app router.App, wait bool) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -171,10 +171,6 @@ func (r *galebRouter) addBackendAsync(app router.App, wait bool) (err error) {
 	} else if err != nil {
 		return err
 	}
-	err = r.client.UpdateVirtualHostRule(vhName, ruleName, wait)
-	if err != nil {
-		return err
-	}
 	if backendExists {
 		return router.ErrBackendExists
 	}
@@ -208,11 +204,15 @@ func (r *galebRouter) addRoutes(name string, addresses []*url.URL, wait bool) (e
 	return r.client.AddBackends(addresses, r.poolName(backendName), wait)
 }
 
-func (r *galebRouter) RemoveRoutesAsync(name string, addresses []*url.URL) error {
-	return r.RemoveRoutes(name, addresses)
+func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+	return r.removeRoutes(name, addresses, true)
 }
 
-func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) RemoveRoutesAsync(name string, addresses []*url.URL) error {
+	return r.removeRoutes(name, addresses, false)
+}
+
+func (r *galebRouter) removeRoutes(name string, addresses []*url.URL, wait bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -225,7 +225,7 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error
 	for _, addr := range addresses {
 		addressMap[addr.Host] = struct{}{}
 	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error
 	if len(ids) == 0 {
 		return nil
 	}
-	return r.client.RemoveBackendsByIDs(ids)
+	return r.client.RemoveResourcesByIDs(ids, wait)
 }
 
 func (r *galebRouter) CNames(name string) (urls []*url.URL, err error) {
@@ -254,8 +254,8 @@ func (r *galebRouter) CNames(name string) (urls []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
-	rule := r.ruleName(backendName)
-	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	virtualhost := r.virtualHostName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhost)
 	if err != nil {
 		return nil, err
 	}
@@ -272,12 +272,12 @@ func (r *galebRouter) CNames(name string) (urls []*url.URL, err error) {
 	return urls, nil
 }
 
-func (r *galebRouter) SetCNameAsync(cname, name string) error {
-	return r.setCName(cname, name, false)
-}
-
 func (r *galebRouter) SetCName(cname, name string) (err error) {
 	return r.setCName(cname, name, true)
+}
+
+func (r *galebRouter) SetCNameAsync(cname, name string) (err error) {
+	return r.setCName(cname, name, false)
 }
 
 func (r *galebRouter) setCName(cname, name string, wait bool) (err error) {
@@ -292,27 +292,12 @@ func (r *galebRouter) setCName(cname, name string, wait bool) (err error) {
 	if !router.ValidCName(cname, r.domain) {
 		return router.ErrCNameNotAllowed
 	}
-	cnameExists := false
-	_, err = r.client.AddVirtualHost(cname, wait)
-	if galebClient.IsErrExists(err) {
-		cnameExists = true
-	} else if err != nil {
-		return err
-	}
-	err = r.client.SetRuleVirtualHost(r.ruleName(backendName), cname, wait)
-	if galebClient.IsErrExists(err) {
-		cnameExists = true
-	} else if err != nil {
-		return err
-	}
-	err = r.client.UpdateVirtualHostRule(cname, r.ruleName(backendName), wait)
-	if err != nil {
-		return err
-	}
-	if cnameExists {
+	virtualhost := r.virtualHostName(backendName)
+	_, err = r.client.AddVirtualHostWithGroup(cname, virtualhost, wait)
+	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
 		return router.ErrCNameExists
 	}
-	return nil
+	return err
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) (err error) {
@@ -320,18 +305,11 @@ func (r *galebRouter) UnsetCName(cname, name string) (err error) {
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	err = r.client.RemoveRuleVirtualHost(r.ruleName(backendName), cname)
+	err = r.client.RemoveVirtualHost(cname)
 	if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); ok {
 		return router.ErrCNameNotFound
 	}
-	if err != nil {
-		return err
-	}
-	return r.client.RemoveVirtualHost(cname)
+	return err
 }
 
 func (r *galebRouter) MoveCName(cname, orgBackend, dstBackend string) (err error) {
@@ -339,29 +317,16 @@ func (r *galebRouter) MoveCName(cname, orgBackend, dstBackend string) (err error
 	defer func() {
 		done(err)
 	}()
-	orgBackendName, err := router.Retrieve(orgBackend)
-	if err != nil {
-		return err
-	}
 	dstBackendName, err := router.Retrieve(dstBackend)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.AddVirtualHost(cname, true)
+	_, err = r.client.AddVirtualHostWithGroup(cname, r.virtualHostName(dstBackendName), true)
 	if err != nil && !galebClient.IsErrExists(err) {
 		return err
 	}
-	err = r.client.SetRuleVirtualHost(r.ruleName(dstBackendName), cname, true)
-	if err != nil && !galebClient.IsErrExists(err) {
-		return err
-	}
-	err = r.client.RemoveRuleVirtualHost(r.ruleName(orgBackendName), cname)
-	if err != nil {
-		if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); !ok {
-			return err
-		}
-	}
-	return r.client.UpdateVirtualHostRule(cname, r.ruleName(dstBackendName), true)
+	err = r.client.UpdateVirtualHostWithGroup(cname, r.virtualHostName(dstBackendName))
+	return err
 }
 
 func (r *galebRouter) Addr(name string) (addr string, err error) {
@@ -393,7 +358,7 @@ func (r *galebRouter) Routes(name string) (urls []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
 	if err != nil {
 		return nil, err
 	}
@@ -431,49 +396,53 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	rule := r.ruleName(backendName)
-	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	virtualhost := r.virtualHostName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhost)
 	if err != nil {
-		if _, ok := err.(galebClient.ErrItemNotFound); ok {
+		if _, ok := errors.Cause(err).(galebClient.ErrItemNotFound); ok {
 			return router.ErrBackendNotFound
 		}
 		return err
 	}
-	for _, virtualhost := range virtualhosts {
-		err = r.client.RemoveRuleVirtualHost(rule, virtualhost.Name)
-		if err != nil {
-			return err
-		}
-		err = r.client.RemoveVirtualHostByID(virtualhost.FullId())
-		if err != nil {
-			return err
-		}
+	targets, err := r.client.FindTargetsByPool(r.poolName(backendName))
+	if err != nil {
+		return err
+	}
+	err = r.client.RemoveRulesOrderedByRule(r.ruleName(backendName))
+	if err != nil {
+		return err
 	}
 	err = r.client.RemoveRule(r.ruleName(backendName))
 	if err != nil {
 		return err
 	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	for _, target := range targets {
+		err = r.client.RemoveResourceByID(target.FullId())
+		if err != nil {
+			return err
+		}
+	}
+	err = r.client.RemoveBackendPool(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
-	for _, target := range targets {
-		r.client.RemoveBackendByID(target.FullId())
+	for _, vh := range virtualhosts {
+		err = r.client.RemoveResourceByID(vh.FullId())
+		if err != nil {
+			return err
+		}
 	}
-	return r.client.RemoveBackendPool(r.poolName(backendName))
+	return nil
 }
 
 func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	rule := r.ruleName(backendName)
+	virtualhostName := r.virtualHostName(backendName)
 	multiErr := tsuruErrors.NewMultiError()
-	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	virtualhosts, err := r.client.FindVirtualHostsByGroup(virtualhostName)
 	if err == nil {
 		for _, virtualhost := range virtualhosts {
-			err = r.client.RemoveRuleVirtualHost(rule, virtualhost.Name)
-			if err != nil {
-				multiErr.Add(err)
-			}
-			err = r.client.RemoveVirtualHostByID(virtualhost.FullId())
+			err = r.client.RemoveResourceByID(virtualhost.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}
@@ -490,10 +459,10 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 		multiErr.Add(err)
 	}
 	pool := r.poolName(backendName)
-	targets, err := r.client.FindTargetsByParent(pool)
+	targets, err := r.client.FindTargetsByPool(pool)
 	if err == nil {
 		for _, target := range targets {
-			err = r.client.RemoveBackendByID(target.FullId())
+			err = r.client.RemoveResourceByID(target.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}
@@ -520,12 +489,12 @@ func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) (
 	if data.Path == "" {
 		data.Path = "/"
 	}
-	poolProperties := galebClient.BackendPoolProperties{
+	poolHealthCheck := galebClient.BackendPoolHealthCheck{
 		HcPath: data.Path,
 		HcBody: data.Body,
 	}
 	if data.Status != 0 {
-		poolProperties.HcStatusCode = fmt.Sprintf("%d", data.Status)
+		poolHealthCheck.HcHTTPStatusCode = fmt.Sprintf("%d", data.Status)
 	}
-	return r.client.UpdatePoolProperties(r.poolName(backendName), poolProperties)
+	return r.client.UpdatePoolProperties(r.poolName(backendName), poolHealthCheck)
 }
