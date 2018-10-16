@@ -364,7 +364,7 @@ func init() {
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
 		defer conn.Close()
-		dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+		dbtest.ClearAllCollections(conn.Collection("router_galebv2_tests").Database)
 	}
 	suite.TearDownTestFunc = func(c *check.C) {
 		server.Close()
@@ -392,7 +392,7 @@ func (s *S) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+	dbtest.ClearAllCollections(conn.Collection("router_galebv2_tests").Database)
 	clientCache.cache = nil
 }
 
