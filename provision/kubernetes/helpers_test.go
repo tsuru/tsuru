@@ -216,7 +216,7 @@ func (s *S) TestWaitFor(c *check.C) {
 func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	ns := "default"
-	err := waitForPodContainersRunning(ctx, s.clusterClient, "pod1", ns)
+	err := waitForPodContainersRunning(ctx, s.clusterClient, &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}}, ns)
 	cancel()
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
@@ -259,15 +259,16 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 	for _, tt := range tests {
 		wantedPhase = tt.phase
 		wantedStates = tt.states
-		_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+		podObj := &apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: ns,
 			},
-		})
+		}
+		_, err = s.client.CoreV1().Pods(ns).Create(podObj)
 		c.Assert(err, check.IsNil)
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		err = waitForPodContainersRunning(ctx, s.clusterClient, "pod1", ns)
+		err = waitForPodContainersRunning(ctx, s.clusterClient, podObj, ns)
 		cancel()
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
@@ -286,7 +287,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 	defer wg.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	ns := "default"
-	err := waitForPod(ctx, s.clusterClient, "pod1", ns, false)
+	err := waitForPod(ctx, s.clusterClient, &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}}, ns, false)
 	cancel()
 	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
 	var wantedPhase apiv1.PodPhase
@@ -332,7 +333,8 @@ func (s *S) TestWaitForPod(c *check.C) {
 			{Name: "cont1"},
 		}},
 	}
-	for _, tt := range tests {
+	for i, tt := range tests {
+		c.Logf("test %d", i)
 		wantedPhase = tt.phase
 		wantedMessage = tt.msg
 		pod := &apiv1.Pod{
@@ -351,7 +353,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		err = waitForPod(ctx, s.clusterClient, "pod1", ns, tt.running)
+		err = waitForPod(ctx, s.clusterClient, pod, ns, tt.running)
 		cancel()
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)

@@ -369,6 +369,23 @@ func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 	}
 }
 
+func UpdatePodContainerStatus(pod *apiv1.Pod, running bool) {
+	for _, cont := range pod.Spec.Containers {
+		contStatus := apiv1.ContainerStatus{
+			Name:  cont.Name,
+			State: apiv1.ContainerState{},
+		}
+		if running {
+			contStatus.State.Running = &apiv1.ContainerStateRunning{}
+		} else {
+			contStatus.State.Terminated = &apiv1.ContainerStateTerminated{
+				ExitCode: 0,
+			}
+		}
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, contStatus)
+	}
+}
+
 func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -402,6 +419,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			}
 		}
 		if toRegister {
+			UpdatePodContainerStatus(pod, true)
 			pod.Status.Phase = apiv1.PodRunning
 			wg.Add(1)
 			go func() {
@@ -416,6 +434,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				pod.Status.Phase = apiv1.PodSucceeded
 				ns, err := s.client.AppNamespace(a)
 				c.Assert(err, check.IsNil)
+				UpdatePodContainerStatus(pod, false)
 				_, err = s.client.CoreV1().Pods(ns).Update(pod)
 				c.Assert(err, check.IsNil)
 				err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)

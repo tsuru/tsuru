@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -1146,6 +1147,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodRunning
+		testing.UpdatePodContainerStatus(pod, true)
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
