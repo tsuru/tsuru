@@ -90,13 +90,13 @@ func (c *KubeClient) DownloadFromContainer(app provision.App, imageName string) 
 			client: client,
 			app:    app,
 			image:  imageName,
-			cmds:   []string{"cat /home/application/archive.tar.gz"},
+			cmds:   []string{"cat", "/home/application/archive.tar.gz"},
 			stdout: writer,
 			stderr: stderr,
 		}
 		err := runIsolatedCmdPod(client, opts)
 		if err != nil {
-			writer.CloseWithError(err)
+			writer.CloseWithError(errors.Wrapf(err, "error reading archive, stderr: %q", stderr.String()))
 		} else {
 			writer.Close()
 		}
