@@ -1845,7 +1845,21 @@ func (f *Filter) Query() bson.M {
 		query["teamowner"] = f.TeamOwner
 	}
 	if f.Platform != "" {
-		query["framework"] = f.Platform
+		parts := strings.SplitN(f.Platform, ":", 2)
+		query["framework"] = parts[0]
+		if len(parts) == 2 {
+			v := parts[1]
+			if v == "latest" {
+				query["$and"] = []bson.M{
+					{"$or": []bson.M{
+						{"platformversion": bson.M{"$in": []string{"latest", ""}}},
+						{"platformversion": bson.M{"$exists": false}},
+					}},
+				}
+			} else {
+				query["platformversion"] = v
+			}
+		}
 	}
 	if f.UserOwner != "" {
 		query["owner"] = f.UserOwner

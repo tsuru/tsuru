@@ -3197,6 +3197,39 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 	c.Assert(apps, check.HasLen, 1)
 }
 
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.C) {
+	apps := []App{
+		App{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
+		App{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
+		App{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
+		App{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
+		App{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	err := s.conn.Apps().Update(bson.M{"name": "testappwithoutversionfield"}, bson.M{"$unset": bson.M{"platformversion": ""}})
+	c.Assert(err, check.IsNil)
+	tt := []struct {
+		platform string
+		apps     []string
+	}{
+		{platform: "ruby", apps: []string{"testapp", "testapplatest", "othertestapp", "testappwithoutversion", "testappwithoutversionfield"}},
+		{platform: "ruby:latest", apps: []string{"testapp", "testapplatest", "testappwithoutversion", "testappwithoutversionfield"}},
+		{platform: "ruby:v1", apps: []string{"othertestapp"}},
+	}
+	for _, t := range tt {
+		apps, err := List(&Filter{Platform: t.platform})
+		c.Assert(err, check.IsNil)
+		var appNames []string
+		for _, a := range apps {
+			appNames = append(appNames, a.Name)
+		}
+		c.Assert(appNames, check.DeepEquals, t.apps, check.Commentf("Invalid apps for platform %v", t.platform))
+	}
+}
+
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
 	a := App{
 		Name:      "testapp",
