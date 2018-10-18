@@ -6,6 +6,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -385,50 +386,26 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait boo
 	if err != nil {
 		return err
 	}
-	errCh := make(chan error, len(backends))
-	wg := sync.WaitGroup{}
-	var limiter chan struct{}
-	if c.MaxRequests > 0 {
-		limiter = make(chan struct{}, c.MaxRequests)
-	}
-	for i := range backends {
-		wg.Add(1)
-		go func(i int) {
-			if limiter != nil {
-				limiter <- struct{}{}
-				defer func() { <-limiter }()
+	return DoLimited(context.Background(), c.MaxRequests, len(backends), func(i int) error {
+		var params Target
+		params.Name = backends[i].String()
+		params.BackendPool = poolID
+		resource, cerr := c.doCreateResource("/target", &params)
+		if cerr != nil {
+			if _, ok := cerr.(ErrItemAlreadyExists); ok {
+				return nil
 			}
-			defer wg.Done()
-			var params Target
-			params.Name = backends[i].String()
-			params.BackendPool = poolID
-			resource, cerr := c.doCreateResource("/target", &params)
+			return cerr
+		}
+		if wait {
+			cerr = c.waitStatusOK(resource)
 			if cerr != nil {
-				if _, ok := cerr.(ErrItemAlreadyExists); ok {
-					return
-				}
-				errCh <- cerr
+				c.removeResource(resource)
+				return cerr
 			}
-			if wait {
-				cerr = c.waitStatusOK(resource)
-				if cerr != nil {
-					c.removeResource(resource)
-					errCh <- cerr
-				}
-			}
-		}(i)
-	}
-	done := make(chan bool)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case err = <-errCh:
-		return err
-	}
-	return nil
+		}
+		return nil
+	})
 }
 
 func (c *GalebClient) AddRuleToPool(name, poolName string) (string, error) {
@@ -490,41 +467,16 @@ func (c *GalebClient) RemoveResourceByID(resourceID string) error {
 }
 
 func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string, wait bool) error {
-	errCh := make(chan error, len(resourceIDs))
-	wg := sync.WaitGroup{}
-	var limiter chan struct{}
-	if c.MaxRequests > 0 {
-		limiter = make(chan struct{}, c.MaxRequests)
-	}
-	for i := range resourceIDs {
-		wg.Add(1)
-		go func(i int) {
-			if limiter != nil {
-				limiter <- struct{}{}
-				defer func() { <-limiter }()
-			}
-			defer wg.Done()
-			resource, err := c.removeResource(resourceIDs[i])
-			if err != nil {
-				errCh <- err
-				return
-			}
-			if wait {
-				errCh <- c.waitStatusOK(resource)
-			}
-		}(i)
-	}
-	done := make(chan bool)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case err := <-errCh:
-		return err
-	}
-	return nil
+	return DoLimited(context.Background(), c.MaxRequests, len(resourceIDs), func(i int) error {
+		resource, err := c.removeResource(resourceIDs[i])
+		if err != nil {
+			return err
+		}
+		if wait {
+			return c.waitStatusOK(resource)
+		}
+		return nil
+	})
 }
 
 func (c *GalebClient) RemoveBackendPool(poolName string) error {
@@ -776,4 +728,42 @@ func IsErrExists(err error) bool {
 	}
 	_, ok := errors.Cause(err).(ErrItemAlreadyExists)
 	return ok
+}
+
+func DoLimited(ctx context.Context, limit, n int, fn func(i int) error) error {
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errCh := make(chan error, n)
+	wg := sync.WaitGroup{}
+	var limiter chan struct{}
+	if limit > 0 {
+		limiter = make(chan struct{}, limit)
+	}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			select {
+			case <-cancelCtx.Done():
+				return
+			default:
+			}
+			if limiter != nil {
+				select {
+				case limiter <- struct{}{}:
+				case <-cancelCtx.Done():
+					return
+				}
+				defer func() { <-limiter }()
+			}
+			err := fn(i)
+			if err != nil {
+				cancel()
+				errCh <- err
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errCh)
+	return <-errCh
 }

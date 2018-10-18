@@ -6,6 +6,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	v2Client "github.com/tsuru/tsuru/router/galebv2/client"
 )
 
 const maxConnRetries = 3
@@ -188,12 +190,12 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	if err != nil {
 		return "", err
 	}
+	defer rsp.Body.Close()
 	if rsp.StatusCode == http.StatusConflict {
 		return "", ErrItemAlreadyExists{path: path, params: params}
 	}
 	if rsp.StatusCode != http.StatusCreated {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		rsp.Body.Close()
 		return "", errors.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
 	location := rsp.Header.Get("Location")
@@ -323,9 +325,9 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(poolID)
@@ -336,51 +338,27 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait boo
 	if err != nil {
 		return err
 	}
-	errCh := make(chan error, len(backends))
-	wg := sync.WaitGroup{}
-	var limiter chan struct{}
-	if c.MaxRequests > 0 {
-		limiter = make(chan struct{}, c.MaxRequests)
-	}
-	for i := range backends {
-		wg.Add(1)
-		go func(i int) {
-			if limiter != nil {
-				limiter <- struct{}{}
-				defer func() { <-limiter }()
+	return v2Client.DoLimited(context.Background(), c.MaxRequests, len(backends), func(i int) error {
+		var params Target
+		c.fillDefaultTargetValues(&params)
+		params.Name = backends[i].String()
+		params.BackendPool = poolID
+		resource, cerr := c.doCreateResource("/target", &params)
+		if cerr != nil {
+			if _, ok := cerr.(ErrItemAlreadyExists); ok {
+				return nil
 			}
-			defer wg.Done()
-			var params Target
-			c.fillDefaultTargetValues(&params)
-			params.Name = backends[i].String()
-			params.BackendPool = poolID
-			resource, cerr := c.doCreateResource("/target", &params)
+			return cerr
+		}
+		if wait {
+			cerr = c.waitStatusOK(resource)
 			if cerr != nil {
-				if _, ok := cerr.(ErrItemAlreadyExists); ok {
-					return
-				}
-				errCh <- cerr
+				c.removeResource(resource)
+				return cerr
 			}
-			if wait {
-				cerr = c.waitStatusOK(resource)
-				if cerr != nil {
-					c.removeResource(resource)
-					errCh <- cerr
-				}
-			}
-		}(i)
-	}
-	done := make(chan bool)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case err = <-errCh:
-		return err
-	}
-	return nil
+		}
+		return nil
+	})
 }
 
 func (c *GalebClient) AddRuleToPool(name, poolName string) (string, error) {
@@ -405,9 +383,9 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait b
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	if wait {
@@ -437,37 +415,9 @@ func (c *GalebClient) RemoveBackendByID(backendID string) error {
 }
 
 func (c *GalebClient) RemoveBackendsByIDs(backendIDs []string) error {
-	errCh := make(chan error, len(backendIDs))
-	wg := sync.WaitGroup{}
-	var limiter chan struct{}
-	if c.MaxRequests > 0 {
-		limiter = make(chan struct{}, c.MaxRequests)
-	}
-	for i := range backendIDs {
-		wg.Add(1)
-		go func(i int) {
-			if limiter != nil {
-				limiter <- struct{}{}
-				defer func() { <-limiter }()
-			}
-			defer wg.Done()
-			err := c.removeResource(backendIDs[i])
-			if err != nil {
-				errCh <- err
-			}
-		}(i)
-	}
-	done := make(chan bool)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case err := <-errCh:
-		return err
-	}
-	return nil
+	return v2Client.DoLimited(context.Background(), c.MaxRequests, len(backendIDs), func(i int) error {
+		return c.removeResource(backendIDs[i])
+	})
 }
 
 func (c *GalebClient) RemoveBackendPool(poolName string) error {
@@ -630,9 +580,9 @@ func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string, wa
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	if wait {
@@ -666,10 +616,10 @@ func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) 
 	if err != nil {
 		return "", 0, err
 	}
+	defer rsp.Body.Close()
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
 	}
-	defer rsp.Body.Close()
 	rspData, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
 		return "", 0, err
