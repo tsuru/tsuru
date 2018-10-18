@@ -3199,11 +3199,11 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.C) {
 	apps := []App{
-		App{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
-		App{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
-		App{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
-		App{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
-		App{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
+		{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
+		{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
+		{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
+		{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
+		{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
 	}
 	for _, a := range apps {
 		err := s.conn.Apps().Insert(a)
