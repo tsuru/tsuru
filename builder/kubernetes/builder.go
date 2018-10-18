@@ -43,7 +43,8 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 		return imageBuild(client, app, opts.ImageID, evt)
 	}
 	if opts.Rebuild {
-		tarFile, err := downloadFromContainer(client, app, evt)
+		var tarFile io.ReadCloser
+		tarFile, err = downloadFromContainer(client, app, evt)
 		if err != nil {
 			return "", err
 		}
