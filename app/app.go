@@ -176,6 +176,9 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["name"] = app.Name
 	result["platform"] = app.Platform
+	if version := app.GetPlatformVersion(); version != "latest" {
+		result["platform"] = fmt.Sprintf("%s:%s", app.Platform, version)
+	}
 	result["teams"] = app.Teams
 	units, err := app.Units()
 	result["units"] = units

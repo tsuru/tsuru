@@ -2808,6 +2808,69 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
+	repository.Manager().CreateRepository("name", nil)
+	opts := pool.AddPoolOptions{Name: "test", Default: false}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:            "name",
+		Platform:        "Framework",
+		PlatformVersion: "v1",
+		Teams:           []string{"team1"},
+		CName:           []string{"name.mycompany.com"},
+		Owner:           "appOwner",
+		Deploys:         7,
+		Pool:            "test",
+		Description:     "description",
+		Plan:            appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		TeamOwner:       "myteam",
+		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+		Tags:            []string{"tag a", "tag b"},
+	}
+	err = routertest.FakeRouter.AddBackend(&app)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"name":        "name",
+		"platform":    "Framework:v1",
+		"repository":  "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":       []interface{}{"team1"},
+		"units":       []interface{}{},
+		"ip":          "name.fakerouter.com",
+		"cname":       []interface{}{"name.mycompany.com"},
+		"owner":       "appOwner",
+		"deploys":     float64(7),
+		"pool":        "test",
+		"description": "description",
+		"teamowner":   "myteam",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
+			"router":   "fake",
+		},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"routers": []interface{}{
+			map[string]interface{}{
+				"name":    "fake",
+				"address": "name.fakerouter.com",
+				"type":    "fake",
+				"opts":    map[string]interface{}{"opt1": "val1"},
+			},
+		},
+		"tags": []interface{}{"tag a", "tag b"},
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
