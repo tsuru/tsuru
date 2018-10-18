@@ -351,3 +351,19 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	err := client.BuildImage("myplatform", "tsuru/myplatform:latest", ioutil.NopCloser(inputStream), out, context.Background())
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestDownloadFromContainer(c *check.C) {
+	expectedFile := []byte("file content")
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		w.Write(expectedFile)
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	client := KubeClient{}
+	archiveReader, err := client.DownloadFromContainer(a, "tsuru/app-myapp:tag1")
+	c.Assert(err, check.IsNil)
+	c.Assert(archiveReader, check.NotNil)
+	archive, err := ioutil.ReadAll(archiveReader)
+	c.Assert(err, check.IsNil)
+	c.Assert(archive, check.DeepEquals, expectedFile)
+}

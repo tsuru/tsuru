@@ -156,9 +156,9 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 			"procfile": "web: test.sh",
 			"tsuruYaml": {
 				"healthcheck": {
-					"path": "/status", 
-					"status": 200, 
-					"method":"GET", 
+					"path": "/status",
+					"status": 200,
+					"method":"GET",
 					"scheme": "https"
 				},
 				"hooks": {
@@ -219,4 +219,32 @@ ignored docker push output
 	_, err = s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
+}
+
+func (s *S) TestRebuild(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my upload data")
+	bopts := builder.BuildOpts{
+		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveSize: int64(buf.Len()),
+	}
+	imgID, err := s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	_, err = image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	bopts = builder.BuildOpts{
+		Rebuild: true,
+	}
+	imgID, err = s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v2-builder")
 }

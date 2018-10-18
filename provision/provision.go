@@ -290,6 +290,7 @@ type BuilderKubeClient interface {
 	BuildPod(App, *event.Event, io.Reader, string) (string, error)
 	BuildImage(name, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error
 	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *TsuruYamlData, error)
+	DownloadFromContainer(App, string) (io.ReadCloser, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.

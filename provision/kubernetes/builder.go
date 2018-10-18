@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -75,6 +76,32 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage s
 		return nil, "", nil, err
 	}
 	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
+}
+
+func (c *KubeClient) DownloadFromContainer(app provision.App, imageName string) (io.ReadCloser, error) {
+	client, err := clusterForPool(app.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	reader, writer := io.Pipe()
+	stderr := &bytes.Buffer{}
+	go func() {
+		opts := execOpts{
+			client: client,
+			app:    app,
+			image:  imageName,
+			cmds:   []string{"cat /home/application/archive.tar.gz"},
+			stdout: writer,
+			stderr: stderr,
+		}
+		err := runIsolatedCmdPod(client, opts)
+		if err != nil {
+			writer.CloseWithError(err)
+		} else {
+			writer.Close()
+		}
+	}()
+	return reader, nil
 }
 
 func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error {

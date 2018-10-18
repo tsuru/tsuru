@@ -541,6 +541,7 @@ var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 type execOpts struct {
 	client   *ClusterClient
 	app      provision.App
+	image    string
 	unit     string
 	cmds     []string
 	stdout   io.Writer
