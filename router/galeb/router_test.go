@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -175,6 +177,11 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	var target galebClient.Target
 	target.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&target)
+	err := s.checkError(r.Method, r.URL.Path)
+	if err != nil && strings.Contains(err.Error(), target.Name) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	targetsWithName := s.findItemByName("target", target.Name)
 	for _, item := range targetsWithName {
 		otherTarget := item.(*galebClient.Target)
@@ -518,4 +525,28 @@ func (s *S) TestAddBackendPartialFailureInFirstResourceExisting(c *check.C) {
 	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.rules, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.ruleVh, check.Not(check.DeepEquals), map[string][]string{})
+}
+
+func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.IsNil)
+	var addrs []*url.URL
+	for i := 0; i < 20; i++ {
+		var addr *url.URL
+		addr, err = url.Parse(fmt.Sprintf("http://10.10.10.%d:8080", i))
+		c.Assert(err, check.IsNil)
+		addrs = append(addrs, addr)
+	}
+	fakeServer.prepareError("POST", "/api/target", "error for http://10.10.10.5:8080")
+	sort.Sort(routertest.URLList(addrs))
+	err = gRouter.AddRoutes("backend1", addrs)
+	c.Assert(err, check.ErrorMatches, `(?s)POST /target: invalid response code: 500: error for http://10.10.10.5:8080.*`)
+	c.Check(fakeServer.targets["http://10.10.10.5:8080"], check.IsNil)
 }
