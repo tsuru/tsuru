@@ -93,7 +93,7 @@ func doAttach(ctx context.Context, client *ClusterClient, stdin io.Reader, stdou
 			log.Errorf("error while waiting for container to finish during attach, attach not canceled: %v", err)
 		}
 	}()
-	// WARNING(cezarsa): If a context cancelation or a container finished
+	// WARNING(cezarsa): If a context cancellation or a container finished
 	// situation is triggered there's no reliable way to close the pending
 	// doUnsafeAttach call. We may only hope it will be gone eventually (as it
 	// should if the remote host isn't accessible anymore due to tcp keepalive
@@ -332,7 +332,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		}
 	}()
 	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(tctx, params.client, params.pod.Name, ns)
+	err = waitForPodContainersRunning(tctx, params.client, params.pod, ns)
 	cancel()
 	if err != nil {
 		return err
@@ -346,7 +346,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 	}
 	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(tctx, params.client, params.pod.Name, ns, false)
+	return waitForPod(tctx, params.client, params.pod, ns, false)
 }
 
 func registryAuth(img string) (username, password, imgDomain string) {
@@ -1085,7 +1085,7 @@ func runInspectSidecar(params inspectParams) error {
 	defer cleanupPod(params.client, pod.Name, ns)
 	multiErr := tsuruErrors.NewMultiError()
 	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(ctx, params.client, pod.Name, ns)
+	err = waitForPodContainersRunning(ctx, params.client, &pod, ns)
 	cancel()
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
@@ -1099,7 +1099,7 @@ func runInspectSidecar(params inspectParams) error {
 	}
 	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
 	defer cancel()
-	return waitForPod(ctx, params.client, pod.Name, ns, false)
+	return waitForPod(ctx, params.client, &pod, ns, false)
 }
 
 type deployAgentConfig struct {
