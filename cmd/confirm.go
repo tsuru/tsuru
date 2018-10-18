@@ -30,7 +30,9 @@ func (cmd *ConfirmationCommand) Confirm(context *Context, question string) bool 
 	}
 	fmt.Fprintf(context.Stdout, `%s (y/n) `, question)
 	var answer string
-	fmt.Fscanf(context.Stdin, "%s", &answer)
+	if context.Stdin != nil {
+		fmt.Fscanf(context.Stdin, "%s", &answer)
+	}
 	if answer != "y" {
 		fmt.Fprintln(context.Stdout, "Abort.")
 		return false
