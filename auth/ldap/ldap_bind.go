@@ -10,7 +10,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-
 	ldapv2 "gopkg.in/ldap.v2"
 )
 
