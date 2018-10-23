@@ -307,11 +307,15 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
+	events, err := params.client.CoreV1().Events(ns).List(listOptsForPodEvent(params.podName))
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	_, err = params.client.CoreV1().Pods(ns).Create(params.pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	watch, err := filteredPodEvents(params.client, "", params.podName, ns)
+	watch, err := filteredPodEvents(params.client, events.ResourceVersion, params.podName, ns)
 	if err != nil {
 		return err
 	}
@@ -726,21 +730,26 @@ func filteredPodEvents(client *ClusterClient, evtResourceVersion, podName, names
 	if err != nil {
 		return nil, err
 	}
+	opts := listOptsForPodEvent(podName)
+	opts.Watch = true
+	opts.ResourceVersion = evtResourceVersion
+	evtWatch, err := client.CoreV1().Events(namespace).Watch(opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return evtWatch, nil
+}
+
+func listOptsForPodEvent(podName string) metav1.ListOptions {
 	selector := map[string]string{
 		"involvedObject.kind": "Pod",
 	}
 	if podName != "" {
 		selector["involvedObject.name"] = podName
 	}
-	evtWatch, err := client.CoreV1().Events(namespace).Watch(metav1.ListOptions{
-		FieldSelector:   labels.SelectorFromSet(labels.Set(selector)).String(),
-		Watch:           true,
-		ResourceVersion: evtResourceVersion,
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
+	return metav1.ListOptions{
+		FieldSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	}
-	return evtWatch, nil
 }
 
 func isDeploymentEvent(msg watch.Event, dep *v1beta2.Deployment) bool {
@@ -906,7 +915,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if oldDep != nil {
 		oldRevision = oldDep.Annotations[replicaDepRevision]
 	}
-	events, err := m.client.CoreV1().Events(ns).List(metav1.ListOptions{})
+	events, err := m.client.CoreV1().Events(ns).List(listOptsForPodEvent(""))
 	if err != nil {
 		return errors.WithStack(err)
 	}
