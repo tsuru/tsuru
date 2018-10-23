@@ -12,7 +12,7 @@ Overview
 
 If you need a platform that's not already available in our `platforms repository
 <https://github.com/tsuru/platforms>`_ it's pretty easy to create a new one
-based on a existing one.
+based on an existing one.
 
 Platforms are Docker images that are used to deploy your application code on tsuru. tsuru provides a
 base image which platform developers can use to build upon: `base-platform <https://github.com/tsuru/base-platform>`_.

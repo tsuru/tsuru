@@ -33,7 +33,7 @@ To deploy your first app after choosing your ``<app-name>`` and ``<app-platform>
 
     $ tsuru app-deploy -a <app-name> <directory>
 
-As a example we can deploy a tutorial app named ``hello world``:
+As an example we can deploy a tutorial app named ``hello world``:
 
 .. highlight:: bash
 
