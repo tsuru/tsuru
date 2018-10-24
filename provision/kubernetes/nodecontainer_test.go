@@ -48,6 +48,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
 		ClusterInterface:       clusterClient1,
 	}
+	clusterClient1.Interface = client1
 	cluster2 := &provTypes.Cluster{
 		Name:        "c2",
 		Addresses:   []string{"https://clusteraddr2"},
@@ -63,6 +64,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
 		ClusterInterface:       clusterClient2,
 	}
+	clusterClient2.Interface = client2
 
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return []provTypes.Cluster{*cluster1, *cluster2}, nil
