@@ -1968,55 +1968,22 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
-		if poolName == "test-pool-2" {
-			return &provTypes.Cluster{
-				Name:        "c2",
-				Addresses:   []string{"192.168.100.2"},
-				Provisioner: "kubernetes",
-				Pools:       []string{poolName},
-			}, nil
-		}
-		return s.client.GetCluster(), nil
-	}
+	client1, client2 := s.prepareMultiCluster(c)
+	s.client = client1
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	pool2 := client2.GetCluster().Pools[0]
 	err := pool.AddPool(pool.AddPoolOptions{
-		Name:        "test-pool-2",
+		Name:        pool2,
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	a, wait, rollback := s.mock.DefaultReactions(c)
+	s.client = client2
+	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
+	s.mock.IgnorePool = true
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
-	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	wait()
-	sList, err := s.client.CoreV1().Services("default").List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
-	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
-	buf := new(bytes.Buffer)
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": newApp.GetPool(),
-		})
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
-		return true, nil, nil
-	})
+
 	v := volume.Volume{
 		Name: "v1",
 		Opts: map[string]string{
@@ -2026,13 +1993,113 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
 		Plan:      volume.VolumePlan{Name: "p1"},
-		Pool:      "test-default",
+		Pool:      a.Pool,
+		TeamOwner: "admin",
+	}
+	err = v.Create()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt1", false)
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(client1.ClusterInterface.(*ClusterClient), a)
+	c.Assert(err, check.IsNil)
+
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 1)
+
+	err = s.p.UpdateApp(a, newApp, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	// Check if old volume was removed
+	pvcs, err = client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 0)
+	// Check if new volume was created
+	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 1)
+}
+
+func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	client1, client2 := s.prepareMultiCluster(c)
+	s.client = client1
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	pool2 := client2.GetCluster().Pools[0]
+	err := pool.AddPool(pool.AddPoolOptions{
+		Name:        pool2,
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	s.client = client2
+	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
+	s.mock.IgnorePool = true
+	s.mock.IgnoreAppName = true
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      a.Pool,
 		TeamOwner: "admin",
 	}
 	err = v.Create()
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateApp(a, newApp, buf)
+	_, _, err = createVolumesForApp(client1.ClusterInterface.(*ClusterClient), a)
 	c.Assert(err, check.IsNil)
+	a2 := provisiontest.NewFakeApp("myapp2", "python", 0)
+	err = s.p.Provision(a2)
+	c.Assert(err, check.IsNil)
+	client1.TsuruClientset.PrependReactor("create", "apps", s.mock.AppReaction(a2, c))
+	err = v.BindApp(a2.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(client1.ClusterInterface.(*ClusterClient), a2)
+	c.Assert(err, check.IsNil)
+
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 1)
+
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	err = s.p.UpdateApp(a, newApp, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	// Check if old volume was not removed
+	pvcs, err = client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 1)
+	// Check if new volume was created
+	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pvcs.Items, check.HasLen, 1)
 }

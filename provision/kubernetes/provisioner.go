@@ -236,7 +236,32 @@ func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsur
 			}
 		}
 	}
-	err := client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
+	vols, err := volume.ListByApp(app.Name)
+	if err != nil {
+		multiErrors.Add(errors.WithStack(err))
+	} else {
+		for _, vol := range vols {
+			_, err = vol.LoadBinds()
+			if err != nil {
+				continue
+			}
+
+			bindedToOtherApps := false
+			for _, b := range vol.Binds {
+				if b.ID.App != app.Name {
+					bindedToOtherApps = true
+					break
+				}
+			}
+			if !bindedToOtherApps {
+				err = deleteVolume(client, vol.Name)
+				if err != nil {
+					multiErrors.Add(errors.WithStack(err))
+				}
+			}
+		}
+	}
+	err = client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
@@ -1033,7 +1058,9 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	if err != nil {
 		return err
 	}
-	if client.Cluster.Name == newclient.Cluster.Name && client.PoolNamespace(old.GetPool()) != client.PoolNamespace(new.GetPool()) {
+	sameCluster := client.GetCluster().Name == newclient.GetCluster().Name
+	sameNamespace := client.PoolNamespace(old.GetPool()) == client.PoolNamespace(new.GetPool())
+	if sameCluster && !sameNamespace {
 		volumes, err := volume.ListByApp(old.GetName())
 		if err != nil {
 			return err
@@ -1048,7 +1075,7 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		w:   w,
 		p:   p,
 	}
-	if !(client.GetCluster().Name == newclient.GetCluster().Name) {
+	if !sameCluster {
 		actions := []*action.Action{
 			&provisionNewApp,
 			&restartApp,
@@ -1058,7 +1085,7 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		return action.NewPipeline(actions...).Execute(params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
-	if client.PoolNamespace(old.GetPool()) == newclient.PoolNamespace(new.GetPool()) {
+	if sameNamespace {
 		return nil
 	}
 	actions := []*action.Action{
