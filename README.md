@@ -29,7 +29,7 @@ With the purpose of testing tsuru and/or for development, you can use the [insta
 
 Download the latest release for your platform at: https://github.com/tsuru/tsuru-client/releases/
 
-Example for release `1.1.1` and `OS X`:
+Example for release `1.1.1` and `macOS`:
 
 ```
 $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz | tar xz
