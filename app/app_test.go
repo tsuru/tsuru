@@ -5428,6 +5428,22 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 	})
 }
 
+func (s *S) TestGetRoutersIgnoresDuplicatedEntry(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	app.Router = "fake-tls"
+	routers := app.GetRouters()
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake"},
+		{Name: "fake-tls"},
+	})
+}
+
 func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	p1 := provisiontest.NewFakeProvisioner()
 	p1.Name = "fake1"
