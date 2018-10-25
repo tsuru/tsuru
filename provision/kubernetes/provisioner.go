@@ -949,9 +949,11 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	imgName, err := image.AppCurrentImageName(opts.app.GetName())
-	if err != nil {
-		return err
+	if opts.image == "" {
+		opts.image, err = image.AppCurrentImageName(opts.app.GetName())
+		if err != nil {
+			return err
+		}
 	}
 	appEnvs := provision.EnvsForApp(opts.app, "", false)
 	var envs []apiv1.EnvVar
@@ -964,11 +966,11 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 		stderr:   opts.stderr,
 		stdin:    opts.stdin,
 		termSize: opts.termSize,
+		image:    opts.image,
 		labels:   labels,
 		cmds:     opts.cmds,
 		envs:     envs,
 		name:     baseName,
-		image:    imgName,
 		app:      opts.app,
 	})
 }

@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -40,6 +41,14 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 	}
 	if opts.ImageID != "" {
 		return imageBuild(client, app, opts.ImageID, evt)
+	}
+	if opts.Rebuild {
+		var tarFile io.ReadCloser
+		tarFile, err = downloadFromContainer(client, app, evt)
+		if err != nil {
+			return "", err
+		}
+		opts.ArchiveFile = tarFile
 	}
 	imageID, err := client.BuildPod(app, evt, opts.ArchiveFile, opts.Tag)
 	if err != nil {
@@ -99,4 +108,17 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 		"healthcheck": yaml.Healthcheck,
 		"hooks":       yaml.Hooks,
 	}
+}
+
+func downloadFromContainer(client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
+	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
+	if err != nil {
+		return nil, errors.Errorf("App %s image not found", app.GetName())
+	}
+	fmt.Fprintln(evt, "---- Downloading archive from image ----")
+	archiveFile, err := client.DownloadFromContainer(app, imageName)
+	if err != nil {
+		return nil, err
+	}
+	return archiveFile, nil
 }
