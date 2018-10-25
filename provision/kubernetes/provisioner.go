@@ -671,14 +671,12 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 			appendKV(v, ",", "=", node.Annotations)
 		case tsuruExtraLabelsMeta:
 			appendKV(v, ",", "=", node.Labels)
-		default:
-			if v == "" {
-				delete(node.Annotations, k)
-				continue
-			}
-			node.Annotations[k] = v
 		}
-
+		if v == "" {
+			delete(node.Annotations, k)
+			continue
+		}
+		node.Annotations[k] = v
 	}
 	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
 		IaaSID: iaasID,
