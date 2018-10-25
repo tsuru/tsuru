@@ -666,11 +666,19 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 	}
 	for k, v := range meta {
 		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
-		if v == "" {
-			delete(node.Annotations, k)
-		} else {
+		switch k {
+		case tsuruExtraAnnotationsMeta:
+			appendKV(v, ",", "=", node.Annotations)
+		case tsuruExtraLabelsMeta:
+			appendKV(v, ",", "=", node.Labels)
+		default:
+			if v == "" {
+				delete(node.Annotations, k)
+				continue
+			}
 			node.Annotations[k] = v
 		}
+
 	}
 	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
 		IaaSID: iaasID,
@@ -683,6 +691,21 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 		}
 		delete(node.Annotations, k)
 		node.Labels[k] = v
+	}
+}
+
+func appendKV(s, outSep, innSep string, m map[string]string) {
+	kvs := strings.Split(s, outSep)
+	for _, kv := range kvs {
+		parts := strings.SplitN(kv, innSep, 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if parts[1] == "" {
+			delete(m, parts[1])
+			continue
+		}
+		m[parts[0]] = parts[1]
 	}
 }
 
