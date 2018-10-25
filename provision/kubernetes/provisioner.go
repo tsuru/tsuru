@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	"github.com/tsuru/tsuru/volume"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -235,7 +236,32 @@ func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsur
 			}
 		}
 	}
-	err := client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
+	vols, err := volume.ListByApp(app.Name)
+	if err != nil {
+		multiErrors.Add(errors.WithStack(err))
+	} else {
+		for _, vol := range vols {
+			_, err = vol.LoadBinds()
+			if err != nil {
+				continue
+			}
+
+			bindedToOtherApps := false
+			for _, b := range vol.Binds {
+				if b.ID.App != app.Name {
+					bindedToOtherApps = true
+					break
+				}
+			}
+			if !bindedToOtherApps {
+				err = deleteVolume(client, vol.Name)
+				if err != nil {
+					multiErrors.Add(errors.WithStack(err))
+				}
+			}
+		}
+	}
+	err = client.CoreV1().ServiceAccounts(app.Spec.NamespaceName).Delete(app.Spec.ServiceAccountName, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
@@ -640,11 +666,17 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 	}
 	for k, v := range meta {
 		k = tsuruLabelPrefix + strings.TrimPrefix(k, tsuruLabelPrefix)
+		switch k {
+		case tsuruExtraAnnotationsMeta:
+			appendKV(v, ",", "=", node.Annotations)
+		case tsuruExtraLabelsMeta:
+			appendKV(v, ",", "=", node.Labels)
+		}
 		if v == "" {
 			delete(node.Annotations, k)
-		} else {
-			node.Annotations[k] = v
+			continue
 		}
+		node.Annotations[k] = v
 	}
 	baseNodeLabels := provision.NodeLabels(provision.NodeLabelsOpts{
 		IaaSID: iaasID,
@@ -657,6 +689,21 @@ func setNodeMetadata(node *apiv1.Node, pool, iaasID string, meta map[string]stri
 		}
 		delete(node.Annotations, k)
 		node.Labels[k] = v
+	}
+}
+
+func appendKV(s, outSep, innSep string, m map[string]string) {
+	kvs := strings.Split(s, outSep)
+	for _, kv := range kvs {
+		parts := strings.SplitN(kv, innSep, 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if parts[1] == "" {
+			delete(m, parts[1])
+			continue
+		}
+		m[parts[0]] = parts[1]
 	}
 }
 
@@ -949,9 +996,11 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	imgName, err := image.AppCurrentImageName(opts.app.GetName())
-	if err != nil {
-		return err
+	if opts.image == "" {
+		opts.image, err = image.AppCurrentImageName(opts.app.GetName())
+		if err != nil {
+			return err
+		}
 	}
 	appEnvs := provision.EnvsForApp(opts.app, "", false)
 	var envs []apiv1.EnvVar
@@ -964,11 +1013,11 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 		stderr:   opts.stderr,
 		stdin:    opts.stdin,
 		termSize: opts.termSize,
+		image:    opts.image,
 		labels:   labels,
 		cmds:     opts.cmds,
 		envs:     envs,
 		name:     baseName,
-		image:    imgName,
 		app:      opts.app,
 	})
 }
@@ -1030,13 +1079,24 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 	if err != nil {
 		return err
 	}
+	sameCluster := client.GetCluster().Name == newclient.GetCluster().Name
+	sameNamespace := client.PoolNamespace(old.GetPool()) == client.PoolNamespace(new.GetPool())
+	if sameCluster && !sameNamespace {
+		volumes, err := volume.ListByApp(old.GetName())
+		if err != nil {
+			return err
+		}
+		if len(volumes) > 0 {
+			return fmt.Errorf("can't change the pool of an app with binded volumes")
+		}
+	}
 	params := updatePipelineParams{
 		old: old,
 		new: new,
 		w:   w,
 		p:   p,
 	}
-	if !(client.GetCluster().Name == newclient.GetCluster().Name) {
+	if !sameCluster {
 		actions := []*action.Action{
 			&provisionNewApp,
 			&restartApp,
@@ -1046,7 +1106,7 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 		return action.NewPipeline(actions...).Execute(params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
-	if client.PoolNamespace(old.GetPool()) == newclient.PoolNamespace(new.GetPool()) {
+	if sameNamespace {
 		return nil
 	}
 	actions := []*action.Action{

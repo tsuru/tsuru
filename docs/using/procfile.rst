@@ -7,7 +7,7 @@ Procfile
 ++++++++
 
 `Procfile` is a simple text file called `Procfile` that describe the components required
-to run an applications. It is the way to tell to `tsuru` how to run
+to run an application. It is the way to tell to `tsuru` how to run
 your applications.
 
 This document describes some of the more

@@ -215,12 +215,23 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	simple, _ := strconv.ParseBool(r.URL.Query().Get("simplified"))
+	w.Header().Set("Content-Type", "application/json")
+	miniApps := make([]miniApp, len(apps))
+	if simple {
+		for i, ap := range apps {
+			ur := app.AppUnitsResponse{Units: nil, Err: nil}
+			miniApps[i], err = minifyApp(ap, ur)
+			if err != nil {
+				return err
+			}
+		}
+		return json.NewEncoder(w).Encode(miniApps)
+	}
 	appUnits, err := app.Units(apps)
 	if err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
 		miniApps[i], err = minifyApp(app, appUnits[app.Name])
 		if err != nil {
@@ -485,7 +496,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
 	}
 	if len(wantedPerms) == 0 {
-		msg := "Neither the description, plan, pool, team owner or platform were set. You must define at least one."
+		msg := "Neither the description, tags, plan, pool, team owner or platform were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
@@ -1173,12 +1184,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if follow != "1" {
 		return nil
 	}
-	var closeChan <-chan bool
-	if notifier, ok := w.(http.CloseNotifier); ok {
-		closeChan = notifier.CloseNotify()
-	} else {
-		closeChan = make(chan bool)
-	}
+	closeChan := r.Context().Done()
 	l, err := app.NewLogListener(&a, filterLog)
 	if err != nil {
 		return err

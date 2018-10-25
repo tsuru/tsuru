@@ -19,8 +19,27 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
-	v2Client "github.com/tsuru/tsuru/router/galebv2/client"
 )
+
+// Target - One for each unit
+// |
+// v
+// Pool - Created on app create (tsuru-backendpool-<router name>-<app name>)
+// |
+// v
+// Rule - Created on app create (tsuru-rootrule-<router name>-<app name>)
+// |
+// v
+// Rule Ordered - Created on app create.
+// |
+// v
+// VirtualHostGroup - Created automatically when first virtual host is created
+//                    on app create.
+// | 1
+// |
+// v *
+// VirtualHost - Created for each cname, all added to the same VirtualHostGroup
+//               as the one created for the first virtual host.
 
 const maxConnRetries = 3
 
@@ -67,13 +86,6 @@ type GalebClient struct {
 	MaxRequests   int
 }
 
-func (c *GalebClient) getTokenHeader() string {
-	if c.TokenHeader == "" {
-		return "X-Auth-Token"
-	}
-	return http.CanonicalHeaderKey(c.TokenHeader)
-}
-
 func (c *GalebClient) getToken() (string, error) {
 	c.tokenMu.RLock()
 	defer c.tokenMu.RUnlock()
@@ -89,8 +101,9 @@ func (c *GalebClient) getToken() (string, error) {
 func (c *GalebClient) regenerateToken() (err error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiURL, "/"), "token")
-	req, err := http.NewRequest("GET", url, nil)
+	path := "/token"
+	url := fmt.Sprintf("%s%s", strings.TrimRight(c.ApiURL, "/"), path)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -101,24 +114,20 @@ func (c *GalebClient) regenerateToken() (err error) {
 	}
 	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusOK {
-		return errors.Errorf("invalid status code in request to /token: %d", rsp.StatusCode)
+		return errors.Errorf("GET %s: invalid status code in request to /token: %d", path, rsp.StatusCode)
 	}
-	header := c.getTokenHeader()
-	c.token = rsp.Header.Get(header)
+	data, err := ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		return err
+	}
+	tokenStruct := struct{ Token string }{}
+	err = json.Unmarshal(data, &tokenStruct)
+	if err != nil {
+		return errors.Wrapf(err, "GET %s: unable to parse json response", path)
+	}
+	c.token = tokenStruct.Token
 	if c.token == "" {
-		data, err := ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			return err
-		}
-		tokenStruct := struct{ Token string }{}
-		err = json.Unmarshal(data, &tokenStruct)
-		if err != nil {
-			return err
-		}
-		c.token = tokenStruct.Token
-		if c.token == "" {
-			return errors.Errorf("invalid empty token in request to %q: %q", url, string(data))
-		}
+		return errors.Errorf("GET %s: invalid empty token in request: %q", path, string(data))
 	}
 	return nil
 }
@@ -154,12 +163,13 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 	if c.UseToken {
 		var token string
 		token, err = c.getToken()
+		log.Debugf("Use token: %s", token)
 		if err != nil {
 			return nil, err
 		}
-		header := c.getTokenHeader()
-		req.Header.Set(header, token)
+		req.SetBasicAuth(c.Username, token)
 	} else {
+		log.Debugf("Use basic auth: %s, %s", c.Username, c.Password)
 		req.SetBasicAuth(c.Username, c.Password)
 	}
 	req.Header.Set("Content-Type", contentType)
@@ -169,7 +179,15 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 		if err == nil {
 			code = rsp.StatusCode
 		}
-		log.Debugf("galeb %s %s %s: %d", method, url, bodyData, code)
+		var rspData []byte
+		if rsp != nil {
+			rspData, err = ioutil.ReadAll(rsp.Body)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error reading request body %s %s", method, url)
+			}
+			rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
+		}
+		log.Debugf("galebv2 debug %s %s %q: %d %q", method, url, bodyData, code, rspData)
 	}
 	if retryCount < maxConnRetries {
 		if err == nil && rsp.StatusCode == http.StatusUnauthorized {
@@ -186,7 +204,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 }
 
 func (c *GalebClient) doCreateResource(path string, params interface{}) (string, error) {
-	rsp, err := c.doRequest("POST", path, params)
+	rsp, err := c.doRequest(http.MethodPost, path, params)
 	if err != nil {
 		return "", err
 	}
@@ -205,15 +223,6 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	return location, nil
 }
 
-func (c *GalebClient) fillDefaultTargetValues(params *Target) {
-	if params.Environment == "" {
-		params.Environment = c.Environment
-	}
-	if params.Project == "" {
-		params.Project = c.Project
-	}
-}
-
 func (c *GalebClient) fillDefaultPoolValues(params *Pool) {
 	if params.Environment == "" {
 		params.Environment = c.Environment
@@ -224,21 +233,25 @@ func (c *GalebClient) fillDefaultPoolValues(params *Pool) {
 	if params.BalancePolicy == "" {
 		params.BalancePolicy = c.BalancePolicy
 	}
-	params.Properties.HcPath = "/"
 }
 
 func (c *GalebClient) fillDefaultRuleValues(params *Rule) {
-	if params.RuleType == "" {
-		params.RuleType = c.RuleType
+	params.Matching = "/"
+	if params.Project == "" {
+		params.Project = c.Project
 	}
-	params.Properties.Match = "/"
-	params.Default = true
-	params.Order = 0
+}
+
+func (c *GalebClient) fillDefaultRuleOrderedValues(params *RuleOrdered) {
+	if params.Environment == "" {
+		params.Environment = c.Environment
+	}
+	params.Order = 1
 }
 
 func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHost) {
-	if params.Environment == "" {
-		params.Environment = c.Environment
+	if len(params.Environment) == 0 {
+		params.Environment = []string{c.Environment}
 	}
 	if params.Project == "" {
 		params.Project = c.Project
@@ -263,6 +276,61 @@ func (c *GalebClient) AddVirtualHost(addr string, wait bool) (string, error) {
 	return resource, nil
 }
 
+func (c *GalebClient) getVirtualHostWithGroup(addr string, virtualHostWithGroup string) (VirtualHost, error) {
+	virtualHostID, err := c.findItemByName("virtualhost", virtualHostWithGroup)
+	if err != nil {
+		return VirtualHost{}, err
+	}
+	virtualhostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
+	if err != nil {
+		return VirtualHost{}, err
+	}
+
+	var params VirtualHost
+	c.fillDefaultVirtualHostValues(&params)
+	params.Name = addr
+	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%d", c.ApiURL, virtualhostGroupId)
+	return params, nil
+}
+
+func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup string, wait bool) (string, error) {
+	params, err := c.getVirtualHostWithGroup(addr, virtualHostWithGroup)
+	if err != nil {
+		return "", err
+	}
+	resource, err := c.doCreateResource("/virtualhost", &params)
+	if err != nil {
+		return "", err
+	}
+	if wait {
+		err = c.waitStatusOK(resource)
+	}
+	return resource, err
+}
+
+func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGroup string) error {
+	virtualHostFullID, virtualHostID, err := c.findItemIDsByName("virtualhost", addr)
+	if err != nil {
+		return err
+	}
+	params, err := c.getVirtualHostWithGroup(addr, virtualHostWithGroup)
+	if err != nil {
+		return err
+	}
+	params.ID = virtualHostID
+	path := fmt.Sprintf("/virtualhost/%d", virtualHostID)
+	rsp, err := c.doRequest(http.MethodPatch, path, &params)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusNoContent {
+		responseData, _ := ioutil.ReadAll(rsp.Body)
+		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	return c.waitStatusOK(virtualHostFullID)
+}
+
 func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {
 	var params Pool
 	c.fillDefaultPoolValues(&params)
@@ -273,55 +341,35 @@ func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {
 	}
 	if wait {
 		err = c.waitStatusOK(resource)
-		if err != nil {
-			c.removeResource(resource)
-			return "", err
-		}
 	}
-	return resource, nil
+	return resource, err
 }
 
-func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolProperties, error) {
-	var properties BackendPoolProperties
+func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolHealthCheck, error) {
+	var pool Pool
 	path := strings.TrimPrefix(poolID, c.ApiURL)
-	rsp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return properties, err
-	}
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusNoContent {
-		var rspObj struct {
-			Properties BackendPoolProperties
-		}
-		responseData, err := ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			return properties, err
-		}
-		err = json.Unmarshal(responseData, &rspObj)
-		if err != nil {
-			return properties, err
-		}
-		properties = rspObj.Properties
-	}
-	return properties, nil
+	err := c.getObj(path, &pool)
+	return pool.BackendPoolHealthCheck, err
 }
 
-func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolProperties) error {
+func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolHealthCheck) error {
 	poolID, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return err
 	}
-	currPropeties, err := c.getPoolProperties(poolID)
-	if err == nil && currPropeties == properties {
+	currProperties, err := c.getPoolProperties(poolID)
+	if err == nil && currProperties == properties {
 		log.Debugf("skipping properties update for pool %q", poolName)
 		return nil
+	} else if err != nil {
+		log.Errorf("ignored error getting pool properties, proceeding with PATH: %v", err)
 	}
 	path := strings.TrimPrefix(poolID, c.ApiURL)
 	var poolParam Pool
 	c.fillDefaultPoolValues(&poolParam)
 	poolParam.Name = poolName
-	poolParam.Properties = properties
-	rsp, err := c.doRequest("PATCH", path, poolParam)
+	poolParam.BackendPoolHealthCheck = properties
+	rsp, err := c.doRequest(http.MethodPatch, path, poolParam)
 	if err != nil {
 		return err
 	}
@@ -338,9 +386,8 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait boo
 	if err != nil {
 		return err
 	}
-	return v2Client.DoLimited(context.Background(), c.MaxRequests, len(backends), func(i int) error {
+	return DoLimited(context.Background(), c.MaxRequests, len(backends), func(i int) error {
 		var params Target
-		c.fillDefaultTargetValues(&params)
 		params.Name = backends[i].String()
 		params.BackendPool = poolID
 		resource, cerr := c.doCreateResource("/target", &params)
@@ -373,27 +420,27 @@ func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
 	params.Name = name
-	params.BackendPool = poolID
+	params.BackendPool = []string{poolID}
 	return c.doCreateResource("/rule", &params)
 }
 
 func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait bool) error {
-	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
-	rsp, err := c.doRequest("PATCH", path, virtualHostID)
+	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
 	if err != nil {
 		return err
 	}
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusNoContent {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+
+	var params RuleOrdered
+	c.fillDefaultRuleOrderedValues(&params)
+	params.Rule = ruleID
+	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%d", c.ApiURL, virtualHostGroupId)
+
+	resource, err := c.doCreateResource("/ruleordered", &params)
+	if err != nil {
+		return err
 	}
 	if wait {
-		err = c.waitStatusOK(ruleID)
-		if err != nil {
-			c.removeRuleVirtualHostByID(ruleID, virtualHostID)
-			return err
-		}
+		return c.waitStatusOK(resource)
 	}
 	return nil
 }
@@ -410,13 +457,25 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string, wait 
 	return c.setRuleVirtualHostIDs(ruleID, virtualHostID, wait)
 }
 
-func (c *GalebClient) RemoveBackendByID(backendID string) error {
-	return c.removeResource(backendID)
+func (c *GalebClient) RemoveResourceByID(resourceID string) error {
+	resource, err := c.removeResource(resourceID)
+	if err != nil {
+		return err
+	}
+	err = c.waitStatusOK(resource)
+	return err
 }
 
-func (c *GalebClient) RemoveBackendsByIDs(backendIDs []string) error {
-	return v2Client.DoLimited(context.Background(), c.MaxRequests, len(backendIDs), func(i int) error {
-		return c.removeResource(backendIDs[i])
+func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string, wait bool) error {
+	return DoLimited(context.Background(), c.MaxRequests, len(resourceIDs), func(i int) error {
+		resource, err := c.removeResource(resourceIDs[i])
+		if err != nil {
+			return err
+		}
+		if wait {
+			return c.waitStatusOK(resource)
+		}
+		return nil
 	})
 }
 
@@ -425,7 +484,7 @@ func (c *GalebClient) RemoveBackendPool(poolName string) error {
 	if err != nil {
 		return err
 	}
-	return c.removeResource(id)
+	return c.RemoveResourceByID(id)
 }
 
 func (c *GalebClient) RemoveVirtualHost(virtualHostName string) error {
@@ -433,11 +492,7 @@ func (c *GalebClient) RemoveVirtualHost(virtualHostName string) error {
 	if err != nil {
 		return err
 	}
-	return c.removeResource(id)
-}
-
-func (c *GalebClient) RemoveVirtualHostByID(virtualHostID string) error {
-	return c.removeResource(virtualHostID)
+	return c.RemoveResourceByID(id)
 }
 
 func (c *GalebClient) RemoveRule(ruleName string) error {
@@ -445,104 +500,89 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 	if err != nil {
 		return err
 	}
-	return c.removeResource(ruleID)
+	return c.RemoveResourceByID(ruleID)
 }
 
-func (c *GalebClient) getRuleVirtualhosts(ruleID string) ([]VirtualHost, error) {
-	var rspObj struct {
-		Embedded struct {
-			VirtualHost []VirtualHost `json:"virtualhost"`
-		} `json:"_embedded"`
-	}
-	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
-	err := c.getObj(path, &rspObj)
-	if err != nil {
-		return nil, err
-	}
-	return rspObj.Embedded.VirtualHost, nil
-}
-
-func (c *GalebClient) removeRuleVirtualHostByID(ruleID, virtualHostID string) error {
-	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
-	path := fmt.Sprintf("%s/parents/%s", ruleID, vhId)
-	err := c.removeResource(path)
+func (c *GalebClient) RemoveRulesOrderedByRule(ruleName string) error {
+	_, ruleID, err := c.findItemIDsByName("rule", ruleName)
 	if err != nil {
 		return err
 	}
-	virtualhosts, err := c.getRuleVirtualhosts(ruleID)
-	if err != nil {
-		return nil
+	path := fmt.Sprintf("/rule/%d/rulesOrdered", ruleID)
+	var rspObj struct {
+		Embedded struct {
+			RuleOrdered []RuleOrdered `json:"ruleordered"`
+		} `json:"_embedded"`
 	}
-	if len(virtualhosts) > 0 {
-		return c.waitStatusOK(ruleID)
+	err = c.getObj(path, &rspObj)
+	if err != nil {
+		return err
+	}
+	for _, ruleOrdered := range rspObj.Embedded.RuleOrdered {
+		fullID := ruleOrdered.FullId()
+		err = c.RemoveResourceByID(fullID)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) error {
-	ruleID, err := c.findItemByName("rule", ruleName)
-	if err != nil {
-		return err
+func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) (int, error) {
+	path := fmt.Sprintf("%s/virtualhostgroup", strings.TrimPrefix(virtualHostId, c.ApiURL))
+	var rspObj struct {
+		VirtualHostGroupId int `json:"id"`
 	}
-	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
+	err := c.getObj(path, &rspObj)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return c.removeRuleVirtualHostByID(ruleID, virtualHostID)
+	return rspObj.VirtualHostGroupId, nil
 }
 
-func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
-	path := fmt.Sprintf("/target/search/findByParentName?name=%s&size=999999", poolName)
-	rsp, err := c.doRequest("GET", path, nil)
+func (c *GalebClient) FindTargetsByPool(poolName string) ([]Target, error) {
+	_, poolID, err := c.findItemIDsByName("pool", poolName)
 	if err != nil {
 		return nil, err
 	}
-	defer rsp.Body.Close()
-	responseData, _ := ioutil.ReadAll(rsp.Body)
-	if rsp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /target/search/findByParentName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
-	}
+	path := fmt.Sprintf("/pool/%d/targets", poolID)
 	var rspObj struct {
 		Embedded struct {
 			Targets []Target `json:"target"`
 		} `json:"_embedded"`
 	}
-	err = json.Unmarshal(responseData, &rspObj)
+	err = c.getObj(path, &rspObj)
 	if err != nil {
-		return nil, errors.Wrapf(err, "GET /target/search/findByParentName?name={parentName}: unable to parse: %s", string(responseData))
+		return nil, err
 	}
 	return rspObj.Embedded.Targets, nil
 }
 
-func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, error) {
-	ruleID, err := c.findItemByName("rule", ruleName)
+func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]VirtualHost, error) {
+	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
 	if err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("%s/parents?size=999999", strings.TrimPrefix(ruleID, c.ApiURL))
-	rsp, err := c.doRequest("GET", path, nil)
+	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
 	if err != nil {
 		return nil, err
 	}
-	defer rsp.Body.Close()
-	responseData, _ := ioutil.ReadAll(rsp.Body)
-	if rsp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /rule/{id}/parents: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
-	}
+	path := fmt.Sprintf("/virtualhostgroup/%d/virtualhosts", virtualHostGroupId)
 	var rspObj struct {
 		Embedded struct {
 			VirtualHosts []VirtualHost `json:"virtualhost"`
 		} `json:"_embedded"`
 	}
-	err = json.Unmarshal(responseData, &rspObj)
+	err = c.getObj(path, &rspObj)
 	if err != nil {
-		return nil, errors.Wrapf(err, "GET /rule/{id}/parents: unable to parse: %s", string(responseData))
+		return nil, err
 	}
 	return rspObj.Embedded.VirtualHosts, nil
+
 }
 
 func (c *GalebClient) Healthcheck() error {
-	rsp, err := c.doRequest("GET", "/healthcheck", nil)
+	rsp, err := c.doRequest(http.MethodGet, "/healthcheck", nil)
 	if err != nil {
 		return err
 	}
@@ -558,51 +598,19 @@ func (c *GalebClient) Healthcheck() error {
 	return nil
 }
 
-func (c *GalebClient) UpdateVirtualHostRule(virtualHostName, ruleName string, wait bool) error {
-	vhID, err := c.findItemByName("virtualhost", virtualHostName)
-	if err != nil {
-		return err
-	}
-	_, ruleID, err := c.findItemIDsByName("rule", ruleName)
-	if err != nil {
-		return err
-	}
-	path := strings.TrimPrefix(vhID, c.ApiURL)
-	var vh VirtualHost
-	err = c.getObj(path, &vh)
-	if err != nil {
-		return err
-	}
-	vh.RulesOrdered = []RuleOrdered{
-		{RuleId: ruleID, RuleOrder: 0},
-	}
-	rsp, err := c.doRequest("PATCH", path, vh)
-	if err != nil {
-		return err
-	}
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusNoContent {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
-	}
-	if wait {
-		return c.waitStatusOK(vhID)
-	}
-	return nil
-}
-
-func (c *GalebClient) removeResource(resourceURI string) error {
+func (c *GalebClient) removeResource(resourceURI string) (string, error) {
 	path := strings.TrimPrefix(resourceURI, c.ApiURL)
-	rsp, err := c.doRequest("DELETE", path, nil)
+	rsp, err := c.doRequest(http.MethodDelete, path, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
+
 	if rsp.StatusCode != http.StatusNoContent {
-		return errors.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return "", errors.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return nil
+	return path, nil
 }
 
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
@@ -612,21 +620,12 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 
 func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) {
 	path := fmt.Sprintf("/%s/search/findByName?name=%s", item, name)
-	rsp, err := c.doRequest("GET", path, nil)
-	if err != nil {
-		return "", 0, err
-	}
-	defer rsp.Body.Close()
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
 	}
-	rspData, err := ioutil.ReadAll(rsp.Body)
+	err := c.getObj(path, &rspObj)
 	if err != nil {
 		return "", 0, err
-	}
-	err = json.Unmarshal(rspData, &rspObj)
-	if err != nil {
-		return "", 0, errors.Wrapf(err, "unable to parse find response %q", string(rspData))
 	}
 	itemList := rspObj.Embedded[item]
 	if len(itemList) == 0 {
@@ -643,22 +642,25 @@ func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) 
 	return id, itemObj.ID, nil
 }
 
-func (c *GalebClient) fetchPathStatus(path string) (string, error) {
-	rsp, err := c.doRequest("GET", path, nil)
+func (c *GalebClient) fetchPathStatus(path string) (map[string]string, int, error) {
+	rsp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "GET %s: unable to make request", path)
+		return nil, -1, errors.Wrapf(err, "GET %s: unable to make request", path)
 	}
 	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
-	if rsp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusNotFound {
+		return nil, -1, errors.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	if rsp.StatusCode == http.StatusNotFound {
+		return nil, http.StatusNotFound, nil
 	}
 	var response commonPostResponse
 	err = json.Unmarshal(responseData, &response)
 	if err != nil {
-		return "", errors.Wrapf(err, "GET %s: unable to unmarshal response. data: %s", path, string(responseData))
+		return nil, -1, errors.Wrapf(err, "GET %s: unable to unmarshal response. data: %s", path, string(responseData))
 	}
-	return response.Status, nil
+	return response.Status, rsp.StatusCode, nil
 }
 
 func (c *GalebClient) waitStatusOK(resourceURI string) error {
@@ -667,17 +669,22 @@ func (c *GalebClient) waitStatusOK(resourceURI string) error {
 	if c.WaitTimeout != 0 {
 		timeout = time.After(c.WaitTimeout)
 	}
-	var status string
+	var mapStatus map[string]string
 	var err error
+	var statusCode int
 loop:
 	for {
-		status, err = c.fetchPathStatus(path)
-		if err != nil || (status != STATUS_PENDING && status != STATUS_SYNCHRONIZING) {
+		mapStatus, statusCode, err = c.fetchPathStatus(path)
+		if err != nil {
 			break
+		}
+		if c.containsStatus(mapStatus, STATUS_OK) || statusCode == http.StatusNotFound {
+			return nil
 		}
 		select {
 		case <-timeout:
-			err = errors.Errorf("GET %s: timeout after %v waiting for status change from %s", path, c.WaitTimeout, status)
+			stringStatus, _ := json.Marshal(mapStatus)
+			err = errors.Errorf("GET %s: timeout after %v waiting for status change from %s", path, c.WaitTimeout, stringStatus)
 			break loop
 		default:
 			time.Sleep(500 * time.Millisecond)
@@ -686,14 +693,20 @@ loop:
 	if err != nil {
 		return err
 	}
-	if status != STATUS_OK {
-		return errors.Errorf("GET %s: invalid status %s", path, status)
+	return errors.Errorf("GET %s: invalid status %s", path, mapStatus)
+}
+
+func (c *GalebClient) containsStatus(status map[string]string, statusCheck string) (contains bool) {
+	for _, value := range status {
+		if value != statusCheck {
+			return false
+		}
 	}
-	return nil
+	return true
 }
 
 func (c *GalebClient) getObj(path string, data interface{}) error {
-	rsp, err := c.doRequest("GET", path, nil)
+	rsp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}
@@ -715,4 +728,42 @@ func IsErrExists(err error) bool {
 	}
 	_, ok := errors.Cause(err).(ErrItemAlreadyExists)
 	return ok
+}
+
+func DoLimited(ctx context.Context, limit, n int, fn func(i int) error) error {
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errCh := make(chan error, n)
+	wg := sync.WaitGroup{}
+	var limiter chan struct{}
+	if limit > 0 {
+		limiter = make(chan struct{}, limit)
+	}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			select {
+			case <-cancelCtx.Done():
+				return
+			default:
+			}
+			if limiter != nil {
+				select {
+				case limiter <- struct{}{}:
+				case <-cancelCtx.Done():
+					return
+				}
+				defer func() { <-limiter }()
+			}
+			err := fn(i)
+			if err != nil {
+				cancel()
+				errCh <- err
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errCh)
+	return <-errCh
 }

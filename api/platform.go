@@ -92,7 +92,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err := r.ParseForm(); err != nil {
+	if err = r.ParseForm(); err != nil {
 		return err
 	}
 	name := r.URL.Query().Get(":name")
@@ -151,7 +151,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err := r.ParseForm(); err != nil {
+	if err = r.ParseForm(); err != nil {
 		return err
 	}
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
@@ -247,7 +247,7 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err := r.ParseForm(); err != nil {
+	if err = r.ParseForm(); err != nil {
 		return err
 	}
 	name := r.URL.Query().Get(":name")

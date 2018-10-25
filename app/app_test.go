@@ -349,6 +349,9 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 		Swap:     2,
 		CpuShare: 3,
 	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
+	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		c.Assert(name, check.Equals, myPlan.Name)
 		return &myPlan, nil
@@ -371,6 +374,37 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
+	myPlan := appTypes.Plan{
+		Name:     "myplan",
+		Memory:   4194304,
+		Swap:     2,
+		CpuShare: 3,
+	}
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypePlan,
+		Values:    []string{myPlan.Name},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
+	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, myPlan.Name)
+		return &myPlan, nil
+	}
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		Plan:      appTypes.Plan{Name: "myplan"},
+		TeamOwner: s.team.Name,
+	}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.ErrorMatches, `App plan "myplan" is not allowed on pool "pool1"`)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
@@ -2325,10 +2359,22 @@ func (s *S) TestIsValid(c *check.C) {
 		}
 		return nil, authTypes.ErrTeamNotFound
 	}
+	plan1 := appTypes.Plan{Name: "plan1", Memory: 1, CpuShare: 1}
+	plan2 := appTypes.Plan{Name: "plan2", Memory: 1, CpuShare: 1}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan1, plan2}, nil
+	}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypeTeam,
 		Values:    []string{teamName},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypePlan,
+		Values:    []string{"plan1"},
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
@@ -2338,27 +2384,31 @@ func (s *S) TestIsValid(c *check.C) {
 		teamOwner string
 		pool      string
 		router    string
+		plan      string
 		expected  string
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmy", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappm", s.team.Name, "pool1", "fake", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", ""},
-		{"myApp", s.team.Name, "pool1", "fake", errMsg},
-		{"my app", s.team.Name, "pool1", "fake", errMsg},
-		{"123myapp", s.team.Name, "pool1", "fake", errMsg},
-		{"myapp", s.team.Name, "pool1", "fake", ""},
-		{"_theirapp", s.team.Name, "pool1", "fake", errMsg},
-		{"my-app", s.team.Name, "pool1", "fake", ""},
-		{"-myapp", s.team.Name, "pool1", "fake", errMsg},
-		{"my_app", s.team.Name, "pool1", "fake", errMsg},
-		{"b", s.team.Name, "pool1", "fake", ""},
-		{InternalAppName, s.team.Name, "pool1", "fake", errMsg},
-		{"myapp", "invalidteam", "pool1", "fake", "team not found"},
-		{"myapp", s.team.Name, "pool1", "faketls", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls\""},
-		{"myapp", "noaccessteam", "pool1", "fake", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmy", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappm", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", "default-plan", ""},
+		{"myApp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"my app", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"123myapp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"myapp", s.team.Name, "pool1", "fake", "default-plan", ""},
+		{"_theirapp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"my-app", s.team.Name, "pool1", "fake", "default-plan", ""},
+		{"-myapp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"my_app", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"b", s.team.Name, "pool1", "fake", "default-plan", ""},
+		{InternalAppName, s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"myapp", "invalidteam", "pool1", "fake", "default-plan", "team not found"},
+		{"myapp", s.team.Name, "pool1", "faketls", "default-plan", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls\""},
+		{"myapp", "noaccessteam", "pool1", "fake", "default-plan", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},
+		{"myApp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
+		{"myapp", s.team.Name, "pool1", "fake", "plan1", "App plan \"plan1\" is not allowed on pool \"pool1\""},
+		{"myapp", s.team.Name, "pool1", "fake", "plan2", ""},
 	}
 	for _, d := range data {
-		a := App{Name: d.name, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
+		a := App{Name: d.name, Plan: appTypes.Plan{Name: d.plan}, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
 		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
@@ -2808,6 +2858,69 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
+	repository.Manager().CreateRepository("name", nil)
+	opts := pool.AddPoolOptions{Name: "test", Default: false}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:            "name",
+		Platform:        "Framework",
+		PlatformVersion: "v1",
+		Teams:           []string{"team1"},
+		CName:           []string{"name.mycompany.com"},
+		Owner:           "appOwner",
+		Deploys:         7,
+		Pool:            "test",
+		Description:     "description",
+		Plan:            appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		TeamOwner:       "myteam",
+		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+		Tags:            []string{"tag a", "tag b"},
+	}
+	err = routertest.FakeRouter.AddBackend(&app)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"name":        "name",
+		"platform":    "Framework:v1",
+		"repository":  "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":       []interface{}{"team1"},
+		"units":       []interface{}{},
+		"ip":          "name.fakerouter.com",
+		"cname":       []interface{}{"name.mycompany.com"},
+		"owner":       "appOwner",
+		"deploys":     float64(7),
+		"pool":        "test",
+		"description": "description",
+		"teamowner":   "myteam",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
+			"router":   "fake",
+		},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"routers": []interface{}{
+			map[string]interface{}{
+				"name":    "fake",
+				"address": "name.fakerouter.com",
+				"type":    "fake",
+				"opts":    map[string]interface{}{"opt1": "val1"},
+			},
+		},
+		"tags": []interface{}{"tag a", "tag b"},
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
@@ -3082,6 +3195,39 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 	apps, err := List(&Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
+}
+
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatformVersion(c *check.C) {
+	apps := []App{
+		{Name: "testapp", Platform: "ruby", TeamOwner: s.team.Name},
+		{Name: "testapplatest", Platform: "ruby", TeamOwner: s.team.Name, PlatformVersion: "latest"},
+		{Name: "othertestapp", Platform: "ruby", PlatformVersion: "v1", TeamOwner: s.team.Name},
+		{Name: "testappwithoutversion", Platform: "ruby", TeamOwner: s.team.Name},
+		{Name: "testappwithoutversionfield", Platform: "ruby", TeamOwner: s.team.Name},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	err := s.conn.Apps().Update(bson.M{"name": "testappwithoutversionfield"}, bson.M{"$unset": bson.M{"platformversion": ""}})
+	c.Assert(err, check.IsNil)
+	tt := []struct {
+		platform string
+		apps     []string
+	}{
+		{platform: "ruby", apps: []string{"testapp", "testapplatest", "othertestapp", "testappwithoutversion", "testappwithoutversionfield"}},
+		{platform: "ruby:latest", apps: []string{"testapp", "testapplatest", "testappwithoutversion", "testappwithoutversionfield"}},
+		{platform: "ruby:v1", apps: []string{"othertestapp"}},
+	}
+	for _, t := range tt {
+		apps, err := List(&Filter{Platform: t.platform})
+		c.Assert(err, check.IsNil)
+		var appNames []string
+		for _, a := range apps {
+			appNames = append(appNames, a.Name)
+		}
+		c.Assert(appNames, check.DeepEquals, t.apps, check.Commentf("Invalid apps for platform %v", t.platform))
+	}
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
@@ -4568,7 +4714,7 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 }
 
 func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
-	app := App{Name: "app with invalid name", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
+	app := App{Name: "app with invalid name", Plan: s.defaultPlan, Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
@@ -4818,6 +4964,9 @@ func (s *S) TestUpdatePlan(c *check.C) {
 		c.Assert(name, check.Equals, plan.Name)
 		return &plan, nil
 	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -4833,11 +4982,38 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
+func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
+	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, plan.Name)
+		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypePlan,
+		Values:    []string{plan.Name},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.ErrorMatches, `App plan "something" is not allowed on pool "pool1"`)
+}
+
 func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		c.Assert(name, check.Equals, plan.Name)
 		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
 	}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
@@ -4891,6 +5067,9 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 		}
 		c.Errorf("plan name not expected, got: %s", name)
 		return nil, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan, oldPlan}, nil
 	}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Name: "old"}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
@@ -4985,6 +5164,9 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		c.Assert(name, check.Equals, plan.Name)
 		return &plan, nil
@@ -5243,6 +5425,22 @@ func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
 		{Name: "mystatus", Address: "myapp.fakerouter.com", Type: "fake-status", Status: "not ready", StatusDetail: "burn"},
+	})
+}
+
+func (s *S) TestGetRoutersIgnoresDuplicatedEntry(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-tls",
+	})
+	c.Assert(err, check.IsNil)
+	app.Router = "fake-tls"
+	routers := app.GetRouters()
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake"},
+		{Name: "fake-tls"},
 	})
 }
 

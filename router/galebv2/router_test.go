@@ -1,13 +1,12 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2018 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package galeb
+package galebv2
 
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,7 +21,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	galebClient "github.com/tsuru/tsuru/router/galeb/client"
+	galebClient "github.com/tsuru/tsuru/router/galebv2/client"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -37,8 +36,8 @@ type fakeGalebServer struct {
 	pools        map[string]interface{}
 	virtualhosts map[string]interface{}
 	rules        map[string]interface{}
+	ruleordered  map[string]interface{}
 	items        map[string]map[string]interface{}
-	ruleVh       map[string][]string
 	idCounter    int
 	router       *mux.Router
 	errors       map[string]error
@@ -50,29 +49,31 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 		pools:        make(map[string]interface{}),
 		virtualhosts: make(map[string]interface{}),
 		rules:        make(map[string]interface{}),
-		ruleVh:       make(map[string][]string),
+		ruleordered:  make(map[string]interface{}),
 	}
 	server.items = map[string]map[string]interface{}{
 		"target":      server.targets,
 		"pool":        server.pools,
 		"virtualhost": server.virtualhosts,
 		"rule":        server.rules,
+		"ruleordered": server.ruleordered,
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/api/token", server.getToken).Methods("GET")
 	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
 	r.HandleFunc("/api/pool", server.createPool).Methods("POST")
 	r.HandleFunc("/api/pool/{id}", server.updatePool).Methods("PATCH")
+	r.HandleFunc("/api/pool/{id}/targets", server.findTargetsByPool).Methods("GET")
 	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
+	r.HandleFunc("/api/rule/{id}/rulesOrdered", server.findRulesOrderedByRule).Methods("GET")
+	r.HandleFunc("/api/ruleordered", server.createRuleOrdered).Methods("POST")
 	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
 	r.HandleFunc("/api/virtualhost/{id}", server.updateVirtualHost).Methods("PATCH")
+	r.HandleFunc("/api/virtualhost/{id}/virtualhostgroup", server.findVirtualhostGroupByVirtualHost).Methods("GET")
+	r.HandleFunc("/api/virtualhostgroup/{id}/virtualhosts", server.findVirtualhostsByVirtualHostGroup).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
-	r.HandleFunc("/api/rule/{id}/parents", server.addRuleVirtualhost).Methods("PATCH")
-	r.HandleFunc("/api/rule/{id}/parents", server.findVirtualhostByRule).Methods("GET")
-	r.HandleFunc("/api/rule/{id}/parents/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
-	r.HandleFunc("/api/target/search/findByParentName", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
 }
@@ -98,8 +99,7 @@ func (s *fakeGalebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *fakeGalebServer) getToken(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("x-auth-token", "abc")
-	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"token":"abc"}`))
 }
 
 func (s *fakeGalebServer) findItem(w http.ResponseWriter, r *http.Request) {
@@ -142,16 +142,43 @@ func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []i
 	return ret
 }
 
-func (s *fakeGalebServer) findTargetsByParent(w http.ResponseWriter, r *http.Request) {
-	parentName := r.URL.Query().Get("name")
-	var pool *galebClient.Pool
+func (s *fakeGalebServer) findVirtualhostGroupByVirtualHost(w http.ResponseWriter, r *http.Request) {
+	virtualhostId := mux.Vars(r)["id"]
+	var virtualhost *galebClient.VirtualHost
+	virtualhost, ok := s.virtualhosts[virtualhostId].(*galebClient.VirtualHost)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	vhId, _ := strconv.Atoi(virtualhost.VirtualHostGroup[strings.LastIndex(virtualhost.VirtualHostGroup, "/")+1:])
+	json.NewEncoder(w).Encode(struct {
+		ID int `json:"id"`
+	}{
+		ID: vhId,
+	})
+}
+
+func (s *fakeGalebServer) findVirtualhostsByVirtualHostGroup(w http.ResponseWriter, r *http.Request) {
+	virtualhostgroupId := mux.Vars(r)["id"]
 	var ret []interface{}
-	for _, item := range s.pools {
-		p := item.(*galebClient.Pool)
-		if p.Name == parentName {
-			pool = p
+	for _, item := range s.virtualhosts {
+		vh := item.(*galebClient.VirtualHost)
+		if strings.HasSuffix(vh.VirtualHostGroup, "/"+virtualhostgroupId) {
+			ret = append(ret, item)
 		}
 	}
+	json.NewEncoder(w).Encode(makeSearchRsp("virtualhost", ret...))
+}
+
+func (s *fakeGalebServer) findTargetsByPool(w http.ResponseWriter, r *http.Request) {
+	poolId := mux.Vars(r)["id"]
+	var pool *galebClient.Pool
+	pool, ok := s.pools[poolId].(*galebClient.Pool)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var ret []interface{}
 	for i, item := range s.targets {
 		target := item.(*galebClient.Target)
 		if target.BackendPool == pool.FullId() {
@@ -175,7 +202,7 @@ func (s *fakeGalebServer) destroyItem(w http.ResponseWriter, r *http.Request) {
 
 func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	var target galebClient.Target
-	target.Status = "OK"
+	target.Status = map[string]string{"1": "OK"}
 	json.NewDecoder(r.Body).Decode(&target)
 	err := s.checkError(r.Method, r.URL.Path)
 	if err != nil && strings.Contains(err.Error(), target.Name) {
@@ -205,7 +232,7 @@ func (s *fakeGalebServer) createPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var pool galebClient.Pool
-	pool.Status = "OK"
+	pool.Status = map[string]string{"1": "OK"}
 	json.NewDecoder(r.Body).Decode(&pool)
 	poolsWithName := s.findItemByName("pool", pool.Name)
 	if len(poolsWithName) > 0 {
@@ -229,13 +256,20 @@ func (s *fakeGalebServer) updatePool(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	existingPool.Properties = pool.Properties
+	existingPool.HcBody = pool.HcBody
+	existingPool.HcHTTPStatusCode = pool.HcHTTPStatusCode
+	existingPool.HcPath = pool.HcPath
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
+	err := s.checkError(r.Method, r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	var rule galebClient.Rule
-	rule.Status = "OK"
+	rule.Status = map[string]string{"1": "OK"}
 	json.NewDecoder(r.Body).Decode(&rule)
 	for _, rInt := range s.rules {
 		r := rInt.(*galebClient.Rule)
@@ -252,72 +286,34 @@ func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
-	err := s.checkError(r.Method, r.URL.Path)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	id := mux.Vars(r)["id"]
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	parts := strings.Split(string(data), "\n")
-	if len(parts) == 0 || parts[0] == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	vhId := parts[0][strings.LastIndex(parts[0], "/")+1:]
-	baseRule := s.rules[id].(*galebClient.Rule)
-	baseVirtualHost := s.virtualhosts[vhId].(*galebClient.VirtualHost)
-	if baseRule == nil || baseVirtualHost == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-	for _, r := range s.ruleVh[id] {
-		if r == vhId {
-			return
-		}
-	}
-	s.ruleVh[id] = append(s.ruleVh[id], vhId)
+func (s *fakeGalebServer) createRuleOrdered(w http.ResponseWriter, r *http.Request) {
+	var ruleOrdered galebClient.RuleOrdered
+	ruleOrdered.Status = map[string]string{"1": "OK"}
+	json.NewDecoder(r.Body).Decode(&ruleOrdered)
+	s.idCounter++
+	ruleOrdered.ID = s.idCounter
+	ruleOrdered.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), ruleOrdered.ID)
+	s.ruleordered[strconv.Itoa(ruleOrdered.ID)] = &ruleOrdered
+	w.Header().Set("Location", ruleOrdered.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
 }
 
-func (s *fakeGalebServer) destroyRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
+func (s *fakeGalebServer) findRulesOrderedByRule(w http.ResponseWriter, r *http.Request) {
 	ruleId := mux.Vars(r)["id"]
-	vhId := mux.Vars(r)["vhid"]
-	idx := -1
-	for i, currentVh := range s.ruleVh[ruleId] {
-		if currentVh == vhId {
-			idx = i
-			break
+	var items []interface{}
+	for _, item := range s.ruleordered {
+		ruleOrdered := item.(*galebClient.RuleOrdered)
+		if strings.HasSuffix(ruleOrdered.Rule, "/"+ruleId) {
+			items = append(items, item)
 		}
 	}
-	if idx == -1 {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	s.ruleVh[ruleId] = append(s.ruleVh[ruleId][:idx], s.ruleVh[ruleId][idx+1:]...)
-	if len(s.ruleVh[ruleId]) == 0 {
-		delete(s.ruleVh, ruleId)
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *fakeGalebServer) findVirtualhostByRule(w http.ResponseWriter, r *http.Request) {
-	ruleId := mux.Vars(r)["id"]
-	var ret []interface{}
-	for _, vhId := range s.ruleVh[ruleId] {
-		ret = append(ret, s.virtualhosts[vhId])
-	}
-	json.NewEncoder(w).Encode(makeSearchRsp("virtualhost", ret...))
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(makeSearchRsp("ruleordered", items...))
 }
 
 func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Request) {
 	var virtualhost galebClient.VirtualHost
-	virtualhost.Status = "OK"
+	virtualhost.Status = map[string]string{"1": "OK"}
 	json.NewDecoder(r.Body).Decode(&virtualhost)
 	if len(s.findItemByName("virtualhost", virtualhost.Name)) > 0 {
 		w.WriteHeader(http.StatusConflict)
@@ -326,6 +322,10 @@ func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Reque
 	s.idCounter++
 	virtualhost.ID = s.idCounter
 	virtualhost.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), virtualhost.ID)
+	if virtualhost.VirtualHostGroup == "" {
+		s.idCounter++
+		virtualhost.VirtualHostGroup = fmt.Sprintf("http://%s/virtualhostgroup/%d", r.Host, s.idCounter)
+	}
 	s.virtualhosts[strconv.Itoa(virtualhost.ID)] = &virtualhost
 	w.Header().Set("Location", virtualhost.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
@@ -335,25 +335,12 @@ func (s *fakeGalebServer) updateVirtualHost(w http.ResponseWriter, r *http.Reque
 	id := mux.Vars(r)["id"]
 	var vh galebClient.VirtualHost
 	json.NewDecoder(r.Body).Decode(&vh)
-	for _, ruleOrder := range vh.RulesOrdered {
-		var found bool
-		for _, ruleVhs := range s.ruleVh[strconv.Itoa(ruleOrder.RuleId)] {
-			if ruleVhs == strconv.Itoa(vh.ID) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "invalid rule %d for vh %s", ruleOrder.RuleId, vh.FullId())
-		}
-	}
 	existingVH, ok := s.virtualhosts[id].(*galebClient.VirtualHost)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	existingVH.RulesOrdered = vh.RulesOrdered
+	existingVH.VirtualHostGroup = vh.VirtualHostGroup
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -364,9 +351,9 @@ func init() {
 			config.Set("routers:galeb:password", "mypassword")
 			config.Set("routers:galeb:domain", "galeb.com")
 			config.Set("routers:galeb:use-token", true)
-			config.Set("routers:galeb:type", "galeb")
+			config.Set("routers:galeb:type", "galebv2")
 			config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-			config.Set("database:name", "router_galeb_tests")
+			config.Set("database:name", "router_galebv2_tests")
 		},
 	}
 	var server *httptest.Server
@@ -384,7 +371,7 @@ func init() {
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
 		defer conn.Close()
-		dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+		dbtest.ClearAllCollections(conn.Collection("router_galebv2_tests").Database)
 	}
 	suite.TearDownTestFunc = func(c *check.C) {
 		server.Close()
@@ -392,7 +379,7 @@ func init() {
 		c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
 		c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
 		c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
-		c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
+		c.Check(fakeServer.ruleordered, check.DeepEquals, map[string]interface{}{})
 	}
 	check.Suite(suite)
 }
@@ -406,13 +393,13 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:galeb:password", "mypassword")
 	config.Set("routers:galeb:domain", "galeb.com")
 	config.Set("routers:galeb:use-token", true)
-	config.Set("routers:galeb:type", "galeb")
+	config.Set("routers:galeb:type", "galebv2")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "router_galeb_tests")
+	config.Set("database:name", "router_galebv2_tests")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+	dbtest.ClearAllCollections(conn.Collection("router_galebv2_tests").Database)
 	clientCache.cache = nil
 }
 
@@ -461,14 +448,14 @@ func (s *S) TestAddBackendPartialFailure(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", "routers:galeb")
 	c.Assert(err, check.IsNil)
-	fakeServer.prepareError("PATCH", "/api/rule/3/parents", "error on SetRuleVirtualHostIDs")
+	fakeServer.prepareError("POST", "/api/rule", "error on AddRuleToPool")
 	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
-	c.Assert(err, check.ErrorMatches, "PATCH /rule/3/parents: invalid response code: 500: error on SetRuleVirtualHostIDs\n")
+	c.Assert(err, check.ErrorMatches, "(?s)POST /rule: invalid response code: 500: error on AddRuleToPool.*")
 	c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
-	c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
+	c.Check(fakeServer.ruleordered, check.DeepEquals, map[string]interface{}{})
 }
 
 func (s *S) TestAddBackendPartialFailureExisting(c *check.C) {
@@ -481,13 +468,13 @@ func (s *S) TestAddBackendPartialFailureExisting(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
-	fakeServer.prepareError("PATCH", "/api/rule/3/parents", "error on SetRuleVirtualHostIDs")
+	fakeServer.prepareError("POST", "/api/rule", "error on AddRuleToPool")
 	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
-	c.Assert(err, check.ErrorMatches, "PATCH /rule/3/parents: invalid response code: 500: error on SetRuleVirtualHostIDs\n")
+	c.Assert(err, check.ErrorMatches, "(?s)POST /rule: invalid response code: 500: error on AddRuleToPool.*")
 	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.rules, check.Not(check.DeepEquals), map[string]interface{}{})
-	c.Check(fakeServer.ruleVh, check.Not(check.DeepEquals), map[string][]string{})
+	c.Check(fakeServer.ruleordered, check.Not(check.DeepEquals), map[string]interface{}{})
 }
 
 func (s *S) TestAddBackendPartialFailureInFirstResource(c *check.C) {
@@ -505,7 +492,7 @@ func (s *S) TestAddBackendPartialFailureInFirstResource(c *check.C) {
 	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
-	c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
+	c.Check(fakeServer.ruleordered, check.DeepEquals, map[string]interface{}{})
 }
 
 func (s *S) TestAddBackendPartialFailureInFirstResourceExisting(c *check.C) {
@@ -524,7 +511,7 @@ func (s *S) TestAddBackendPartialFailureInFirstResourceExisting(c *check.C) {
 	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.rules, check.Not(check.DeepEquals), map[string]interface{}{})
-	c.Check(fakeServer.ruleVh, check.Not(check.DeepEquals), map[string][]string{})
+	c.Check(fakeServer.ruleordered, check.Not(check.DeepEquals), map[string]interface{}{})
 }
 
 func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {

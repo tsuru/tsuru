@@ -5,9 +5,8 @@
 package api
 
 import (
-	"time"
-
 	"context"
+	"time"
 
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/check.v1"

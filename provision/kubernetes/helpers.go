@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/set"
 	"k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,12 +36,14 @@ import (
 )
 
 const (
-	tsuruLabelPrefix       = "tsuru.io/"
-	tsuruInProgressTaint   = tsuruLabelPrefix + "inprogress"
-	tsuruNodeDisabledTaint = tsuruLabelPrefix + "disabled"
-	replicaDepRevision     = "deployment.kubernetes.io/revision"
-	kubeKindReplicaSet     = "ReplicaSet"
-	kubeLabelNameMaxLen    = 55
+	tsuruLabelPrefix          = "tsuru.io/"
+	tsuruInProgressTaint      = tsuruLabelPrefix + "inprogress"
+	tsuruNodeDisabledTaint    = tsuruLabelPrefix + "disabled"
+	tsuruExtraLabelsMeta      = tsuruLabelPrefix + "extra-labels"
+	tsuruExtraAnnotationsMeta = tsuruLabelPrefix + "extra-annotations"
+	replicaDepRevision        = "deployment.kubernetes.io/revision"
+	kubeKindReplicaSet        = "ReplicaSet"
+	kubeLabelNameMaxLen       = 55
 )
 
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
@@ -272,13 +275,13 @@ podsLoop:
 	return messages, nil
 }
 
-func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, podName, namespace string) error {
+func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, namespace string) error {
 	return waitFor(ctx, func() (bool, error) {
-		err := waitForPod(ctx, client, podName, namespace, true)
+		err := waitForPod(ctx, client, origPod, namespace, true)
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
-		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(origPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -297,7 +300,7 @@ func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, pod
 		}
 		return false, nil
 	}, func() error {
-		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(origPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -322,9 +325,18 @@ func newInvalidPodPhaseError(client *ClusterClient, pod *apiv1.Pod, namespace st
 	return retErr
 }
 
-func waitForPod(ctx context.Context, client *ClusterClient, podName, namespace string, returnOnRunning bool) error {
+func podContainerNames(pod *apiv1.Pod) []string {
+	var names []string
+	for _, cont := range pod.Spec.Containers {
+		names = append(names, cont.Name)
+	}
+	return names
+}
+
+func waitForPod(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, namespace string, returnOnRunning bool) error {
+	validContSet := set.FromSlice(podContainerNames(origPod))
 	return waitFor(ctx, func() (bool, error) {
-		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(origPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -333,9 +345,25 @@ func waitForPod(ctx context.Context, client *ClusterClient, podName, namespace s
 		}
 		switch pod.Status.Phase {
 		case apiv1.PodRunning:
-			if !returnOnRunning {
-				return false, nil
+			if returnOnRunning {
+				return true, nil
 			}
+			allDone := len(validContSet) > 0
+			for _, contStatus := range pod.Status.ContainerStatuses {
+				if !validContSet.Includes(contStatus.Name) {
+					continue
+				}
+				termData := contStatus.State.Terminated
+				if termData == nil {
+					allDone = false
+					break
+				}
+				if termData.ExitCode != 0 {
+					invalidErr := newInvalidPodPhaseError(client, pod, namespace)
+					return true, errors.Wrapf(invalidErr, "unexpected container %q termination: Exit %d - Reason: %q - Message: %q", contStatus.Name, termData.ExitCode, termData.Reason, termData.Message)
+				}
+			}
+			return allDone, nil
 		case apiv1.PodUnknown:
 			fallthrough
 		case apiv1.PodFailed:
@@ -343,7 +371,7 @@ func waitForPod(ctx context.Context, client *ClusterClient, podName, namespace s
 		}
 		return true, nil
 	}, func() error {
-		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(origPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -515,6 +543,7 @@ var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 type execOpts struct {
 	client   *ClusterClient
 	app      provision.App
+	image    string
 	unit     string
 	cmds     []string
 	stdout   io.Writer
@@ -658,7 +687,7 @@ func runPod(args runSinglePodArgs) error {
 	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
 	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForPod(ctx, args.client, pod.Name, ns, true)
+	err = waitForPod(ctx, args.client, pod, ns, true)
 	cancel()
 	if err != nil {
 		multiErr.Add(err)
@@ -675,7 +704,7 @@ func runPod(args runSinglePodArgs) error {
 	}
 	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(ctx, args.client, pod.Name, ns, false)
+	return waitForPod(ctx, args.client, pod, ns, false)
 }
 
 func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {

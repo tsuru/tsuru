@@ -6,7 +6,7 @@ Upgrading Docker
 ================
 
 A :ref:`node <concepts_nodes>` is a physical or virtual machine with Docker
-installed.  The nodes should contains one or more units (containers).
+installed.  The nodes should contain one or more units (containers).
 
 Sometimes will be necessary to upgrade the Docker. It is recommended that you
 use the latest Docker version.

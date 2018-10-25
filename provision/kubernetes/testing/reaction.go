@@ -59,13 +59,15 @@ type ClusterInterface interface {
 }
 
 type KubeMock struct {
-	client      *ClientWrapper
-	Stream      map[string]StreamResult
-	LogHook     func(w io.Writer, r *http.Request)
-	DefaultHook func(w http.ResponseWriter, r *http.Request)
-	p           provision.Provisioner
-	factory     informers.SharedInformerFactory
-	HandleSize  bool
+	client        *ClientWrapper
+	Stream        map[string]StreamResult
+	LogHook       func(w io.Writer, r *http.Request)
+	DefaultHook   func(w http.ResponseWriter, r *http.Request)
+	p             provision.Provisioner
+	factory       informers.SharedInformerFactory
+	HandleSize    bool
+	IgnorePool    bool
+	IgnoreAppName bool
 }
 
 func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, factory informers.SharedInformerFactory) *KubeMock {
@@ -351,10 +353,16 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 	}
 }
 
+func (s *KubeMock) AppReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
+	return s.appReaction(a, c)
+}
+
 func (s *KubeMock) appReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
-		c.Assert(app.GetName(), check.Equals, a.GetName())
+		if !s.IgnoreAppName {
+			app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
+			c.Assert(app.GetName(), check.Equals, a.GetName())
+		}
 		return false, nil, nil
 	}
 }
@@ -369,6 +377,23 @@ func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 	}
 }
 
+func UpdatePodContainerStatus(pod *apiv1.Pod, running bool) {
+	for _, cont := range pod.Spec.Containers {
+		contStatus := apiv1.ContainerStatus{
+			Name:  cont.Name,
+			State: apiv1.ContainerState{},
+		}
+		if running {
+			contStatus.State.Running = &apiv1.ContainerStateRunning{}
+		} else {
+			contStatus.State.Terminated = &apiv1.ContainerStateTerminated{
+				ExitCode: 0,
+			}
+		}
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, contStatus)
+	}
+}
+
 func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -377,14 +402,18 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			err := s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
 			c.Assert(err, check.IsNil)
 		}()
-		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-			"tsuru.io/pool": a.GetPool(),
-		})
+		if !s.IgnorePool {
+			c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+				"tsuru.io/pool": a.GetPool(),
+			})
+		}
 		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-name"], check.Equals, a.GetName())
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-platform"], check.Equals, a.GetPlatform())
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
+		if !s.IgnorePool {
+			c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
+		}
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
 		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
@@ -402,6 +431,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			}
 		}
 		if toRegister {
+			UpdatePodContainerStatus(pod, true)
 			pod.Status.Phase = apiv1.PodRunning
 			wg.Add(1)
 			go func() {
@@ -416,6 +446,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				pod.Status.Phase = apiv1.PodSucceeded
 				ns, err := s.client.AppNamespace(a)
 				c.Assert(err, check.IsNil)
+				UpdatePodContainerStatus(pod, false)
 				_, err = s.client.CoreV1().Pods(ns).Update(pod)
 				c.Assert(err, check.IsNil)
 				err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)

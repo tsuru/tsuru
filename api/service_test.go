@@ -507,7 +507,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -556,7 +556,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -615,7 +615,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "text/plain")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -656,7 +656,7 @@ func (s *ProvisionSuite) TestServiceProxyNoContent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -680,7 +680,7 @@ func (s *ProvisionSuite) TestServiceProxyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.String(), check.Equals, "some error")
@@ -692,7 +692,7 @@ func (s *ProvisionSuite) TestServiceProxyNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
@@ -720,7 +720,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
-	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(proxyedRequest, check.IsNil)

@@ -42,7 +42,7 @@ $ tsuru target-add default {{.tsuruTarget}} -s
 <pre>
 $ tsuru user-create &lt;your-email&gt;
 </pre>
-		<p>The command will as for your password twice, and then register your user in the tsuru server.</p>
+		<p>The command will ask for your password twice, and then register your user in the tsuru server.</p>
 		<p>After creating your user, you need to authenticate with tsuru, using the <code>tsuru login</code> command.</p>
 		{{else}}
 		<h2>Login</h2>

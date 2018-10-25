@@ -13,17 +13,16 @@ import (
 	"strings"
 	"sync/atomic"
 
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	kfake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
-	ktesting "k8s.io/client-go/testing"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	kfake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestBuildPod(c *check.C) {
@@ -351,4 +350,20 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	out := &safe.Buffer{}
 	err := client.BuildImage("myplatform", "tsuru/myplatform:latest", ioutil.NopCloser(inputStream), out, context.Background())
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestDownloadFromContainer(c *check.C) {
+	expectedFile := []byte("file content")
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		w.Write(expectedFile)
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	client := KubeClient{}
+	archiveReader, err := client.DownloadFromContainer(a, "tsuru/app-myapp:tag1")
+	c.Assert(err, check.IsNil)
+	c.Assert(archiveReader, check.NotNil)
+	archive, err := ioutil.ReadAll(archiveReader)
+	c.Assert(err, check.IsNil)
+	c.Assert(archive, check.DeepEquals, expectedFile)
 }

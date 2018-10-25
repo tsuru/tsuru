@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -434,6 +435,57 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 		c.Assert(units, check.DeepEquals, expectedUnits)
 		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
+}
+
+func (s *S) TestSimplifiedAppList(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app1"},
+		Pool:      "pool1",
+		Tags:      []string{},
+	}
+	err = app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
+	app2 := app.App{
+		Name:      "app2",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app2"},
+		Pool:      "pool1",
+		Lock: appTypes.AppLock{
+			Locked:      true,
+			Reason:      "wanted",
+			Owner:       s.user.Email,
+			AcquireDate: acquireDate,
+		},
+		Tags: []string{"a"},
+	}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps?simplified=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 2)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	app1u, _ := apps[0].Units()
+	c.Assert(app1u, check.HasLen, 0)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+	c.Assert(app1u, check.HasLen, 0)
 }
 
 func (s *S) TestAppList(c *check.C) {
@@ -1066,6 +1118,9 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		c.Assert(name, check.Equals, expectedPlan.Name)
 		return &expectedPlan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{expectedPlan}, nil
 	}
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
@@ -1788,6 +1843,9 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 		c.Errorf("plan name not expected, got: %s", name)
 		return nil, nil
 	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return plans, nil
+	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1812,6 +1870,9 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 			return &plan, nil
 		}
 		return nil, appTypes.ErrPlanNotFound
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{plan}, nil
 	}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
 	err := app.CreateApp(&a, s.user)
@@ -1842,7 +1903,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	errorMessage := "Neither the description, plan, pool, team owner or platform were set. You must define at least one.\n"
+	errorMessage := "Neither the description, tags, plan, pool, team owner or platform were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
@@ -4032,15 +4093,6 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *check.C)
 	c.Assert(e.Message, check.Equals, `Parameter "lines" must be an integer.`)
 }
 
-type closeableRecorder struct {
-	*httptest.ResponseRecorder
-	ch chan bool
-}
-
-func (r *closeableRecorder) CloseNotify() <-chan bool {
-	return r.ch
-}
-
 func (s *S) TestAppLogFollow(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -4048,11 +4100,13 @@ func (s *S) TestAppLogFollow(c *check.C) {
 	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
 	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	request = request.WithContext(ctx)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
+	recorder := httptest.NewRecorder()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -4084,7 +4138,7 @@ func (s *S) TestAppLogFollow(c *check.C) {
 	err = a.Log("x", "", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	close(recorder.ch)
+	cancel()
 	wg.Wait()
 }
 
@@ -4095,11 +4149,13 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
 	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	request = request.WithContext(ctx)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
+	recorder := httptest.NewRecorder()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -4133,7 +4189,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	err = a.Log("y", "web", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	close(recorder.ch)
+	cancel()
 	wg.Wait()
 }
 

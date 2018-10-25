@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -20,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
