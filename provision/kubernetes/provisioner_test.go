@@ -188,9 +188,11 @@ func (s *S) TestAddNodePrefixed(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
 	c.Assert(nodes[0].Pool(), check.Equals, "p1")
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-		"tsuru.io/m1":   "v1",
-		"tsuru.io/m2":   "v2",
+		"tsuru.io/pool":              "p1",
+		"tsuru.io/m1":                "v1",
+		"tsuru.io/m2":                "v2",
+		"tsuru.io/extra-labels":      "k1=v1,k2=v2",
+		"tsuru.io/extra-annotations": "k3=v3,k4=v4",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
 		"tsuru.io/pool": "p1",
@@ -198,10 +200,12 @@ func (s *S) TestAddNodePrefixed(c *check.C) {
 		"k2":            "v2",
 	})
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m1": "v1",
-		"tsuru.io/m2": "v2",
-		"k3":          "v3",
-		"k4":          "v4",
+		"tsuru.io/m1":                "v1",
+		"tsuru.io/m2":                "v2",
+		"k3":                         "v3",
+		"k4":                         "v4",
+		"tsuru.io/extra-labels":      "k1=v1,k2=v2",
+		"tsuru.io/extra-annotations": "k3=v3,k4=v4",
 	})
 }
 
