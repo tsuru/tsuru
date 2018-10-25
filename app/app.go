@@ -2248,6 +2248,11 @@ func (app *App) updateRoutersDB(routers []appTypes.AppRouter) error {
 func (app *App) GetRouters() []appTypes.AppRouter {
 	routers := append([]appTypes.AppRouter{}, app.Routers...)
 	if app.Router != "" {
+		for _, r := range routers {
+			if r.Name == app.Router {
+				return routers
+			}
+		}
 		routers = append([]appTypes.AppRouter{{
 			Name: app.Router,
 			Opts: app.RouterOpts,
