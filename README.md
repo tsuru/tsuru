@@ -35,7 +35,7 @@ Example for release `1.1.1` and `OS X`:
 $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz | tar xz
 ```
 
-#### Call tsuru installer
+#### Call tsuru Installer
 
 ```
 $ tsuru install create
@@ -53,7 +53,7 @@ $ cd $GOPATH/src/github.com/tsuru/tsuru-client
 $ make install
 ```
 
-#### Create an installer config
+#### Create an Installer Config
 
 Create the tsuru installer config files with:
 
@@ -67,7 +67,7 @@ Replace the tsuru API image tag with the latest tag in `install-compose.yml`:
 $ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
 ```
 
-#### Call tsuru installer
+#### Call tsuru Installer
 
 ```
 $ $GOPATH/bin/tsuru install create -c install-config.yml -e install-compose.yml
