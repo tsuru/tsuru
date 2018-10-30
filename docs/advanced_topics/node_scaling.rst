@@ -101,7 +101,7 @@ Each time tsuru tries to run an auto scale action (add, remove, or rebalance). I
 will create an auto scale event. This event will record the result of the auto
 scale action and possible errors that occurred during its execution.
 
-You can list auto scale events with `tsuru docker-autoscale-list`
+You can list auto scale events with `tsuru docker-autoscale-list`.
 
 Running auto scale once
 -----------------------

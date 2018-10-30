@@ -61,7 +61,7 @@ configured external syslog servers. Similar to the diagram below:
 
 For informations about how to configure bs to forward logs and also some tunning
 options, please refer to the `bs documentation
-<https://github.com/tsuru/bs#environment-variables>`_
+<https://github.com/tsuru/bs#environment-variables>`_.
 
 The advantage of having the bs container as an intermediary is that it knows how
 to talk to the tsuru api server. Sending logs to the tsuru api server enables
