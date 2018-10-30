@@ -8,7 +8,7 @@ Gandalf
 To enable application deployment using git, tsuru uses Gandalf to manage Git repositories
 used to push applications to. It's also responsible for setting hooks in these repositories
 which will notify the tsuru API when a new deploy is made. For more details
-check `Gandalf Documentation <http://gandalf.readthedocs.org/>`_
+check `Gandalf Documentation <http://gandalf.readthedocs.org/>`_.
 
 .. note::
 
