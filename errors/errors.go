@@ -1,6 +1,7 @@
 // Copyright 2012 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//If possible, add a screenshot here (you can drag and drop, png, jpg, gif, tif, etc. in this box):
 
 // Package errors provides facilities with error handling.
 package errors
