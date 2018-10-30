@@ -22,7 +22,7 @@ tsuru services, except for the support for instance creation and binding paramet
 Managing Service Brokers
 ========================
 
-To expose services from a broker, a tsuru admin needs to add the service broker endpoint to the tsuru api. This can be done on the cli.
+To expose services from a broker, a tsuru admin needs to add the service broker endpoint to the tsuru api. This can be done on the cli :
 
 .. highlight:: bash
 

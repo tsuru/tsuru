@@ -5,7 +5,7 @@
 Metrics
 =======
 
-Every docker node created on tsuru has a tsuru agent(a.k.a node-container),
+Every docker node created on tsuru has a tsuru agent (a.k.a node-container),
 called big-sibling, running as a container. One of it's responsibilities is
 collecting and reporting metrics, such as cpu and memory usage, from both it's
 host and other applications and containers running on the same host.
