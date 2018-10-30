@@ -58,7 +58,7 @@ Listing available plans
 =======================
 
 tsuru will list the available plans whenever the user issues the command
-``service-info``
+``service-info`` :
 
 .. highlight:: bash
 
