@@ -1,7 +1,7 @@
 # Integration tests
 
 Package integration provides a set of integration tests for tsuru. The testing behavior
-can be configured by a set of envinronment variables.
+can be configured by a set of environment variables.
 
 These tests might be ran on an existing tsuru installation (by providing the correct amount
 of environment variables) or it can test a new installation (locally or in a cloud) by
