@@ -41,11 +41,11 @@ git_archive_all() {
 
 clean_up() {
     set +e
-    rm /tmp/deploy-${APP_NAME}.log
+    rm /tmp/deploy-${APP_NAME}.log 2>/dev/null
     if [ -d ${TMP_WORK_DIR} ]; then
-        rm -rf ${TMP_WORK_DIR} > /dev/null
+        rm -rf ${TMP_WORK_DIR} 2>/dev/null
     fi
-    rm /tmp/${ARCHIVE_FILE_NAME}
+    rm /tmp/${ARCHIVE_FILE_NAME} 2>/dev/null
     set -e
 }
 
