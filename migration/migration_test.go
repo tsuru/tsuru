@@ -230,12 +230,12 @@ func (s *Suite) TestList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Run(RunArgs{Name: "migration3", Writer: &buf})
 	c.Assert(err, check.IsNil)
-	migrations, err := List()
+	migrationsList, err := List()
 	c.Assert(err, check.IsNil)
-	for i := range migrations {
-		migrations[i].fn = nil
+	for i := range migrationsList {
+		migrationsList[i].fn = nil
 	}
-	c.Assert(migrations, check.DeepEquals, []migration{
+	c.Assert(migrationsList, check.DeepEquals, []migration{
 		{Name: "migration1"},
 		{Name: "migration2", Optional: true},
 		{Name: "migration3", Optional: true, Ran: true},
