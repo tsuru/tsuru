@@ -10,25 +10,23 @@
 
 while read oldrev newrev refname
 do
-        set +e
-        echo $refname | grep -v tags/master$ | grep -q /master$
-        status=$?
-        set -e
-        if [ $status = 0 ]
-        then
-                COMMIT=${newrev}
-        fi
+    set +e
+    echo $refname | grep -v tags/master$ | grep -q /master$
+    status=$?
+    set -e
+    if [ $status = 0 ]; then
+        COMMIT=${newrev}
+    fi
 done
 
 if [ -z ${COMMIT} ]
 then
-	echo "ERROR: please push to master"
-	exit 3
+    echo "ERROR: please push to master"
+    exit 3
 fi
 
 git_archive_all() {
-    REV=$1; FILE=$2
-    TMP_WORK_DIR=$(mktemp -d)
+    REV=$1; FILE=$2; TMP_WORK_DIR=$3
     chmod 755 $TMP_WORK_DIR
     unset GIT_DIR GIT_WORK_TREE
     git clone -q $PWD $TMP_WORK_DIR &> /dev/null
@@ -39,16 +37,27 @@ git_archive_all() {
     find -name .git -prune -exec rm -rf {} \; > /dev/null
     tar zcf /tmp/$FILE .
     popd > /dev/null
-    rm -rf $TMP_WORK_DIR > /dev/null
 }
+
+clean_up() {
+    set +e
+    rm /tmp/deploy-${APP_NAME}.log 2>/dev/null
+    if [ -d ${TMP_WORK_DIR} ]; then
+        rm -rf ${TMP_WORK_DIR} 2>/dev/null
+    fi
+    rm /tmp/${ARCHIVE_FILE_NAME} 2>/dev/null
+    set -e
+}
+
+trap clean_up ERR EXIT
 
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
 UUID=`python -c 'import uuid; print uuid.uuid4().hex'`
 ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
-git_archive_all $COMMIT $ARCHIVE_FILE_NAME
+TMP_WORK_DIR=$(mktemp -d)
+git_archive_all $COMMIT $ARCHIVE_FILE_NAME $TMP_WORK_DIR
 archive_url="/tmp/${ARCHIVE_FILE_NAME}"
 url="${TSURU_HOST}/apps/${APP_NAME}/deploy"
 curl -H "Authorization: bearer ${TSURU_TOKEN}" -F "file=@${archive_url}" -F "commit=${COMMIT}" -F "user=${TSURU_USER}" -s -N $url | tee /tmp/deploy-${APP_NAME}.log
-rm /tmp/${ARCHIVE_FILE_NAME}
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
