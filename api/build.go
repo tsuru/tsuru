@@ -92,6 +92,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	imageID, err = app.Build(opts)
 	if err == nil {
 		fmt.Fprintln(w, imageID)
+		fmt.Fprintln(w, "\nOK")
 	}
 	return err
 }
