@@ -217,7 +217,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Body.String(), check.Equals, "tsuruteam/app-otherapp:mytag\n\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "tsuruteam/app-otherapp:mytag\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
