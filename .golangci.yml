@@ -18,5 +18,3 @@ linters:
     - maligned
   disable:
     - errcheck
-    - megacheck
-    - structcheck
