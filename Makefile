@@ -7,7 +7,7 @@ TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
-.PHONY: all check-path test race docs install
+.PHONY: all check-path test race docs install tsurud $(TSR_BIN)
 
 all: check-path test
 
