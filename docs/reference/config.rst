@@ -77,6 +77,18 @@ tls:key-file
 ``tls:key-file`` is the path to private key file configured to serve the
 domain. This setting is optional, unless ``use-tls`` is true.
 
+tls:auto-reload:interval
+++++++++++++++++++++++++
+
+``tls:auto-reload:interval`` defines the time frequency which the TLS 
+certificates are reloaded by the webserver. A new certificate only is loaded
+when there is difference between newer and older.
+
+This setting is optional. The default value is 0, which means automatic reload
+is not enabled. To enable it, you could use any `time.Duration <https://golang.org/pkg/time/#Duration>`_
+value greater than zero, as well as `parseable values <https://golang.org/pkg/time/#ParseDuration>`_
+as: "1h", "60m", "3600s", etc.
+
 server:read-timeout
 +++++++++++++++++++
 
