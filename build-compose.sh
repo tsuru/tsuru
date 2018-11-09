@@ -24,7 +24,7 @@ rmdir $context
 
 BUILD_IMAGE='tsuru-build'
 
-LOCAL_PKG=${GOPATH}'/pkg/linux_amd64'
+LOCAL_PKG=`go env GOPATH`'/pkg/linux_amd64'
 CONTAINER_PKG='/go/pkg/linux_amd64'
 CONTAINER_PROJECT_PATH='/go/src/github.com/tsuru/tsuru'
 BUILD_CMD="go build -i -v --ldflags '-linkmode external -extldflags \"-static\"' -o build/tsurud ./cmd/tsurud"
