@@ -6,6 +6,8 @@ services:
             - ./data/mongo:/data/db
         networks:
             - tsuru_net
+        ports:
+            - 27017:27017
     redis:
         image: redis
         volumes:
