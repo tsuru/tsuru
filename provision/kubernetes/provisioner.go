@@ -120,6 +120,9 @@ type kubernetesConfig struct {
 	// AttachTimeoutAfterContainerFinished is the time tsuru will wait for an
 	// attach call to finish after the attached container has finished.
 	AttachTimeoutAfterContainerFinished time.Duration
+	// HeadlessServicePort is the port used in headless service, by default the
+	// same port number used for container is used.
+	HeadlessServicePort int
 }
 
 func getKubeConfig() kubernetesConfig {
@@ -168,6 +171,10 @@ func getKubeConfig() kubernetesConfig {
 		conf.AttachTimeoutAfterContainerFinished = time.Duration(attachTimeout * float64(time.Second))
 	} else {
 		conf.AttachTimeoutAfterContainerFinished = defaultAttachTimeoutAfterContainerFinished
+	}
+	conf.HeadlessServicePort, _ = config.GetInt("kubernetes:headless-service-port")
+	if conf.HeadlessServicePort == 0 {
+		conf.HeadlessServicePort, _ = strconv.Atoi(provision.WebProcessDefaultPort())
 	}
 	return conf
 }
