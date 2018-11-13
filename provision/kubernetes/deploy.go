@@ -952,7 +952,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
+	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
 			Namespace:   ns,
@@ -966,17 +966,27 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 					Protocol:   "TCP",
 					Port:       int32(port),
 					TargetPort: intstr.FromInt(targetPort),
+					Name:       "http-default",
 				},
 			},
 			Type: apiv1.ServiceTypeNodePort,
 		},
-	})
-	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+	}
+	svc, isNew, err := mergeServices(m.client, svc)
+	if err != nil {
+		return err
+	}
+	if isNew {
+		_, err = m.client.CoreV1().Services(ns).Create(svc)
+	} else {
+		_, err = m.client.CoreV1().Services(ns).Update(svc)
+	}
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	labels.SetIsHeadlessService()
 	kubeConf := getKubeConfig()
-	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
+	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
 			Namespace:   ns,
@@ -990,16 +1000,42 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 					Protocol:   "TCP",
 					Port:       int32(kubeConf.HeadlessServicePort),
 					TargetPort: intstr.FromInt(targetPort),
+					Name:       "http-headless",
 				},
 			},
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,
 		},
-	})
-	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+	}
+	headlessSvc, isNew, err = mergeServices(m.client, headlessSvc)
+	if err != nil {
+		return err
+	}
+	if isNew {
+		_, err = m.client.CoreV1().Services(ns).Create(headlessSvc)
+	} else {
+		_, err = m.client.CoreV1().Services(ns).Update(headlessSvc)
+	}
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, bool, error) {
+	existing, err := client.CoreV1().Services(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return nil, false, errors.WithStack(err)
+	}
+	if existing == nil {
+		return svc, true, nil
+	}
+	for i := 0; i < len(svc.Spec.Ports) && i < len(existing.Spec.Ports); i++ {
+		svc.Spec.Ports[i].NodePort = existing.Spec.Ports[i].NodePort
+	}
+	svc.ObjectMeta.ResourceVersion = existing.ObjectMeta.ResourceVersion
+	svc.Spec.ClusterIP = existing.Spec.ClusterIP
+	return svc, false, nil
 }
 
 func getTargetPortForImage(imgName string) int {
