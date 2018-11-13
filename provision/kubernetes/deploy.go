@@ -587,6 +587,9 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	rawAppLabel := appLabelForApp(a, process)
 	expandedLabels["app"] = rawAppLabel
 	expandedLabelsNoReplicas["app"] = rawAppLabel
+	_, tag := image.SplitImageName(imageName)
+	expandedLabels["version"] = tag
+	expandedLabelsNoReplicas["version"] = tag
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -950,13 +953,19 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		}
 		return provision.ErrUnitStartup{Err: err}
 	}
+	expandedLabels := labels.ToLabels()
+	labels.SetIsHeadlessService()
+	expandedLabelsHeadless := labels.ToLabels()
+	rawAppLabel := appLabelForApp(a, process)
+	expandedLabels["app"] = rawAppLabel
+	expandedLabelsHeadless["app"] = rawAppLabel
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
 			Namespace:   ns,
-			Labels:      labels.ToLabels(),
+			Labels:      expandedLabels,
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
@@ -984,13 +993,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	labels.SetIsHeadlessService()
 	kubeConf := getKubeConfig()
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
 			Namespace:   ns,
-			Labels:      labels.ToLabels(),
+			Labels:      expandedLabelsHeadless,
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
