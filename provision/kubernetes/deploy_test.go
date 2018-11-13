@@ -62,14 +62,14 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, "myimg:v2", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -98,6 +98,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
 		"app":                           "myapp-p1",
+		"version":                       "v2",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -159,7 +160,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
-							Image: "myimg",
+							Image: "myimg:v2",
 							Command: []string{
 								"/bin/sh",
 								"-lc",
@@ -192,6 +193,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                           "myapp-p1",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
@@ -236,6 +238,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1-units",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                           "myapp-p1",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
@@ -356,6 +359,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                           "myapp-p1",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
@@ -424,6 +428,7 @@ func (s *S) TestServiceManagerDeployServiceCustomHeadlessPort(c *check.C) {
 			Name:      "myapp-p1-units",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                           "myapp-p1",
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
