@@ -1703,6 +1703,7 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:pod-running-timeout", 2*60)
 	config.Set("kubernetes:deployment-progress-timeout", 3*60)
 	config.Set("kubernetes:attach-after-finish-timeout", 5)
+	config.Set("kubernetes:headless-service-port", 8889)
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
@@ -1714,6 +1715,7 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 		PodRunningTimeout:                   2 * time.Minute,
 		DeploymentProgressTimeout:           3 * time.Minute,
 		AttachTimeoutAfterContainerFinished: 5 * time.Second,
+		HeadlessServicePort:                 8889,
 	})
 }
 
@@ -1729,6 +1731,7 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 		PodRunningTimeout:                   10 * time.Minute,
 		DeploymentProgressTimeout:           10 * time.Minute,
 		AttachTimeoutAfterContainerFinished: time.Minute,
+		HeadlessServicePort:                 8888,
 	})
 }
 

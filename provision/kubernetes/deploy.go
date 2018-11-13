@@ -975,6 +975,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return errors.WithStack(err)
 	}
 	labels.SetIsHeadlessService()
+	kubeConf := getKubeConfig()
 	_, err = m.client.CoreV1().Services(ns).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
@@ -987,7 +988,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Ports: []apiv1.ServicePort{
 				{
 					Protocol:   "TCP",
-					Port:       int32(port),
+					Port:       int32(kubeConf.HeadlessServicePort),
 					TargetPort: intstr.FromInt(targetPort),
 				},
 			},
