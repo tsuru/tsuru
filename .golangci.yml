@@ -12,9 +12,9 @@ linters-settings:
 
 linters:
   enable:
-    - goimports
     - gofmt
     - misspell
     - maligned
   disable:
+    - goimports
     - errcheck
