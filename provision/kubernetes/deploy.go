@@ -1032,11 +1032,11 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 
 func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, bool, error) {
 	existing, err := client.CoreV1().Services(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return svc, true, nil
+		}
 		return nil, false, errors.WithStack(err)
-	}
-	if existing == nil {
-		return svc, true, nil
 	}
 	for i := 0; i < len(svc.Spec.Ports) && i < len(existing.Spec.Ports); i++ {
 		svc.Spec.Ports[i].NodePort = existing.Spec.Ports[i].NodePort
