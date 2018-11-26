@@ -360,6 +360,12 @@ func GetByName(name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
+	if _, err := GetByName(app.GetName()); err != appTypes.ErrAppNotFound {
+		if err != nil {
+			return errors.WithMessage(err, "unable to check if app already exists")
+		}
+		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.GetName()}
+	}
 	var plan *appTypes.Plan
 	var err error
 	if app.Plan.Name == "" {
