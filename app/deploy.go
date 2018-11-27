@@ -319,7 +319,7 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	if opts.Kind == "" {
 		opts.GetKind()
 	}
-	if (opts.App.GetPlatform() == "") && ((opts.Kind != DeployImage) && (opts.Kind != DeployRollback)) {
+	if opts.App.GetPlatform() == "" && opts.Kind != DeployImage && opts.Kind != DeployRollback {
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
 

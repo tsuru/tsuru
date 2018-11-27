@@ -530,14 +530,15 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	portInt := getTargetPortForImage(imageName)
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
+	processPorts := getProcessPortsForImage(imageName, yamlData, process)
 	var hcData hcResult
 	if process == webProcessName {
-		hcData, err = probesFromHC(yamlData.Healthcheck, portInt)
+		//TODO: add support to multiple HCs
+		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -595,6 +596,19 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	_, tag := image.SplitImageName(imageName)
 	expandedLabels["version"] = tag
 	expandedLabelsNoReplicas["version"] = tag
+	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
+	for i, port := range processPorts {
+		var portInt int
+		if port.TargetPort > 0 {
+			portInt = port.TargetPort
+		} else if port.Port > 0 {
+			portInt = port.Port
+		} else {
+			portInt, _ = strconv.Atoi(provision.WebProcessDefaultPort())
+		}
+		containerPorts[i].ContainerPort = int32(portInt)
+	}
+
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -643,10 +657,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 								Requests: resourceRequests,
 							},
 							VolumeMounts: mounts,
-							Ports: []apiv1.ContainerPort{
-								{ContainerPort: int32(portInt)},
-							},
-							Lifecycle: lifecycle,
+							Ports:        containerPorts,
+							Lifecycle:    lifecycle,
 						},
 					},
 				},
@@ -968,8 +980,6 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	rawAppLabel := appLabelForApp(a, process)
 	expandedLabels["app"] = rawAppLabel
 	expandedLabelsHeadless["app"] = rawAppLabel
-	targetPort := getTargetPortForImage(img)
-	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
 	if err != nil {
 		return err
@@ -977,6 +987,46 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	policy := apiv1.ServiceExternalTrafficPolicyTypeCluster
 	if policyLocal {
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
+	}
+	yamlData, err := image.GetImageTsuruYamlData(img)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	processPorts := getProcessPortsForImage(img, yamlData, process)
+	svcPorts := make([]apiv1.ServicePort, len(processPorts))
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	for i, port := range processPorts {
+		if len(port.Protocol) > 0 {
+			svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
+		}
+		if port.TargetPort > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.TargetPort)
+		} else if port.Port > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.Port)
+		} else {
+			svcPorts[i].TargetPort = intstr.FromInt(defaultPort)
+		}
+		if port.Port > 0 {
+			svcPorts[i].Port = int32(port.Port)
+		} else if port.TargetPort > 0 {
+			svcPorts[i].Port = int32(port.TargetPort)
+		} else {
+			svcPorts[i].Port = int32(defaultPort)
+		}
+		if len(port.Name) > 0 {
+			svcPorts[i].Name = port.Name
+		} else {
+			svcPorts[i].Name = fmt.Sprintf("http-default-%d", i+1)
+		}
+	}
+	if len(svcPorts) == 0 {
+		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		svcPorts = append(svcPorts, apiv1.ServicePort{
+			Protocol:   "TCP",
+			Port:       int32(defaultPort),
+			TargetPort: intstr.FromInt(defaultPort),
+			Name:       "http-default",
+		})
 	}
 	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -986,15 +1036,8 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector: labels.ToSelector(),
-			Ports: []apiv1.ServicePort{
-				{
-					Protocol:   "TCP",
-					Port:       int32(port),
-					TargetPort: intstr.FromInt(targetPort),
-					Name:       "http-default",
-				},
-			},
+			Selector:              labels.ToSelector(),
+			Ports:                 svcPorts,
 			Type:                  apiv1.ServiceTypeNodePort,
 			ExternalTrafficPolicy: policy,
 		},
@@ -1011,6 +1054,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	kubeConf := getKubeConfig()
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1023,9 +1067,9 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Selector: labels.ToSelector(),
 			Ports: []apiv1.ServicePort{
 				{
-					Protocol:   "TCP",
+					Protocol:   svcPorts[0].Protocol,
 					Port:       int32(kubeConf.HeadlessServicePort),
-					TargetPort: intstr.FromInt(targetPort),
+					TargetPort: svcPorts[0].TargetPort,
 					Name:       "http-headless",
 				},
 			},
@@ -1075,6 +1119,25 @@ func getTargetPortForImage(imgName string) int {
 	}
 	portInt, _ := strconv.Atoi(port)
 	return portInt
+}
+
+func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) []provision.TsuruYamlKubernetesPodPortConfig {
+	for _, group := range tsuruYamlData.Kubernetes.Groups {
+		for podName, podConfig := range group {
+			if podName == process {
+				return podConfig.Ports
+			}
+		}
+	}
+
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	return []provision.TsuruYamlKubernetesPodPortConfig{
+		{
+			Protocol:   "TCP",
+			Port:       defaultPort,
+			TargetPort: getTargetPortForImage(imgName),
+		},
+	}
 }
 
 func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {
