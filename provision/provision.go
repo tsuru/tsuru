@@ -674,8 +674,9 @@ func (e *Error) Error() string {
 }
 
 type TsuruYamlData struct {
-	Hooks       TsuruYamlHooks       `bson:",omitempty"`
-	Healthcheck TsuruYamlHealthcheck `bson:",omitempty"`
+	Hooks       TsuruYamlHooks            `bson:",omitempty"`
+	Healthcheck TsuruYamlHealthcheck      `bson:",omitempty"`
+	Kubernetes  TsuruYamlKubernetesConfig `bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {
@@ -700,6 +701,23 @@ type TsuruYamlHealthcheck struct {
 	AllowedFailures int    `json:"allowed_failures" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
 	IntervalSeconds int    `json:"interval_seconds" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
 	TimeoutSeconds  int    `json:"timeout_seconds" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
+}
+
+type TsuruYamlKubernetesConfig struct {
+	Groups map[string]TsuruYamlKubernetesGroup `bson:",omitempty"`
+}
+
+type TsuruYamlKubernetesPodConfig struct {
+	Ports []TsuruYamlKubernetesPodPortConfig `bson:",omitempty"`
+}
+
+type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesPodConfig
+
+type TsuruYamlKubernetesPodPortConfig struct {
+	Name       string `json:"name,omitempty" bson:"name,omitempty"`
+	Protocol   string `json:"protocol,omitempty" bson:"protocol,omitempty"`
+	Port       int    `json:"port,omitempty" bson:"port,omitempty"`
+	TargetPort int    `json:"target_port,omitempty" bson:"target_port,omitempty"`
 }
 
 func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {

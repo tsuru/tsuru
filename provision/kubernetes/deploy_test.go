@@ -225,7 +225,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Protocol:   "TCP",
 					Port:       int32(8888),
 					TargetPort: intstr.FromInt(8888),
-					Name:       "http-default",
+					Name:       "http-default-1",
 				},
 			},
 			Type:                  apiv1.ServiceTypeNodePort,
@@ -392,7 +392,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 					Protocol:   "TCP",
 					Port:       int32(8888),
 					TargetPort: intstr.FromInt(7777),
-					Name:       "http-default",
+					Name:       "http-default-1",
 				},
 			},
 			Type:                  apiv1.ServiceTypeNodePort,
@@ -818,6 +818,124 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc2$`)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "proc1",
+			"p2":  "proc2",
+		},
+		"kubernetes": provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"web": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{
+								Name:       "port1",
+								Protocol:   "UDP",
+								TargetPort: 8080,
+							},
+							{
+								Protocol: "TCP",
+								Port:     9000,
+							},
+							{
+								Port:       8000,
+								TargetPort: 8001,
+							},
+						},
+					},
+				},
+				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"p2": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{Name: "myport"},
+						},
+					},
+				},
+				"mypod3-ignored": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"web": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{
+								TargetPort: 8123,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
+		{ContainerPort: 8080},
+		{ContainerPort: 9000},
+		{ContainerPort: 8001},
+	})
+	dep, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
+		{ContainerPort: 8888},
+	})
+
+	srv, err := s.client.CoreV1().Services(ns).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
+		{
+			Name:       "port1",
+			Protocol:   "UDP",
+			Port:       int32(8080),
+			TargetPort: intstr.FromInt(8080),
+		},
+		{
+			Name:       "http-default-2",
+			Protocol:   "TCP",
+			Port:       int32(9000),
+			TargetPort: intstr.FromInt(9000),
+		},
+		{
+			Name:       "http-default-3",
+			Port:       int32(8000),
+			TargetPort: intstr.FromInt(8001),
+		},
+	})
+	srv, err = s.client.CoreV1().Services(ns).Get("myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
+		{
+			Name:       "myport",
+			Port:       int32(8888),
+			TargetPort: intstr.FromInt(8888),
+		},
+	})
+
+	srv, err = s.client.CoreV1().Services(ns).Get("myapp-web-units", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
+		{
+			Name:       "http-headless",
+			Protocol:   "UDP",
+			Port:       int32(8888),
+			TargetPort: intstr.FromInt(8080),
+		},
+	})
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
