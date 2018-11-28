@@ -508,7 +508,6 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	if updateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
-
 	err = app.validate()
 	if err != nil {
 		return err
@@ -520,11 +519,13 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &updateAppProvisioner)
 	}
 	if newProv.GetName() != oldProv.GetName() {
+		defer func() {
+			rebuild.RoutesRebuildOrEnqueue(app.Name)
+		}()
 		err = validateVolumes(app)
 		if err != nil {
 			return err
 		}
-
 		actions = append(actions,
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
