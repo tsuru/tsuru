@@ -522,7 +522,8 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Update(updateData, writer)
+	evt.SetLogWriter(writer)
+	err = a.Update(updateData, evt)
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -592,7 +593,8 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.AddUnits(n, processName, writer)
+	evt.SetLogWriter(writer)
+	return a.AddUnits(n, processName, evt)
 }
 
 // title: remove units
@@ -637,7 +639,8 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.RemoveUnits(n, processName, writer)
+	evt.SetLogWriter(writer)
+	return a.RemoveUnits(n, processName, evt)
 }
 
 // title: set unit status
@@ -859,10 +862,11 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	onceBool, _ := strconv.ParseBool(once)
 	isolatedBool, _ := strconv.ParseBool(isolated)
 	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
-	return a.Run(command, writer, args)
+	return a.Run(command, evt, args)
 }
 
 // title: get envs
@@ -974,10 +978,11 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          variables,
 		ShouldRestart: !e.NoRestart,
-		Writer:        writer,
+		Writer:        evt,
 	})
 	if v, ok := err.(*errors.ValidationError); ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
@@ -1031,11 +1036,12 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
 	return a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
-		Writer:        writer,
+		Writer:        evt,
 	})
 }
 
@@ -1296,7 +1302,8 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.BindApp(a, req.Parameters, !req.NoRestart, writer, evt, requestIDHeader(r))
+	evt.SetLogWriter(writer)
+	err = instance.BindApp(a, req.Parameters, !req.NoRestart, evt, evt, requestIDHeader(r))
 	if err != nil {
 		status, errStatus := instance.Status(requestIDHeader(r))
 		if errStatus != nil {
@@ -1427,7 +1434,8 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Restart(process, writer)
+	evt.SetLogWriter(writer)
+	return a.Restart(process, evt)
 }
 
 // title: app sleep
@@ -1477,7 +1485,8 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Sleep(writer, process, proxyURL)
+	evt.SetLogWriter(writer)
+	return a.Sleep(evt, process, proxyURL)
 }
 
 // title: app log
@@ -1650,7 +1659,8 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Start(writer, process)
+	evt.SetLogWriter(writer)
+	return a.Start(evt, process)
 }
 
 // title: app stop
@@ -1690,7 +1700,8 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Stop(writer, process)
+	evt.SetLogWriter(writer)
+	return a.Stop(evt, process)
 }
 
 // title: app unlock

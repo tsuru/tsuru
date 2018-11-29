@@ -265,13 +265,14 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	var allErrors []string
 	for _, prov := range provs {
 		ncProv, ok := prov.(provision.NodeContainerProvisioner)
 		if !ok {
 			continue
 		}
-		err = ncProv.RemoveNodeContainer(name, poolName, writer)
+		err = ncProv.RemoveNodeContainer(name, poolName, evt)
 		if err != nil {
 			allErrors = append(allErrors, err.Error())
 		}
@@ -332,13 +333,14 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
 	var allErrors []string
 	for _, prov := range provs {
 		ncProv, ok := prov.(provision.NodeContainerProvisioner)
 		if !ok {
 			continue
 		}
-		err = ncProv.UpgradeNodeContainer(name, poolName, writer)
+		err = ncProv.UpgradeNodeContainer(name, poolName, evt)
 		if err != nil {
 			allErrors = append(allErrors, err.Error())
 		}

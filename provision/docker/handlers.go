@@ -97,7 +97,8 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
+	evt.SetLogWriter(writer)
+	_, err = mainDockerProvisioner.moveContainer(contId, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move container")
 	}
@@ -154,11 +155,12 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = mainDockerProvisioner.MoveContainers(from, to, writer)
+	evt.SetLogWriter(writer)
+	err = mainDockerProvisioner.MoveContainers(from, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move containers")
 	}
-	fmt.Fprintf(writer, "Containers moved successfully!\n")
+	fmt.Fprintf(evt, "Containers moved successfully!\n")
 	return nil
 }
 
@@ -280,13 +282,14 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	fmt.Fprintln(writer, "Log config successfully updated.")
+	evt.SetLogWriter(writer)
+	fmt.Fprintln(evt, "Log config successfully updated.")
 	if restart {
 		filter := &app.Filter{}
 		if pool != "" {
 			filter.Pools = []string{pool}
 		}
-		return tryRestartAppsByFilter(filter, writer)
+		return tryRestartAppsByFilter(filter, evt)
 	}
 	return nil
 }
