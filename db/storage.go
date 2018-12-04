@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/log"
 )
 
 const (
@@ -160,9 +161,29 @@ func (s *LogStorage) Logs(appName string) *storage.Collection {
 	if appName == "" {
 		return nil
 	}
-	c := s.Collection("logs_" + appName)
-	c.Create(&logCappedInfo)
+	collectionName := "logs_" + appName
+	c := s.Collection(collectionName)
+	if !s.collectionExists(collectionName) {
+		err := c.Create(&logCappedInfo)
+		if err != nil {
+			log.Errorf("[LogStorage] error creating log collection for app %s: %v", appName, err)
+			return nil
+		}
+	}
 	return c
+}
+
+func (s *LogStorage) collectionExists(collectionName string) bool {
+	collectionNames, err := s.CollectionNames()
+	if err != nil {
+		return false
+	}
+	for _, name := range collectionNames {
+		if name == collectionName {
+			return true
+		}
+	}
+	return false
 }
 
 // LogsCollections returns logs collections for all apps from MongoDB.

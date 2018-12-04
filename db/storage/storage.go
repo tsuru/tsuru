@@ -95,3 +95,7 @@ func (s *Storage) DropDatabase(name string) error {
 func (s *Storage) Collection(name string) *Collection {
 	return &Collection{Collection: s.session.DB(s.dbname).C(name)}
 }
+
+func (s *Storage) CollectionNames() ([]string, error) {
+	return s.Database(s.dbname).CollectionNames()
+}
