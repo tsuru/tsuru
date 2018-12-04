@@ -10,11 +10,26 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/globalsign/mgo"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 )
+
+func createAppLogCollection(appName string) error {
+	conn, err := db.LogConn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.CreateAppLogCollection(appName)
+	// Ignore collection already exists error (code 48)
+	if queryErr, ok := err.(*mgo.QueryError); !ok || queryErr.Code != 48 {
+		return err
+	}
+	return nil
+}
 
 func insertLogs(appName string, logs []interface{}) error {
 	conn, err := db.LogConn()
@@ -22,7 +37,7 @@ func insertLogs(appName string, logs []interface{}) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Logs(appName).Insert(logs...)
+	return conn.AppLogCollection(appName).Insert(logs...)
 }
 
 func compareLogs(c *check.C, logs1 []Applog, logs2 []Applog) {
@@ -39,6 +54,8 @@ func compareLogs(c *check.C, logs1 []Applog, logs2 []Applog) {
 
 func (s *S) TestNewLogListener(c *check.C) {
 	app := App{Name: "myapp"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
@@ -56,12 +73,14 @@ func (s *S) TestNewLogListener(c *check.C) {
 
 func (s *S) TestNewLogListenerFiltered(c *check.C) {
 	app := App{Name: "myapp"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{Source: "web", Unit: "u1"})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.quit, check.NotNil)
 	c.Assert(l.c, check.NotNil)
-	err = insertLogs("myapp", []interface{}{
+	err = insertLogs(app.Name, []interface{}{
 		Applog{Message: "1", Source: "web", Unit: "u1"},
 		Applog{Message: "2", Source: "worker", Unit: "u1"},
 		Applog{Message: "3", Source: "web", Unit: "u1"},
@@ -79,6 +98,8 @@ func (s *S) TestNewLogListenerFiltered(c *check.C) {
 
 func (s *S) TestNewLogListenerClosingChannel(c *check.C) {
 	app := App{Name: "myapp"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(l.quit, check.NotNil)
@@ -90,6 +111,8 @@ func (s *S) TestNewLogListenerClosingChannel(c *check.C) {
 
 func (s *S) TestLogListenerClose(c *check.C) {
 	app := App{Name: "myapp"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	l.Close()
@@ -102,6 +125,8 @@ func (s *S) TestLogListenerDoubleClose(c *check.C) {
 		c.Assert(recover(), check.IsNil)
 	}()
 	app := App{Name: "yourapp"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	l.Close()
@@ -114,6 +139,8 @@ func (s *S) TestNotify(c *check.C) {
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
@@ -165,6 +192,8 @@ func (s *S) TestNotifyFiltered(c *check.C) {
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{Source: "tsuru", Unit: "unit1"})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
@@ -218,6 +247,8 @@ func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 		c.Assert(recover(), check.IsNil)
 	}()
 	app := App{Name: "fade"}
+	err := createAppLogCollection(app.Name)
+	c.Assert(err, check.IsNil)
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	l.Close()

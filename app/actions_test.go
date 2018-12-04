@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -22,6 +23,21 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
+
+func (s *S) appLogCollectionExists(appName string) bool {
+	_, dbname := db.DbConfig("logdb-")
+	collNames, err := s.logConn.Database(dbname).CollectionNames()
+	if err != nil {
+		return false
+	}
+	appLogCollName := "logs_" + appName
+	for _, collName := range collNames {
+		if collName == appLogCollName {
+			return true
+		}
+	}
+	return false
+}
 
 func (s *S) TestReserveUserAppName(c *check.C) {
 	c.Assert(reserveUserApp.Name, check.Equals, "reserve-user-app")
@@ -73,6 +89,8 @@ func (s *S) TestInsertAppForward(c *check.C) {
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Quota, check.DeepEquals, quota.UnlimitedQuota)
+
+	c.Assert(s.appLogCollectionExists(app.Name), check.Equals, true)
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
@@ -147,6 +165,8 @@ func (s *S) TestInsertAppBackward(c *check.C) {
 	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
+
+	c.Assert(s.appLogCollectionExists(app.Name), check.Equals, false)
 }
 
 func (s *S) TestInsertAppMinimumParams(c *check.C) {

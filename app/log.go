@@ -112,7 +112,7 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	}
 	c := make(chan Applog, 10)
 	quit := make(chan struct{})
-	coll := conn.Logs(a.Name)
+	coll := conn.AppLogCollection(a.Name)
 	var lastLog Applog
 	err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
 	if err == mgo.ErrNotFound {
@@ -306,7 +306,7 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) boo
 		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
 		return false
 	}
-	coll := conn.Logs(d.appName)
+	coll := conn.AppLogCollection(d.appName)
 	err = coll.Insert(msgs...)
 	coll.Close()
 	if err != nil {

@@ -146,7 +146,7 @@ func (s *S) TestLogs(c *check.C) {
 	strg, err := LogConn()
 	c.Assert(err, check.IsNil)
 	defer strg.Close()
-	logs := strg.Logs("myapp")
+	logs := strg.AppLogCollection("myapp")
 	logsc := strg.Collection("logs_myapp")
 	c.Assert(logs, check.DeepEquals, logsc)
 }

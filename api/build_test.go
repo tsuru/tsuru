@@ -94,7 +94,7 @@ func (s *BuildSuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 	s.reset()

@@ -70,7 +70,7 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 }
