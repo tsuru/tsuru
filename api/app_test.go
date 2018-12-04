@@ -4292,7 +4292,8 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	now := time.Now()
-	coll := s.logConn.Logs(a.Name)
+	coll, err := s.logConn.CreateAppLogCollection(a.Name)
+	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
 		l := app.Applog{
 			Date:    now.Add(time.Duration(i) * time.Hour),

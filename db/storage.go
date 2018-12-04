@@ -155,14 +155,19 @@ var logCappedInfo = mgo.CollectionInfo{
 	MaxDocs:  5000,
 }
 
-// Logs returns the logs collection for one app from MongoDB.
-func (s *LogStorage) Logs(appName string) *storage.Collection {
+// AppLogCollection returns the logs collection for one app from MongoDB.
+func (s *LogStorage) AppLogCollection(appName string) *storage.Collection {
 	if appName == "" {
 		return nil
 	}
-	c := s.Collection("logs_" + appName)
-	c.Create(&logCappedInfo)
-	return c
+	return s.Collection("logs_" + appName)
+}
+
+// CreateAppLogCollection creates a new capped collection to store logs for an app.
+func (s *LogStorage) CreateAppLogCollection(appName string) (*storage.Collection, error) {
+	c := s.AppLogCollection(appName)
+	err := c.Create(&logCappedInfo)
+	return c, err
 }
 
 // LogsCollections returns logs collections for all apps from MongoDB.

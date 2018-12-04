@@ -736,7 +736,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	logConn, err := db.LogConn()
 	if err == nil {
 		defer logConn.Close()
-		err = logConn.Logs(appName).DropCollection()
+		err = logConn.AppLogCollection(appName).DropCollection()
 	}
 	if err != nil {
 		logErr("Unable to remove logs collection", err)
@@ -1750,7 +1750,7 @@ func (app *App) Log(message, source, unit string) error {
 			return err
 		}
 		defer conn.Close()
-		return conn.Logs(app.Name).Insert(logs...)
+		return conn.AppLogCollection(app.Name).Insert(logs...)
 	}
 	return nil
 }
@@ -1796,7 +1796,7 @@ func (app *App) lastLogs(lines int, filterLog Applog, invertFilter bool) ([]Appl
 			q[k] = bson.M{"$ne": v}
 		}
 	}
-	err = conn.Logs(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
+	err = conn.AppLogCollection(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
 	if err != nil {
 		return nil, err
 	}

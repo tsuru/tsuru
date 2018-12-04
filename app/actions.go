@@ -88,35 +88,66 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		conn, err := db.Conn()
+		err := createApp(app)
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		if app.Quota == (quota.Quota{}) {
-			app.Quota = quota.UnlimitedQuota
-		}
-		var limit int
-		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
-			app.Quota.Limit = limit
-		}
-		err = conn.Apps().Insert(app)
-		if mgo.IsDup(err) {
-			return nil, ErrAppAlreadyExists
-		}
-		return app, err
+		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("Could not connect to the database: %s", err)
-			return
-		}
-		defer conn.Close()
-		conn.Apps().Remove(bson.M{"name": app.Name})
+		removeApp(app)
 	},
 	MinParams: 1,
+}
+
+func createApp(app *App) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if app.Quota == (quota.Quota{}) {
+		app.Quota = quota.UnlimitedQuota
+	}
+	var limit int
+	if limit, err = config.GetInt("quota:units-per-app"); err == nil {
+		app.Quota.Limit = limit
+	}
+	err = conn.Apps().Insert(app)
+	if mgo.IsDup(err) {
+		return ErrAppAlreadyExists
+	}
+
+	logConn, err := db.LogConn()
+	if err != nil {
+		return err
+	}
+	defer logConn.Close()
+	_, err = logConn.CreateAppLogCollection(app.Name)
+	return err
+}
+
+func removeApp(app *App) error {
+	logConn, err := db.LogConn()
+	if err != nil {
+		log.Errorf("Could not connect to the log database: %s", err)
+	} else {
+		defer logConn.Close()
+		err = logConn.AppLogCollection(app.Name).DropCollection()
+		if err != nil {
+			log.Errorf("Unable to remove logs collection: %s", err)
+		}
+	}
+
+	conn, err := db.Conn()
+	if err != nil {
+		log.Errorf("Could not connect to the database: %s", err)
+		return err
+	}
+	defer conn.Close()
+	conn.Apps().Remove(bson.M{"name": app.Name})
+	return nil
 }
 
 // createAppToken generates a token for the app and saves it in the database.
