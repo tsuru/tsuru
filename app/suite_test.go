@@ -141,12 +141,13 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
 	queue.ResetQueue()
+	rebuild.Shutdown(context.Background())
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
 	pool.ResetCache()
-	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil

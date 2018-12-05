@@ -1816,7 +1816,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-pool-2",

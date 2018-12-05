@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -43,9 +42,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_rebuild_tests")
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queue_router_rebuild_tests")
-	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake-hc:type", "fake-hc")
@@ -64,8 +60,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	queue.ResetQueue()
-	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := app.GetByName(appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
