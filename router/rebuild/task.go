@@ -5,74 +5,121 @@
 package rebuild
 
 import (
-	"time"
+	"context"
+	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/monsterqueue"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/queue"
+	"k8s.io/client-go/util/workqueue"
 )
 
-const routesRebuildTaskName = "rebuildRoutesTask"
+const rebuildWorkers = 20
 
-var routesRebuildRetryTime = 10 * time.Second
+var (
+	appFinder func(string) (RebuildApp, error)
+	task      *rebuildTask
+)
 
-var appFinder func(string) (RebuildApp, error)
-
-type routesRebuildTask struct{}
-
-func (t *routesRebuildTask) Name() string {
-	return routesRebuildTaskName
+type rebuildTask struct {
+	queue workqueue.RateLimitingInterface
+	wg    sync.WaitGroup
 }
 
-func (t *routesRebuildTask) Run(job monsterqueue.Job) {
-	params := job.Parameters()
-	appName, ok := params["appName"].(string)
-	if !ok {
-		job.Error(errors.New("invalid parameters, expected appName"))
+func (t *rebuildTask) Shutdown(ctx context.Context) error {
+	t.queue.ShutDown()
+	done := make(chan struct{})
+	go func() {
+		t.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-done:
 	}
-	for !runRoutesRebuildOnce(appName, true) {
-		time.Sleep(routesRebuildRetryTime)
-	}
-	job.Success(nil)
+	return nil
 }
 
-func RegisterTask(finder func(string) (RebuildApp, error)) error {
-	appFinder = finder
-	q, err := queue.Queue()
-	if err != nil {
-		return err
+func (t *rebuildTask) runWorkers() {
+	for i := 0; i < rebuildWorkers; i++ {
+		t.wg.Add(1)
+		go t.runConsumer()
 	}
-	return q.RegisterTask(&routesRebuildTask{})
 }
 
-func runRoutesRebuildOnce(appName string, lock bool) bool {
-	if appFinder == nil {
+func (t *rebuildTask) runConsumer() {
+	defer t.wg.Done()
+	for {
+		shutdown := t.consumer()
+		if shutdown {
+			return
+		}
+	}
+}
+
+func (t *rebuildTask) consumer() (shutdown bool) {
+	key, shutdown := t.queue.Get()
+	if shutdown {
+		return true
+	}
+	defer t.queue.Done(key)
+	err := process(key)
+	if err == nil {
+		t.queue.Forget(key)
 		return false
+	}
+	log.Errorf("[routes-rebuild-task] error processing app %v: %s", key, err)
+	t.queue.AddRateLimited(key)
+	return false
+}
+
+func process(key interface{}) error {
+	appName, ok := key.(string)
+	if !ok {
+		return errors.Errorf("unable to convert key to appName: %#v", key)
+	}
+	return runRoutesRebuildOnce(appName, true)
+}
+
+func Initialize(finder func(string) (RebuildApp, error)) error {
+	appFinder = finder
+	task = &rebuildTask{
+		queue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.DefaultControllerRateLimiter(),
+			"routes-rebuild",
+		),
+	}
+	task.runWorkers()
+	shutdown.Register(task)
+	return nil
+}
+
+func runRoutesRebuildOnce(appName string, lock bool) error {
+	if appFinder == nil {
+		return errors.New("no appFinder available")
 	}
 	a, err := appFinder(appName)
 	if err != nil {
-		log.Errorf("[routes-rebuild-task] error getting app %q: %s", appName, err)
-		return false
+		return errors.Wrapf(err, "error getting app %q", appName)
 	}
 	if a == nil {
-		log.Errorf("[routes-rebuild-task] app %q not found, aborting", appName)
-		return true
+		log.Errorf("[routes-rebuild-task] app %q not found, ignoring task", appName)
+		return nil
 	}
 	if lock {
 		var locked bool
 		locked, err = a.InternalLock("rebuild-routes-task")
 		if err != nil || !locked {
-			return false
+			return errors.Errorf("unable to lock app %q: %v", appName, err)
 		}
 		defer a.Unlock()
 	}
 	_, err = rebuildRoutesAsync(a, false)
 	if err != nil {
-		log.Errorf("[routes-rebuild-task] error rebuilding app %q: %s", appName, err)
-		return false
+		return errors.Wrapf(err, "error rebuilding app %q", appName)
 	}
-	return true
+	return nil
 }
 
 func RoutesRebuildOrEnqueue(appName string) {
@@ -84,19 +131,19 @@ func LockedRoutesRebuildOrEnqueue(appName string) {
 }
 
 func routesRebuildOrEnqueueOptionalLock(appName string, lock bool) {
-	if runRoutesRebuildOnce(appName, lock) {
+	err := runRoutesRebuildOnce(appName, lock)
+	if err == nil {
 		return
 	}
-	q, err := queue.Queue()
-	if err != nil {
-		log.Errorf("unable to enqueue rebuild routes task: %s", err)
-		return
+	log.Errorf("[routes-rebuild-task] error running rebuild, enqueueing task: %v", err)
+	if task != nil {
+		task.queue.Add(appName)
 	}
-	_, err = q.Enqueue(routesRebuildTaskName, monsterqueue.JobParams{
-		"appName": appName,
-	})
-	if err != nil {
-		log.Errorf("unable to enqueue rebuild routes task: %s", err)
-		return
+}
+
+func Shutdown(ctx context.Context) error {
+	if task != nil {
+		return task.Shutdown(ctx)
 	}
+	return nil
 }

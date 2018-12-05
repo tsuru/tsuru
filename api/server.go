@@ -590,7 +590,7 @@ func startServer(handler http.Handler) error {
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
 	}
 	fmt.Printf("Using %q repository manager.\n", repoManager)
-	err = rebuild.RegisterTask(appFinder)
+	err = rebuild.Initialize(appFinder)
 	if err != nil {
 		return err
 	}
