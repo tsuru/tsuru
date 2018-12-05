@@ -1407,7 +1407,7 @@
   revision = "21efb2924c7cf1920f76af05b1fd6a325bf46dfc"
 
 [[projects]]
-  digest = "1:ef90b72124b1465b5e06e756ca577a41864131552799c3942614d2adbef50513"
+  digest = "1:f3d98b7bdb46703de79cb3d61fa16aa12ef61e6285193604d2dcac063b7550aa"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1552,6 +1552,7 @@
     "util/exec",
     "util/flowcontrol",
     "util/integer",
+    "util/workqueue",
   ]
   pruneopts = "NUT"
   revision = "78700dec6369ba22221b72770783300f143df150"
@@ -1737,6 +1738,7 @@
     "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/core/v1",
+    "k8s.io/client-go/informers/internalinterfaces",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
@@ -1747,6 +1749,7 @@
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/remotecommand",
     "k8s.io/client-go/util/flowcontrol",
+    "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/conversion-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
