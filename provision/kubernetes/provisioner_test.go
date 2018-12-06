@@ -21,6 +21,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -2170,4 +2171,69 @@ func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
 	}
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestEnvsForApp(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"proc1": "python proc1.py",
+			"proc2": "python proc2.py",
+			"proc3": "python myworker.py",
+		},
+		"kubernetes": provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"proc1": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{TargetPort: 8080},
+							{TargetPort: 9000},
+						},
+					},
+				},
+				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"proc2": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{TargetPort: 8000},
+						},
+					},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	fa := provisiontest.NewFakeApp("myapp", "java", 1)
+	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
+
+	envs := EnvsForApp(fa, "proc1", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_proc1", Value: "8080,9000"},
+	})
+
+	envs = EnvsForApp(fa, "proc2", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_proc2", Value: "8000"},
+	})
+
+	envs = EnvsForApp(fa, "proc3", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_proc3", Value: "8888"},
+	})
 }

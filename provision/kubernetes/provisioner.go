@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -1383,5 +1384,35 @@ func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
 				ListKind: "AppList",
 			},
 		},
+	}
+}
+
+func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bind.EnvVar {
+	envs := provision.EnvsForApp(a, process, isDeploy)
+	if isDeploy {
+		return envs
+	}
+
+	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	if err != nil {
+		return append(envs, defaultWebPortEnvs()...)
+	}
+	portsConfig := getProcessPortsForImage(imageName, yamlData, process)
+	if len(portsConfig) == 0 {
+		return append(envs, defaultWebPortEnvs()...)
+	}
+
+	portValue := make([]string, len(portsConfig))
+	for i, portConfig := range portsConfig {
+		portValue[i] = fmt.Sprintf("%d", portConfig.TargetPort)
+	}
+	return append(envs, bind.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")})
+}
+
+func defaultWebPortEnvs() []bind.EnvVar {
+	port := provision.WebProcessDefaultPort()
+	return []bind.EnvVar{
+		{Name: "port", Value: port},
+		{Name: "PORT", Value: port},
 	}
 }
