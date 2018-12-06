@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/log"
 	"k8s.io/client-go/util/workqueue"
+	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus"
 )
 
 const rebuildWorkers = 20
@@ -87,7 +88,7 @@ func Initialize(finder func(string) (RebuildApp, error)) error {
 	task = &rebuildTask{
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
-			"routes-rebuild",
+			"tsuru_workqueue_rebuild",
 		),
 	}
 	task.runWorkers()

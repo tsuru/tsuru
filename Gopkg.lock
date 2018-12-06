@@ -1611,6 +1611,14 @@
   pruneopts = "NUT"
   revision = "86e28c192d2743f0232b9bc5f0a531568ef9f2a5"
 
+[[projects]]
+  branch = "release-1.9"
+  digest = "1:2e86123b339d1c0d1029c008844c08749702bea7d02f8ec882235cf43600b6c6"
+  name = "k8s.io/kubernetes"
+  packages = ["pkg/util/workqueue/prometheus"]
+  pruneopts = "NUT"
+  revision = "b5ec061c7ab9995a801206ea74f614ced04206d2"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -1757,6 +1765,7 @@
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
     "k8s.io/code-generator/cmd/openapi-gen",
+    "k8s.io/kubernetes/pkg/util/workqueue/prometheus",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
