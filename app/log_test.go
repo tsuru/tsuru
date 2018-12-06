@@ -366,3 +366,15 @@ loop:
 	}
 	dispatcher.Shutdown(context.Background())
 }
+
+func (s *S) TestBulkProcessorQueueSizeDefault(c *check.C) {
+	processor := initBulkProcessor(time.Second, 100, "")
+	c.Assert(cap(processor.ch), check.Equals, bulkQueueMaxSize)
+}
+
+func (s *S) TestBulkProcessorCustomQueueSize(c *check.C) {
+	config.Set("logs:queue-size", 10)
+	defer config.Unset("logs:queue-size")
+	processor := initBulkProcessor(time.Second, 100, "")
+	c.Assert(cap(processor.ch), check.Equals, 10)
+}
