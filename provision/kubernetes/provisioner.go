@@ -1397,8 +1397,8 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 	if err != nil {
 		return append(envs, defaultWebPortEnvs()...)
 	}
-	portsConfig := getProcessPortsForImage(imageName, yamlData, process)
-	if len(portsConfig) == 0 {
+	portsConfig, err := getProcessPortsForImage(imageName, yamlData, process)
+	if err != nil || len(portsConfig) == 0 {
 		return append(envs, defaultWebPortEnvs()...)
 	}
 

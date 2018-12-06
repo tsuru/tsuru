@@ -860,15 +860,6 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 						},
 					},
 				},
-				"mypod3-ignored": map[string]provision.TsuruYamlKubernetesPodConfig{
-					"web": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
-							{
-								TargetPort: 8123,
-							},
-						},
-					},
-				},
 			},
 		},
 	})
@@ -936,6 +927,44 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 			TargetPort: intstr.FromInt(8080),
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "proc1",
+		},
+		"kubernetes": provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"web": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{TargetPort: 8080},
+						},
+					},
+				},
+				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"web": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{Name: "myport"},
+						},
+					},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.ErrorMatches, "duplicated process name: web")
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
