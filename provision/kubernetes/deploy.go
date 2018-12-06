@@ -519,11 +519,6 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	appEnvs := provision.EnvsForApp(a, process, false)
-	var envs []apiv1.EnvVar
-	for _, envData := range appEnvs {
-		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
-	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
 	webProcessName, err := image.GetImageWebProcessName(imageName)
@@ -652,7 +647,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 							Name:           depName,
 							Image:          imageName,
 							Command:        cmds,
-							Env:            envs,
+							Env:            appEnvs(a, process, imageName, false),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							Resources: apiv1.ResourceRequirements{
@@ -675,6 +670,15 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 		newDep, err = client.AppsV1beta2().Deployments(ns).Update(&deployment)
 	}
 	return newDep, labels, annotations, errors.WithStack(err)
+}
+
+func appEnvs(a provision.App, process, imageName string, isDeploy bool) []apiv1.EnvVar {
+	appEnvs := EnvsForApp(a, process, imageName, isDeploy)
+	envs := make([]apiv1.EnvVar, len(appEnvs))
+	for i, envData := range appEnvs {
+		envs[i] = apiv1.EnvVar{Name: envData.Name, Value: envData.Value}
+	}
+	return envs
 }
 
 type serviceManager struct {
@@ -1295,11 +1299,6 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 		return apiv1.Pod{}, err
 	}
 	annotations.SetBuildImage(conf.destinationImages[0])
-	appEnvs := provision.EnvsForApp(app, "", true)
-	var envs []apiv1.EnvVar
-	for _, envData := range appEnvs {
-		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
-	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   app.GetPool(),
 		Prefix: tsuruLabelPrefix,
@@ -1345,7 +1344,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				newSleepyContainer(podName, sourceImage, uid, envs, mounts...),
+				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", sourceImage, true), mounts...),
 				newDeployAgentContainer(conf),
 			},
 		},

@@ -1404,7 +1404,11 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 
 	portValue := make([]string, len(portsConfig))
 	for i, portConfig := range portsConfig {
-		portValue[i] = fmt.Sprintf("%d", portConfig.TargetPort)
+		targetPort := portConfig.TargetPort
+		if targetPort == 0 {
+			targetPort = portConfig.Port
+		}
+		portValue[i] = fmt.Sprintf("%d", targetPort)
 	}
 	return append(envs, bind.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")})
 }

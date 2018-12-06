@@ -2181,7 +2181,8 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		"processes": map[string]interface{}{
 			"proc1": "python proc1.py",
 			"proc2": "python proc2.py",
-			"proc3": "python myworker.py",
+			"proc3": "python proc3.py",
+			"proc4": "python worker.py",
 		},
 		"kubernetes": provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
@@ -2189,7 +2190,7 @@ func (s *S) TestEnvsForApp(c *check.C) {
 					"proc1": {
 						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
 							{TargetPort: 8080},
-							{TargetPort: 9000},
+							{Port: 9000},
 						},
 					},
 				},
@@ -2197,6 +2198,13 @@ func (s *S) TestEnvsForApp(c *check.C) {
 					"proc2": {
 						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
 							{TargetPort: 8000},
+						},
+					},
+				},
+				"mypod3": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"proc3": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{Port: 8000, TargetPort: 8080},
 						},
 					},
 				},
@@ -2234,6 +2242,16 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
-		{Name: "PORT_proc3", Value: "8888"},
+		{Name: "PORT_proc3", Value: "8080"},
+	})
+
+	envs = EnvsForApp(fa, "proc4", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_proc4", Value: "8888"},
 	})
 }
