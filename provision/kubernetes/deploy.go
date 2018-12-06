@@ -534,7 +534,10 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	processPorts := getProcessPortsForImage(imageName, yamlData, process)
+	processPorts, err := getProcessPortsForImage(imageName, yamlData, process)
+	if err != nil {
+		return nil, nil, nil, errors.WithStack(err)
+	}
 	var hcData hcResult
 	if process == webProcessName {
 		//TODO: add support to multiple HCs
@@ -992,7 +995,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	processPorts := getProcessPortsForImage(img, yamlData, process)
+	processPorts, err := getProcessPortsForImage(img, yamlData, process)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	svcPorts := make([]apiv1.ServicePort, len(processPorts))
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	for i, port := range processPorts {
@@ -1121,13 +1127,22 @@ func getTargetPortForImage(imgName string) int {
 	return portInt
 }
 
-func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) []provision.TsuruYamlKubernetesPodPortConfig {
+func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
+	processNames := make(map[string]bool)
+	var ports []provision.TsuruYamlKubernetesPodPortConfig
 	for _, group := range tsuruYamlData.Kubernetes.Groups {
 		for podName, podConfig := range group {
 			if podName == process {
-				return podConfig.Ports
+				if processNames[podName] {
+					return nil, fmt.Errorf("duplicated process name: %s", podName)
+				}
+				processNames[podName] = true
+				ports = podConfig.Ports
 			}
 		}
+	}
+	if ports != nil {
+		return ports, nil
 	}
 
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
@@ -1137,7 +1152,7 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 			Port:       defaultPort,
 			TargetPort: getTargetPortForImage(imgName),
 		},
-	}
+	}, nil
 }
 
 func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {
