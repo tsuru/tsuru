@@ -16,6 +16,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
@@ -334,12 +335,16 @@ type bulkProcessor struct {
 }
 
 func initBulkProcessor(maxWait time.Duration, bulkSize int, appName string) *bulkProcessor {
+	queueSize, err := config.GetInt("logs:queue-size")
+	if err != nil || queueSize == 0 {
+		queueSize = bulkQueueMaxSize
+	}
 	return &bulkProcessor{
 		appName:     appName,
 		maxWaitTime: maxWait,
 		bulkSize:    bulkSize,
 		finished:    make(chan struct{}),
-		ch:          make(chan *msgWithTS, bulkQueueMaxSize),
+		ch:          make(chan *msgWithTS, queueSize),
 		nextNotify:  time.NewTimer(0),
 	}
 }
