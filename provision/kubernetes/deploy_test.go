@@ -172,6 +172,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								{Name: "TSURU_HOST", Value: ""},
 								{Name: "port", Value: "8888"},
 								{Name: "PORT", Value: "8888"},
+								{Name: "PORT_p1", Value: "8888"},
 							},
 							Resources: apiv1.ResourceRequirements{
 								Limits:   apiv1.ResourceList{},
