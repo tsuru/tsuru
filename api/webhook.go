@@ -6,12 +6,9 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -82,14 +79,10 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid webhook
 //   409: Webhook already exists
 func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	r.ParseForm()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var webhook eventTypes.Webhook
-	err := dec.DecodeValues(&webhook, r.Form)
+	err := ParseInput(r, &webhook)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse webhook: %v", err)}
+		return err
 	}
 	if webhook.TeamOwner == "" {
 		webhook.TeamOwner, err = autoTeamOwner(t, permission.PermWebhookCreate)
@@ -105,7 +98,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
 	})
 	if err != nil {
@@ -130,14 +123,10 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid webhook
 //   404: Webhook not found
 func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	r.ParseForm()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var webhook eventTypes.Webhook
-	err := dec.DecodeValues(&webhook, r.Form)
+	err := ParseInput(r, &webhook)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse webhook: %v", err)}
+		return err
 	}
 	webhook.Name = r.URL.Query().Get(":name")
 	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
@@ -148,7 +137,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
 	})
 	if err != nil {
@@ -188,7 +177,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
 	})
 	if err != nil {

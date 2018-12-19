@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -51,24 +50,18 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
 	instance := service.ServiceInstance{
 		ServiceName: serviceName,
 		// for compatibility
-		PlanName:  r.FormValue("plan"),
-		TeamOwner: r.FormValue("owner"),
+		PlanName:  InputValue(r, "plan"),
+		TeamOwner: InputValue(r, "owner"),
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&instance, r.Form)
+	err = ParseInput(r, &instance)
 	if err != nil {
 		return err
 	}
-	instance.Tags = append(instance.Tags, r.Form["tag"]...) // for compatibility
+	tags, _ := InputValues(r, "tag")
+	instance.Tags = append(instance.Tags, tags...) // for compatibility
 	var teamOwner string
 	if instance.TeamOwner == "" {
 		teamOwner, err = permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
@@ -95,7 +88,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(&instance, srv.Name)...),
 	})
@@ -133,10 +126,6 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	updateData := struct {
@@ -145,11 +134,12 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		TeamOwner   string
 		Tags        []string
 	}{}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&updateData, r.Form)
-	updateData.Tags = append(updateData.Tags, r.Form["tag"]...) // for compatibility
+	err = ParseInput(r, &updateData)
+	if err != nil {
+		return err
+	}
+	tags, _ := InputValues(r, "tag")
+	updateData.Tags = append(updateData.Tags, tags...) // for compatibility
 	srv, err := getService(serviceName)
 	if err != nil {
 		return err
@@ -193,7 +183,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(si, serviceName)...),
 	})
@@ -215,7 +205,6 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
@@ -237,7 +226,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),
 	})
@@ -617,7 +606,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Target: serviceInstanceTarget(serviceName, instanceName),
 			Kind:   permission.PermServiceInstanceUpdateProxy,
 			Owner:  t,
-			CustomData: append(event.FormToCustomData(r.Form), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
 			}),
@@ -641,7 +630,6 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -658,7 +646,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateGrant,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),
 	})
@@ -678,7 +666,6 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -695,7 +682,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateRevoke,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),
 	})

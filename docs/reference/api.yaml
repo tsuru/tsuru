@@ -866,15 +866,7 @@ paths:
           in: body
           required: true
           schema:
-            type: object
-            properties:
-              name:
-                type: string
-              tags:
-                type: array
-                items:
-                  type: string
-          description: Team name.
+            $ref: "#/definitions/TeamCreateArgs"
       responses:
         "201":
           description: Team created.
@@ -966,16 +958,8 @@ paths:
         - name: updateData
           in: body
           required: true
-          description: Team update data.
           schema:
-            type: object
-            properties:
-              newname:
-                type: string
-              tags:
-                type: array
-                items:
-                  type: string
+            $ref: "#/definitions/TeamUpdateArgs"
       consumes:
         - application/json
       responses:
@@ -1746,9 +1730,9 @@ paths:
         - cluster
       security:
         - Bearer: []
-  /1.3/provisioner/clusters/{cluster}:
+  /1.3/provisioner/clusters/{cluster_name}:
     parameters:
-      - name: cluster
+      - name: cluster_name
         in: path
         required: true
         type: string
@@ -1772,9 +1756,9 @@ paths:
         - cluster
       security:
         - Bearer: []
-  /1.4/provisioner/clusters/{cluster}:
+  /1.4/provisioner/clusters/{cluster_name}:
     parameters:
-      - name: cluster
+      - name: cluster_name
         in: path
         required: true
         type: string
@@ -1871,7 +1855,6 @@ paths:
       - name: BindData
         in: body
         schema:
-          type: object
           $ref: "#/definitions/VolumeBindData"
     post:
       operationId: VolumeBind
@@ -2931,6 +2914,24 @@ definitions:
         type: array
         items:
           type: string
+  TeamCreateArgs:
+    type: object
+    properties:
+      name:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+  TeamUpdateArgs:
+    type: object
+    properties:
+      newname:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
   TeamInfo:
     type: object
     properties:
@@ -3150,10 +3151,16 @@ definitions:
         type: string
       cacert:
         type: string
+        format: byte
+        x-go-custom-type: "[]byte"
       clientcert:
         type: string
+        format: byte
+        x-go-custom-type: "[]byte"
       clientkey:
         type: string
+        format: byte
+        x-go-custom-type: "[]byte"
       pools:
         type: array
         items:

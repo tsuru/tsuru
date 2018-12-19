@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -70,19 +69,12 @@ func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   400: Invald data
 //   401: Unauthorized
 func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var config nodecontainer.NodeContainerConfig
-	err = dec.DecodeValues(&config, r.Form)
+	err = ParseInput(r, &config)
 	if err != nil {
 		return err
 	}
-	poolName := r.FormValue("pool")
+	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
@@ -94,7 +86,7 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
 		Kind:       permission.PermNodecontainerCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
@@ -166,19 +158,12 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var config nodecontainer.NodeContainerConfig
-	err = dec.DecodeValues(&config, r.Form)
+	err = ParseInput(r, &config)
 	if err != nil {
 		return err
 	}
-	poolName := r.FormValue("pool")
+	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
@@ -190,7 +175,7 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
 		Kind:       permission.PermNodecontainerUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
@@ -225,7 +210,6 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	poolName := r.URL.Query().Get("pool")
 	kill, _ := strconv.ParseBool(r.URL.Query().Get("kill"))
@@ -240,7 +224,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
 		Kind:       permission.PermNodecontainerDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
@@ -294,9 +278,8 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	name := r.URL.Query().Get(":name")
-	poolName := r.FormValue("pool")
+	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
@@ -308,7 +291,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
 		Kind:       permission.PermNodecontainerUpdateUpgrade,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {

@@ -6,6 +6,7 @@ package context
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/tsuru/tsuru/app"
@@ -23,6 +24,7 @@ const (
 	delayedHandlerKey
 	preventUnlockKey
 	appContextKey
+	reqBodyKey
 )
 
 func Clear(r *http.Request) {
@@ -31,6 +33,22 @@ func Clear(r *http.Request) {
 	}
 	newReq := r.WithContext(context.Background())
 	*r = *newReq
+}
+
+func GetBody(r *http.Request) ([]byte, error) {
+	if r == nil || r.Body == nil {
+		return nil, nil
+	}
+	if v, ok := r.Context().Value(reqBodyKey).([]byte); ok {
+		return v, nil
+	}
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	newReq := r.WithContext(context.WithValue(r.Context(), reqBodyKey, data))
+	*r = *newReq
+	return data, nil
 }
 
 func GetApp(r *http.Request) *app.App {

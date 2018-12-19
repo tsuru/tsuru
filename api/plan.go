@@ -27,12 +27,12 @@ import (
 //   401: Unauthorized
 //   409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
-	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
-	memory := getSize(r.FormValue("memory"))
-	swap := getSize(r.FormValue("swap"))
+	cpuShare, _ := strconv.Atoi(InputValue(r, "cpushare"))
+	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
+	memory := getSize(InputValue(r, "memory"))
+	swap := getSize(InputValue(r, "swap"))
 	plan := appTypes.Plan{
-		Name:     r.FormValue("name"),
+		Name:     InputValue(r, "name"),
 		Memory:   memory,
 		Swap:     swap,
 		CpuShare: cpuShare,
@@ -46,7 +46,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     event.Target{Type: event.TargetTypePlan, Value: plan.Name},
 		Kind:       permission.PermPlanCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlanReadEvents),
 	})
 	if err != nil {
@@ -100,7 +100,6 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Plan not found
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	allowed := permission.Check(t, permission.PermPlanDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -110,7 +109,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypePlan, Value: planName},
 		Kind:       permission.PermPlanDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlanReadEvents),
 	})
 	if err != nil {

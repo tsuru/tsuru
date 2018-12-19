@@ -472,10 +472,6 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-	n.Use(&contentHijackMiddleware{excludedHandlers: []http.Handler{
-		proxyInstanceHandler,
-		proxyServiceHandler,
-	}})
 	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
 		logPostHandler,
 		runHandler,

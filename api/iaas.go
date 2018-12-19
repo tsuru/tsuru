@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -61,7 +60,6 @@ func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) erro
 //   401: Unauthorized
 //   404: Not found
 func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (err error) {
-	r.ParseForm()
 	machineID := r.URL.Query().Get(":machine_id")
 	if machineID == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "machine id is required"}
@@ -82,7 +80,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: m.Iaas},
 		Kind:       permission.PermMachineDelete,
 		Owner:      token,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
@@ -135,17 +133,10 @@ func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) err
 //   401: Unauthorized
 //   409: Existent template
 func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var paramTemplate iaas.Template
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&paramTemplate, r.Form)
+	err = ParseInput(r, &paramTemplate)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	iaasCtx := permission.Context(permTypes.CtxIaaS, paramTemplate.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateCreate, iaasCtx)
@@ -156,7 +147,7 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
 		Kind:       permission.PermMachineTemplateCreate,
 		Owner:      token,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
@@ -186,7 +177,6 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 //   401: Unauthorized
 //   404: Not found
 func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (err error) {
-	r.ParseForm()
 	templateName := r.URL.Query().Get(":template_name")
 	t, err := iaas.FindTemplate(templateName)
 	if err != nil {
@@ -204,7 +194,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: t.IaaSName},
 		Kind:       permission.PermMachineTemplateDelete,
 		Owner:      token,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
@@ -224,17 +214,10 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var paramTemplate iaas.Template
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&paramTemplate, r.Form)
+	err = ParseInput(r, &paramTemplate)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	templateName := r.URL.Query().Get(":template_name")
 	dbTpl, err := iaas.FindTemplate(templateName)
@@ -244,8 +227,9 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		}
 		return err
 	}
-	if r.Form.Get("IaaSName") != "" {
-		dbTpl.IaaSName = r.Form.Get("IaaSName")
+	iaasValue := InputValue(r, "IaaSName")
+	if iaasValue != "" {
+		dbTpl.IaaSName = iaasValue
 	}
 	iaasCtx := permission.Context(permTypes.CtxIaaS, dbTpl.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateUpdate, iaasCtx)
@@ -256,7 +240,7 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: dbTpl.IaaSName},
 		Kind:       permission.PermMachineTemplateUpdate,
 		Owner:      token,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {

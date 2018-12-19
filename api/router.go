@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -84,17 +83,10 @@ contexts:
 //   404: App or router not found
 //   400: Invalid request
 func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var appRouter appTypes.AppRouter
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&appRouter, r.Form)
+	err = ParseInput(r, &appRouter)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -131,7 +123,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -150,17 +142,10 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   404: App or router not found
 //   400: Invalid request
 func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var appRouter appTypes.AppRouter
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&appRouter, r.Form)
+	err = ParseInput(r, &appRouter)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	routerName := r.URL.Query().Get(":router")
 	appRouter.Name = routerName
@@ -199,7 +184,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -217,7 +202,6 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //   200: OK
 //   404: App or router not found
 func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	routerName := r.URL.Query().Get(":router")
 	a, err := getAppFromContext(appName, r)
@@ -234,7 +218,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterRemove,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {

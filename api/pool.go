@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	terrors "github.com/tsuru/tsuru/errors"
@@ -95,19 +94,10 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var addOpts pool.AddPoolOptions
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&addOpts, r.Form)
-	}
+	err = ParseInput(r, &addOpts)
 	if err != nil {
-		return &terrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	if addOpts.Name == "" {
 		return &terrors.HTTP{
@@ -119,7 +109,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePool, Value: addOpts.Name},
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, addOpts.Name)),
 	})
 	if err != nil {
@@ -154,7 +144,6 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   403: Pool still has apps
 //   404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	allowed := permission.Check(t, permission.PermPoolDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -173,7 +162,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
@@ -197,10 +186,6 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   404: Pool not found
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &terrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	poolName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
@@ -210,14 +195,14 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if teams, ok := r.Form["team"]; ok {
+	if teams, ok := InputValues(r, "team"); ok {
 		err := pool.AddTeamsToPool(poolName, teams)
 		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -236,7 +221,6 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   400: Invalid data
 //   404: Pool not found
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	poolName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
@@ -246,7 +230,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamRemove,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
@@ -276,7 +260,6 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 //   404: Pool not found
 //   409: Default pool already defined
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	allowed := permission.Check(t, permission.PermPoolUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -286,23 +269,17 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var updateOpts pool.UpdatePoolOptions
-	err = dec.DecodeValues(&updateOpts, r.Form)
+	err = ParseInput(r, &updateOpts)
 	if err != nil {
-		return &terrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	err = pool.PoolUpdate(poolName, updateOpts)
 	if err == pool.ErrPoolNotFound {
@@ -352,19 +329,10 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !permission.Check(t, permission.PermPoolUpdateConstraintsSet) {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var poolConstraint pool.PoolConstraint
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&poolConstraint, r.Form)
-	}
+	err = ParseInput(r, &poolConstraint)
 	if err != nil {
-		return &terrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	if poolConstraint.PoolExpr == "" {
 		return &terrors.HTTP{
@@ -376,7 +344,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolConstraint.PoolExpr},
 		Kind:       permission.PermPoolUpdateConstraintsSet,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents),
 	})
 	if err != nil {
@@ -384,7 +352,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(err) }()
 	append := false
-	if appendStr := r.FormValue("append"); appendStr != "" {
+	if appendStr := InputValue(r, "append"); appendStr != "" {
 		append, _ = strconv.ParseBool(appendStr)
 	}
 	if append {

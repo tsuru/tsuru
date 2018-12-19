@@ -3508,8 +3508,8 @@ func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	msg := "missing form body\n"
-	c.Assert(recorder.Body.String(), check.Equals, msg)
+	msg := ".*missing form body\n"
+	c.Assert(recorder.Body.String(), check.Matches, msg)
 }
 
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
