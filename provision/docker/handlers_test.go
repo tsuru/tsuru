@@ -145,6 +145,7 @@ func (s *HandlersSuite) TestMoveContainersEmptyBodyHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*Invalid params.*`)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -160,8 +161,8 @@ func (s *HandlersSuite) TestMoveContainersEmptyToHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-	c.Assert(recorder.Body.String(), check.Equals, "Invalid params: from: fromhost - to: \n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid params: from: \"fromhost\" - to: \"\"\n")
 }
 
 func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {

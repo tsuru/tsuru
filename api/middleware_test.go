@@ -7,10 +7,11 @@ package api
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -572,38 +573,219 @@ func (s *S) TestLoggerMiddlewareHTTPS(c *check.C) {
 	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? https PUT /my/path 200 "Go-http-client/1.1" in \d{1}\.\d+ms`+"\n", timePart))
 }
 
-func (s *S) TestContentHijackerMiddleware(c *check.C) {
-	recorder := httptest.NewRecorder()
-	body := strings.NewReader(`{"a": "b", "c": [1, 2, 3], "d": {"a": 1}}`)
-	request, err := http.NewRequest("POST", "/my/path", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	h, handlerLog := doHandler()
-	m := contentHijackMiddleware{}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(handlerLog.called, check.Equals, true)
-	data, err := ioutil.ReadAll(handlerLog.r.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(data), check.Equals, `a=b&c.0=1&c.1=2&c.2=3&d.a=1`)
-	c.Assert(handlerLog.r.Header.Get("Content-Type"), check.Equals, "application/x-www-form-urlencoded")
+func (s *S) TestInputValues(c *check.C) {
+	tests := []struct {
+		body        string
+		field       string
+		contentType string
+		expected    []string
+		present     bool
+		qs          string
+	}{
+		{
+			body:        "",
+			field:       "",
+			contentType: "application/json",
+		},
+		{
+			body:        "",
+			field:       "",
+			contentType: "application/x-www-form-urlencoded",
+		},
+		{
+			body:        `{"foo": "bar"}`,
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+		},
+		{
+			body:        `{"foo": "bar"}`,
+			field:       "foo",
+			contentType: "application/json",
+			present:     true,
+			expected:    []string{"bar"},
+		},
+		{
+			body:        `{"foo": ["bar", "baz"]}`,
+			field:       "foo",
+			contentType: "application/json",
+			present:     true,
+			expected:    []string{"bar", "baz"},
+		},
+		{
+			body:        `{"foo": []}`,
+			field:       "foo",
+			contentType: "application/json",
+			present:     true,
+		},
+		{
+			body:        `{"foo": ""}`,
+			field:       "foo",
+			contentType: "application/json",
+			present:     true,
+			expected:    []string{""},
+		},
+		{
+			body:        `foo=bar`,
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    []string{"bar"},
+		},
+		{
+			body:        `foo=bar&foo=baz`,
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    []string{"bar", "baz"},
+		},
+		{
+			body:        `foo=`,
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    []string{""},
+		},
+		{
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    []string{"x"},
+			qs:          "foo=x",
+		},
+		{
+			body:        `foo=a`,
+			field:       "foo",
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    []string{"a", "x"},
+			qs:          "foo=x",
+		},
+		{
+			field:    "foo",
+			present:  true,
+			expected: []string{"x"},
+			qs:       "foo=x",
+		},
+		{
+			body:        `{"foo": "a"}`,
+			field:       "foo",
+			contentType: "application/json",
+			present:     true,
+			expected:    []string{"a", "x"},
+			qs:          "foo=x",
+		},
+	}
+	for i, tt := range tests {
+		c.Logf("test %d: %#v", i, tt)
+		body := strings.NewReader(tt.body)
+		request, err := http.NewRequest("POST", "/my/path?"+tt.qs, body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", tt.contentType)
+		values, ok := InputValues(request, tt.field)
+		c.Check(ok, check.Equals, tt.present)
+		sort.Strings(values)
+		sort.Strings(tt.expected)
+		c.Check(values, check.DeepEquals, tt.expected)
+	}
 }
 
-func (s *S) TestContentHijackerMiddlewareDoesNothingForExcludedHandlers(c *check.C) {
-	recorder := httptest.NewRecorder()
-	body := strings.NewReader(`{"a": "b", "c": [1, 2, 3], "d": {"a": 1}}`)
-	request, err := http.NewRequest("POST", "/my/path", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	context.SetDelayedHandler(request, finalHandler)
-	h, handlerLog := doHandler()
-	m := contentHijackMiddleware{
-		excludedHandlers: []http.Handler{finalHandler},
+func (s *S) TestInputFields(c *check.C) {
+	tests := []struct {
+		body        string
+		contentType string
+		expected    url.Values
+		present     bool
+		qs          string
+	}{
+		{
+			body:        "",
+			contentType: "application/json",
+		},
+		{
+			body:        "",
+			contentType: "application/x-www-form-urlencoded",
+			expected:    url.Values{},
+		},
+		{
+			body:        `{"foo": "bar"}`,
+			contentType: "application/x-www-form-urlencoded",
+			expected:    url.Values{`{"foo": "bar"}`: {""}},
+		},
+		{
+			body:        `{"foo": "bar"}`,
+			contentType: "application/json",
+			present:     true,
+			expected:    url.Values{"foo": {"bar"}},
+		},
+		{
+			body:        `{"foo": ["bar", "baz"]}`,
+			contentType: "application/json",
+			present:     true,
+			expected:    url.Values{"foo.0": {"bar"}, "foo.1": {"baz"}},
+		},
+		{
+			body:        `{"foo": []}`,
+			contentType: "application/json",
+			present:     true,
+			expected:    url.Values{"foo": {""}},
+		},
+		{
+			body:        `{"foo": ""}`,
+			contentType: "application/json",
+			present:     true,
+			expected:    url.Values{"foo": {""}},
+		},
+		{
+			body:        `foo=bar`,
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    url.Values{"foo": {"bar"}},
+		},
+		{
+			body:        `foo=bar&foo=baz`,
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    url.Values{"foo": {"bar", "baz"}},
+		},
+		{
+			body:        `foo=`,
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    url.Values{"foo": {""}},
+		},
+		{
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    url.Values{"foo": {"x"}},
+			qs:          "foo=x",
+		},
+		{
+			body:        `foo=a`,
+			contentType: "application/x-www-form-urlencoded",
+			present:     true,
+			expected:    url.Values{"foo": {"a", "x"}},
+			qs:          "foo=x",
+		},
+		{
+			present:  true,
+			expected: url.Values{"foo": {"x"}},
+			qs:       "foo=x",
+		},
+		{
+			body:        `{"foo": "a"}`,
+			contentType: "application/json",
+			present:     true,
+			expected:    url.Values{"foo": {"x", "a"}},
+			qs:          "foo=x",
+		},
 	}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(handlerLog.called, check.Equals, true)
-	data, err := ioutil.ReadAll(handlerLog.r.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(data), check.Equals, `{"a": "b", "c": [1, 2, 3], "d": {"a": 1}}`)
-	c.Assert(handlerLog.r.Header.Get("Content-Type"), check.Equals, "application/json")
+	for i, tt := range tests {
+		c.Logf("test %d: %#v", i, tt)
+		body := strings.NewReader(tt.body)
+		request, err := http.NewRequest("POST", "/my/path?"+tt.qs, body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", tt.contentType)
+		values := InputFields(request)
+		c.Check(values, check.DeepEquals, tt.expected)
+	}
 }

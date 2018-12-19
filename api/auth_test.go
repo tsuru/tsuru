@@ -382,7 +382,7 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated, check.Commentf("body: %v", recorder.Body.String()))
 	c.Assert(eventtest.EventDesc{
 		Target: teamTarget(teamName),
 		Owner:  s.token.GetUserName(),

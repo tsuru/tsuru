@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/autoscale"
@@ -74,17 +73,10 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if !allowedSetRule {
 		return permission.ErrUnauthorized
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var rule autoscale.Rule
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&rule, r.Form)
+	err = ParseInput(r, &rule)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	var ctxs []permTypes.PermissionContext
 	if rule.MetadataFilter != "" {
@@ -94,7 +86,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
 		Kind:       permission.PermNodeAutoscaleUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
@@ -112,7 +104,6 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 //   401: Unauthorized
 //   404: Not found
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedDeleteRule {
 		return permission.ErrUnauthorized
@@ -126,7 +117,7 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},
 		Kind:       permission.PermNodeAutoscaleDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
@@ -174,7 +165,6 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 //   200: Ok
 //   401: Unauthorized
 func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermNodeAutoscaleUpdateRun) {
 		return permission.ErrUnauthorized
 	}
@@ -182,7 +172,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:      event.Target{Type: event.TargetTypePool},
 		Kind:        permission.PermNodeAutoscaleUpdateRun,
 		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
+		CustomData:  event.FormToCustomData(InputFields(r)),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents),
 	})

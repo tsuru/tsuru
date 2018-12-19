@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -101,17 +100,10 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 //   401: Unauthorized
 //   404: Not found
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var params provision.AddNodeOptions
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&params, r.Form)
+	err = ParseInput(r, &params)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	if templateName, ok := params.Metadata["template"]; ok {
 		params.Metadata, err = iaas.ExpandTemplate(templateName, params.Metadata)
@@ -132,7 +124,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:      event.Target{Type: event.TargetTypeNode},
 		Kind:        permission.PermNodeCreate,
 		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
+		CustomData:  event.FormToCustomData(InputFields(r)),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, params.Pool)),
 	})
@@ -175,7 +167,6 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return errors.Errorf("Node address is required.")
@@ -201,7 +192,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypeNode, Value: n.Address()},
 		Kind:       permission.PermNodeDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, pool)),
 	})
 	if err != nil {
@@ -309,17 +300,10 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   401: Unauthorized
 //   404: Not found
 func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var params provision.UpdateNodeOptions
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&params, r.Form)
+	err = ParseInput(r, &params)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	if params.Disable && params.Enable {
 		return &tsuruErrors.HTTP{
@@ -363,7 +347,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address()},
 		Kind:       permission.PermNodeUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermPoolReadEvents,
 			permission.Context(permTypes.CtxPool, oldPool),
 			permission.Context(permTypes.CtxPool, params.Pool),
@@ -495,11 +479,7 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //   200: Ok
 //   401: Unauthorized
 func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
-	poolName := r.FormValue("pool")
+	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
@@ -511,7 +491,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:        permission.PermHealingUpdate,
 		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
+		CustomData:  event.FormToCustomData(InputFields(r)),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -520,10 +500,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(err) }()
 	var config healer.NodeHealerConfig
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&config, r.Form)
+	err = ParseInput(r, &config)
 	if err != nil {
 		return err
 	}
@@ -538,7 +515,6 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   200: Ok
 //   401: Unauthorized
 func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	poolName := r.URL.Query().Get("pool")
 	var ctxs []permTypes.PermissionContext
 	if poolName != "" {
@@ -551,7 +527,7 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:        permission.PermHealingDelete,
 		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
+		CustomData:  event.FormToCustomData(InputFields(r)),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -581,12 +557,8 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   401: Unauthorized
 func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	var params provision.RebalanceNodesOptions
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&params, r.Form)
+	err = ParseInput(r, &params)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -610,7 +582,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:        evtTarget,
 		Kind:          permission.PermNodeUpdateRebalance,
 		Owner:         t,
-		CustomData:    event.FormToCustomData(r.Form),
+		CustomData:    event.FormToCustomData(InputFields(r)),
 		DisableLock:   true,
 		Allowed:       event.Allowed(permission.PermPoolReadEvents, permContexts...),
 		Cancelable:    true,

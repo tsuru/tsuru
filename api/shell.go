@@ -161,7 +161,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Target:      appTarget(appName),
 		Kind:        permission.PermAppRunShell,
 		Owner:       token,
-		CustomData:  event.FormToCustomData(r.Form),
+		CustomData:  event.FormToCustomData(InputFields(r)),
 		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		DisableLock: true,
 	})

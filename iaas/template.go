@@ -5,10 +5,10 @@
 package iaas
 
 import (
-	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 )
 
@@ -89,7 +89,7 @@ func (t *Template) Update(toMerge *Template) error {
 
 func (t *Template) Save() error {
 	if t.Name == "" {
-		return errors.New("template name cannot be empty")
+		return &errors.ValidationError{Message: "template name cannot be empty"}
 	}
 	_, err := getIaasProvider(t.IaaSName)
 	if err != nil {

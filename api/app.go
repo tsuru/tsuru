@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -74,7 +73,6 @@ func getApp(name string) (*app.App, error) {
 //   401: Unauthorized
 //   404: Not found
 func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -89,7 +87,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -306,15 +304,11 @@ func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, err
 //   403: Quota exceeded
 //   409: App already exists
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var ia inputApp
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&ia, r.Form)
+	err = ParseInput(r, &ia)
+	if err != nil {
+		return err
+	}
 	a := app.App{
 		TeamOwner:   ia.TeamOwner,
 		Platform:    ia.Platform,
@@ -327,7 +321,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Tags:        ia.Tags,
 		Quota:       quota.UnlimitedQuota,
 	}
-	a.Tags = append(a.Tags, r.Form["tag"]...) // for compatibility
+	tags, _ := InputValues(r, "tag")
+	a.Tags = append(a.Tags, tags...) // for compatibility
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = autoTeamOwner(t, permission.PermAppCreate)
 		if err != nil {
@@ -362,7 +357,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -430,16 +425,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   401: Unauthorized
 //   404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var ia inputApp
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&ia, r.Form)
-	imageReset, _ := strconv.ParseBool(r.FormValue("imageReset"))
+	err = ParseInput(r, &ia)
+	if err != nil {
+		return err
+	}
+	imageReset, _ := strconv.ParseBool(InputValue(r, "imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
 		Plan:           appTypes.Plan{Name: ia.Plan},
@@ -447,11 +438,12 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description:    ia.Description,
 		Router:         ia.Router,
 		Tags:           ia.Tags,
-		Platform:       r.FormValue("platform"),
+		Platform:       InputValue(r, "platform"),
 		UpdatePlatform: imageReset,
 		RouterOpts:     ia.RouterOpts,
 	}
-	updateData.Tags = append(updateData.Tags, r.Form["tag"]...) // for compatibility
+	tags, _ := InputValues(r, "tag")
+	updateData.Tags = append(updateData.Tags, tags...) // for compatibility
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -511,7 +503,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -534,7 +526,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 }
 
 func numberOfUnits(r *http.Request) (uint, error) {
-	unitsStr := r.FormValue("units")
+	unitsStr := InputValue(r, "units")
 	if unitsStr == "" {
 		return 0, &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -566,7 +558,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if err != nil {
 		return err
 	}
-	processName := r.FormValue("process")
+	processName := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -582,7 +574,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -612,7 +604,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	processName := r.FormValue("process")
+	processName := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -628,7 +620,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitRemove,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -660,7 +652,7 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Message: "missing unit",
 		}
 	}
-	postStatus := r.FormValue("status")
+	postStatus := InputValue(r, "status")
 	status, err := provision.ParseStatus(postStatus)
 	if err != nil {
 		return &errors.HTTP{
@@ -700,17 +692,10 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if t.GetAppName() != app.InternalAppName {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var hostInput provision.NodeStatusData
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&hostInput, r.Form)
+	err := ParseInput(r, &hostInput)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	result, err := app.UpdateNodeStatus(hostInput)
 	if err != nil {
@@ -732,7 +717,6 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App or team not found
 //   409: Grant already exists
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	a, err := getAppFromContext(appName, r)
@@ -749,7 +733,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateGrant,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -776,7 +760,6 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   403: Forbidden
 //   404: App or team not found
 func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	a, err := getAppFromContext(appName, r)
@@ -793,7 +776,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRevoke,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -830,13 +813,13 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //   404: App not found
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the command to run"
-	command := r.FormValue("command")
+	command := InputValue(r, "command")
 	if len(command) < 1 {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":app")
-	once := r.FormValue("once")
-	isolated := r.FormValue("isolated")
+	once := InputValue(r, "once")
+	isolated := InputValue(r, "isolated")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -851,7 +834,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppRun,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -926,16 +909,10 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //   401: Unauthorized
 //   404: App not found
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var e apiTypes.Envs
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&e, r.Form)
+	err = ParseInput(r, &e)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	if len(e.Envs) == 0 {
 		msg := "You must provide the list of environment variables"
@@ -952,16 +929,17 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	var toExclude []string
 	if e.Private {
 		for i := 0; i < len(e.Envs); i++ {
-			r.Form.Set(fmt.Sprintf("Envs.%d.Value", i), "*****")
+			toExclude = append(toExclude, fmt.Sprintf("Envs.%d.Value", i))
 		}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r, toExclude...)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1001,11 +979,11 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   404: App not found
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the list of environment variables."
-	if r.FormValue("env") == "" {
+	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	var variables []string
-	if envs, ok := r.Form["env"]; ok {
+	if envs, ok := InputValues(r, "env"); ok {
 		variables = envs
 	} else {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -1025,7 +1003,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvUnset,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1037,7 +1015,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
+	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
 	return a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
@@ -1056,11 +1034,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   404: App not found
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	cNameMsg := "You must provide the cname."
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: cNameMsg}
-	}
-	cnames := r.Form["cname"]
+	cnames, _ := InputValues(r, "cname")
 	if len(cnames) == 0 {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: cNameMsg}
 	}
@@ -1079,7 +1053,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1104,8 +1078,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   401: Unauthorized
 //   404: App not found
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
-	cnames := r.Form["cname"]
+	cnames, _ := InputValues(r, "cname")
 	if len(cnames) == 0 {
 		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -1125,7 +1098,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameRemove,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1257,11 +1230,10 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		NoRestart  bool
 		Parameters service.BindAppParameters
 	}{}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	r.ParseForm()
-	dec.DecodeValues(&req, r.Form)
+	err = ParseInput(r, &req)
+	if err != nil {
+		return err
+	}
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1291,7 +1263,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateBind,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
@@ -1335,8 +1307,8 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
-	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
-	force, _ := strconv.ParseBool(r.FormValue("force"))
+	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
+	force, _ := strconv.ParseBool(InputValue(r, "force"))
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1371,7 +1343,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnbind,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
@@ -1407,7 +1379,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	process := r.FormValue("process")
+	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1423,7 +1395,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRestart,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1449,13 +1421,13 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	process := r.FormValue("process")
+	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	proxy := r.FormValue("proxy")
+	proxy := InputValue(r, "proxy")
 	if proxy == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty proxy URL"}
 	}
@@ -1474,7 +1446,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateSleep,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1503,10 +1475,6 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	if t.GetAppName() != app.InternalAppName {
 		allowed := permission.Check(t, permission.PermAppUpdateLog,
 			contextsForApp(a)...,
@@ -1515,12 +1483,12 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	logs := r.Form["message"]
-	source := r.FormValue("source")
+	logs, _ := InputValues(r, "message")
+	source := InputValue(r, "source")
 	if source == "" {
 		source = "app"
 	}
-	unit := r.FormValue("unit")
+	unit := InputValue(r, "unit")
 	for _, log := range logs {
 		err := a.Log(log, source, unit)
 		if err != nil {
@@ -1542,10 +1510,10 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   409: App locked
 //   412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	app1Name := r.FormValue("app1")
-	app2Name := r.FormValue("app2")
-	forceSwap := r.FormValue("force")
-	cnameOnly, _ := strconv.ParseBool(r.FormValue("cnameOnly"))
+	app1Name := InputValue(r, "app1")
+	app2Name := InputValue(r, "app2")
+	forceSwap := InputValue(r, "force")
+	cnameOnly, _ := strconv.ParseBool(InputValue(r, "cnameOnly"))
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
@@ -1589,7 +1557,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		},
 		Kind:       permission.PermAppUpdateSwap,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
 	})
 	if err != nil {
@@ -1632,7 +1600,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	process := r.FormValue("process")
+	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1648,7 +1616,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateStart,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1673,7 +1641,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	process := r.FormValue("process")
+	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1689,7 +1657,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateStop,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1713,7 +1681,6 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1729,7 +1696,7 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppAdminUnlock,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1849,12 +1816,12 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dry, _ := strconv.ParseBool(r.FormValue("dry"))
+	dry, _ := strconv.ParseBool(InputValue(r, "dry"))
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppAdminRoutes,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1890,22 +1857,17 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	cname := r.FormValue("cname")
-	certificate := r.FormValue("certificate")
-	key := r.FormValue("key")
+	cname := InputValue(r, "cname")
+	certificate := InputValue(r, "certificate")
+	key := InputValue(r, "key")
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
-	r.Form.Del("key")
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateSet,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r, "key")),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
@@ -1939,11 +1901,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	cname := r.FormValue("cname")
+	cname := InputValue(r, "cname")
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
@@ -1951,7 +1909,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateUnset,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {

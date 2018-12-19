@@ -995,12 +995,11 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	request, err := http.NewRequest("POST", "/node/rebalance", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*rebalancing - dry: false, force: true.*Units successfully rebalanced.*")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Matches, "(?s).*rebalancing - dry: false, force: true.*Units successfully rebalanced.*")
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
 	var nodes []string

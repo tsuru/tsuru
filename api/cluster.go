@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -35,25 +34,16 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var provCluster provTypes.Cluster
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&provCluster, r.Form)
-	}
+	err = ParseInput(r, &provCluster)
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -102,26 +92,17 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var provCluster provTypes.Cluster
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&provCluster, r.Form)
-	}
+	err = ParseInput(r, &provCluster)
 	provCluster.Name = r.URL.Query().Get(":name")
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -197,13 +178,13 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	r.ParseForm()
+
 	clusterName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
 		Kind:       permission.PermClusterDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -30,15 +29,8 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var host *install.Host
-	err = dec.DecodeValues(&host, r.Form)
+	err = ParseInput(r, &host)
 	if err != nil {
 		return err
 	}
@@ -46,7 +38,7 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeInstallHost, Value: host.Name},
 		Kind:       permission.PermInstallManage,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermInstallManage),
 	})
 	if err != nil {

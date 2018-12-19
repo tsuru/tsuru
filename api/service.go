@@ -75,12 +75,12 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   409: Service already exists
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	s := service.Service{
-		Name:     r.FormValue("id"),
-		Username: r.FormValue("username"),
-		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
-		Password: r.FormValue("password"),
+		Name:     InputValue(r, "id"),
+		Username: InputValue(r, "username"),
+		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
+		Password: InputValue(r, "password"),
 	}
-	team := r.FormValue("team")
+	team := InputValue(r, "team")
 	if team == "" {
 		team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
 		if err == permission.ErrTooManyTeams {
@@ -105,7 +105,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
@@ -136,12 +136,12 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	d := service.Service{
-		Username: r.FormValue("username"),
-		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
-		Password: r.FormValue("password"),
+		Username: InputValue(r, "username"),
+		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
+		Password: InputValue(r, "password"),
 		Name:     r.URL.Query().Get(":name"),
 	}
-	team := r.FormValue("team")
+	team := InputValue(r, "team")
 	s, err := getService(d.Name)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
@@ -182,7 +182,6 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   403: Forbidden (team is not the owner or service with instances)
 //   404: Service not found
 func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	s, err := getService(r.URL.Query().Get(":name"))
 	if err != nil {
 		return err
@@ -197,7 +196,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
@@ -241,7 +240,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 			Target: serviceTarget(s.Name),
 			Kind:   permission.PermServiceUpdateProxy,
 			Owner:  t,
-			CustomData: append(event.FormToCustomData(r.Form), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
 			}),
@@ -266,7 +265,6 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   404: Service not found
 //   409: Team already has access to this service
 func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -290,7 +288,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateGrantAccess,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
@@ -314,7 +312,6 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //   404: Service not found
 //   409: Team does not has access to this service
 func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -342,7 +339,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateRevokeAccess,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
@@ -376,12 +373,12 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	s.Doc = r.FormValue("doc")
+	s.Doc = InputValue(r, "doc")
 	evt, err := event.New(&event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateDoc,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
