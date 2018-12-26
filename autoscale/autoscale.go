@@ -192,7 +192,7 @@ func (a *Config) runScaler() (retErr error) {
 	for _, node := range allNodes {
 		pool := node.Pool()
 		if pool == "" {
-			a.logDebug("skipped node %s, no pool value found.", node.Address)
+			a.logDebug("skipped node %s, no pool value found.", node.Address())
 			continue
 		}
 		clusterMap[pool] = append(clusterMap[pool], node)
