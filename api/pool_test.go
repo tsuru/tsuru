@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAddPoolNameIsRequired(c *check.C) {

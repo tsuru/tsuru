@@ -23,7 +23,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

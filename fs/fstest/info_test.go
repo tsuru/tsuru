@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestFileInfo(c *check.C) {

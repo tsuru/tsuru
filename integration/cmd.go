@@ -18,7 +18,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/mattn/go-shellwords"
+	shellwords "github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/safe"
 )

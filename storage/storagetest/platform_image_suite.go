@@ -6,7 +6,7 @@ package storagetest
 
 import (
 	"github.com/tsuru/tsuru/types/app/image"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type PlatformImageSuite struct {

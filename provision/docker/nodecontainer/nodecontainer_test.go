@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -23,7 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 const (

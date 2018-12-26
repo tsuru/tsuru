@@ -8,7 +8,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/storage/storagetest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type appStorage struct{}

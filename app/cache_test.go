@@ -6,7 +6,7 @@ package app
 
 import (
 	"github.com/tsuru/tsuru/types/cache"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCacheCreate(c *check.C) {

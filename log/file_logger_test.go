@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"log"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type FileLoggerSuite struct {

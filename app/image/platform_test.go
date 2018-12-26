@@ -7,7 +7,7 @@ package image
 import (
 	"github.com/tsuru/config"
 	imageTypes "github.com/tsuru/tsuru/types/app/image"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestPlatformNewImage(c *check.C) {

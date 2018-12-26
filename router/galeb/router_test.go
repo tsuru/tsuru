@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
 	"github.com/tsuru/tsuru/router/routertest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

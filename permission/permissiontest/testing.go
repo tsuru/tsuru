@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, perm ...permission.Permission) (*auth.User, auth.Token) {

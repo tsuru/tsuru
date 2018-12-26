@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 const baseConfig = `

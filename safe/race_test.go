@@ -9,7 +9,7 @@ package safe
 import (
 	"sync"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSafeBufferIsThreadSafe(c *check.C) {

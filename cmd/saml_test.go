@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSamlScheme(c *check.C) {

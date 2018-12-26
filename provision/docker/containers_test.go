@@ -25,7 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestMoveContainers(c *check.C) {

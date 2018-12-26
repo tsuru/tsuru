@@ -11,7 +11,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppNewImageName(c *check.C) {

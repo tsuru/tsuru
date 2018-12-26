@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestPlanAdd(c *check.C) {

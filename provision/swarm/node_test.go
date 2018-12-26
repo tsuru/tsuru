@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSwarmNodeWrapper(c *check.C) {

@@ -30,7 +30,7 @@ import (
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type BindSuite struct {

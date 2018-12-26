@@ -5,7 +5,7 @@
 package saml
 
 import (
-	"github.com/diego-araujo/go-saml"
+	saml "github.com/diego-araujo/go-saml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"

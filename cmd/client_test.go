@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestShouldSetCloseToTrue(c *check.C) {

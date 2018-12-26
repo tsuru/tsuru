@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestPlatformAdd(c *check.C) {

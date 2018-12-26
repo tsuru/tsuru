@@ -14,7 +14,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func createAppLogCollection(appName string) error {

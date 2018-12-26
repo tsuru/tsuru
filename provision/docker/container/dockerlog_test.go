@@ -7,7 +7,7 @@ package container
 import (
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/scopedconfig"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestDockerLogUpdate(c *check.C) {

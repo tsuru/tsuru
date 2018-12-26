@@ -26,7 +26,7 @@ import (
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/memng"
 	"github.com/vulcand/vulcand/plugin/registry"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

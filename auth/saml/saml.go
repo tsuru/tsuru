@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/diego-araujo/go-saml"
+	saml "github.com/diego-araujo/go-saml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"

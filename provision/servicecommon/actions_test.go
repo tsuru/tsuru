@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {

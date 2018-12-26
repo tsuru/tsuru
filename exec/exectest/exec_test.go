@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/tsuru/exec"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct{}

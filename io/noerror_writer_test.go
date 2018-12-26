@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"errors"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNoErrorWriter(c *check.C) {

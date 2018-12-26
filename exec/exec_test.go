@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/commandmocker"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct{}

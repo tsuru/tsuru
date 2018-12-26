@@ -39,7 +39,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type ServiceInstanceSuite struct {

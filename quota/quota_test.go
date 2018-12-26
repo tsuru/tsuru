@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

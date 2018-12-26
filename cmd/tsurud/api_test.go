@@ -8,7 +8,7 @@ import (
 	"bytes"
 
 	"github.com/tsuru/tsuru/cmd"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAPICmdInfo(c *check.C) {

@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func nativeScheme() {

@@ -7,7 +7,7 @@ package log
 import (
 	"bytes"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type MultiLoggerSuite struct {

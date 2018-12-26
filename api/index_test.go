@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type IndexSuite struct{}

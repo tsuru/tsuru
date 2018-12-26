@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/net"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 var (

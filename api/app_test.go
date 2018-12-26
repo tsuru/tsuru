@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -48,7 +48,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 var (

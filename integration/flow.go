@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type hookFunc func(c *check.C, env *Environment)

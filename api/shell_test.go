@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/tsurutest"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/net/websocket"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppShellWithAppName(c *check.C) {

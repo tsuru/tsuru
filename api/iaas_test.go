@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type TestIaaS struct{}

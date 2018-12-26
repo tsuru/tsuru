@@ -9,7 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *check.C) {

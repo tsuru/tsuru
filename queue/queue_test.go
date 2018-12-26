@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api/shutdown"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

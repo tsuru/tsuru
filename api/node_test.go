@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestValidateNodeAddress(c *check.C) {

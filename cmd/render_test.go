@@ -4,9 +4,7 @@
 
 package cmd
 
-import (
-	"gopkg.in/check.v1"
-)
+import check "gopkg.in/check.v1"
 
 func (s *S) TestColorRed(c *check.C) {
 	output := Colorfy("must return a red font pattern", "red", "", "")

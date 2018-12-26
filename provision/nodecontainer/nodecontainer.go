@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/scopedconfig"

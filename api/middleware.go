@@ -18,7 +18,7 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"

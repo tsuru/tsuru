@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNewRole(c *check.C) {

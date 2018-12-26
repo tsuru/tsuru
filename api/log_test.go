@@ -19,7 +19,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/net/websocket"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {

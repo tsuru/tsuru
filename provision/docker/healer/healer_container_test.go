@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func newFakeAppInDB(name, platform string, units int) *provisiontest.FakeApp {

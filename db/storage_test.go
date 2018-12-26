@@ -10,7 +10,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type hasUniqueIndexChecker struct{}

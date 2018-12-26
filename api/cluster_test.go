@@ -12,7 +12,7 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCreateCluster(c *check.C) {

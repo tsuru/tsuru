@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/types/cache"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppRouterUpdaterUpdateWait(c *check.C) {

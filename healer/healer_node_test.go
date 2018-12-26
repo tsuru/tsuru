@@ -22,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *provisiontest.FakeProvisioner) {

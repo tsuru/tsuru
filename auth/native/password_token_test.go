@@ -9,7 +9,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCreatePasswordToken(c *check.C) {

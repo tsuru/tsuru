@@ -14,7 +14,7 @@ import (
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

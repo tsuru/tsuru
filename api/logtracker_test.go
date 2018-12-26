@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestLogStreamTrackerAddRemove(c *check.C) {

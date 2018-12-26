@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
-	"gopkg.in/redis.v3"
+	check "gopkg.in/check.v1"
+	redis "gopkg.in/redis.v3"
 )
 
 func Test(t *testing.T) {

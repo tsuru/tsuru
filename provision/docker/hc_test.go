@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/hc"
 	tsuruNet "github.com/tsuru/tsuru/net"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestHealthCheckDockerRegistryV2(c *check.C) {
