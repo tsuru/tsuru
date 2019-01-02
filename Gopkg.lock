@@ -299,7 +299,8 @@
   revision = "5d2041e26a699eaca682e2ea41c8f891e1060444"
 
 [[projects]]
-  digest = "1:5057daec19194d9e929c05b7d789ef08c76d6ac9b5f79377cc98bf06e70857c8"
+  branch = "localbinary-leak"
+  digest = "1:ed13ff1dedc9c31157c4a31460964e9398de00c91da4e77eee7181f45cba7613"
   name = "github.com/docker/machine"
   packages = [
     "commands/mcndirs",
@@ -351,8 +352,8 @@
     "version",
   ]
   pruneopts = "NUT"
-  revision = "937160559e02cc430fe176991beb9a6ffbfe3de0"
-  version = "v0.12.2"
+  revision = "2c870c65513b12eb431be708353de020d373130c"
+  source = "github.com/cezarsa/machine"
 
 [[projects]]
   digest = "1:c13ad16fea67e78314daa9b43787a2169444c84be30d0a995466b51fffa6f773"
@@ -373,6 +374,14 @@
   ]
   pruneopts = "NUT"
   revision = "ff4f55a206334ef123e4f79bbf348980da81ca46"
+
+[[projects]]
+  digest = "1:e1cce00f0e3b2cf7d0f76d72868101115bc7f59156ab613fe19f228c101f7f8c"
+  name = "github.com/exoscale/egoscale"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "631ee6ea16ccb48a0c98054fdbf0f6e94d8f4a8c"
+  version = "v0.9.31"
 
 [[projects]]
   branch = "master"
@@ -587,6 +596,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "5102fde921d31f59c6e45d835aa01f0213aade0f"
+
+[[projects]]
+  branch = "master"
+  digest = "1:6c2f939d99ad2074a4113c36aa93fa792ede8ff0b8cdb97634b41b9c5da7fab6"
+  name = "github.com/jinzhu/copier"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
 
 [[projects]]
   digest = "1:7c818eb119c69fc685573449e8f799596ba81827074b006ff0cb71052424f254"
@@ -804,13 +821,6 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "abf152e5f3e97f2fafac028d2cc06c1feb87ffa5"
-
-[[projects]]
-  digest = "1:a69a2e46a25209d81f450ece569aae0d886694e6ce717b6b892ea1a827f67da3"
-  name = "github.com/pyr/egoscale"
-  packages = ["src/egoscale"]
-  pruneopts = "NUT"
-  revision = "ab4b0d7ff424c462da486aef27f354cdeb29a319"
 
 [[projects]]
   digest = "1:4f85edaf9cd50d351830c47a6a63f7b4d19d47f544f9cb1fd4dd6ebb56977c85"
