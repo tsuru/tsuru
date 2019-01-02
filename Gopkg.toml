@@ -73,7 +73,8 @@ required = [
   version = "v1.10.6"
 [[constraint]]
   name = "github.com/docker/machine"
-  version = "v0.12.2"
+  source = "github.com/cezarsa/machine"
+  branch = "localbinary-leak"
 [[constraint]]
   name = "github.com/digitalocean/godo"
   revision = "dfa802149cae7e4b8eb8bdd7cbbf619dab60bea4"

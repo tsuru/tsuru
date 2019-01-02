@@ -232,23 +232,40 @@ func (a AzureClient) GetSubnet(resourceGroup, virtualNetwork, name string) (netw
 	return a.subnetsClient().Get(resourceGroup, virtualNetwork, name, "")
 }
 
+// CreateSubnet creates or updates a subnet if it does not already exist.
 func (a AzureClient) CreateSubnet(ctx *DeploymentContext, resourceGroup, virtualNetwork, name, subnetPrefix string) error {
-	log.Info("Configuring subnet.", logutil.Fields{
-		"name": name,
-		"vnet": virtualNetwork,
-		"cidr": subnetPrefix})
-	_, err := a.subnetsClient().CreateOrUpdate(resourceGroup, virtualNetwork, name,
-		network.Subnet{
-			Properties: &network.SubnetPropertiesFormat{
-				AddressPrefix: to.StringPtr(subnetPrefix),
-			},
-		}, nil)
-	if err != nil {
+	subnet, err := a.GetSubnet(resourceGroup, virtualNetwork, name)
+	if err == nil {
+		log.Info("Subnet already exists.")
+		ctx.SubnetID = to.String(subnet.ID)
 		return err
 	}
-	subnet, err := a.subnetsClient().Get(resourceGroup, virtualNetwork, name, "")
-	ctx.SubnetID = to.String(subnet.ID)
+
+	// If the subnet is not found, create it
+	if err.(autorest.DetailedError).StatusCode == 404 {
+		log.Info("Configuring subnet.", logutil.Fields{
+			"name": name,
+			"vnet": virtualNetwork,
+			"cidr": subnetPrefix})
+		_, err = a.subnetsClient().CreateOrUpdate(resourceGroup, virtualNetwork, name,
+			network.Subnet{
+				Properties: &network.SubnetPropertiesFormat{
+					AddressPrefix: to.StringPtr(subnetPrefix),
+				},
+			}, nil)
+
+		if err != nil {
+			return err
+		}
+
+		subnet, err = a.subnetsClient().Get(resourceGroup, virtualNetwork, name, "")
+		ctx.SubnetID = to.String(subnet.ID)
+		return err
+	}
+
+	log.Warn("Create subnet operation error %v: ", err)
 	return err
+
 }
 
 // CleanupSubnetIfExists removes a subnet if there are no IP configurations
@@ -460,6 +477,22 @@ func (a AzureClient) removeOSDiskBlob(resourceGroup, vmName, vhdURL string) erro
 	if err != nil {
 		log.Debugf("Container remove happened: %v", ok)
 	}
+
+	cts, err := bs.GetBlobService().ListContainers(blobstorage.ListContainersParameters{})
+	if err != nil {
+		return err
+	}
+
+	if len(cts.Containers) == 0 {
+		log.Debugf("No storage containers left. Deleting virtual machine storage account.")
+		resp, err := a.storageAccountsClient().Delete(resourceGroup, storageAccount)
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Storage account deletion happened: %v", resp.Response.Status)
+	}
+
 	return err
 }
 

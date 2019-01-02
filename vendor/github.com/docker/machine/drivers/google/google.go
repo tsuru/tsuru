@@ -38,7 +38,7 @@ const (
 	defaultZone        = "us-central1-a"
 	defaultUser        = "docker-user"
 	defaultMachineType = "n1-standard-1"
-	defaultImageName   = "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20161130"
+	defaultImageName   = "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20170721"
 	defaultScopes      = "https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write"
 	defaultDiskType    = "pd-standard"
 	defaultDiskSize    = 10
@@ -340,7 +340,7 @@ func (d *Driver) Start() error {
 
 	instance, err := c.instance()
 	if err != nil {
-		if !strings.Contains(err.Error(), "notFound") {
+		if !isNotFound(err) {
 			return err
 		}
 	}
@@ -396,8 +396,20 @@ func (d *Driver) Remove() error {
 	}
 
 	if err := c.deleteInstance(); err != nil {
-		return err
+		if isNotFound(err) {
+			log.Warn("Remote instance does not exist, proceeding with removing local reference")
+		} else {
+			return err
+		}
 	}
 
-	return c.deleteDisk()
+	if err := c.deleteDisk(); err != nil {
+		if isNotFound(err) {
+			log.Warn("Remote disk does not exist, proceeding")
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }

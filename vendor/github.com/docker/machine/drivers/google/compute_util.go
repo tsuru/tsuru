@@ -3,6 +3,7 @@ package google
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -235,6 +236,13 @@ func (c *ComputeUtil) instance() (*raw.Instance, error) {
 func (c *ComputeUtil) createInstance(d *Driver) error {
 	log.Infof("Creating instance")
 
+	var net string
+	if strings.Contains(d.Network, "/networks/") {
+		net = d.Network
+	} else {
+		net = c.globalURL + "/networks/" + d.Network
+	}
+
 	instance := &raw.Instance{
 		Name:        c.instanceName,
 		Description: "docker host vm",
@@ -242,14 +250,14 @@ func (c *ComputeUtil) createInstance(d *Driver) error {
 		Disks: []*raw.AttachedDisk{
 			{
 				Boot:       true,
-				AutoDelete: false,
+				AutoDelete: true,
 				Type:       "PERSISTENT",
 				Mode:       "READ_WRITE",
 			},
 		},
 		NetworkInterfaces: []*raw.NetworkInterface{
 			{
-				Network: c.globalURL + "/networks/" + d.Network,
+				Network: net,
 			},
 		},
 		Tags: &raw.Tags{
@@ -266,7 +274,9 @@ func (c *ComputeUtil) createInstance(d *Driver) error {
 		},
 	}
 
-	if c.subnetwork != "" {
+	if strings.Contains(c.subnetwork, "/subnetworks/") {
+		instance.NetworkInterfaces[0].Subnetwork = c.subnetwork
+	} else if c.subnetwork != "" {
 		instance.NetworkInterfaces[0].Subnetwork = "projects/" + c.project + "/regions/" + c.region() + "/subnetworks/" + c.subnetwork
 	}
 
@@ -477,4 +487,17 @@ func unwrapGoogleError(err error) error {
 	}
 
 	return err
+}
+
+func isNotFound(err error) bool {
+	googleErr, ok := err.(*googleapi.Error)
+	if !ok {
+		return false
+	}
+
+	if googleErr.Code == http.StatusNotFound {
+		return true
+	}
+
+	return false
 }

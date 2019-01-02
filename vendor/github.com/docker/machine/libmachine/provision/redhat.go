@@ -110,11 +110,8 @@ func installDocker(provisioner *RedHatProvisioner) error {
 		return err
 	}
 
-	if err := provisioner.Service("docker", serviceaction.Enable); err != nil {
-		return err
-	}
-
-	return nil
+	err := provisioner.Service("docker", serviceaction.Enable)
+	return err
 }
 
 func (provisioner *RedHatProvisioner) dockerDaemonResponding() bool {
@@ -137,7 +134,7 @@ func (provisioner *RedHatProvisioner) Provision(swarmOptions swarm.Options, auth
 	swarmOptions.Env = engineOptions.Env
 
 	// set default storage driver for redhat
-	storageDriver, err := decideStorageDriver(provisioner, "devicemapper", engineOptions.StorageDriver)
+	storageDriver, err := decideStorageDriver(provisioner, "overlay2", engineOptions.StorageDriver)
 	if err != nil {
 		return err
 	}
@@ -178,11 +175,8 @@ func (provisioner *RedHatProvisioner) Provision(swarmOptions swarm.Options, auth
 		return err
 	}
 
-	if err := configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions); err != nil {
-		return err
-	}
-
-	return nil
+	err = configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions)
+	return err
 }
 
 func (provisioner *RedHatProvisioner) GenerateDockerOptions(dockerPort int) (*DockerOptions, error) {

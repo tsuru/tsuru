@@ -96,11 +96,7 @@ func (provisioner *UbuntuProvisioner) Package(name string, action pkgaction.Pack
 
 	log.Debugf("package: action=%s name=%s", action.String(), name)
 
-	if _, err := provisioner.SSHCommand(command); err != nil {
-		return err
-	}
-
-	return nil
+	return waitForLock(provisioner, command)
 }
 
 func (provisioner *UbuntuProvisioner) dockerDaemonResponding() bool {
@@ -122,7 +118,7 @@ func (provisioner *UbuntuProvisioner) Provision(swarmOptions swarm.Options, auth
 	provisioner.EngineOptions = engineOptions
 	swarmOptions.Env = engineOptions.Env
 
-	storageDriver, err := decideStorageDriver(provisioner, "aufs", engineOptions.StorageDriver)
+	storageDriver, err := decideStorageDriver(provisioner, "overlay2", engineOptions.StorageDriver)
 	if err != nil {
 		return err
 	}
@@ -157,9 +153,6 @@ func (provisioner *UbuntuProvisioner) Provision(swarmOptions swarm.Options, auth
 		return err
 	}
 
-	if err := configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions); err != nil {
-		return err
-	}
-
-	return nil
+	err = configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions)
+	return err
 }

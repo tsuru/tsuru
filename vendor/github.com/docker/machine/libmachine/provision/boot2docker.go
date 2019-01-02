@@ -232,7 +232,7 @@ func (provisioner *Boot2DockerProvisioner) Provision(swarmOptions swarm.Options,
 	swarmOptions.Env = engineOptions.Env
 
 	if provisioner.EngineOptions.StorageDriver == "" {
-		provisioner.EngineOptions.StorageDriver = "aufs"
+		provisioner.EngineOptions.StorageDriver = "overlay2"
 	}
 
 	if err = provisioner.SetHostname(provisioner.Driver.GetMachineName()); err != nil {
@@ -255,11 +255,8 @@ func (provisioner *Boot2DockerProvisioner) Provision(swarmOptions swarm.Options,
 		return err
 	}
 
-	if err = configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions); err != nil {
-		return err
-	}
-
-	return nil
+	err = configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions)
+	return err
 }
 
 func (provisioner *Boot2DockerProvisioner) SSHCommand(args string) (string, error) {
