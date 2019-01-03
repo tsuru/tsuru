@@ -228,7 +228,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Name:       "http-default",
 				},
 			},
-			Type: apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
 	srvHeadless, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
@@ -394,7 +395,8 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 					Name:       "http-default",
 				},
 			},
-			Type: apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
 }

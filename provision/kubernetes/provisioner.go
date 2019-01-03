@@ -554,8 +554,43 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
+	policyLocal, err := client.ExternalPolicyLocal(a.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	if !policyLocal {
+		return p.addressesForPool(client, a.GetPool(), pubPort)
+	}
+	return p.addressesForApp(client, a, pubPort)
+}
+
+func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, pubPort int32) ([]url.URL, error) {
+	pods, err := p.podsForApps(client, []provision.App{a})
+	if err != nil {
+		return nil, err
+	}
+	addrs := make([]url.URL, 0)
+	for _, p := range pods {
+		allReady := true
+		for _, contStatus := range p.Status.ContainerStatuses {
+			if !contStatus.Ready {
+				allReady = false
+				break
+			}
+		}
+		if allReady {
+			addrs = append(addrs, url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("%s:%d", p.Status.HostIP, pubPort),
+			})
+		}
+	}
+	return addrs, nil
+}
+
+func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName string, pubPort int32) ([]url.URL, error) {
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   a.GetPool(),
+		Pool:   poolName,
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
 	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{

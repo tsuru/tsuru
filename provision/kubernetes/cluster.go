@@ -29,12 +29,13 @@ import (
 )
 
 const (
-	namespaceClusterKey  = "namespace"
-	tokenClusterKey      = "token"
-	userClusterKey       = "username"
-	passwordClusterKey   = "password"
-	overcommitClusterKey = "overcommit-factor"
-	namespaceLabelsKey   = "namespace-labels"
+	namespaceClusterKey    = "namespace"
+	tokenClusterKey        = "token"
+	userClusterKey         = "username"
+	passwordClusterKey     = "password"
+	overcommitClusterKey   = "overcommit-factor"
+	namespaceLabelsKey     = "namespace-labels"
+	externalPolicyLocalKey = "external-policy-local"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -194,6 +195,18 @@ func (c *ClusterClient) Namespace() string {
 		return c.CustomData[namespaceClusterKey]
 	}
 	return "tsuru"
+}
+
+func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	externalPolicyLocalConf := c.configForContext(pool, externalPolicyLocalKey)
+	if externalPolicyLocalConf == "" {
+		return false, nil
+	}
+	externalPolicyLocal, err := strconv.ParseBool(externalPolicyLocalConf)
+	return externalPolicyLocal, err
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
