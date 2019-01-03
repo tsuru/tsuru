@@ -50,6 +50,10 @@ const (
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 )
 
+var (
+	defaultGracePeriodSeconds int64 = 120
+)
+
 type InspectData struct {
 	Image     docker.Image
 	TsuruYaml provision.TsuruYamlData
@@ -590,6 +594,15 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	_, tag := image.SplitImageName(imageName)
 	expandedLabels["version"] = tag
 	expandedLabelsNoReplicas["version"] = tag
+	var gracePeriod *int64
+	policyLocal, err := client.ExternalPolicyLocal(a.GetPool())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if policyLocal {
+		// Grace period must be larger to account for the the pre-stop hook call
+		gracePeriod = &defaultGracePeriodSeconds
+	}
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -616,8 +629,9 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
-					ImagePullSecrets:   pullSecrets,
-					ServiceAccountName: serviceAccountNameForApp(a),
+					TerminationGracePeriodSeconds: gracePeriod,
+					ImagePullSecrets:              pullSecrets,
+					ServiceAccountName:            serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
@@ -961,6 +975,14 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	expandedLabelsHeadless["app"] = rawAppLabel
 	targetPort := getTargetPortForImage(img)
 	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
+	if err != nil {
+		return err
+	}
+	policy := apiv1.ServiceExternalTrafficPolicyTypeCluster
+	if policyLocal {
+		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
+	}
 	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -978,7 +1000,8 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 					Name:       "http-default",
 				},
 			},
-			Type: apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: policy,
 		},
 	}
 	svc, isNew, err := mergeServices(m.client, svc)
