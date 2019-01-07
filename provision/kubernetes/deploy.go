@@ -1149,14 +1149,20 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 		return ports, nil
 	}
 
-	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	defaultPort := defaultKubernetesPodPortConfig()
+	defaultPort.TargetPort = getTargetPortForImage(imgName)
 	return []provision.TsuruYamlKubernetesPodPortConfig{
-		{
-			Protocol:   "TCP",
-			Port:       defaultPort,
-			TargetPort: getTargetPortForImage(imgName),
-		},
+		defaultPort,
 	}, nil
+}
+
+func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesPodPortConfig {
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	return provision.TsuruYamlKubernetesPodPortConfig{
+		Protocol:   "TCP",
+		Port:       defaultPort,
+		TargetPort: defaultPort,
+	}
 }
 
 func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {

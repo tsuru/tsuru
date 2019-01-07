@@ -2173,7 +2173,31 @@ func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestEnvsForApp(c *check.C) {
+func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python proc1.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	fa := provisiontest.NewFakeApp("myapp", "java", 1)
+	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
+
+	envs := EnvsForApp(fa, "web", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "web"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_web", Value: "8888"},
+	})
+}
+
+func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -2220,8 +2244,6 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
 		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_proc1", Value: "8080,9000"},
 	})
 
@@ -2230,8 +2252,6 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
 		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_proc2", Value: "8000"},
 	})
 
@@ -2240,8 +2260,6 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
 		{Name: "TSURU_HOST", Value: ""},
-		{Name: "port", Value: "8888"},
-		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_proc3", Value: "8080"},
 	})
 

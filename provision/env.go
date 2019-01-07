@@ -34,11 +34,15 @@ func EnvsForApp(a App, process string, isDeploy bool) []bind.EnvVar {
 	host, _ := config.GetString("host")
 	envs = append(envs, bind.EnvVar{Name: "TSURU_HOST", Value: host})
 	if !isDeploy {
-		port := WebProcessDefaultPort()
-		envs = append(envs, []bind.EnvVar{
-			{Name: "port", Value: port},
-			{Name: "PORT", Value: port},
-		}...)
+		envs = append(envs, DefaultWebPortEnvs()...)
 	}
 	return envs
+}
+
+func DefaultWebPortEnvs() []bind.EnvVar {
+	port := WebProcessDefaultPort()
+	return []bind.EnvVar{
+		{Name: "port", Value: port},
+		{Name: "PORT", Value: port},
+	}
 }

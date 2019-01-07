@@ -287,6 +287,28 @@ cat >/dev/null && /bin/deploy-agent`)
 	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
 }
 
+func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		output := `{
+"image": {"Id":"1234"},
+"procfile": "web: make run",
+"tsuruYaml": {"kubernetes": {"groups": {"pod1": {"web": {"ports": [{"name": "http", "protocol": "TCP", "port": 8080, "target_port": 8888}]}}}}}
+}`
+		w.Write([]byte(output))
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	client := KubeClient{}
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	c.Assert(err, check.IsNil)
+	c.Assert(img.ID, check.Equals, "1234")
+	c.Assert(procfileRaw, check.Equals, "web: make run")
+	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Name, check.Equals, "http")
+	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Protocol, check.Equals, "TCP")
+	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Port, check.Equals, 8080)
+	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].TargetPort, check.Equals, 8888)
+}
+
 func (s *S) TestBuildImage(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
