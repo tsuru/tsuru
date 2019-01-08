@@ -1399,7 +1399,7 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 	}
 	portsConfig, err := getProcessPortsForImage(imageName, yamlData, process)
 	if err != nil || len(portsConfig) == 0 {
-		return append(envs, provision.DefaultWebPortEnvs()...)
+		return removeDefaultPortEnvs(envs)
 	}
 
 	portValue := make([]string, len(portsConfig))
@@ -1412,23 +1412,28 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 	}
 	portEnv := bind.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")}
 	if !isDefaultPort(portsConfig) {
-		envsWithoutPort := []bind.EnvVar{}
-		defaultPortEnvs := provision.DefaultWebPortEnvs()
-		for _, env := range envs {
-			isDefaultPortEnv := false
-			for _, defaultEnv := range defaultPortEnvs {
-				if env.Name == defaultEnv.Name {
-					isDefaultPortEnv = true
-					break
-				}
-			}
-			if !isDefaultPortEnv {
-				envsWithoutPort = append(envsWithoutPort, env)
-			}
-		}
-		envs = envsWithoutPort
+		envs = removeDefaultPortEnvs(envs)
 	}
 	return append(envs, portEnv)
+}
+
+func removeDefaultPortEnvs(envs []bind.EnvVar) []bind.EnvVar {
+	envsWithoutPort := []bind.EnvVar{}
+	defaultPortEnvs := provision.DefaultWebPortEnvs()
+	for _, env := range envs {
+		isDefaultPortEnv := false
+		for _, defaultEnv := range defaultPortEnvs {
+			if env.Name == defaultEnv.Name {
+				isDefaultPortEnv = true
+				break
+			}
+		}
+		if !isDefaultPortEnv {
+			envsWithoutPort = append(envsWithoutPort, env)
+		}
+	}
+
+	return envsWithoutPort
 }
 
 func isDefaultPort(portsConfig []provision.TsuruYamlKubernetesPodPortConfig) bool {

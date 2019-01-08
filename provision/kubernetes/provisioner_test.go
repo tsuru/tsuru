@@ -2206,7 +2206,8 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 			"proc1": "python proc1.py",
 			"proc2": "python proc2.py",
 			"proc3": "python proc3.py",
-			"proc4": "python worker.py",
+			"proc4": "python proc4.py",
+			"proc5": "python worker.py",
 		},
 		"kubernetes": provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
@@ -2231,6 +2232,9 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 							{Port: 8000, TargetPort: 8080},
 						},
 					},
+				},
+				"mypod5": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"proc5": {},
 				},
 			},
 		},
@@ -2271,5 +2275,12 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_proc4", Value: "8888"},
+	})
+
+	envs = EnvsForApp(fa, "proc5", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
+		{Name: "TSURU_HOST", Value: ""},
 	})
 }

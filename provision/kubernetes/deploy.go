@@ -1132,20 +1132,20 @@ func getTargetPortForImage(imgName string) int {
 }
 
 func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
-	processNames := make(map[string]bool)
+	portConfigFound := false
 	var ports []provision.TsuruYamlKubernetesPodPortConfig
 	for _, group := range tsuruYamlData.Kubernetes.Groups {
 		for podName, podConfig := range group {
 			if podName == process {
-				if processNames[podName] {
+				if portConfigFound {
 					return nil, fmt.Errorf("duplicated process name: %s", podName)
 				}
-				processNames[podName] = true
+				portConfigFound = true
 				ports = podConfig.Ports
 			}
 		}
 	}
-	if ports != nil {
+	if portConfigFound {
 		return ports, nil
 	}
 
