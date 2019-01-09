@@ -70,9 +70,6 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	if err != nil {
 		return "", err
 	}
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.Errorf("too many ports exposed in Dockerfile, only one allowed: %+v", imageInspect.Config.ExposedPorts)
-	}
 	procfile := image.GetProcessesFromProcfile(procfileRaw)
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
@@ -90,8 +87,11 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 		Processes:  procfile,
 		CustomData: tsuruYamlToCustomData(tsuruYaml),
 	}
+	imageData.ExposedPorts = make([]string, len(imageInspect.Config.ExposedPorts))
+	i := 0
 	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = string(k)
+		imageData.ExposedPorts[i] = string(k)
+		i++
 	}
 	err = imageData.Save()
 	if err != nil {

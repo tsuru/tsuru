@@ -1118,17 +1118,32 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-func getTargetPortForImage(imgName string) int {
-	port := provision.WebProcessDefaultPort()
+// TODO: udp???
+func getTargetPortsForImage(imgName string) []int {
+	ports := []int{}
 	imageData, _ := image.GetImageMetaData(imgName)
-	if imageData.ExposedPort != "" {
-		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
-		if len(parts) == 2 {
-			port = parts[0]
+	if len(imageData.ExposedPorts) > 0 {
+		for _, exposedPort := range imageData.ExposedPorts {
+			// TODO: extract duplicated code
+			parts := strings.SplitN(exposedPort, "/", 2)
+			if len(parts) == 2 {
+				portInt, _ := strconv.Atoi(parts[0])
+				ports = append(ports, portInt)
+			}
 		}
 	}
-	portInt, _ := strconv.Atoi(port)
-	return portInt
+	if len(ports) == 0 && imageData.ExposedPort != "" {
+		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
+		if len(parts) == 2 {
+			portInt, _ := strconv.Atoi(parts[0])
+			ports = append(ports, portInt)
+		}
+	}
+	if len(ports) == 0 {
+		portInt, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		ports = append(ports, portInt)
+	}
+	return ports
 }
 
 func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
@@ -1150,10 +1165,19 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 	}
 
 	defaultPort := defaultKubernetesPodPortConfig()
-	defaultPort.TargetPort = getTargetPortForImage(imgName)
-	return []provision.TsuruYamlKubernetesPodPortConfig{
-		defaultPort,
-	}, nil
+	targetPorts := getTargetPortsForImage(imgName)
+	ports = make([]provision.TsuruYamlKubernetesPodPortConfig, len(targetPorts))
+	for i := range ports {
+		ports[i].Name = defaultPort.Name
+		ports[i].Protocol = defaultPort.Protocol
+		if len(targetPorts) == 1 {
+			ports[i].Port = defaultPort.Port
+		} else {
+			ports[i].Port = targetPorts[i]
+		}
+		ports[i].TargetPort = targetPorts[i]
+	}
+	return ports, nil
 }
 
 func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesPodPortConfig {
