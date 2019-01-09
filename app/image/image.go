@@ -50,6 +50,7 @@ type ImageMetadata struct {
 	LegacyProcesses map[string]string   `bson:"processes"`
 	Processes       map[string][]string `bson:"processes_list"`
 	ExposedPort     string
+	ExposedPorts    []string
 	DisableRollback bool
 	Reason          string
 }
