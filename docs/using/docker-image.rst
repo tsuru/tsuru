@@ -61,6 +61,10 @@ A simple `Dockerfile`:
     ADD . /app/
     RUN go build .
     ENTRYPOINT ./app
+    
+.. note::
+    Notice that the Dockerfile does not make use of an EXPOSE clause.
+    This won't work, because the Tsuru API then configures a port mapping to the exposed port, but the port mapping should go to $PORT environment variable.
 
 A simple web application in Go `main.go`:
 
@@ -94,6 +98,9 @@ A simple web application in Go `main.go`:
     func hello(res http.ResponseWriter, req *http.Request) {
         fmt.Fprintln(res, "hello, world!")
     }
+    
+.. note::
+    Make sure that the app listens on the port provided by the $PORT environment variable
 
 
 Building the image
@@ -136,6 +143,7 @@ After pushing your image to your Docker image registry, you can do the deploy us
 
     This image should be in a registry and be accessible by the nodes.
     Image should also have a Entrypoint or a Procfile at given paths, / or /app/user/ or /home/application/current
+    The Image should not expose a Port! This is done automatically using the $PORT environment variable.
 
 
 Running the application
