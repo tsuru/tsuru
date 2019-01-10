@@ -109,6 +109,35 @@ func (s *S) TestImageID(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 }
 
+func (s *S) TestImageIDWithExposedPorts(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		output := `{
+"image": {"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": {"8000/tcp": {}, "8001/tcp": {}}}},
+			"procfile": "web: make run",
+			"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+		}`
+		w.Write([]byte(output))
+	}
+	bopts := builder.BuildOpts{
+		ImageID: "test/customimage",
+	}
+	img, err := s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	imd, err := image.GetImageMetaData(img)
+	c.Assert(err, check.IsNil)
+	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"8000/tcp", "8001/tcp"})
+}
+
 func (s *S) TestImageIDWithProcfile(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

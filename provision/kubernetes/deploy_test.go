@@ -333,7 +333,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(len(processes)+1))
 }
 
-func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
@@ -341,9 +341,9 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgData := image.ImageMetadata{
-		Name:        "myimg",
-		ExposedPort: "7777/tcp",
-		Processes:   map[string][]string{"p1": {"cmd1"}},
+		Name:         "myimg",
+		ExposedPorts: []string{"7777/tcp", "7778/tcp"},
+		Processes:    map[string][]string{"p1": {"cmd1"}},
 	}
 	err = imgData.Save()
 	c.Assert(err, check.IsNil)
@@ -391,9 +391,15 @@ func (s *S) TestServiceManagerDeployServiceCustomPort(c *check.C) {
 			Ports: []apiv1.ServicePort{
 				{
 					Protocol:   "TCP",
-					Port:       int32(8888),
+					Port:       int32(7777),
 					TargetPort: intstr.FromInt(7777),
 					Name:       "http-default-1",
+				},
+				{
+					Protocol:   "TCP",
+					Port:       int32(7778),
+					TargetPort: intstr.FromInt(7778),
+					Name:       "http-default-2",
 				},
 			},
 			Type:                  apiv1.ServiceTypeNodePort,
