@@ -1124,18 +1124,15 @@ func getTargetPortsForImage(imgName string) []int {
 	imageData, _ := image.GetImageMetaData(imgName)
 	if len(imageData.ExposedPorts) > 0 {
 		for _, exposedPort := range imageData.ExposedPorts {
-			// TODO: extract duplicated code
-			parts := strings.SplitN(exposedPort, "/", 2)
-			if len(parts) == 2 {
-				portInt, _ := strconv.Atoi(parts[0])
+			portInt, err := extractPortNumber(exposedPort)
+			if err == nil {
 				ports = append(ports, portInt)
 			}
 		}
 	}
 	if len(ports) == 0 && imageData.ExposedPort != "" {
-		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
-		if len(parts) == 2 {
-			portInt, _ := strconv.Atoi(parts[0])
+		portInt, err := extractPortNumber(imageData.ExposedPort)
+		if err == nil {
 			ports = append(ports, portInt)
 		}
 	}
@@ -1144,6 +1141,14 @@ func getTargetPortsForImage(imgName string) []int {
 		ports = append(ports, portInt)
 	}
 	return ports
+}
+
+func extractPortNumber(port string) (int, error) {
+	parts := strings.SplitN(port, "/", 2)
+	if len(parts) != 2 {
+		return 0, errors.New("invalid port: " + port)
+	}
+	return strconv.Atoi(parts[0])
 }
 
 func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
