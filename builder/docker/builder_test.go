@@ -280,7 +280,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
-	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
+	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"80/tcp"})
 }
 
 func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {

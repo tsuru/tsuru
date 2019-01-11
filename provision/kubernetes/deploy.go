@@ -1124,9 +1124,6 @@ func getTargetPortsForImage(imgName string) []string {
 	if len(imageData.ExposedPorts) > 0 {
 		return imageData.ExposedPorts
 	}
-	if imageData.ExposedPort != "" {
-		return []string{imageData.ExposedPort}
-	}
 	return []string{provision.WebProcessDefaultPort() + "/tcp"}
 }
 

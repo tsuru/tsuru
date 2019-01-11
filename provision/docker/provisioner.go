@@ -424,7 +424,11 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageID, imageData.ExposedPort)
+		exposedPort := ""
+		if len(imageData.ExposedPorts) > 0 {
+			exposedPort = imageData.ExposedPorts[0]
+		}
+		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageID, exposedPort)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		if err = setQuota(a, toAdd); err != nil {
@@ -599,7 +603,11 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return err
 	}
-	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageID, imageData.ExposedPort)
+	exposedPort := ""
+	if len(imageData.ExposedPorts) > 0 {
+		exposedPort = imageData.ExposedPorts[0]
+	}
+	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageID, exposedPort)
 	return err
 }
 

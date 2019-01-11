@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/tsuru/app/image"
@@ -135,6 +136,7 @@ func (s *S) TestImageIDWithExposedPorts(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	imd, err := image.GetImageMetaData(img)
 	c.Assert(err, check.IsNil)
+	sort.Strings(imd.ExposedPorts)
 	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"8000/tcp", "8001/tcp"})
 }
 
