@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	stdcontext "context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/exec"
@@ -128,6 +130,9 @@ func (c *login) oauthLogin(context *Context, client *Client) error {
 		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", authURL)
 	}
 	<-finish
+	ctx, cancel := stdcontext.WithTimeout(stdcontext.Background(), 15*time.Second)
+	defer cancel()
+	server.Shutdown(ctx)
 	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return nil
 }
