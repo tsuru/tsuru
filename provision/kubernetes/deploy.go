@@ -48,6 +48,7 @@ const (
 	dockerSockPath          = "/var/run/docker.sock"
 	buildIntercontainerPath = "/tmp/intercontainer"
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
+	defaultHttpPortName     = "http-default"
 )
 
 type InspectData struct {
@@ -1026,7 +1027,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		if len(port.Name) > 0 {
 			svcPorts[i].Name = port.Name
 		} else {
-			svcPorts[i].Name = fmt.Sprintf("http-default-%d", i+1)
+			svcPorts[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
 		}
 	}
 	if len(svcPorts) == 0 {
@@ -1035,7 +1036,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Protocol:   "TCP",
 			Port:       int32(defaultPort),
 			TargetPort: intstr.FromInt(defaultPort),
-			Name:       "http-default",
+			Name:       defaultHttpPortName,
 		})
 	}
 	svc := &apiv1.Service{
@@ -1118,37 +1119,24 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-// TODO: udp???
-func getTargetPortsForImage(imgName string) []int {
-	ports := []int{}
+func getTargetPortsForImage(imgName string) []string {
 	imageData, _ := image.GetImageMetaData(imgName)
 	if len(imageData.ExposedPorts) > 0 {
-		for _, exposedPort := range imageData.ExposedPorts {
-			portInt, err := extractPortNumber(exposedPort)
-			if err == nil {
-				ports = append(ports, portInt)
-			}
-		}
+		return imageData.ExposedPorts
 	}
-	if len(ports) == 0 && imageData.ExposedPort != "" {
-		portInt, err := extractPortNumber(imageData.ExposedPort)
-		if err == nil {
-			ports = append(ports, portInt)
-		}
+	if imageData.ExposedPort != "" {
+		return []string{imageData.ExposedPort}
 	}
-	if len(ports) == 0 {
-		portInt, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-		ports = append(ports, portInt)
-	}
-	return ports
+	return []string{provision.WebProcessDefaultPort() + "/tcp"}
 }
 
-func extractPortNumber(port string) (int, error) {
+func extractPortNumberAndProtocol(port string) (int, string, error) {
 	parts := strings.SplitN(port, "/", 2)
 	if len(parts) != 2 {
-		return 0, errors.New("invalid port: " + port)
+		return 0, "", errors.New("invalid port: " + port)
 	}
-	return strconv.Atoi(parts[0])
+	portInt, err := strconv.Atoi(parts[0])
+	return portInt, parts[1], err
 }
 
 func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
@@ -1173,14 +1161,21 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 	targetPorts := getTargetPortsForImage(imgName)
 	ports = make([]provision.TsuruYamlKubernetesPodPortConfig, len(targetPorts))
 	for i := range ports {
-		ports[i].Name = defaultPort.Name
-		ports[i].Protocol = defaultPort.Protocol
+		portInt, protocol, err := extractPortNumberAndProtocol(targetPorts[i])
+		if err != nil {
+			continue
+		}
+		ports[i].Name = fmt.Sprintf("%s-%d", defaultPort.Name, i+1)
+		ports[i].Protocol = strings.ToUpper(protocol)
 		if len(targetPorts) == 1 {
 			ports[i].Port = defaultPort.Port
 		} else {
-			ports[i].Port = targetPorts[i]
+			ports[i].Port = portInt
 		}
-		ports[i].TargetPort = targetPorts[i]
+		ports[i].TargetPort = portInt
+	}
+	if len(ports) == 0 {
+		ports = append(ports, defaultPort)
 	}
 	return ports, nil
 }
@@ -1188,6 +1183,7 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesPodPortConfig {
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	return provision.TsuruYamlKubernetesPodPortConfig{
+		Name:       defaultHttpPortName,
 		Protocol:   "TCP",
 		Port:       defaultPort,
 		TargetPort: defaultPort,
