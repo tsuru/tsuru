@@ -610,7 +610,7 @@ func versionString(manager *Manager) string {
 }
 
 func (c *version) Run(context *Context, client *Client) error {
-	fmt.Fprintf(context.Stdout, versionString(c.manager))
+	fmt.Fprint(context.Stdout, versionString(c.manager))
 	return nil
 }
 

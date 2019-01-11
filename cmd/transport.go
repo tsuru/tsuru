@@ -45,7 +45,7 @@ func (v *VerboseRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		if err != nil {
 			return nil, err
 		}
-		fmt.Fprintf(v.Writer, string(requestDump))
+		fmt.Fprint(v.Writer, string(requestDump))
 		if requestDump[len(requestDump)-1] != '\n' {
 			fmt.Fprintln(v.Writer)
 		}
@@ -58,7 +58,7 @@ func (v *VerboseRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		if errDump != nil {
 			return nil, errDump
 		}
-		fmt.Fprintf(v.Writer, string(responseDump))
+		fmt.Fprint(v.Writer, string(responseDump))
 		if responseDump[len(responseDump)-1] != '\n' {
 			fmt.Fprintln(v.Writer)
 		}

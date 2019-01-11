@@ -394,7 +394,7 @@ func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value
 				continue
 			}
 			inheritedField, hasInherited := base.Type().FieldByNameFunc(func(name string) bool {
-				return strings.ToLower(name) == strings.ToLower(fieldType.Name+"inherited")
+				return strings.EqualFold(name, fieldType.Name+"inherited")
 			})
 			if fieldType.PkgPath != "" && !fieldType.Anonymous {
 				continue
