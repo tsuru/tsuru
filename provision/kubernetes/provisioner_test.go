@@ -802,6 +802,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 			"web":    {"python myapp.py"},
 			"worker": {"python myworker.py"},
 		},
+		ExposedPorts: []string{},
 	})
 }
 
