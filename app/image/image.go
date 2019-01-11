@@ -134,9 +134,6 @@ func customDataToImageMetadata(imageName string, customData map[string]interface
 		Processes:  processes,
 		CustomData: customData,
 	}
-	if exposedPort, ok := customData["exposedPort"]; ok {
-		data.ExposedPort = exposedPort.(string)
-	}
 	return &data, nil
 }
 

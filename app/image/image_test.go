@@ -271,22 +271,9 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	c.Check(web5, check.Equals, "")
 }
 
-func (s *S) TestSavePortInImageCustomData(c *check.C) {
-	img1 := "tsuru/app-myapp:v1"
-	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
-	}
-	err := SaveImageCustomData(img1, customData1)
-	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageMetaData(img1)
-	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
-}
-
 func (s *S) TestSaveImageCustomData(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
 		"processes": map[string]interface{}{
 			"worker1": "python myapp.py",
 			"worker2": "someworker",
@@ -296,7 +283,6 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"someworker"},
@@ -306,14 +292,12 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
-		"procfile":    "worker1: python myapp.py\nworker2: someworker",
+		"procfile": "worker1: python myapp.py\nworker2: someworker",
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"someworker"},
@@ -323,7 +307,6 @@ func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
 		"processes": map[string]interface{}{
 			"worker1": "python myapp.py",
 			"worker2": []string{"worker", "arg", "arg2"},
@@ -333,7 +316,6 @@ func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"worker", "arg", "arg2"},
