@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tablecli"
 	"github.com/tsuru/tsuru/app"
+	appImageMigrate "github.com/tsuru/tsuru/app/image/migrate"
 	appMigrate "github.com/tsuru/tsuru/app/migrate"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
@@ -96,6 +97,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-apps-kubernetes-crd", kubeMigrate.MigrateAppsCRDs)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.Register("migrate-app-image-exposed-ports", appImageMigrate.MigrateExposedPorts)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}

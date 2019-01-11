@@ -64,7 +64,7 @@ func (i *ImageMetadata) Save() error {
 	if i.Name == "" {
 		return errors.New("image name is mandatory")
 	}
-	coll, err := imageCustomDataColl()
+	coll, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func SaveImageCustomData(imageName string, customData map[string]interface{}) er
 }
 
 func GetImageMetaData(imageName string) (ImageMetadata, error) {
-	coll, err := imageCustomDataColl()
+	coll, err := ImageCustomDataColl()
 	if err != nil {
 		return ImageMetadata{}, err
 	}
@@ -204,7 +204,7 @@ func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	var customData struct {
 		Customdata provision.TsuruYamlData
 	}
-	coll, err := imageCustomDataColl()
+	coll, err := ImageCustomDataColl()
 	if err != nil {
 		return customData.Customdata, err
 	}
@@ -364,7 +364,7 @@ func ImageHistorySize() int {
 }
 
 func DeleteAllAppImageNames(appName string) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -397,7 +397,7 @@ func DeleteAllAppImageNames(appName string) error {
 }
 
 func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -406,7 +406,7 @@ func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
 }
 
 func PullAppImageNames(appName string, images []string) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,8 @@ func appBuilderImagesColl() (*storage.Collection, error) {
 	}
 	return conn.Collection("builder_app_image"), nil
 }
-func imageCustomDataColl() (*storage.Collection, error) {
+
+func ImageCustomDataColl() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
