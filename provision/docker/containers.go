@@ -94,6 +94,10 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if err != nil {
 		return nil, err
 	}
+	exposedPort := ""
+	if len(imageData.ExposedPorts) > 0 {
+		exposedPort = imageData.ExposedPorts[0]
+	}
 	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
 		app:         a,
@@ -104,7 +108,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		imageID:     imageID,
 		provisioner: p,
 		event:       evt,
-		exposedPort: imageData.ExposedPort,
+		exposedPort: exposedPort,
 	}
 	var pipeline *action.Pipeline
 	if p.isDryMode {
