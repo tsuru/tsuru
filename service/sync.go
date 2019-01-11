@@ -179,9 +179,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 			boundUnits[u] = struct{}{}
 		}
 		for _, u := range units {
-			if _, ok := boundUnits[u]; ok {
-				delete(boundUnits, u)
-			} else {
+			if _, ok := boundUnits[u]; !ok {
 				log.Debugf("[bind-syncer] binding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)
 				err = instance.BindUnit(a, u)
 				binds[instance.Name] = append(binds[instance.Name], u.GetID())
@@ -192,6 +190,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 				}
 				syncOperations.WithLabelValues("bind").Inc()
 			}
+			delete(boundUnits, u)
 		}
 		for u := range boundUnits {
 			log.Debugf("[bind-syncer] unbinding unit %q from app %q from %s:%s\n", u.ID, a.GetName(), instance.ServiceName, instance.Name)

@@ -54,11 +54,10 @@ func diffRoutes(old []*url.URL, new []url.URL) (toAdd []*url.URL, toRemove []*ur
 		expectedMap[addr.Host] = &new[i]
 	}
 	for _, url := range old {
-		if _, isPresent := expectedMap[url.Host]; isPresent {
-			delete(expectedMap, url.Host)
-		} else {
+		if _, isPresent := expectedMap[url.Host]; !isPresent {
 			toRemove = append(toRemove, url)
 		}
+		delete(expectedMap, url.Host)
 	}
 	for _, toAddURL := range expectedMap {
 		toAdd = append(toAdd, toAddURL)

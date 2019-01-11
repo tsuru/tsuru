@@ -433,9 +433,7 @@ hooks:
       - ./before.sh
     after:
       - ./after.sh`
-			fmt.Fprintf(outStream, yamlData)
-		} else {
-			fmt.Fprintf(outStream, "")
+			fmt.Fprint(outStream, yamlData)
 		}
 		conn.Close()
 	}))
@@ -509,16 +507,15 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		switch atomic.AddInt32(&attachCounter, 1) {
 		case 1:
 			// cat Procfile call
-			fmt.Fprintf(outStream, "")
 		case 2:
 			// cat tsuru.yaml call
 			yamlData := `hooks:
   build:
     - echo "running build hook"`
-			fmt.Fprintf(outStream, yamlData)
+			fmt.Fprint(outStream, yamlData)
 		case 3:
 			// Run hook
-			fmt.Fprintf(outStream, "running build hook\n")
+			fmt.Fprint(outStream, "running build hook\n")
 		}
 		conn.Close()
 	}))
