@@ -13,7 +13,7 @@ type Cluster struct {
 	Provisioner string            `json:"provisioner"`
 	CaCert      []byte            `json:"cacert"`
 	ClientCert  []byte            `json:"clientcert"`
-	ClientKey   []byte            `json:"-"`
+	ClientKey   []byte            `json:"clientkey"`
 	Pools       []string          `json:"pools"`
 	CustomData  map[string]string `json:"custom_data"`
 	CreateData  map[string]string `json:"create_data"`

@@ -161,6 +161,9 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
+	for i := range clusters {
+		clusters[i].ClientKey = nil
+	}
 	return json.NewEncoder(w).Encode(clusters)
 }
 
