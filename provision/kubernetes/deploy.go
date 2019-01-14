@@ -996,48 +996,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if policyLocal {
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
 	}
-	yamlData, err := image.GetImageTsuruYamlData(img)
+
+	svcPorts, err := loadServicePorts(img, process)
 	if err != nil {
-		return errors.WithStack(err)
-	}
-	processPorts, err := getProcessPortsForImage(img, yamlData, process)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	svcPorts := make([]apiv1.ServicePort, len(processPorts))
-	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	for i, port := range processPorts {
-		if len(port.Protocol) > 0 {
-			svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
-		}
-		if port.TargetPort > 0 {
-			svcPorts[i].TargetPort = intstr.FromInt(port.TargetPort)
-		} else if port.Port > 0 {
-			svcPorts[i].TargetPort = intstr.FromInt(port.Port)
-		} else {
-			svcPorts[i].TargetPort = intstr.FromInt(defaultPort)
-		}
-		if port.Port > 0 {
-			svcPorts[i].Port = int32(port.Port)
-		} else if port.TargetPort > 0 {
-			svcPorts[i].Port = int32(port.TargetPort)
-		} else {
-			svcPorts[i].Port = int32(defaultPort)
-		}
-		if len(port.Name) > 0 {
-			svcPorts[i].Name = port.Name
-		} else {
-			svcPorts[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
-		}
-	}
-	if len(svcPorts) == 0 {
-		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-		svcPorts = append(svcPorts, apiv1.ServicePort{
-			Protocol:   "TCP",
-			Port:       int32(defaultPort),
-			TargetPort: intstr.FromInt(defaultPort),
-			Name:       defaultHttpPortName,
-		})
+		return err
 	}
 	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1103,6 +1065,53 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	return nil
 }
 
+func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) {
+	yamlData, err := image.GetImageTsuruYamlData(imgName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	processPorts, err := getProcessPortsForImage(imgName, yamlData, processName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	svcPorts := make([]apiv1.ServicePort, len(processPorts))
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	for i, port := range processPorts {
+		if len(port.Protocol) > 0 {
+			svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
+		}
+		if port.TargetPort > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.TargetPort)
+		} else if port.Port > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.Port)
+		} else {
+			svcPorts[i].TargetPort = intstr.FromInt(defaultPort)
+		}
+		if port.Port > 0 {
+			svcPorts[i].Port = int32(port.Port)
+		} else if port.TargetPort > 0 {
+			svcPorts[i].Port = int32(port.TargetPort)
+		} else {
+			svcPorts[i].Port = int32(defaultPort)
+		}
+		if len(port.Name) > 0 {
+			svcPorts[i].Name = port.Name
+		} else {
+			svcPorts[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
+		}
+	}
+	if len(svcPorts) == 0 {
+		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		svcPorts = append(svcPorts, apiv1.ServicePort{
+			Protocol:   "TCP",
+			Port:       int32(defaultPort),
+			TargetPort: intstr.FromInt(defaultPort),
+			Name:       defaultHttpPortName,
+		})
+	}
+	return svcPorts, nil
+}
+
 func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, bool, error) {
 	existing, err := client.CoreV1().Services(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 	if err != nil {
@@ -1147,6 +1156,9 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 				}
 				portConfigFound = true
 				ports = podConfig.Ports
+				for i := range ports {
+					ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+				}
 			}
 		}
 	}
