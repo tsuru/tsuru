@@ -404,8 +404,8 @@ func (s *S) TestBulkProcessorQueueSizeDefault(c *check.C) {
 }
 
 func (s *S) TestBulkProcessorCustomQueueSize(c *check.C) {
-	config.Set("logs:queue-size", 10)
-	defer config.Unset("logs:queue-size")
+	config.Set("log:queue-size", 10)
+	defer config.Unset("log:queue-size")
 	processor := initBulkProcessor(time.Second, 100, "")
 	c.Assert(cap(processor.ch), check.Equals, 10)
 }
