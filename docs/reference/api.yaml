@@ -2092,6 +2092,28 @@ paths:
         - auth
       security:
         - Bearer: []
+    get:
+      operationId: TeamTokenInfo
+      description: Shows information about a specific token.
+      responses:
+        "200":
+          description: Team token info.
+          schema:
+            $ref: "#/definitions/TeamToken"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team token not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      produces:
+        - application/json
+      tags:
+        - auth
+      security:
+        - Bearer: []
   /1.1/events/{eventid}/cancel:
     post:
       operationId: EventCancel

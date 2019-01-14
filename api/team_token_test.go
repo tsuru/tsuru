@@ -238,3 +238,26 @@ func (s *S) TestTeamTokenUpdate(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 }
+
+func (s *S) TestTeamTokenInfo(c *check.C) {
+	newToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+		Team:        s.team.Name,
+		Description: "desc",
+		TokenID:     "id1",
+	}, s.token)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("GET", "/1.6/tokens/id1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	var result authTypes.TeamToken
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	newToken.CreatedAt = time.Unix(newToken.CreatedAt.Unix(), 0)
+	result.CreatedAt = time.Unix(result.CreatedAt.Unix(), 0)
+	c.Assert(newToken, check.DeepEquals, result)
+}
