@@ -80,7 +80,7 @@ domain. This setting is optional, unless ``use-tls`` is true.
 tls:auto-reload:interval
 ++++++++++++++++++++++++
 
-``tls:auto-reload:interval`` defines the time frequency which the TLS 
+``tls:auto-reload:interval`` defines the time frequency which the TLS
 certificates are reloaded by the webserver. A new certificate only is loaded
 when there is difference between newer and older.
 
@@ -578,6 +578,13 @@ log:use-stderr
 
 ``log:use-stderr`` indicates whether tsuru-server should write logs to standard
 error stream. The default value is ``false``.
+
+log:queue-size
+++++++++++++++
+
+``log:queue-size`` is the size of the per app buffer maintained in memory.
+Messages are written from the buffer every second or every 1000 messages.
+Messages are dropped once the queue reaches the queue-size value. Defaults to 10000.
 
 .. _config_routers:
 

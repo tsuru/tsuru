@@ -335,7 +335,7 @@ type bulkProcessor struct {
 }
 
 func initBulkProcessor(maxWait time.Duration, bulkSize int, appName string) *bulkProcessor {
-	queueSize, err := config.GetInt("logs:queue-size")
+	queueSize, err := config.GetInt("log:queue-size")
 	if err != nil || queueSize == 0 {
 		queueSize = bulkQueueMaxSize
 	}
