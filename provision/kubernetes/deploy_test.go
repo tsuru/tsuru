@@ -342,7 +342,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imgData := image.ImageMetadata{
 		Name:         "myimg",
-		ExposedPorts: []string{"7777/tcp", "7778/tcp"},
+		ExposedPorts: []string{"7777/tcp", "7778/udp"},
 		Processes:    map[string][]string{"p1": {"cmd1"}},
 	}
 	err = imgData.Save()
@@ -396,7 +396,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 					Name:       "http-default-1",
 				},
 				{
-					Protocol:   "TCP",
+					Protocol:   "UDP",
 					Port:       int32(7778),
 					TargetPort: intstr.FromInt(7778),
 					Name:       "http-default-2",
