@@ -187,7 +187,16 @@ func (p *kubernetesProvisioner) Initialize() error {
 		// there's a better way to control glog.
 		flag.CommandLine.Parse([]string{"-v", strconv.Itoa(conf.LogLevel), "-logtostderr"})
 	}
-	return nil
+	return initAllControllers(p)
+}
+
+func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
+	clusterClient, err := NewClusterClient(c)
+	if err != nil {
+		return err
+	}
+	_, err = newRouterController(p, clusterClient)
+	return err
 }
 
 func (p *kubernetesProvisioner) GetName() string {
@@ -554,34 +563,43 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	policyLocal, err := client.ExternalPolicyLocal(a.GetPool())
+	routerLocal, err := client.RouterAddressLocal(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
-	if !policyLocal {
+	if !routerLocal {
 		return p.addressesForPool(client, a.GetPool(), pubPort)
 	}
-	return p.addressesForApp(client, a, pubPort)
+	return p.addressesForApp(client, a, webProcessName, pubPort)
 }
 
-func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, pubPort int32) ([]url.URL, error) {
+func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, webProcessName string, pubPort int32) ([]url.URL, error) {
 	pods, err := p.podsForApps(client, []provision.App{a})
 	if err != nil {
 		return nil, err
 	}
+	nodeInformer, err := p.nodeInformerForCluster(client)
+	if err != nil {
+		return nil, err
+	}
 	addrs := make([]url.URL, 0)
-	for _, p := range pods {
-		allReady := true
-		for _, contStatus := range p.Status.ContainerStatuses {
-			if !contStatus.Ready {
-				allReady = false
-				break
-			}
+	for _, pod := range pods {
+		labelSet := labelSetFromMeta(&pod.ObjectMeta)
+		if labelSet.IsIsolatedRun() {
+			continue
 		}
-		if allReady {
+		if labelSet.AppProcess() != webProcessName {
+			continue
+		}
+		if isPodReady(&pod) {
+			node, err := nodeInformer.Lister().Get(pod.Spec.NodeName)
+			if err != nil {
+				return nil, err
+			}
+			wrapper := kubernetesNodeWrapper{node: node, prov: p}
 			addrs = append(addrs, url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", p.Status.HostIP, pubPort),
+				Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
 			})
 		}
 	}
@@ -593,15 +611,17 @@ func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName
 		Pool:   poolName,
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
-	nodes, err := client.CoreV1().Nodes().List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(nodeSelector).String(),
-	})
+	nodeInformer, err := p.nodeInformerForCluster(client)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := nodeInformer.Lister().List(labels.SelectorFromSet(nodeSelector))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	addrs := make([]url.URL, len(nodes.Items))
-	for i, n := range nodes.Items {
-		wrapper := kubernetesNodeWrapper{node: &n, prov: p}
+	addrs := make([]url.URL, len(nodes))
+	for i, n := range nodes {
+		wrapper := kubernetesNodeWrapper{node: n, prov: p}
 		addrs[i] = url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),

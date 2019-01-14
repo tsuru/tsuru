@@ -131,15 +131,19 @@ func LockedRoutesRebuildOrEnqueue(appName string) {
 	routesRebuildOrEnqueueOptionalLock(appName, true)
 }
 
+func EnqueueRoutesRebuild(appName string) {
+	if task != nil {
+		task.queue.Add(appName)
+	}
+}
+
 func routesRebuildOrEnqueueOptionalLock(appName string, lock bool) {
 	err := runRoutesRebuildOnce(appName, lock)
 	if err == nil {
 		return
 	}
 	log.Errorf("[routes-rebuild-task] error running rebuild, enqueueing task: %v", err)
-	if task != nil {
-		task.queue.Add(appName)
-	}
+	EnqueueRoutesRebuild(appName)
 }
 
 func Shutdown(ctx context.Context) error {
