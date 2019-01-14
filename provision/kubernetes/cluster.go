@@ -36,6 +36,7 @@ const (
 	overcommitClusterKey   = "overcommit-factor"
 	namespaceLabelsKey     = "namespace-labels"
 	externalPolicyLocalKey = "external-policy-local"
+	routerAddressLocalKey  = "router-local"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -207,6 +208,21 @@ func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
 	}
 	externalPolicyLocal, err := strconv.ParseBool(externalPolicyLocalConf)
 	return externalPolicyLocal, err
+}
+
+func (c *ClusterClient) RouterAddressLocal(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	routerAddressLocalConf := c.configForContext(pool, routerAddressLocalKey)
+	if routerAddressLocalConf == "" {
+		return false, nil
+	}
+	routerAddressLocal, _ := strconv.ParseBool(routerAddressLocalConf)
+	if routerAddressLocal {
+		return routerAddressLocal, nil
+	}
+	return c.ExternalPolicyLocal(pool)
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

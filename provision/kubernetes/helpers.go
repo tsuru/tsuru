@@ -784,3 +784,17 @@ func waitForContainerFinished(ctx context.Context, client *ClusterClient, podNam
 		return false, nil
 	}, nil)
 }
+
+func isPodReady(pod *apiv1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
+			return false
+		}
+	}
+	for _, contStatus := range pod.Status.ContainerStatuses {
+		if !contStatus.Ready {
+			return false
+		}
+	}
+	return true
+}

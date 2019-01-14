@@ -50,10 +50,6 @@ const (
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 )
 
-var (
-	defaultGracePeriodSeconds int64 = 120
-)
-
 type InspectData struct {
 	Image     docker.Image
 	TsuruYaml provision.TsuruYamlData
@@ -371,7 +367,7 @@ func registryAuth(img string) (username, password, imgDomain string) {
 	return username, password, imgDomain
 }
 
-func extraRegisterCmds(a provision.App) string {
+func tsuruHostToken(a provision.App) (string, string) {
 	host, _ := config.GetString("host")
 	if !strings.HasPrefix(host, "http") {
 		host = "http://" + host
@@ -380,6 +376,11 @@ func extraRegisterCmds(a provision.App) string {
 		host += "/"
 	}
 	token := a.Envs()["TSURU_APP_TOKEN"].Value
+	return host, token
+}
+
+func extraRegisterCmds(a provision.App) string {
+	host, token := tsuruHostToken(a)
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
 }
 
@@ -594,15 +595,6 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	_, tag := image.SplitImageName(imageName)
 	expandedLabels["version"] = tag
 	expandedLabelsNoReplicas["version"] = tag
-	var gracePeriod *int64
-	policyLocal, err := client.ExternalPolicyLocal(a.GetPool())
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if policyLocal {
-		// Grace period must be larger to account for the the pre-stop hook call
-		gracePeriod = &defaultGracePeriodSeconds
-	}
 	deployment := v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -629,9 +621,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
-					TerminationGracePeriodSeconds: gracePeriod,
-					ImagePullSecrets:              pullSecrets,
-					ServiceAccountName:            serviceAccountNameForApp(a),
+					ImagePullSecrets:   pullSecrets,
+					ServiceAccountName: serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
@@ -705,13 +696,13 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+func deploymentLabels(client *ClusterClient, a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	ns, err := m.client.AppNamespace(a)
+	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
-	dep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	dep, err := client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -719,6 +710,10 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 		return nil, errors.WithStack(err)
 	}
 	return labelSetFromMeta(&dep.ObjectMeta), nil
+}
+
+func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+	return deploymentLabels(m.client, a, process)
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
