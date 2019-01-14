@@ -38,6 +38,41 @@ func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(tokens)
 }
 
+// title: token info
+// path: /tokens/{token_id}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Get token
+//   401: Unauthorized
+func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	tokenID := r.URL.Query().Get(":token_id")
+	if tokenID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil
+	}
+
+	teamToken, err := servicemanager.TeamToken.Info(tokenID, t)
+	if err == authTypes.ErrTeamTokenNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermTeamTokenRead,
+		permission.Context(permTypes.CtxTeam, teamToken.Team),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(teamToken)
+}
+
 // title: token create
 // path: /tokens
 // method: POST

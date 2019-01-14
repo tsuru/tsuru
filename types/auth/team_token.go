@@ -47,6 +47,7 @@ type TeamTokenStorage interface {
 
 type TeamTokenService interface {
 	Create(args TeamTokenCreateArgs, token Token) (TeamToken, error)
+	Info(tokenID string, token Token) (TeamToken, error)
 	Update(args TeamTokenUpdateArgs, token Token) (TeamToken, error)
 	Delete(tokenID string) error
 	Authenticate(header string) (Token, error)

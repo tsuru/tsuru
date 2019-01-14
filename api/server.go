@@ -419,6 +419,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
 
 	m.Add("1.6", "GET", "/tokens", AuthorizationRequiredHandler(tokenList))
+	m.Add("1.6", "GET", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenInfo))
 	m.Add("1.6", "POST", "/tokens", AuthorizationRequiredHandler(tokenCreate))
 	m.Add("1.6", "DELETE", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
 	m.Add("1.6", "PUT", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
