@@ -63,8 +63,9 @@ A simple `Dockerfile`:
     ENTRYPOINT ./app
     
 .. note::
-    Notice that the Dockerfile does not make use of an EXPOSE clause.
-    This won't work, because the Tsuru API then configures a port mapping to the exposed port, but the port mapping should go to $PORT environment variable.
+    Notice that you do not have to EXPOSE a port in your Dockerfile.
+    When a EXPOSE clause is used, the port mapping goes to the exposed port.
+    If you do not expose a port, the port is mapped to the $PORT environment variable.
 
 A simple web application in Go `main.go`:
 
