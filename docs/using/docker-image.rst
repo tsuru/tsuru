@@ -102,7 +102,7 @@ A simple web application in Go `main.go`:
     }
     
 .. note::
-    Make sure that the app listens on the port provided by the $PORT environment variable
+    The app should listen to $PORT or to the exposed port.
 
 
 Building the image
@@ -145,7 +145,6 @@ After pushing your image to your Docker image registry, you can do the deploy us
 
     This image should be in a registry and be accessible by the nodes.
     Image should also have a Entrypoint or a Procfile at given paths, / or /app/user/ or /home/application/current
-    The Image should not expose a Port! This is done automatically using the $PORT environment variable.
 
 
 Running the application
