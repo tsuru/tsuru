@@ -414,7 +414,7 @@ func ListWithInfo() ([]PlanRouter, error) {
 		if infoR, ok := r.(InfoRouter); ok {
 			routers[i].Info, err = infoR.GetInfo()
 			if err != nil {
-				return nil, err
+				routers[i].Info = map[string]string{"error": err.Error()}
 			}
 		}
 	}
