@@ -1398,7 +1398,10 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 		return append(envs, provision.DefaultWebPortEnvs()...)
 	}
 	portsConfig, err := getProcessPortsForImage(imageName, yamlData, process)
-	if err != nil || len(portsConfig) == 0 {
+	if err != nil {
+		return envs
+	}
+	if len(portsConfig) == 0 {
 		return removeDefaultPortEnvs(envs)
 	}
 

@@ -1101,11 +1101,11 @@ func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) 
 		}
 	}
 	if len(svcPorts) == 0 {
-		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		defaultWebPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 		svcPorts = append(svcPorts, apiv1.ServicePort{
-			Protocol:   "TCP",
-			Port:       int32(defaultPort),
-			TargetPort: intstr.FromInt(defaultPort),
+			Protocol:   apiv1.ProtocolTCP,
+			Port:       int32(defaultWebPort),
+			TargetPort: intstr.FromInt(defaultWebPort),
 			Name:       defaultHttpPortName,
 		})
 	}
