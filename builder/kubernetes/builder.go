@@ -104,17 +104,11 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 	if yaml == nil {
 		return nil
 	}
-	customData := map[string]interface{}{}
-	if yaml.Healthcheck.Path != "" {
-		customData["healthcheck"] = yaml.Healthcheck
+	return map[string]interface{}{
+		"healthcheck": yaml.Healthcheck,
+		"hooks":       yaml.Hooks,
+		"kubernetes":  yaml.Kubernetes,
 	}
-	if len(yaml.Hooks.Build) != 0 || len(yaml.Hooks.Restart.Before) != 0 || len(yaml.Hooks.Restart.After) != 0 {
-		customData["hooks"] = yaml.Hooks
-	}
-	if len(yaml.Kubernetes.Groups) != 0 {
-		customData["kubernetes"] = yaml.Kubernetes
-	}
-	return customData
 }
 
 func downloadFromContainer(client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
