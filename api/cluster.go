@@ -13,6 +13,8 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -164,6 +166,7 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	for i := range clusters {
 		clusters[i].ClientKey = nil
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(clusters)
 }
 
@@ -205,4 +208,37 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	return nil
+}
+
+type provisionerInfo struct {
+	Name        string                    `json:"name"`
+	ClusterHelp provTypes.ClusterHelpInfo `json:"cluster_help"`
+}
+
+// title: list provisioners
+// path: /provisioner
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No Content
+//   401: Unauthorized
+func provisionerList(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowed := permission.Check(t, permission.PermClusterRead)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	provs, err := provision.Registry()
+	if err != nil {
+		return err
+	}
+	info := make([]provisionerInfo, len(provs))
+	for i, p := range provs {
+		info[i].Name = p.GetName()
+		if clusterProv, ok := p.(cluster.ClusterProvisioner); ok {
+			info[i].ClusterHelp = clusterProv.ClusterHelp()
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(info)
 }
