@@ -20,6 +20,12 @@ type Cluster struct {
 	Default     bool              `json:"default"`
 }
 
+type ClusterHelpInfo struct {
+	ProvisionerHelp string            `json:"provisioner_help"`
+	CustomDataHelp  map[string]string `json:"custom_data_help"`
+	CreateDataHelp  map[string]string `json:"create_data_help"`
+}
+
 type ClusterService interface {
 	Create(Cluster) error
 	Update(Cluster) error

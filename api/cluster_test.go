@@ -228,3 +228,18 @@ func (s *S) TestDeleteCluster(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
 }
+
+func (s *S) TestListProvisioners(c *check.C) {
+	request, err := http.NewRequest(http.MethodGet, "/1.7/provisioner", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	var retProvs []provisionerInfo
+	err = json.Unmarshal(recorder.Body.Bytes(), &retProvs)
+	c.Assert(err, check.IsNil)
+	c.Assert(retProvs, check.DeepEquals, []provisionerInfo{
+		{Name: "fake"},
+	})
+}

@@ -868,7 +868,7 @@ func (s *S) TestUpdateNodeNoPreviousMetadata(c *check.C) {
 	}
 	prov, err := provision.Get(clust.Provisioner)
 	c.Assert(err, check.IsNil)
-	if clusterProv, ok := prov.(cluster.InitClusterProvisioner); ok {
+	if clusterProv, ok := prov.(cluster.ClusterProvisioner); ok {
 		err = clusterProv.InitializeCluster(clust)
 		c.Assert(err, check.IsNil)
 	}

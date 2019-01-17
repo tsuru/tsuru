@@ -2278,6 +2278,27 @@ paths:
         - event
       security:
         - Bearer: []
+  /1.7/provisioner:
+    get:
+      operationId: ProvisionerList
+      description: List provisioners
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: Provisioner
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Provisioner'
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorMessage'
+      tags:
+        - cluster
+      security:
+        - Bearer: []
 definitions:
   ErrorMessage:
     description: Error message.
@@ -3206,3 +3227,24 @@ definitions:
       limit:
         type: integer
         format: int64
+  Provisioner:
+    type: object
+    properties:
+      name:
+        type: string
+      cluster_help:
+        type: object
+        $ref: "#/definitions/ClusterHelp"
+  ClusterHelp:
+    type: object
+    properties:
+      provisioner_help:
+        type: string
+      custom_data_help:
+        type: object
+        additionalProperties:
+          type: string
+      create_data_help:
+        type: object
+        additionalProperties:
+          type: string

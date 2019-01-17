@@ -42,6 +42,19 @@ const (
 	tcpKeepAlive = 30 * time.Second
 )
 
+var (
+	clusterHelp = map[string]string{
+		namespaceClusterKey:    "Namespace used to create resources unless kubernetes:use-pool-namespaces config is enabled.",
+		tokenClusterKey:        "Token used to connect to the cluster,",
+		userClusterKey:         "User used to connect to the cluster.",
+		passwordClusterKey:     "Password used to connect to the cluster.",
+		overcommitClusterKey:   "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		namespaceLabelsKey:     "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
+		externalPolicyLocalKey: "Use external policy local in created services. This is not recomended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
+		routerAddressLocalKey:  "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
+	}
+)
+
 var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
 }

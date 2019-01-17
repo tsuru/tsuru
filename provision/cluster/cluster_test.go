@@ -227,7 +227,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "invalid",
 			},
-			err: "unknown provisioner: \"invalid\"",
+			err: "provisioner error: unknown provisioner: \"invalid\"",
 		},
 	}
 	for _, tt := range tests {
@@ -362,18 +362,26 @@ func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
-type initClusterProv struct {
+type clusterProv struct {
 	*provisiontest.FakeProvisioner
 	callCluster *provTypes.Cluster
 }
 
-func (p *initClusterProv) InitializeCluster(c *provTypes.Cluster) error {
+func (p *clusterProv) InitializeCluster(c *provTypes.Cluster) error {
 	p.callCluster = c
 	return nil
 }
 
+func (p *clusterProv) ValidateCluster(c *provTypes.Cluster) error {
+	return nil
+}
+
+func (p *clusterProv) ClusterHelp() provTypes.ClusterHelpInfo {
+	return provTypes.ClusterHelpInfo{}
+}
+
 func (s *S) TestClusterUpdateCallsProvInit(c *check.C) {
-	inst := initClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	inst := clusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
 	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
 		return &inst, nil
 	})

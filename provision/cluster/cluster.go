@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -16,8 +17,10 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-type InitClusterProvisioner interface {
+type ClusterProvisioner interface {
 	InitializeCluster(c *provTypes.Cluster) error
+	ValidateCluster(c *provTypes.Cluster) error
+	ClusterHelp() provTypes.ClusterHelpInfo
 }
 
 type clusterService struct {
@@ -134,6 +137,13 @@ func (s *clusterService) validate(c provTypes.Cluster, isNewCluster bool) error 
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "either default or a list of pools must be set"})
 		}
 	}
+	prov, err := provision.Get(c.Provisioner)
+	if err != nil {
+		return errors.WithStack(&tsuruErrors.ValidationError{Message: fmt.Sprintf("provisioner error: %v", err)})
+	}
+	if clusterProv, ok := prov.(ClusterProvisioner); ok {
+		return clusterProv.ValidateCluster(&c)
+	}
 	return nil
 }
 
@@ -142,7 +152,7 @@ func (s *clusterService) initCluster(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	if clusterProv, ok := prov.(InitClusterProvisioner); ok {
+	if clusterProv, ok := prov.(ClusterProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)
 	}
 	return err

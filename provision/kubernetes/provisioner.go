@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -75,6 +76,7 @@ var (
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
+	_ cluster.ClusterProvisioner         = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -201,6 +203,17 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 	}
 	_, err = newRouterController(p, clusterClient)
 	return err
+}
+
+func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
+	return nil
+}
+
+func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
+	return provTypes.ClusterHelpInfo{
+		CustomDataHelp:  clusterHelp,
+		ProvisionerHelp: "Represents a kubernetes cluster, the address parameter must point to a valid kubernetes apiserver endpoint.",
+	}
 }
 
 func (p *kubernetesProvisioner) GetName() string {
