@@ -187,7 +187,11 @@ func (p *kubernetesProvisioner) Initialize() error {
 		// there's a better way to control glog.
 		flag.CommandLine.Parse([]string{"-v", strconv.Itoa(conf.LogLevel), "-logtostderr"})
 	}
-	return initAllControllers(p)
+	err := initAllControllers(p)
+	if err == provTypes.ErrNoCluster {
+		return nil
+	}
+	return err
 }
 
 func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {

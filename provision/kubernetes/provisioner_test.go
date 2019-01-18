@@ -1009,6 +1009,9 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].Host < addrs[j].Host
+	})
 	c.Assert(addrs, check.DeepEquals, []url.URL{
 		{
 			Scheme: "http",
@@ -2149,4 +2152,22 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
+}
+
+func (s *S) TestProvisionerInitialize(c *check.C) {
+	clusterControllers = map[string]*routerController{}
+	_, ok := clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, false)
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
+	_, ok = clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, true)
+}
+
+func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
 }
