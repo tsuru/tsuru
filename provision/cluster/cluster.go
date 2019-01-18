@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -23,11 +24,17 @@ type ClusterProvisioner interface {
 	ClusterHelp() provTypes.ClusterHelpInfo
 }
 
+type ProvisionClusterProvisioner interface {
+	CreateCluster(ctx context.Context, c *provTypes.Cluster) error
+	UpdateCluster(ctx context.Context, c *provTypes.Cluster) error
+	DeleteCluster(ctx context.Context, c *provTypes.Cluster) error
+}
+
 type clusterService struct {
 	storage provTypes.ClusterStorage
 }
 
-func ClusterService() (provTypes.ClusterService, error) {
+func ClusterStorage() (provTypes.ClusterStorage, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -35,21 +42,35 @@ func ClusterService() (provTypes.ClusterService, error) {
 			return nil, err
 		}
 	}
+	return dbDriver.ClusterStorage, nil
+}
+
+func ClusterService() (provTypes.ClusterService, error) {
+	storage, err := ClusterStorage()
+	if err != nil {
+		return nil, err
+	}
 	return &clusterService{
-		storage: dbDriver.ClusterStorage,
+		storage: storage,
 	}, nil
 }
 
 func (s *clusterService) Create(c provTypes.Cluster) error {
-	err := s.createClusterMachine(&c)
+	err := s.validate(c, true)
 	if err != nil {
 		return err
 	}
-	err = s.validate(c, true)
+	prov, err := provision.Get(c.Provisioner)
 	if err != nil {
 		return err
 	}
-	return s.save(c)
+	if _, ok := prov.(ProvisionClusterProvisioner); !ok {
+		err = s.createClusterMachine(&c)
+		if err != nil {
+			return err
+		}
+	}
+	return s.save(c, true)
 }
 
 func (s *clusterService) Update(c provTypes.Cluster) error {
@@ -57,15 +78,15 @@ func (s *clusterService) Update(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	return s.save(c)
+	return s.save(c, false)
 }
 
-func (s *clusterService) save(c provTypes.Cluster) error {
-	err := s.initCluster(c)
+func (s *clusterService) save(c provTypes.Cluster, isNewCluster bool) error {
+	err := s.storage.Upsert(c)
 	if err != nil {
 		return err
 	}
-	return s.storage.Upsert(c)
+	return s.initCluster(c, isNewCluster)
 }
 
 func (s *clusterService) List() ([]provTypes.Cluster, error) {
@@ -111,6 +132,20 @@ func (s *clusterService) FindByPool(prov, pool string) (*provTypes.Cluster, erro
 }
 
 func (s *clusterService) Delete(c provTypes.Cluster) error {
+	fullCluster, err := s.storage.FindByName(c.Name)
+	if err != nil {
+		return err
+	}
+	prov, err := provision.Get(fullCluster.Provisioner)
+	if err != nil {
+		return err
+	}
+	if createProv, ok := prov.(ProvisionClusterProvisioner); ok {
+		err = createProv.DeleteCluster(context.Background(), fullCluster)
+		if err != nil {
+			return err
+		}
+	}
 	return s.storage.Delete(c)
 }
 
@@ -147,10 +182,26 @@ func (s *clusterService) validate(c provTypes.Cluster, isNewCluster bool) error 
 	return nil
 }
 
-func (s *clusterService) initCluster(c provTypes.Cluster) error {
+func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) error {
 	prov, err := provision.Get(c.Provisioner)
 	if err != nil {
 		return err
+	}
+	if createProv, ok := prov.(ProvisionClusterProvisioner); ok {
+		if isNewCluster {
+			err = createProv.CreateCluster(context.Background(), &c)
+		} else {
+			err = createProv.UpdateCluster(context.Background(), &c)
+		}
+		if err != nil {
+			return err
+		}
+		var updatedCluster *provTypes.Cluster
+		updatedCluster, err = s.storage.FindByName(c.Name)
+		if err != nil {
+			return err
+		}
+		c = *updatedCluster
 	}
 	if clusterProv, ok := prov.(ClusterProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)

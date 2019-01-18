@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	"github.com/tsuru/tsuru/provision/kubernetes/provider"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
@@ -67,17 +68,18 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
-	_ cluster.ClusterProvisioner         = &kubernetesProvisioner{}
+	_ provision.Provisioner               = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner           = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner  = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner        = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner      = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner         = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy             = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient   = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner  = &kubernetesProvisioner{}
+	_ provision.RollbackableDeployer      = &kubernetesProvisioner{}
+	_ cluster.ClusterProvisioner          = &kubernetesProvisioner{}
+	_ cluster.ProvisionClusterProvisioner = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -211,10 +213,29 @@ func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
 }
 
 func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
+	createDataHelp, err := provider.FormattedCreateOptions()
+	if err != nil {
+		createDataHelp = map[string]string{
+			"error": fmt.Sprintf("unable to get create flags: %v", err),
+		}
+	}
 	return provTypes.ClusterHelpInfo{
 		CustomDataHelp:  clusterHelp,
+		CreateDataHelp:  createDataHelp,
 		ProvisionerHelp: "Represents a kubernetes cluster, the address parameter must point to a valid kubernetes apiserver endpoint.",
 	}
+}
+
+func (p *kubernetesProvisioner) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
+	return provider.CreateCluster(ctx, c.Name, c.CreateData)
+}
+
+func (p *kubernetesProvisioner) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
+	return provider.UpdateCluster(ctx, c.Name, c.CreateData)
+}
+
+func (p *kubernetesProvisioner) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
+	return provider.DeleteCluster(ctx, c.Name, c.CreateData)
 }
 
 func (p *kubernetesProvisioner) GetName() string {

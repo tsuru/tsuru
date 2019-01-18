@@ -110,13 +110,16 @@ func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 		CertData: c.ClientCert,
 		KeyData:  c.ClientKey,
 	}
-	cfg.BearerToken = token
-	cfg.Username = user
-	cfg.Password = password
+	if user != "" && password != "" {
+		cfg.Username = user
+		cfg.Password = password
+	} else {
+		cfg.BearerToken = token
+	}
 	cfg.Dial = (&net.Dialer{
 		Timeout:   dialTimeout,
 		KeepAlive: tcpKeepAlive,
-	}).Dial
+	}).DialContext
 	return cfg, nil
 }
 
