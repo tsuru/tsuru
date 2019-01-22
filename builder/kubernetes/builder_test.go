@@ -232,7 +232,7 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 		"healthcheck": map[string]interface{}{
 			"path":   "/status",
 			"method": "GET",
-			"status": 200,
+			"status": float64(200),
 			"scheme": "https",
 		},
 		"hooks": map[string]interface{}{
@@ -249,11 +249,11 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 						"ports": []interface{}{
 							map[string]interface{}{
 								"name":        "main-port",
-								"target_port": 8000,
+								"target_port": float64(8000),
 							},
 							map[string]interface{}{
-								"port":        8080,
-								"target_port": 8001,
+								"port":        float64(8080),
+								"target_port": float64(8001),
 							},
 						},
 					},
@@ -299,10 +299,10 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
 		"healthcheck": map[string]interface{}{
-			"method": "",
-			"status": 0,
-			"scheme": "",
 			"path":   "",
+			"method": "",
+			"status": float64(0),
+			"scheme": "",
 		},
 		"hooks": map[string]interface{}{
 			"build": []interface{}{"./build1", "./build2"},

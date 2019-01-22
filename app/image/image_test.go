@@ -517,3 +517,68 @@ func (s *S) TestSplitImageName(c *check.C) {
 		c.Check(tag, check.DeepEquals, t.expectedTag, check.Commentf("failed test %d", i))
 	}
 }
+
+func (s *S) TestTsuruYamlConversion(c *check.C) {
+	img := ImageMetadata{
+		Name: "myimg",
+		CustomData: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"build": []string{"script1", "script2"},
+			},
+			"healthcheck": map[string]interface{}{
+				"path": "/status",
+			},
+			"kubernetes": map[string]interface{}{
+				"groups": map[string]interface{}{
+					"pod1": map[string]interface{}{
+						"proc1": map[string]interface{}{
+							"ports": []map[string]interface{}{
+								{"port": 8888},
+							},
+						},
+						"proc2": map[string]interface{}{
+							"ports": []map[string]interface{}{
+								{"port": 8889},
+								{"target_port": 5000},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := img.Save()
+	c.Check(err, check.IsNil)
+
+	expected := provision.TsuruYamlData{
+		Hooks: provision.TsuruYamlHooks{
+			Build: []string{
+				"script1",
+				"script2",
+			},
+		},
+		Healthcheck: provision.TsuruYamlHealthcheck{
+			Path: "/status",
+		},
+		Kubernetes: provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"pod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+					"proc1": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{Port: 8888},
+						},
+					},
+					"proc2": {
+						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+							{Port: 8889},
+							{TargetPort: 5000},
+						},
+					},
+				},
+			},
+		},
+	}
+	data, err := GetImageTsuruYamlData(img.Name)
+	c.Check(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, expected)
+}
