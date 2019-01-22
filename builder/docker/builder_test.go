@@ -465,7 +465,7 @@ hooks:
 		"healthcheck": map[string]interface{}{
 			"path":   "/status",
 			"method": "GET",
-			"status": 200,
+			"status": float64(200),
 			"scheme": "https",
 		},
 		"hooks": map[string]interface{}{
@@ -475,6 +475,7 @@ hooks:
 				"after":  []interface{}{"./after.sh"},
 			},
 		},
+		"kubernetes": map[string]interface{}{},
 	})
 }
 
