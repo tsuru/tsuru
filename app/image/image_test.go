@@ -176,7 +176,7 @@ func (s *S) TestDeleteAllAppImageNamesSimilarApps(c *check.C) {
 	yamlData, err = GetImageTsuruYamlData("tsuru/app-myapp-dev:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{
-		Healthcheck: provision.TsuruYamlHealthcheck{Path: "/test"},
+		Healthcheck: &provision.TsuruYamlHealthcheck{Path: "/test"},
 	})
 }
 
@@ -551,16 +551,16 @@ func (s *S) TestTsuruYamlConversion(c *check.C) {
 	c.Check(err, check.IsNil)
 
 	expected := provision.TsuruYamlData{
-		Hooks: provision.TsuruYamlHooks{
+		Hooks: &provision.TsuruYamlHooks{
 			Build: []string{
 				"script1",
 				"script2",
 			},
 		},
-		Healthcheck: provision.TsuruYamlHealthcheck{
+		Healthcheck: &provision.TsuruYamlHealthcheck{
 			Path: "/status",
 		},
-		Kubernetes: provision.TsuruYamlKubernetesConfig{
+		Kubernetes: &provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
 				"pod1": map[string]provision.TsuruYamlKubernetesPodConfig{
 					"proc1": {
@@ -581,4 +581,32 @@ func (s *S) TestTsuruYamlConversion(c *check.C) {
 	data, err := GetImageTsuruYamlData(img.Name)
 	c.Check(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, expected)
+}
+
+func (s *S) TestSaveCustomData(c *check.C) {
+	imgName := "tsuru/app-myapp:v1"
+	err := AppendAppImageName("myapp", imgName)
+	c.Assert(err, check.IsNil)
+	data := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"method": "GET",
+			"path":   "/test",
+			"scheme": "http",
+			"status": float64(200),
+		},
+		"mydata": "value",
+		"hooks": map[string]interface{}{
+			"build": []interface{}{"./run.sh"},
+			"restart": map[string]interface{}{
+				"before": nil,
+				"after":  nil,
+			},
+		},
+	}
+	err = SaveImageCustomData(imgName, data)
+	c.Assert(err, check.IsNil)
+
+	metadata, err := GetImageMetaData(imgName)
+	c.Assert(err, check.IsNil)
+	c.Assert(metadata.CustomData, check.DeepEquals, data)
 }

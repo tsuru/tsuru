@@ -2519,10 +2519,10 @@ func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
 		return router.HealthcheckData{}, err
 	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
-	if err != nil {
+	if err != nil || yamlData.Healthcheck == nil {
 		return router.HealthcheckData{}, err
 	}
-	return yamlData.Healthcheck.ToRouterHC(), nil
+	return yamlData.ToRouterHC(), nil
 }
 
 func validateEnv(envName string) error {

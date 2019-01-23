@@ -15,17 +15,30 @@ import (
 
 func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthConfig {
 	hc := meta.Healthcheck
-	path := hc.Path
-	method := hc.Method
-	match := hc.Match
-	status := hc.Status
-	scheme := hc.Scheme
-	if scheme == "" {
-		scheme = provision.DefaultHealthcheckScheme
+	var (
+		path            string
+		method          string
+		match           string
+		status          int
+		scheme          string
+		allowedFailures int
+		timeoutSeconds  int
+	)
+	if hc != nil {
+		path = hc.Path
+		method = hc.Method
+		match = hc.Match
+		status = hc.Status
+		scheme = hc.Scheme
+		if scheme == "" {
+			scheme = provision.DefaultHealthcheckScheme
+		}
+		timeoutSeconds = hc.TimeoutSeconds
+		allowedFailures = hc.AllowedFailures
+		timeoutSeconds = hc.TimeoutSeconds
 	}
-	allowedFailures := hc.AllowedFailures
-	if hc.TimeoutSeconds == 0 {
-		hc.TimeoutSeconds = 60
+	if timeoutSeconds == 0 {
+		timeoutSeconds = 60
 	}
 	var cmdLine string
 	if path != "" {
@@ -44,7 +57,7 @@ func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthCon
 			cmdLine = fmt.Sprintf("%s -o/dev/null -w '%%{http_code}' | grep %d", cmdLine, status)
 		}
 	}
-	if len(meta.Hooks.Restart.After) > 0 {
+	if meta.Hooks != nil && len(meta.Hooks.Restart.After) > 0 {
 		restartHooks := fmt.Sprintf(`if [ ! -f %[1]s ]; then %[2]s && touch %[1]s; fi`,
 			"/tmp/restartafterok",
 			strings.Join(meta.Hooks.Restart.After, " && "),
@@ -61,7 +74,7 @@ func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthCon
 	return &container.HealthConfig{
 		Interval: 3 * time.Second,
 		Retries:  allowedFailures + 1,
-		Timeout:  time.Duration(hc.TimeoutSeconds) * time.Second,
+		Timeout:  time.Duration(timeoutSeconds) * time.Second,
 		Test: []string{
 			"CMD-SHELL",
 			cmdLine,

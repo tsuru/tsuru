@@ -674,9 +674,9 @@ func (e *Error) Error() string {
 }
 
 type TsuruYamlData struct {
-	Hooks       TsuruYamlHooks            `json:"hooks" bson:",omitempty"`
-	Healthcheck TsuruYamlHealthcheck      `json:"healthcheck" bson:",omitempty"`
-	Kubernetes  TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
+	Hooks       *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
+	Healthcheck *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
+	Kubernetes  *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
 }
 
 type TsuruYamlHooks struct {
@@ -720,16 +720,17 @@ type TsuruYamlKubernetesPodPortConfig struct {
 	TargetPort int    `json:"target_port,omitempty"`
 }
 
-func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {
-	if hc.UseInRouter {
+func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
+	hc := y.Healthcheck
+	if hc == nil || !hc.UseInRouter {
 		return router.HealthcheckData{
-			Path:   hc.Path,
-			Status: hc.Status,
-			Body:   hc.RouterBody,
+			Path: "/",
 		}
 	}
 	return router.HealthcheckData{
-		Path: "/",
+		Path:   hc.Path,
+		Status: hc.Status,
+		Body:   hc.RouterBody,
 	}
 }
 

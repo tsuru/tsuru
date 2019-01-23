@@ -547,7 +547,7 @@ var setRouterHealthcheck = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		newHCData := yamlData.Healthcheck.ToRouterHC()
+		newHCData := yamlData.ToRouterHC()
 		msg := fmt.Sprintf("Path: %s", newHCData.Path)
 		if newHCData.Status != 0 {
 			msg = fmt.Sprintf("%s, Status: %d", msg, newHCData.Status)
@@ -576,7 +576,7 @@ var setRouterHealthcheck = action.Action{
 			if err != nil {
 				return err
 			}
-			return hcRouter.SetHealthcheck(args.app.GetName(), yamlData.Healthcheck.ToRouterHC())
+			return hcRouter.SetHealthcheck(args.app.GetName(), yamlData.ToRouterHC())
 		})
 		return newContainers, err
 	},
@@ -587,7 +587,7 @@ var setRouterHealthcheck = action.Action{
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err)
 		}
-		hcData := yamlData.Healthcheck.ToRouterHC()
+		hcData := yamlData.ToRouterHC()
 		err = runInRouters(args.app, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {

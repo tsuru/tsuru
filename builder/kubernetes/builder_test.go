@@ -298,12 +298,6 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	imd, err := image.GetImageMetaData(img)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
-		"healthcheck": map[string]interface{}{
-			"path":   "",
-			"method": "",
-			"status": float64(0),
-			"scheme": "",
-		},
 		"hooks": map[string]interface{}{
 			"build": []interface{}{"./build1", "./build2"},
 			"restart": map[string]interface{}{
@@ -311,7 +305,6 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 				"after":  []interface{}{"./after.sh"},
 			},
 		},
-		"kubernetes": map[string]interface{}{},
 	})
 }
 
