@@ -508,6 +508,9 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io
 	if err != nil {
 		return err
 	}
+	if yamlData.Hooks == nil {
+		return nil
+	}
 	cmds := yamlData.Hooks.Restart.After
 	for _, cmd := range cmds {
 		err := cont.Exec(p.ClusterClient(), nil, w, w, container.Pty{}, "/bin/sh", "-lc", cmd)

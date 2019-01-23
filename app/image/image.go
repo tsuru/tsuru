@@ -34,9 +34,9 @@ type ImageNotFoundErr struct {
 }
 
 type customData struct {
-	Hooks       provision.TsuruYamlHooks       `bson:",omitempty"`
-	Healthcheck provision.TsuruYamlHealthcheck `bson:",omitempty"`
-	Kubernetes  tsuruYamlKubernetesConfig      `bson:",omitempty"`
+	Hooks       *provision.TsuruYamlHooks       `bson:",omitempty"`
+	Healthcheck *provision.TsuruYamlHealthcheck `bson:",omitempty"`
+	Kubernetes  *tsuruYamlKubernetesConfig      `bson:",omitempty"`
 }
 
 type tsuruYamlKubernetesConfig struct {
@@ -82,16 +82,6 @@ type ImageMetadata struct {
 	Reason          string
 }
 
-type imageMetadata struct {
-	Name            string `bson:"_id"`
-	CustomData      customData
-	LegacyProcesses map[string]string   `bson:"processes"`
-	Processes       map[string][]string `bson:"processes_list"`
-	ExposedPorts    []string
-	DisableRollback bool
-	Reason          string
-}
-
 type appImages struct {
 	AppName string `bson:"_id"`
 	Images  []string
@@ -106,7 +96,7 @@ func (i *ImageMetadata) Save() error {
 	if err != nil {
 		return err
 	}
-	newImg := imageMetadata{
+	newImg := ImageMetadata{
 		Name:            i.Name,
 		CustomData:      customData,
 		LegacyProcesses: i.LegacyProcesses,
@@ -202,7 +192,7 @@ func GetImageMetaData(imageName string) (ImageMetadata, error) {
 		return ImageMetadata{}, err
 	}
 	defer coll.Close()
-	var data imageMetadata
+	var data ImageMetadata
 	err = coll.FindId(imageName).One(&data)
 	if err == mgo.ErrNotFound {
 		// Return empty data for compatibility with really old apps.
@@ -227,15 +217,8 @@ func GetImageMetaData(imageName string) (ImageMetadata, error) {
 	if err != nil {
 		return ImageMetadata{}, err
 	}
-	return ImageMetadata{
-		Name:            data.Name,
-		CustomData:      jsonData,
-		LegacyProcesses: data.LegacyProcesses,
-		Processes:       data.Processes,
-		ExposedPorts:    data.ExposedPorts,
-		DisableRollback: data.DisableRollback,
-		Reason:          data.Reason,
-	}, err
+	data.CustomData = jsonData
+	return data, nil
 }
 
 func GetImageWebProcessName(imageName string) (string, error) {
@@ -275,7 +258,7 @@ func AllAppProcesses(appName string) ([]string, error) {
 
 func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	var data struct {
-		Customdata customData
+		Customdata map[string]interface{}
 	}
 	coll, err := ImageCustomDataColl()
 	if err != nil {
@@ -286,24 +269,36 @@ func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	if err == mgo.ErrNotFound {
 		return provision.TsuruYamlData{}, nil
 	}
-	return unmarshalCustomData(data.Customdata)
+	return unmarshalYamlData(data.Customdata)
 }
 
-func marshalCustomData(data map[string]interface{}) (customData, error) {
+func marshalCustomData(data map[string]interface{}) (map[string]interface{}, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 	b, err := json.Marshal(data)
 	if err != nil {
-		return customData{}, err
+		return nil, err
 	}
 	var yamlData provision.TsuruYamlData
 	err = json.Unmarshal(b, &yamlData)
 	if err != nil {
-		return customData{}, err
+		return nil, err
 	}
 
-	result := customData{
-		Hooks:       yamlData.Hooks,
-		Healthcheck: yamlData.Healthcheck,
+	result := make(map[string]interface{})
+	for k, v := range data {
+		if v != nil {
+			result[k] = v
+		}
 	}
+	result["hooks"] = yamlData.Hooks
+	result["healthcheck"] = yamlData.Healthcheck
+	if yamlData.Kubernetes == nil {
+		return result, nil
+	}
+	kubeConfig := &tsuruYamlKubernetesConfig{}
+
 	for groupName, groupData := range yamlData.Kubernetes.Groups {
 		group := tsuruYamlKubernetesGroup{Name: groupName}
 		for procName, procData := range groupData {
@@ -313,21 +308,67 @@ func marshalCustomData(data map[string]interface{}) (customData, error) {
 			}
 			group.Processes = append(group.Processes, proc)
 		}
-		if result.Kubernetes.Groups == nil {
-			result.Kubernetes.Groups = []tsuruYamlKubernetesGroup{group}
+		if kubeConfig.Groups == nil {
+			kubeConfig.Groups = []tsuruYamlKubernetesGroup{group}
 		} else {
-			result.Kubernetes.Groups = append(result.Kubernetes.Groups, group)
+			kubeConfig.Groups = append(kubeConfig.Groups, group)
 		}
+	}
+	result["kubernetes"] = kubeConfig
+	return result, nil
+}
+
+func unmarshalCustomData(data map[string]interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return nil, nil
+	}
+
+	yamlData, err := unmarshalYamlData(data)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]interface{})
+	for k, v := range data {
+		if v != nil {
+			result[k] = v
+		}
+	}
+	if yamlData.Hooks != nil {
+		result["hooks"] = yamlData.Hooks
+	}
+	if yamlData.Healthcheck != nil {
+		result["healthcheck"] = yamlData.Healthcheck
+	}
+	if yamlData.Kubernetes != nil {
+		result["kubernetes"] = yamlData.Kubernetes
 	}
 	return result, nil
 }
 
-func unmarshalCustomData(data customData) (provision.TsuruYamlData, error) {
-	result := provision.TsuruYamlData{
-		Hooks:       data.Hooks,
-		Healthcheck: data.Healthcheck,
+func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, error) {
+	if data == nil {
+		return provision.TsuruYamlData{}, nil
 	}
-	for _, g := range data.Kubernetes.Groups {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return provision.TsuruYamlData{}, err
+	}
+	customData := customData{}
+	err = json.Unmarshal(b, &customData)
+	if err != nil {
+		return provision.TsuruYamlData{}, err
+	}
+
+	result := provision.TsuruYamlData{
+		Hooks:       customData.Hooks,
+		Healthcheck: customData.Healthcheck,
+	}
+	if customData.Kubernetes == nil {
+		return result, nil
+	}
+
+	result.Kubernetes = &provision.TsuruYamlKubernetesConfig{}
+	for _, g := range customData.Kubernetes.Groups {
 		group := provision.TsuruYamlKubernetesGroup{}
 		for _, proc := range g.Processes {
 			group[proc.Name] = provision.TsuruYamlKubernetesPodConfig{

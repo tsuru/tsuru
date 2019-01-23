@@ -475,7 +475,6 @@ hooks:
 				"after":  []interface{}{"./after.sh"},
 			},
 		},
-		"kubernetes": map[string]interface{}{},
 	})
 }
 

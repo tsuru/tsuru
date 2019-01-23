@@ -221,7 +221,7 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 }
 
 func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provision.TsuruYamlData) (string, error) {
-	if tsuruYamlData == nil || len(tsuruYamlData.Hooks.Build) == 0 {
+	if tsuruYamlData == nil || tsuruYamlData.Hooks == nil || len(tsuruYamlData.Hooks.Build) == 0 {
 		return "", nil
 	}
 	cmd := strings.Join(tsuruYamlData.Hooks.Build, " && ")

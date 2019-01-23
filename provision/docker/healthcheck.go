@@ -27,6 +27,9 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if yamlData.Healthcheck == nil {
+		return nil
+	}
 	path := yamlData.Healthcheck.Path
 	method := yamlData.Healthcheck.Method
 	match := yamlData.Healthcheck.Match

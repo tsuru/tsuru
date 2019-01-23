@@ -390,9 +390,9 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
+func probesFromHC(hc *provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
 	var result hcResult
-	if hc.Path == "" {
+	if hc == nil || hc.Path == "" {
 		return result, nil
 	}
 	if hc.Scheme == "" {
@@ -543,7 +543,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 		}
 	}
 	var lifecycle *apiv1.Lifecycle
-	if len(yamlData.Hooks.Restart.After) > 0 {
+	if yamlData.Hooks != nil && len(yamlData.Hooks.Restart.After) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
 			strings.Join(yamlData.Hooks.Restart.After, " && "),
@@ -1148,16 +1148,18 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
 	portConfigFound := false
 	var ports []provision.TsuruYamlKubernetesPodPortConfig
-	for _, group := range tsuruYamlData.Kubernetes.Groups {
-		for podName, podConfig := range group {
-			if podName == process {
-				if portConfigFound {
-					return nil, fmt.Errorf("duplicated process name: %s", podName)
-				}
-				portConfigFound = true
-				ports = podConfig.Ports
-				for i := range ports {
-					ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+	if tsuruYamlData.Kubernetes != nil {
+		for _, group := range tsuruYamlData.Kubernetes.Groups {
+			for podName, podConfig := range group {
+				if podName == process {
+					if portConfigFound {
+						return nil, fmt.Errorf("duplicated process name: %s", podName)
+					}
+					portConfigFound = true
+					ports = podConfig.Ports
+					for i := range ports {
+						ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+					}
 				}
 			}
 		}

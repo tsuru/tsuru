@@ -134,9 +134,7 @@ func (p *Pipeline) Result() Result {
 // After rolling back all completed actions, it returns the original error
 // returned by the action that failed.
 func (p *Pipeline) Execute(params ...interface{}) (err error) {
-	var (
-		r Result
-	)
+	var r Result
 	if len(p.actions) == 0 {
 		return ErrPipelineNoActions
 	}
