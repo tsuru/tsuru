@@ -161,9 +161,18 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 
 func (s *S) TestVolumeInfo(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
+	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create()
+	err = v1.Create()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt2", true)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
@@ -182,7 +191,27 @@ func (s *S) TestVolumeInfo(c *check.C) {
 		Plan: volume.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
-				"plugin": "nfs",
+				"access-modes": "ReadWriteMany",
+				"capacity":     "20Gi",
+				"plugin":       "nfs",
+			},
+		},
+		Binds: []volume.VolumeBind{
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt",
+					Volume:     "v1",
+				},
+				ReadOnly: false,
+			},
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt2",
+					Volume:     "v1",
+				},
+				ReadOnly: true,
 			},
 		},
 	})
