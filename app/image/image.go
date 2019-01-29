@@ -353,22 +353,22 @@ func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, er
 	if err != nil {
 		return provision.TsuruYamlData{}, err
 	}
-	customData := customData{}
-	err = json.Unmarshal(b, &customData)
+	custom := customData{}
+	err = json.Unmarshal(b, &custom)
 	if err != nil {
 		return provision.TsuruYamlData{}, err
 	}
 
 	result := provision.TsuruYamlData{
-		Hooks:       customData.Hooks,
-		Healthcheck: customData.Healthcheck,
+		Hooks:       custom.Hooks,
+		Healthcheck: custom.Healthcheck,
 	}
-	if customData.Kubernetes == nil {
+	if custom.Kubernetes == nil {
 		return result, nil
 	}
 
 	result.Kubernetes = &provision.TsuruYamlKubernetesConfig{}
-	for _, g := range customData.Kubernetes.Groups {
+	for _, g := range custom.Kubernetes.Groups {
 		group := provision.TsuruYamlKubernetesGroup{}
 		for _, proc := range g.Processes {
 			group[proc.Name] = provision.TsuruYamlKubernetesProcessConfig{

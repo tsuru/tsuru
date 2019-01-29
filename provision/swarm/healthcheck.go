@@ -35,7 +35,6 @@ func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthCon
 		}
 		timeoutSeconds = hc.TimeoutSeconds
 		allowedFailures = hc.AllowedFailures
-		timeoutSeconds = hc.TimeoutSeconds
 	}
 	if timeoutSeconds == 0 {
 		timeoutSeconds = 60
