@@ -1439,7 +1439,7 @@ func removeDefaultPortEnvs(envs []bind.EnvVar) []bind.EnvVar {
 	return envsWithoutPort
 }
 
-func isDefaultPort(portsConfig []provision.TsuruYamlKubernetesPodPortConfig) bool {
+func isDefaultPort(portsConfig []provision.TsuruYamlKubernetesProcessPortConfig) bool {
 	if len(portsConfig) != 1 {
 		return false
 	}

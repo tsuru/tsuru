@@ -562,14 +562,14 @@ func (s *S) TestTsuruYamlConversion(c *check.C) {
 		},
 		Kubernetes: &provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"pod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"pod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc1": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8888},
 						},
 					},
 					"proc2": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8889},
 							{TargetPort: 5000},
 						},

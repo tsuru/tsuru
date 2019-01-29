@@ -707,13 +707,13 @@ type TsuruYamlKubernetesConfig struct {
 	Groups map[string]TsuruYamlKubernetesGroup `json:"groups,omitempty"`
 }
 
-type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesPodConfig
+type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesProcessConfig
 
-type TsuruYamlKubernetesPodConfig struct {
-	Ports []TsuruYamlKubernetesPodPortConfig `json:"ports"`
+type TsuruYamlKubernetesProcessConfig struct {
+	Ports []TsuruYamlKubernetesProcessPortConfig `json:"ports"`
 }
 
-type TsuruYamlKubernetesPodPortConfig struct {
+type TsuruYamlKubernetesProcessPortConfig struct {
 	Name       string `json:"name,omitempty"`
 	Protocol   string `json:"protocol,omitempty"`
 	Port       int    `json:"port,omitempty"`
