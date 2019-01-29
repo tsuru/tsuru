@@ -841,9 +841,9 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 		},
 		"kubernetes": provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{
 								Name:       "port1",
 								Protocol:   "UDP",
@@ -860,9 +860,9 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"p2": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Name: "myport"},
 						},
 					},
@@ -949,16 +949,16 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 		},
 		"kubernetes": provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8080},
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Name: "myport"},
 						},
 					},

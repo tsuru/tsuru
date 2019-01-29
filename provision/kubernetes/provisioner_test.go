@@ -2213,37 +2213,37 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		},
 		"kubernetes": provision.TsuruYamlKubernetesConfig{
 			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc1": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8080},
 							{Port: 9000},
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc2": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8000},
 						},
 					},
 				},
-				"mypod3": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod3": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc3": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8000, TargetPort: 8080},
 						},
 					},
 				},
-				"mypod5": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod5": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc5": {},
 					"proc6": {
-						Ports: []provision.TsuruYamlKubernetesPodPortConfig{
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8000},
 						},
 					},
 				},
-				"mypod6": map[string]provision.TsuruYamlKubernetesPodConfig{
+				"mypod6": map[string]provision.TsuruYamlKubernetesProcessConfig{
 					"proc6": {},
 				},
 			},

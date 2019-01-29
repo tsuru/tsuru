@@ -1145,9 +1145,9 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 	return portInt, parts[1], err
 }
 
-func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesPodPortConfig, error) {
+func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesProcessPortConfig, error) {
 	portConfigFound := false
-	var ports []provision.TsuruYamlKubernetesPodPortConfig
+	var ports []provision.TsuruYamlKubernetesProcessPortConfig
 	if tsuruYamlData.Kubernetes != nil {
 		for _, group := range tsuruYamlData.Kubernetes.Groups {
 			for podName, podConfig := range group {
@@ -1170,7 +1170,7 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 
 	defaultPort := defaultKubernetesPodPortConfig()
 	targetPorts := getTargetPortsForImage(imgName)
-	ports = make([]provision.TsuruYamlKubernetesPodPortConfig, len(targetPorts))
+	ports = make([]provision.TsuruYamlKubernetesProcessPortConfig, len(targetPorts))
 	for i := range ports {
 		portInt, protocol, err := extractPortNumberAndProtocol(targetPorts[i])
 		if err != nil {
@@ -1191,9 +1191,9 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlDa
 	return ports, nil
 }
 
-func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesPodPortConfig {
+func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesProcessPortConfig {
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-	return provision.TsuruYamlKubernetesPodPortConfig{
+	return provision.TsuruYamlKubernetesProcessPortConfig{
 		Name:       defaultHttpPortName,
 		Protocol:   "TCP",
 		Port:       defaultPort,

@@ -50,10 +50,10 @@ type tsuruYamlKubernetesGroup struct {
 
 type tsuruYamlKubernetesProcess struct {
 	Name  string
-	Ports []tsuruYamlKubernetesPodPortConfig `bson:",omitempty"`
+	Ports []tsuruYamlKubernetesProcessPortConfig `bson:",omitempty"`
 }
 
-type tsuruYamlKubernetesPodPortConfig struct {
+type tsuruYamlKubernetesProcessPortConfig struct {
 	Name       string `json:"name,omitempty" bson:"name,omitempty"`
 	Protocol   string `json:"protocol,omitempty" bson:"protocol,omitempty"`
 	Port       int    `json:"port,omitempty" bson:"port,omitempty"`
@@ -304,7 +304,7 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 		for procName, procData := range groupData {
 			proc := tsuruYamlKubernetesProcess{Name: procName}
 			for _, port := range procData.Ports {
-				proc.Ports = append(proc.Ports, tsuruYamlKubernetesPodPortConfig(port))
+				proc.Ports = append(proc.Ports, tsuruYamlKubernetesProcessPortConfig(port))
 			}
 			group.Processes = append(group.Processes, proc)
 		}
@@ -371,11 +371,11 @@ func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, er
 	for _, g := range customData.Kubernetes.Groups {
 		group := provision.TsuruYamlKubernetesGroup{}
 		for _, proc := range g.Processes {
-			group[proc.Name] = provision.TsuruYamlKubernetesPodConfig{
-				Ports: make([]provision.TsuruYamlKubernetesPodPortConfig, len(proc.Ports)),
+			group[proc.Name] = provision.TsuruYamlKubernetesProcessConfig{
+				Ports: make([]provision.TsuruYamlKubernetesProcessPortConfig, len(proc.Ports)),
 			}
 			for i, port := range proc.Ports {
-				group[proc.Name].Ports[i] = provision.TsuruYamlKubernetesPodPortConfig(port)
+				group[proc.Name].Ports[i] = provision.TsuruYamlKubernetesProcessPortConfig(port)
 			}
 		}
 		if result.Kubernetes.Groups == nil {
