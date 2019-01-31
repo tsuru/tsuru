@@ -79,6 +79,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: Role removed
 //   401: Unauthorized
 //   404: Role not found
+//   412: Role with users
 func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermRoleDelete) {
 		return permission.ErrUnauthorized
@@ -95,9 +96,12 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = auth.RemoveRoleFromAllUsers(roleName)
+	usersWithRole, err := auth.ListUsersWithRole(roleName)
 	if err != nil {
 		return err
+	}
+	if len(usersWithRole) != 0 {
+		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: permTypes.ErrRemoveRoleWithUsers.Error()}
 	}
 	err = permission.DestroyRole(roleName)
 	if err == permTypes.ErrRoleNotFound {

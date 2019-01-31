@@ -116,10 +116,6 @@ func (s *S) TestRemoveRole(c *check.C) {
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	user, err := auth.ConvertNewUser(token.User())
-	c.Assert(err, check.IsNil)
-	err = user.AddRole("test", "app")
-	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -129,9 +125,6 @@ func (s *S) TestRemoveRole(c *check.C) {
 	roles, err := permission.ListRoles()
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 1)
-	user, err = auth.ConvertNewUser(token.User())
-	c.Assert(err, check.IsNil)
-	c.Assert(user.Roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
@@ -140,6 +133,35 @@ func (s *S) TestRemoveRole(c *check.C) {
 			{"name": ":name", "value": "test"},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestRemoveRoleWithUsers(c *check.C) {
+	s.conn.Roles().DropCollection()
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest(http.MethodDelete, "/roles/test", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleDelete,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	user, err := auth.ConvertNewUser(token.User())
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("test", "app")
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Body.String(), check.Equals, permTypes.ErrRemoveRoleWithUsers.Error()+"\n")
+	roles, err := permission.ListRoles()
+	c.Assert(err, check.IsNil)
+	c.Assert(roles, check.HasLen, 2)
+	user, err = auth.ConvertNewUser(token.User())
+	c.Assert(err, check.IsNil)
+	c.Assert(user.Roles, check.HasLen, 2)
 }
 
 func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
