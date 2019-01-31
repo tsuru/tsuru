@@ -15,6 +15,7 @@ var (
 	ErrRoleEventNotFound     = errors.New("role event not found")
 	ErrInvalidRoleName       = errors.New("invalid role name")
 	ErrInvalidPermissionName = errors.New("invalid permission name")
+	ErrRemoveRoleWithUsers   = errors.New("role has users assigned. you must dissociate them before remove the role.")
 
 	RoleEventUserCreate = &RoleEvent{
 		Name:        "user-create",
