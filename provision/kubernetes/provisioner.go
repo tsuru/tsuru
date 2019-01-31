@@ -54,7 +54,7 @@ const (
 	defaultPodRunningTimeout                   = 10 * time.Minute
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
-	defaultSidecarImageName                    = "tsuru/deploy-agent:0.6.0"
+	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.0"
 )
 
 type kubernetesProvisioner struct {
