@@ -6,11 +6,11 @@ import (
 
 	"github.com/docker/machine/version"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
-	"github.com/Azure/azure-sdk-for-go/arm/resources/subscriptions"
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/subscriptions"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/go-autorest/autorest"
 )
 

@@ -20,6 +20,13 @@ func NewMux() *Mux {
 	}
 }
 
+// This adds a map of handlers and expressions in a single call. This allows
+// init to load many rules on first startup, thus reducing the time it takes to
+// create the initial mux.
+func (m *Mux) InitHandlers(handlers map[string]interface{}) error {
+	return m.router.InitRoutes(handlers)
+}
+
 // Handle adds http handler for route expression
 func (m *Mux) Handle(expr string, handler http.Handler) error {
 	return m.router.UpsertRoute(expr, handler)
@@ -71,4 +78,3 @@ func (notFound) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Not found")
 
 }
-

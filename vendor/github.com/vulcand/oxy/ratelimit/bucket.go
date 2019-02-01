@@ -7,6 +7,7 @@ import (
 	"github.com/mailgun/timetools"
 )
 
+// UndefinedDelay  default delay
 const UndefinedDelay = -1
 
 // rate defines token bucket parameters.
@@ -20,7 +21,7 @@ func (r *rate) String() string {
 	return fmt.Sprintf("rate(%v/%v, burst=%v)", r.average, r.period, r.burst)
 }
 
-// Implements token bucket algorithm (http://en.wikipedia.org/wiki/Token_bucket)
+// tokenBucket Implements token bucket algorithm (http://en.wikipedia.org/wiki/Token_bucket)
 type tokenBucket struct {
 	// The time period controlled by the bucket in nanoseconds.
 	period time.Duration
@@ -83,7 +84,7 @@ func (tb *tokenBucket) rollback() {
 	tb.lastConsumed = 0
 }
 
-// Update modifies `average` and `burst` fields of the token bucket according
+// update modifies `average` and `burst` fields of the token bucket according
 // to the provided `Rate`
 func (tb *tokenBucket) update(rate *rate) error {
 	if rate.period != tb.period {

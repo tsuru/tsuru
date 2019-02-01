@@ -1,8 +1,8 @@
 package azureutil
 
 import (
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 )
 
 // DeploymentContext contains references to various sources created and then

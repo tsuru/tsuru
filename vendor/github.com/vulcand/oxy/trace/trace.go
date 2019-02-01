@@ -48,6 +48,8 @@ type Tracer struct {
 	reqHeaders  []string
 	respHeaders []string
 	writer      io.Writer
+
+	log *log.Logger
 }
 
 // New creates a new Tracer middleware that emits all the request/response information in structured format
@@ -57,6 +59,8 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	t := &Tracer{
 		writer: writer,
 		next:   next,
+
+		log: log.StandardLogger(),
 	}
 	for _, o := range opts {
 		if err := o(t); err != nil {
@@ -69,14 +73,24 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	return t, nil
 }
 
+// Logger defines the logger the tracer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) Option {
+	return func(t *Tracer) error {
+		t.log = l
+		return nil
+	}
+}
+
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
-	pw := &utils.ProxyWriter{W: w}
+	pw := utils.NewProxyWriterWithLogger(w, t.log)
 	t.next.ServeHTTP(pw, req)
 
 	l := t.newRecord(req, pw, time.Since(start))
 	if err := json.NewEncoder(t.writer).Encode(l); err != nil {
-		log.Errorf("Failed to marshal request: %v", err)
+		t.log.Errorf("Failed to marshal request: %v", err)
 	}
 }
 
@@ -133,7 +147,7 @@ type Record struct {
 	Response Response `json:"response"`
 }
 
-// Req contains information about an HTTP request
+// Request contains information about an HTTP request
 type Request struct {
 	Method    string      `json:"method"`            // Method - request method
 	BodyBytes int64       `json:"body_bytes"`        // BodyBytes - size of request body in bytes
@@ -142,7 +156,7 @@ type Request struct {
 	TLS       *TLS        `json:"tls,omitempty"`     // TLS - optional TLS record, will be recorded if it's a TLS connection
 }
 
-// Resp contains information about HTTP response
+// Response contains information about HTTP response
 type Response struct {
 	Code      int         `json:"code"`              // Code - response status code
 	Roundtrip float64     `json:"roundtrip"`         // Roundtrip - round trip time in milliseconds
@@ -205,11 +219,11 @@ func csToString(cs uint16) string {
 }
 
 func bodyBytes(h http.Header) int64 {
-	len := h.Get("Content-Length")
-	if len == "" {
+	length := h.Get("Content-Length")
+	if length == "" {
 		return 0
 	}
-	bytes, err := strconv.ParseInt(len, 10, 0)
+	bytes, err := strconv.ParseInt(length, 10, 0)
 	if err == nil {
 		return bytes
 	}

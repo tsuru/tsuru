@@ -67,6 +67,9 @@ type Router interface {
 	// UpsertRoute updates an existing route or adds a new route by given expression
 	UpsertRoute(string, interface{}) error
 
+	// Initializes the routes, this method clobbers all existing routes and should only be called during init
+	InitRoutes(map[string]interface{}) error
+
 	// Route takes a request and matches it against requests, returns matched route in case if found, nil if there's no matching route or error in case of internal error.
 	Route(*http.Request) (interface{}, error)
 }
@@ -93,6 +96,26 @@ func (e *router) GetRoute(expr string) interface{} {
 	if ok {
 		return res.val
 	}
+	return nil
+}
+
+func (e *router) InitRoutes(routes map[string]interface{}) error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.routes = make(map[string]*match, len(routes))
+	for expr, val := range routes {
+		result := &match{val: val}
+		if _, err := parse(expr, result); err != nil {
+			return err
+		}
+		e.routes[expr] = result
+	}
+
+	if err := e.compile(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -144,7 +167,7 @@ func (e *router) compile() error {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(exprs)))
 
-	matchers := []matcher{}
+	var matchers []matcher
 	i := 0
 	for _, expr := range exprs {
 		result := e.routes[expr]
