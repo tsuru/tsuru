@@ -1,6 +1,7 @@
 package azureutil
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -67,7 +68,7 @@ func findTenantID(env azure.Environment, subscriptionID string) (string, error) 
 	// we expect this request to fail (err != nil), but we are only interested
 	// in headers, so surface the error if the Response is not present (i.e.
 	// network error etc)
-	subs, err := c.Get(subscriptionID)
+	subs, err := c.Get(context.TODO(), subscriptionID)
 	if subs.Response.Response == nil {
 		return "", fmt.Errorf("Request failed: %v", err)
 	}

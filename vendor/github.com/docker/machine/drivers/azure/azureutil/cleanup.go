@@ -1,10 +1,11 @@
 package azureutil
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
-	"github.com/Azure/azure-sdk-for-go/arm/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
 	"github.com/docker/machine/drivers/azure/logutil"
 	"github.com/docker/machine/libmachine/log"
 )
@@ -60,12 +61,12 @@ type subnetCleanup struct {
 }
 
 func (c *subnetCleanup) Get(a AzureClient) (err error) {
-	c.ref, err = a.subnetsClient().Get(c.rg, c.vnet, c.name, "")
+	c.ref, err = a.subnetsClient().Get(context.TODO(), c.rg, c.vnet, c.name, "")
 	return err
 }
 
 func (c *subnetCleanup) Delete(a AzureClient) error {
-	_, err := a.subnetsClient().Delete(c.rg, c.vnet, c.name, nil)
+	_, err := a.subnetsClient().Delete(context.TODO(), c.rg, c.vnet, c.name)
 	return err
 }
 
@@ -74,7 +75,7 @@ func (c *subnetCleanup) ResourceType() string { return "Subnet" }
 func (c *subnetCleanup) LogFields() logutil.Fields { return logutil.Fields{"name": c.name} }
 
 func (c *subnetCleanup) HasAttachedResources() bool {
-	return c.ref.Properties.IPConfigurations != nil && len(*c.ref.Properties.IPConfigurations) > 0
+	return c.ref.SubnetPropertiesFormat.IPConfigurations != nil && len(*c.ref.SubnetPropertiesFormat.IPConfigurations) > 0
 }
 
 // vnetCleanup manages cleanup of Virtual Network resources.
@@ -84,12 +85,12 @@ type vnetCleanup struct {
 }
 
 func (c *vnetCleanup) Get(a AzureClient) (err error) {
-	c.ref, err = a.virtualNetworksClient().Get(c.rg, c.name, "")
+	c.ref, err = a.virtualNetworksClient().Get(context.TODO(), c.rg, c.name, "")
 	return err
 }
 
 func (c *vnetCleanup) Delete(a AzureClient) error {
-	_, err := a.virtualNetworksClient().Delete(c.rg, c.name, nil)
+	_, err := a.virtualNetworksClient().Delete(context.TODO(), c.rg, c.name)
 	return err
 }
 
@@ -98,7 +99,7 @@ func (c *vnetCleanup) ResourceType() string { return "Virtual Network" }
 func (c *vnetCleanup) LogFields() logutil.Fields { return logutil.Fields{"name": c.name} }
 
 func (c *vnetCleanup) HasAttachedResources() bool {
-	return c.ref.Properties.Subnets != nil && len(*c.ref.Properties.Subnets) > 0
+	return c.ref.VirtualNetworkPropertiesFormat.Subnets != nil && len(*c.ref.VirtualNetworkPropertiesFormat.Subnets) > 0
 }
 
 // avSetCleanup manages cleanup of Availability Set resources.
@@ -108,12 +109,12 @@ type avSetCleanup struct {
 }
 
 func (c *avSetCleanup) Get(a AzureClient) (err error) {
-	c.ref, err = a.availabilitySetsClient().Get(c.rg, c.name)
+	c.ref, err = a.availabilitySetsClient().Get(context.TODO(), c.rg, c.name)
 	return err
 }
 
 func (c *avSetCleanup) Delete(a AzureClient) error {
-	_, err := a.availabilitySetsClient().Delete(c.rg, c.name)
+	_, err := a.availabilitySetsClient().Delete(context.TODO(), c.rg, c.name)
 	return err
 }
 
@@ -122,5 +123,5 @@ func (c *avSetCleanup) ResourceType() string { return "Availability Set" }
 func (c *avSetCleanup) LogFields() logutil.Fields { return logutil.Fields{"name": c.name} }
 
 func (c *avSetCleanup) HasAttachedResources() bool {
-	return c.ref.Properties.VirtualMachines != nil && len(*c.ref.Properties.VirtualMachines) > 0
+	return c.ref.AvailabilitySetProperties.VirtualMachines != nil && len(*c.ref.AvailabilitySetProperties.VirtualMachines) > 0
 }

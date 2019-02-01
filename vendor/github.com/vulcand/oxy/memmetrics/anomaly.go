@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// SplitRatios provides simple anomaly detection for requests latencies.
+// SplitLatencies provides simple anomaly detection for requests latencies.
 // it splits values into good or bad category based on the threshold and the median value.
 // If all values are not far from the median, it will return all values in 'good' set.
 // Precision is the smallest value to consider, e.g. if set to millisecond, microseconds will be ignored.
@@ -23,10 +23,10 @@ func SplitLatencies(values []time.Duration, precision time.Duration) (good map[t
 	good, bad = make(map[time.Duration]bool), make(map[time.Duration]bool)
 	// Note that multiplier makes this function way less sensitive than ratios detector, this is to avoid noise.
 	vgood, vbad := SplitFloat64(2, 0, ratios)
-	for r, _ := range vgood {
+	for r := range vgood {
 		good[v2r[r]] = true
 	}
-	for r, _ := range vbad {
+	for r := range vbad {
 		bad[v2r[r]] = true
 	}
 	return good, bad
@@ -40,7 +40,7 @@ func SplitRatios(values []float64) (good map[float64]bool, bad map[float64]bool)
 }
 
 // SplitFloat64 provides simple anomaly detection for skewed data sets with no particular distribution.
-// In essense it applies the formula if(v > median(values) + threshold * medianAbsoluteDeviation) -> anomaly
+// In essence it applies the formula if(v > median(values) + threshold * medianAbsoluteDeviation) -> anomaly
 // There's a corner case where there are just 2 values, so by definition there's no value that exceeds the threshold.
 // This case is solved by introducing additional value that we know is good, e.g. 0. That helps to improve the detection results
 // on such data sets.
