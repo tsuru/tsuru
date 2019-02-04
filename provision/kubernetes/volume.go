@@ -198,7 +198,7 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 	pvSpec := apiv1.PersistentVolumeSpec{}
 	err = dec.Decode(&pvSpec)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "unable to decode as pv spec: %s", string(data))
 	}
 	pvSpec.Capacity = apiv1.ResourceList{
 		apiv1.ResourceStorage: opts.Capacity,

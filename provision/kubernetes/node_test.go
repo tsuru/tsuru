@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -277,14 +278,14 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 		}
 	}
 	listPodsCalls := 0
-	s.client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) {
+	s.client.PrependReactor("list", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		listPodsCalls++
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	listNodesCalls := 0
-	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (bool, runtime.Object, error) {
 		listNodesCalls++
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 
 	node, err := s.p.GetNode("192.168.99.1")

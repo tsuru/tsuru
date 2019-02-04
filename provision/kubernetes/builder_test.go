@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
@@ -54,7 +55,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -84,7 +85,7 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
 	c.Assert(ok, check.Equals, true)
@@ -108,7 +109,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -165,7 +166,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	client := KubeClient{}
 	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
@@ -218,7 +219,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 
 	client := KubeClient{}
@@ -275,7 +276,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 
 	client := KubeClient{}
@@ -331,7 +332,7 @@ func (s *S) TestBuildImage(c *check.C) {
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 		})
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
@@ -365,7 +366,7 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 		})
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}

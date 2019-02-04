@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	check "gopkg.in/check.v1"
@@ -230,7 +231,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 			statuses[i] = apiv1.ContainerStatus{Name: fmt.Sprintf("c-%d", i), State: s}
 		}
 		pod.Status.ContainerStatuses = statuses
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	tests := []struct {
 		states []apiv1.ContainerState
@@ -297,7 +298,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = wantedPhase
 		pod.Status.Message = wantedMessage
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		w.Write([]byte(`my log error`))

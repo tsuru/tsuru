@@ -581,9 +581,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 		}
 	}
 	listNodesCalls := 0
-	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (bool, runtime.Object, error) {
 		listNodesCalls++
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
@@ -1145,7 +1145,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		} else {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1190,14 +1190,14 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		deploy <- struct{}{}
 		<-attach
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodRunning
 		testing.UpdatePodContainerStatus(pod, true)
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1321,7 +1321,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1666,7 +1666,7 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodFailed
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1842,7 +1842,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 				NodePort: int32(30002),
 			},
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
 		ObjectMeta: metav1.ObjectMeta{
