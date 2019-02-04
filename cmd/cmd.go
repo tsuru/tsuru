@@ -277,6 +277,14 @@ func (m *Manager) Run(args []string) {
 		if verbosity > 0 {
 			errorMsg = fmt.Sprintf("%+v", err)
 		}
+		if bodyErr, ok := err.(interface {
+			Body() []byte
+		}); ok {
+			body := string(bodyErr.Body())
+			if body != "" {
+				errorMsg = fmt.Sprintf("%s: %s", errorMsg, body)
+			}
+		}
 		if isUnauthorized(err) && name != loginCmdName {
 			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
 		}
