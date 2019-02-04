@@ -52,7 +52,7 @@ var (
 	_ provision.BuilderDeploy             = &swarmProvisioner{}
 	_ provision.BuilderDeployDockerClient = &swarmProvisioner{}
 	_ provision.VolumeProvisioner         = &swarmProvisioner{}
-	_ cluster.ClusterProvisioner          = &swarmProvisioner{}
+	_ cluster.ClusteredProvisioner        = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &swarmProvisioner{}

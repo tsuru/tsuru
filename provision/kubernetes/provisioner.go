@@ -68,18 +68,18 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner               = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner           = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner  = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner        = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner      = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner         = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy             = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient   = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner  = &kubernetesProvisioner{}
-	_ provision.RollbackableDeployer      = &kubernetesProvisioner{}
-	_ cluster.ClusterProvisioner          = &kubernetesProvisioner{}
-	_ cluster.ProvisionClusterProvisioner = &kubernetesProvisioner{}
+	_ provision.Provisioner              = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
+	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
+	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
+	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}

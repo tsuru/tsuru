@@ -180,7 +180,7 @@ func (s *S) initCluster(c *check.C, clust *provTypes.Cluster) {
 	}
 	prov, err := provision.Get(clust.Provisioner)
 	c.Assert(err, check.IsNil)
-	if clusterProv, ok := prov.(cluster.ClusterProvisioner); ok {
+	if clusterProv, ok := prov.(cluster.ClusteredProvisioner); ok {
 		err = clusterProv.InitializeCluster(clust)
 		c.Assert(err, check.IsNil)
 	}
