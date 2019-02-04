@@ -235,7 +235,7 @@ func provisionerList(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	info := make([]provisionerInfo, len(provs))
 	for i, p := range provs {
 		info[i].Name = p.GetName()
-		if clusterProv, ok := p.(cluster.ClusterProvisioner); ok {
+		if clusterProv, ok := p.(cluster.ClusteredProvisioner); ok {
 			info[i].ClusterHelp = clusterProv.ClusterHelp()
 		}
 	}

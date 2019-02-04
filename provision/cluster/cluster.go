@@ -18,13 +18,13 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-type ClusterProvisioner interface {
+type ClusteredProvisioner interface {
 	InitializeCluster(c *provTypes.Cluster) error
 	ValidateCluster(c *provTypes.Cluster) error
 	ClusterHelp() provTypes.ClusterHelpInfo
 }
 
-type ProvisionClusterProvisioner interface {
+type ClusterProvider interface {
 	CreateCluster(ctx context.Context, c *provTypes.Cluster) error
 	UpdateCluster(ctx context.Context, c *provTypes.Cluster) error
 	DeleteCluster(ctx context.Context, c *provTypes.Cluster) error
@@ -64,7 +64,7 @@ func (s *clusterService) Create(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := prov.(ProvisionClusterProvisioner); !ok {
+	if _, ok := prov.(ClusterProvider); !ok {
 		err = s.createClusterMachine(&c)
 		if err != nil {
 			return err
@@ -140,7 +140,7 @@ func (s *clusterService) Delete(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	if createProv, ok := prov.(ProvisionClusterProvisioner); ok {
+	if createProv, ok := prov.(ClusterProvider); ok {
 		err = createProv.DeleteCluster(context.Background(), fullCluster)
 		if err != nil {
 			return err
@@ -176,7 +176,7 @@ func (s *clusterService) validate(c provTypes.Cluster, isNewCluster bool) error 
 	if err != nil {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: fmt.Sprintf("provisioner error: %v", err)})
 	}
-	if clusterProv, ok := prov.(ClusterProvisioner); ok {
+	if clusterProv, ok := prov.(ClusteredProvisioner); ok {
 		return clusterProv.ValidateCluster(&c)
 	}
 	return nil
@@ -187,7 +187,7 @@ func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) err
 	if err != nil {
 		return err
 	}
-	if createProv, ok := prov.(ProvisionClusterProvisioner); ok {
+	if createProv, ok := prov.(ClusterProvider); ok {
 		if isNewCluster {
 			err = createProv.CreateCluster(context.Background(), &c)
 		} else {
@@ -203,7 +203,7 @@ func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) err
 		}
 		c = *updatedCluster
 	}
-	if clusterProv, ok := prov.(ClusterProvisioner); ok {
+	if clusterProv, ok := prov.(ClusteredProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)
 	}
 	return err
