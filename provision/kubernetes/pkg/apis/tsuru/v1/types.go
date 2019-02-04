@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"github.com/tsuru/tsuru/provision"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,10 +22,11 @@ type App struct {
 
 // AppSpec is the spec for a App resource
 type AppSpec struct {
-	NamespaceName      string              `json:"namespaceName"`
-	ServiceAccountName string              `json:"serviceAccountName"`
-	Deployments        map[string][]string `json:"deployments"`
-	Services           map[string][]string `json:"services"`
+	NamespaceName      string                               `json:"namespaceName"`
+	ServiceAccountName string                               `json:"serviceAccountName"`
+	Deployments        map[string][]string                  `json:"deployments"`
+	Services           map[string][]string                  `json:"services"`
+	Configs            *provision.TsuruYamlKubernetesConfig `json:"configs"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
