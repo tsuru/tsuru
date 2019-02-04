@@ -1177,6 +1177,78 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	})
 }
 
+func (s *S) TestDeployWithCustomConfig(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+		"kubernetes": map[string]interface{}{
+			"groups": map[string]interface{}{
+				"pod1": map[string]interface{}{
+					"web": map[string]interface{}{
+						"ports": []interface{}{
+							map[string]interface{}{
+								"port": 9000,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	containers := deps.Items[0].Spec.Template.Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
+	})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 1)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		Configs: &provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"pod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"web": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{Port: 9000},
+						},
+					},
+				},
+			},
+		},
+	})
+}
+
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	srv, wg := s.mock.CreateDeployReadyServer(c)
 	s.mock.MockfakeNodes(c, srv.URL)

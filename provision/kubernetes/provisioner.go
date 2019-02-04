@@ -1313,6 +1313,10 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
+	yamlData, err := image.GetImageTsuruYamlData(curImg)
+	if err != nil {
+		return err
+	}
 	currentImageData, err := image.GetImageMetaData(curImg)
 	if err != nil {
 		return err
@@ -1334,6 +1338,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
 	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
+	appCRD.Spec.Configs = yamlData.Kubernetes
 	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }

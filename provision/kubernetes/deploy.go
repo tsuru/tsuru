@@ -535,7 +535,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 		return nil, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
-	if process == webProcessName {
+	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
 		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
