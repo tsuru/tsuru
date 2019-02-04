@@ -36,6 +36,7 @@ var fontEffects = map[string]int{
 func init() {
 	tablecli.TableConfig.BreakOnAny = os.Getenv("TSURU_BREAK_ANY") != ""
 	tablecli.TableConfig.ForceWrap = os.Getenv("TSURU_FORCE_WRAP") != ""
+	tablecli.TableConfig.UseTabWriter = os.Getenv("TSURU_TAB_WRITER") != ""
 }
 
 func Colorfy(msg string, fontcolor string, background string, effect string) string {
