@@ -103,3 +103,6 @@ Adding new nodes is possible using normal tsuru workflow described in
 create a Node resource using the Kubernetes API and will assume that the new
 node already has a kubelet process running on it and that it's accessible to
 the Kubernetes API server.
+
+Tsuru supports some Kubernetes-specific configurations, check
+:doc:`tsuru.yaml docs </using/tsuru.yaml>` for more details.
