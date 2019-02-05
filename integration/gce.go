@@ -14,7 +14,11 @@ import (
 type GceClusterManager struct{}
 
 func newClusterName() string {
-	return fmt.Sprintf("integration-test-gce-%d", randInt())
+	name := fmt.Sprintf("integration-test-gce-%d", randInt())
+	if len(name) > 30 {
+		name = name[:30]
+	}
+	return name
 }
 
 func randInt() int {
