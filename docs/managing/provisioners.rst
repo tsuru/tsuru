@@ -80,7 +80,7 @@ intercommunication directly between containers.
 Node containers, e.g big-sibling, are also created as Swarm services with mode
 set to ``Global``, which ensures they run every node.
 
-kubernetes provisioner
+Kubernetes provisioner
 ----------------------
 
 The ``kubernetes`` provisioner uses `Kubernetes <https://kubernetes.io/>`_ to
@@ -106,3 +106,11 @@ the Kubernetes API server.
 
 Tsuru supports some Kubernetes-specific configurations, check
 :doc:`tsuru.yaml docs </using/tsuru.yaml>` for more details.
+
+Kubernetes compatibility
+========================
+
+These are the Kubernetes versions that were tested with each tsuru release:
+
+* tsuru <=1.6.2: kubernetes 1.8.x to 1.10.x
+* tsuru >=1.7.0: kubernetes 1.10.x to 1.12.x
