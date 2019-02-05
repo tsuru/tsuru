@@ -11,9 +11,10 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-func toHealthConfig(meta provision.TsuruYamlData, port int) *container.HealthConfig {
+func toHealthConfig(meta provTypes.TsuruYamlData, port int) *container.HealthConfig {
 	hc := meta.Healthcheck
 	var (
 		path            string

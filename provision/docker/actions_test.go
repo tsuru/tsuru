@@ -26,9 +26,9 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 

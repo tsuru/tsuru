@@ -669,7 +669,7 @@ func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
-		"healthcheck": provision.TsuruYamlHealthcheck{
+		"healthcheck": provTypes.TsuruYamlHealthcheck{
 			Path: "/hc",
 		},
 	})

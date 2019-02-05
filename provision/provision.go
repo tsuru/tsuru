@@ -19,8 +19,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 const (
@@ -289,7 +289,7 @@ type ExecDockerClient interface {
 type BuilderKubeClient interface {
 	BuildPod(App, *event.Event, io.Reader, string) (string, error)
 	BuildImage(name, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error
-	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *TsuruYamlData, error)
+	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *provTypes.TsuruYamlData, error)
 	DownloadFromContainer(App, string) (io.ReadCloser, error)
 }
 
@@ -671,67 +671,6 @@ func (e *Error) Error() string {
 		err = e.Reason
 	}
 	return err
-}
-
-type TsuruYamlData struct {
-	Hooks       *TsuruYamlHooks            `json:"hooks,omitempty" bson:",omitempty"`
-	Healthcheck *TsuruYamlHealthcheck      `json:"healthcheck,omitempty" bson:",omitempty"`
-	Kubernetes  *TsuruYamlKubernetesConfig `json:"kubernetes,omitempty" bson:",omitempty"`
-}
-
-type TsuruYamlHooks struct {
-	Restart TsuruYamlRestartHooks `json:"restart" bson:",omitempty"`
-	Build   []string              `json:"build" bson:",omitempty"`
-}
-
-type TsuruYamlRestartHooks struct {
-	Before []string `json:"before" bson:",omitempty"`
-	After  []string `json:"after" bson:",omitempty"`
-}
-
-type TsuruYamlHealthcheck struct {
-	Path            string `json:"path"`
-	Method          string `json:"method"`
-	Status          int    `json:"status"`
-	Scheme          string `json:"scheme"`
-	Match           string `json:"match,omitempty" bson:",omitempty"`
-	RouterBody      string `json:"router_body,omitempty" yaml:"router_body" bson:"router_body,omitempty"`
-	UseInRouter     bool   `json:"use_in_router,omitempty" yaml:"use_in_router" bson:"use_in_router,omitempty"`
-	ForceRestart    bool   `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
-	AllowedFailures int    `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
-	IntervalSeconds int    `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
-	TimeoutSeconds  int    `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
-}
-
-type TsuruYamlKubernetesConfig struct {
-	Groups map[string]TsuruYamlKubernetesGroup `json:"groups,omitempty"`
-}
-
-type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesProcessConfig
-
-type TsuruYamlKubernetesProcessConfig struct {
-	Ports []TsuruYamlKubernetesProcessPortConfig `json:"ports"`
-}
-
-type TsuruYamlKubernetesProcessPortConfig struct {
-	Name       string `json:"name,omitempty"`
-	Protocol   string `json:"protocol,omitempty"`
-	Port       int    `json:"port,omitempty"`
-	TargetPort int    `json:"target_port,omitempty"`
-}
-
-func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
-	hc := y.Healthcheck
-	if hc == nil || !hc.UseInRouter {
-		return router.HealthcheckData{
-			Path: "/",
-		}
-	}
-	return router.HealthcheckData{
-		Path:   hc.Path,
-		Status: hc.Status,
-		Body:   hc.RouterBody,
-	}
 }
 
 type ErrUnitStartup struct {

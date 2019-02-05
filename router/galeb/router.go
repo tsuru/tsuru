@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 var _ router.AsyncRouter = &galebRouter{}
@@ -508,7 +509,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	return multiErr.ToError()
 }
 
-func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) (err error) {
+func (r *galebRouter) SetHealthcheck(name string, data routerTypes.HealthcheckData) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

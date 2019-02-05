@@ -12,9 +12,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -251,7 +251,7 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 	changes, err := rebuild.RebuildRoutes(&a, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {}})
-	expected := router.HealthcheckData{
+	expected := routerTypes.HealthcheckData{
 		Path:   "/healthcheck",
 		Status: 302,
 	}

@@ -21,6 +21,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -336,7 +337,7 @@ func (s *S) TestGetCertificateNotFound(c *check.C) {
 
 func (s *S) TestSetHealthcheck(c *check.C) {
 	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
-	hc := router.HealthcheckData{Path: "/", Status: 200}
+	hc := routerTypes.HealthcheckData{Path: "/", Status: 200}
 	err := hcRouter.SetHealthcheck("mybackend", hc)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.apiRouter.backends["mybackend"].healthcheck, check.DeepEquals, hc)
@@ -344,7 +345,7 @@ func (s *S) TestSetHealthcheck(c *check.C) {
 
 func (s *S) TestHealcheckBackendNotFound(c *check.C) {
 	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
-	hc := router.HealthcheckData{Path: "/", Status: 200}
+	hc := routerTypes.HealthcheckData{Path: "/", Status: 200}
 	err := hcRouter.SetHealthcheck("invalid", hc)
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
 }
@@ -447,7 +448,7 @@ type backend struct {
 	cnames      []string
 	swapWith    string
 	cnameOnly   bool
-	healthcheck router.HealthcheckData
+	healthcheck routerTypes.HealthcheckData
 	opts        map[string]interface{}
 }
 
@@ -737,7 +738,7 @@ func (f *fakeRouterAPI) setHealthcheck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	hc := router.HealthcheckData{}
+	hc := routerTypes.HealthcheckData{}
 	json.NewDecoder(r.Body).Decode(&hc)
 	b.healthcheck = hc
 }

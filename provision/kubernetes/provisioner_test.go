@@ -1235,11 +1235,11 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
 		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
-		Configs: &provision.TsuruYamlKubernetesConfig{
-			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"pod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+		Configs: &provTypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 9000},
 						},
 					},
@@ -2283,39 +2283,39 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 			"proc5": "python worker.py",
 			"proc6": "python proc6.py",
 		},
-		"kubernetes": provision.TsuruYamlKubernetesConfig{
-			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc1": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8080},
 							{Port: 9000},
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc2": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8000},
 						},
 					},
 				},
-				"mypod3": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod3": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc3": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8000, TargetPort: 8080},
 						},
 					},
 				},
-				"mypod5": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod5": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc5": {},
 					"proc6": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{Port: 8000},
 						},
 					},
 				},
-				"mypod6": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod6": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc6": {},
 				},
 			},

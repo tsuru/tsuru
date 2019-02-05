@@ -10,7 +10,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 

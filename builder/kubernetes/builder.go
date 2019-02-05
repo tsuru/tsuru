@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var _ builder.Builder = &kubernetesBuilder{}
@@ -100,7 +101,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	return newImage, nil
 }
 
-func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{} {
+func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{} {
 	if yaml == nil {
 		return nil
 	}

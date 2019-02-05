@@ -47,6 +47,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/validation"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -2513,14 +2514,14 @@ func RenameTeam(oldName, newName string) error {
 	return err
 }
 
-func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
+func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
 	imageName, err := image.AppCurrentImageName(app.Name)
 	if err != nil {
-		return router.HealthcheckData{}, err
+		return routerTypes.HealthcheckData{}, err
 	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil || yamlData.Healthcheck == nil {
-		return router.HealthcheckData{}, err
+		return routerTypes.HealthcheckData{}, err
 	}
 	return yamlData.ToRouterHC(), nil
 }

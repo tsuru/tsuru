@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruRedis "github.com/tsuru/tsuru/redis"
 	"github.com/tsuru/tsuru/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	redis "gopkg.in/redis.v3"
 )
 
@@ -537,7 +538,7 @@ func (r *hipacheRouter) StartupMessage() (string, error) {
 	return fmt.Sprintf("hipache router %q with redis at %q.", domain, "TODO"), nil
 }
 
-func (r *hipacheRouter) SetHealthcheck(name string, data router.HealthcheckData) (err error) {
+func (r *hipacheRouter) SetHealthcheck(name string, data routerTypes.HealthcheckData) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 const defaultCollection = "docker"
@@ -34,8 +35,8 @@ type ImageNotFoundErr struct {
 }
 
 type customData struct {
-	Hooks       *provision.TsuruYamlHooks       `bson:",omitempty"`
-	Healthcheck *provision.TsuruYamlHealthcheck `bson:",omitempty"`
+	Hooks       *provTypes.TsuruYamlHooks       `bson:",omitempty"`
+	Healthcheck *provTypes.TsuruYamlHealthcheck `bson:",omitempty"`
 	Kubernetes  *tsuruYamlKubernetesConfig      `bson:",omitempty"`
 }
 
@@ -256,18 +257,18 @@ func AllAppProcesses(appName string) ([]string, error) {
 	return processes, nil
 }
 
-func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
+func GetImageTsuruYamlData(imageName string) (provTypes.TsuruYamlData, error) {
 	var data struct {
 		Customdata map[string]interface{}
 	}
 	coll, err := ImageCustomDataColl()
 	if err != nil {
-		return provision.TsuruYamlData{}, err
+		return provTypes.TsuruYamlData{}, err
 	}
 	defer coll.Close()
 	err = coll.FindId(imageName).One(&data)
 	if err == mgo.ErrNotFound {
-		return provision.TsuruYamlData{}, nil
+		return provTypes.TsuruYamlData{}, nil
 	}
 	return unmarshalYamlData(data.Customdata)
 }
@@ -280,7 +281,7 @@ func marshalCustomData(data map[string]interface{}) (map[string]interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	var yamlData provision.TsuruYamlData
+	var yamlData provTypes.TsuruYamlData
 	err = json.Unmarshal(b, &yamlData)
 	if err != nil {
 		return nil, err
@@ -345,21 +346,21 @@ func unmarshalCustomData(data map[string]interface{}) (map[string]interface{}, e
 	return result, nil
 }
 
-func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, error) {
+func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, error) {
 	if data == nil {
-		return provision.TsuruYamlData{}, nil
+		return provTypes.TsuruYamlData{}, nil
 	}
 	b, err := json.Marshal(data)
 	if err != nil {
-		return provision.TsuruYamlData{}, err
+		return provTypes.TsuruYamlData{}, err
 	}
 	custom := customData{}
 	err = json.Unmarshal(b, &custom)
 	if err != nil {
-		return provision.TsuruYamlData{}, err
+		return provTypes.TsuruYamlData{}, err
 	}
 
-	result := provision.TsuruYamlData{
+	result := provTypes.TsuruYamlData{
 		Hooks:       custom.Hooks,
 		Healthcheck: custom.Healthcheck,
 	}
@@ -367,19 +368,19 @@ func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, er
 		return result, nil
 	}
 
-	result.Kubernetes = &provision.TsuruYamlKubernetesConfig{}
+	result.Kubernetes = &provTypes.TsuruYamlKubernetesConfig{}
 	for _, g := range custom.Kubernetes.Groups {
-		group := provision.TsuruYamlKubernetesGroup{}
+		group := provTypes.TsuruYamlKubernetesGroup{}
 		for _, proc := range g.Processes {
-			group[proc.Name] = provision.TsuruYamlKubernetesProcessConfig{
-				Ports: make([]provision.TsuruYamlKubernetesProcessPortConfig, len(proc.Ports)),
+			group[proc.Name] = provTypes.TsuruYamlKubernetesProcessConfig{
+				Ports: make([]provTypes.TsuruYamlKubernetesProcessPortConfig, len(proc.Ports)),
 			}
 			for i, port := range proc.Ports {
-				group[proc.Name].Ports[i] = provision.TsuruYamlKubernetesProcessPortConfig(port)
+				group[proc.Name].Ports[i] = provTypes.TsuruYamlKubernetesProcessPortConfig(port)
 			}
 		}
 		if result.Kubernetes.Groups == nil {
-			result.Kubernetes.Groups = map[string]provision.TsuruYamlKubernetesGroup{
+			result.Kubernetes.Groups = map[string]provTypes.TsuruYamlKubernetesGroup{
 				g.Name: group,
 			}
 		} else {

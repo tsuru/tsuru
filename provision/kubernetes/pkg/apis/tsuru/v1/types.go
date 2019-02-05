@@ -5,7 +5,7 @@
 package v1
 
 import (
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/types/provision"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

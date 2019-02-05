@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 type RebuildRoutesResult struct {
@@ -22,7 +23,7 @@ type RebuildApp interface {
 	router.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
-	GetHealthcheckData() (router.HealthcheckData, error)
+	GetHealthcheckData() (routerTypes.HealthcheckData, error)
 	RoutableAddresses() ([]url.URL, error)
 	InternalLock(string) (bool, error)
 	Unlock()

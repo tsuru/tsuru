@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/safe"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -625,14 +626,14 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	tests := []struct {
-		hc                provision.TsuruYamlHealthcheck
+		hc                provTypes.TsuruYamlHealthcheck
 		expectedLiveness  *apiv1.Probe
 		expectedReadiness *apiv1.Probe
 		expectedLifecycle *apiv1.Lifecycle
 	}{
 		{},
 		{
-			hc: provision.TsuruYamlHealthcheck{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:           "/hc",
 				TimeoutSeconds: 10,
 			},
@@ -651,7 +652,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 		{
-			hc: provision.TsuruYamlHealthcheck{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
 				AllowedFailures: 2,
@@ -672,7 +673,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 		{
-			hc: provision.TsuruYamlHealthcheck{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:        "/hc",
 				Scheme:      "https",
 				UseInRouter: true,
@@ -691,7 +692,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 		{
-			hc: provision.TsuruYamlHealthcheck{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
 				UseInRouter:     true,
@@ -713,7 +714,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 		{
-			hc: provision.TsuruYamlHealthcheck{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
 				UseInRouter:     true,
@@ -791,8 +792,8 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 			"web": "proc1",
 			"p2":  "proc2",
 		},
-		"hooks": provision.TsuruYamlHooks{
-			Restart: provision.TsuruYamlRestartHooks{
+		"hooks": provTypes.TsuruYamlHooks{
+			Restart: provTypes.TsuruYamlRestartHooks{
 				Before: []string{"before cmd1", "before cmd2"},
 				After:  []string{"after cmd1", "after cmd2"},
 			},
@@ -840,11 +841,11 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 			"web": "proc1",
 			"p2":  "proc2",
 		},
-		"kubernetes": provision.TsuruYamlKubernetesConfig{
-			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{
 								Name:       "port1",
 								Protocol:   "UDP",
@@ -861,9 +862,9 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"p2": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{Name: "myport"},
 						},
 					},
@@ -948,18 +949,18 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 		"processes": map[string]interface{}{
 			"web": "proc1",
 		},
-		"kubernetes": provision.TsuruYamlKubernetesConfig{
-			Groups: map[string]provision.TsuruYamlKubernetesGroup{
-				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{TargetPort: 8080},
 						},
 					},
 				},
-				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
+				"mypod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"web": {
-						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
 							{Name: "myport"},
 						},
 					},
@@ -1257,7 +1258,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 			"web": "cm1",
 			"p2":  "cmd2",
 		},
-		"healthcheck": provision.TsuruYamlHealthcheck{
+		"healthcheck": provTypes.TsuruYamlHealthcheck{
 			Path:        "/hc",
 			Method:      "POST",
 			UseInRouter: true,

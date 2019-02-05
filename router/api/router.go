@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 //go:generate bash -c "rm -f routeriface.go && go run ./generator/combinations.go -o routeriface.go"
@@ -442,7 +443,7 @@ func (r *apiRouterWithTLSSupport) GetCertificate(app router.App, cname string) (
 	return "", err
 }
 
-func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data router.HealthcheckData) error {
+func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data routerTypes.HealthcheckData) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err

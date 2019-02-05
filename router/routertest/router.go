@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 var FakeRouter = newFakeRouter()
@@ -75,7 +76,7 @@ func createStatusRouter(name, prefix string) (router.Router, error) {
 }
 
 func newFakeRouter() fakeRouter {
-	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool), healthcheck: make(map[string]router.HealthcheckData), mutex: &sync.Mutex{}}
+	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool), healthcheck: make(map[string]routerTypes.HealthcheckData), mutex: &sync.Mutex{}}
 }
 
 type fakeRouter struct {
@@ -83,7 +84,7 @@ type fakeRouter struct {
 	backendAddrs map[string]string
 	cnames       map[string]string
 	failuresByIp map[string]bool
-	healthcheck  map[string]router.HealthcheckData
+	healthcheck  map[string]routerTypes.HealthcheckData
 	mutex        *sync.Mutex
 }
 
@@ -113,7 +114,7 @@ func (r *fakeRouter) RemoveFailForIp(ip string) {
 	delete(r.failuresByIp, ip)
 }
 
-func (r *fakeRouter) GetHealthcheck(name string) router.HealthcheckData {
+func (r *fakeRouter) GetHealthcheck(name string) routerTypes.HealthcheckData {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	return r.healthcheck[name]
@@ -354,7 +355,7 @@ func (r *fakeRouter) Reset() {
 	r.backends = make(map[string][]string)
 	r.failuresByIp = make(map[string]bool)
 	r.cnames = make(map[string]string)
-	r.healthcheck = make(map[string]router.HealthcheckData)
+	r.healthcheck = make(map[string]routerTypes.HealthcheckData)
 }
 
 func (r *fakeRouter) Routes(name string) ([]*url.URL, error) {
@@ -399,7 +400,7 @@ func (r *hcRouter) Addr(name string) (string, error) {
 	return strings.Replace(addr, ".fakerouter.com", ".fakehcrouter.com", -1), nil
 }
 
-func (r *fakeRouter) SetHealthcheck(name string, data router.HealthcheckData) error {
+func (r *fakeRouter) SetHealthcheck(name string, data routerTypes.HealthcheckData) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
