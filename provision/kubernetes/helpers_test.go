@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	check "gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -424,14 +424,14 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
+	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: ns,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
+	_, err = s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -449,20 +449,20 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cleanupDeployment(s.clusterClient, a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
 	ns := "tsuru_pool"
-	_, err := s.client.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
+	_, err := s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -486,20 +486,20 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 		LabelSelector: "a=x",
 	}, ns)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1beta2().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
 	ns := s.client.PoolNamespace("pool")
-	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
+	_, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: ns,
@@ -522,7 +522,7 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cleanupDaemonSet(s.clusterClient, "bs", "p1")
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})

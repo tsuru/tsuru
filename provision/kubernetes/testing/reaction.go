@@ -29,7 +29,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -510,7 +510,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			return RunReactionsAfter(&s.client.Fake, action)
 		}
 		wg.Add(1)
-		dep := action.(ktesting.CreateAction).GetObject().(*v1beta2.Deployment)
+		dep := action.(ktesting.CreateAction).GetObject().(*appsv1.Deployment)
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
 			specReplicas = *dep.Spec.Replicas

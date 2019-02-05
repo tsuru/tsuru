@@ -273,7 +273,7 @@ func (p *kubernetesProvisioner) removeResources(client *ClusterClient, app *tsur
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, d := range app.Spec.Deployments {
 		for _, dd := range d {
-			err := client.AppsV1beta2().Deployments(app.Spec.NamespaceName).Delete(dd, &metav1.DeleteOptions{
+			err := client.AppsV1().Deployments(app.Spec.NamespaceName).Delete(dd, &metav1.DeleteOptions{
 				PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 			})
 			if err != nil && !k8sErrors.IsNotFound(err) {
