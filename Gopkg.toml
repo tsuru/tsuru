@@ -1,5 +1,5 @@
 # This are used by /hack/update-codegen.sh
-required = [  
+required = [
   "k8s.io/code-generator/cmd/defaulter-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/conversion-gen",
@@ -80,9 +80,6 @@ required = [
 [[constraint]]
   name = "github.com/digitalocean/godo"
   revision = "dfa802149cae7e4b8eb8bdd7cbbf619dab60bea4"
-[[constraint]]
-  name = "github.com/prometheus/client_golang"
-  revision = "7993aa4cbec0531b926db082b0d589ad2e4d5e33"
 [[constraint]]
   name = "github.com/tsuru/gandalf"
   branch = "master"
