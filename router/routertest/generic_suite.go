@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -729,7 +730,7 @@ func (s *RouterSuite) TestSetHealthcheck(c *check.C) {
 	}
 	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
 	c.Assert(err, check.IsNil)
-	hcData := router.HealthcheckData{
+	hcData := routerTypes.HealthcheckData{
 		Path:   "/",
 		Status: 200,
 		Body:   "WORKING",

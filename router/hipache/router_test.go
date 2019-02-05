@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/redis"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -209,7 +210,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
-	hcData := router.HealthcheckData{
+	hcData := routerTypes.HealthcheckData{
 		Path:   "/",
 		Status: 200,
 		Body:   "WORKING",

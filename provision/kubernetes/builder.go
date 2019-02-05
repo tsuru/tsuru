@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -66,7 +67,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	return buildingImage, nil
 }
 
-func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provision.TsuruYamlData, error) {
+func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provTypes.TsuruYamlData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, "", nil, err

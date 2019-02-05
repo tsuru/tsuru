@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/types/router"
 )
 
 type routerFactory func(routerName, configPrefix string) (Router, error)
@@ -148,7 +149,7 @@ type MessageRouter interface {
 }
 
 type CustomHealthcheckRouter interface {
-	SetHealthcheck(name string, data HealthcheckData) error
+	SetHealthcheck(name string, data router.HealthcheckData) error
 }
 
 type HealthChecker interface {
@@ -188,12 +189,6 @@ var (
 
 type StatusRouter interface {
 	GetBackendStatus(name string) (status BackendStatus, detail string, err error)
-}
-
-type HealthcheckData struct {
-	Path   string
-	Status int
-	Body   string
 }
 
 type RouterError struct {

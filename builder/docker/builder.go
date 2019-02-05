@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -193,7 +194,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 	return newImage, nil
 }
 
-func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provision.TsuruYamlData, string, error) {
+func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provTypes.TsuruYamlData, string, error) {
 	path := defaultArchivePath + "/current"
 	cmd := fmt.Sprintf("(cat %[1]s/tsuru.yml || cat %[1]s/tsuru.yaml || cat %[1]s/app.yml || cat %[1]s/app.yaml || true) 2>/dev/null", path)
 	var buf bytes.Buffer
@@ -201,7 +202,7 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	if err != nil {
 		return nil, containerID, err
 	}
-	var tsuruYamlData provision.TsuruYamlData
+	var tsuruYamlData provTypes.TsuruYamlData
 	err = yaml.Unmarshal(buf.Bytes(), &tsuruYamlData)
 	if err != nil {
 		return nil, containerID, err
@@ -209,7 +210,7 @@ func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imag
 	return &tsuruYamlData, containerID, err
 }
 
-func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{} {
+func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{} {
 	if yaml == nil {
 		return nil
 	}
@@ -220,7 +221,7 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 	}
 }
 
-func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provision.TsuruYamlData) (string, error) {
+func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provTypes.TsuruYamlData) (string, error) {
 	if tsuruYamlData == nil || tsuruYamlData.Hooks == nil || len(tsuruYamlData.Hooks.Build) == 0 {
 		return "", nil
 	}

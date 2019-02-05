@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 const (
@@ -275,7 +276,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		var yamlData provision.TsuruYamlData
+		var yamlData provTypes.TsuruYamlData
 		yamlData, err = image.GetImageTsuruYamlData(opts.image)
 		if err != nil {
 			return nil, errors.WithStack(err)
