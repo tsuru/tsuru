@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -509,7 +509,7 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -608,17 +608,17 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 		containerPorts[i].ContainerPort = int32(portInt)
 	}
 
-	deployment := v1beta2.Deployment{
+	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
 			Namespace:   ns,
 			Labels:      expandedLabels,
 			Annotations: annotations.ToLabels(),
 		},
-		Spec: v1beta2.DeploymentSpec{
-			Strategy: v1beta2.DeploymentStrategy{
-				Type: v1beta2.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &v1beta2.RollingUpdateDeployment{
+		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
 					MaxSurge:       &maxSurge,
 					MaxUnavailable: &maxUnavailable,
 				},
@@ -664,11 +664,11 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 			},
 		},
 	}
-	var newDep *v1beta2.Deployment
+	var newDep *appsv1.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.AppsV1beta2().Deployments(ns).Create(&deployment)
+		newDep, err = client.AppsV1().Deployments(ns).Create(&deployment)
 	} else {
-		newDep, err = client.AppsV1beta2().Deployments(ns).Update(&deployment)
+		newDep, err = client.AppsV1().Deployments(ns).Update(&deployment)
 	}
 	return newDep, labels, annotations, errors.WithStack(err)
 }
@@ -722,7 +722,7 @@ func deploymentLabels(client *ClusterClient, a provision.App, process string) (*
 	if err != nil {
 		return nil, err
 	}
-	dep, err := client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	dep, err := client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -784,7 +784,7 @@ func listOptsForPodEvent(podName string) metav1.ListOptions {
 	}
 }
 
-func isDeploymentEvent(msg watch.Event, dep *v1beta2.Deployment) bool {
+func isDeploymentEvent(msg watch.Event, dep *appsv1.Deployment) bool {
 	evt, ok := msg.Object.(*apiv1.Event)
 	return ok && strings.HasPrefix(evt.Name, dep.Name)
 }
@@ -810,7 +810,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
 	ns, err := client.AppNamespace(a)
 	if err != nil {
@@ -832,7 +832,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return revision, err
 		}
@@ -862,7 +862,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	for {
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
-			if c.Type == v1beta2.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
+			if c.Type == appsv1.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
 				return revision, errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
 			}
 		}
@@ -909,7 +909,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		case <-ctx.Done():
 			return revision, ctx.Err()
 		}
-		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return revision, err
 		}
@@ -936,7 +936,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	oldDep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -966,11 +966,11 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			oldDep.Generation = 0
 			oldDep.ResourceVersion = ""
 			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-			_, rollbackErr = m.client.AppsV1beta2().Deployments(ns).Update(oldDep)
+			_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(oldDep)
 		} else if oldDep == nil && newDep != nil {
 			// We have just created the deployment, so we need to remove it
 			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n ---> %s <---\n", err)
-			rollbackErr = m.client.AppsV1beta2().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
+			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{

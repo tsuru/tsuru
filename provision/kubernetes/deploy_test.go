@@ -32,7 +32,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -77,7 +77,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -114,21 +114,21 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	}
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(dep, check.DeepEquals, &v1beta2.Deployment{
+	c.Assert(dep, check.DeepEquals, &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
 			Namespace:   nsName,
 			Labels:      depLabels,
 			Annotations: annotations,
 		},
-		Status: v1beta2.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
 			Replicas:        1,
 		},
-		Spec: v1beta2.DeploymentSpec{
-			Strategy: v1beta2.DeploymentStrategy{
-				Type: v1beta2.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &v1beta2.RollingUpdateDeployment{
+		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
 					MaxSurge:       &maxSurge,
 					MaxUnavailable: &maxUnavailable,
 				},
@@ -496,13 +496,13 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	tests := []struct {
 		states []servicecommon.ProcessState
-		fn     func(dep *v1beta2.Deployment)
+		fn     func(dep *appsv1.Deployment)
 	}{
 		{
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 1},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(2))
 			},
 		},
@@ -510,7 +510,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.AppReplicas(), check.Equals, 3)
@@ -521,7 +521,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Sleep: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
@@ -530,7 +530,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
@@ -540,7 +540,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Sleep: true}, {Start: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
@@ -549,7 +549,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
@@ -559,7 +559,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Sleep: true}, {Restart: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
@@ -568,7 +568,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.AppReplicas(), check.Equals, 3)
@@ -579,7 +579,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Sleep: true}, {},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
@@ -588,7 +588,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			states: []servicecommon.ProcessState{
 				{Start: true}, {Restart: true}, {Restart: true},
 			},
-			fn: func(dep *v1beta2.Deployment) {
+			fn: func(dep *appsv1.Deployment) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.Restarts(), check.Equals, 2)
@@ -603,10 +603,10 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			c.Assert(err, check.IsNil)
 			waitDep()
 		}
-		var dep *v1beta2.Deployment
+		var dep *appsv1.Deployment
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
-		dep, err = s.client.Clientset.AppsV1beta2().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
@@ -766,12 +766,12 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		waitDep()
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
-		dep, err := s.client.Clientset.AppsV1beta2().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
+		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, tt.expectedReadiness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, tt.expectedLiveness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLifecycle)
-		dep, err = s.client.Clientset.AppsV1beta2().Deployments(nsName).Get("myapp-p2", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p2", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.IsNil)
@@ -807,7 +807,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
 		PostStart: &apiv1.Handler{
@@ -820,7 +820,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd := dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc1$`)
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, expectedLifecycle)
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
@@ -881,14 +881,14 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8080},
 		{ContainerPort: 9000},
 		{ContainerPort: 8001},
 	})
-	dep, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8888},
@@ -1000,7 +1000,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "registry-myreg.com"},
@@ -1058,14 +1058,14 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		dep := obj.(*v1beta2.Deployment)
+		dep := obj.(*appsv1.Deployment)
 		dep.Status.UnavailableReplicas = 1
 		depCopy := *dep
 		go func() {
 			<-watchCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
-			s.client.AppsV1beta2().Deployments(ns).Update(&depCopy)
+			s.client.AppsV1().Deployments(ns).Update(&depCopy)
 		}()
 		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
@@ -1086,7 +1086,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	waitDep()
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
@@ -1125,7 +1125,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	deployCreated := make(chan struct{})
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		if dep, ok := obj.(*v1beta2.Deployment); ok {
+		if dep, ok := obj.(*appsv1.Deployment); ok {
 			rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 			rev++
 			dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
@@ -1146,7 +1146,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? DELETING CREATED DEPLOYMENT AFTER FAILURE .*? ---> context canceled <---.*`)
 	c.Assert(deleteCalled, check.DeepEquals, true)
@@ -1183,7 +1183,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	deployCreated := make(chan struct{})
 	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		if dep, ok := obj.(*v1beta2.Deployment); ok {
+		if dep, ok := obj.(*appsv1.Deployment); ok {
 			rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 			rev++
 			dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
@@ -1204,7 +1204,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*? ---> context canceled <---.*`)
 }
@@ -1237,10 +1237,10 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep, check.NotNil)
-	daemon, err := s.client.Clientset.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.Clientset.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon, check.NotNil)
 }
@@ -1292,7 +1292,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &apiv1.PodSecurityContext{
@@ -1321,7 +1321,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
@@ -1356,7 +1356,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
@@ -1393,7 +1393,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
@@ -1973,7 +1973,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1beta2().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -2026,7 +2026,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 			rollbackObj = obj.(*extensions.DeploymentRollback)
 			return true, rollbackObj, nil
 		}
-		dep := obj.(*v1beta2.Deployment)
+		dep := obj.(*appsv1.Deployment)
 		dep.Status.UnavailableReplicas = 2
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
@@ -2104,7 +2104,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			rollbackObj = obj.(*extensions.DeploymentRollback)
 			return true, rollbackObj, nil
 		}
-		dep := obj.(*v1beta2.Deployment)
+		dep := obj.(*appsv1.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
 		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
@@ -2114,7 +2114,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -2202,7 +2202,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	})
 	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		dep := obj.(*v1beta2.Deployment)
+		dep := obj.(*appsv1.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
 		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
@@ -2215,7 +2215,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		go func() {
 			ns, nsErr := s.client.AppNamespace(a)
 			c.Assert(nsErr, check.IsNil)
-			_, repErr := s.client.Clientset.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -2270,11 +2270,11 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1beta2().Deployments(ns).Create(&v1beta2.Deployment{
+	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-p1",
 		},
-		Spec: v1beta2.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{},
 			},
@@ -2290,7 +2290,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 			rollbackCalled = true
 			return testing.RunReactionsAfter(&s.client.Fake, action)
 		}
-		dep := obj.(*v1beta2.Deployment)
+		dep := obj.(*appsv1.Deployment)
 		dep.Status.UnavailableReplicas = 2
 		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
@@ -2345,7 +2345,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	}
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1beta2().ReplicaSets(ns).Create(&v1beta2.ReplicaSet{
+	_, err = s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -2363,7 +2363,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	srvs, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
@@ -2372,7 +2372,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Clientset.AppsV1beta2().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.Clientset.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
@@ -2400,7 +2400,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	srvs, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})

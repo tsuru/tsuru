@@ -37,7 +37,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -975,7 +975,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	services, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
@@ -1082,7 +1082,7 @@ func (s *S) TestDeploy(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1274,7 +1274,7 @@ func (s *S) TestRollback(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1363,13 +1363,13 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
 
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("")).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(s.client.PoolNamespace("")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("p1")).List(metav1.ListOptions{})
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p1")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
 }
@@ -1379,7 +1379,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
 	ns := s.client.PoolNamespace("p1")
-	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
+	_, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: ns,
@@ -1402,7 +1402,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
