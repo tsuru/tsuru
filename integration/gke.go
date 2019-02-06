@@ -11,14 +11,14 @@ import (
 	"time"
 )
 
-type GceClusterManager struct {
+type GKEClusterManager struct {
 	name string
 }
 
 func newClusterName() string {
-	name := fmt.Sprintf("integration-test-gce-%d", randInt())
-	if len(name) > 30 {
-		name = name[:30]
+	name := fmt.Sprintf("igke-%d", randInt())
+	if len(name) > 10 {
+		name = name[:10]
 	}
 	return name
 }
@@ -28,26 +28,26 @@ func randInt() int {
 	return rand.Int()
 }
 
-func (g *GceClusterManager) Name() string {
+func (g *GKEClusterManager) Name() string {
 	if g.name == "" {
 		g.name = newClusterName()
 	}
 	return g.name
 }
 
-func (g *GceClusterManager) Provisioner() string {
+func (g *GKEClusterManager) Provisioner() string {
 	return "kubernetes"
 }
 
-func (g *GceClusterManager) Start() *Result {
+func (g *GKEClusterManager) Start() *Result {
 	return &Result{}
 }
 
-func (g *GceClusterManager) Delete() *Result {
+func (g *GKEClusterManager) Delete() *Result {
 	return &Result{}
 }
 
-func (g *GceClusterManager) UpdateParams() ([]string, bool) {
+func (g *GKEClusterManager) UpdateParams() ([]string, bool) {
 	clusterParts := []string{
 		"--create-data", "driver=googlekubernetesengine",
 		"--create-data", "node-count=1",
