@@ -30,7 +30,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -87,6 +87,19 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.team = authTypes.Team{Name: "tsuruteam"}
 }
 
+func (s *S) dropAppLogCollections() {
+	logdb := s.logConn.AppLogCollection("myapp").Database
+	colls, err := logdb.CollectionNames()
+	if err != nil {
+		return
+	}
+	for _, coll := range colls {
+		if len(coll) > 5 && coll[0:5] == "logs_" {
+			logdb.C(coll).DropCollection()
+		}
+	}
+}
+
 var nativeScheme = auth.Scheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
@@ -116,7 +129,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
 	defer s.logConn.Close()
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -128,12 +141,13 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
 	queue.ResetQueue()
+	rebuild.Shutdown(context.Background())
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
 	pool.ResetCache()
-	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
@@ -145,6 +159,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.dropAppLogCollections()
 	s.createUserAndTeam(c)
 	s.defaultPlan = appTypes.Plan{
 		Name:     "default-plan",

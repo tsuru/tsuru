@@ -9,7 +9,7 @@ import (
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestConfigFileValueString(c *check.C) {

@@ -36,7 +36,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -117,7 +117,9 @@ func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.logConn.Logs("myapp").Database)
+	appLogColl := s.logConn.AppLogCollection("myapp")
+	appLogColl.DropCollection()
+	dbtest.ClearAllCollections(appLogColl.Database)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()
@@ -187,7 +189,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	logConn, err := db.LogConn()
 	c.Assert(err, check.IsNil)
 	defer logConn.Close()
-	logConn.Logs("myapp").Database.DropDatabase()
+	logConn.AppLogCollection("myapp").Database.DropDatabase()
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {

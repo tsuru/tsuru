@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestTokenCmdInfo(c *check.C) {

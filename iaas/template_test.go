@@ -7,7 +7,7 @@ package iaas
 import (
 	"sort"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestTemplateSave(c *check.C) {

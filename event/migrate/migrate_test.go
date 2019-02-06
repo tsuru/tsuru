@@ -26,7 +26,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

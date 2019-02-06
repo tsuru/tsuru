@@ -7,7 +7,7 @@ package auth
 import (
 	"github.com/globalsign/mgo/bson"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestTeamServiceCreate(c *check.C) {

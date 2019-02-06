@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCreateUser(c *check.C) {

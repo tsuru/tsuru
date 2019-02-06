@@ -26,7 +26,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruRedis "github.com/tsuru/tsuru/redis"
 	"github.com/tsuru/tsuru/router"
-	"gopkg.in/redis.v3"
+	redis "gopkg.in/redis.v3"
 )
 
 const routerType = "hipache"

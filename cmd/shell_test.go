@@ -12,7 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"golang.org/x/net/websocket"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func buildHandler(content []byte) websocket.Handler {

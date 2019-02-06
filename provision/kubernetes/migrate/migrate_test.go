@@ -15,7 +15,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	"github.com/tsuru/tsuru/types/provision"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

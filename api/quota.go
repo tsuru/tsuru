@@ -58,7 +58,6 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Limit lower than allocated value
 //   404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	email := r.URL.Query().Get(":email")
 	allowed := permission.Check(t, permission.PermUserUpdateQuota, permission.Context(permTypes.CtxUser, email))
 	if !allowed {
@@ -77,14 +76,14 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	limit, err := strconv.Atoi(r.FormValue("limit"))
+	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -133,7 +132,6 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Limit lower than allocated
 //   404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -147,14 +145,14 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	limit, err := strconv.Atoi(r.FormValue("limit"))
+	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,

@@ -39,7 +39,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type ServiceInstanceSuite struct {
@@ -150,11 +150,11 @@ func makeRequestToCreateServiceInstance(params map[string]interface{}, c *check.
 	url := fmt.Sprintf("/services/%s/instances", params["service_name"])
 	delete(params, "service_name")
 	for k, v := range params {
-		switch v.(type) {
+		switch value := v.(type) {
 		case string:
-			values.Add(k, v.(string))
+			values.Add(k, value)
 		case []string:
-			for _, str := range v.([]string) {
+			for _, str := range value {
 				values.Add(k, str)
 			}
 		}
@@ -498,11 +498,11 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 func makeRequestToUpdateServiceInstance(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
 	for k, v := range params {
-		switch v.(type) {
+		switch value := v.(type) {
 		case string:
-			values.Add(k, v.(string))
+			values.Add(k, value)
 		case []string:
-			for _, str := range v.([]string) {
+			for _, str := range value {
 				values.Add(k, str)
 			}
 		}

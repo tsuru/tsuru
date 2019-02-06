@@ -13,7 +13,7 @@ import (
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 var appflag = &gnuflag.Flag{

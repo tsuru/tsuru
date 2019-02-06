@@ -146,12 +146,15 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 		return "", err
 	}
 	imageData := image.ImageMetadata{
-		Name:       newImage,
-		Processes:  procfile,
-		CustomData: tsuruYamlToCustomData(yaml),
+		Name:         newImage,
+		Processes:    procfile,
+		CustomData:   tsuruYamlToCustomData(yaml),
+		ExposedPorts: make([]string, len(imageInspect.Config.ExposedPorts)),
 	}
+	i := 0
 	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = string(k)
+		imageData.ExposedPorts[i] = string(k)
+		i++
 	}
 	err = imageData.Save()
 	if err != nil {
@@ -218,7 +221,7 @@ func tsuruYamlToCustomData(yaml *provision.TsuruYamlData) map[string]interface{}
 }
 
 func runBuildHooks(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, tsuruYamlData *provision.TsuruYamlData) (string, error) {
-	if tsuruYamlData == nil || len(tsuruYamlData.Hooks.Build) == 0 {
+	if tsuruYamlData == nil || tsuruYamlData.Hooks == nil || len(tsuruYamlData.Hooks.Build) == 0 {
 		return "", nil
 	}
 	cmd := strings.Join(tsuruYamlData.Hooks.Build, " && ")

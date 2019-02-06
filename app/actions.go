@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -87,35 +88,66 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		conn, err := db.Conn()
+		err := createApp(app)
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		if app.Quota == (quota.Quota{}) {
-			app.Quota = quota.UnlimitedQuota
-		}
-		var limit int
-		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
-			app.Quota.Limit = limit
-		}
-		err = conn.Apps().Insert(app)
-		if mgo.IsDup(err) {
-			return nil, ErrAppAlreadyExists
-		}
-		return app, err
+		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("Could not connect to the database: %s", err)
-			return
-		}
-		defer conn.Close()
-		conn.Apps().Remove(bson.M{"name": app.Name})
+		removeApp(app)
 	},
 	MinParams: 1,
+}
+
+func createApp(app *App) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if app.Quota == (quota.Quota{}) {
+		app.Quota = quota.UnlimitedQuota
+	}
+	var limit int
+	if limit, err = config.GetInt("quota:units-per-app"); err == nil {
+		app.Quota.Limit = limit
+	}
+	err = conn.Apps().Insert(app)
+	if mgo.IsDup(err) {
+		return ErrAppAlreadyExists
+	}
+
+	logConn, err := db.LogConn()
+	if err != nil {
+		return err
+	}
+	defer logConn.Close()
+	_, err = logConn.CreateAppLogCollection(app.Name)
+	return err
+}
+
+func removeApp(app *App) error {
+	logConn, err := db.LogConn()
+	if err != nil {
+		log.Errorf("Could not connect to the log database: %s", err)
+	} else {
+		defer logConn.Close()
+		err = logConn.AppLogCollection(app.Name).DropCollection()
+		if err != nil {
+			log.Errorf("Unable to remove logs collection: %s", err)
+		}
+	}
+
+	conn, err := db.Conn()
+	if err != nil {
+		log.Errorf("Could not connect to the database: %s", err)
+		return err
+	}
+	defer conn.Close()
+	conn.Apps().Remove(bson.M{"name": app.Name})
+	return nil
 }
 
 // createAppToken generates a token for the app and saves it in the database.
@@ -476,7 +508,7 @@ var provisionAppNewProvisioner = action.Action{
 
 var provisionAppAddUnits = action.Action{
 	Name: "provision-app-add-unit",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		app, ok := ctx.Params[0].(*App)
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
@@ -494,6 +526,17 @@ var provisionAppAddUnits = action.Action{
 		for _, u := range units {
 			unitCount[u.ProcessName]++
 		}
+		routers := app.Routers
+		router := app.Router
+		app.Routers = nil
+		app.Router = ""
+		defer func() {
+			app.Routers = routers
+			app.Router = router
+			if err == nil {
+				_, err = rebuild.RebuildRoutes(app, false)
+			}
+		}()
 		for process, count := range unitCount {
 			err = app.AddUnits(count, process, w)
 			if err != nil {
@@ -503,6 +546,8 @@ var provisionAppAddUnits = action.Action{
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		rebuild.RoutesRebuildOrEnqueue(app.Name)
 	},
 }
 

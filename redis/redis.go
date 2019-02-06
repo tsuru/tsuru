@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
-	"gopkg.in/redis.v3"
+	redis "gopkg.in/redis.v3"
 )
 
 var (

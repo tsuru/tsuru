@@ -29,7 +29,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {
@@ -180,7 +180,7 @@ func (s *S) initCluster(c *check.C, clust *provTypes.Cluster) {
 	}
 	prov, err := provision.Get(clust.Provisioner)
 	c.Assert(err, check.IsNil)
-	if clusterProv, ok := prov.(cluster.InitClusterProvisioner); ok {
+	if clusterProv, ok := prov.(cluster.ClusteredProvisioner); ok {
 		err = clusterProv.InitializeCluster(clust)
 		c.Assert(err, check.IsNil)
 	}

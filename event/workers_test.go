@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {

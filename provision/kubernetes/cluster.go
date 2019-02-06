@@ -29,15 +29,30 @@ import (
 )
 
 const (
-	namespaceClusterKey  = "namespace"
-	tokenClusterKey      = "token"
-	userClusterKey       = "username"
-	passwordClusterKey   = "password"
-	overcommitClusterKey = "overcommit-factor"
-	namespaceLabelsKey   = "namespace-labels"
+	namespaceClusterKey    = "namespace"
+	tokenClusterKey        = "token"
+	userClusterKey         = "username"
+	passwordClusterKey     = "password"
+	overcommitClusterKey   = "overcommit-factor"
+	namespaceLabelsKey     = "namespace-labels"
+	externalPolicyLocalKey = "external-policy-local"
+	routerAddressLocalKey  = "router-local"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
+)
+
+var (
+	clusterHelp = map[string]string{
+		namespaceClusterKey:    "Namespace used to create resources unless kubernetes:use-pool-namespaces config is enabled.",
+		tokenClusterKey:        "Token used to connect to the cluster,",
+		userClusterKey:         "User used to connect to the cluster.",
+		passwordClusterKey:     "Password used to connect to the cluster.",
+		overcommitClusterKey:   "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		namespaceLabelsKey:     "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
+		externalPolicyLocalKey: "Use external policy local in created services. This is not recomended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
+		routerAddressLocalKey:  "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
+	}
 )
 
 var ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
@@ -95,13 +110,16 @@ func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 		CertData: c.ClientCert,
 		KeyData:  c.ClientKey,
 	}
-	cfg.BearerToken = token
-	cfg.Username = user
-	cfg.Password = password
+	if user != "" && password != "" {
+		cfg.Username = user
+		cfg.Password = password
+	} else {
+		cfg.BearerToken = token
+	}
 	cfg.Dial = (&net.Dialer{
 		Timeout:   dialTimeout,
 		KeepAlive: tcpKeepAlive,
-	}).Dial
+	}).DialContext
 	return cfg, nil
 }
 
@@ -194,6 +212,33 @@ func (c *ClusterClient) Namespace() string {
 		return c.CustomData[namespaceClusterKey]
 	}
 	return "tsuru"
+}
+
+func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	externalPolicyLocalConf := c.configForContext(pool, externalPolicyLocalKey)
+	if externalPolicyLocalConf == "" {
+		return false, nil
+	}
+	externalPolicyLocal, err := strconv.ParseBool(externalPolicyLocalConf)
+	return externalPolicyLocal, err
+}
+
+func (c *ClusterClient) RouterAddressLocal(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	routerAddressLocalConf := c.configForContext(pool, routerAddressLocalKey)
+	if routerAddressLocalConf == "" {
+		return false, nil
+	}
+	routerAddressLocal, _ := strconv.ParseBool(routerAddressLocalConf)
+	if routerAddressLocal {
+		return routerAddressLocal, nil
+	}
+	return c.ExternalPolicyLocal(pool)
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

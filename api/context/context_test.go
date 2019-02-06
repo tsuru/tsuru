@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {

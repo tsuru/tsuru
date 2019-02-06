@@ -58,8 +58,10 @@ type Driver struct {
 	Username   string
 	Password   string
 	Network    string
+	Networks   []string
 	Datastore  string
 	Datacenter string
+	Folder     string
 	Pool       string
 	HostSystem string
 	CfgParams  []string
@@ -125,7 +127,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "vmwarevsphere-password",
 			Usage:  "vSphere password",
 		},
-		mcnflag.StringFlag{
+		mcnflag.StringSliceFlag{
 			EnvVar: "VSPHERE_NETWORK",
 			Name:   "vmwarevsphere-network",
 			Usage:  "vSphere network where the docker VM will be attached",
@@ -139,6 +141,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "VSPHERE_DATACENTER",
 			Name:   "vmwarevsphere-datacenter",
 			Usage:  "vSphere datacenter for docker VM",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VSPHERE_FOLDER",
+			Name:   "vmwarevsphere-folder",
+			Usage:  "vSphere folder for the docker VM. This folder must already exist in the datacenter.",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VSPHERE_POOL",
@@ -206,9 +213,11 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Port = flags.Int("vmwarevsphere-vcenter-port")
 	d.Username = flags.String("vmwarevsphere-username")
 	d.Password = flags.String("vmwarevsphere-password")
-	d.Network = flags.String("vmwarevsphere-network")
+	d.Networks = flags.StringSlice("vmwarevsphere-network")
 	d.Datastore = flags.String("vmwarevsphere-datastore")
 	d.Datacenter = flags.String("vmwarevsphere-datacenter")
+	// Sanitize input on ingress.
+	d.Folder = strings.Trim(flags.String("vmwarevsphere-folder"), "/")
 	d.Pool = flags.String("vmwarevsphere-pool")
 	d.HostSystem = flags.String("vmwarevsphere-hostsystem")
 	d.CfgParams = flags.StringSlice("vmwarevsphere-cfgparam")
@@ -336,13 +345,41 @@ func (d *Driver) PreCreateCheck() error {
 
 	f.SetDatacenter(dc)
 
+	// Folder
+	if d.Folder != "" {
+		// Find the specified Folder to create the VM in.
+		folders, err := dc.Folders(ctx)
+		if err != nil {
+			return err
+		}
+		folder, err := f.Folder(ctx, fmt.Sprintf("%s/%s", folders.VmFolder.InventoryPath, d.Folder))
+		// It's an error to not find the folder, or for the search itself to fail.
+		if err != nil {
+			// The search itself failed.
+			return err
+		}
+		if folder == nil {
+			return fmt.Errorf("failed to find VM Folder '%s'", d.Folder)
+		}
+	}
+
 	if _, err := f.DatastoreOrDefault(ctx, d.Datastore); err != nil {
 		return err
 	}
 
-	if _, err := f.NetworkOrDefault(ctx, d.Network); err != nil {
-		return err
+	// TODO: if the user has both the VSPHERE_NETWORK defined and adds --vmwarevsphere-network
+	//       both are used at the same time - probably should detect that and remove the one from ENV
+	if len(d.Networks) == 0 {
+		// machine assumes there will be a network
+		d.Networks = append(d.Networks, "VM Network")
 	}
+	for _, netName := range d.Networks {
+		if _, err := f.NetworkOrDefault(ctx, netName); err != nil {
+			return err
+		}
+	}
+	// d.Network needs to remain a string to cope with existing machines :/
+	d.Network = d.Networks[0]
 
 	var hs *object.HostSystem
 	if d.HostSystem != "" {
@@ -415,9 +452,13 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	net, err := f.NetworkOrDefault(ctx, d.Network)
-	if err != nil {
-		return err
+	networks := make(map[string]object.NetworkReference)
+	for _, netName := range d.Networks {
+		net, err := f.NetworkOrDefault(ctx, netName)
+		if err != nil {
+			return err
+		}
+		networks[netName] = net
 	}
 
 	var hs *object.HostSystem
@@ -470,7 +511,14 @@ func (d *Driver) Create() error {
 
 	log.Infof("Creating VM...")
 	folders, err := dc.Folders(ctx)
-	task, err := folders.VmFolder.CreateVM(ctx, spec, rp, hs)
+	folder := folders.VmFolder
+	if d.Folder != "" {
+		folder, err = f.Folder(ctx, fmt.Sprintf("%s/%s", folders.VmFolder.InventoryPath, d.Folder))
+		if err != nil {
+			return err
+		}
+	}
+	task, err := folder.CreateVM(ctx, spec, rp, hs)
 	if err != nil {
 		return err
 	}
@@ -524,18 +572,22 @@ func (d *Driver) Create() error {
 
 	add = append(add, devices.InsertIso(cdrom, dss.Path(fmt.Sprintf("%s/%s", d.MachineName, isoFilename))))
 
-	backing, err := net.EthernetCardBackingInfo(ctx)
-	if err != nil {
-		return err
+	for _, netName := range d.Networks {
+		backing, err := networks[netName].EthernetCardBackingInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		netdev, err := object.EthernetCardTypes().CreateEthernetCard("vmxnet3", backing)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("adding network: %s", netName)
+		add = append(add, netdev)
 	}
 
-	netdev, err := object.EthernetCardTypes().CreateEthernetCard("vmxnet3", backing)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Reconfiguring VM...")
-	add = append(add, netdev)
+	log.Infof("Reconfiguring VM")
 	if vm.AddDevice(ctx, add...); err != nil {
 		return err
 	}
@@ -916,12 +968,8 @@ func (d *Driver) generateKeyBundle() error {
 	if _, err := tw.Write([]byte(pubKey)); err != nil {
 		return err
 	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	return nil
-
+	err = tw.Close()
+	return err
 }
 
 func (d *Driver) vsphereLogin(ctx context.Context) (*govmomi.Client, error) {
@@ -958,7 +1006,11 @@ func (d *Driver) fetchVM(ctx context.Context, c *govmomi.Client, vmname string) 
 
 	f.SetDatacenter(dc)
 
-	vm, err = f.VirtualMachine(ctx, vmname)
+	vmPath := vmname
+	if d.Folder != "" {
+		vmPath = fmt.Sprintf("%s/%s", d.Folder, vmname)
+	}
+	vm, err = f.VirtualMachine(ctx, vmPath)
 	if err != nil {
 		return vm, err
 	}

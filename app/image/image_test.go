@@ -11,7 +11,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAppNewImageName(c *check.C) {
@@ -176,7 +176,7 @@ func (s *S) TestDeleteAllAppImageNamesSimilarApps(c *check.C) {
 	yamlData, err = GetImageTsuruYamlData("tsuru/app-myapp-dev:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{
-		Healthcheck: provision.TsuruYamlHealthcheck{Path: "/test"},
+		Healthcheck: &provision.TsuruYamlHealthcheck{Path: "/test"},
 	})
 }
 
@@ -271,22 +271,9 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	c.Check(web5, check.Equals, "")
 }
 
-func (s *S) TestSavePortInImageCustomData(c *check.C) {
-	img1 := "tsuru/app-myapp:v1"
-	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
-	}
-	err := SaveImageCustomData(img1, customData1)
-	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageMetaData(img1)
-	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
-}
-
 func (s *S) TestSaveImageCustomData(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
 		"processes": map[string]interface{}{
 			"worker1": "python myapp.py",
 			"worker2": "someworker",
@@ -296,7 +283,6 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"someworker"},
@@ -306,14 +292,12 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
-		"procfile":    "worker1: python myapp.py\nworker2: someworker",
+		"procfile": "worker1: python myapp.py\nworker2: someworker",
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"someworker"},
@@ -323,7 +307,6 @@ func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"exposedPort": "3434",
 		"processes": map[string]interface{}{
 			"worker1": "python myapp.py",
 			"worker2": []string{"worker", "arg", "arg2"},
@@ -333,7 +316,6 @@ func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
-	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"worker", "arg", "arg2"},
@@ -534,4 +516,97 @@ func (s *S) TestSplitImageName(c *check.C) {
 		c.Check(repo, check.DeepEquals, t.expectedRepo, check.Commentf("failed test %d", i))
 		c.Check(tag, check.DeepEquals, t.expectedTag, check.Commentf("failed test %d", i))
 	}
+}
+
+func (s *S) TestTsuruYamlConversion(c *check.C) {
+	img := ImageMetadata{
+		Name: "myimg",
+		CustomData: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"build": []string{"script1", "script2"},
+			},
+			"healthcheck": map[string]interface{}{
+				"path": "/status",
+			},
+			"kubernetes": map[string]interface{}{
+				"groups": map[string]interface{}{
+					"pod1": map[string]interface{}{
+						"proc1": map[string]interface{}{
+							"ports": []map[string]interface{}{
+								{"port": 8888},
+							},
+						},
+						"proc2": map[string]interface{}{
+							"ports": []map[string]interface{}{
+								{"port": 8889},
+								{"target_port": 5000},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := img.Save()
+	c.Check(err, check.IsNil)
+
+	expected := provision.TsuruYamlData{
+		Hooks: &provision.TsuruYamlHooks{
+			Build: []string{
+				"script1",
+				"script2",
+			},
+		},
+		Healthcheck: &provision.TsuruYamlHealthcheck{
+			Path: "/status",
+		},
+		Kubernetes: &provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"pod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc1": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{Port: 8888},
+						},
+					},
+					"proc2": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{Port: 8889},
+							{TargetPort: 5000},
+						},
+					},
+				},
+			},
+		},
+	}
+	data, err := GetImageTsuruYamlData(img.Name)
+	c.Check(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, expected)
+}
+
+func (s *S) TestSaveCustomData(c *check.C) {
+	imgName := "tsuru/app-myapp:v1"
+	err := AppendAppImageName("myapp", imgName)
+	c.Assert(err, check.IsNil)
+	data := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"method": "GET",
+			"path":   "/test",
+			"scheme": "http",
+			"status": float64(200),
+		},
+		"mydata": "value",
+		"hooks": map[string]interface{}{
+			"build": []interface{}{"./run.sh"},
+			"restart": map[string]interface{}{
+				"before": nil,
+				"after":  nil,
+			},
+		},
+	}
+	err = SaveImageCustomData(imgName, data)
+	c.Assert(err, check.IsNil)
+
+	metadata, err := GetImageMetaData(imgName)
+	c.Assert(err, check.IsNil)
+	c.Assert(metadata.CustomData, check.DeepEquals, data)
 }

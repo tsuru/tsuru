@@ -55,7 +55,7 @@ func parseLines(stdout string) []string {
 }
 
 func hypervAvailable() error {
-	stdout, err := cmdOut("@(Get-Command Get-VM).ModuleName")
+	stdout, err := cmdOut("@(Get-Module -ListAvailable hyper-v).Name | Get-Unique")
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func isAdministrator() (bool, error) {
 }
 
 func isHypervAdministrator() bool {
-	stdout, err := cmdOut(`@([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Hyper-V Administrators")`)
+	stdout, err := cmdOut(`@([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("S-1-5-32-578")`)
 	if err != nil {
 		log.Debug(err)
 		return false

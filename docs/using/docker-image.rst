@@ -61,6 +61,12 @@ A simple `Dockerfile`:
     ADD . /app/
     RUN go build .
     ENTRYPOINT ./app
+    
+.. note::
+    Notice that you do not have to EXPOSE a port in your Dockerfile.
+    When a EXPOSE clause is used, the port mapping goes to the exposed port.
+    Make sure to not expose more than one port. This will make the deployment fail.
+    If you do not expose a port, the port is mapped to the $PORT environment variable.
 
 A simple web application in Go `main.go`:
 
@@ -94,6 +100,9 @@ A simple web application in Go `main.go`:
     func hello(res http.ResponseWriter, req *http.Request) {
         fmt.Fprintln(res, "hello, world!")
     }
+    
+.. note::
+    The app should listen to $PORT or to the exposed port.
 
 
 Building the image

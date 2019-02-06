@@ -7,8 +7,8 @@ package nodecontainer
 import (
 	"sort"
 
-	"github.com/fsouza/go-dockerclient"
-	"gopkg.in/check.v1"
+	docker "github.com/fsouza/go-dockerclient"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAddNewContainer(c *check.C) {

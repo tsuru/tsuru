@@ -5,14 +5,14 @@
 package rebuild_test
 
 import (
+	"context"
 	"net/url"
 	"time"
 
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRoutesRebuildOrEnqueueNoError(c *check.C) {
@@ -47,9 +47,10 @@ func (s *S) TestRoutesRebuildOrEnqueueForceEnqueue(c *check.C) {
 	rebuild.RoutesRebuildOrEnqueue(a.GetName())
 	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
 	routertest.FakeRouter.RemoveFailForIp(invalidAddr.String())
-	err = queue.TestingWaitQueueTasks(1, 10*time.Second)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, false)
+	waitFor(c, 5*time.Second, func() bool {
+		return !routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String())
+	})
+	rebuild.Shutdown(context.Background())
 }
 
 func (s *S) TestRoutesRebuildOrEnqueueLocked(c *check.C) {
@@ -70,7 +71,20 @@ func (s *S) TestRoutesRebuildOrEnqueueLocked(c *check.C) {
 	rebuild.LockedRoutesRebuildOrEnqueue(a.GetName())
 	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
 	app.ReleaseApplicationLock(a.Name)
-	err = queue.TestingWaitQueueTasks(1, 10*time.Second)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, false)
+	waitFor(c, 5*time.Second, func() bool {
+		return !routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String())
+	})
+	rebuild.Shutdown(context.Background())
+}
+
+func waitFor(c *check.C, t time.Duration, fn func() bool) {
+	timeout := time.After(t)
+	for !fn() {
+		select {
+		case <-timeout:
+			c.Fatalf("timeout waiting condition after %v", t)
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }

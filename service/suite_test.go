@@ -16,7 +16,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {

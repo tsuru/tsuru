@@ -22,7 +22,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {

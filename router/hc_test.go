@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *ExternalSuite) TestBuildHealthCheck(c *check.C) {

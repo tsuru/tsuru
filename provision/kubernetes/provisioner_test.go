@@ -18,9 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -35,8 +36,8 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
-	"gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	check "gopkg.in/check.v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -580,9 +581,9 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 		}
 	}
 	listNodesCalls := 0
-	s.client.PrependReactor("list", "nodes", func(ktesting.Action) (bool, runtime.Object, error) {
+	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (bool, runtime.Object, error) {
 		listNodesCalls++
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
@@ -801,6 +802,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 			"web":    {"python myapp.py"},
 			"worker": {"python myworker.py"},
 		},
+		ExposedPorts: []string{},
 	})
 }
 
@@ -973,7 +975,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	services, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
@@ -1009,6 +1011,9 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].Host < addrs[j].Host
+	})
 	c.Assert(addrs, check.DeepEquals, []url.URL{
 		{
 			Scheme: "http",
@@ -1017,6 +1022,39 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 		{
 			Scheme: "http",
 			Host:   "192.168.99.2:30000",
+		},
+	})
+}
+
+func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
+	s.clusterClient.CustomData = map[string]string{
+		routerAddressLocalKey: "true",
+	}
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil)
+	wait()
+	addrs, err := s.p.RoutableAddresses(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.DeepEquals, []url.URL{
+		{
+			Scheme: "http",
+			Host:   "192.168.99.1:30000",
 		},
 	})
 }
@@ -1044,7 +1082,7 @@ func (s *S) TestDeploy(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1107,7 +1145,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		} else {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1152,14 +1190,14 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		deploy <- struct{}{}
 		<-attach
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodRunning
 		testing.UpdatePodContainerStatus(pod, true)
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1236,7 +1274,7 @@ func (s *S) TestRollback(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1283,7 +1321,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1325,13 +1363,13 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
 
-	daemons, err := s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("")).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(s.client.PoolNamespace("")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("p1")).List(metav1.ListOptions{})
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p1")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1beta2().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
 }
@@ -1341,7 +1379,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
 	ns := s.client.PoolNamespace("p1")
-	_, err := s.client.AppsV1beta2().DaemonSets(ns).Create(&v1beta2.DaemonSet{
+	_, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: ns,
@@ -1364,7 +1402,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
@@ -1628,7 +1666,7 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodFailed
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -1723,8 +1761,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "tsuru/deploy-agent:0.6.0",
-		DeployInspectImage:                  "tsuru/deploy-agent:0.6.0",
+		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.0",
+		DeployInspectImage:                  "tsuru/deploy-agent:0.8.0",
 		APITimeout:                          60 * time.Second,
 		APIShortTimeout:                     5 * time.Second,
 		PodReadyTimeout:                     time.Minute,
@@ -1804,7 +1842,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 				NodePort: int32(30002),
 			},
 		}
-		return false, nil, nil
+		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
 	_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1816,7 +1854,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
@@ -1824,6 +1862,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
+	defer rebuild.Shutdown(context.Background())
 	err = s.p.UpdateApp(a, newApp, buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(buf.String(), "Done updating units"), check.Equals, true)
@@ -2115,4 +2154,152 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	pvcs, err = client2.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
+}
+
+func (s *S) TestProvisionerInitialize(c *check.C) {
+	clusterControllers = map[string]*routerController{}
+	_, ok := clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, false)
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
+	_, ok = clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, true)
+}
+
+func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python proc1.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	fa := provisiontest.NewFakeApp("myapp", "java", 1)
+	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
+
+	envs := EnvsForApp(fa, "web", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "web"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_web", Value: "8888"},
+	})
+}
+
+func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"proc1": "python proc1.py",
+			"proc2": "python proc2.py",
+			"proc3": "python proc3.py",
+			"proc4": "python proc4.py",
+			"proc5": "python worker.py",
+			"proc6": "python proc6.py",
+		},
+		"kubernetes": provision.TsuruYamlKubernetesConfig{
+			Groups: map[string]provision.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc1": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{TargetPort: 8080},
+							{Port: 9000},
+						},
+					},
+				},
+				"mypod2": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc2": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{TargetPort: 8000},
+						},
+					},
+				},
+				"mypod3": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc3": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{Port: 8000, TargetPort: 8080},
+						},
+					},
+				},
+				"mypod5": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc5": {},
+					"proc6": {
+						Ports: []provision.TsuruYamlKubernetesProcessPortConfig{
+							{Port: 8000},
+						},
+					},
+				},
+				"mypod6": map[string]provision.TsuruYamlKubernetesProcessConfig{
+					"proc6": {},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	fa := provisiontest.NewFakeApp("myapp", "java", 1)
+	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
+
+	envs := EnvsForApp(fa, "proc1", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "PORT_proc1", Value: "8080,9000"},
+	})
+
+	envs = EnvsForApp(fa, "proc2", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "PORT_proc2", Value: "8000"},
+	})
+
+	envs = EnvsForApp(fa, "proc3", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "PORT_proc3", Value: "8080"},
+	})
+
+	envs = EnvsForApp(fa, "proc4", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_proc4", Value: "8888"},
+	})
+
+	envs = EnvsForApp(fa, "proc5", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
+		{Name: "TSURU_HOST", Value: ""},
+	})
+
+	envs = EnvsForApp(fa, "proc6", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "proc6"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+	})
 }

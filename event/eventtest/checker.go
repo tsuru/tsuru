@@ -12,7 +12,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type EventDesc struct {

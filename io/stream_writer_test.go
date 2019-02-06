@@ -11,7 +11,7 @@ import (
 	"io"
 	"os"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type entry struct {

@@ -104,6 +104,10 @@ func (s *LabelSet) AppPlatform() string {
 	return s.getLabel(labelAppPlatform)
 }
 
+func (s *LabelSet) AppPool() string {
+	return s.getLabel(LabelAppPool)
+}
+
 func (s *LabelSet) NodeAddr() string {
 	return s.getLabel(labelNodeAddr)
 }

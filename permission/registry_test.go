@@ -6,7 +6,7 @@ package permission
 
 import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRecorderPermissions(c *check.C) {

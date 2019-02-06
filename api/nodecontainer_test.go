@@ -14,13 +14,13 @@ import (
 	"strings"
 
 	"github.com/ajg/form"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNodeContainerList(c *check.C) {

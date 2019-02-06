@@ -7,7 +7,7 @@ package integration
 import (
 	"fmt"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type baseMatcher struct {

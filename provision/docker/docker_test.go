@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"sort"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -25,7 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type newContainerOpts struct {

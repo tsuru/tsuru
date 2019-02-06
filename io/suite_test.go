@@ -7,7 +7,7 @@ package io
 import (
 	"testing"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct{}

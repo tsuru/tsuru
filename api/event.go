@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -26,17 +25,10 @@ import (
 //   200: OK
 //   204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
-	}
 	var filter *event.Filter
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&filter, r.Form)
+	err := ParseInput(r, &filter)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
+		return err
 	}
 	filter.LoadKindNames(r.Form)
 	filter.PruneUserValues()
@@ -128,7 +120,7 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	reason := r.FormValue("reason")
+	reason := InputValue(r, "reason")
 	if reason == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is mandatory"}
 	}
@@ -163,12 +155,8 @@ func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !permission.Check(t, permission.PermEventBlockRead) {
 		return permission.ErrUnauthorized
 	}
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var active *bool
-	if activeStr := r.FormValue("active"); activeStr != "" {
+	if activeStr := InputValue(r, "active"); activeStr != "" {
 		b, _ := strconv.ParseBool(activeStr)
 		active = &b
 	}
@@ -196,14 +184,10 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !permission.Check(t, permission.PermEventBlockAdd) {
 		return permission.ErrUnauthorized
 	}
-	r.ParseForm()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
 	var block event.Block
-	err = dec.DecodeValues(&block, r.Form)
+	err = ParseInput(r, &block)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse block: %s", err)}
+		return err
 	}
 	if block.Reason == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is required"}
@@ -212,7 +196,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     event.Target{Type: event.TargetTypeEventBlock},
 		Kind:       permission.PermEventBlockAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermEventBlockReadEvents),
 	})
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"sync"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNewCounter(c *check.C) {

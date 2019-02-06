@@ -1,6 +1,7 @@
 package azureutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,8 @@ import (
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnutils"
 
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/docker/machine/drivers/azure/logutil"
@@ -48,21 +51,21 @@ var (
 // AuthenticateDeviceFlow fetches a token from the local file cache or initiates a consent
 // flow and waits for token to be obtained. Obtained token is stored in a file cache for
 // future use and refreshing.
-func AuthenticateDeviceFlow(env azure.Environment, subscriptionID string) (*azure.ServicePrincipalToken, error) {
+func AuthenticateDeviceFlow(env azure.Environment, subscriptionID string) (*adal.ServicePrincipalToken, error) {
 	// First we locate the tenant ID of the subscription as we store tokens per
 	// tenant (which could have multiple subscriptions)
 	tenantID, err := loadOrFindTenantID(env, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
-	oauthCfg, err := env.OAuthConfigForTenant(tenantID)
+	oauthCfg, err := adal.NewOAuthConfig(azure.PublicCloud.ActiveDirectoryEndpoint, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to obtain oauth config for azure environment: %v", err)
 	}
 
 	tokenPath := tokenCachePath(tenantID)
 	saveToken := mkTokenCallback(tokenPath)
-	saveTokenCallback := func(t azure.Token) error {
+	saveTokenCallback := func(t adal.Token) error {
 		log.Debug("Azure token expired. Saving the refreshed token...")
 		return saveToken(t)
 	}
@@ -113,7 +116,7 @@ func AuthenticateDeviceFlow(env azure.Environment, subscriptionID string) (*azur
 		return nil, err
 	}
 	log.Debug("Obtained a token.")
-	if err := saveToken(spt.Token); err != nil {
+	if err := saveToken(spt.Token()); err != nil {
 		log.Error("Error occurred saving token to cache file.")
 		return nil, err
 	}
@@ -122,17 +125,17 @@ func AuthenticateDeviceFlow(env azure.Environment, subscriptionID string) (*azur
 
 // AuthenticateServicePrincipal uses given service principal credentials to return a
 // service principal token. Generated token is not stored in a cache file or refreshed.
-func AuthenticateServicePrincipal(env azure.Environment, subscriptionID, spID, spPassword string) (*azure.ServicePrincipalToken, error) {
+func AuthenticateServicePrincipal(env azure.Environment, subscriptionID, spID, spPassword string) (*adal.ServicePrincipalToken, error) {
 	tenantID, err := loadOrFindTenantID(env, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
-	oauthCfg, err := env.OAuthConfigForTenant(tenantID)
+	oauthCfg, err := adal.NewOAuthConfig(azure.PublicCloud.ActiveDirectoryEndpoint, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to obtain oauth config for azure environment: %v", err)
 	}
 
-	spt, err := azure.NewServicePrincipalToken(*oauthCfg, spID, spPassword, getScope(env))
+	spt, err := adal.NewServicePrincipalToken(*oauthCfg, spID, spPassword, getScope(env))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create service principal token: %+v", err)
 	}
@@ -141,8 +144,8 @@ func AuthenticateServicePrincipal(env azure.Environment, subscriptionID, spID, s
 
 // tokenFromFile returns a token from the specified file if it is found, otherwise
 // returns nil. Any error retrieving or creating the token is returned as an error.
-func tokenFromFile(oauthCfg azure.OAuthConfig, tokenPath, clientID, resource string,
-	callback azure.TokenRefreshCallback) (*azure.ServicePrincipalToken, error) {
+func tokenFromFile(oauthCfg adal.OAuthConfig, tokenPath, clientID, resource string,
+	callback adal.TokenRefreshCallback) (*adal.ServicePrincipalToken, error) {
 	log.Debug("Loading auth token from file", logutil.Fields{"path": tokenPath})
 	if _, err := os.Stat(tokenPath); err != nil {
 		if os.IsNotExist(err) { // file not found
@@ -151,12 +154,12 @@ func tokenFromFile(oauthCfg azure.OAuthConfig, tokenPath, clientID, resource str
 		return nil, err
 	}
 
-	token, err := azure.LoadToken(tokenPath)
+	token, err := adal.LoadToken(tokenPath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load token from file: %v", err)
 	}
 
-	spt, err := azure.NewServicePrincipalTokenFromManualToken(oauthCfg, clientID, resource, *token, callback)
+	spt, err := adal.NewServicePrincipalTokenFromManualToken(oauthCfg, clientID, resource, *token, callback)
 	if err != nil {
 		return nil, fmt.Errorf("Error constructing service principal token: %v", err)
 	}
@@ -167,9 +170,9 @@ func tokenFromFile(oauthCfg azure.OAuthConfig, tokenPath, clientID, resource str
 // consent application on a browser and in the meanwhile the authentication
 // endpoint is polled until user gives consent, denies or the flow times out.
 // Returned token must be saved.
-func deviceFlowAuth(oauthCfg azure.OAuthConfig, clientID, resource string) (*azure.ServicePrincipalToken, error) {
+func deviceFlowAuth(oauthCfg adal.OAuthConfig, clientID, resource string) (*adal.ServicePrincipalToken, error) {
 	cl := oauthClient()
-	deviceCode, err := azure.InitiateDeviceAuth(&cl, oauthCfg, clientID, resource)
+	deviceCode, err := adal.InitiateDeviceAuth(&cl, oauthCfg, clientID, resource)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to start device auth: %v", err)
 	}
@@ -182,12 +185,12 @@ func deviceFlowAuth(oauthCfg azure.OAuthConfig, clientID, resource string) (*azu
 	// the code 0000000 to authenticate.”
 	log.Infof("Microsoft Azure: %s", to.String(deviceCode.Message))
 
-	token, err := azure.WaitForUserCompletion(&cl, deviceCode)
+	token, err := adal.WaitForUserCompletion(&cl, deviceCode)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to complete device auth: %v", err)
 	}
 
-	spt, err := azure.NewServicePrincipalTokenFromManualToken(oauthCfg, clientID, resource, *token)
+	spt, err := adal.NewServicePrincipalTokenFromManualToken(oauthCfg, clientID, resource, *token)
 	if err != nil {
 		return nil, fmt.Errorf("Error constructing service principal token: %v", err)
 	}
@@ -214,9 +217,9 @@ func tenantIDPath(subscriptionID string) string {
 // mkTokenCallback returns a callback function that can be used to save the
 // token initially or register to the Azure SDK to be called when the token is
 // refreshed.
-func mkTokenCallback(path string) azure.TokenRefreshCallback {
-	return func(t azure.Token) error {
-		if err := azure.SaveToken(path, 0600, t); err != nil {
+func mkTokenCallback(path string) adal.TokenRefreshCallback {
+	return func(t adal.Token) error {
+		if err := adal.SaveToken(path, 0600, t); err != nil {
 			return err
 		}
 		log.Debug("Saved token to file.")
@@ -228,10 +231,10 @@ func mkTokenCallback(path string) azure.TokenRefreshCallback {
 // sure if the access_token valid, if not it uses SDK’s functionality to
 // automatically refresh the token using refresh_token (which might have
 // expired). This check is essentially to make sure refresh_token is good.
-func validateToken(env azure.Environment, token *azure.ServicePrincipalToken) error {
+func validateToken(env azure.Environment, token *adal.ServicePrincipalToken) error {
 	c := subscriptionsClient(env.ResourceManagerEndpoint)
-	c.Authorizer = token
-	_, err := c.List()
+	c.Authorizer = autorest.NewBearerAuthorizer(token)
+	_, err := c.List(context.TODO())
 	if err != nil {
 		return fmt.Errorf("Token validity check failed: %v", err)
 	}

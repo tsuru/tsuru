@@ -18,6 +18,9 @@ type Router interface {
 	// Adds a new route->handler combination. The route is a string which provides the routing expression. http.Handler is called when this expression matches a request.
 	Handle(string, http.Handler) error
 
+	// Adds a map of handlers and expressions in a single call.
+	InitHandlers(map[string]interface{}) error
+
 	// Removes a route. The http.Handler associated with it, will be discarded.
 	Remove(string) error
 

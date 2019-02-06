@@ -6,7 +6,7 @@ package dockercommon
 
 import (
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestUserForContainerEmpty(c *check.C) {

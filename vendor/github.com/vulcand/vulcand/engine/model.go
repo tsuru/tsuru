@@ -384,6 +384,14 @@ func (f *Frontend) BackendKey() BackendKey {
 	return BackendKey{Id: f.BackendId}
 }
 
+func (f *Frontend) Equals(o Frontend) bool {
+	return (f.Id == o.Id &&
+		f.BackendId == o.BackendId &&
+		f.Route == o.Route &&
+		f.Type == o.Type &&
+		f.HTTPSettings().Equals(o.HTTPSettings()))
+}
+
 type HTTPBackendTimeouts struct {
 	// Socket read timeout (before we receive the first reply header)
 	Read string

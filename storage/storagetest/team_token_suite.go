@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type TeamTokenSuite struct {

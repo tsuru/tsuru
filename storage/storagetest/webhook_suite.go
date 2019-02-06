@@ -10,7 +10,7 @@ import (
 	"sort"
 
 	eventTypes "github.com/tsuru/tsuru/types/event"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type WebhookSuite struct {

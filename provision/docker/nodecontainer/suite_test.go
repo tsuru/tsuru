@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

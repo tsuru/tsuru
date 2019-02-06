@@ -16,6 +16,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
@@ -33,10 +34,10 @@ var (
 		Help: "The current number of log entries in dispatcher queue.",
 	})
 
-	logsInAppQueues = prometheus.NewGauge(prometheus.GaugeOpts{
+	logsInAppQueues = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tsuru_logs_app_queues_current",
 		Help: "The current number of log entries in app queues.",
-	})
+	}, []string{"app"})
 
 	logsQueueBlockedTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "tsuru_logs_queue_blocked_seconds_total",
@@ -48,20 +49,20 @@ var (
 		Help: "The max number of log entries in a dispatcher queue.",
 	})
 
-	logsEnqueued = prometheus.NewCounter(prometheus.CounterOpts{
+	logsEnqueued = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tsuru_logs_enqueued_total",
 		Help: "The number of log entries enqueued for processing.",
-	})
+	}, []string{"app"})
 
-	logsWritten = prometheus.NewCounter(prometheus.CounterOpts{
+	logsWritten = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tsuru_logs_write_total",
 		Help: "The number of log entries written to mongo.",
-	})
+	}, []string{"app"})
 
-	logsDropped = prometheus.NewCounter(prometheus.CounterOpts{
+	logsDropped = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tsuru_logs_dropped_total",
 		Help: "The number of log entries dropped due to full buffers.",
-	})
+	}, []string{"app"})
 
 	logsMongoFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "tsuru_logs_mongo_full_duration_seconds",
@@ -112,7 +113,7 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	}
 	c := make(chan Applog, 10)
 	quit := make(chan struct{})
-	coll := conn.Logs(a.Name)
+	coll := conn.AppLogCollection(a.Name)
 	var lastLog Applog
 	err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
 	if err == mgo.ErrNotFound {
@@ -258,7 +259,7 @@ func (d *LogDispatcher) Send(msg *Applog) error {
 		return errors.New("log dispatcher is shutting down")
 	}
 	logsInQueue.Inc()
-	logsEnqueued.Inc()
+	logsEnqueued.WithLabelValues(msg.AppName).Inc()
 	msgExtra := &msgWithTS{msg: msg, arriveTime: time.Now()}
 	select {
 	case d.msgCh <- msgExtra:
@@ -292,7 +293,7 @@ type appLogDispatcher struct {
 
 func newAppLogDispatcher(appName string) *appLogDispatcher {
 	d := &appLogDispatcher{
-		bulkProcessor: initBulkProcessor(bulkMaxWaitMongoTime, bulkMaxNumberMsgs),
+		bulkProcessor: initBulkProcessor(bulkMaxWaitMongoTime, bulkMaxNumberMsgs, appName),
 		appName:       appName,
 	}
 	d.flushable = d
@@ -306,7 +307,7 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) boo
 		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
 		return false
 	}
-	coll := conn.Logs(d.appName)
+	coll := conn.AppLogCollection(d.appName)
 	err = coll.Insert(msgs...)
 	coll.Close()
 	if err != nil {
@@ -317,11 +318,12 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) boo
 		logsMongoLatency.Observe(time.Since(lastMessage.arriveTime).Seconds())
 		logsMongoFullLatency.Observe(time.Since(lastMessage.msg.Date).Seconds())
 	}
-	logsWritten.Add(float64(len(msgs)))
+	logsWritten.WithLabelValues(d.appName).Add(float64(len(msgs)))
 	return true
 }
 
 type bulkProcessor struct {
+	appName     string
 	maxWaitTime time.Duration
 	bulkSize    int
 	finished    chan struct{}
@@ -332,12 +334,17 @@ type bulkProcessor struct {
 	}
 }
 
-func initBulkProcessor(maxWait time.Duration, bulkSize int) *bulkProcessor {
+func initBulkProcessor(maxWait time.Duration, bulkSize int, appName string) *bulkProcessor {
+	queueSize, err := config.GetInt("log:queue-size")
+	if err != nil || queueSize == 0 {
+		queueSize = bulkQueueMaxSize
+	}
 	return &bulkProcessor{
+		appName:     appName,
 		maxWaitTime: maxWait,
 		bulkSize:    bulkSize,
 		finished:    make(chan struct{}),
-		ch:          make(chan *msgWithTS, bulkQueueMaxSize),
+		ch:          make(chan *msgWithTS, queueSize),
 		nextNotify:  time.NewTimer(0),
 	}
 }
@@ -345,9 +352,9 @@ func initBulkProcessor(maxWait time.Duration, bulkSize int) *bulkProcessor {
 func (p *bulkProcessor) send(msg *msgWithTS) {
 	select {
 	case p.ch <- msg:
-		logsInAppQueues.Set(float64(len(p.ch)))
+		logsInAppQueues.WithLabelValues(p.appName).Set(float64(len(p.ch)))
 	default:
-		logsDropped.Inc()
+		logsDropped.WithLabelValues(p.appName).Inc()
 		select {
 		case <-p.nextNotify.C:
 			log.Errorf("dropping log messages to mongodb due to full channel buffer. app: %q, len: %d", msg.msg.AppName, len(p.ch))
@@ -373,7 +380,7 @@ func (p *bulkProcessor) run() {
 		var flush bool
 		select {
 		case msgExtra := <-p.ch:
-			logsInAppQueues.Set(float64(len(p.ch)))
+			logsInAppQueues.WithLabelValues(p.appName).Set(float64(len(p.ch)))
 			if msgExtra == nil {
 				flush = true
 				shouldReturn = true

@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -44,7 +44,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func newFakeServer() *httptest.Server {

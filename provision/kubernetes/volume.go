@@ -187,28 +187,32 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 		Pool:        v.Pool,
 		Plan:        v.Plan.Name,
 	})
-	data, err := json.Marshal(map[string]interface{}{
-		opts.Plugin: v.Opts,
-	})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	h := &codec.JsonHandle{}
-	dec := codec.NewDecoderBytes(data, h)
-	pvSpec := apiv1.PersistentVolumeSpec{}
-	err = dec.Decode(&pvSpec)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	pvSpec.Capacity = apiv1.ResourceList{
+	capacity := apiv1.ResourceList{
 		apiv1.ResourceStorage: opts.Capacity,
 	}
+	var accessModes []apiv1.PersistentVolumeAccessMode
 	for _, am := range strings.Split(opts.AccessModes, ",") {
-		pvSpec.AccessModes = append(pvSpec.AccessModes, apiv1.PersistentVolumeAccessMode(am))
+		accessModes = append(accessModes, apiv1.PersistentVolumeAccessMode(am))
 	}
 	var volName string
 	var selector *metav1.LabelSelector
 	if opts.Plugin != "" {
+		pvSpec := apiv1.PersistentVolumeSpec{}
+		var data []byte
+		data, err = json.Marshal(map[string]interface{}{
+			opts.Plugin: v.Opts,
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		h := &codec.JsonHandle{}
+		dec := codec.NewDecoderBytes(data, h)
+		err = dec.Decode(&pvSpec)
+		if err != nil {
+			return errors.Wrapf(err, "unable to decode as pv spec: %s", string(data))
+		}
+		pvSpec.Capacity = capacity
+		pvSpec.AccessModes = accessModes
 		pv := &apiv1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   volumeName(v.Name),
@@ -232,9 +236,9 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 		},
 		Spec: apiv1.PersistentVolumeClaimSpec{
 			Resources: apiv1.ResourceRequirements{
-				Requests: pvSpec.Capacity,
+				Requests: capacity,
 			},
-			AccessModes:      pvSpec.AccessModes,
+			AccessModes:      accessModes,
 			Selector:         selector,
 			VolumeName:       volName,
 			StorageClassName: &opts.StorageClass,

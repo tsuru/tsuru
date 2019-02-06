@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {

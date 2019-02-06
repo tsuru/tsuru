@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/fs/fstest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func readRecordedTarget(fs *fstest.RecordingFs) string {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -58,7 +57,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})
 	if err != nil {
@@ -98,7 +97,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})
 	if err != nil {
@@ -130,7 +129,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: brokerName},
 		Kind:       permission.PermServiceBrokerDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})
 	if err != nil {
@@ -145,13 +144,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 
 func decodeServiceBroker(request *http.Request) (*service.Broker, error) {
 	var broker service.Broker
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	if err := request.ParseForm(); err != nil {
-		return nil, fmt.Errorf("unable to parse form: %v", err)
-	}
-	if err := dec.DecodeValues(&broker, request.Form); err != nil {
+	if err := ParseInput(request, &broker); err != nil {
 		return nil, fmt.Errorf("unable to parse broker: %v", err)
 	}
 	return &broker, nil

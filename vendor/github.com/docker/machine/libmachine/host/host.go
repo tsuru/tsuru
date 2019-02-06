@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/docker/machine/libmachine/auth"
+	"github.com/docker/machine/libmachine/cert"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/log"
@@ -217,7 +218,7 @@ func (h *Host) Upgrade() error {
 		provisioner.String() != "rancheros" &&
 		provisioner.String() != "boot2docker" {
 
-		// Name of pacakge 'docker-engine' will fall through in this
+		// Name of package 'docker-engine' will fall through in this
 		// case, so that we execute, e.g.,
 		//
 		// 'sudo apt-get purge -y docker-engine'
@@ -265,6 +266,14 @@ func (h *Host) ConfigureAuth() error {
 	//
 	// Call provision to re-provision the certs properly.
 	return provisioner.Provision(swarm.Options{}, *h.HostOptions.AuthOptions, *h.HostOptions.EngineOptions)
+}
+
+func (h *Host) ConfigureAllAuth() error {
+	log.Info("Regenerating local certificates")
+	if err := cert.BootstrapCertificates(h.AuthOptions()); err != nil {
+		return err
+	}
+	return h.ConfigureAuth()
 }
 
 func (h *Host) Provision() error {

@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type TestIaaS struct{}
@@ -239,6 +239,7 @@ func (s *S) TestTemplateCreateBadRequest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*template name cannot be empty.*`)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -357,7 +358,9 @@ func (s *S) TestTemplateUpdateBadRequest(c *check.C) {
 	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*unable to parse form.*`)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct{}

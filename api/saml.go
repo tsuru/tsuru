@@ -63,9 +63,9 @@ func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	_, err := scheme.Login(params)
 	if err != nil {
 		msg := fmt.Sprintf(cmd.SamlCallbackFailureMessage(), err.Error())
-		fmt.Fprintf(w, msg)
+		fmt.Fprint(w, msg)
 	} else {
-		fmt.Fprintf(w, cmd.SamlCallbackSuccessMessage())
+		fmt.Fprint(w, cmd.SamlCallbackSuccessMessage())
 	}
 	return nil
 }

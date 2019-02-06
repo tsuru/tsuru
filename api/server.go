@@ -405,6 +405,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "GET", "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
+	m.Add("1.7", "GET", "/provisioner", AuthorizationRequiredHandler(provisionerList))
 	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(createCluster))
 	m.Add("1.4", "POST", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(updateCluster))
 	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
@@ -420,6 +421,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
 
 	m.Add("1.6", "GET", "/tokens", AuthorizationRequiredHandler(tokenList))
+	m.Add("1.6", "GET", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenInfo))
 	m.Add("1.6", "POST", "/tokens", AuthorizationRequiredHandler(tokenCreate))
 	m.Add("1.6", "DELETE", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenDelete))
 	m.Add("1.6", "PUT", "/tokens/{token_id}", AuthorizationRequiredHandler(tokenUpdate))
@@ -473,10 +475,6 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-	n.Use(&contentHijackMiddleware{excludedHandlers: []http.Handler{
-		proxyInstanceHandler,
-		proxyServiceHandler,
-	}})
 	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
 		logPostHandler,
 		runHandler,
@@ -591,7 +589,7 @@ func startServer(handler http.Handler) error {
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
 	}
 	fmt.Printf("Using %q repository manager.\n", repoManager)
-	err = rebuild.RegisterTask(appFinder)
+	err = rebuild.Initialize(appFinder)
 	if err != nil {
 		return err
 	}

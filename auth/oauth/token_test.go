@@ -7,7 +7,7 @@ package oauth
 import (
 	"github.com/tsuru/tsuru/auth"
 	"golang.org/x/oauth2"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestGetToken(c *check.C) {

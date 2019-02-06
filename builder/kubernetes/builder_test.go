@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/tsuru/app/image"
@@ -109,6 +110,36 @@ func (s *S) TestImageID(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 }
 
+func (s *S) TestImageIDWithExposedPorts(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		output := `{
+"image": {"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": {"8000/tcp": {}, "8001/tcp": {}}}},
+			"procfile": "web: make run",
+			"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+		}`
+		w.Write([]byte(output))
+	}
+	bopts := builder.BuildOpts{
+		ImageID: "test/customimage",
+	}
+	img, err := s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	imd, err := image.GetImageMetaData(img)
+	c.Assert(err, check.IsNil)
+	sort.Strings(imd.ExposedPorts)
+	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"8000/tcp", "8001/tcp"})
+}
+
 func (s *S) TestImageIDWithProcfile(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -148,7 +179,6 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
-	s.client.AppsV1beta2()
 	c.Assert(err, check.IsNil)
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		output := `{
@@ -161,6 +191,93 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 					"method":"GET",
 					"scheme": "https"
 				},
+				"hooks": {
+					"build": ["./build1", "./build2"],
+					"restart": {
+						"before": ["./before.sh"],
+						"after": ["./after.sh"]
+					}
+				},
+				"kubernetes": {
+					"groups": {
+						"pod1": {
+							"web": {
+								"ports": [
+									{
+										"name": "main-port",
+										"target_port": 8000
+									},
+									{
+										"port": 8080,
+										"target_port": 8001
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}`
+		w.Write([]byte(output))
+	}
+	bopts := builder.BuildOpts{
+		ImageID: "test/customimage",
+	}
+	img, err := s.b.Build(s.p, a, evt, &bopts)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	imd, err := image.GetImageMetaData(img)
+	c.Assert(err, check.IsNil)
+	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/status",
+			"method": "GET",
+			"status": float64(200),
+			"scheme": "https",
+		},
+		"hooks": map[string]interface{}{
+			"build": []interface{}{"./build1", "./build2"},
+			"restart": map[string]interface{}{
+				"before": []interface{}{"./before.sh"},
+				"after":  []interface{}{"./after.sh"},
+			},
+		},
+		"kubernetes": map[string]interface{}{
+			"groups": map[string]interface{}{
+				"pod1": map[string]interface{}{
+					"web": map[string]interface{}{
+						"ports": []interface{}{
+							map[string]interface{}{
+								"name":        "main-port",
+								"target_port": float64(8000),
+							},
+							map[string]interface{}{
+								"port":        float64(8080),
+								"target_port": float64(8001),
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		output := `{
+			"image": {"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}},
+			"procfile": "web: test.sh",
+			"tsuruYaml": {
 				"hooks": {
 					"build": ["./build1", "./build2"],
 					"restart": {
@@ -181,12 +298,6 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	imd, err := image.GetImageMetaData(img)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
-		"healthcheck": map[string]interface{}{
-			"path":   "/status",
-			"method": "GET",
-			"status": 200,
-			"scheme": "https",
-		},
 		"hooks": map[string]interface{}{
 			"build": []interface{}{"./build1", "./build2"},
 			"restart": map[string]interface{}{

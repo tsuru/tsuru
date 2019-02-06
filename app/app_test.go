@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
@@ -50,7 +50,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestGetAppByName(c *check.C) {
@@ -101,7 +101,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(s.user.Email, 1)
 	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(app.Name).Count()
+	count, err := s.logConn.AppLogCollection(app.Name).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -297,6 +297,29 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestCreateAppAlreadyExists(c *check.C) {
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
+	}
+	s.mockService.UserQuota.OnInc = func(email string, q int) error {
+		c.Assert(email, check.Equals, s.user.Email)
+		return nil
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	ra := App{Name: "appname", Platform: "python", TeamOwner: s.team.Name, Pool: "invalid"}
+	err = CreateApp(&ra, s.user)
+	c.Assert(err, check.DeepEquals, &appTypes.AppCreationError{App: ra.Name, Err: ErrAppAlreadyExists})
 }
 
 func (s *S) TestCreateAppDefaultPlan(c *check.C) {
@@ -2481,12 +2504,12 @@ func (s *S) TestLog(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer func() {
-		s.logConn.Logs(a.Name).DropCollection()
+		s.logConn.AppLogCollection(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg", "tsuru", "outermachine")
 	c.Assert(err, check.IsNil)
 	var logs []Applog
-	err = s.logConn.Logs(a.Name).Find(nil).All(&logs)
+	err = s.logConn.AppLogCollection(a.Name).Find(nil).All(&logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -2500,12 +2523,12 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer func() {
-		s.logConn.Logs(a.Name).DropCollection()
+		s.logConn.AppLogCollection(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg\nfirst log", "source", "machine")
 	c.Assert(err, check.IsNil)
 	var logs []Applog
-	err = s.logConn.Logs(a.Name).Find(nil).Sort("$natural").All(&logs)
+	err = s.logConn.AppLogCollection(a.Name).Find(nil).Sort("$natural").All(&logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 2)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -2520,7 +2543,7 @@ func (s *S) TestLogShouldNotLogBlankLines(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.Log("", "", "")
 	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(a.Name).Find(nil).Count()
+	count, err := s.logConn.AppLogCollection(a.Name).Find(nil).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 }
@@ -2548,7 +2571,7 @@ func (s *S) TestLogWithListeners(c *check.C) {
 	}()
 	err = a.Log("last log msg", "tsuru", "machine")
 	c.Assert(err, check.IsNil)
-	defer s.logConn.Logs(a.Name).DropCollection()
+	defer s.logConn.AppLogCollection(a.Name).DropCollection()
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {

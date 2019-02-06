@@ -30,7 +30,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type PlatformSuite struct {
@@ -574,5 +574,6 @@ func (s *PlatformSuite) TestPlatformRollbackError(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*cannot rollback without an image name.*`)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }

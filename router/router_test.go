@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRegisterAndGet(c *check.C) {
@@ -262,6 +262,12 @@ func (r *testInfoRouter) GetInfo() (map[string]string, error) {
 	return map[string]string{"her": "amaat"}, nil
 }
 
+type testInfoErrRouter struct{ Router }
+
+func (r *testInfoErrRouter) GetInfo() (map[string]string, error) {
+	return nil, errors.New("error getting router info")
+}
+
 func (s *S) TestListWithInfo(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
@@ -276,6 +282,29 @@ func (s *S) TestListWithInfo(c *check.C) {
 	expected := []PlanRouter{
 		{Name: "router1", Type: "foo", Info: map[string]string{"her": "amaat"}, Default: false},
 		{Name: "router2", Type: "bar", Info: map[string]string{"her": "amaat"}, Default: true},
+	}
+	routers, err := ListWithInfo()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
+func (s *S) TestListWithInfoError(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:default", true)
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
+	fooCreator := func(name, prefix string) (Router, error) {
+		return &testInfoRouter{}, nil
+	}
+	barCreator := func(name, prefix string) (Router, error) {
+		return &testInfoErrRouter{}, nil
+	}
+	Register("foo", fooCreator)
+	Register("bar", barCreator)
+	expected := []PlanRouter{
+		{Name: "router1", Type: "foo", Info: map[string]string{"her": "amaat"}, Default: false},
+		{Name: "router2", Type: "bar", Info: map[string]string{"error": "error getting router info"}, Default: true},
 	}
 	routers, err := ListWithInfo()
 	c.Assert(err, check.IsNil)

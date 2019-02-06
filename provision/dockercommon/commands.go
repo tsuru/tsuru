@@ -108,7 +108,9 @@ func LeanContainerCmdsWithExtra(processName, imageID string, app provision.App, 
 	if err != nil {
 		return nil, "", err
 	}
-	extraCmds = append(extraCmds, yamlData.Hooks.Restart.Before...)
+	if yamlData.Hooks != nil {
+		extraCmds = append(extraCmds, yamlData.Hooks.Restart.Before...)
+	}
 	before := strings.Join(extraCmds, " && ")
 	if before != "" {
 		before += " && "

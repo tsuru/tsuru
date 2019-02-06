@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestOAuthLoginWithoutCode(c *check.C) {

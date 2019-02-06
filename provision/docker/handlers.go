@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
@@ -55,21 +54,15 @@ func init() {
 //   401: Unauthorized
 //   404: Not found
 func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	params := map[string]string{}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&params, r.Form)
+	err = api.ParseInput(r, &params)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	contId := r.URL.Query().Get(":id")
 	to := params["to"]
 	if to == "" {
-		return errors.Errorf("Invalid params: id: %s - to: %s", contId, to)
+		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid params: id: %q - to: %q", contId, to)}
 	}
 	cont, err := mainDockerProvisioner.GetContainer(contId)
 	if err != nil {
@@ -97,7 +90,8 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
+	evt.SetLogWriter(writer)
+	_, err = mainDockerProvisioner.moveContainer(contId, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move container")
 	}
@@ -116,21 +110,15 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   401: Unauthorized
 //   404: Not found
 func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	params := map[string]string{}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&params, r.Form)
+	err = api.ParseInput(r, &params)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	from := params["from"]
 	to := params["to"]
 	if from == "" || to == "" {
-		return errors.Errorf("Invalid params: from: %s - to: %s", from, to)
+		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid params: from: %q - to: %q", from, to)}
 	}
 	permContexts, err := moveContainersPermissionContexts(from, to)
 	if err != nil {
@@ -154,11 +142,12 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = mainDockerProvisioner.MoveContainers(from, to, writer)
+	evt.SetLogWriter(writer)
+	err = mainDockerProvisioner.MoveContainers(from, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move containers")
 	}
-	fmt.Fprintf(writer, "Containers moved successfully!\n")
+	fmt.Fprintf(evt, "Containers moved successfully!\n")
 	return nil
 }
 
@@ -233,24 +222,12 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   400: Invalid data
 //   401: Unauthorized
 func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to parse form values: %s", err),
-		}
-	}
-	pool := r.FormValue("pool")
-	restart, _ := strconv.ParseBool(r.FormValue("restart"))
+	pool := api.InputValue(r, "pool")
+	restart, _ := strconv.ParseBool(api.InputValue(r, "restart"))
 	var conf container.DockerLogConfig
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&conf, r.Form)
+	err = api.ParseInput(r, &conf)
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to parse fields in docker log config: %s", err),
-		}
+		return err
 	}
 	var ctxs []permTypes.PermissionContext
 	if pool != "" {
@@ -280,13 +257,14 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	fmt.Fprintln(writer, "Log config successfully updated.")
+	evt.SetLogWriter(writer)
+	fmt.Fprintln(evt, "Log config successfully updated.")
 	if restart {
 		filter := &app.Filter{}
 		if pool != "" {
 			filter.Pools = []string{pool}
 		}
-		return tryRestartAppsByFilter(filter, writer)
+		return tryRestartAppsByFilter(filter, evt)
 	}
 	return nil
 }

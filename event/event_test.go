@@ -28,7 +28,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

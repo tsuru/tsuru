@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	ec2amz "gopkg.in/amz.v3/ec2"
 	"gopkg.in/amz.v3/ec2/ec2test"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

@@ -13,7 +13,7 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/saml/errors"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSamlMetadata(c *check.C) {

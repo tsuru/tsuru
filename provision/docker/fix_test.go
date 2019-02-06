@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"

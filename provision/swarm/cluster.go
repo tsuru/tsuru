@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"math/rand"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/servicemanager"

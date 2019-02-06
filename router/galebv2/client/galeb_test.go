@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/api/apitest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {

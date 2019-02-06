@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type ClusterSuite struct {

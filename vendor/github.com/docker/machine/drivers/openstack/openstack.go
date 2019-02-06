@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
+
+	"github.com/rackspace/gophercloud"
 )
 
 type Driver struct {
@@ -45,7 +48,11 @@ type Driver struct {
 	ComputeNetwork   bool
 	FloatingIpPoolId string
 	IpVersion        int
+	ConfigDrive      bool
+	metadata         string
 	client           Client
+	// ExistingKey keeps track of whether the key was created by us or we used an existing one. If an existing one was used, we shouldn't delete it when the machine is deleted.
+	ExistingKey bool
 }
 
 const (
@@ -222,6 +229,17 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "OpenStack active timeout",
 			Value:  defaultActiveTimeout,
 		},
+		mcnflag.BoolFlag{
+			EnvVar: "OS_CONFIG_DRIVE",
+			Name:   "openstack-config-drive",
+			Usage:  "Enables the OpenStack config drive for the instance",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "OS_METADATA",
+			Name:   "openstack-metadata",
+			Usage:  "OpenStack Instance Metadata (e.g. key1,value1,key2,value2)",
+			Value:  "",
+		},
 	}
 }
 
@@ -275,6 +293,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.ImageName = flags.String("openstack-image-name")
 	d.NetworkId = flags.String("openstack-net-id")
 	d.NetworkName = flags.String("openstack-net-name")
+	d.metadata = flags.String("openstack-metadata")
 	if flags.String("openstack-sec-groups") != "" {
 		d.SecurityGroups = strings.Split(flags.String("openstack-sec-groups"), ",")
 	}
@@ -283,8 +302,10 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.ComputeNetwork = flags.Bool("openstack-nova-network")
 	d.SSHUser = flags.String("openstack-ssh-user")
 	d.SSHPort = flags.Int("openstack-ssh-port")
+	d.ExistingKey = flags.String("openstack-keypair-name") != ""
 	d.KeyPairName = flags.String("openstack-keypair-name")
 	d.PrivateKeyFile = flags.String("openstack-private-key-file")
+	d.ConfigDrive = flags.Bool("openstack-config-drive")
 
 	if flags.String("openstack-user-data-file") != "" {
 		userData, err := ioutil.ReadFile(flags.String("openstack-user-data-file"))
@@ -447,14 +468,47 @@ func (d *Driver) Remove() error {
 		return err
 	}
 	if err := d.client.DeleteInstance(d); err != nil {
-		return err
+		if gopherErr, ok := err.(*gophercloud.UnexpectedResponseCodeError); ok {
+			if gopherErr.Actual == http.StatusNotFound {
+				log.Warn("Remote instance does not exist, proceeding with removing local reference")
+			} else {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
-	log.Debug("deleting key pair...", map[string]string{"Name": d.KeyPairName})
-	// TODO (fsoppelsa) maybe we want to check this, in case of shared keypairs, before removal
-	if err := d.client.DeleteKeyPair(d, d.KeyPairName); err != nil {
-		return err
+	if !d.ExistingKey {
+		log.Debug("deleting key pair...", map[string]string{"Name": d.KeyPairName})
+		if err := d.client.DeleteKeyPair(d, d.KeyPairName); err != nil {
+			if gopherErr, ok := err.(*gophercloud.UnexpectedResponseCodeError); ok {
+				if gopherErr.Actual == http.StatusNotFound {
+					log.Warn("Keypair already deleted")
+				} else {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+func (d *Driver) GetMetadata() map[string]string {
+	metadata := make(map[string]string)
+
+	if d.metadata != "" {
+		items := strings.Split(d.metadata, ",")
+		if len(items) > 0 && len(items)%2 != 0 {
+			log.Warnf("Metadata are not key value in pairs. %d elements found", len(items))
+		}
+		for i := 0; i < len(items)-1; i += 2 {
+			metadata[items[i]] = items[i+1]
+		}
+	}
+
+	return metadata
 }
 
 const (

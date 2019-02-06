@@ -28,7 +28,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type EventSuite struct {
@@ -70,7 +70,7 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 }

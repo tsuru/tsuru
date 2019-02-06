@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/pool"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSchedulerSchedule(c *check.C) {

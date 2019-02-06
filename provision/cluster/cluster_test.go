@@ -5,6 +5,7 @@
 package cluster
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -15,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type S struct {
@@ -227,7 +228,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 				Default:     true,
 				Provisioner: "invalid",
 			},
-			err: "unknown provisioner: \"invalid\"",
+			err: "provisioner error: unknown provisioner: \"invalid\"",
 		},
 	}
 	for _, tt := range tests {
@@ -335,12 +336,16 @@ func (s *S) TestClusterServiceFindByPoolNotFound(c *check.C) {
 }
 
 func (s *S) TestClusterServiceDelete(c *check.C) {
-	cluster := provTypes.Cluster{Name: "cluster1"}
+	cluster := provTypes.Cluster{Name: "cluster1", Provisioner: "fake"}
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{
 			OnDelete: func(clust provTypes.Cluster) error {
 				c.Assert(clust, check.DeepEquals, cluster)
 				return nil
+			},
+			OnFindByName: func(name string) (*provTypes.Cluster, error) {
+				c.Assert(cluster.Name, check.Equals, name)
+				return &cluster, nil
 			},
 		},
 	}
@@ -352,8 +357,8 @@ func (s *S) TestClusterServiceDelete(c *check.C) {
 func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{
-			OnDelete: func(_ provTypes.Cluster) error {
-				return errors.New("not found")
+			OnFindByName: func(_ string) (*provTypes.Cluster, error) {
+				return nil, errors.New("not found")
 			},
 		},
 	}
@@ -362,18 +367,26 @@ func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
-type initClusterProv struct {
+type clusterProv struct {
 	*provisiontest.FakeProvisioner
 	callCluster *provTypes.Cluster
 }
 
-func (p *initClusterProv) InitializeCluster(c *provTypes.Cluster) error {
+func (p *clusterProv) InitializeCluster(c *provTypes.Cluster) error {
 	p.callCluster = c
 	return nil
 }
 
+func (p *clusterProv) ValidateCluster(c *provTypes.Cluster) error {
+	return nil
+}
+
+func (p *clusterProv) ClusterHelp() provTypes.ClusterHelpInfo {
+	return provTypes.ClusterHelpInfo{}
+}
+
 func (s *S) TestClusterUpdateCallsProvInit(c *check.C) {
-	inst := initClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	inst := clusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
 	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
 		return &inst, nil
 	})
@@ -433,4 +446,129 @@ func (s *S) TestFindByPoolsNotFound(c *check.C) {
 	}
 	_, err := cs.FindByPools(prov, []string{"poolA", "poolB", "poolC", "poolD"})
 	c.Assert(err, check.ErrorMatches, `unable to find cluster for pool "poolD"`)
+}
+
+type provisionClusterProv struct {
+	*provisiontest.FakeProvisioner
+	callLog [][]string
+}
+
+func (p *provisionClusterProv) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
+	p.callLog = append(p.callLog, []string{"CreateCluster", c.Name})
+	return nil
+}
+func (p *provisionClusterProv) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
+	p.callLog = append(p.callLog, []string{"UpdateCluster", c.Name})
+	return nil
+}
+func (p *provisionClusterProv) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
+	p.callLog = append(p.callLog, []string{"DeleteCluster", c.Name})
+	return nil
+}
+
+func (s *S) TestClusterServiceCreateProvisionCluster(c *check.C) {
+	inst := provisionClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	myCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake-cluster",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	upsertCall := false
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				upsertCall = true
+				c.Assert(clust.Name, check.Equals, myCluster.Name)
+				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
+				return nil
+			},
+			OnFindByName: func(name string) (*provTypes.Cluster, error) {
+				c.Assert(upsertCall, check.Equals, true)
+				return &myCluster, nil
+			},
+		},
+	}
+	err := cs.Create(myCluster)
+	c.Assert(err, check.IsNil)
+	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"CreateCluster", "c1"}})
+}
+
+func (s *S) TestClusterServiceUpdateProvisionCluster(c *check.C) {
+	inst := provisionClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	myCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake-cluster",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	upsertCall := false
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				upsertCall = true
+				c.Assert(clust.Name, check.Equals, myCluster.Name)
+				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
+				return nil
+			},
+			OnFindByName: func(name string) (*provTypes.Cluster, error) {
+				c.Assert(upsertCall, check.Equals, true)
+				return &myCluster, nil
+			},
+		},
+	}
+	err := cs.Update(myCluster)
+	c.Assert(err, check.IsNil)
+	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"UpdateCluster", "c1"}})
+}
+
+func (s *S) TestClusterServiceDeleteProvisionCluster(c *check.C) {
+	inst := provisionClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	myCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake-cluster",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	deleteCall := false
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnDelete: func(clust provTypes.Cluster) error {
+				deleteCall = true
+				c.Assert(clust.Name, check.Equals, myCluster.Name)
+				return nil
+			},
+			OnFindByName: func(name string) (*provTypes.Cluster, error) {
+				c.Assert(deleteCall, check.Equals, false)
+				return &myCluster, nil
+			},
+		},
+	}
+	err := cs.Delete(provTypes.Cluster{Name: "c1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"DeleteCluster", "c1"}})
 }

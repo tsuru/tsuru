@@ -40,7 +40,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type DeploySuite struct {
@@ -100,7 +100,7 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 	s.reset()

@@ -109,7 +109,6 @@ func (s *S) SetUpTest(c *check.C) {
 	kubeProv.ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil
 	}
-	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err = pool.AddPool(pool.AddPoolOptions{
@@ -142,6 +141,7 @@ func (s *S) SetUpTest(c *check.C) {
 		return s.factory, nil
 	}
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.factory)
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

@@ -39,10 +39,10 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if opts.File != nil {
 		defer opts.File.Close()
 	}
-	commit := r.FormValue("commit")
+	commit := InputValue(r, "commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
-	origin := r.FormValue("origin")
+	origin := InputValue(r, "origin")
 	if opts.Image != "" {
 		origin = "image"
 	}
@@ -59,7 +59,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
 			return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
 		}
-		userName = r.FormValue("user")
+		userName = InputValue(r, "user")
 	} else {
 		commit = ""
 		userName = t.GetUserName()
@@ -68,7 +68,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	message := r.FormValue("message")
+	message := InputValue(r, "message")
 	if commit != "" && message == "" {
 		var messages []string
 		messages, err = repository.Manager().CommitMessages(instance.Name, commit, 1)
@@ -153,7 +153,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer writer.Stop()
 	fmt.Fprint(w, "Saving the difference between the old and new code\n")
 	appName := r.URL.Query().Get(":appname")
-	diff := r.FormValue("customdata")
+	diff := InputValue(r, "customdata")
 	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -189,14 +189,14 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
-	image := r.FormValue("image")
+	image := InputValue(r, "image")
 	if image == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you cannot rollback without an image name",
 		}
 	}
-	origin := r.FormValue("origin")
+	origin := InputValue(r, "origin")
 	if origin != "" {
 		if !app.ValidateOrigin(origin) {
 			return &tsuruErrors.HTTP{
@@ -320,7 +320,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
-	origin := r.FormValue("origin")
+	origin := InputValue(r, "origin")
 	if !app.ValidateOrigin(origin) {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -388,14 +388,14 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: "User does not have permission to do this action in this app",
 		}
 	}
-	img := r.FormValue("image")
+	img := InputValue(r, "image")
 	if img == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you must specify an image",
 		}
 	}
-	disable := r.FormValue("disable")
+	disable := InputValue(r, "disable")
 	disableRollback, err := strconv.ParseBool(disable)
 	if err != nil {
 		return &tsuruErrors.HTTP{
@@ -403,7 +403,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("Cannot set 'disable' status to: '%s', instead of 'true' or 'false'", disable),
 		}
 	}
-	reason := r.FormValue("reason")
+	reason := InputValue(r, "reason")
 	if (reason == "") && (disableRollback) {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -414,7 +414,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateDeployRollback,
 		Owner:         t,
-		CustomData:    event.FormToCustomData(r.Form),
+		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
 		Cancelable:    false,

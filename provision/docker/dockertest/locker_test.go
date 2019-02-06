@@ -4,7 +4,7 @@
 
 package dockertest
 
-import "gopkg.in/check.v1"
+import check "gopkg.in/check.v1"
 
 func (s *S) TestFakeLocker(c *check.C) {
 	locker := NewFakeLocker()

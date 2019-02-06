@@ -5,11 +5,10 @@
 package kubernetes
 
 import (
-	"encoding/json"
 	"sync/atomic"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
@@ -18,9 +17,8 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
-	apiv1beta2 "k8s.io/api/apps/v1beta2"
+	check "gopkg.in/check.v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -102,11 +100,11 @@ func (s *S) TestManagerDeployNodeContainerMultiClusterNoApp(c *check.C) {
 	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 
-	daemons, err := client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err := client1.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
 
-	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err = client2.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
 }
@@ -129,11 +127,11 @@ func (s *S) TestManagerDeployNodeContainerMultiClusterWithApp(c *check.C) {
 	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 
-	daemons, err := client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err := client1.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 0)
 
-	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err = client2.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
 
@@ -144,11 +142,11 @@ func (s *S) TestManagerDeployNodeContainerMultiClusterWithApp(c *check.C) {
 	err = m.DeployNodeContainer(&nc, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 
-	daemons, err = client1.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err = client1.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
 
-	daemons, err = client2.AppsV1beta2().DaemonSets("default").List(metav1.ListOptions{})
+	daemons, err = client2.AppsV1().DaemonSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
 }
@@ -176,10 +174,10 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 	ns := s.client.PoolNamespace(pool)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-pool-mypool", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-pool-mypool", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	trueVar := true
 	maxUnavailable := intstr.FromString("20%")
@@ -197,9 +195,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 			},
 		},
 	}
-	affinityData, err := json.Marshal(expectedAffinity)
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon, check.DeepEquals, &v1beta2.DaemonSet{
+	c.Assert(daemon, check.DeepEquals, &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-mypool",
 			Namespace: ns,
@@ -211,16 +207,16 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 				"tsuru.io/node-container-pool": pool,
 			},
 		},
-		Spec: v1beta2.DaemonSetSpec{
+		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/node-container-name": "bs",
 					"tsuru.io/node-container-pool": pool,
 				},
 			},
-			UpdateStrategy: v1beta2.DaemonSetUpdateStrategy{
-				Type: v1beta2.RollingUpdateDaemonSetStrategyType,
-				RollingUpdate: &v1beta2.RollingUpdateDaemonSet{
+			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
+				Type: appsv1.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDaemonSet{
 					MaxUnavailable: &maxUnavailable,
 				},
 			},
@@ -232,9 +228,6 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						"tsuru.io/provisioner":         "kubernetes",
 						"tsuru.io/node-container-name": "bs",
 						"tsuru.io/node-container-pool": pool,
-					},
-					Annotations: map[string]string{
-						"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
 					},
 				},
 				Spec: apiv1.PodSpec{
@@ -301,11 +294,11 @@ func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 	var counter int32
 	s.client.PrependReactor("create", "daemonsets", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)
-		s.client.AppsV1beta2()
-		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1beta2.DaemonSet)
+		s.client.AppsV1()
+		ns, ok := action.(ktesting.CreateAction).GetObject().(*appsv1.DaemonSet)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.PoolNamespace(pool))
-		return false, nil, nil
+		return kTesting.RunReactionsAfter(&s.client.Fake, action)
 	})
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -351,7 +344,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}}, false)
 	c.Assert(err, check.IsNil)
 	ns := s.client.PoolNamespace("")
-	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -372,15 +365,10 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 			},
 		},
 	}
-	affinityData, err := json.Marshal(expectedAffinity)
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
-	})
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Include: []string{"p1"}}, false)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity = &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -401,11 +389,6 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 			},
 		},
 	}
-	affinityData, err = json.Marshal(expectedAffinity)
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
-	})
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 }
 
@@ -425,10 +408,10 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 	ns := s.client.PoolNamespace(pool)
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-big-sibling-pool-main", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-big-sibling-pool-main", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -490,10 +473,10 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 	ns := s.client.PoolNamespace("pool")
-	daemons, err := s.client.AppsV1beta2().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-big-sibling-pool-main", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-big-sibling-pool-main", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedVolumes := []apiv1.Volume{
 		{
@@ -534,9 +517,9 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 
 func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
-		ds := action.(ktesting.CreateAction).GetObject().(*v1beta2.DaemonSet)
+		ds := action.(ktesting.CreateAction).GetObject().(*appsv1.DaemonSet)
 		ds.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
-		return false, nil, nil
+		return kTesting.RunReactionsAfter(&s.client.Fake, action)
 	}
 	s.client.PrependReactor("create", "daemonsets", reaction)
 	s.client.PrependReactor("update", "daemonsets", reaction)
@@ -561,7 +544,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, true)
 	c.Assert(err, check.IsNil)
 	ns := s.client.PoolNamespace("")
-	daemon, err := s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -577,15 +560,10 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 			},
 		},
 	}
-	affinityData, err := json.Marshal(expectedAffinity)
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
-	})
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedAffinity = &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
@@ -606,16 +584,11 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 			},
 		},
 	}
-	affinityData, err = json.Marshal(expectedAffinity)
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
-	})
 	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	beforeCreation := daemon.CreationTimestamp
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.AppsV1beta2().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err = s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.CreationTimestamp, check.DeepEquals, beforeCreation)
 }

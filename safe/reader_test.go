@@ -7,7 +7,7 @@ package safe
 import (
 	"bytes"
 
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestSafeBytesReaderLen(c *check.C) {

@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	"github.com/tsuru/tsuru/router/routertest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type ExternalSuite struct {

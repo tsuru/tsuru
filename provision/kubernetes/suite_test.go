@@ -26,7 +26,7 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/client-go/informers"
@@ -107,7 +107,6 @@ func (s *S) SetUpTest(c *check.C) {
 	ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil
 	}
-	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err = pool.AddPool(pool.AddPoolOptions{
@@ -127,6 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 		stopCh:           make(chan struct{}),
 	}
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.factory)
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

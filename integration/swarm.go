@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mattn/go-shellwords"
+	shellwords "github.com/mattn/go-shellwords"
 	check "gopkg.in/check.v1"
 )
 

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -92,6 +91,10 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
+	_, err = v.LoadBinds()
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&v)
 }
@@ -105,15 +108,11 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   409: Volume already exists
 func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var inputVolume volume.Volume
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&inputVolume, r.Form)
+	err = ParseInput(r, &inputVolume)
+	if err != nil {
+		return err
+	}
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
 	canCreate := permission.Check(t, permission.PermVolumeCreate,
@@ -127,7 +126,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(&inputVolume)...),
 	})
 	if err != nil {
@@ -155,15 +154,11 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   401: Unauthorized
 //   404: Volume not found
 func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	err = r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var inputVolume volume.Volume
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&inputVolume, r.Form)
+	err = ParseInput(r, &inputVolume)
+	if err != nil {
+		return err
+	}
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
 	inputVolume.Name = r.URL.Query().Get(":name")
@@ -182,7 +177,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
 	if err != nil {
@@ -241,7 +236,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
 		Kind:       permission.PermVolumeDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
 	if err != nil {
@@ -261,20 +256,16 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Volume not found
 //   409: Volume bind already exists
 func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var bindInfo struct {
 		App        string
 		MountPoint string
 		ReadOnly   bool
 		NoRestart  bool
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&bindInfo, r.Form)
+	err := ParseInput(r, &bindInfo)
+	if err != nil {
+		return err
+	}
 	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
 	if err != nil {
 		if err == volume.ErrVolumeNotFound {
@@ -298,7 +289,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateBind,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
 	if err != nil {
@@ -316,7 +307,8 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Restart("", writer)
+	evt.SetLogWriter(writer)
+	return a.Restart("", evt)
 }
 
 // title: volume unbind
@@ -328,19 +320,15 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Volume not found
 func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	var bindInfo struct {
 		App        string
 		MountPoint string
 		NoRestart  bool
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
-	dec.DecodeValues(&bindInfo, r.Form)
+	err := ParseInput(r, &bindInfo)
+	if err != nil {
+		return err
+	}
 	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
 	if err != nil {
 		if err == volume.ErrVolumeNotFound {
@@ -364,7 +352,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateUnbind,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
 	if err != nil {
@@ -382,5 +370,6 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	return a.Restart("", writer)
+	evt.SetLogWriter(writer)
+	return a.Restart("", evt)
 }

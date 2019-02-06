@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/tsurutest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestNativeLoginWithoutEmail(c *check.C) {

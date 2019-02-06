@@ -15,7 +15,7 @@ import (
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
 
-	"github.com/Azure/azure-sdk-for-go/arm/storage"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 )
 
 const (
@@ -390,11 +390,9 @@ func (d *Driver) Create() error {
 	if err := d.generateSSHKey(d.ctx); err != nil {
 		return err
 	}
-	if err := c.CreateVirtualMachine(d.ResourceGroup, d.naming().VM(), d.Location, d.Size, d.ctx.AvailabilitySetID,
-		d.ctx.NetworkInterfaceID, d.BaseDriver.SSHUser, d.ctx.SSHPublicKey, d.Image, customData, d.ctx.StorageAccount); err != nil {
-		return err
-	}
-	return nil
+	err = c.CreateVirtualMachine(d.ResourceGroup, d.naming().VM(), d.Location, d.Size, d.ctx.AvailabilitySetID,
+		d.ctx.NetworkInterfaceID, d.BaseDriver.SSHUser, d.ctx.SSHPublicKey, d.Image, customData, d.ctx.StorageAccount)
+	return err
 }
 
 // Remove deletes the virtual machine and resources associated to it.
@@ -433,10 +431,8 @@ func (d *Driver) Remove() error {
 	if err := c.CleanupSubnetIfExists(d.ResourceGroup, d.VirtualNetwork, d.SubnetName); err != nil {
 		return err
 	}
-	if err := c.CleanupVirtualNetworkIfExists(d.ResourceGroup, d.VirtualNetwork); err != nil {
-		return err
-	}
-	return nil
+	err = c.CleanupVirtualNetworkIfExists(d.ResourceGroup, d.VirtualNetwork)
+	return err
 }
 
 // GetIP returns public IP address or hostname of the machine instance.

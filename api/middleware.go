@@ -7,9 +7,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	stdLog "log"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -18,7 +18,7 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -36,6 +37,8 @@ const (
 	tsuruMin      = "1.0.1"
 	craneMin      = "1.0.0"
 	tsuruAdminMin = "1.0.0"
+
+	defaultMaxMemory = 32 << 20 // 32 MB
 )
 
 func validate(token string, r *http.Request) (auth.Token, error) {
@@ -278,47 +281,135 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 	l.logger.Printf("%s %s %s %s %d %q in %0.6fms%s", nowFormatted, scheme, r.Method, r.URL.Path, statusCode, r.UserAgent(), float64(duration)/float64(time.Millisecond), requestID)
 }
 
-type contentHijackMiddleware struct {
-	excludedHandlers []http.Handler
+func InputValues(r *http.Request, field string) ([]string, bool) {
+	parseForm(r)
+	switch r.Header.Get("Content-Type") {
+	case "application/json":
+		data, err := context.GetBody(r)
+		if err != nil {
+			break
+		}
+		if len(data) == 0 {
+			break
+		}
+		var dst map[string]interface{}
+		err = json.Unmarshal(data, &dst)
+		if err != nil {
+			break
+		}
+		val, isSet := dst[field]
+		if !isSet {
+			break
+		}
+		if _, isSet := r.Form[field]; !isSet {
+			r.Form[field] = nil
+		}
+		if asSlice, ok := val.([]interface{}); ok {
+			for _, v := range asSlice {
+				r.Form[field] = append(r.Form[field], fmt.Sprint(v))
+			}
+		} else {
+			r.Form[field] = append(r.Form[field], fmt.Sprint(val))
+		}
+	}
+	val, isSet := r.Form[field]
+	return val, isSet
 }
 
-func (m *contentHijackMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	defer next(w, r)
-	if r.Body == nil {
-		return
+func InputValue(r *http.Request, field string) string {
+	if values, _ := InputValues(r, field); len(values) > 0 {
+		return values[0]
 	}
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		return
-	}
-	currentHandler := context.GetDelayedHandler(r)
-	if currentHandler != nil {
-		currentHandlerPtr := reflect.ValueOf(currentHandler).Pointer()
-		for _, h := range m.excludedHandlers {
-			if reflect.ValueOf(h).Pointer() == currentHandlerPtr {
-				return
+	return ""
+}
+
+func InputFields(r *http.Request, exclude ...string) url.Values {
+	parseForm(r)
+	baseValues := r.Form
+	excludeSet := set.FromSlice(exclude)
+	switch r.Header.Get("Content-Type") {
+	case "application/json":
+		data, err := context.GetBody(r)
+		if err != nil {
+			return nil
+		}
+		if len(data) == 0 {
+			return nil
+		}
+		var dst map[string]interface{}
+		err = json.Unmarshal(data, &dst)
+		if err != nil {
+			return nil
+		}
+		bodyValues, err := form.EncodeToValues(dst)
+		if err != nil {
+			return nil
+		}
+		for key, values := range bodyValues {
+			for _, v := range values {
+				baseValues.Add(key, v)
 			}
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Errorf("[content hijacker] error reading body: %v", err)
-		return
+	ret := url.Values{}
+	for key, value := range baseValues {
+		if excludeSet.Includes(key) {
+			ret[key] = []string{"*****"}
+			continue
+		}
+		ret[key] = value
 	}
-	if len(data) == 0 {
-		return
+	return ret
+}
+
+func ParseInput(r *http.Request, dst interface{}) error {
+	contentType := r.Header.Get("Content-Type")
+	switch contentType {
+	case "application/json":
+		data, err := context.GetBody(r)
+		if err != nil {
+			return err
+		}
+		if len(data) == 0 {
+			return nil
+		}
+		err = json.Unmarshal(data, dst)
+		if err != nil {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: fmt.Sprintf("unable to parse as json: %q - %v", string(data), err),
+			}
+		}
+	default:
+		dec := form.NewDecoder(nil)
+		dec.IgnoreCase(true)
+		dec.IgnoreUnknownKeys(true)
+		err := parseForm(r)
+		if err != nil && contentType == "application/x-www-form-urlencoded" {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: fmt.Sprintf("unable to parse form: %v", err),
+			}
+		}
+		err = dec.DecodeValues(dst, r.Form)
+		if err != nil {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: fmt.Sprintf("unable to decode form: %#v - %v", r.Form, err),
+			}
+		}
 	}
-	var bodyData map[string]interface{}
-	err = json.Unmarshal(data, &bodyData)
-	if err != nil {
-		log.Errorf("[content hijacker] unable to parse as json: %q - %v", string(data), err)
-		return
+	return nil
+}
+
+func parseForm(r *http.Request) error {
+	if r.Form == nil {
+		contentType := r.Header.Get("Content-Type")
+		if strings.HasPrefix(contentType, "multipart") {
+			return r.ParseMultipartForm(defaultMaxMemory)
+		} else {
+			return r.ParseForm()
+		}
 	}
-	formData, err := form.EncodeToString(bodyData)
-	if err != nil {
-		log.Errorf("[content hijacker] unable to format as form: %v", err)
-		return
-	}
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.Body = ioutil.NopCloser(strings.NewReader(formData))
+	return nil
 }

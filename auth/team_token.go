@@ -216,6 +216,25 @@ func (s *teamTokenService) Update(args authTypes.TeamTokenUpdateArgs, t authType
 	return *token, nil
 }
 
+func (s *teamTokenService) Info(tokenID string, t authTypes.Token) (authTypes.TeamToken, error) {
+	token, err := s.storage.FindByTokenID(tokenID)
+	if err != nil {
+		return authTypes.TeamToken{}, err
+	}
+	userPerms, err := t.Permissions()
+	if err != nil {
+		return authTypes.TeamToken{}, err
+	}
+	canView, err := canViewTokenValue(userPerms, token)
+	if err != nil {
+		return authTypes.TeamToken{}, err
+	}
+	if !canView {
+		token.Token = ""
+	}
+	return *token, nil
+}
+
 func (s *teamTokenService) FindByUserToken(t authTypes.Token) ([]authTypes.TeamToken, error) {
 	teamTokens, err := s.storage.FindByTeams(getTokenTeams(t))
 	if err != nil {

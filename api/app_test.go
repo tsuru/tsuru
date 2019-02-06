@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -48,7 +48,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 var (
@@ -3508,8 +3508,8 @@ func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	msg := "missing form body\n"
-	c.Assert(recorder.Body.String(), check.Equals, msg)
+	msg := ".*missing form body\n"
+	c.Assert(recorder.Body.String(), check.Matches, msg)
 }
 
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
@@ -4292,7 +4292,8 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	now := time.Now()
-	coll := s.logConn.Logs(a.Name)
+	coll, err := s.logConn.CreateAppLogCollection(a.Name)
+	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
 		l := app.Applog{
 			Date:    now.Add(time.Duration(i) * time.Hour),

@@ -7,7 +7,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/arm/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/docker/machine/drivers/azure/azureutil"
@@ -49,7 +51,7 @@ func (d *Driver) newAzureClient() (*azureutil.AzureClient, error) {
 	}
 
 	var (
-		token *azure.ServicePrincipalToken
+		token *adal.ServicePrincipalToken
 		err   error
 	)
 	if d.ClientID != "" && d.ClientSecret != "" { // use Service Principal auth
@@ -65,7 +67,7 @@ func (d *Driver) newAzureClient() (*azureutil.AzureClient, error) {
 			return nil, fmt.Errorf("Error creating Azure client: %v", err)
 		}
 	}
-	return azureutil.New(env, d.SubscriptionID, token), nil
+	return azureutil.New(env, d.SubscriptionID, autorest.NewBearerAuthorizer(token)), nil
 }
 
 // generateSSHKey creates a ssh key pair locally and saves the public key file
@@ -95,14 +97,14 @@ func (d *Driver) getSecurityRules(extraPorts []string) (*[]network.SecurityRule,
 	mkRule := func(priority int, name, description, srcPort, dstPort string, proto network.SecurityRuleProtocol) network.SecurityRule {
 		return network.SecurityRule{
 			Name: to.StringPtr(name),
-			Properties: &network.SecurityRulePropertiesFormat{
+			SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
 				Description:              to.StringPtr(description),
 				SourceAddressPrefix:      to.StringPtr("*"),
 				DestinationAddressPrefix: to.StringPtr("*"),
 				SourcePortRange:          to.StringPtr(srcPort),
 				DestinationPortRange:     to.StringPtr(dstPort),
-				Access:                   network.Allow,
-				Direction:                network.Inbound,
+				Access:                   network.SecurityRuleAccessAllow,
+				Direction:                network.SecurityRuleDirectionInbound,
 				Protocol:                 proto,
 				Priority:                 to.Int32Ptr(int32(priority)),
 			},
@@ -113,8 +115,8 @@ func (d *Driver) getSecurityRules(extraPorts []string) (*[]network.SecurityRule,
 
 	// Base ports to be opened for any machine
 	rl := []network.SecurityRule{
-		mkRule(100, "SSHAllowAny", "Allow ssh from public Internet", "*", fmt.Sprintf("%d", d.BaseDriver.SSHPort), network.TCP),
-		mkRule(300, "DockerAllowAny", "Allow docker engine access (TLS-protected)", "*", fmt.Sprintf("%d", d.DockerPort), network.TCP),
+		mkRule(100, "SSHAllowAny", "Allow ssh from public Internet", "*", fmt.Sprintf("%d", d.BaseDriver.SSHPort), network.SecurityRuleProtocolTCP),
+		mkRule(300, "DockerAllowAny", "Allow docker engine access (TLS-protected)", "*", fmt.Sprintf("%d", d.DockerPort), network.SecurityRuleProtocolTCP),
 	}
 
 	// Open swarm port if configured
@@ -129,7 +131,7 @@ func (d *Driver) getSecurityRules(extraPorts []string) (*[]network.SecurityRule,
 		if err != nil {
 			return nil, fmt.Errorf("Could not parse swarm port in %q: %v", u.Host, err)
 		}
-		rl = append(rl, mkRule(500, "DockerSwarmAllowAny", "Allow swarm manager access (TLS-protected)", "*", swarmPort, network.TCP))
+		rl = append(rl, mkRule(500, "DockerSwarmAllowAny", "Allow swarm manager access (TLS-protected)", "*", swarmPort, network.SecurityRuleProtocolTCP))
 	} else {
 		log.Debug("Swarm host is not configured.")
 	}
@@ -219,11 +221,11 @@ func parseVirtualNetwork(name string, defaultRG string) (string, string) {
 func parseSecurityRuleProtocol(proto string) (network.SecurityRuleProtocol, error) {
 	switch strings.ToLower(proto) {
 	case "tcp":
-		return network.TCP, nil
+		return network.SecurityRuleProtocolTCP, nil
 	case "udp":
-		return network.UDP, nil
+		return network.SecurityRuleProtocolUDP, nil
 	case "*":
-		return network.Asterisk, nil
+		return network.SecurityRuleProtocolAsterisk, nil
 	default:
 		return "", fmt.Errorf("invalid protocol %s", proto)
 	}

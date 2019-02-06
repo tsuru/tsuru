@@ -32,6 +32,9 @@ func (n *kubernetesNodeWrapper) Address() string {
 	if n.node == nil {
 		return ""
 	}
+	if ip, ok := n.node.Labels["tsuru.io/override-ip"]; ok {
+		return ip
+	}
 	for _, addr := range n.node.Status.Addresses {
 		if addr.Type == apiv1.NodeInternalIP {
 			return addr.Address

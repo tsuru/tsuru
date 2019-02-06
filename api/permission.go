@@ -35,7 +35,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermRoleCreate) {
 		return permission.ErrUnauthorized
 	}
-	roleName := r.FormValue("name")
+	roleName := InputValue(r, "name")
 	if roleName == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -46,14 +46,14 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	_, err = permission.NewRole(roleName, r.FormValue("context"), r.FormValue("description"))
+	_, err = permission.NewRole(roleName, InputValue(r, "context"), InputValue(r, "description"))
 	if err == permTypes.ErrInvalidRoleName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -79,8 +79,8 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: Role removed
 //   401: Unauthorized
 //   404: Role not found
+//   412: Role with users
 func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermRoleDelete) {
 		return permission.ErrUnauthorized
 	}
@@ -89,16 +89,19 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = auth.RemoveRoleFromAllUsers(roleName)
+	usersWithRole, err := auth.ListUsersWithRole(roleName)
 	if err != nil {
 		return err
+	}
+	if len(usersWithRole) != 0 {
+		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: permTypes.ErrRemoveRoleWithUsers.Error()}
 	}
 	err = permission.DestroyRole(roleName)
 	if err == permTypes.ErrRoleNotFound {
@@ -269,7 +272,6 @@ func runWithPermSync(users []auth.User, callback func() error) error {
 //   401: Unauthorized
 //   409: Permission not allowed
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermRoleUpdatePermissionAdd) {
 		return permission.ErrUnauthorized
 	}
@@ -278,7 +280,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionAdd,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
@@ -289,16 +291,13 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
 	users, err := auth.ListUsersWithRole(roleName)
 	if err != nil {
 		return err
 	}
 	err = runWithPermSync(users, func() error {
-		return role.AddPermissions(r.Form["permission"]...)
+		permissions, _ := InputValues(r, "permission")
+		return role.AddPermissions(permissions...)
 	})
 	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
@@ -329,7 +328,6 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermRoleUpdatePermissionRemove) {
 		return permission.ErrUnauthorized
 	}
@@ -338,7 +336,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionRemove,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
@@ -403,7 +401,6 @@ func canUseRole(t auth.Token, roleName, contextValue string) error {
 //   401: Unauthorized
 //   404: Role not found
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
@@ -412,15 +409,15 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	email := r.FormValue("email")
-	contextValue := r.FormValue("context")
+	email := InputValue(r, "email")
+	contextValue := InputValue(r, "context")
 	user, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return err
@@ -444,7 +441,6 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   401: Unauthorized
 //   404: Role not found
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
@@ -453,7 +449,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
@@ -522,13 +518,9 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !permission.Check(t, permission.PermRoleDefaultCreate) {
 		return permission.ErrUnauthorized
 	}
-	err = r.ParseForm()
-	if err != nil {
-		return err
-	}
 	rolesMap := map[string][]string{}
 	for evtName := range permTypes.RoleEventMap {
-		roles := r.Form[evtName]
+		roles, _ := InputValues(r, evtName)
 		for _, roleName := range roles {
 			rolesMap[roleName] = append(rolesMap[roleName], evtName)
 		}
@@ -538,7 +530,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultCreate,
 			Owner:      t,
-			CustomData: event.FormToCustomData(r.Form),
+			CustomData: event.FormToCustomData(InputFields(r)),
 			Allowed:    event.Allowed(permission.PermRoleReadEvents),
 		})
 		if err != nil {
@@ -582,10 +574,10 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !permission.Check(t, permission.PermRoleDefaultDelete) {
 		return permission.ErrUnauthorized
 	}
-	r.ParseForm()
+
 	rolesMap := map[string][]string{}
 	for evtName := range permTypes.RoleEventMap {
-		roles := r.Form[evtName]
+		roles, _ := InputValues(r, evtName)
 		for _, roleName := range roles {
 			rolesMap[roleName] = append(rolesMap[roleName], evtName)
 		}
@@ -595,7 +587,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultDelete,
 			Owner:      t,
-			CustomData: event.FormToCustomData(r.Form),
+			CustomData: event.FormToCustomData(InputFields(r)),
 			Allowed:    event.Allowed(permission.PermRoleReadEvents),
 		})
 		if err != nil {
@@ -650,11 +642,10 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   400: Invalid data
 //   401: Unauthorized
 func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	r.ParseForm()
-	roleName := r.FormValue("name")
-	newName := r.FormValue("newName")
-	contextType := r.FormValue("contextType")
-	description := r.FormValue("description")
+	roleName := InputValue(r, "name")
+	newName := InputValue(r, "newName")
+	contextType := InputValue(r, "contextType")
+	description := InputValue(r, "description")
 	var wantedPerms []*permission.PermissionScheme
 	if newName != "" {
 		wantedPerms = append(wantedPerms, permission.PermRoleUpdateName)
@@ -678,7 +669,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleUpdate),
 	})
 	if err != nil {
@@ -705,21 +696,17 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Role or team token not found
 func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
-	tokenID := r.FormValue("token_id")
-	contextValue := r.FormValue("context")
+	tokenID := InputValue(r, "token_id")
+	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {
@@ -747,21 +734,17 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   401: Unauthorized
 //   404: Role or team token not found
 func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
 	tokenID := r.URL.Query().Get(":token_id")
-	contextValue := r.FormValue("context")
+	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
 	if err != nil {

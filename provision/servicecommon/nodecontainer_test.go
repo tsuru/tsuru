@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type ncCall struct {

@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	stdRuntime "runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,8 +28,8 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/check.v1"
-	"k8s.io/api/apps/v1beta2"
+	check "gopkg.in/check.v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -135,7 +137,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
-	s.client.TsuruClientset.PrependReactor("create", "apps", s.appReaction(a, c))
+	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
@@ -354,16 +356,12 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 }
 
 func (s *KubeMock) AppReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
-	return s.appReaction(a, c)
-}
-
-func (s *KubeMock) appReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if !s.IgnoreAppName {
 			app := action.(ktesting.CreateAction).GetObject().(*tsuruv1.App)
 			c.Assert(app.GetName(), check.Equals, a.GetName())
 		}
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.TsuruClientset.Fake, action)
 	}
 }
 
@@ -373,7 +371,7 @@ func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 		crd.Status.Conditions = []v1beta1.CustomResourceDefinitionCondition{
 			{Type: v1beta1.Established, Status: v1beta1.ConditionTrue},
 		}
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.ApiExtensionsClientset.Fake, action)
 	}
 }
 
@@ -419,7 +417,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
 		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-name"], check.Equals, "fake")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
-			return false, nil, nil
+			return RunReactionsAfter(&s.client.Fake, action)
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 		pod.Status.Phase = apiv1.PodSucceeded
@@ -453,7 +451,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				c.Assert(err, check.IsNil)
 			}()
 		}
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.Fake, action)
 	}, &wg
 }
 
@@ -467,12 +465,12 @@ func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.Wa
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
 		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
 		if !strings.HasSuffix(pod.Name, "-image-build") {
-			return false, nil, nil
+			return RunReactionsAfter(&s.client.Fake, action)
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 		pod.Status.Phase = apiv1.PodSucceeded
 		pod.Spec.NodeName = "n1"
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.Fake, action)
 	}, &wg
 }
 
@@ -484,14 +482,14 @@ func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 			c.Assert(err, check.IsNil)
 		}()
 		if len(srv.Spec.Ports) > 0 && srv.Spec.Ports[0].NodePort != int32(0) {
-			return false, nil, nil
+			return RunReactionsAfter(&s.client.Fake, action)
 		}
 		srv.Spec.Ports = []apiv1.ServicePort{
 			{
 				NodePort: int32(30000),
 			},
 		}
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.Fake, action)
 	}
 }
 
@@ -509,10 +507,10 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 	var counter int32
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetSubresource() != "" {
-			return false, nil, nil
+			return RunReactionsAfter(&s.client.Fake, action)
 		}
 		wg.Add(1)
-		dep := action.(ktesting.CreateAction).GetObject().(*v1beta2.Deployment)
+		dep := action.(ktesting.CreateAction).GetObject().(*appsv1.Deployment)
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
 			specReplicas = *dep.Spec.Replicas
@@ -542,7 +540,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 				c.Assert(err, check.IsNil)
 			}
 		}()
-		return false, nil, nil
+		return RunReactionsAfter(&s.client.Fake, action)
 	}, &wg
 }
 
@@ -562,4 +560,41 @@ func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace str
 		}
 	}
 	return nil
+}
+
+// RunReactionsAfter is a hack and it MUST be called from inside a reaction
+// function if it modifies the source object and returns false. This code only
+// exists because of the behavior change introduced by DeepCopying objects in
+// https://github.com/kubernetes/kubernetes/pull/60709.
+//
+// The regression was identified and should be fixed in
+// https://github.com/kubernetes/kubernetes/pull/73601
+//
+// When the latter PR is merged and we update k8s.io/client-go accordingly this
+// code can be safely removed.
+func RunReactionsAfter(fake *ktesting.Fake, action ktesting.Action) (bool, runtime.Object, error) {
+	running := false
+	var pcs [1]uintptr
+	// 0 is the Callers call, 1 is the RunReactionsAfter, 2 is the actual caller we want
+	stdRuntime.Callers(2, pcs[:])
+	frames := stdRuntime.CallersFrames(pcs[:])
+	frame, _ := frames.Next()
+	for _, reactor := range fake.ReactionChain {
+		simpleReactor, ok := reactor.(*ktesting.SimpleReactor)
+		if ok && reflect.ValueOf(simpleReactor.Reaction).Pointer() == frame.Entry {
+			running = true
+			continue
+		}
+		if !running {
+			continue
+		}
+		if !reactor.Handles(action) {
+			continue
+		}
+		handled, ret, err := reactor.React(action)
+		if handled {
+			return handled, ret, err
+		}
+	}
+	return false, nil, nil
 }

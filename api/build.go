@@ -32,7 +32,7 @@ import (
 //   403: Forbidden
 //   404: Not found
 func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	tag := r.FormValue("tag")
+	tag := InputValue(r, "tag")
 	if tag == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -53,7 +53,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
 			return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
 		}
-		userName = r.FormValue("user")
+		userName = InputValue(r, "user")
 	} else {
 		userName = t.GetUserName()
 	}
@@ -114,8 +114,8 @@ func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
 		}
 		file.Seek(0, io.SeekStart)
 	}
-	archiveURL := r.FormValue("archive-url")
-	image := r.FormValue("image")
+	archiveURL := InputValue(r, "archive-url")
+	image := InputValue(r, "image")
 	if image == "" && archiveURL == "" && file == nil {
 		return opts, &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -123,7 +123,7 @@ func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
 		}
 	}
 	var build bool
-	buildString := r.FormValue("build")
+	buildString := InputValue(r, "build")
 	if buildString != "" {
 		build, err = strconv.ParseBool(buildString)
 		if err != nil {

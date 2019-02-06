@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/queue"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }

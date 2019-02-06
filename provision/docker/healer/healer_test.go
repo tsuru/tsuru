@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/types"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func mongoTime(t time.Time) time.Time {

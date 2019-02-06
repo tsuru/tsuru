@@ -18,7 +18,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/action"
@@ -360,6 +360,12 @@ func GetByName(name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
+	if _, err := GetByName(app.GetName()); err != appTypes.ErrAppNotFound {
+		if err != nil {
+			return errors.WithMessage(err, "unable to check if app already exists")
+		}
+		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.GetName()}
+	}
 	var plan *appTypes.Plan
 	var err error
 	if app.Plan.Name == "" {
@@ -502,7 +508,6 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	if updateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
-
 	err = app.validate()
 	if err != nil {
 		return err
@@ -514,11 +519,13 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		actions = append(actions, &updateAppProvisioner)
 	}
 	if newProv.GetName() != oldProv.GetName() {
+		defer func() {
+			rebuild.RoutesRebuildOrEnqueue(app.Name)
+		}()
 		err = validateVolumes(app)
 		if err != nil {
 			return err
 		}
-
 		actions = append(actions,
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
@@ -729,7 +736,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	logConn, err := db.LogConn()
 	if err == nil {
 		defer logConn.Close()
-		err = logConn.Logs(appName).DropCollection()
+		err = logConn.AppLogCollection(appName).DropCollection()
 	}
 	if err != nil {
 		logErr("Unable to remove logs collection", err)
@@ -1743,7 +1750,7 @@ func (app *App) Log(message, source, unit string) error {
 			return err
 		}
 		defer conn.Close()
-		return conn.Logs(app.Name).Insert(logs...)
+		return conn.AppLogCollection(app.Name).Insert(logs...)
 	}
 	return nil
 }
@@ -1789,7 +1796,7 @@ func (app *App) lastLogs(lines int, filterLog Applog, invertFilter bool) ([]Appl
 			q[k] = bson.M{"$ne": v}
 		}
 	}
-	err = conn.Logs(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
+	err = conn.AppLogCollection(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
 	if err != nil {
 		return nil, err
 	}
@@ -2512,10 +2519,10 @@ func (app *App) GetHealthcheckData() (router.HealthcheckData, error) {
 		return router.HealthcheckData{}, err
 	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
-	if err != nil {
+	if err != nil || yamlData.Healthcheck == nil {
 		return router.HealthcheckData{}, err
 	}
-	return yamlData.Healthcheck.ToRouterHC(), nil
+	return yamlData.ToRouterHC(), nil
 }
 
 func validateEnv(envName string) error {

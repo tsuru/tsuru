@@ -30,7 +30,7 @@ import (
 //   400: Invalid data
 //   401: Unauthorized
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	name := r.FormValue("name")
+	name := InputValue(r, "name")
 	file, _, err := r.FormFile("dockerfile_content")
 	if err != nil {
 		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -59,7 +59,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
 	})
 	if err != nil {
@@ -92,9 +92,6 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err = r.ParseForm(); err != nil {
-		return err
-	}
 	name := r.URL.Query().Get(":name")
 	file, _, _ := r.FormFile("dockerfile_content")
 	if file != nil {
@@ -116,7 +113,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
 	})
 	if err != nil {
@@ -151,9 +148,6 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err = r.ParseForm(); err != nil {
-		return err
-	}
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
@@ -163,7 +157,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
 	})
 	if err != nil {
@@ -209,9 +203,6 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if err := r.ParseForm(); err != nil {
-		return err
-	}
 	name := r.URL.Query().Get(":name")
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 		permission.Check(t, permission.PermPlatformCreate)
@@ -247,11 +238,8 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if err = r.ParseForm(); err != nil {
-		return err
-	}
 	name := r.URL.Query().Get(":name")
-	image := r.FormValue("image")
+	image := InputValue(r, "image")
 	if image == "" {
 		return &tErrors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -270,7 +258,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
 	})
 	if err != nil {

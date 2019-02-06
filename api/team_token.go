@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -39,6 +38,41 @@ func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(tokens)
 }
 
+// title: token info
+// path: /tokens/{token_id}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Get token
+//   401: Unauthorized
+func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	tokenID := r.URL.Query().Get(":token_id")
+	if tokenID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil
+	}
+
+	teamToken, err := servicemanager.TeamToken.Info(tokenID, t)
+	if err == authTypes.ErrTeamTokenNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermTeamTokenRead,
+		permission.Context(permTypes.CtxTeam, teamToken.Team),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(teamToken)
+}
+
 // title: token create
 // path: /tokens
 // method: POST
@@ -48,14 +82,10 @@ func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   409: Token already exists
 func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	var args authTypes.TeamTokenCreateArgs
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&args, r.Form)
+	err = ParseInput(r, &args)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	if args.Team == "" {
 		args.Team, err = autoTeamOwner(t, permission.PermTeamTokenCreate)
@@ -73,7 +103,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(args.Team),
 		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, args.Team)),
 	})
 	if err != nil {
@@ -106,14 +136,10 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Token not found
 func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	var args authTypes.TeamTokenUpdateArgs
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	err = dec.DecodeValues(&args, r.Form)
+	err = ParseInput(r, &args)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return err
 	}
 	args.TokenID = r.URL.Query().Get(":token_id")
 	teamToken, err := servicemanager.TeamToken.FindByTokenID(args.TokenID)
@@ -136,7 +162,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(teamToken.Team),
 		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamToken.Team)),
 	})
 	if err != nil {
@@ -165,7 +191,6 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Token not found
 func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
 	tokenID := r.URL.Query().Get(":token_id")
 	teamToken, err := servicemanager.TeamToken.FindByTokenID(tokenID)
 	if err != nil {
@@ -188,7 +213,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(teamName),
 		Kind:       permission.PermTeamTokenDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamName)),
 	})
 	if err != nil {

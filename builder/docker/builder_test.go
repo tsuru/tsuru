@@ -280,7 +280,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
-	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
+	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"80/tcp"})
 }
 
 func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
@@ -433,9 +433,7 @@ hooks:
       - ./before.sh
     after:
       - ./after.sh`
-			fmt.Fprintf(outStream, yamlData)
-		} else {
-			fmt.Fprintf(outStream, "")
+			fmt.Fprint(outStream, yamlData)
 		}
 		conn.Close()
 	}))
@@ -467,7 +465,7 @@ hooks:
 		"healthcheck": map[string]interface{}{
 			"path":   "/status",
 			"method": "GET",
-			"status": 200,
+			"status": float64(200),
 			"scheme": "https",
 		},
 		"hooks": map[string]interface{}{
@@ -509,16 +507,15 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 		switch atomic.AddInt32(&attachCounter, 1) {
 		case 1:
 			// cat Procfile call
-			fmt.Fprintf(outStream, "")
 		case 2:
 			// cat tsuru.yaml call
 			yamlData := `hooks:
   build:
     - echo "running build hook"`
-			fmt.Fprintf(outStream, yamlData)
+			fmt.Fprint(outStream, yamlData)
 		case 3:
 			// Run hook
-			fmt.Fprintf(outStream, "running build hook\n")
+			fmt.Fprint(outStream, "running build hook\n")
 		}
 		conn.Close()
 	}))

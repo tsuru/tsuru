@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestToHealthConfig(c *check.C) {
@@ -19,12 +19,12 @@ func (s *S) TestToHealthConfig(c *check.C) {
 	}{
 		{input: provision.TsuruYamlData{}, expected: nil},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Method: "PUT",
 			},
 		}, expected: nil},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Path:   "/",
 				Method: "PUT",
 			},
@@ -38,7 +38,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Retries:  1,
 		}},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Path:   "/hc",
 				Status: 201,
 				Scheme: "https",
@@ -53,7 +53,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Retries:  1,
 		}},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Path:            "hc",
 				Status:          201,
 				AllowedFailures: 10,
@@ -69,7 +69,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Retries:  11,
 		}},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Path:           "hc",
 				TimeoutSeconds: 99,
 			},
@@ -83,13 +83,13 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Retries:  1,
 		}},
 		{input: provision.TsuruYamlData{
-			Healthcheck: provision.TsuruYamlHealthcheck{
+			Healthcheck: &provision.TsuruYamlHealthcheck{
 				Path:            "hc",
 				Status:          201,
 				AllowedFailures: 10,
 				Match:           "WORK.NG[0-9]+",
 			},
-			Hooks: provision.TsuruYamlHooks{
+			Hooks: &provision.TsuruYamlHooks{
 				Restart: provision.TsuruYamlRestartHooks{
 					After: []string{"my cmd 1", "my cmd 2"},
 				},
@@ -104,7 +104,7 @@ func (s *S) TestToHealthConfig(c *check.C) {
 			Retries:  11,
 		}},
 		{input: provision.TsuruYamlData{
-			Hooks: provision.TsuruYamlHooks{
+			Hooks: &provision.TsuruYamlHooks{
 				Restart: provision.TsuruYamlRestartHooks{
 					After: []string{"my cmd 1", "my cmd 2"},
 				},

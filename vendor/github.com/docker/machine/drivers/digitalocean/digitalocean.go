@@ -35,6 +35,7 @@ type Driver struct {
 	Backups           bool
 	PrivateNetworking bool
 	UserDataFile      string
+	Monitoring        bool
 	Tags              string
 }
 
@@ -43,7 +44,7 @@ const (
 	defaultSSHUser = "root"
 	defaultImage   = "ubuntu-16-04-x64"
 	defaultRegion  = "nyc3"
-	defaultSize    = "512mb"
+	defaultSize    = "s-1vcpu-1gb"
 )
 
 // GetCreateFlags registers the flags this driver adds to
@@ -115,6 +116,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "digitalocean-userdata",
 			Usage:  "path to file with cloud-init user-data",
 		},
+		mcnflag.BoolFlag{
+			EnvVar: "DIGITALOCEAN_MONITORING",
+			Name:   "digitalocean-monitoring",
+			Usage:  "enable monitoring for droplet",
+		},
 		mcnflag.StringFlag{
 			EnvVar: "DIGITALOCEAN_TAGS",
 			Name:   "digitalocean-tags",
@@ -157,6 +163,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SSHPort = flags.Int("digitalocean-ssh-port")
 	d.SSHKeyFingerprint = flags.String("digitalocean-ssh-key-fingerprint")
 	d.SSHKey = flags.String("digitalocean-ssh-key-path")
+	d.Monitoring = flags.Bool("digitalocean-monitoring")
 	d.Tags = flags.String("digitalocean-tags")
 
 	d.SetSwarmConfigFromFlags(flags)
@@ -177,7 +184,7 @@ func (d *Driver) PreCreateCheck() error {
 
 	if d.SSHKey != "" {
 		if d.SSHKeyFingerprint == "" {
-			return fmt.Errorf("ssh-key-fingerpint needs to be provided for %q", d.SSHKey)
+			return fmt.Errorf("ssh-key-fingerprint needs to be provided for %q", d.SSHKey)
 		}
 
 		if _, err := os.Stat(d.SSHKey); os.IsNotExist(err) {
@@ -232,6 +239,7 @@ func (d *Driver) Create() error {
 		Backups:           d.Backups,
 		UserData:          userdata,
 		SSHKeys:           []godo.DropletCreateSSHKey{{ID: d.SSHKeyID}},
+		Monitoring:        d.Monitoring,
 		Tags:              d.getTags(),
 	}
 

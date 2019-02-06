@@ -5,6 +5,7 @@
 package image
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -32,6 +33,33 @@ type ImageNotFoundErr struct {
 	App, Image string
 }
 
+type customData struct {
+	Hooks       *provision.TsuruYamlHooks       `bson:",omitempty"`
+	Healthcheck *provision.TsuruYamlHealthcheck `bson:",omitempty"`
+	Kubernetes  *tsuruYamlKubernetesConfig      `bson:",omitempty"`
+}
+
+type tsuruYamlKubernetesConfig struct {
+	Groups []tsuruYamlKubernetesGroup `bson:",omitempty"`
+}
+
+type tsuruYamlKubernetesGroup struct {
+	Name      string
+	Processes []tsuruYamlKubernetesProcess `bson:",omitempty"`
+}
+
+type tsuruYamlKubernetesProcess struct {
+	Name  string
+	Ports []tsuruYamlKubernetesProcessPortConfig `bson:",omitempty"`
+}
+
+type tsuruYamlKubernetesProcessPortConfig struct {
+	Name       string `json:"name,omitempty" bson:"name,omitempty"`
+	Protocol   string `json:"protocol,omitempty" bson:"protocol,omitempty"`
+	Port       int    `json:"port,omitempty" bson:"port,omitempty"`
+	TargetPort int    `json:"target_port,omitempty" bson:"target_port,omitempty"`
+}
+
 func (i *ImageNotFoundErr) Error() string {
 	return fmt.Sprintf("Image %s not found in app %q", i.Image, i.App)
 }
@@ -49,7 +77,7 @@ type ImageMetadata struct {
 	CustomData      map[string]interface{}
 	LegacyProcesses map[string]string   `bson:"processes"`
 	Processes       map[string][]string `bson:"processes_list"`
-	ExposedPort     string
+	ExposedPorts    []string
 	DisableRollback bool
 	Reason          string
 }
@@ -64,12 +92,26 @@ func (i *ImageMetadata) Save() error {
 	if i.Name == "" {
 		return errors.New("image name is mandatory")
 	}
-	coll, err := imageCustomDataColl()
+	customData, err := marshalCustomData(i.CustomData)
+	if err != nil {
+		return err
+	}
+	newImg := ImageMetadata{
+		Name:            i.Name,
+		CustomData:      customData,
+		LegacyProcesses: i.LegacyProcesses,
+		Processes:       i.Processes,
+		ExposedPorts:    i.ExposedPorts,
+		DisableRollback: i.DisableRollback,
+		Reason:          i.Reason,
+	}
+
+	coll, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	return coll.Insert(i)
+	return coll.Insert(newImg)
 }
 
 // GetBuildImage returns the image name from app or plaftorm.
@@ -133,9 +175,6 @@ func customDataToImageMetadata(imageName string, customData map[string]interface
 		Processes:  processes,
 		CustomData: customData,
 	}
-	if exposedPort, ok := customData["exposedPort"]; ok {
-		data.ExposedPort = exposedPort.(string)
-	}
 	return &data, nil
 }
 
@@ -148,7 +187,7 @@ func SaveImageCustomData(imageName string, customData map[string]interface{}) er
 }
 
 func GetImageMetaData(imageName string) (ImageMetadata, error) {
-	coll, err := imageCustomDataColl()
+	coll, err := ImageCustomDataColl()
 	if err != nil {
 		return ImageMetadata{}, err
 	}
@@ -157,7 +196,7 @@ func GetImageMetaData(imageName string) (ImageMetadata, error) {
 	err = coll.FindId(imageName).One(&data)
 	if err == mgo.ErrNotFound {
 		// Return empty data for compatibility with really old apps.
-		return data, nil
+		return ImageMetadata{}, nil
 	}
 	if len(data.Processes) == 0 {
 		data.Processes = make(map[string][]string, len(data.LegacyProcesses))
@@ -165,7 +204,21 @@ func GetImageMetaData(imageName string) (ImageMetadata, error) {
 			data.Processes[k] = []string{v}
 		}
 	}
-	return data, err
+	customData, err := unmarshalCustomData(data.CustomData)
+	if err != nil {
+		return ImageMetadata{}, err
+	}
+	b, err := json.Marshal(customData)
+	if err != nil {
+		return ImageMetadata{}, err
+	}
+	var jsonData map[string]interface{}
+	err = json.Unmarshal(b, &jsonData)
+	if err != nil {
+		return ImageMetadata{}, err
+	}
+	data.CustomData = jsonData
+	return data, nil
 }
 
 func GetImageWebProcessName(imageName string) (string, error) {
@@ -204,19 +257,136 @@ func AllAppProcesses(appName string) ([]string, error) {
 }
 
 func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
-	var customData struct {
-		Customdata provision.TsuruYamlData
+	var data struct {
+		Customdata map[string]interface{}
 	}
-	coll, err := imageCustomDataColl()
+	coll, err := ImageCustomDataColl()
 	if err != nil {
-		return customData.Customdata, err
+		return provision.TsuruYamlData{}, err
 	}
 	defer coll.Close()
-	err = coll.FindId(imageName).One(&customData)
+	err = coll.FindId(imageName).One(&data)
 	if err == mgo.ErrNotFound {
-		return customData.Customdata, nil
+		return provision.TsuruYamlData{}, nil
 	}
-	return customData.Customdata, err
+	return unmarshalYamlData(data.Customdata)
+}
+
+func marshalCustomData(data map[string]interface{}) (map[string]interface{}, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var yamlData provision.TsuruYamlData
+	err = json.Unmarshal(b, &yamlData)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]interface{})
+	for k, v := range data {
+		if v != nil {
+			result[k] = v
+		}
+	}
+	result["hooks"] = yamlData.Hooks
+	result["healthcheck"] = yamlData.Healthcheck
+	if yamlData.Kubernetes == nil {
+		return result, nil
+	}
+	kubeConfig := &tsuruYamlKubernetesConfig{}
+
+	for groupName, groupData := range yamlData.Kubernetes.Groups {
+		group := tsuruYamlKubernetesGroup{Name: groupName}
+		for procName, procData := range groupData {
+			proc := tsuruYamlKubernetesProcess{Name: procName}
+			for _, port := range procData.Ports {
+				proc.Ports = append(proc.Ports, tsuruYamlKubernetesProcessPortConfig(port))
+			}
+			group.Processes = append(group.Processes, proc)
+		}
+		if kubeConfig.Groups == nil {
+			kubeConfig.Groups = []tsuruYamlKubernetesGroup{group}
+		} else {
+			kubeConfig.Groups = append(kubeConfig.Groups, group)
+		}
+	}
+	result["kubernetes"] = kubeConfig
+	return result, nil
+}
+
+func unmarshalCustomData(data map[string]interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return nil, nil
+	}
+
+	yamlData, err := unmarshalYamlData(data)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]interface{})
+	for k, v := range data {
+		if v != nil {
+			result[k] = v
+		}
+	}
+	if yamlData.Hooks != nil {
+		result["hooks"] = yamlData.Hooks
+	}
+	if yamlData.Healthcheck != nil {
+		result["healthcheck"] = yamlData.Healthcheck
+	}
+	if yamlData.Kubernetes != nil {
+		result["kubernetes"] = yamlData.Kubernetes
+	}
+	return result, nil
+}
+
+func unmarshalYamlData(data map[string]interface{}) (provision.TsuruYamlData, error) {
+	if data == nil {
+		return provision.TsuruYamlData{}, nil
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return provision.TsuruYamlData{}, err
+	}
+	custom := customData{}
+	err = json.Unmarshal(b, &custom)
+	if err != nil {
+		return provision.TsuruYamlData{}, err
+	}
+
+	result := provision.TsuruYamlData{
+		Hooks:       custom.Hooks,
+		Healthcheck: custom.Healthcheck,
+	}
+	if custom.Kubernetes == nil {
+		return result, nil
+	}
+
+	result.Kubernetes = &provision.TsuruYamlKubernetesConfig{}
+	for _, g := range custom.Kubernetes.Groups {
+		group := provision.TsuruYamlKubernetesGroup{}
+		for _, proc := range g.Processes {
+			group[proc.Name] = provision.TsuruYamlKubernetesProcessConfig{
+				Ports: make([]provision.TsuruYamlKubernetesProcessPortConfig, len(proc.Ports)),
+			}
+			for i, port := range proc.Ports {
+				group[proc.Name].Ports[i] = provision.TsuruYamlKubernetesProcessPortConfig(port)
+			}
+		}
+		if result.Kubernetes.Groups == nil {
+			result.Kubernetes.Groups = map[string]provision.TsuruYamlKubernetesGroup{
+				g.Name: group,
+			}
+		} else {
+			result.Kubernetes.Groups[g.Name] = group
+		}
+	}
+	return result, nil
 }
 
 func AppNewImageName(appName string) (string, error) {
@@ -367,7 +537,7 @@ func ImageHistorySize() int {
 }
 
 func DeleteAllAppImageNames(appName string) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -400,7 +570,7 @@ func DeleteAllAppImageNames(appName string) error {
 }
 
 func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -409,7 +579,7 @@ func UpdateAppImageRollback(img, reason string, disableRollback bool) error {
 }
 
 func PullAppImageNames(appName string, images []string) error {
-	dataColl, err := imageCustomDataColl()
+	dataColl, err := ImageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -599,7 +769,8 @@ func appBuilderImagesColl() (*storage.Collection, error) {
 	}
 	return conn.Collection("builder_app_image"), nil
 }
-func imageCustomDataColl() (*storage.Collection, error) {
+
+func ImageCustomDataColl() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

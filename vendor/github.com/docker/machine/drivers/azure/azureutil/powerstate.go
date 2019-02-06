@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/machine/libmachine/log"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
 	"github.com/Azure/go-autorest/autorest/to"
 )
 

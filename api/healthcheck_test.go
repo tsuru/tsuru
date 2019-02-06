@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/hc"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 type HealthCheckSuite struct{}

@@ -13,11 +13,17 @@ type Cluster struct {
 	Provisioner string            `json:"provisioner"`
 	CaCert      []byte            `json:"cacert"`
 	ClientCert  []byte            `json:"clientcert"`
-	ClientKey   []byte            `json:"-"`
+	ClientKey   []byte            `json:"clientkey"`
 	Pools       []string          `json:"pools"`
 	CustomData  map[string]string `json:"custom_data"`
 	CreateData  map[string]string `json:"create_data"`
 	Default     bool              `json:"default"`
+}
+
+type ClusterHelpInfo struct {
+	ProvisionerHelp string            `json:"provisioner_help"`
+	CustomDataHelp  map[string]string `json:"custom_data_help"`
+	CreateDataHelp  map[string]string `json:"create_data_help"`
 }
 
 type ClusterService interface {

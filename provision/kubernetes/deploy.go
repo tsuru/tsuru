@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +48,7 @@ const (
 	dockerSockPath          = "/var/run/docker.sock"
 	buildIntercontainerPath = "/tmp/intercontainer"
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
+	defaultHttpPortName     = "http-default"
 )
 
 type InspectData struct {
@@ -367,7 +368,7 @@ func registryAuth(img string) (username, password, imgDomain string) {
 	return username, password, imgDomain
 }
 
-func extraRegisterCmds(a provision.App) string {
+func tsuruHostToken(a provision.App) (string, string) {
 	host, _ := config.GetString("host")
 	if !strings.HasPrefix(host, "http") {
 		host = "http://" + host
@@ -376,6 +377,11 @@ func extraRegisterCmds(a provision.App) string {
 		host += "/"
 	}
 	token := a.Envs()["TSURU_APP_TOKEN"].Value
+	return host, token
+}
+
+func extraRegisterCmds(a provision.App) string {
+	host, token := tsuruHostToken(a)
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
 }
 
@@ -384,9 +390,9 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func probesFromHC(hc provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
+func probesFromHC(hc *provision.TsuruYamlHealthcheck, port int) (hcResult, error) {
 	var result hcResult
-	if hc.Path == "" {
+	if hc == nil || hc.Path == "" {
 		return result, nil
 	}
 	if hc.Scheme == "" {
@@ -503,7 +509,7 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta2.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -514,31 +520,30 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	appEnvs := provision.EnvsForApp(a, process, false)
-	var envs []apiv1.EnvVar
-	for _, envData := range appEnvs {
-		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
-	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
 	webProcessName, err := image.GetImageWebProcessName(imageName)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	portInt := getTargetPortForImage(imageName)
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	if err != nil {
+		return nil, nil, nil, errors.WithStack(err)
+	}
+	processPorts, err := getProcessPortsForImage(imageName, yamlData, process)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
 	if process == webProcessName {
-		hcData, err = probesFromHC(yamlData.Healthcheck, portInt)
+		//TODO: add support to multiple HCs
+		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
 	var lifecycle *apiv1.Lifecycle
-	if len(yamlData.Hooks.Restart.After) > 0 {
+	if yamlData.Hooks != nil && len(yamlData.Hooks.Restart.After) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
 			strings.Join(yamlData.Hooks.Restart.After, " && "),
@@ -590,17 +595,30 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 	_, tag := image.SplitImageName(imageName)
 	expandedLabels["version"] = tag
 	expandedLabelsNoReplicas["version"] = tag
-	deployment := v1beta2.Deployment{
+	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
+	for i, port := range processPorts {
+		var portInt int
+		if port.TargetPort > 0 {
+			portInt = port.TargetPort
+		} else if port.Port > 0 {
+			portInt = port.Port
+		} else {
+			portInt, _ = strconv.Atoi(provision.WebProcessDefaultPort())
+		}
+		containerPorts[i].ContainerPort = int32(portInt)
+	}
+
+	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
 			Namespace:   ns,
 			Labels:      expandedLabels,
 			Annotations: annotations.ToLabels(),
 		},
-		Spec: v1beta2.DeploymentSpec{
-			Strategy: v1beta2.DeploymentStrategy{
-				Type: v1beta2.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &v1beta2.RollingUpdateDeployment{
+		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
 					MaxSurge:       &maxSurge,
 					MaxUnavailable: &maxUnavailable,
 				},
@@ -630,7 +648,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 							Name:           depName,
 							Image:          imageName,
 							Command:        cmds,
-							Env:            envs,
+							Env:            appEnvs(a, process, imageName, false),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							Resources: apiv1.ResourceRequirements{
@@ -638,23 +656,30 @@ func createAppDeployment(client *ClusterClient, oldDeployment *v1beta2.Deploymen
 								Requests: resourceRequests,
 							},
 							VolumeMounts: mounts,
-							Ports: []apiv1.ContainerPort{
-								{ContainerPort: int32(portInt)},
-							},
-							Lifecycle: lifecycle,
+							Ports:        containerPorts,
+							Lifecycle:    lifecycle,
 						},
 					},
 				},
 			},
 		},
 	}
-	var newDep *v1beta2.Deployment
+	var newDep *appsv1.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.AppsV1beta2().Deployments(ns).Create(&deployment)
+		newDep, err = client.AppsV1().Deployments(ns).Create(&deployment)
 	} else {
-		newDep, err = client.AppsV1beta2().Deployments(ns).Update(&deployment)
+		newDep, err = client.AppsV1().Deployments(ns).Update(&deployment)
 	}
 	return newDep, labels, annotations, errors.WithStack(err)
+}
+
+func appEnvs(a provision.App, process, imageName string, isDeploy bool) []apiv1.EnvVar {
+	appEnvs := EnvsForApp(a, process, imageName, isDeploy)
+	envs := make([]apiv1.EnvVar, len(appEnvs))
+	for i, envData := range appEnvs {
+		envs[i] = apiv1.EnvVar{Name: envData.Name, Value: envData.Value}
+	}
+	return envs
 }
 
 type serviceManager struct {
@@ -691,13 +716,13 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+func deploymentLabels(client *ClusterClient, a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	ns, err := m.client.AppNamespace(a)
+	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
-	dep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	dep, err := client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -705,6 +730,10 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 		return nil, errors.WithStack(err)
 	}
 	return labelSetFromMeta(&dep.ObjectMeta), nil
+}
+
+func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+	return deploymentLabels(m.client, a, process)
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
@@ -755,7 +784,7 @@ func listOptsForPodEvent(podName string) metav1.ListOptions {
 	}
 }
 
-func isDeploymentEvent(msg watch.Event, dep *v1beta2.Deployment) bool {
+func isDeploymentEvent(msg watch.Event, dep *appsv1.Deployment) bool {
 	evt, ok := msg.Object.(*apiv1.Event)
 	return ok && strings.HasPrefix(evt.Name, dep.Name)
 }
@@ -781,7 +810,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
 	ns, err := client.AppNamespace(a)
 	if err != nil {
@@ -803,7 +832,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return revision, err
 		}
@@ -833,7 +862,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 	for {
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
-			if c.Type == v1beta2.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
+			if c.Type == appsv1.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
 				return revision, errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
 			}
 		}
@@ -880,7 +909,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *v1beta2.
 		case <-ctx.Done():
 			return revision, ctx.Err()
 		}
-		dep, err = client.AppsV1beta2().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return revision, err
 		}
@@ -907,7 +936,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	oldDep, err := m.client.AppsV1beta2().Deployments(ns).Get(depName, metav1.GetOptions{})
+	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -937,11 +966,11 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			oldDep.Generation = 0
 			oldDep.ResourceVersion = ""
 			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-			_, rollbackErr = m.client.AppsV1beta2().Deployments(ns).Update(oldDep)
+			_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(oldDep)
 		} else if oldDep == nil && newDep != nil {
 			// We have just created the deployment, so we need to remove it
 			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n ---> %s <---\n", err)
-			rollbackErr = m.client.AppsV1beta2().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
+			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
 			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
@@ -959,8 +988,19 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	rawAppLabel := appLabelForApp(a, process)
 	expandedLabels["app"] = rawAppLabel
 	expandedLabelsHeadless["app"] = rawAppLabel
-	targetPort := getTargetPortForImage(img)
-	port, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
+	if err != nil {
+		return err
+	}
+	policy := apiv1.ServiceExternalTrafficPolicyTypeCluster
+	if policyLocal {
+		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
+	}
+
+	svcPorts, err := loadServicePorts(img, process)
+	if err != nil {
+		return err
+	}
 	svc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -969,16 +1009,10 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector: labels.ToSelector(),
-			Ports: []apiv1.ServicePort{
-				{
-					Protocol:   "TCP",
-					Port:       int32(port),
-					TargetPort: intstr.FromInt(targetPort),
-					Name:       "http-default",
-				},
-			},
-			Type: apiv1.ServiceTypeNodePort,
+			Selector:              labels.ToSelector(),
+			Ports:                 svcPorts,
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: policy,
 		},
 	}
 	svc, isNew, err := mergeServices(m.client, svc)
@@ -993,6 +1027,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	kubeConf := getKubeConfig()
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1005,9 +1040,9 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Selector: labels.ToSelector(),
 			Ports: []apiv1.ServicePort{
 				{
-					Protocol:   "TCP",
+					Protocol:   svcPorts[0].Protocol,
 					Port:       int32(kubeConf.HeadlessServicePort),
-					TargetPort: intstr.FromInt(targetPort),
+					TargetPort: svcPorts[0].TargetPort,
 					Name:       "http-headless",
 				},
 			},
@@ -1030,6 +1065,53 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	return nil
 }
 
+func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) {
+	yamlData, err := image.GetImageTsuruYamlData(imgName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	processPorts, err := getProcessPortsForImage(imgName, yamlData, processName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	svcPorts := make([]apiv1.ServicePort, len(processPorts))
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	for i, port := range processPorts {
+		if len(port.Protocol) > 0 {
+			svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
+		}
+		if port.TargetPort > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.TargetPort)
+		} else if port.Port > 0 {
+			svcPorts[i].TargetPort = intstr.FromInt(port.Port)
+		} else {
+			svcPorts[i].TargetPort = intstr.FromInt(defaultPort)
+		}
+		if port.Port > 0 {
+			svcPorts[i].Port = int32(port.Port)
+		} else if port.TargetPort > 0 {
+			svcPorts[i].Port = int32(port.TargetPort)
+		} else {
+			svcPorts[i].Port = int32(defaultPort)
+		}
+		if len(port.Name) > 0 {
+			svcPorts[i].Name = port.Name
+		} else {
+			svcPorts[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
+		}
+	}
+	if len(svcPorts) == 0 {
+		defaultWebPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		svcPorts = append(svcPorts, apiv1.ServicePort{
+			Protocol:   apiv1.ProtocolTCP,
+			Port:       int32(defaultWebPort),
+			TargetPort: intstr.FromInt(defaultWebPort),
+			Name:       defaultHttpPortName,
+		})
+	}
+	return svcPorts, nil
+}
+
 func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, bool, error) {
 	existing, err := client.CoreV1().Services(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 	if err != nil {
@@ -1046,17 +1128,77 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-func getTargetPortForImage(imgName string) int {
-	port := provision.WebProcessDefaultPort()
+func getTargetPortsForImage(imgName string) []string {
 	imageData, _ := image.GetImageMetaData(imgName)
-	if imageData.ExposedPort != "" {
-		parts := strings.SplitN(imageData.ExposedPort, "/", 2)
-		if len(parts) == 2 {
-			port = parts[0]
+	if len(imageData.ExposedPorts) > 0 {
+		return imageData.ExposedPorts
+	}
+	return []string{provision.WebProcessDefaultPort() + "/tcp"}
+}
+
+func extractPortNumberAndProtocol(port string) (int, string, error) {
+	parts := strings.SplitN(port, "/", 2)
+	if len(parts) != 2 {
+		return 0, "", errors.New("invalid port: " + port)
+	}
+	portInt, err := strconv.Atoi(parts[0])
+	return portInt, parts[1], err
+}
+
+func getProcessPortsForImage(imgName string, tsuruYamlData provision.TsuruYamlData, process string) ([]provision.TsuruYamlKubernetesProcessPortConfig, error) {
+	portConfigFound := false
+	var ports []provision.TsuruYamlKubernetesProcessPortConfig
+	if tsuruYamlData.Kubernetes != nil {
+		for _, group := range tsuruYamlData.Kubernetes.Groups {
+			for podName, podConfig := range group {
+				if podName == process {
+					if portConfigFound {
+						return nil, fmt.Errorf("duplicated process name: %s", podName)
+					}
+					portConfigFound = true
+					ports = podConfig.Ports
+					for i := range ports {
+						ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+					}
+				}
+			}
 		}
 	}
-	portInt, _ := strconv.Atoi(port)
-	return portInt
+	if portConfigFound {
+		return ports, nil
+	}
+
+	defaultPort := defaultKubernetesPodPortConfig()
+	targetPorts := getTargetPortsForImage(imgName)
+	ports = make([]provision.TsuruYamlKubernetesProcessPortConfig, len(targetPorts))
+	for i := range ports {
+		portInt, protocol, err := extractPortNumberAndProtocol(targetPorts[i])
+		if err != nil {
+			continue
+		}
+		ports[i].Name = fmt.Sprintf("%s-%d", defaultPort.Name, i+1)
+		ports[i].Protocol = strings.ToUpper(protocol)
+		if len(targetPorts) == 1 {
+			ports[i].Port = defaultPort.Port
+		} else {
+			ports[i].Port = portInt
+		}
+		ports[i].TargetPort = portInt
+	}
+	if len(ports) == 0 {
+		ports = append(ports, defaultPort)
+	}
+	return ports, nil
+}
+
+func defaultKubernetesPodPortConfig() provision.TsuruYamlKubernetesProcessPortConfig {
+	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+	return provision.TsuruYamlKubernetesProcessPortConfig{
+		Name:       defaultHttpPortName,
+		Protocol:   "TCP",
+		Port:       defaultPort,
+		TargetPort: defaultPort,
+	}
 }
 
 func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {
@@ -1199,11 +1341,6 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 		return apiv1.Pod{}, err
 	}
 	annotations.SetBuildImage(conf.destinationImages[0])
-	appEnvs := provision.EnvsForApp(app, "", true)
-	var envs []apiv1.EnvVar
-	for _, envData := range appEnvs {
-		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
-	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   app.GetPool(),
 		Prefix: tsuruLabelPrefix,
@@ -1249,7 +1386,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				newSleepyContainer(podName, sourceImage, uid, envs, mounts...),
+				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", sourceImage, true), mounts...),
 				newDeployAgentContainer(conf),
 			},
 		},

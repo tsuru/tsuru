@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 var (

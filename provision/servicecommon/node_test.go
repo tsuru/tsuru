@@ -5,6 +5,8 @@
 package servicecommon
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -16,7 +18,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
@@ -25,7 +27,7 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 		return []authTypes.Team{team}, nil
 	}
 	var rebuildApps []string
-	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		rebuildApps = append(rebuildApps, appName)
 		return nil, nil
 	})
@@ -49,5 +51,6 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 	err = app.CreateApp(&app.App{Name: "myapp2", TeamOwner: team.Name, Pool: "p2"}, u)
 	c.Assert(err, check.IsNil)
 	RebuildRoutesPoolApps("p1")
+	rebuild.Shutdown(context.Background())
 	c.Assert(rebuildApps, check.DeepEquals, []string{"myapp1"})
 }

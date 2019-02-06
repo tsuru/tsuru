@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -35,25 +36,16 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var provCluster provTypes.Cluster
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&provCluster, r.Form)
-	}
+	err = ParseInput(r, &provCluster)
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -102,26 +94,17 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	dec := form.NewDecoder(nil)
-	dec.IgnoreCase(true)
-	dec.IgnoreUnknownKeys(true)
 	var provCluster provTypes.Cluster
-	err = r.ParseForm()
-	if err == nil {
-		err = dec.DecodeValues(&provCluster, r.Form)
-	}
+	err = ParseInput(r, &provCluster)
 	provCluster.Name = r.URL.Query().Get(":name")
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
+		return err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -180,6 +163,10 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
+	for i := range clusters {
+		clusters[i].ClientKey = nil
+	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(clusters)
 }
 
@@ -197,13 +184,13 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	r.ParseForm()
+
 	clusterName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
 		Kind:       permission.PermClusterDelete,
 		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
+		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
@@ -221,4 +208,37 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	return nil
+}
+
+type provisionerInfo struct {
+	Name        string                    `json:"name"`
+	ClusterHelp provTypes.ClusterHelpInfo `json:"cluster_help"`
+}
+
+// title: list provisioners
+// path: /provisioner
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No Content
+//   401: Unauthorized
+func provisionerList(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowed := permission.Check(t, permission.PermClusterRead)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	provs, err := provision.Registry()
+	if err != nil {
+		return err
+	}
+	info := make([]provisionerInfo, len(provs))
+	for i, p := range provs {
+		info[i].Name = p.GetName()
+		if clusterProv, ok := p.(cluster.ClusteredProvisioner); ok {
+			info[i].ClusterHelp = clusterProv.ClusterHelp()
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(info)
 }

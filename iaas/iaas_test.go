@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/tsuru/config"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRegisterIaasProvider(c *check.C) {

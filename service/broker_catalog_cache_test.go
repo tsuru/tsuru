@@ -12,7 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/types/cache"
 	"github.com/tsuru/tsuru/types/service"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {

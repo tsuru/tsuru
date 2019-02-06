@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestDeprecatedCommand(c *check.C) {
@@ -306,6 +306,14 @@ func (s *S) TestManagerRunLoginWithHTTPUnauthorizedError(c *check.C) {
 	globalManager.Register(&UnauthorizedLoginErrorCommand{})
 	globalManager.Run([]string{"login"})
 	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: unauthorized\n")
+}
+
+func (s *S) TestManagerRunWithErrorContainingBody(c *check.C) {
+	globalManager.Register(&FailCommandCustom{
+		err: errWithBody{},
+	})
+	globalManager.Run([]string{"failcmd"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: hey: my body\n")
 }
 
 func (s *S) TestManagerRunWithFlags(c *check.C) {
@@ -1158,4 +1166,26 @@ func (testStatusErr) Error() string {
 
 func (t testStatusErr) StatusCode() int {
 	return t.status
+}
+
+type errWithBody struct{}
+
+func (e errWithBody) Error() string {
+	return "hey"
+}
+
+func (e errWithBody) Body() []byte {
+	return []byte("my body")
+}
+
+type FailCommandCustom struct {
+	err error
+}
+
+func (c *FailCommandCustom) Info() *Info {
+	return &Info{Name: "failcmd"}
+}
+
+func (c *FailCommandCustom) Run(context *Context, client *Client) error {
+	return c.err
 }

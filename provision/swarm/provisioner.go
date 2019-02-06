@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -52,7 +52,7 @@ var (
 	_ provision.BuilderDeploy             = &swarmProvisioner{}
 	_ provision.BuilderDeployDockerClient = &swarmProvisioner{}
 	_ provision.VolumeProvisioner         = &swarmProvisioner{}
-	_ cluster.InitClusterProvisioner      = &swarmProvisioner{}
+	_ cluster.ClusteredProvisioner        = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &swarmProvisioner{}
@@ -1066,4 +1066,14 @@ func (p *swarmProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func (p *swarmProvisioner) ValidateCluster(c *provTypes.Cluster) error {
+	return nil
+}
+
+func (p *swarmProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
+	return provTypes.ClusterHelpInfo{
+		ProvisionerHelp: "Represents a docker swarm cluster cluster, the address parameter must point to a valid docker swarm endpoint.",
+	}
 }

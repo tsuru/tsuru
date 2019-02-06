@@ -6,25 +6,22 @@ package kubernetes
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"
 
 type nodeContainerManager struct {
 	app provision.App
@@ -54,7 +51,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	}
 	dsName := daemonSetName(config.Name, pool)
 	ns := client.PoolNamespace(pool)
-	oldDs, err := client.AppsV1beta2().DaemonSets(ns).Get(dsName, metav1.GetOptions{})
+	oldDs, err := client.AppsV1().DaemonSets(ns).Get(dsName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -78,7 +75,6 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if len(nodeReq.Values) != 0 {
 		selectors = append(selectors, nodeReq)
 	}
-	affinityAnnotation := map[string]string{}
 	affinity := &apiv1.Affinity{
 		NodeAffinity: &apiv1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
@@ -88,20 +84,12 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 			},
 		},
 	}
-	var affinityData []byte
-	affinityData, err = json.Marshal(affinity)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	affinityAnnotation[alphaAffinityAnnotation] = string(affinityData)
 	if oldDs != nil && placementOnly {
-		if reflect.DeepEqual(oldDs.Spec.Template.ObjectMeta.Annotations, affinityAnnotation) &&
-			reflect.DeepEqual(oldDs.Spec.Template.Spec.Affinity, affinity) {
+		if reflect.DeepEqual(oldDs.Spec.Template.Spec.Affinity, affinity) {
 			return nil
 		}
-		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
 		oldDs.Spec.Template.Spec.Affinity = affinity
-		_, err = client.AppsV1beta2().DaemonSets(ns).Update(oldDs)
+		_, err = client.AppsV1().DaemonSets(ns).Update(oldDs)
 		return errors.WithStack(err)
 	}
 	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
@@ -179,26 +167,25 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if err != nil {
 		return err
 	}
-	ds := &v1beta2.DaemonSet{
+	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
 			Namespace: ns,
 			Labels:    ls.ToLabels(),
 		},
-		Spec: v1beta2.DaemonSetSpec{
+		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: ls.ToNodeContainerSelector(),
 			},
-			UpdateStrategy: v1beta2.DaemonSetUpdateStrategy{
-				Type: v1beta2.RollingUpdateDaemonSetStrategyType,
-				RollingUpdate: &v1beta2.RollingUpdateDaemonSet{
+			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
+				Type: appsv1.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDaemonSet{
 					MaxUnavailable: &maxUnavailable,
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      ls.ToLabels(),
-					Annotations: affinityAnnotation,
+					Labels: ls.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
 					ImagePullSecrets:   pullSecrets,
@@ -231,9 +218,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		},
 	}
 	if oldDs != nil {
-		_, err = client.AppsV1beta2().DaemonSets(ns).Update(ds)
+		_, err = client.AppsV1().DaemonSets(ns).Update(ds)
 	} else {
-		_, err = client.AppsV1beta2().DaemonSets(ns).Create(ds)
+		_, err = client.AppsV1().DaemonSets(ns).Create(ds)
 	}
 	return errors.WithStack(err)
 }

@@ -23,7 +23,7 @@ import (
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/set"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -208,13 +208,13 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, d
 	if err != nil {
 		return false, err
 	}
-	replicaSets, err := client.AppsV1beta2().ReplicaSets(ns).List(metav1.ListOptions{
+	replicaSets, err := client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
 	})
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	var replica *v1beta2.ReplicaSet
+	var replica *appsv1.ReplicaSet
 	for i, rs := range replicaSets.Items {
 		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
 			replica = &replicaSets.Items[i]
@@ -398,12 +398,12 @@ func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
 }
 
 func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions, namespace string) error {
-	replicas, err := client.AppsV1beta2().ReplicaSets(namespace).List(opts)
+	replicas, err := client.AppsV1().ReplicaSets(namespace).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, replica := range replicas.Items {
-		err = client.AppsV1beta2().ReplicaSets(namespace).Delete(replica.Name, &metav1.DeleteOptions{
+		err = client.AppsV1().ReplicaSets(namespace).Delete(replica.Name, &metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
@@ -419,7 +419,7 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string) e
 	if err != nil {
 		return err
 	}
-	err = client.AppsV1beta2().Deployments(ns).Delete(depName, &metav1.DeleteOptions{
+	err = client.AppsV1().Deployments(ns).Delete(depName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -444,7 +444,7 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string) e
 func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
 	ns := client.PoolNamespace(pool)
-	err := client.AppsV1beta2().DaemonSets(ns).Delete(dsName, &metav1.DeleteOptions{
+	err := client.AppsV1().DaemonSets(ns).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -783,4 +783,18 @@ func waitForContainerFinished(ctx context.Context, client *ClusterClient, podNam
 		}
 		return false, nil
 	}, nil)
+}
+
+func isPodReady(pod *apiv1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
+			return false
+		}
+	}
+	for _, contStatus := range pod.Status.ContainerStatuses {
+		if !contStatus.Ready {
+			return false
+		}
+	}
+	return true
 }

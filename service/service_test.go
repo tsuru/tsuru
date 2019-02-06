@@ -17,7 +17,7 @@ import (
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func (s *S) createService(c *check.C) {
