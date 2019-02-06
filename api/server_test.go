@@ -390,6 +390,7 @@ func generateTLSCertificate() (*tls.Certificate, error) {
 }
 
 func generateCertificate(template *x509.Certificate, parent *tls.Certificate) (*tls.Certificate, error) {
+	var err error
 	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 1024)
 	if err != nil {
 		return nil, err
@@ -398,8 +399,8 @@ func generateCertificate(template *x509.Certificate, parent *tls.Certificate) (*
 	if parent == nil {
 		certificateBytes, err = x509.CreateCertificate(cryptoRand.Reader, template, template, privateKey.Public(), privateKey)
 	} else {
-		parentX509, err := x509.ParseCertificate(parent.Certificate[0])
-		if err != nil {
+		var parentX509 *x509.Certificate
+		if parentX509, err = x509.ParseCertificate(parent.Certificate[0]); err != nil {
 			return nil, err
 		}
 		certificateBytes, err = x509.CreateCertificate(cryptoRand.Reader, template, parentX509, privateKey.Public(), parent.PrivateKey)

@@ -851,8 +851,8 @@ func validateTLSCertificate(c *tls.Certificate, roots *x509.CertPool) error {
 	if len(c.Certificate) > 1 {
 		intermediateCertPool = x509.NewCertPool()
 		for i := 1; i < len(c.Certificate); i++ {
-			intermerdiateCert, err := x509.ParseCertificate(c.Certificate[i])
-			if err != nil {
+			var intermerdiateCert *x509.Certificate
+			if intermerdiateCert, err = x509.ParseCertificate(c.Certificate[i]); err != nil {
 				return err
 			}
 			intermediateCertPool.AddCert(intermerdiateCert)
@@ -871,16 +871,12 @@ func validateTLSCertificate(c *tls.Certificate, roots *x509.CertPool) error {
 }
 
 type srvConfig struct {
-	sync.Mutex
-	httpSrv             *http.Server
-	httpsSrv            *http.Server
-	certFile            string
-	keyFile             string
-	shutdownCalled      bool
-	once                sync.Once
-	certificate         *tls.Certificate
-	shutdownTimeout     time.Duration
-	validateCertificate bool
+	certFile        string
+	keyFile         string
+	httpSrv         *http.Server
+	httpsSrv        *http.Server
+	certificate     *tls.Certificate
+	shutdownTimeout time.Duration
 	// roots holds a set of trusted certificates that are used by certificate
 	// validator to check a given certificate. If roots is nil, the system
 	// certificates are used instead.
@@ -888,6 +884,10 @@ type srvConfig struct {
 	// certificateReloadedCh indicates when new certificates were reloaded by
 	// certificate reloader routine.
 	certificateReloadedCh chan bool
+	once                  sync.Once
+	sync.Mutex
+	shutdownCalled      bool
+	validateCertificate bool
 }
 
 func (conf *srvConfig) loadCertificate() (bool, error) {
