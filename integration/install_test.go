@@ -248,7 +248,7 @@ func nodeHealer() ExecFlow {
 		table.parse()
 		var machineID string
 		for _, row := range table.rows {
-			c.Assert(row, check.HasLen, 4)
+			c.Assert(len(row) > 2, check.Equals, true)
 			if net.URLToHost(nodeAddr) == row[2] {
 				machineID = row[0]
 				break

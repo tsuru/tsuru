@@ -96,7 +96,7 @@ func (s *S) getProvisioners() []string {
 
 func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
-		"gce":      &GceClusterManager{},
+		"gke":      &GKEClusterManager{},
 		"minikube": &MinikubeClusterManager{env: s.env},
 		"kubectl": &KubectlClusterManager{
 			env:     s.env,
