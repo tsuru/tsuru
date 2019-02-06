@@ -531,7 +531,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	processPorts, err := getProcessPortsForImage(imageName, yamlData, process)
+	processPorts, err := getProcessPortsForImageName(imageName, yamlData, process)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
@@ -598,12 +598,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	expandedLabelsNoReplicas["version"] = tag
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
-		var portInt int
-		if port.TargetPort > 0 {
-			portInt = port.TargetPort
-		} else if port.Port > 0 {
-			portInt = port.Port
-		} else {
+		portInt := port.TargetPort
+		if portInt == 0 {
 			portInt, _ = strconv.Atoi(provision.WebProcessDefaultPort())
 		}
 		containerPorts[i].ContainerPort = int32(portInt)
@@ -1071,35 +1067,25 @@ func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) 
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	processPorts, err := getProcessPortsForImage(imgName, yamlData, processName)
+	processPorts, err := getProcessPortsForImageName(imgName, yamlData, processName)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	svcPorts := make([]apiv1.ServicePort, len(processPorts))
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	for i, port := range processPorts {
-		if len(port.Protocol) > 0 {
-			svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
-		}
+		svcPorts[i].Protocol = apiv1.Protocol(port.Protocol)
 		if port.TargetPort > 0 {
 			svcPorts[i].TargetPort = intstr.FromInt(port.TargetPort)
-		} else if port.Port > 0 {
-			svcPorts[i].TargetPort = intstr.FromInt(port.Port)
 		} else {
 			svcPorts[i].TargetPort = intstr.FromInt(defaultPort)
 		}
 		if port.Port > 0 {
 			svcPorts[i].Port = int32(port.Port)
-		} else if port.TargetPort > 0 {
-			svcPorts[i].Port = int32(port.TargetPort)
 		} else {
 			svcPorts[i].Port = int32(defaultPort)
 		}
-		if len(port.Name) > 0 {
-			svcPorts[i].Name = port.Name
-		} else {
-			svcPorts[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
-		}
+		svcPorts[i].Name = port.Name
 	}
 	if len(svcPorts) == 0 {
 		defaultWebPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
@@ -1129,8 +1115,7 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-func getTargetPortsForImage(imgName string) []string {
-	imageData, _ := image.GetImageMetaData(imgName)
+func getTargetPortsForImage(imageData image.ImageMetadata) []string {
 	if len(imageData.ExposedPorts) > 0 {
 		return imageData.ExposedPorts
 	}
@@ -1146,7 +1131,7 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 	return portInt, parts[1], err
 }
 
-func getProcessPortsForImage(imgName string, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
 	portConfigFound := false
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
 	if tsuruYamlData.Kubernetes != nil {
@@ -1159,8 +1144,21 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provTypes.TsuruYamlDa
 					portConfigFound = true
 					ports = podConfig.Ports
 					for i := range ports {
-						ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+						if len(ports[i].Protocol) == 0 {
+							ports[i].Protocol = string(apiv1.ProtocolTCP)
+						} else {
+							ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+						}
+						if len(ports[i].Name) == 0 {
+							ports[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
+						}
+						if ports[i].TargetPort > 0 && ports[i].Port == 0 {
+							ports[i].Port = ports[i].TargetPort
+						} else if ports[i].Port > 0 && ports[i].TargetPort == 0 {
+							ports[i].TargetPort = ports[i].Port
+						}
 					}
+					break
 				}
 			}
 		}
@@ -1170,7 +1168,7 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provTypes.TsuruYamlDa
 	}
 
 	defaultPort := defaultKubernetesPodPortConfig()
-	targetPorts := getTargetPortsForImage(imgName)
+	targetPorts := getTargetPortsForImage(imageData)
 	ports = make([]provTypes.TsuruYamlKubernetesProcessPortConfig, len(targetPorts))
 	for i := range ports {
 		portInt, protocol, err := extractPortNumberAndProtocol(targetPorts[i])
@@ -1190,6 +1188,11 @@ func getProcessPortsForImage(imgName string, tsuruYamlData provTypes.TsuruYamlDa
 		ports = append(ports, defaultPort)
 	}
 	return ports, nil
+}
+
+func getProcessPortsForImageName(imgName string, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+	imageData, _ := image.GetImageMetaData(imgName)
+	return getProcessPortsForImage(imageData, tsuruYamlData, process)
 }
 
 func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortConfig {

@@ -1338,7 +1338,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
 	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
-	appCRD.Spec.Configs = yamlData.Kubernetes
+	appCRD.Spec.Configs = normalizeConfigs(currentImageData, yamlData)
 	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }
@@ -1413,6 +1413,23 @@ func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
 	}
 }
 
+func normalizeConfigs(img image.ImageMetadata, yamlData provTypes.TsuruYamlData) *provTypes.TsuruYamlKubernetesConfig {
+	config := yamlData.Kubernetes
+	if config == nil {
+		return nil
+	}
+
+	for _, group := range yamlData.Kubernetes.Groups {
+		for procName, proc := range group {
+			ports, err := getProcessPortsForImage(img, yamlData, procName)
+			if err == nil {
+				proc.Ports = ports
+			}
+		}
+	}
+	return config
+}
+
 func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bind.EnvVar {
 	envs := provision.EnvsForApp(a, process, isDeploy)
 	if isDeploy {
@@ -1423,7 +1440,7 @@ func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bin
 	if err != nil {
 		return append(envs, provision.DefaultWebPortEnvs()...)
 	}
-	portsConfig, err := getProcessPortsForImage(imageName, yamlData, process)
+	portsConfig, err := getProcessPortsForImageName(imageName, yamlData, process)
 	if err != nil {
 		return envs
 	}

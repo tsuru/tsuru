@@ -66,3 +66,14 @@ func (y TsuruYamlData) ToRouterHC() router.HealthcheckData {
 		Body:   hc.RouterBody,
 	}
 }
+
+func (y *TsuruYamlKubernetesConfig) GetProcessConfigs(procName string) *TsuruYamlKubernetesProcessConfig {
+	for _, group := range y.Groups {
+		for p, proc := range group {
+			if p == procName {
+				return &proc
+			}
+		}
+	}
+	return nil
+}
