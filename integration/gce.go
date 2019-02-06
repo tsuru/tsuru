@@ -48,7 +48,6 @@ func (g *GceClusterManager) UpdateParams() ([]string, bool) {
 		"--create-data", "node-count=1",
 		"--create-data", "zone=" + os.Getenv("GCE_ZONE"),
 		"--create-data", "project-id=" + os.Getenv("GCE_PROJECT_ID"),
-		"--create-data", "credential=" + os.Getenv("GCE_SERVICE_ACCOUNT"),
 		"--create-data", "machine-type=" + os.Getenv("GCE_MACHINE_TYPE"),
 	}
 	return clusterParts, false
