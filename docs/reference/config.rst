@@ -85,7 +85,7 @@ to web clients or not. This setting is optional and defaults to "false".
 
 If enabled, the server will validate the certificates before server's start and
 during the certificates auto-reload process (if any). If a certificate expires
-during server execution (after loaded by server), so this feature will gracefully
+during server execution (after loaded by server) this feature will gracefully
 shutdown the server.
 
 tls:auto-reload:interval
