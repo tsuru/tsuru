@@ -42,7 +42,7 @@ TSURU_INTEGRATION_.
 - nodeopts - Additional options passed to node creation.
 - installername - Name of the installation to be created.
 - provisioners - List of provisioners to test. Defaults to docker.
-- clusters - List of cluster providers. Defaults to swarm. Available values are gce, swarm and minikube.
+- clusters - List of cluster providers. Defaults to swarm. Available values are gke, swarm and minikube.
 - platforms - List of platforms to test. Defaults to all platforms available on https://github.com/tsuru/platforms
 
 ### Flow control
@@ -59,11 +59,8 @@ TSURU_INTEGRATION_.
 
 ### Cluster configuration
 
-#### gce
+#### gke
 
-- clustername - If provided, instead of provisioning a kubernetes cluster in gce, the one with this name will be used.
-- GOOGLE_APPLICATION_CREDENTIALS - path to a file containing gce credentials
 - GCE_ZONE - the [GCE zone](https://cloud.google.com/compute/docs/regions-zones/regions-zones) where you want the Tsuru instance to be created
 - GCE_PROJECT_ID - ID for a project created in GCE
 - GCE_MACHINE_TYPE - Machine type to be used for the kubernetes cluster master
-- GCE_SERVICE_ACCOUNT - GCE service account name
