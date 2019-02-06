@@ -912,6 +912,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 		},
 		{
 			Name:       "http-default-3",
+			Protocol:   "TCP",
 			Port:       int32(8000),
 			TargetPort: intstr.FromInt(8001),
 		},
@@ -921,6 +922,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
 		{
 			Name:       "myport",
+			Protocol:   "TCP",
 			Port:       int32(8888),
 			TargetPort: intstr.FromInt(8888),
 		},

@@ -1197,7 +1197,26 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 					"web": map[string]interface{}{
 						"ports": []interface{}{
 							map[string]interface{}{
+								"name": "my-port",
 								"port": 9000,
+							},
+							map[string]interface{}{
+								"protocol":    "tcp",
+								"target_port": 8080,
+							},
+						},
+					},
+				},
+				"pod2": map[string]interface{}{
+					"proc2": map[string]interface{}{},
+				},
+				"pod3": map[string]interface{}{
+					"proc3": map[string]interface{}{
+						"ports": []interface{}{
+							map[string]interface{}{
+								"protocol":    "udp",
+								"port":        9000,
+								"target_port": 9001,
 							},
 						},
 					},
@@ -1213,7 +1232,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1beta2().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -1240,7 +1259,20 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"web": {
 						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Port: 9000},
+							{Name: "my-port", Protocol: "TCP", Port: 9000, TargetPort: 9000},
+							{Name: "http-default-2", Protocol: "TCP", Port: 8080, TargetPort: 8080},
+						},
+					},
+				},
+				"pod2": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+					"proc2": {
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{},
+					},
+				},
+				"pod3": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+					"proc3": {
+						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
+							{Name: "http-default-1", Protocol: "UDP", Port: 9000, TargetPort: 9001},
 						},
 					},
 				},
