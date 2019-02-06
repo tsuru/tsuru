@@ -765,10 +765,10 @@ func (cr *certificateReloader) start() {
 }
 
 type certificateValidator struct {
-	conf   *srvConfig
-	stopCh chan bool
+	conf       *srvConfig
+	stopCh     chan bool
 	stopDoneCh chan bool
-	once   *sync.Once
+	once       *sync.Once
 	// shutdownServerFunc points to a function which is called whenever the
 	// certificates become invalid. If not defined, its default action is
 	// gracefully shutdown the server.
@@ -781,12 +781,11 @@ func (cv *certificateValidator) Shutdown(ctx context.Context) error {
 	}
 	close(cv.stopCh)
 	select {
-	    case <-cv.stopDoneCh:
-	        return nil
-	    case <-ctx.Done:
-	        return ctx.Err()
-	 }
-	return nil
+	case <-cv.stopDoneCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (cv *certificateValidator) start() {
@@ -826,7 +825,7 @@ func (cv *certificateValidator) start() {
 				case <-cv.conf.certificateReloadedCh:
 					continue
 				case <-cv.stopCh:
-                                        cv.stopDoneCh <- true
+					cv.stopDoneCh <- true
 					return
 				}
 			}
