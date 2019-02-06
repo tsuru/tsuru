@@ -813,7 +813,7 @@ func (cv *certificateValidator) start() {
 					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
 					cv.shutdownServerFunc(err)
 				} else {
-					log.Debugf("[certificate-validator] certificate is valid, next validation scheduled to %s", nextValidation)
+					fmt.Printf("[certificate-validator] certificate is valid, next validation scheduled to %s\n", nextValidation)
 				}
 				log.Debug("[certificate-validator] finishing certificate validator")
 				select {
