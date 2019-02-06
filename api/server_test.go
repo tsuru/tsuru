@@ -23,7 +23,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"gopkg.in/check.v1"
+	check "gopkg.in/check.v1"
 )
 
 func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -623,15 +623,14 @@ func (s *S) TestCertificateValidator_start_WhenCurrentlyLoadedCertificateExpire_
 		certificate: caCert,
 		roots:       rootsCertPool,
 	}
-	var calledActionFunc bool
+	invokedActionFunc := make(chan bool)
 	cv := &certificateValidator{
 		conf: srvConf,
 		shutdownServerFunc: func(err error) {
-			calledActionFunc = true
 			c.Assert(err, check.Not(check.IsNil))
+			invokedActionFunc <- true
 		},
 	}
 	cv.start()
-	time.Sleep(time.Second)
-	c.Assert(calledActionFunc, check.Equals, true)
+	c.Assert(<-invokedActionFunc, check.Equals, true)
 }
