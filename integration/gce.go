@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-type GceClusterManager struct{}
+type GceClusterManager struct {
+	name string
+}
 
 func newClusterName() string {
 	name := fmt.Sprintf("integration-test-gce-%d", randInt())
@@ -27,7 +29,10 @@ func randInt() int {
 }
 
 func (g *GceClusterManager) Name() string {
-	return newClusterName()
+	if g.name == "" {
+		g.name = newClusterName()
+	}
+	return g.name
 }
 
 func (g *GceClusterManager) Provisioner() string {
