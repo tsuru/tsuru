@@ -11,6 +11,7 @@ import (
 	"fmt"
 	stdLog "log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -547,13 +548,13 @@ func startServer(handler http.Handler) error {
 		return err
 	}
 	shutdownTimeoutInt, _ := config.GetInt("shutdown-timeout")
-	shutdownTimeout := 10 * time.Minute
+	srvConf.shutdownTimeout = 10 * time.Minute
 	if shutdownTimeoutInt != 0 {
-		shutdownTimeout = time.Duration(shutdownTimeoutInt) * time.Second
+		srvConf.shutdownTimeout = time.Duration(shutdownTimeoutInt) * time.Second
 	}
-	go srvConf.handleSignals(shutdownTimeout)
+	go srvConf.handleSignals(srvConf.shutdownTimeout)
 
-	defer srvConf.shutdown(shutdownTimeout)
+	defer srvConf.shutdown(srvConf.shutdownTimeout)
 
 	shutdown.Register(&logTracker)
 	var startupMessage string
@@ -679,8 +680,16 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 		}
 	}
 	if tlsListen != "" {
+		srvConf.validateCertificate, _ = config.GetBool("tls:validate-certificate")
 		if _, err := srvConf.loadCertificate(); err != nil {
 			return nil, err
+		}
+		if srvConf.validateCertificate {
+			certValidator := &certificateValidator{
+				conf: &srvConf,
+			}
+			shutdown.Register(certValidator)
+			certValidator.start()
 		}
 		autoReloadInterval, err := config.GetDuration("tls:auto-reload:interval")
 		if err == nil && autoReloadInterval > 0 {
@@ -690,6 +699,7 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 			}
 			shutdown.Register(reloader)
 			reloader.start()
+			srvConf.certificateReloadedCh = make(chan bool)
 		}
 		srvConf.httpsSrv = &http.Server{
 			ReadTimeout:  time.Duration(readTimeout) * time.Second,
@@ -734,13 +744,14 @@ func (cr *certificateReloader) start() {
 		cr.stopCh = make(chan bool)
 		go func() {
 			for {
-				log.Debugf("[certificate-reloader] starting the certificate reload")
+				log.Debugf("[certificate-reloader] starting the certificate reloader")
 				changed, err := cr.conf.loadCertificate()
 				if err != nil {
 					log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
 				}
 				if changed {
 					fmt.Println("[certificate-reloader] a new certificate was successfully loaded")
+					cr.conf.certificateReloadedCh <- true
 				}
 				log.Debugf("[certificate-reloader] finishing the certificate reloader")
 				select {
@@ -753,15 +764,137 @@ func (cr *certificateReloader) start() {
 	})
 }
 
+type certificateValidator struct {
+	conf       *srvConfig
+	stopCh     chan bool
+	stopDoneCh chan bool
+	once       *sync.Once
+	// shutdownServerFunc points to a function which is called whenever the
+	// certificates become invalid. If not defined, its default action is
+	// gracefully shutdown the server.
+	shutdownServerFunc func(error)
+}
+
+func (cv *certificateValidator) Shutdown(ctx context.Context) error {
+	if cv.stopCh == nil {
+		return nil
+	}
+	close(cv.stopCh)
+	select {
+	case <-cv.stopDoneCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (cv *certificateValidator) start() {
+	if cv.once == nil {
+		cv.once = &sync.Once{}
+	}
+	cv.once.Do(func() {
+		cv.stopCh = make(chan bool)
+		if cv.shutdownServerFunc == nil {
+			cv.shutdownServerFunc = func(err error) {
+				cv.conf.shutdown(cv.conf.shutdownTimeout)
+			}
+		}
+		go func() {
+			for {
+				log.Debug("[certificate-validator] starting certificate validator")
+				cv.conf.Lock()
+				certificate, err := x509.ParseCertificate(cv.conf.certificate.Certificate[0])
+				if err != nil {
+					log.Errorf("[certificate-validator] could not parse the current certificate as a x509 certificate: %v\n", err)
+					time.Sleep(time.Second)
+					cv.conf.Unlock()
+					continue
+				}
+				nextValidation := time.Until(certificate.NotAfter)
+				err = validateTLSCertificate(cv.conf.certificate, cv.conf.roots)
+				cv.conf.Unlock()
+				if err != nil {
+					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
+					cv.shutdownServerFunc(err)
+				} else {
+					fmt.Printf("[certificate-validator] certificate is valid, next validation scheduled to %s\n", nextValidation)
+				}
+				log.Debug("[certificate-validator] finishing certificate validator")
+				select {
+				case <-time.After(nextValidation):
+				case <-cv.conf.certificateReloadedCh:
+					continue
+				case <-cv.stopCh:
+					cv.stopDoneCh <- true
+					return
+				}
+			}
+		}()
+	})
+}
+
+// validateTLSCertificate checks if c is ready for use in a production env. When
+// c is not a good one, returns a non-nil error describing the problem, otherwise
+// returns nil indicating success.
+//
+// A good certificate should be issued (even though indirectly, when providing
+// intermediates) by roots; within the issuing time boundary; and, match the
+// Common Name or SAN extension with the server's hostname (defined by "host"
+// entry in the API config file). See x509.Verify to more detailed info.
+func validateTLSCertificate(c *tls.Certificate, roots *x509.CertPool) error {
+	configHost, err := config.GetString("host")
+	if err != nil {
+		return err
+	}
+	urlHost, err := url.Parse(configHost)
+	if err != nil {
+		return err
+	}
+	hostname := urlHost.Hostname()
+	if c == nil || len(c.Certificate) == 0 {
+		return errors.New("there is no certificate provided")
+	}
+	var intermediateCertPool *x509.CertPool
+	if len(c.Certificate) > 1 {
+		intermediateCertPool = x509.NewCertPool()
+		for i := 1; i < len(c.Certificate); i++ {
+			var intermerdiateCert *x509.Certificate
+			if intermerdiateCert, err = x509.ParseCertificate(c.Certificate[i]); err != nil {
+				return err
+			}
+			intermediateCertPool.AddCert(intermerdiateCert)
+		}
+	}
+	leafCert, err := x509.ParseCertificate(c.Certificate[0])
+	if err != nil {
+		return err
+	}
+	_, err = leafCert.Verify(x509.VerifyOptions{
+		DNSName:       hostname,
+		Roots:         roots,
+		Intermediates: intermediateCertPool,
+	})
+	return err
+}
+
 type srvConfig struct {
+	certFile        string
+	keyFile         string
+	httpSrv         *http.Server
+	httpsSrv        *http.Server
+	certificate     *tls.Certificate
+	shutdownTimeout time.Duration
+	// roots holds a set of trusted certificates that are used by certificate
+	// validator to check a given certificate. If roots is nil, the system
+	// certificates are used instead.
+	roots *x509.CertPool
+	// certificateReloadedCh indicates when new certificates were reloaded by
+	// certificate reloader routine.
+	certificateReloadedCh chan bool
+	once                  sync.Once
 	sync.Mutex
-	httpSrv        *http.Server
-	httpsSrv       *http.Server
-	certFile       string
-	keyFile        string
-	shutdownCalled bool
-	once           sync.Once
-	certificate    *tls.Certificate
+	shutdownCalled      bool
+	validateCertificate bool
 }
 
 func (conf *srvConfig) loadCertificate() (bool, error) {
@@ -770,6 +903,11 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 	newCertificate, err := tls.LoadX509KeyPair(conf.certFile, conf.keyFile)
 	if err != nil {
 		return false, err
+	}
+	if conf.validateCertificate {
+		if err = validateTLSCertificate(&newCertificate, conf.roots); err != nil {
+			return false, err
+		}
 	}
 	if conf.certificate == nil {
 		conf.certificate = &newCertificate

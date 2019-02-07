@@ -388,3 +388,250 @@ func generateTLSCertificate() (*tls.Certificate, error) {
 
 	return &certificate, err
 }
+
+func generateCertificate(template *x509.Certificate, parent *tls.Certificate) (*tls.Certificate, error) {
+	var err error
+	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+	var certificateBytes []byte
+	if parent == nil {
+		certificateBytes, err = x509.CreateCertificate(cryptoRand.Reader, template, template, privateKey.Public(), privateKey)
+	} else {
+		var parentX509 *x509.Certificate
+		if parentX509, err = x509.ParseCertificate(parent.Certificate[0]); err != nil {
+			return nil, err
+		}
+		certificateBytes, err = x509.CreateCertificate(cryptoRand.Reader, template, parentX509, privateKey.Public(), parent.PrivateKey)
+	}
+	if err != nil {
+		return nil, err
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificateBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
+	certificate, err := tls.X509KeyPair(certPEM, keyPEM)
+	return &certificate, err
+}
+
+func (s *S) TestValidateTLSCertificate_WhenHostConfigIsNotDefined_ShouldReturnError(c *check.C) {
+	config.Unset("host")
+	err := validateTLSCertificate(nil, nil)
+	c.Assert(err, check.Not(check.IsNil))
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsNotDefined_ShouldReturnExpectedError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	err := validateTLSCertificate(nil, nil)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err, check.ErrorMatches, "there is no certificate provided")
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsEmpty_ShouldReturnExpectedError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	err := validateTLSCertificate(&tls.Certificate{}, nil)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err, check.ErrorMatches, "there is no certificate provided")
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsNotTrustedBySystemCertPool_ShouldReturnError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		IsCA:         true,
+		Subject: pkix.Name{
+			Organization: []string{"tsuru.io"},
+		},
+		DNSNames:  []string{"tsuru.example.org"},
+		NotAfter:  time.Now().Add(time.Minute),
+		NotBefore: time.Now(),
+	}
+	cert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	err = validateTLSCertificate(cert, nil)
+	c.Assert(err, check.Not(check.IsNil))
+	_, ok := err.(x509.UnknownAuthorityError)
+	c.Assert(ok, check.Equals, true)
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsInRootCertificatePool_ShouldReturnNoError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		IsCA:         true,
+		Subject: pkix.Name{
+			Organization: []string{"tsuru.io"},
+		},
+		DNSNames:  []string{"tsuru.example.org"},
+		NotAfter:  time.Now().Add(time.Minute),
+		NotBefore: time.Now(),
+	}
+	cert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	certX509, err := x509.ParseCertificate(cert.Certificate[0])
+	c.Assert(err, check.IsNil)
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(certX509)
+	err = validateTLSCertificate(cert, rootPool)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsSignedByTrustedIntermediateCertificate_ShouldReturnNoError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		Subject: pkix.Name{
+			CommonName:   "Tsuru CA #1",
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 5},
+		NotAfter:              time.Now().Add(time.Minute * 10),
+		NotBefore:             time.Now(),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	caCert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	intermediateTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1010),
+		Subject: pkix.Name{
+			CommonName:   "Tsuru Intermediate Authority",
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 6},
+		NotAfter:              time.Now().Add(time.Minute * 5),
+		NotBefore:             time.Now(),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	intermediateCert, err := generateCertificate(intermediateTemplate, caCert)
+	c.Assert(err, check.IsNil)
+	leafTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(2000),
+		Subject: pkix.Name{
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 7},
+		NotAfter:              time.Now().Add(time.Minute),
+		NotBefore:             time.Now(),
+		DNSNames:              []string{"tsuru.example.org"},
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	leafCert, err := generateCertificate(leafTemplate, intermediateCert)
+	c.Assert(err, check.IsNil)
+	leafCert.Certificate = append(leafCert.Certificate, intermediateCert.Certificate[0])
+	caX509Cert, err := x509.ParseCertificate(caCert.Certificate[0])
+	c.Assert(err, check.IsNil)
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(caX509Cert)
+	err = validateTLSCertificate(leafCert, rootPool)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateIsNotValidYet_ShouldReturnExpectedError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		Subject: pkix.Name{
+			CommonName:   "Tsuru CA #1",
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 5},
+		NotAfter:              time.Now().Add(time.Minute * 10),
+		NotBefore:             time.Now().Add(time.Minute * 5),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	caCert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	caX509Cert, err := x509.ParseCertificate(caCert.Certificate[0])
+	c.Assert(err, check.IsNil)
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(caX509Cert)
+	err = validateTLSCertificate(caCert, rootPool)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid")
+}
+
+func (s *S) TestValidateTLSCertificate_WhenCertificateHasBeenExpired_ShouldReturnExpectedError(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		Subject: pkix.Name{
+			CommonName:   "Tsuru CA #1",
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 5},
+		NotAfter:              time.Now().Add(time.Minute * -1),
+		NotBefore:             time.Now().Add(time.Minute * -5),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"tsuru.example.org"},
+	}
+	caCert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	caX509Cert, err := x509.ParseCertificate(caCert.Certificate[0])
+	c.Assert(err, check.IsNil)
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(caX509Cert)
+	err = validateTLSCertificate(caCert, rootPool)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid")
+}
+
+func (s *S) TestCertificateValidator_start_WhenCurrentlyLoadedCertificateExpire_ShouldCallShutdownFunc(c *check.C) {
+	config.Set("host", "https://tsuru.example.org:8443")
+	defer config.Unset("host")
+	caTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1000),
+		Subject: pkix.Name{
+			CommonName:   "Tsuru CA #1",
+			Organization: []string{"Tsuru"},
+		},
+		SubjectKeyId:          []byte{1, 2, 3, 4, 5},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now(),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"tsuru.example.org"},
+	}
+	caCert, err := generateCertificate(caTemplate, nil)
+	c.Assert(err, check.IsNil)
+	caX509, err := x509.ParseCertificate(caCert.Certificate[0])
+	c.Assert(err, check.IsNil)
+	rootsCertPool := x509.NewCertPool()
+	rootsCertPool.AddCert(caX509)
+	srvConf := &srvConfig{
+		certificate: caCert,
+		roots:       rootsCertPool,
+	}
+	invokedActionFunc := make(chan bool)
+	cv := &certificateValidator{
+		conf: srvConf,
+		shutdownServerFunc: func(err error) {
+			c.Assert(err, check.Not(check.IsNil))
+			invokedActionFunc <- true
+		},
+	}
+	cv.start()
+	c.Assert(<-invokedActionFunc, check.Equals, true)
+}

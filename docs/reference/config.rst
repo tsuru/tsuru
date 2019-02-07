@@ -77,6 +77,17 @@ tls:key-file
 ``tls:key-file`` is the path to private key file configured to serve the
 domain. This setting is optional, unless ``use-tls`` is true.
 
+tls:validate-certificate
+++++++++++++++++++++++++
+
+``tls:validate-certificate`` prevents an invalid certificate from being offered 
+to web clients or not. This setting is optional and defaults to "false".
+
+If enabled, the server will validate the certificates before server's start and
+during the certificates auto-reload process (if any). If a certificate expires
+during server execution (after loaded by server) this feature will gracefully
+shutdown the server.
+
 tls:auto-reload:interval
 ++++++++++++++++++++++++
 
