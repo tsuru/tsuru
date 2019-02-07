@@ -355,26 +355,26 @@ func poolAdd() ExecFlow {
 			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
 				env.Add("multinodepools", poolName)
 			}
-			res = T(append(params, clusterParams...)...).Run(env)
+			res = T(append(params, clusterParams...)...).WithTimeout(30 * time.Minute).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
-			regex := regexp.MustCompile("(?i)ready")
-			addressRegex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
-			nodeIPs := make([]string, 0)
-			ok := retry(time.Minute, func() bool {
+			readyRegex := regexp.MustCompile("(?i)^ready")
+			var nodeIPs []string
+			ok := retry(2*time.Minute, func() bool {
 				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
-				if regex.MatchString(res.Stdout.String()) {
-					parts := addressRegex.FindAllStringSubmatch(res.Stdout.String(), -1)
-					for _, part := range parts {
-						if len(part) == 2 && len(part[1]) > 0 {
-							nodeIPs = append(nodeIPs, part[1])
-						}
+				table := resultTable{raw: res.Stdout.String()}
+				table.parse()
+				for _, row := range table.rows {
+					c.Assert(len(row) > 2, check.Equals, true)
+					if !readyRegex.MatchString(row[2]) {
+						nodeIPs = nil
+						return false
 					}
-					return true
+					nodeIPs = append(nodeIPs, row[0])
 				}
-				return false
+				return true
 			})
-			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 2 minutes: %v", res))
 			for _, ip := range nodeIPs {
 				res = T("node-update", ip, "pool="+poolName).Run(env)
 				c.Assert(res, ResultOk)
@@ -382,15 +382,19 @@ func poolAdd() ExecFlow {
 			res = T("event-list").Run(env)
 			c.Assert(res, ResultOk)
 			for _, ip := range nodeIPs {
-				regex = regexp.MustCompile(`node.update.*?node:\s+` + ip)
-				c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)
+				evtRegex := regexp.MustCompile(`node.update.*?node:\s+` + ip)
+				c.Assert(evtRegex.MatchString(res.Stdout.String()), check.Equals, true)
 			}
 			ok = retry(time.Minute, func() bool {
 				res = T("node-list").Run(env)
+				table := resultTable{raw: res.Stdout.String()}
+				table.parse()
 				for _, ip := range nodeIPs {
-					regex = regexp.MustCompile("(?i)" + ip + `.*?ready`)
-					if !regex.MatchString(res.Stdout.String()) {
-						return false
+					for _, row := range table.rows {
+						c.Assert(len(row) > 2, check.Equals, true)
+						if row[0] == ip && !readyRegex.MatchString(row[2]) {
+							return false
+						}
 					}
 				}
 				return true

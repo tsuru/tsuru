@@ -96,7 +96,28 @@ func (s *S) getProvisioners() []string {
 
 func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
-		"gke":      &GKEClusterManager{},
+		"gke": &genericKubeCluster{
+			createData: map[string]string{
+				"driver":       "googlekubernetesengine",
+				"node-count":   "1",
+				"zone":         os.Getenv("GCE_ZONE"),
+				"project-id":   os.Getenv("GCE_PROJECT_ID"),
+				"machine-type": os.Getenv("GCE_MACHINE_TYPE"),
+			},
+		},
+		"eks": &genericKubeCluster{
+			createData: map[string]string{
+				"driver":             "amazonelasticcontainerservice",
+				"minimum-nodes":      "2",
+				"maximum-nodes":      "3",
+				"kubernetes-version": "1.11",
+				"region":             os.Getenv("AWS_REGION"),
+				"instance-type":      os.Getenv("AWS_INSTANCE_TYPE"),
+				"virtual-network":    os.Getenv("AWS_VPC_ID"),
+				"subnets":            os.Getenv("AWS_SUBNET_IDS"),
+				"security-groups":    os.Getenv("AWS_SECURITY_GROUP_ID"),
+			},
+		},
 		"minikube": &MinikubeClusterManager{env: s.env},
 		"kubectl": &KubectlClusterManager{
 			env:     s.env,
