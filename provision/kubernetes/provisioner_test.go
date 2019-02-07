@@ -1272,7 +1272,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 				"pod3": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
 					"proc3": {
 						Ports: []provTypes.TsuruYamlKubernetesProcessPortConfig{
-							{Name: "http-default-1", Protocol: "UDP", Port: 9000, TargetPort: 9001},
+							{Name: "udp-default-1", Protocol: "UDP", Port: 9000, TargetPort: 9001},
 						},
 					},
 				},
