@@ -336,7 +336,7 @@ Parameters:
   VpcId:
     Description: The VPC of the worker instances
     Type: AWS::EC2::VPC::Id
-
+    
   Subnets:
     Description: The subnets where workers can be created.
     Type: List<AWS::EC2::Subnet::Id>
@@ -516,21 +516,14 @@ Resources:
             VolumeSize: !Ref NodeVolumeSize
             VolumeType: gp2
             DeleteOnTermination: true
-      UserData:
-        Fn::Base64:
-          !Sub |
-            #!/bin/bash
-            set -o xtrace
-            /etc/eks/bootstrap.sh ${ClusterName} ${BootstrapArguments}
-            /opt/aws/bin/cfn-signal --exit-code $? \
-                     --stack  ${AWS::StackName} \
-                     --resource NodeGroup  \
-                     --region ${AWS::Region}
-
+      UserData: !Base64
+        'Fn::Sub': %q
 Outputs:
   NodeInstanceRole:
     Description: The node instance role
-    Value: !GetAtt NodeInstanceRole.Arn
+    Value: !GetAtt
+      - NodeInstanceRole
+      - Arn
 `
 	serviceRoleTemplate = `---
 AWSTemplateFormatVersion: '2010-09-09'

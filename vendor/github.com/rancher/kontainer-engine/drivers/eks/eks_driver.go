@@ -91,6 +91,9 @@ type state struct {
 
 	MinimumASGSize int64
 	MaximumASGSize int64
+	NodeVolumeSize *int64
+
+	UserData string
 
 	InstanceType string
 	Region       string
@@ -166,14 +169,24 @@ func (d *Driver) GetDriverCreateOptions(ctx context.Context) (*types.DriverFlags
 			DefaultInt: 3,
 		},
 	}
+	driverFlag.Options["node-volume-size"] = &types.Flag{
+		Type:  types.IntPointerType,
+		Usage: "The volume size for each node",
+		Default: &types.Default{
+			DefaultInt: 20,
+		},
+	}
 
 	driverFlag.Options["virtual-network"] = &types.Flag{
 		Type:  types.StringType,
-		Usage: "The name of hte virtual network to use",
+		Usage: "The name of the virtual network to use",
 	}
 	driverFlag.Options["subnets"] = &types.Flag{
 		Type:  types.StringSliceType,
 		Usage: "Comma-separated list of subnets in the virtual network to use",
+		Default: &types.Default{
+			DefaultStringSlice: &types.StringSlice{Value: []string{}}, //avoid nil value for init
+		},
 	}
 	driverFlag.Options["service-role"] = &types.Flag{
 		Type:  types.StringType,
@@ -192,6 +205,18 @@ func (d *Driver) GetDriverCreateOptions(ctx context.Context) (*types.DriverFlags
 		Usage: "A custom AMI ID to use for the worker nodes instead of the default",
 		Default: &types.Default{
 			DefaultBool: true,
+		},
+	}
+	// Newlines are expected to always be passed as "\n"
+	driverFlag.Options["user-data"] = &types.Flag{
+		Type:  types.StringType,
+		Usage: "Pass user-data to the nodes to perform automated configuration tasks",
+		Default: &types.Default{
+			DefaultString: "#!/bin/bash\nset -o xtrace\n" +
+				"/etc/eks/bootstrap.sh ${ClusterName} ${BootstrapArguments}" +
+				"/opt/aws/bin/cfn-signal --exit-code $? " +
+				"--stack  ${AWS::StackName} " +
+				"--resource NodeGroup --region ${AWS::Region}\n",
 		},
 	}
 
@@ -231,12 +256,16 @@ func getStateFromOptions(driverOptions *types.DriverOptions) (state, error) {
 	state.InstanceType = options.GetValueFromDriverOptions(driverOptions, types.StringType, "instance-type", "instanceType").(string)
 	state.MinimumASGSize = options.GetValueFromDriverOptions(driverOptions, types.IntType, "minimum-nodes", "minimumNodes").(int64)
 	state.MaximumASGSize = options.GetValueFromDriverOptions(driverOptions, types.IntType, "maximum-nodes", "maximumNodes").(int64)
+	state.NodeVolumeSize, _ = options.GetValueFromDriverOptions(driverOptions, types.IntPointerType, "node-volume-size", "nodeVolumeSize").(*int64)
 	state.VirtualNetwork = options.GetValueFromDriverOptions(driverOptions, types.StringType, "virtual-network", "virtualNetwork").(string)
 	state.Subnets = options.GetValueFromDriverOptions(driverOptions, types.StringSliceType, "subnets").(*types.StringSlice).Value
 	state.ServiceRole = options.GetValueFromDriverOptions(driverOptions, types.StringType, "service-role", "serviceRole").(string)
 	state.SecurityGroups = options.GetValueFromDriverOptions(driverOptions, types.StringSliceType, "security-groups", "securityGroups").(*types.StringSlice).Value
 	state.AMI = options.GetValueFromDriverOptions(driverOptions, types.StringType, "ami").(string)
 	state.AssociateWorkerNodePublicIP, _ = options.GetValueFromDriverOptions(driverOptions, types.BoolPointerType, "associate-worker-node-public-ip", "associateWorkerNodePublicIp").(*bool)
+
+	// UserData
+	state.UserData = options.GetValueFromDriverOptions(driverOptions, types.StringType, "user-data", "userData").(string)
 
 	return state, state.validate()
 }
@@ -246,12 +275,14 @@ func (state *state) validate() error {
 		return fmt.Errorf("display name is required")
 	}
 
-	if state.ClientID == "" {
-		return fmt.Errorf("client id is required")
+	awsSession, err := session.NewSession(&aws.Config{
+		Credentials: credentialsForState(*state),
+	})
+	if err == nil {
+		_, err = awsSession.Config.Credentials.Get()
 	}
-
-	if state.ClientSecret == "" {
-		return fmt.Errorf("client secret is required")
+	if err != nil {
+		return fmt.Errorf("credentials must be provided using access key and secret key flags, environment variables, ~/.aws/credentials, or an instance role: %v", err)
 	}
 
 	amiForRegion, ok := amiForRegionAndVersion[state.KubernetesVersion]
@@ -275,6 +306,10 @@ func (state *state) validate() error {
 
 	if state.MaximumASGSize < state.MinimumASGSize {
 		return fmt.Errorf("maximum nodes cannot be less than minimum nodes")
+	}
+
+	if state.NodeVolumeSize != nil && *state.NodeVolumeSize < 1 {
+		return fmt.Errorf("node volume size must be greater than 0")
 	}
 
 	networkEmpty := state.VirtualNetwork == ""
@@ -388,6 +423,17 @@ func toStringLiteralSlice(strings []*string) []string {
 	return stringLiterals
 }
 
+func credentialsForState(s state) *credentials.Credentials {
+	if s.ClientID != "" && s.ClientSecret != "" {
+		return credentials.NewStaticCredentials(
+			s.ClientID,
+			s.ClientSecret,
+			s.SessionToken,
+		)
+	}
+	return nil
+}
+
 func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *types.ClusterInfo) (*types.ClusterInfo, error) {
 	logrus.Infof("Starting create")
 
@@ -396,16 +442,15 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 		return nil, fmt.Errorf("error parsing state: %v", err)
 	}
 
+	info := &types.ClusterInfo{}
+	storeState(info, state)
+
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(state.Region),
-		Credentials: credentials.NewStaticCredentials(
-			state.ClientID,
-			state.ClientSecret,
-			state.SessionToken,
-		),
+		Region:      aws.String(state.Region),
+		Credentials: credentialsForState(state),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error getting new aws session: %v", err)
+		return info, fmt.Errorf("error getting new aws session: %v", err)
 	}
 
 	svc := cloudformation.New(sess)
@@ -421,14 +466,14 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 		stack, err := d.createStack(svc, getVPCStackName(state.DisplayName), displayName, vpcTemplate, []string{},
 			[]*cloudformation.Parameter{})
 		if err != nil {
-			return nil, fmt.Errorf("error creating stack: %v", err)
+			return info, fmt.Errorf("error creating stack: %v", err)
 		}
 
 		securityGroupsString := getParameterValueFromOutput("SecurityGroups", stack.Stacks[0].Outputs)
 		subnetIdsString := getParameterValueFromOutput("SubnetIds", stack.Stacks[0].Outputs)
 
 		if securityGroupsString == "" || subnetIdsString == "" {
-			return nil, fmt.Errorf("no security groups or subnet ids were returned")
+			return info, fmt.Errorf("no security groups or subnet ids were returned")
 		}
 
 		securityGroups = toStringPointerSlice(strings.Split(securityGroupsString, ","))
@@ -438,7 +483,7 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 			StackName: aws.String(state.DisplayName + "-eks-vpc"),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error getting stack resoures")
+			return info, fmt.Errorf("error getting stack resoures")
 		}
 
 		for _, resource := range resources.StackResources {
@@ -461,12 +506,12 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 		stack, err := d.createStack(svc, getServiceRoleName(state.DisplayName), displayName, serviceRoleTemplate,
 			[]string{cloudformation.CapabilityCapabilityIam}, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error creating stack: %v", err)
+			return info, fmt.Errorf("error creating stack: %v", err)
 		}
 
 		roleARN = getParameterValueFromOutput("RoleArn", stack.Stacks[0].Outputs)
 		if roleARN == "" {
-			return nil, fmt.Errorf("no RoleARN was returned")
+			return info, fmt.Errorf("no RoleARN was returned")
 		}
 	} else {
 		logrus.Infof("Retrieving existing service role")
@@ -475,7 +520,7 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 			RoleName: aws.String(state.ServiceRole),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error getting role: %v", err)
+			return info, fmt.Errorf("error getting role: %v", err)
 		}
 
 		roleARN = *role.Role.Arn
@@ -494,19 +539,19 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 		Version: aws.String(state.KubernetesVersion),
 	})
 	if err != nil && !isClusterConflict(err) {
-		return nil, fmt.Errorf("error creating cluster: %v", err)
+		return info, fmt.Errorf("error creating cluster: %v", err)
 	}
 
 	cluster, err := d.waitForClusterReady(eksService, state)
 	if err != nil {
-		return nil, err
+		return info, err
 	}
 
 	logrus.Infof("Cluster provisioned successfully")
 
 	capem, err := base64.StdEncoding.DecodeString(*cluster.Cluster.CertificateAuthority.Data)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing CA data: %v", err)
+		return info, fmt.Errorf("error parsing CA data: %v", err)
 	}
 
 	ec2svc := ec2.New(sess)
@@ -515,7 +560,7 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 		KeyName: aws.String(keyPairName),
 	})
 	if err != nil && !isDuplicateKeyError(err) {
-		return nil, fmt.Errorf("error creating key pair %v", err)
+		return info, fmt.Errorf("error creating key pair %v", err)
 	}
 
 	logrus.Infof("Creating worker nodes")
@@ -524,7 +569,7 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 	if state.AMI != "" {
 		amiID = state.AMI
 	} else {
-		//should be always accessable after validate()
+		//should be always accessible after validate()
 		amiID = getAMIs(ctx, ec2svc, state)
 
 	}
@@ -535,8 +580,18 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 	} else {
 		publicIP = *state.AssociateWorkerNodePublicIP
 	}
+	// amend UserData values into template.
+	// must use %q to safely pass the string
+	workerNodesFinalTemplate := fmt.Sprintf(workerNodesTemplate, state.UserData)
 
-	stack, err := d.createStack(svc, getWorkNodeName(state.DisplayName), displayName, workerNodesTemplate,
+	var volumeSize int64
+	if state.NodeVolumeSize == nil {
+		volumeSize = 20
+	} else {
+		volumeSize = *state.NodeVolumeSize
+	}
+
+	stack, err := d.createStack(svc, getWorkNodeName(state.DisplayName), displayName, workerNodesFinalTemplate,
 		[]string{cloudformation.CapabilityCapabilityIam},
 		[]*cloudformation.Parameter{
 			{ParameterKey: aws.String("ClusterName"), ParameterValue: aws.String(state.DisplayName)},
@@ -548,6 +603,8 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 				int(state.MinimumASGSize)))},
 			{ParameterKey: aws.String("NodeAutoScalingGroupMaxSize"), ParameterValue: aws.String(strconv.Itoa(
 				int(state.MaximumASGSize)))},
+			{ParameterKey: aws.String("NodeVolumeSize"), ParameterValue: aws.String(strconv.Itoa(
+				int(volumeSize)))},
 			{ParameterKey: aws.String("NodeInstanceType"), ParameterValue: aws.String(state.InstanceType)},
 			{ParameterKey: aws.String("NodeImageId"), ParameterValue: aws.String(amiID)},
 			{ParameterKey: aws.String("KeyName"), ParameterValue: aws.String(keyPairName)}, // TODO let the user specify this
@@ -557,21 +614,19 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 			{ParameterKey: aws.String("PublicIp"), ParameterValue: aws.String(strconv.FormatBool(publicIP))},
 		})
 	if err != nil {
-		return nil, fmt.Errorf("error creating stack: %v", err)
+		return info, fmt.Errorf("error creating stack: %v", err)
 	}
 
 	nodeInstanceRole := getParameterValueFromOutput("NodeInstanceRole", stack.Stacks[0].Outputs)
 	if nodeInstanceRole == "" {
-		return nil, fmt.Errorf("no node instance role returned in output: %v", err)
+		return info, fmt.Errorf("no node instance role returned in output: %v", err)
 	}
 
 	err = d.createConfigMap(state, *cluster.Cluster.Endpoint, capem, nodeInstanceRole)
 	if err != nil {
-		return nil, err
+		return info, err
 	}
 
-	info := &types.ClusterInfo{}
-	storeState(info, state)
 	return info, nil
 }
 
@@ -674,12 +729,7 @@ const awsSharedCredentialsFile = "AWS_SHARED_CREDENTIALS_FILE"
 
 var awsCredentialsLocker = &sync.Mutex{}
 
-func getEKSToken(state state) (string, error) {
-	generator, err := heptio.NewGenerator()
-	if err != nil {
-		return "", fmt.Errorf("error creating generator: %v", err)
-	}
-
+func writeCredentialsToFile(state state) error {
 	defer awsCredentialsLocker.Unlock()
 	awsCredentialsLocker.Lock()
 	os.Setenv(awsSharedCredentialsFile, awsCredentialsPath)
@@ -689,9 +739,9 @@ func getEKSToken(state state) (string, error) {
 		os.Remove(awsCredentialsDirectory)
 		os.Unsetenv(awsSharedCredentialsFile)
 	}()
-	err = os.MkdirAll(awsCredentialsDirectory, 0744)
+	err := os.MkdirAll(awsCredentialsDirectory, 0744)
 	if err != nil {
-		return "", fmt.Errorf("error creating credentials directory: %v", err)
+		return fmt.Errorf("error creating credentials directory: %v", err)
 	}
 
 	var credentialsContent string
@@ -715,7 +765,22 @@ aws_session_token=%v`,
 
 	err = ioutil.WriteFile(awsCredentialsPath, []byte(credentialsContent), 0644)
 	if err != nil {
-		return "", fmt.Errorf("error writing credentials file: %v", err)
+		return fmt.Errorf("error writing credentials file: %v", err)
+	}
+	return nil
+}
+
+func getEKSToken(state state) (string, error) {
+	generator, err := heptio.NewGenerator()
+	if err != nil {
+		return "", fmt.Errorf("error creating generator: %v", err)
+	}
+
+	if state.ClientID != "" && state.ClientSecret != "" {
+		err = writeCredentialsToFile(state)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return generator.Get(state.DisplayName)
@@ -848,12 +913,8 @@ func getClientset(info *types.ClusterInfo) (*kubernetes.Clientset, error) {
 	}
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(state.Region),
-		Credentials: credentials.NewStaticCredentials(
-			state.ClientID,
-			state.ClientSecret,
-			state.SessionToken,
-		),
+		Region:      aws.String(state.Region),
+		Credentials: credentialsForState(state),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating new session: %v", err)
@@ -893,12 +954,8 @@ func (d *Driver) Remove(ctx context.Context, info *types.ClusterInfo) error {
 	}
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(state.Region),
-		Credentials: credentials.NewStaticCredentials(
-			state.ClientID,
-			state.ClientSecret,
-			state.SessionToken,
-		),
+		Region:      aws.String(state.Region),
+		Credentials: credentialsForState(state),
 	})
 	if err != nil {
 		return fmt.Errorf("error getting new aws session: %v", err)
@@ -1035,12 +1092,8 @@ func (d *Driver) getClusterStats(ctx context.Context, info *types.ClusterInfo) (
 		return nil, err
 	}
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(state.Region),
-		Credentials: credentials.NewStaticCredentials(
-			state.ClientID,
-			state.ClientSecret,
-			state.SessionToken,
-		),
+		Region:      aws.String(state.Region),
+		Credentials: credentialsForState(state),
 	})
 	if err != nil {
 		return nil, err
@@ -1075,12 +1128,8 @@ func (d *Driver) SetVersion(ctx context.Context, info *types.ClusterInfo, versio
 
 func (d *Driver) updateClusterAndWait(ctx context.Context, state state) error {
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(state.Region),
-		Credentials: credentials.NewStaticCredentials(
-			state.ClientID,
-			state.ClientSecret,
-			state.SessionToken,
-		),
+		Region:      aws.String(state.Region),
+		Credentials: credentialsForState(state),
 	})
 	if err != nil {
 		return err

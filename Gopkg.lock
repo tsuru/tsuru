@@ -952,8 +952,8 @@
   revision = "c90cb954266e1bdd6d1914678fd6909fc5fabbfa"
 
 [[projects]]
-  branch = "fixflags"
-  digest = "1:23374bfa6ea83da02a7cf5ee093327cf84bf754da024648138d0175945e92158"
+  branch = "noclientid"
+  digest = "1:aa656e554c56a06c2981b024247e1f918bd68622e1912fa78a3ccb5f8904c1e0"
   name = "github.com/rancher/kontainer-engine"
   packages = [
     "cluster",
@@ -972,7 +972,7 @@
     "utils",
   ]
   pruneopts = "NUT"
-  revision = "8982eb4e91e3d44c59871ec0f7b86537c2507d9b"
+  revision = "c469f4bb1bc5539e80e15c1046933fa653cd3238"
   source = "github.com/cezarsa/kontainer-engine"
 
 [[projects]]
@@ -1974,6 +1974,7 @@
     "github.com/rancher/kontainer-engine/cluster",
     "github.com/rancher/kontainer-engine/service",
     "github.com/rancher/kontainer-engine/types",
+    "github.com/rancher/rke/log",
     "github.com/rancher/types/apis/management.cattle.io/v3",
     "github.com/sajari/fuzzy",
     "github.com/tsuru/commandmocker",
@@ -2004,7 +2005,7 @@
     "gopkg.in/check.v1",
     "gopkg.in/redis.v3",
     "gopkg.in/yaml.v2",
-    "k8s.io/api/apps/v1beta2",
+    "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/api/policy/v1beta1",
