@@ -50,6 +50,7 @@ const (
 	buildIntercontainerPath = "/tmp/intercontainer"
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 	defaultHttpPortName     = "http-default"
+	defaultUdpPortName      = "udp-default"
 )
 
 type InspectData struct {
@@ -1150,7 +1151,11 @@ func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTy
 							ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
 						}
 						if len(ports[i].Name) == 0 {
-							ports[i].Name = fmt.Sprintf("%s-%d", defaultHttpPortName, i+1)
+							prefix := defaultHttpPortName
+							if ports[i].Protocol == string(apiv1.ProtocolUDP) {
+								prefix = defaultUdpPortName
+							}
+							ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
 						}
 						if ports[i].TargetPort > 0 && ports[i].Port == 0 {
 							ports[i].Port = ports[i].TargetPort
@@ -1175,8 +1180,12 @@ func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTy
 		if err != nil {
 			continue
 		}
-		ports[i].Name = fmt.Sprintf("%s-%d", defaultPort.Name, i+1)
 		ports[i].Protocol = strings.ToUpper(protocol)
+		prefix := defaultPort.Name
+		if ports[i].Protocol == string(apiv1.ProtocolUDP) {
+			prefix = defaultUdpPortName
+		}
+		ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
 		if len(targetPorts) == 1 {
 			ports[i].Port = defaultPort.Port
 		} else {
@@ -1199,7 +1208,7 @@ func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortCo
 	defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
 	return provTypes.TsuruYamlKubernetesProcessPortConfig{
 		Name:       defaultHttpPortName,
-		Protocol:   "TCP",
+		Protocol:   string(apiv1.ProtocolTCP),
 		Port:       defaultPort,
 		TargetPort: defaultPort,
 	}

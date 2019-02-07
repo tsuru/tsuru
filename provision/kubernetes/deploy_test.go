@@ -401,7 +401,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 					Protocol:   "UDP",
 					Port:       int32(7778),
 					TargetPort: intstr.FromInt(7778),
-					Name:       "http-default-2",
+					Name:       "udp-default-2",
 				},
 			},
 			Type:                  apiv1.ServiceTypeNodePort,
