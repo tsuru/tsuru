@@ -4,7 +4,10 @@
 
 package provision
 
-import "errors"
+import (
+	"errors"
+	"io"
+)
 
 // Cluster represents a cluster of nodes.
 type Cluster struct {
@@ -18,6 +21,7 @@ type Cluster struct {
 	CustomData  map[string]string `json:"custom_data"`
 	CreateData  map[string]string `json:"create_data"`
 	Default     bool              `json:"default"`
+	Writer      io.Writer         `json:"-"`
 }
 
 type ClusterHelpInfo struct {

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	rcluster "github.com/rancher/kontainer-engine/cluster"
 	"github.com/rancher/kontainer-engine/service"
 	"github.com/rancher/kontainer-engine/types"
+	"github.com/rancher/rke/log"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/tsuru/tsuru/provision/cluster"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -160,6 +162,9 @@ func setFlagsToCluster(config v3.MapStringInterface, flags *types.DriverFlags, c
 		case types.IntType:
 			val, _ := strconv.Atoi(raw)
 			config[k] = val
+		case types.IntPointerType:
+			val, _ := strconv.Atoi(raw)
+			config[k] = &val
 		case types.StringType:
 			config[k] = raw
 		case types.StringSliceType:
@@ -181,13 +186,29 @@ func setFlagsToCluster(config v3.MapStringInterface, flags *types.DriverFlags, c
 	return nil
 }
 
+type writerLogger struct {
+	w io.Writer
+}
+
+func (l *writerLogger) Infof(msg string, args ...interface{}) {
+	msg = fmt.Sprintf("[info] %s", msg)
+	fmt.Fprintf(l.w, msg, args...)
+}
+func (l *writerLogger) Warnf(msg string, args ...interface{}) {
+	msg = fmt.Sprintf("[warn] %s", msg)
+	fmt.Fprintf(l.w, msg, args...)
+}
+
 type engineData struct {
 	engine service.EngineService
 	driver *v3.KontainerDriver
 	spec   v3.ClusterSpec
 }
 
-func prepareEngine(ctx context.Context, name string, customData map[string]string) (engineData, error) {
+func prepareEngine(ctx context.Context, name string, customData map[string]string, w io.Writer) (engineData, error) {
+	if w != nil {
+		log.SetLogger(ctx, &writerLogger{w: w})
+	}
 	stor, err := cluster.ClusterStorage()
 	if err != nil {
 		return engineData{}, errors.WithStack(err)
@@ -232,28 +253,31 @@ func FormattedCreateOptions() (map[string]string, error) {
 	return result, nil
 }
 
-func CreateCluster(ctx context.Context, name string, customData map[string]string) error {
-	engineData, err := prepareEngine(ctx, name, customData)
+func CreateCluster(ctx context.Context, name string, customData map[string]string, w io.Writer) error {
+	engineData, err := prepareEngine(ctx, name, customData, w)
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(w, "Creating cluster %q using driver %q\n", name, engineData.driver.Name)
 	_, _, _, err = engineData.engine.Create(ctx, name, engineData.driver, engineData.spec)
 	return errors.WithStack(err)
 }
 
-func UpdateCluster(ctx context.Context, name string, customData map[string]string) error {
-	engineData, err := prepareEngine(ctx, name, customData)
+func UpdateCluster(ctx context.Context, name string, customData map[string]string, w io.Writer) error {
+	engineData, err := prepareEngine(ctx, name, customData, w)
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(w, "Updating cluster %q using driver %q\n", name, engineData.driver.Name)
 	_, _, _, err = engineData.engine.Update(ctx, name, engineData.driver, engineData.spec)
 	return errors.WithStack(err)
 }
 
-func DeleteCluster(ctx context.Context, name string, customData map[string]string) error {
-	engineData, err := prepareEngine(ctx, name, customData)
+func DeleteCluster(ctx context.Context, name string, customData map[string]string, w io.Writer) error {
+	engineData, err := prepareEngine(ctx, name, customData, w)
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(w, "Deleting cluster %q using driver %q\n", name, engineData.driver.Name)
 	return errors.WithStack(engineData.engine.Remove(ctx, name, engineData.driver, engineData.spec))
 }

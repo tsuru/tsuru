@@ -5,6 +5,8 @@
 package mongodb
 
 import (
+	"io"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -28,6 +30,7 @@ type cluster struct {
 	CustomData  map[string]string `bson:",omitempty"`
 	CreateData  map[string]string `bson:",omitempty"`
 	Default     bool
+	Writer      io.Writer `bson:"-"`
 }
 
 func clustersCollection(conn *db.Storage) *dbStorage.Collection {
@@ -54,7 +57,7 @@ func (s *clusterStorage) Upsert(c provision.Cluster) error {
 			return errors.WithStack(err)
 		}
 	}
-	_, err = coll.UpsertId(c.Name, c)
+	_, err = coll.UpsertId(c.Name, cluster(c))
 	return errors.WithStack(err)
 }
 

@@ -34,6 +34,8 @@ type clusterService struct {
 	storage provTypes.ClusterStorage
 }
 
+var _ provTypes.ClusterService = &clusterService{}
+
 func ClusterStorage() (provTypes.ClusterStorage, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
@@ -132,16 +134,17 @@ func (s *clusterService) FindByPool(prov, pool string) (*provTypes.Cluster, erro
 }
 
 func (s *clusterService) Delete(c provTypes.Cluster) error {
-	fullCluster, err := s.storage.FindByName(c.Name)
+	var err error
+	c, err = s.updateClusterFromStorage(c)
 	if err != nil {
 		return err
 	}
-	prov, err := provision.Get(fullCluster.Provisioner)
+	prov, err := provision.Get(c.Provisioner)
 	if err != nil {
 		return err
 	}
 	if createProv, ok := prov.(ClusterProvider); ok {
-		err = createProv.DeleteCluster(context.Background(), fullCluster)
+		err = createProv.DeleteCluster(context.Background(), &c)
 		if err != nil {
 			return err
 		}
@@ -196,12 +199,10 @@ func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) err
 		if err != nil {
 			return err
 		}
-		var updatedCluster *provTypes.Cluster
-		updatedCluster, err = s.storage.FindByName(c.Name)
+		c, err = s.updateClusterFromStorage(c)
 		if err != nil {
 			return err
 		}
-		c = *updatedCluster
 	}
 	if clusterProv, ok := prov.(ClusteredProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)
@@ -229,4 +230,13 @@ func (s *clusterService) createClusterMachine(c *provTypes.Cluster) error {
 	c.ClientCert = m.ClientCert
 	c.ClientKey = m.ClientKey
 	return nil
+}
+
+func (s *clusterService) updateClusterFromStorage(c provTypes.Cluster) (provTypes.Cluster, error) {
+	updatedCluster, err := s.storage.FindByName(c.Name)
+	if err != nil {
+		return c, err
+	}
+	updatedCluster.Writer = c.Writer
+	return *updatedCluster, nil
 }
