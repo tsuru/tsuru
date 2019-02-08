@@ -7,11 +7,14 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -24,7 +27,7 @@ import (
 // path: /provisioner/clusters
 // method: POST
 // consume: application/x-www-form-urlencoded
-// produce: application/json
+// produce: application/x-json-stream
 // responses:
 //   200: Ok
 //   400: Invalid data
@@ -71,11 +74,19 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 			return err
 		}
 	}
+	streamResponse := strings.HasPrefix(r.Header.Get("Accept"), "application/x-json-stream")
+	if streamResponse {
+		w.Header().Set("Content-Type", "application/x-json-stream")
+		keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+		defer keepAliveWriter.Stop()
+		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+		evt.SetLogWriter(writer)
+	}
+	provCluster.Writer = evt
 	err = servicemanager.Cluster.Create(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	w.WriteHeader(http.StatusOK)
 	return nil
 }
 
@@ -83,7 +94,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // path: /provisioner/clusters/{name}
 // method: POST
 // consume: application/x-www-form-urlencoded
-// produce: application/json
+// produce: application/x-json-stream
 // responses:
 //   200: Ok
 //   400: Invalid data
@@ -133,11 +144,19 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 			return err
 		}
 	}
+	streamResponse := strings.HasPrefix(r.Header.Get("Accept"), "application/x-json-stream")
+	if streamResponse {
+		w.Header().Set("Content-Type", "application/x-json-stream")
+		keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+		defer keepAliveWriter.Stop()
+		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+		evt.SetLogWriter(writer)
+	}
+	provCluster.Writer = evt
 	err = servicemanager.Cluster.Update(provCluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	w.WriteHeader(http.StatusOK)
 	return nil
 }
 
@@ -174,7 +193,7 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // path: /provisioner/clusters/{name}
 // method: DELETE
 // consume: application/x-www-form-urlencoded
-// produce: application/json
+// produce: application/x-json-stream
 // responses:
 //   200: Ok
 //   401: Unauthorized
@@ -197,7 +216,15 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.Cluster.Delete(provTypes.Cluster{Name: clusterName})
+	streamResponse := strings.HasPrefix(r.Header.Get("Accept"), "application/x-json-stream")
+	if streamResponse {
+		w.Header().Set("Content-Type", "application/x-json-stream")
+		keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+		defer keepAliveWriter.Stop()
+		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+		evt.SetLogWriter(writer)
+	}
+	err = servicemanager.Cluster.Delete(provTypes.Cluster{Name: clusterName, Writer: evt})
 	if err != nil {
 		if errors.Cause(err) == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{

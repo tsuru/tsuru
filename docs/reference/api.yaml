@@ -1715,6 +1715,8 @@ paths:
             $ref: '#/definitions/Cluster'
       consumes:
       - application/json
+      produces:
+      - application/x-json-stream
       responses:
         '200':
           description: Cluster created
@@ -1741,6 +1743,8 @@ paths:
     delete:
       operationId: ClusterDelete
       description: Delete cluster.
+      produces:
+      - application/x-json-stream
       responses:
         '200':
           description: Cluster deleted
@@ -1775,6 +1779,8 @@ paths:
             $ref: '#/definitions/Cluster'
       consumes:
       - application/json
+      produces:
+      - application/x-json-stream
       responses:
         '200':
           description: Cluster updated

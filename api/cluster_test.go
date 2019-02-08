@@ -29,6 +29,8 @@ func (s *S) TestCreateCluster(c *check.C) {
 		return nil, provision.ErrNoCluster
 	}
 	s.mockService.Cluster.OnCreate = func(cluster provision.Cluster) error {
+		c.Assert(cluster.Writer, check.NotNil)
+		cluster.Writer = nil
 		c.Assert(cluster, check.DeepEquals, kubeCluster)
 		return nil
 	}
@@ -99,6 +101,8 @@ func (s *S) TestCreateClusterJSON(c *check.C) {
 		return nil, provision.ErrNoCluster
 	}
 	s.mockService.Cluster.OnCreate = func(cluster provision.Cluster) error {
+		c.Assert(cluster.Writer, check.NotNil)
+		cluster.Writer = nil
 		c.Assert(cluster, check.DeepEquals, kubeCluster)
 		return nil
 	}
