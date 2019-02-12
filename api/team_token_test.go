@@ -247,7 +247,7 @@ func (s *S) TestTeamTokenInfo(c *check.C) {
 	}, s.token)
 	c.Assert(err, check.IsNil)
 
-	request, err := http.NewRequest("GET", "/1.6/tokens/id1", nil)
+	request, err := http.NewRequest("GET", "/1.7/tokens/id1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
