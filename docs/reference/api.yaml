@@ -306,7 +306,7 @@ paths:
         - name: simplified
           description: Returns applications without units list.
           in: query
-          type: boolean 
+          type: boolean
       produces:
         - application/json
       responses:
@@ -2092,6 +2092,14 @@ paths:
         - auth
       security:
         - Bearer: []
+  /1.7/tokens/{token_id}:
+    parameters:
+      - name: token_id
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Token ID.
     get:
       operationId: TeamTokenInfo
       description: Shows information about a specific token.
