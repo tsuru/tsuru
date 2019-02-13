@@ -153,6 +153,7 @@ type Unit struct {
 	IP          string
 	Status      Status
 	Address     *url.URL
+	Addresses   []url.URL
 }
 
 // GetName returns the name of the unit.

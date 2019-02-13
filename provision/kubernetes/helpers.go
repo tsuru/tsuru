@@ -505,17 +505,26 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 }
 
 func getServicePort(svcInformer v1informers.ServiceInformer, srvName, namespace string) (int32, error) {
+	ports, err := getServicePorts(svcInformer, srvName, namespace)
+	if err != nil || len(ports) == 0 {
+		return 0, err
+	}
+	return ports[0], nil
+}
+
+func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace string) ([]int32, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
 	srv, err := svcInformer.Lister().Services(namespace).Get(srvName)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	if len(srv.Spec.Ports) == 0 {
-		return 0, nil
+	svcPorts := make([]int32, len(srv.Spec.Ports))
+	for i, p := range srv.Spec.Ports {
+		svcPorts[i] = p.NodePort
 	}
-	return srv.Spec.Ports[0].NodePort, nil
+	return svcPorts, nil
 }
 
 func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
