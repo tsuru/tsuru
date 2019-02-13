@@ -24,7 +24,7 @@ Tsuru now supports `Open Service Broker API <https://www.openservicebrokerapi.or
 Service brokers may be registered on the tsuru API to make their services
 available for applications running on the platform. Users can create instances
 from these services, bind and unbind those instances as if they were tsuru native services.
-Check `tsuru docs <https://docs.tsuru.io/1.7/services/open-service-broker.html>`_ for more.
+Check the `documentation <https://docs.tsuru.io/1.7/services/open-service-broker.html>`_ for more.
 
 Add support to exposing multiple ports with Kubernetes (`#2213 <https://github.com/tsuru/tsuru/issues/2213>`_)
 --------------------------------------------------------------------------------------------------------------
