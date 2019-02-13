@@ -505,6 +505,11 @@ func (s *S) TestUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
+	s.client.PrependReactor("create", "services", s.mock.ServiceWithPortReaction(c, []apiv1.ServicePort{
+		{NodePort: int32(30001)},
+		{NodePort: int32(30002)},
+		{NodePort: int32(30003)},
+	}))
 	imgName := "myapp:v1"
 	err = image.SaveImageCustomData(imgName, map[string]interface{}{
 		"processes": map[string]interface{}{
@@ -538,7 +543,12 @@ func (s *S) TestUnits(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+				{Scheme: "http", Host: "192.168.99.1:30003"},
+			},
 		},
 		{
 			AppName:     "myapp",
@@ -546,7 +556,12 @@ func (s *S) TestUnits(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+				{Scheme: "http", Host: "192.168.99.1:30003"},
+			},
 		},
 	})
 }
@@ -585,6 +600,34 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 		listNodesCalls++
 		return testing.RunReactionsAfter(&s.client.Fake, action)
 	})
+	_, err := s.client.CoreV1().Services("default").Create(&apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-web",
+			Namespace: "default",
+		},
+		Spec: apiv1.ServiceSpec{
+			Ports: []apiv1.ServicePort{
+				{NodePort: int32(30001)},
+				{NodePort: int32(30002)},
+			},
+			Type: apiv1.ServiceTypeNodePort,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().Services("default").Create(&apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "otherapp-web",
+			Namespace: "default",
+		},
+		Spec: apiv1.ServiceSpec{
+			Ports: []apiv1.ServicePort{
+				{NodePort: int32(30001)},
+				{NodePort: int32(30002)},
+			},
+			Type: apiv1.ServiceTypeNodePort,
+		},
+	})
+	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 4)
@@ -601,7 +644,11 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+			},
 		},
 		{
 			ID:          "myapp-2",
@@ -611,7 +658,11 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.2:30001"},
+				{Scheme: "http", Host: "192.168.99.2:30002"},
+			},
 		},
 		{
 			ID:          "otherapp-1",
@@ -621,7 +672,11 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+			},
 		},
 		{
 			ID:          "otherapp-2",
@@ -631,7 +686,11 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.2",
 			Status:      "",
-			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2"},
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.2:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.2:30001"},
+				{Scheme: "http", Host: "192.168.99.2:30002"},
+			},
 		},
 	})
 }

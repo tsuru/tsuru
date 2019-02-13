@@ -133,7 +133,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
-	servReaction := s.serviceWithPortReaction(c)
+	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
@@ -158,7 +158,7 @@ func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
 	podReaction, podReady := s.buildPodReaction(c)
-	servReaction := s.serviceWithPortReaction(c)
+	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
@@ -474,7 +474,7 @@ func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.Wa
 	}, &wg
 }
 
-func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
+func (s *KubeMock) ServiceWithPortReaction(c *check.C, ports []apiv1.ServicePort) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
 		defer func() {
@@ -484,10 +484,14 @@ func (s *KubeMock) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 		if len(srv.Spec.Ports) > 0 && srv.Spec.Ports[0].NodePort != int32(0) {
 			return RunReactionsAfter(&s.client.Fake, action)
 		}
-		srv.Spec.Ports = []apiv1.ServicePort{
-			{
-				NodePort: int32(30000),
-			},
+		if len(ports) == 0 {
+			srv.Spec.Ports = []apiv1.ServicePort{
+				{
+					NodePort: int32(30000),
+				},
+			}
+		} else {
+			srv.Spec.Ports = ports
 		}
 		return RunReactionsAfter(&s.client.Fake, action)
 	}

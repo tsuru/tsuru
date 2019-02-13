@@ -398,7 +398,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	}
 	nodeMap := map[string]*apiv1.Node{}
 	appMap := map[string]provision.App{}
-	portMap := map[string]int32{}
+	portsMap := map[string][]int32{}
 	for _, baseApp := range baseApps {
 		appMap[baseApp.GetName()] = baseApp
 	}
@@ -443,23 +443,30 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			appMap[podApp.GetName()] = podApp
 		}
 		wrapper := kubernetesNodeWrapper{node: node, prov: p}
-		url := &url.URL{
+		u := &url.URL{
 			Scheme: "http",
 			Host:   wrapper.Address(),
 		}
+		urls := []url.URL{}
 		appProcess := l.AppProcess()
 		if appProcess != "" {
 			srvName := deploymentNameForApp(podApp, appProcess)
-			port, ok := portMap[srvName]
+			ports, ok := portsMap[srvName]
 			if !ok {
-				port, err = getServicePort(svcInformer, srvName, pod.ObjectMeta.Namespace)
+				svcPorts, err := getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
 				if err != nil && !k8sErrors.IsNotFound(errors.Cause(err)) {
 					return nil, err
 				}
-				portMap[srvName] = port
+				if len(svcPorts) != 0 {
+					ports = svcPorts
+				}
+				portsMap[srvName] = ports
 			}
-			if port != 0 {
-				url.Host = fmt.Sprintf("%s:%d", url.Host, port)
+			if len(ports) > 0 {
+				u.Host = fmt.Sprintf("%s:%d", u.Host, ports[0])
+				for _, p := range ports {
+					urls = append(urls, url.URL{Scheme: "http", Host: fmt.Sprintf("%s:%d", wrapper.Address(), p)})
+				}
 			}
 		}
 		units = append(units, provision.Unit{
@@ -470,7 +477,8 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			Type:        l.AppPlatform(),
 			IP:          wrapper.ip(),
 			Status:      stateMap[pod.Status.Phase],
-			Address:     url,
+			Address:     u,
+			Addresses:   urls,
 		})
 	}
 	return units, nil

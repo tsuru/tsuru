@@ -204,6 +204,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ":30000"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: ":30000"},
+			},
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -214,6 +217,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ":30000"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: ":30000"},
+			},
 		},
 	})
 }
@@ -303,6 +309,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ""},
+			Addresses:   []url.URL{},
 		},
 		{
 			ID:          "otherapp-1",
@@ -313,6 +320,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ""},
+			Addresses:   []url.URL{},
 		},
 	})
 }
@@ -372,6 +380,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ":30000"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: ":30000"},
+			},
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -382,6 +393,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			IP:          "",
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ":30000"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: ":30000"},
+			},
 		},
 	})
 }
