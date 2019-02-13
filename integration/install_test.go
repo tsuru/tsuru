@@ -364,6 +364,9 @@ func poolAdd() ExecFlow {
 				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
 				table := resultTable{raw: res.Stdout.String()}
 				table.parse()
+				if len(table.rows) == 0 {
+					return false
+				}
 				for _, row := range table.rows {
 					c.Assert(len(row) > 2, check.Equals, true)
 					if !readyRegex.MatchString(row[2]) {
