@@ -58,10 +58,11 @@ var (
 )
 
 type Command struct {
-	Command string
-	Args    []string
-	Input   string
-	Timeout time.Duration
+	Command  string
+	Args     []string
+	Input    string
+	Timeout  time.Duration
+	NoExpand bool
 }
 
 type Result struct {
@@ -298,6 +299,12 @@ func (c *Command) WithTimeout(timeout time.Duration) *Command {
 	return &c2
 }
 
+func (c *Command) WithNoExpand() *Command {
+	c2 := *c
+	c2.NoExpand = true
+	return &c2
+}
+
 func transformArgTemplate(e *Environment, val string) (string, error) {
 	tpl, err := template.New("tpl").Parse(val)
 	if err != nil {
@@ -323,7 +330,10 @@ func (c *Command) Run(e *Environment) *Result {
 				res.SetError(err)
 				return res
 			}
-			parts, _ := shellwords.Parse(transformed)
+			parts := []string{transformed}
+			if !c.NoExpand {
+				parts, _ = shellwords.Parse(transformed)
+			}
 			args = append(args, parts...)
 		}
 		var err error

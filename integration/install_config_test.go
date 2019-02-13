@@ -94,8 +94,8 @@ func (s *S) getProvisioners() []string {
 	return selectedProvisioners
 }
 
-func (s *S) getClusterManagers(c *check.C) []ClusterManager {
-	availableClusterManagers := map[string]ClusterManager{
+func setupGenericClusters() map[string]*genericKubeCluster {
+	clusters := map[string]*genericKubeCluster{
 		"gke": &genericKubeCluster{
 			createData: map[string]string{
 				"driver":       "googlekubernetesengine",
@@ -118,6 +118,15 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 				"security-groups":    os.Getenv("AWS_SECURITY_GROUP_ID"),
 			},
 		},
+	}
+	if awsUserdata, isSet := os.LookupEnv("AWS_USERDATA"); isSet {
+		clusters["eks"].createData["user-data"] = awsUserdata
+	}
+	return clusters
+}
+
+func (s *S) getClusterManagers(c *check.C) []ClusterManager {
+	availableClusterManagers := map[string]ClusterManager{
 		"minikube": &MinikubeClusterManager{env: s.env},
 		"kubectl": &KubectlClusterManager{
 			env:     s.env,
@@ -126,6 +135,10 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 			binary:  s.env.Get("kubectlbinary"),
 		},
 		"swarm": &SwarmClusterManager{c: c, env: s.env},
+	}
+	moreClusters := setupGenericClusters()
+	for k, v := range moreClusters {
+		availableClusterManagers[k] = v
 	}
 	if _, ok := os.LookupEnv(integrationEnvID + "clusters"); !ok {
 		return []ClusterManager{availableClusterManagers["swarm"]}
