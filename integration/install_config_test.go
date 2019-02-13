@@ -96,7 +96,7 @@ func (s *S) getProvisioners() []string {
 
 func setupGenericClusters() map[string]*genericKubeCluster {
 	clusters := map[string]*genericKubeCluster{
-		"gke": &genericKubeCluster{
+		"gke": {
 			createData: map[string]string{
 				"driver":       "googlekubernetesengine",
 				"node-count":   "1",
@@ -105,7 +105,7 @@ func setupGenericClusters() map[string]*genericKubeCluster {
 				"machine-type": os.Getenv("GCE_MACHINE_TYPE"),
 			},
 		},
-		"eks": &genericKubeCluster{
+		"eks": {
 			createData: map[string]string{
 				"driver":             "amazonelasticcontainerservice",
 				"minimum-nodes":      "2",
