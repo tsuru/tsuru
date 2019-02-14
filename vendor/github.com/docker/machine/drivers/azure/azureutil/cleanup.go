@@ -66,8 +66,11 @@ func (c *subnetCleanup) Get(a AzureClient) (err error) {
 }
 
 func (c *subnetCleanup) Delete(a AzureClient) error {
-	_, err := a.subnetsClient().Delete(context.TODO(), c.rg, c.vnet, c.name)
-	return err
+	future, err := a.subnetsClient().Delete(context.TODO(), c.rg, c.vnet, c.name)
+	if err != nil {
+		return err
+	}
+	return future.WaitForCompletionRef(context.TODO(), a.subnetsClient().Client)
 }
 
 func (c *subnetCleanup) ResourceType() string { return "Subnet" }
@@ -90,8 +93,11 @@ func (c *vnetCleanup) Get(a AzureClient) (err error) {
 }
 
 func (c *vnetCleanup) Delete(a AzureClient) error {
-	_, err := a.virtualNetworksClient().Delete(context.TODO(), c.rg, c.name)
-	return err
+	future, err := a.virtualNetworksClient().Delete(context.TODO(), c.rg, c.name)
+	if err != nil {
+		return err
+	}
+	return future.WaitForCompletionRef(context.TODO(), a.virtualNetworksClient().Client)
 }
 
 func (c *vnetCleanup) ResourceType() string { return "Virtual Network" }
