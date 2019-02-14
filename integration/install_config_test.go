@@ -118,6 +118,24 @@ func setupGenericClusters() map[string]*genericKubeCluster {
 				"security-groups":    os.Getenv("AWS_SECURITY_GROUP_ID"),
 			},
 		},
+		"aks": {
+			createData: map[string]string{
+				"driver":                  "azurekubernetesservice",
+				"count":                   "2",
+				"service-cidr":            "10.0.0.1/24",
+				"dns-service-ip":          "10.0.0.2",
+				"docker-bridge-cidr":      "10.0.1.1/24",
+				"tenant-id":               os.Getenv("AZURE_TENANT_ID"),
+				"resource-group":          os.Getenv("AZURE_RESOURCE_GROUP"),
+				"subscription-id":         os.Getenv("AZURE_SUBSCRIPTION_ID"),
+				"location":                os.Getenv("AZURE_LOCATION"),
+				"agent-vm-size":           os.Getenv("AZURE_AGENT_VM_SIZE"),
+				"agent-pool-name":         os.Getenv("AZURE_AGENT_POOL_NAME"),
+				"ssh-public-key-contents": os.Getenv("AZURE_SSH_PUBLIC_KEY"),
+				"virtual-network":         os.Getenv("AZURE_VIRTUAL_NETWORK"),
+				"subnet":                  os.Getenv("AZURE_SUBNET"),
+			},
+		},
 	}
 	if awsUserdata, isSet := os.LookupEnv("AWS_USERDATA"); isSet {
 		clusters["eks"].createData["user-data"] = awsUserdata

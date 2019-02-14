@@ -19,6 +19,7 @@ import (
 	"github.com/rancher/kontainer-engine/types"
 	"github.com/rancher/rke/log"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
+	tsuruConfig "github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/cluster"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -152,11 +153,16 @@ func baseClusterSpec(driver string) v3.ClusterSpec {
 	}
 }
 
-func setFlagsToCluster(config v3.MapStringInterface, flags *types.DriverFlags, customData map[string]string) error {
+func setFlagsToCluster(config v3.MapStringInterface, driverName string, flags *types.DriverFlags, customData map[string]string) error {
 	for k, v := range flags.Options {
 		raw, ok := customData[k]
 		if !ok {
-			continue
+			key := fmt.Sprintf("kubernetes:provider:%s:%s", driverName, k)
+			var err error
+			raw, err = tsuruConfig.GetString(key)
+			if err != nil {
+				continue
+			}
 		}
 		switch v.Type {
 		case types.IntType:
@@ -223,7 +229,7 @@ func prepareEngine(ctx context.Context, name string, customData map[string]strin
 	if err != nil {
 		return engineData{}, errors.WithStack(err)
 	}
-	err = setFlagsToCluster(*(clusterSpec.GenericEngineConfig), flags, customData)
+	err = setFlagsToCluster(*(clusterSpec.GenericEngineConfig), driverName, flags, customData)
 	if err != nil {
 		return engineData{}, err
 	}
