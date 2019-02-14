@@ -119,13 +119,17 @@ func (a AzureClient) CreateNetworkSecurityGroup(ctx *DeploymentContext, resource
 	log.Info("Configuring network security group.", logutil.Fields{
 		"name":     name,
 		"location": location})
-	_, err := a.securityGroupsClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
+	future, err := a.securityGroupsClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
 		network.SecurityGroup{
 			Location: to.StringPtr(location),
 			SecurityGroupPropertiesFormat: &network.SecurityGroupPropertiesFormat{
 				SecurityRules: rules,
 			},
 		})
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.securityGroupsClient().Client)
 	if err != nil {
 		return err
 	}
@@ -172,7 +176,7 @@ func (a AzureClient) CreatePublicIPAddress(ctx *DeploymentContext, resourceGroup
 		}
 	}
 
-	_, err := a.publicIPAddressClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
+	future, err := a.publicIPAddressClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
 		network.PublicIPAddress{
 			Location: to.StringPtr(location),
 			PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
@@ -180,6 +184,10 @@ func (a AzureClient) CreatePublicIPAddress(ctx *DeploymentContext, resourceGroup
 				DNSSettings:              dns,
 			},
 		})
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.publicIPAddressClient().Client)
 	if err != nil {
 		return err
 	}
@@ -224,7 +232,7 @@ func (a AzureClient) CreateVirtualNetworkIfNotExists(resourceGroup, name, locati
 	}
 
 	log.Info("Creating virtual network.", f)
-	_, err := a.virtualNetworksClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
+	future, err := a.virtualNetworksClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
 		network.VirtualNetwork{
 			Location: to.StringPtr(location),
 			VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
@@ -233,6 +241,10 @@ func (a AzureClient) CreateVirtualNetworkIfNotExists(resourceGroup, name, locati
 				},
 			},
 		})
+	err = future.WaitForCompletionRef(context.TODO(), a.virtualNetworksClient().Client)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
@@ -268,13 +280,18 @@ func (a AzureClient) CreateSubnet(ctx *DeploymentContext, resourceGroup, virtual
 			"name": name,
 			"vnet": virtualNetwork,
 			"cidr": subnetPrefix})
-		_, err = a.subnetsClient().CreateOrUpdate(context.TODO(), resourceGroup, virtualNetwork, name,
+		var future network.SubnetsCreateOrUpdateFuture
+		future, err = a.subnetsClient().CreateOrUpdate(context.TODO(), resourceGroup, virtualNetwork, name,
 			network.Subnet{
 				SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
 					AddressPrefix: to.StringPtr(subnetPrefix),
 				},
 			})
 
+		if err != nil {
+			return err
+		}
+		err = future.WaitForCompletionRef(context.TODO(), a.subnetsClient().Client)
 		if err != nil {
 			return err
 		}
@@ -315,7 +332,7 @@ func (a AzureClient) CreateNetworkInterface(ctx *DeploymentContext, resourceGrou
 	if privateIPAddress != "" {
 		privateIPAllocMethod = network.Static
 	}
-	_, err := a.networkInterfacesClient().CreateOrUpdate(context.TODO(), resourceGroup, name, network.Interface{
+	future, err := a.networkInterfacesClient().CreateOrUpdate(context.TODO(), resourceGroup, name, network.Interface{
 		Location: to.StringPtr(location),
 		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
 			NetworkSecurityGroup: &network.SecurityGroup{
@@ -336,6 +353,10 @@ func (a AzureClient) CreateNetworkInterface(ctx *DeploymentContext, resourceGrou
 			},
 		},
 	})
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.networkInterfacesClient().Client)
 	if err != nil {
 		return err
 	}
@@ -425,11 +446,15 @@ func (a AzureClient) createStorageAccount(resourceGroup, location string, storag
 	}
 
 	log.Info("Creating storage account.", f)
-	_, err := a.storageAccountsClient().Create(context.TODO(), resourceGroup, name,
+	future, err := a.storageAccountsClient().Create(context.TODO(), resourceGroup, name,
 		storage.AccountCreateParameters{
 			Location: to.StringPtr(location),
 			Sku:      &storage.Sku{Name: storageType},
 		})
+	if err != nil {
+		return nil, err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.storageAccountsClient().Client)
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +606,7 @@ func (a AzureClient) CreateVirtualMachine(resourceGroup, name, location, size, a
 		osProfile.CustomData = to.StringPtr(customData)
 	}
 
-	_, err = a.virtualMachinesClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
+	future, err := a.virtualMachinesClient().CreateOrUpdate(context.TODO(), resourceGroup, name,
 		compute.VirtualMachine{
 			Location: to.StringPtr(location),
 			VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -617,7 +642,10 @@ func (a AzureClient) CreateVirtualMachine(resourceGroup, name, location, size, a
 				},
 			},
 		})
-	return err
+	if err != nil {
+		return err
+	}
+	return future.WaitForCompletionRef(context.TODO(), a.virtualMachinesClient().Client)
 }
 
 func (a AzureClient) GetVirtualMachinePowerState(resourceGroup, name string) (VMPowerState, error) {

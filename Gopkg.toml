@@ -130,7 +130,7 @@ required = [
   revision = "10da29423eb9a6269092eebdc2be32209612d9d2"
 [[override]]
   name = "github.com/Azure/azure-sdk-for-go"
-  version = "=v19.1.0"
+  version = "=v19.1.1"
 [[override]]
   name = "github.com/Azure/go-autorest"
   version = "=v10.11.1"

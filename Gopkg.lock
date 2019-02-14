@@ -10,7 +10,7 @@
   version = "v0.10.0"
 
 [[projects]]
-  digest = "1:04e6cb8051f2e853a3da631d659160e871eace217190b5c296d006870830dfab"
+  digest = "1:1f162d0d7becb45d2dffc94a520a8fd1d05cf1fc5fd771eb4ae27e03489c6fc4"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "profiles/latest/compute/mgmt/compute",
@@ -30,8 +30,8 @@
     "version",
   ]
   pruneopts = "NUT"
-  revision = "4e8cbbfb1aeab140cd0fa97fd16b64ee18c3ca6a"
-  version = "v19.1.0"
+  revision = "d8152a94139c3bb82d182061e86436d5141449ae"
+  version = "v19.1.1"
 
 [[projects]]
   branch = "master"
@@ -344,7 +344,7 @@
 
 [[projects]]
   branch = "azureupdate"
-  digest = "1:6483c301d859da228d90e252dc1cbd33d8c1188461a9e1f73e1dd607a6529dc8"
+  digest = "1:41e13334459f30800a6117af26b54e408e5210d734e7292de29afe913f001093"
   name = "github.com/docker/machine"
   packages = [
     "commands/mcndirs",
@@ -396,7 +396,7 @@
     "version",
   ]
   pruneopts = "NUT"
-  revision = "701e9ccdb0724ac6e019ec283f02b76374756327"
+  revision = "6cacfaf7b6c09ceabff9b283e3d4b2f30b9d1932"
   source = "github.com/cezarsa/machine"
 
 [[projects]]

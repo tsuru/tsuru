@@ -76,7 +76,6 @@ func (client ManagedClustersClient) CreateOrUpdate(ctx context.Context, resource
 					{Target: "parameters.ManagedClusterProperties.AadProfile", Name: validation.Null, Rule: false,
 						Chain: []validation.Constraint{{Target: "parameters.ManagedClusterProperties.AadProfile.ClientAppID", Name: validation.Null, Rule: true, Chain: nil},
 							{Target: "parameters.ManagedClusterProperties.AadProfile.ServerAppID", Name: validation.Null, Rule: true, Chain: nil},
-							{Target: "parameters.ManagedClusterProperties.AadProfile.ServerAppSecret", Name: validation.Null, Rule: true, Chain: nil},
 						}},
 				}}}}}); err != nil {
 		return result, validation.NewError("containerservice.ManagedClustersClient", "CreateOrUpdate", err.Error())
