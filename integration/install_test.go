@@ -238,7 +238,7 @@ func nodeHealer() ExecFlow {
 		if nodeOpts == "" {
 			nodeOpts = strings.Join(env.All("nodeopts"), ",")
 		}
-		res := T("node-add", nodeOpts, "pool="+poolName).Run(env)
+		res := T("node-add", nodeOpts, "pool="+poolName).WithTimeout(20 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		nodeAddr := waitNewNode(c, env)
 		env.Set("newnode-"+poolName, nodeAddr)
@@ -341,7 +341,7 @@ func poolAdd() ExecFlow {
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 			opts := nodeOrRegisterOpts(c, env)
-			res = T("node-add", opts, "pool="+poolName).Run(env)
+			res = T("node-add", opts, "pool="+poolName).WithTimeout(20 * time.Minute).Run(env)
 			c.Assert(res, ResultOk)
 			nodeAddr := waitNewNode(c, env)
 			env.Add("nodeaddrs", nodeAddr)
