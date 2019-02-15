@@ -324,6 +324,8 @@ func waitNewNode(c *check.C, env *Environment) string {
 		return regex.MatchString(res.Stdout.String())
 	})
 	c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 5 minutes: %v", res))
+	// Wait for docker daemon restart due to hostcert node container
+	time.Sleep(time.Minute * 1)
 	return nodeAddr
 }
 
@@ -443,6 +445,7 @@ func nodeContainerHostCert() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("node-container-upgrade", "hostcert", "-y").Run(env)
 		c.Assert(res, ResultOk)
+		// Wait for docker daemon restart in nodes
 		time.Sleep(time.Minute * 1)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
