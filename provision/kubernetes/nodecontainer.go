@@ -188,6 +188,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 					Labels: ls.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
+					HostPID:            config.HostConfig.PidMode == "host",
 					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: serviceAccountName,
 					Affinity:           affinity,
