@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ var (
 		quotaTest(),
 		teamTest(),
 		poolAdd(),
+		nodeContainerHostCert(),
 		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
@@ -145,6 +147,10 @@ func installerTest() ExecFlow {
 		regex = regexp.MustCompile(`Password: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		env.Set("adminpassword", parts[1])
+		caCertPath := filepath.Join(certsDir, "ca.pem")
+		res = NewCommand("cat", caCertPath).Run(env)
+		c.Assert(res, ResultOk)
+		env.Set("cacert", res.Stdout.String())
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		res := T("install-remove", "--config", "{{.installerconfig}}", "-y").Run(env)
@@ -424,6 +430,24 @@ func poolAdd() ExecFlow {
 			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
+	}
+	return flow
+}
+
+func nodeContainerHostCert() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"cacert"},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("node-container-add", "hostcert", "--privileged", "--image", "tsuru/hostcert", "-r", "hostconfig.pidmode=host", "-r", "config.cmd.0="+env.Get("cacert")).WithNoExpand().Run(env)
+		c.Assert(res, ResultOk)
+		res = T("node-container-upgrade", "hostcert", "-y").Run(env)
+		c.Assert(res, ResultOk)
+		time.Sleep(time.Minute * 1)
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := T("node-container-delete", "hostcert", "-k", "-y").Run(env)
+		c.Assert(res, ResultOk)
 	}
 	return flow
 }
