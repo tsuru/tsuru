@@ -51,7 +51,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.7.0-rc3"
+const Version = "1.7.0-rc4"
 
 type TsuruHandler struct {
 	version string
