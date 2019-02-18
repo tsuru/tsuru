@@ -153,6 +153,22 @@ func baseClusterSpec(driver string) v3.ClusterSpec {
 	}
 }
 
+func setFlagDefault(config v3.MapStringInterface, name string, flag *types.Flag) {
+	if flag.Default == nil {
+		return
+	}
+	switch flag.Type {
+	case types.IntType:
+		config[name] = flag.Default.DefaultInt
+	case types.StringType:
+		config[name] = flag.Default.DefaultString
+	case types.StringSliceType:
+		config[name] = flag.Default.DefaultStringSlice
+	case types.BoolType:
+		config[name] = flag.Default.DefaultBool
+	}
+}
+
 func setFlagsToCluster(config v3.MapStringInterface, driverName string, flags *types.DriverFlags, customData map[string]string) error {
 	for k, v := range flags.Options {
 		raw, ok := customData[k]
@@ -161,6 +177,7 @@ func setFlagsToCluster(config v3.MapStringInterface, driverName string, flags *t
 			var err error
 			raw, err = tsuruConfig.GetString(key)
 			if err != nil {
+				setFlagDefault(config, k, v)
 				continue
 			}
 		}
