@@ -278,7 +278,7 @@ func (r *Result) Compare(expected Expected) error {
 }
 
 func NewCommand(cmd string, args ...string) *Command {
-	return &Command{Command: cmd, Args: args, Timeout: 10 * time.Minute}
+	return &Command{Command: cmd, Args: args, Timeout: 15 * time.Minute}
 }
 
 func (c *Command) WithArgs(args ...string) *Command {
