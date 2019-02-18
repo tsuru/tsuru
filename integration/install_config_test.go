@@ -99,7 +99,7 @@ func setupGenericClusters() map[string]*genericKubeCluster {
 		"gke": {
 			createData: map[string]string{
 				"driver":       "googlekubernetesengine",
-				"node-count":   "1",
+				"node-count":   "2",
 				"zone":         os.Getenv("GCE_ZONE"),
 				"project-id":   os.Getenv("GCE_PROJECT_ID"),
 				"machine-type": os.Getenv("GCE_MACHINE_TYPE"),
