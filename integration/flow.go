@@ -41,6 +41,9 @@ func (f *ExecFlow) Run(c *check.C, env *Environment) {
 		return
 	}
 	f.forExpanded(env, func(e *Environment) {
+		if c.Failed() {
+			return
+		}
 		f.forward(c, e)
 	})
 	if c.Failed() {
