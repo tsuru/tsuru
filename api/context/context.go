@@ -5,6 +5,7 @@
 package context
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"net/http"
@@ -48,6 +49,7 @@ func GetBody(r *http.Request) ([]byte, error) {
 	}
 	newReq := r.WithContext(context.WithValue(r.Context(), reqBodyKey, data))
 	*r = *newReq
+	r.Body = ioutil.NopCloser(bytes.NewReader(data))
 	return data, nil
 }
 

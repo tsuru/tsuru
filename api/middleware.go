@@ -5,8 +5,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	stdIO "io"
 	stdLog "log"
 	"net/http"
 	"net/url"
@@ -403,13 +405,28 @@ func ParseInput(r *http.Request, dst interface{}) error {
 }
 
 func parseForm(r *http.Request) error {
-	if r.Form == nil {
-		contentType := r.Header.Get("Content-Type")
-		if strings.HasPrefix(contentType, "multipart") {
-			return r.ParseMultipartForm(defaultMaxMemory)
-		} else {
-			return r.ParseForm()
-		}
+	if r.Form != nil {
+		return nil
 	}
-	return nil
+	var buf bytes.Buffer
+	var readCloser struct {
+		stdIO.Reader
+		stdIO.Closer
+	}
+	if r.Body != nil {
+		readCloser.Reader = stdIO.TeeReader(r.Body, &buf)
+		readCloser.Closer = r.Body
+		r.Body = &readCloser
+	}
+	contentType := r.Header.Get("Content-Type")
+	var err error
+	if strings.HasPrefix(contentType, "multipart") {
+		err = r.ParseMultipartForm(defaultMaxMemory)
+	} else {
+		err = r.ParseForm()
+	}
+	if buf.Len() > 0 {
+		readCloser.Reader = &buf
+	}
+	return err
 }
