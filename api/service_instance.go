@@ -5,10 +5,8 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -562,23 +560,6 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(plans)
 }
 
-func parseFormPreserveBody(r *http.Request) {
-	var buf bytes.Buffer
-	var readCloser struct {
-		io.Reader
-		io.Closer
-	}
-	if r.Body != nil {
-		readCloser.Reader = io.TeeReader(r.Body, &buf)
-		readCloser.Closer = r.Body
-		r.Body = &readCloser
-	}
-	r.ParseForm()
-	if buf.Len() > 0 {
-		readCloser.Reader = &buf
-	}
-}
-
 // title: service instance proxy
 // path: /services/{service}/proxy/{instance}
 // method: "*"
@@ -586,7 +567,6 @@ func parseFormPreserveBody(r *http.Request) {
 //   401: Unauthorized
 //   404: Instance not found
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	parseFormPreserveBody(r)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
