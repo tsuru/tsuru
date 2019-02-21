@@ -999,34 +999,55 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	svc := &apiv1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        depName,
-			Namespace:   ns,
-			Labels:      expandedLabels,
-			Annotations: annotations.ToLabels(),
-		},
-		Spec: apiv1.ServiceSpec{
-			Selector:              labels.ToSelector(),
-			Ports:                 svcPorts,
-			Type:                  apiv1.ServiceTypeNodePort,
-			ExternalTrafficPolicy: policy,
-		},
-	}
-	svc, isNew, err := mergeServices(m.client, svc)
-	if err != nil {
-		return err
-	}
-	if isNew {
-		_, err = m.client.CoreV1().Services(ns).Create(svc)
+	if len(svcPorts) > 0 {
+		svc := &apiv1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        depName,
+				Namespace:   ns,
+				Labels:      expandedLabels,
+				Annotations: annotations.ToLabels(),
+			},
+			Spec: apiv1.ServiceSpec{
+				Selector:              labels.ToSelector(),
+				Ports:                 svcPorts,
+				Type:                  apiv1.ServiceTypeNodePort,
+				ExternalTrafficPolicy: policy,
+			},
+		}
+		svc, isNew, err := mergeServices(m.client, svc)
+		if err != nil {
+			return err
+		}
+		if isNew {
+			_, err = m.client.CoreV1().Services(ns).Create(svc)
+		} else {
+			_, err = m.client.CoreV1().Services(ns).Update(svc)
+		}
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	} else {
-		_, err = m.client.CoreV1().Services(ns).Update(svc)
-	}
-	if err != nil {
-		return errors.WithStack(err)
+		err = m.client.CoreV1().Services(ns).Delete(depName, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
 	}
 
 	kubeConf := getKubeConfig()
+	headlessPort := apiv1.ServicePort{
+		Name: "http-headless",
+		Port: int32(kubeConf.HeadlessServicePort),
+	}
+	if len(svcPorts) > 0 {
+		headlessPort.Protocol = svcPorts[0].Protocol
+		headlessPort.TargetPort = svcPorts[0].TargetPort
+	} else {
+		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
+		headlessPort.Protocol = apiv1.ProtocolTCP
+		headlessPort.TargetPort = intstr.FromInt(defaultPort)
+	}
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
@@ -1035,20 +1056,13 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector: labels.ToSelector(),
-			Ports: []apiv1.ServicePort{
-				{
-					Protocol:   svcPorts[0].Protocol,
-					Port:       int32(kubeConf.HeadlessServicePort),
-					TargetPort: svcPorts[0].TargetPort,
-					Name:       "http-headless",
-				},
-			},
+			Selector:  labels.ToSelector(),
+			Ports:     []apiv1.ServicePort{headlessPort},
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,
 		},
 	}
-	headlessSvc, isNew, err = mergeServices(m.client, headlessSvc)
+	headlessSvc, isNew, err := mergeServices(m.client, headlessSvc)
 	if err != nil {
 		return err
 	}
@@ -1087,15 +1101,6 @@ func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) 
 			svcPorts[i].Port = int32(defaultPort)
 		}
 		svcPorts[i].Name = port.Name
-	}
-	if len(svcPorts) == 0 {
-		defaultWebPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-		svcPorts = append(svcPorts, apiv1.ServicePort{
-			Protocol:   apiv1.ProtocolTCP,
-			Port:       int32(defaultWebPort),
-			TargetPort: intstr.FromInt(defaultWebPort),
-			Name:       defaultHttpPortName,
-		})
 	}
 	return svcPorts, nil
 }
