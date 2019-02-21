@@ -643,7 +643,7 @@ func InitializeAll() error {
 		if initializableProvisioner, ok := p.(InitializableProvisioner); ok {
 			err = initializableProvisioner.Initialize()
 			if err != nil {
-				return err
+				fmt.Printf("error initializing provisioner: %v\n", err)
 			}
 		}
 		if messageProvisioner, ok := p.(MessageProvisioner); ok {

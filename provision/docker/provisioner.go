@@ -264,6 +264,9 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 	for _, node := range nodeList {
 		out += fmt.Sprintf("    Docker node: %s\n", node.Address)
 	}
+	if len(nodeList) == 0 {
+		out += "    No Docker node available.\n"
+	}
 	return out, nil
 }
 
