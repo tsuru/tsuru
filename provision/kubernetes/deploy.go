@@ -1014,7 +1014,8 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 				ExternalTrafficPolicy: policy,
 			},
 		}
-		svc, isNew, err := mergeServices(m.client, svc)
+		var isNew bool
+		svc, isNew, err = mergeServices(m.client, svc)
 		if err != nil {
 			return err
 		}
