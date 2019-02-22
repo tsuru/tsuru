@@ -1036,18 +1036,23 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		}
 	}
 
-	kubeConf := getKubeConfig()
-	headlessPort := apiv1.ServicePort{
-		Name: "http-headless",
-		Port: int32(kubeConf.HeadlessServicePort),
+	headlessPorts := []apiv1.ServicePort{}
+	for i, svcPort := range svcPorts {
+		headlessPorts = append(headlessPorts, apiv1.ServicePort{
+			Name:       fmt.Sprintf("http-headless-%d", i+1),
+			Protocol:   svcPort.Protocol,
+			Port:       svcPort.Port,
+			TargetPort: svcPort.TargetPort,
+		})
 	}
-	if len(svcPorts) > 0 {
-		headlessPort.Protocol = svcPorts[0].Protocol
-		headlessPort.TargetPort = svcPorts[0].TargetPort
-	} else {
-		defaultPort, _ := strconv.Atoi(provision.WebProcessDefaultPort())
-		headlessPort.Protocol = apiv1.ProtocolTCP
-		headlessPort.TargetPort = intstr.FromInt(defaultPort)
+	if len(headlessPorts) == 0 {
+		kubeConf := getKubeConfig()
+		headlessPorts = append(headlessPorts, apiv1.ServicePort{
+			Name:       "http-headless-1",
+			Protocol:   apiv1.ProtocolTCP,
+			Port:       int32(kubeConf.HeadlessServicePort),
+			TargetPort: intstr.FromInt(kubeConf.HeadlessServicePort),
+		})
 	}
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1058,7 +1063,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector:  labels.ToSelector(),
-			Ports:     []apiv1.ServicePort{headlessPort},
+			Ports:     headlessPorts,
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,
 		},

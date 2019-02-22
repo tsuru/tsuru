@@ -275,7 +275,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Protocol:   "TCP",
 					Port:       int32(8888),
 					TargetPort: intstr.FromInt(8888),
-					Name:       "http-headless",
+					Name:       "http-headless-1",
 				},
 			},
 			ClusterIP: "None",
@@ -408,31 +408,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
-}
-
-func (s *S) TestServiceManagerDeployServiceCustomHeadlessPort(c *check.C) {
-	config.Set("kubernetes:headless-service-port", 8889)
-	defer config.Unset("kubernetes:headless-service-port")
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	imgData := image.ImageMetadata{
-		Name:      "myimg",
-		Processes: map[string][]string{"p1": {"cmd1"}},
-	}
-	err = imgData.Save()
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	}, nil)
-	c.Assert(err, check.IsNil)
-	waitDep()
-	nsName, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	srv, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
+	srv, err = s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -469,10 +445,16 @@ func (s *S) TestServiceManagerDeployServiceCustomHeadlessPort(c *check.C) {
 			},
 			Ports: []apiv1.ServicePort{
 				{
+					Name:       "http-headless-1",
 					Protocol:   "TCP",
-					Port:       int32(8889),
-					TargetPort: intstr.FromInt(8888),
-					Name:       "http-headless",
+					Port:       int32(7777),
+					TargetPort: intstr.FromInt(7777),
+				},
+				{
+					Name:       "http-headless-2",
+					Protocol:   "UDP",
+					Port:       int32(7778),
+					TargetPort: intstr.FromInt(7778),
 				},
 			},
 			ClusterIP: "None",
@@ -551,8 +533,8 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 				{
 					Protocol:   "TCP",
 					Port:       int32(8889),
-					TargetPort: intstr.FromInt(8888),
-					Name:       "http-headless",
+					TargetPort: intstr.FromInt(8889),
+					Name:       "http-headless-1",
 				},
 			},
 			ClusterIP: "None",
@@ -1061,10 +1043,22 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
 		{
-			Name:       "http-headless",
+			Name:       "http-headless-1",
 			Protocol:   "UDP",
-			Port:       int32(8888),
+			Port:       int32(8080),
 			TargetPort: intstr.FromInt(8080),
+		},
+		{
+			Name:       "http-headless-2",
+			Protocol:   "TCP",
+			Port:       int32(9000),
+			TargetPort: intstr.FromInt(9000),
+		},
+		{
+			Name:       "http-headless-3",
+			Protocol:   "TCP",
+			Port:       int32(8000),
+			TargetPort: intstr.FromInt(8001),
 		},
 	})
 }
