@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	informerSyncTimeout = time.Minute
+	informerSyncTimeout = 10 * time.Second
 )
 
 type clusterController struct {
@@ -241,7 +241,7 @@ func (c *clusterController) waitForSync(informer cache.SharedInformer) error {
 	ctx, cancel := contextWithCancelByChannel(context.Background(), c.stopCh, informerSyncTimeout)
 	defer cancel()
 	cache.WaitForCacheSync(ctx.Done(), informer.HasSynced)
-	return ctx.Err()
+	return errors.Wrap(ctx.Err(), "error waiting for informer sync")
 }
 
 var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
