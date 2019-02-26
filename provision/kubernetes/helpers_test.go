@@ -555,9 +555,8 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 
 func (s *S) TestGetServicePort(c *check.C) {
 	ns := "default"
-	controller, err := getClusterController(s.clusterClient)
+	controller, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	defer controller.stop()
 	svcInformer, err := controller.getServiceInformer()
 	c.Assert(err, check.IsNil)
 	_, err = getServicePort(svcInformer, "notfound", ns)

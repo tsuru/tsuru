@@ -46,9 +46,8 @@ func (s *S) TestNewClusterController(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer rebuild.Shutdown(context.Background())
-	controller, err := getClusterController(s.clusterClient)
+	_, err = getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	defer controller.stop()
 	basePod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "pod1",
@@ -68,10 +67,9 @@ func (s *S) TestNewClusterController(c *check.C) {
 }
 
 func (s *S) TestNewRouterControllerSameInstance(c *check.C) {
-	c1, err := getClusterController(s.clusterClient)
+	c1, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	defer c1.stop()
-	c2, err := getClusterController(s.clusterClient)
+	c2, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.Equals, c2)
 }

@@ -24,11 +24,6 @@ const (
 	informerSyncTimeout = time.Minute
 )
 
-var (
-	clusterControllers   = map[string]*clusterController{}
-	clusterControllersMu sync.Mutex
-)
-
 type clusterController struct {
 	mu              sync.Mutex
 	cluster         *ClusterClient
@@ -41,40 +36,40 @@ type clusterController struct {
 
 func initAllControllers(p *kubernetesProvisioner) error {
 	return forEachCluster(func(client *ClusterClient) error {
-		_, err := getClusterController(client)
+		_, err := getClusterController(p, client)
 		return err
 	})
 }
 
-func getClusterController(cluster *ClusterClient) (*clusterController, error) {
-	controller, _, err := getClusterControllerExists(cluster)
-	return controller, err
-}
-
-func getClusterControllerExists(cluster *ClusterClient) (c *clusterController, isNew bool, err error) {
-	clusterControllersMu.Lock()
-	defer clusterControllersMu.Unlock()
-	var ok bool
-	if c, ok = clusterControllers[cluster.Name]; ok {
-		return c, false, nil
+func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*clusterController, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if c, ok := p.clusterControllers[cluster.Name]; ok {
+		return c, nil
 	}
-	c = &clusterController{
+	c := &clusterController{
 		cluster: cluster,
 		stopCh:  make(chan struct{}),
 	}
-	err = c.start()
+	err := c.start()
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	clusterControllers[cluster.Name] = c
-	return c, true, nil
+	p.clusterControllers[cluster.Name] = c
+	return c, nil
+}
+
+func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if c, ok := p.clusterControllers[cluster.Name]; ok {
+		c.stop()
+	}
+	delete(p.clusterControllers, cluster.Name)
 }
 
 func (c *clusterController) stop() {
 	close(c.stopCh)
-	clusterControllersMu.Lock()
-	defer clusterControllersMu.Unlock()
-	delete(clusterControllers, c.cluster.Name)
 }
 
 func (c *clusterController) start() error {

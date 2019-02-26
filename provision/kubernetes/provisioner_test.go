@@ -2320,8 +2320,12 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 }
 
 func (s *S) TestProvisionerInitialize(c *check.C) {
+	_, ok := s.p.clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, false)
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
+	_, ok = s.p.clusterControllers[s.clusterClient.Name]
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {
