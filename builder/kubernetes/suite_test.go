@@ -137,7 +137,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.b = &kubernetesBuilder{}
 	s.p = kubeProv.GetProvisioner()
 	s.factory = informers.NewSharedInformerFactory(s.client, time.Minute)
-	kubeProv.InformerFactory = func(client *kubeProv.ClusterClient, _ <-chan struct{}) (informers.SharedInformerFactory, error) {
+	kubeProv.InformerFactory = func(client *kubeProv.ClusterClient) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
 	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.factory)

@@ -191,14 +191,13 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	controller, err := getClusterController(clusterClient)
+	controller, isNew, err := getClusterControllerExists(clusterClient)
 	if err != nil {
 		return err
 	}
-	controller.stop()
-	_, err = getClusterController(clusterClient)
-	if err != nil {
-		return err
+	if !isNew {
+		controller.stop()
+		_, err = getClusterController(clusterClient)
 	}
 	return err
 }
