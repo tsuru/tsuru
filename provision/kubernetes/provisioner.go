@@ -1239,8 +1239,14 @@ func (p *kubernetesProvisioner) UpdateApp(old, new provision.App, w io.Writer) e
 }
 
 func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
-	// TODO: close(p.stopCh)
-	return nil
+	err := forEachCluster(func(client *ClusterClient) error {
+		stopClusterController(p, client)
+		return nil
+	})
+	if err == provTypes.ErrNoCluster {
+		return nil
+	}
+	return err
 }
 
 func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error {
