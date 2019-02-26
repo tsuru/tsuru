@@ -30,7 +30,6 @@ import (
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/client-go/informers"
-	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -79,6 +78,12 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *S) TearDownTest(c *check.C) {
+	controller, err := getClusterController(s.clusterClient)
+	c.Assert(err, check.IsNil)
+	controller.stop()
+}
+
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
@@ -116,14 +121,17 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	InformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (informers.SharedInformerFactory, error) {
+		return s.factory, nil
+	}
 	s.p = &kubernetesProvisioner{
-		informerFactory: map[string]informers.SharedInformerFactory{
-			clus.Name: s.factory,
-		},
-		podInformers:     make(map[string]v1informers.PodInformer),
-		serviceInformers: make(map[string]v1informers.ServiceInformer),
-		nodeInformers:    make(map[string]v1informers.NodeInformer),
-		stopCh:           make(chan struct{}),
+		// informerFactory: map[string]informers.SharedInformerFactory{
+		// 	clus.Name: s.factory,
+		// },
+		// podInformers:     make(map[string]v1informers.PodInformer),
+		// serviceInformers: make(map[string]v1informers.ServiceInformer),
+		// nodeInformers:    make(map[string]v1informers.NodeInformer),
+		// stopCh:           make(chan struct{}),
 	}
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.factory)
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
