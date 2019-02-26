@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -56,8 +57,8 @@ const (
 )
 
 type kubernetesProvisioner struct {
-	// mu               sync.Mutex
-	// stopCh           chan struct{}
+	mu                 sync.Mutex
+	clusterControllers map[string]*clusterController
 }
 
 var (
@@ -83,7 +84,9 @@ var (
 )
 
 func init() {
-	mainKubernetesProvisioner = &kubernetesProvisioner{}
+	mainKubernetesProvisioner = &kubernetesProvisioner{
+		clusterControllers: map[string]*clusterController{},
+	}
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainKubernetesProvisioner, nil
 	})
@@ -191,14 +194,8 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	controller, isNew, err := getClusterControllerExists(clusterClient)
-	if err != nil {
-		return err
-	}
-	if !isNew {
-		controller.stop()
-		_, err = getClusterController(clusterClient)
-	}
+	stopClusterController(p, clusterClient)
+	_, err = getClusterController(p, clusterClient)
 	return err
 }
 
@@ -396,7 +393,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	for _, baseApp := range baseApps {
 		appMap[baseApp.GetName()] = baseApp
 	}
-	controller, err := getClusterController(client)
+	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +558,7 @@ func (p *kubernetesProvisioner) podsForApps(client *ClusterClient, apps []provis
 		}
 		sel = sel.Add(*req)
 	}
-	controller, err := getClusterController(client)
+	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +601,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	controller, err := getClusterController(client)
+	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +628,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 	if err != nil {
 		return nil, err
 	}
-	controller, err := getClusterController(client)
+	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +665,7 @@ func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName
 		Pool:   poolName,
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
-	controller, err := getClusterController(client)
+	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
 	}

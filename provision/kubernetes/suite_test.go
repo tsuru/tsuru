@@ -79,9 +79,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	controller, err := getClusterController(s.clusterClient)
-	c.Assert(err, check.IsNil)
-	controller.stop()
+	stopClusterController(s.p, s.clusterClient)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -124,7 +122,9 @@ func (s *S) SetUpTest(c *check.C) {
 	InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
-	s.p = &kubernetesProvisioner{}
+	s.p = &kubernetesProvisioner{
+		clusterControllers: map[string]*clusterController{},
+	}
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.factory)
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
