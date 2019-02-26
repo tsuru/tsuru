@@ -121,18 +121,10 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)
-	InformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (informers.SharedInformerFactory, error) {
+	InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
-	s.p = &kubernetesProvisioner{
-		// informerFactory: map[string]informers.SharedInformerFactory{
-		// 	clus.Name: s.factory,
-		// },
-		// podInformers:     make(map[string]v1informers.PodInformer),
-		// serviceInformers: make(map[string]v1informers.ServiceInformer),
-		// nodeInformers:    make(map[string]v1informers.NodeInformer),
-		// stopCh:           make(chan struct{}),
-	}
+	s.p = &kubernetesProvisioner{}
 	s.mock = kTesting.NewKubeMock(s.client, s.p, s.factory)
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}

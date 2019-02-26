@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/tools/cache"
+)
+
+const (
+	informerSyncTimeout = time.Minute
 )
 
 var (
@@ -42,21 +47,27 @@ func initAllControllers(p *kubernetesProvisioner) error {
 }
 
 func getClusterController(cluster *ClusterClient) (*clusterController, error) {
+	controller, _, err := getClusterControllerExists(cluster)
+	return controller, err
+}
+
+func getClusterControllerExists(cluster *ClusterClient) (c *clusterController, isNew bool, err error) {
 	clusterControllersMu.Lock()
 	defer clusterControllersMu.Unlock()
-	if c, ok := clusterControllers[cluster.Name]; ok {
-		return c, nil
+	var ok bool
+	if c, ok = clusterControllers[cluster.Name]; ok {
+		return c, false, nil
 	}
-	c := &clusterController{
+	c = &clusterController{
 		cluster: cluster,
 		stopCh:  make(chan struct{}),
 	}
-	err := c.start()
+	err = c.start()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	clusterControllers[cluster.Name] = c
-	return c, nil
+	return c, true, nil
 }
 
 func (c *clusterController) stop() {
@@ -67,7 +78,7 @@ func (c *clusterController) stop() {
 }
 
 func (c *clusterController) start() error {
-	informer, err := c.getPodInformer()
+	informer, err := c.getPodInformerWait(false)
 	if err != nil {
 		return err
 	}
@@ -142,42 +153,58 @@ func (c *clusterController) addPod(pod *apiv1.Pod) {
 }
 
 func (p *clusterController) getPodInformer() (v1informers.PodInformer, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.podInformer != nil {
-		return p.podInformer, nil
-	}
-	err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
-		p.podInformer = factory.Core().V1().Pods()
-		p.podInformer.Informer()
-	})
-	return p.podInformer, err
+	return p.getPodInformerWait(true)
 }
 
 func (p *clusterController) getServiceInformer() (v1informers.ServiceInformer, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.serviceInformer != nil {
-		return p.serviceInformer, nil
+	if p.serviceInformer == nil {
+		err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
+			p.serviceInformer = factory.Core().V1().Services()
+			p.serviceInformer.Informer()
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
-		p.serviceInformer = factory.Core().V1().Services()
-		p.serviceInformer.Informer()
-	})
+	err := p.waitForSync(p.serviceInformer.Informer())
 	return p.serviceInformer, err
 }
 
 func (p *clusterController) getNodeInformer() (v1informers.NodeInformer, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.nodeInformer != nil {
-		return p.nodeInformer, nil
+	if p.nodeInformer == nil {
+		err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
+			p.nodeInformer = factory.Core().V1().Nodes()
+			p.nodeInformer.Informer()
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
-		p.nodeInformer = factory.Core().V1().Nodes()
-		p.nodeInformer.Informer()
-	})
+	err := p.waitForSync(p.nodeInformer.Informer())
 	return p.nodeInformer, err
+}
+
+func (p *clusterController) getPodInformerWait(wait bool) (v1informers.PodInformer, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.podInformer == nil {
+		err := p.withInformerFactory(func(factory informers.SharedInformerFactory) {
+			p.podInformer = factory.Core().V1().Pods()
+			p.podInformer.Informer()
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	if wait {
+		err = p.waitForSync(p.podInformer.Informer())
+	}
+	return p.podInformer, err
 }
 
 func (p *clusterController) withInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
@@ -187,7 +214,6 @@ func (p *clusterController) withInformerFactory(fn func(factory informers.Shared
 	}
 	fn(factory)
 	factory.Start(p.stopCh)
-	factory.WaitForCacheSync(p.stopCh)
 	return nil
 }
 
@@ -196,11 +222,34 @@ func (p *clusterController) getFactory() (informers.SharedInformerFactory, error
 		return p.informerFactory, nil
 	}
 	var err error
-	p.informerFactory, err = InformerFactory(p.cluster, p.stopCh)
+	p.informerFactory, err = InformerFactory(p.cluster)
 	return p.informerFactory, err
 }
 
-var InformerFactory = func(client *ClusterClient, stopCh <-chan struct{}) (informers.SharedInformerFactory, error) {
+func contextWithCancelByChannel(ctx context.Context, ch chan struct{}, timeout time.Duration) (context.Context, func()) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	go func() {
+		select {
+		case <-ch:
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}()
+	return ctx, cancel
+}
+
+func (p *clusterController) waitForSync(informer cache.SharedInformer) error {
+	if informer.HasSynced() {
+		return nil
+	}
+	ctx, cancel := contextWithCancelByChannel(context.Background(), p.stopCh, informerSyncTimeout)
+	defer cancel()
+	cache.WaitForCacheSync(ctx.Done(), informer.HasSynced)
+	return ctx.Err()
+}
+
+var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
 	timeout := client.restConfig.Timeout
 	restConfig := *client.restConfig
 	restConfig.Timeout = 0
