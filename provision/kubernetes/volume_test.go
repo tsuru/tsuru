@@ -344,7 +344,7 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(s.clusterClient, a)
-	c.Assert(err, check.ErrorMatches, `multiple namespaces for volume`)
+	c.Assert(err, check.ErrorMatches, `multiple namespaces for volume not allowed: "tsuru-otherpool" and "tsuru-test-default"`)
 }
 
 func (s *S) TestDeleteVolume(c *check.C) {

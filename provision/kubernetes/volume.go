@@ -17,6 +17,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type volumeOptions struct {
@@ -148,29 +149,38 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	return &opts, nil
 }
 
+func pvcForVolume(client *ClusterClient, name string) ([]apiv1.PersistentVolumeClaim, error) {
+	labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
+		Name:   name,
+		Prefix: tsuruLabelPrefix,
+	})
+	pvcItems, err := client.CoreV1().PersistentVolumeClaims("").List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(labelSet.ToVolumeSelector())).String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return pvcItems.Items, nil
+}
+
 func deleteVolume(client *ClusterClient, name string) error {
-	v, err := volume.Load(name)
+	err := client.CoreV1().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	pvcItems, err := pvcForVolume(client, name)
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
-			return nil
+		return err
+	}
+	for _, pvc := range pvcItems {
+		err = client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
 		}
-		return err
-	}
-	namespace, err := getNamespaceForVolume(client, v)
-	if err != nil {
-		return err
-	}
-	err = client.CoreV1().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
-	}
-	err = client.CoreV1().PersistentVolumeClaims(namespace).Delete(volumeClaimName(name), &metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -252,29 +262,18 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 }
 
 func volumeExists(client *ClusterClient, name string) (bool, error) {
-	v, err := volume.Load(name)
-	if err != nil {
-		if err == volume.ErrVolumeNotFound {
-			return false, nil
-		}
-		return false, err
+	_, err := client.CoreV1().PersistentVolumes().Get(volumeName(name), metav1.GetOptions{})
+	if err == nil || !k8sErrors.IsNotFound(err) {
+		return true, err
 	}
-	namespace, err := getNamespaceForVolume(client, v)
+	pvcItems, err := pvcForVolume(client, name)
 	if err != nil {
 		return false, err
 	}
-	_, pvErr := client.CoreV1().PersistentVolumes().Get(volumeName(name), metav1.GetOptions{})
-	_, pvcErr := client.CoreV1().PersistentVolumeClaims(namespace).Get(volumeClaimName(name), metav1.GetOptions{})
-	if k8sErrors.IsNotFound(pvErr) && k8sErrors.IsNotFound(pvcErr) {
-		return false, nil
+	if len(pvcItems) > 0 {
+		return true, nil
 	}
-	if pvErr != nil {
-		return false, errors.WithStack(pvErr)
-	}
-	if pvcErr != nil {
-		return false, errors.WithStack(pvcErr)
-	}
-	return true, nil
+	return false, nil
 }
 
 func getNamespaceForVolume(client *ClusterClient, v *volume.Volume) (string, error) {
@@ -296,7 +295,7 @@ func getNamespaceForVolume(client *ClusterClient, v *volume.Volume) (string, err
 			continue
 		}
 		if ns != namespace {
-			return "", errors.New("multiple namespaces for volume")
+			return "", errors.Errorf("multiple namespaces for volume not allowed: %q and %q", ns, namespace)
 		}
 	}
 	return namespace, nil
