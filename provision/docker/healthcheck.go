@@ -35,6 +35,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 	match := yamlData.Healthcheck.Match
 	status := yamlData.Healthcheck.Status
 	scheme := yamlData.Healthcheck.Scheme
+	headers := yamlData.Healthcheck.Headers
 	if scheme == "" {
 		scheme = provision.DefaultHealthcheckScheme
 	}
@@ -69,6 +70,13 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 	for {
 		var lastError error = nil
 		req, err := http.NewRequest(method, url, nil)
+		for header, value := range headers {
+			if header == "Host" {
+				req.Host = value
+			} else {
+				req.Header.Set(header, value)
+			}
+		}
 		if err != nil {
 			return err
 		}
