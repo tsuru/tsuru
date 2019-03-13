@@ -410,8 +410,16 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 	if hc.TimeoutSeconds == 0 {
 		hc.TimeoutSeconds = 60
 	}
+	headers := []apiv1.HTTPHeader{}
+	for header, value := range hc.Headers {
+		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
+	}
 	if !hc.UseInRouter {
 		url := fmt.Sprintf("%s://localhost:%d/%s", hc.Scheme, port, strings.TrimPrefix(hc.Path, "/"))
+		headersCurl := []string{}
+		for _, header := range headers {
+			headersCurl = append(headersCurl, fmt.Sprintf("-H '%s: %s'", header.Name, header.Value))
+		}
 		result.readiness = &apiv1.Probe{
 			FailureThreshold: int32(hc.AllowedFailures),
 			PeriodSeconds:    int32(3),
@@ -420,8 +428,8 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 				Exec: &apiv1.ExecAction{
 					Command: []string{
 						"sh", "-c",
-						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X%[1]s -o /dev/null %[2]s && touch /tmp/onetimeprobesuccessful; fi`,
-							hc.Method, url),
+						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X%[1]s %[2]s -o /dev/null %[3]s && touch /tmp/onetimeprobesuccessful; fi`,
+							hc.Method, strings.Join(headersCurl, " "), url),
 					},
 				},
 			},
@@ -441,9 +449,10 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		TimeoutSeconds:   int32(hc.TimeoutSeconds),
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
-				Path:   hc.Path,
-				Port:   intstr.FromInt(port),
-				Scheme: apiv1.URIScheme(hc.Scheme),
+				Path:        hc.Path,
+				Port:        intstr.FromInt(port),
+				Scheme:      apiv1.URIScheme(hc.Scheme),
+				HTTPHeaders: headers,
 			},
 		},
 	}
