@@ -756,7 +756,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XGET  -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "GET"  -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
 						},
 					},
 				},
@@ -777,7 +777,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XPOST  -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST"  -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
 						},
 					},
 				},
@@ -790,8 +790,9 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				AllowedFailures: 2,
 				Method:          "POST",
 				Headers: map[string]string{
-					"Host":            "test.com",
-					"X-Custom-Header": "test",
+					"Host":                      "test.com",
+					"X-Custom-Header":           "test",
+					"X-Injection\"& echo teste": "test",
 				},
 			},
 			expectedReadiness: &apiv1.Probe{
@@ -802,7 +803,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XPOST -H 'Host: test.com' -H 'X-Custom-Header: test' -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST" -H "Host: test.com" -H "X-Custom-Header: test" -H "X-Injection\"& echo teste: test" -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
 						},
 					},
 				},
