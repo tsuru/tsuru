@@ -78,6 +78,9 @@ Here is how you can configure a health check in your yaml file:
       scheme: http
       method: GET
       status: 200
+      headers:
+        - Host: test.com
+        - X-Custom-Header: xxx
       match: .*OKAY.*
       allowed_failures: 0
       use_in_router: false
@@ -92,6 +95,8 @@ Here is how you can configure a health check in your yaml file:
 * ``healthcheck:status``: The expected response code for the request. Defaults
   to 200. This field is ignored in ``kubernetes`` provisioner, which always
   expects a status code greater than or equal to 200 and less than 400.
+* ``healthcheck:headers``: Additional headers to use for the request. Headers name
+  should be capitalized. It is optional.
 * ``healthcheck:match``: A regular expression to be matched against the request
   body. If it's not set the body won't be read and only the status code will be
   checked. This regular expression uses `Go syntax
