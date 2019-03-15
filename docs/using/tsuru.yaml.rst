@@ -79,8 +79,8 @@ Here is how you can configure a health check in your yaml file:
       method: GET
       status: 200
       headers:
-        - Host: test.com
-        - X-Custom-Header: xxx
+        Host: test.com
+        X-Custom-Header: xxx
       match: .*OKAY.*
       allowed_failures: 0
       use_in_router: false
