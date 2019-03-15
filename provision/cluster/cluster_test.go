@@ -450,13 +450,18 @@ func (s *S) TestFindByPoolsNotFound(c *check.C) {
 
 type provisionClusterProv struct {
 	*provisiontest.FakeProvisioner
-	callLog [][]string
+	callLog         [][]string
+	OnCreateCluster func(ctx context.Context, c *provTypes.Cluster) error
 }
 
 func (p *provisionClusterProv) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	p.callLog = append(p.callLog, []string{"CreateCluster", c.Name})
-	return nil
+	if p.OnCreateCluster == nil {
+		p.callLog = append(p.callLog, []string{"CreateCluster", c.Name})
+		return nil
+	}
+	return p.OnCreateCluster(ctx, c)
 }
+
 func (p *provisionClusterProv) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
 	p.callLog = append(p.callLog, []string{"UpdateCluster", c.Name})
 	return nil
@@ -632,4 +637,45 @@ func (s *S) TestClusterServiceDeleteProvisionClusterNoCreateData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(deleteCall, check.Equals, true)
 	c.Assert(inst.callLog, check.IsNil)
+}
+
+func (s *S) TestClusterServiceCreateProvisionClusterError(c *check.C) {
+	inst := provisionClusterProv{
+		FakeProvisioner: provisiontest.ProvisionerInstance,
+		OnCreateCluster: func(ctx context.Context, c *provTypes.Cluster) error {
+			return errors.New("some error")
+		},
+	}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	myCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake-cluster",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	deleteCall := false
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				c.Assert(clust.Name, check.Equals, myCluster.Name)
+				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
+				return nil
+			},
+			OnDelete: func(clust provTypes.Cluster) error {
+				deleteCall = true
+				c.Assert(clust.Name, check.Equals, myCluster.Name)
+				return nil
+			},
+		},
+	}
+	err := cs.Create(myCluster)
+	c.Assert(err.Error(), check.Equals, "some error")
+	c.Assert(deleteCall, check.Equals, true)
 }
