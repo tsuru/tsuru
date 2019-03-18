@@ -676,6 +676,41 @@ func (s *S) TestClusterServiceCreateProvisionClusterError(c *check.C) {
 		},
 	}
 	err := cs.Create(myCluster)
-	c.Assert(err.Error(), check.Equals, "some error")
+	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error")
 	c.Assert(deleteCall, check.Equals, true)
+}
+
+func (s *S) TestClusterServiceCreateProvisionClusterErrorProvisionerAndDelete(c *check.C) {
+	inst := provisionClusterProv{
+		FakeProvisioner: provisiontest.ProvisionerInstance,
+		OnCreateCluster: func(ctx context.Context, c *provTypes.Cluster) error {
+			return errors.New("some error")
+		},
+	}
+	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
+		return &inst, nil
+	})
+	defer provision.Unregister("fake-cluster")
+	myCluster := provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{},
+		Provisioner: "fake-cluster",
+		Default:     true,
+		CreateData: map[string]string{
+			"id":   "test1",
+			"iaas": "test-iaas",
+		},
+	}
+	cs := &clusterService{
+		storage: &provTypes.MockClusterStorage{
+			OnUpsert: func(clust provTypes.Cluster) error {
+				return nil
+			},
+			OnDelete: func(clust provTypes.Cluster) error {
+				return errors.New("delete error")
+			},
+		},
+	}
+	err := cs.Create(myCluster)
+	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error - error deleting cluster: delete error")
 }

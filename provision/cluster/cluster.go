@@ -197,10 +197,11 @@ func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) err
 			err = createProv.UpdateCluster(context.Background(), &c)
 		}
 		if err != nil {
+			err = errors.WithStack(fmt.Errorf("error provisioning cluster: %v", err))
 			if isNewCluster {
 				derr := s.storage.Delete(c)
 				if derr != nil {
-					err = errors.WithStack(derr)
+					err = errors.Wrapf(derr, "%v - error deleting cluster", err)
 				}
 			}
 			return err
