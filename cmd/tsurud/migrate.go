@@ -201,9 +201,6 @@ func migratePool() error {
 	}
 	defer db.Close()
 	poolColl := db.Collection("pool")
-	if err != nil {
-		return err
-	}
 	var pools []pool.Pool
 	err = db.Collection("docker_scheduler").Find(nil).All(&pools)
 	if err != nil {
