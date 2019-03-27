@@ -31,6 +31,12 @@ func (f *ExecFlow) Rollback(c *check.C, env *Environment) {
 	if f.backward == nil {
 		return
 	}
+	if noRollback, _ := strconv.ParseBool(env.Get("no_rollback")); noRollback {
+		env.Set("dryrun", "true")
+	}
+	if noRollback, _ := strconv.ParseBool(env.Get("no_rollback_on_error")); c.Failed() && noRollback {
+		env.Set("dryrun", "true")
+	}
 	f.forExpanded(env, func(e *Environment) {
 		f.backward(c, e)
 	})
