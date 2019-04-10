@@ -827,6 +827,48 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addr
 	return nodes, nil
 }
 
+func (p *kubernetesProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+	var nodes []provision.Node
+	kubeConf := getKubeConfig()
+	err := forEachCluster(func(c *ClusterClient) error {
+		err := c.SetTimeout(kubeConf.APIShortTimeout)
+		if err != nil {
+			return err
+		}
+		nodes, err = p.listNodesForClusterWithFilter(c, filter)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err == provTypes.ErrNoCluster {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
+
+func (p *kubernetesProvisioner) listNodesForClusterWithFilter(cluster *ClusterClient, filter map[string]string) ([]provision.Node, error) {
+	var nodes []provision.Node
+	nodeList, err := cluster.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for i := range nodeList.Items {
+		n := &kubernetesNodeWrapper{
+			node:    &nodeList.Items[i],
+			prov:    p,
+			cluster: cluster,
+		}
+		if node.HasAllMetadata(n.MetadataNoPrefix(), filter) {
+			nodes = append(nodes, n)
+		}
+	}
+	return nodes, nil
+}
+
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
 	_, node, err := p.findNodeByAddress(address)
 	if err != nil {
