@@ -596,6 +596,34 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 	return result, nil
 }
 
+func (p *FakeProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	if err := p.getError("ListNodesByFilter"); err != nil {
+		return nil, err
+	}
+	var result []provision.Node
+	result = make([]provision.Node, 0, len(p.nodes))
+	filterFunc := func(meta map[string]string) bool {
+		for key, value := range filter {
+			metaValue := meta[key]
+			if value != metaValue {
+				return false
+			}
+		}
+		return true
+	}
+
+	for a := range p.nodes {
+		n := p.nodes[a]
+		if filterFunc(n.Meta) {
+			result = append(result, &n)
+		}
+	}
+	sort.Sort(nodeList(result))
+	return result, nil
+}
+
 func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	if err := p.getError("NodeForNodeData"); err != nil {
 		return nil, err
