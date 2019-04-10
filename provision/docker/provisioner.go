@@ -1008,6 +1008,19 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 	return result, nil
 }
 
+func (p *dockerProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+	nodes, err := p.Cluster().UnfilteredNodesForMetadata(filter)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]provision.Node, 0, len(nodes))
+	for i := range nodes {
+		n := &nodes[i]
+		result = append(result, &clusterNodeWrapper{Node: n, prov: p})
+	}
+	return result, nil
+}
+
 func (p *dockerProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	nodes, err := p.Cluster().UnfilteredNodes()
 	if err != nil {

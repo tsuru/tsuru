@@ -229,7 +229,7 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	}
 	p.storage = &cluster.MapStorage{}
 	p.cluster, err = cluster.New(nil, p.storage, "",
-		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default", "m1": "v1"}},
 		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "test-default"}},
 	)
 	if err != nil {

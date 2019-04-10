@@ -2492,6 +2492,29 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
 }
 
+func (s *S) TestListNodesWithFilter(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	nodes, err := p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	listedNodes, err := p.ListNodesByFilter(map[string]string{"pool": "test-default", "m1": "v1"})
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+	})
+	listedNodes, err = p.ListNodesByFilter(map[string]string{"pool": "test-default"})
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+		&clusterNodeWrapper{Node: &nodes[1], prov: p},
+	})
+	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v1"})
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+	})
+	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v2"})
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
+}
+
 func (s *S) TestAddNode(c *check.C) {
 	server, waitQueue := startFakeDockerNode(c)
 	defer server.Stop()
