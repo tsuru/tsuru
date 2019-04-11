@@ -150,7 +150,7 @@ func (c *Cluster) PushImage(opts docker.PushImageOptions, auth docker.AuthConfig
 	return wrapError(node, node.PushImage(opts, auth))
 }
 
-// InspectContainer inspects an image based on its repo name
+// InspectImage inspects an image based on its repo name
 func (c *Cluster) InspectImage(repo string) (*docker.Image, error) {
 	img, err := c.storage().RetrieveImage(repo)
 	if err != nil {

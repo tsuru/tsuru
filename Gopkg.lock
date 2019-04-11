@@ -1101,7 +1101,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e8434ea3cff822e0018d48fbc59f55daa0736db6f715065d2576f6d4d1c171aa"
+  digest = "1:f6eaf932989989aede7ebbb52b8f1daa6ea1c64ed9ee6c3217d5ce499de23ce0"
   name = "github.com/tsuru/docker-cluster"
   packages = [
     "cluster",
@@ -1110,7 +1110,7 @@
     "storage/mongodb",
   ]
   pruneopts = "NUT"
-  revision = "30c525813c205715943ccbf01a6e3dcbc7b653df"
+  revision = "f372d8d4e3549863e8ca98c233f645bf3d2c1055"
 
 [[projects]]
   branch = "master"
