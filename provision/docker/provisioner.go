@@ -1013,10 +1013,10 @@ func (p *dockerProvisioner) ListNodesByFilter(filter map[string]string) ([]provi
 	if err != nil {
 		return nil, err
 	}
-	result := make([]provision.Node, 0, len(nodes))
+	result := make([]provision.Node, len(nodes))
 	for i := range nodes {
 		n := &nodes[i]
-		result = append(result, &clusterNodeWrapper{Node: n, prov: p})
+		result[i] = &clusterNodeWrapper{Node: n, prov: p}
 	}
 	return result, nil
 }
