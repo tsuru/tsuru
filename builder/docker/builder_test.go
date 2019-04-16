@@ -147,9 +147,20 @@ func (s *S) TestBuilderImageID(c *check.C) {
 		w.Write(j)
 	}))
 	var containerDeleteCount int32
+	var createCmds []string
 	s.server.CustomHandler("/containers/[^/]+$", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
 			atomic.AddInt32(&containerDeleteCount, 1)
+		}
+		if r.Method == http.MethodPost {
+			data, _ := ioutil.ReadAll(r.Body)
+			var parsed struct {
+				Cmd []string
+			}
+			jsonErr := json.Unmarshal(data, &parsed)
+			c.Assert(jsonErr, check.IsNil)
+			createCmds = append(createCmds, parsed.Cmd...)
+			r.Body = ioutil.NopCloser(bytes.NewReader(data))
 		}
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
@@ -171,6 +182,11 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(2))
+	c.Assert(createCmds, check.DeepEquals, []string{
+		"(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null",
+		"(cat /home/application/current/tsuru.yml || cat /app/user/tsuru.yml || cat /tsuru.yml || cat /home/application/current/tsuru.yaml || cat /app/user/tsuru.yaml || cat /tsuru.yaml || cat /home/application/current/app.yml || cat /app/user/app.yml || cat /app.yml || cat /home/application/current/app.yaml || cat /app/user/app.yaml || cat /app.yaml || true) 2>/dev/null",
+	})
+
 }
 
 func (s *S) TestBuilderImageIDWithMoreThanOnePort(c *check.C) {
