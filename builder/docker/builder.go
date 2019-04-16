@@ -343,7 +343,7 @@ func downloadFromURL(url string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(&out), nil
 }
 
-func generateCatCommand(names []string, dirs []string) string {
+func generateCatCommand(names, dirs []string) string {
 	var cmds []string
 	for _, name := range names {
 		for _, dir := range dirs {
