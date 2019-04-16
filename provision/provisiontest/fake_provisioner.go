@@ -602,8 +602,7 @@ func (p *FakeProvisioner) ListNodesByFilter(filter map[string]string) ([]provisi
 	if err := p.getError("ListNodesByFilter"); err != nil {
 		return nil, err
 	}
-	var result []provision.Node
-	result = make([]provision.Node, 0, len(p.nodes))
+	result := make([]provision.Node, 0, len(p.nodes))
 	filterFunc := func(meta map[string]string) bool {
 		for key, value := range filter {
 			metaValue := meta[key]
@@ -613,7 +612,6 @@ func (p *FakeProvisioner) ListNodesByFilter(filter map[string]string) ([]provisi
 		}
 		return true
 	}
-
 	for a := range p.nodes {
 		n := p.nodes[a]
 		if filterFunc(n.Meta) {

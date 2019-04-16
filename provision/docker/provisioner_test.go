@@ -2499,19 +2499,23 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	listedNodes, err := p.ListNodesByFilter(map[string]string{"pool": "test-default", "m1": "v1"})
+	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 	})
 	listedNodes, err = p.ListNodesByFilter(map[string]string{"pool": "test-default"})
+	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 		&clusterNodeWrapper{Node: &nodes[1], prov: p},
 	})
 	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v1"})
+	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 	})
 	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v2"})
+	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
 }
 
