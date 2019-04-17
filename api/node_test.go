@@ -480,7 +480,7 @@ func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	sort.Slice(result.Nodes, func(i, j int) bool {
-		return result.Nodes[i].Address+result.Nodes[i].Pool < result.Nodes[j].Address+result.Nodes[j].Pool
+		return result.Nodes[i].Address < result.Nodes[j].Address
 	})
 	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
 		{Address: "host2.com:2375", Provisioner: "fake", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"foo": "bar"}},
@@ -496,7 +496,7 @@ func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	sort.Slice(result.Nodes, func(i, j int) bool {
-		return result.Nodes[i].Address+result.Nodes[i].Pool < result.Nodes[j].Address+result.Nodes[j].Pool
+		return result.Nodes[i].Address < result.Nodes[j].Address
 	})
 	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
 		{Address: "host3.com:2375", Provisioner: "fake", Pool: "pool3", Status: "enabled", Metadata: map[string]string{"foo": "bar", "key": "value"}},
