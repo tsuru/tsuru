@@ -928,6 +928,43 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	return revision, nil
 }
 
+type KubernetesInternalAddress struct {
+	Domain   string
+	Protocol apiv1.Protocol
+	Port     int32
+}
+
+func (m *serviceManager) KubernetesInternalAddresses(ctx context.Context, a provision.App) ([]*KubernetesInternalAddress, error) {
+	ns, err := m.client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	addresses := []*KubernetesInternalAddress{}
+
+	// TODO: discover app processes
+	processes := []string{
+		"web",
+	}
+	for _, process := range processes {
+		depName := deploymentNameForApp(a, process)
+		service, err := m.client.CoreV1().Services(ns).Get(depName, metav1.GetOptions{})
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to fetch service information, serviceName: %q, namespace: %q", depName, ns)
+		}
+
+		for _, port := range service.Spec.Ports {
+			addresses = append(addresses, &KubernetesInternalAddress{
+				Domain:   service.Spec.ExternalName,
+				Protocol: port.Protocol,
+				Port:     port.Port,
+			})
+		}
+	}
+
+	return addresses, nil
+}
+
 func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
 	err := ensureNodeContainers(a)
 	if err != nil {
