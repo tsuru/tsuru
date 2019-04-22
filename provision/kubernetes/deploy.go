@@ -941,11 +941,17 @@ func (m *serviceManager) KubernetesInternalAddresses(ctx context.Context, a prov
 	}
 	addresses := []*KubernetesInternalAddress{}
 
-	// TODO: discover app processes
-	processes := []string{
-		"web",
+	tclient, err := TsuruClientForConfig(m.client.restConfig)
+	if err != nil {
+		return nil, err
 	}
-	for _, process := range processes {
+
+	app, err := tclient.TsuruV1().Apps(m.client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for process, _ := range app.Spec.Services {
 		depName := deploymentNameForApp(a, process)
 		service, err := m.client.CoreV1().Services(ns).Get(depName, metav1.GetOptions{})
 
