@@ -111,6 +111,9 @@ type App struct {
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
 
+	// InterApp Properties implemented by provision.InterAppProvisioner
+	InternalAddresses []*provision.AppInternalAddress `json:",omitempty" bson:"-"`
+
 	Quota       quota.Quota
 	builder     builder.Builder
 	provisioner provision.Provisioner
