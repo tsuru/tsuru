@@ -768,7 +768,7 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		return nil, err
 	}
 
-	for process, _ := range app.Spec.Services {
+	for process := range app.Spec.Services {
 		depName := deploymentNameForApp(a, process)
 		service, err := client.CoreV1().Services(ns).Get(depName, metav1.GetOptions{})
 
