@@ -72,6 +72,7 @@ var (
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
+	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
@@ -744,6 +745,47 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 		return nil, err
 	}
 	return nodes, nil
+}
+
+func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]*provision.AppInternalAddress, error) {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	addresses := []*provision.AppInternalAddress{}
+
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for process, _ := range app.Spec.Services {
+		depName := deploymentNameForApp(a, process)
+		service, err := client.CoreV1().Services(ns).Get(depName, metav1.GetOptions{})
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to fetch service information, serviceName: %q, namespace: %q", depName, ns)
+		}
+
+		for _, port := range service.Spec.Ports {
+			addresses = append(addresses, &provision.AppInternalAddress{
+				Domain:   service.Spec.ExternalName,
+				Protocol: string(port.Protocol),
+				Port:     port.Port,
+			})
+		}
+	}
+
+	return addresses, nil
 }
 
 func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addressFilter []string) ([]provision.Node, error) {
