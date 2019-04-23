@@ -778,7 +778,7 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 
 		for _, port := range service.Spec.Ports {
 			addresses = append(addresses, &provision.AppInternalAddress{
-				Domain:   service.Spec.ExternalName,
+				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", depName, ns),
 				Protocol: string(port.Protocol),
 				Port:     port.Port,
 			})
