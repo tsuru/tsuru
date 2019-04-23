@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -112,6 +113,7 @@ type App struct {
 	UUID string
 
 	// InterApp Properties implemented by provision.InterAppProvisioner
+	// it is lazy generated on the first call to FillInternalAddresses
 	InternalAddresses []*provision.AppInternalAddress `json:",omitempty" bson:"-"`
 
 	Quota       quota.Quota
@@ -134,6 +136,22 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	}
 	app.builder, err = builder.GetForProvisioner(p)
 	return app.builder, err
+}
+
+func (app *App) FillInternalAddresses(ctx context.Context) error {
+	provisioner, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+
+	if interAppProvisioner, ok := provisioner.(provision.InterAppProvisioner); ok {
+		app.InternalAddresses, err = interAppProvisioner.InternalAddresses(ctx, app)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (app *App) CleanImage(img string) error {
