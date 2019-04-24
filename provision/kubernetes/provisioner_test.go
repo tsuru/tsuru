@@ -1236,6 +1236,76 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	})
 }
 
+func (s *S) TestInternalAddresses(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	s.client.PrependReactor("create", "services", func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		if srv.Name == "myapp-web" {
+			srv.Spec.Ports = []apiv1.ServicePort{
+				{
+					Port:     int32(80),
+					NodePort: int32(30002),
+					Protocol: "TCP",
+				},
+				{
+					Port:     int32(443),
+					NodePort: int32(30003),
+					Protocol: "TCP",
+				},
+			}
+		} else if srv.Name == "myapp-jobs" {
+			srv.Spec.Ports = []apiv1.ServicePort{
+				{
+					Port:     int32(12201),
+					NodePort: int32(30004),
+					Protocol: "UDP",
+				},
+			}
+		}
+
+		return testing.RunReactionsAfter(&s.client.Fake, action)
+	})
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":  "run mycmd web",
+			"jobs": "run mycmd jobs",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+
+	addrs, err := s.p.InternalAddresses(context.Background(), a)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	c.Assert(addrs[0], check.DeepEquals, &provision.AppInternalAddress{
+		Domain:   "myapp-jobs.default.svc.cluster.local",
+		Protocol: "UDP",
+		Port:     12201,
+	})
+	c.Assert(addrs[1], check.DeepEquals, &provision.AppInternalAddress{
+		Domain:   "myapp-web.default.svc.cluster.local",
+		Protocol: "TCP",
+		Port:     80,
+	})
+	c.Assert(addrs[2], check.DeepEquals, &provision.AppInternalAddress{
+		Domain:   "myapp-web.default.svc.cluster.local",
+		Protocol: "TCP",
+		Port:     443,
+	})
+}
+
 func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
