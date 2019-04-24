@@ -1377,8 +1377,8 @@ func (p *FakeProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
 	return nil
 }
 
-func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]*provision.AppInternalAddress, error) {
-	return []*provision.AppInternalAddress{
+func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
+	return []provision.AppInternalAddress{
 		{
 			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.GetName()),
 			Port:     80,

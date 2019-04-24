@@ -748,7 +748,7 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 	return nodes, nil
 }
 
-func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]*provision.AppInternalAddress, error) {
+func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
@@ -757,7 +757,7 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	addresses := []*provision.AppInternalAddress{}
+	addresses := []provision.AppInternalAddress{}
 
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
@@ -784,7 +784,7 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		}
 
 		for _, port := range service.Spec.Ports {
-			addresses = append(addresses, &provision.AppInternalAddress{
+			addresses = append(addresses, provision.AppInternalAddress{
 				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", depName, ns),
 				Protocol: string(port.Protocol),
 				Port:     port.Port,

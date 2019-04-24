@@ -392,7 +392,7 @@ type UpdatableProvisioner interface {
 // InterAppProvisioner is a provisioner that allows an app to comunicate with each other
 // using internal dns and own load balancers provided by provisioner.
 type InterAppProvisioner interface {
-	InternalAddresses(ctx context.Context, a App) ([]*AppInternalAddress, error)
+	InternalAddresses(ctx context.Context, a App) ([]AppInternalAddress, error)
 }
 
 type AppInternalAddress struct {

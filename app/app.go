@@ -114,7 +114,7 @@ type App struct {
 
 	// InterApp Properties implemented by provision.InterAppProvisioner
 	// it is lazy generated on the first call to FillInternalAddresses
-	InternalAddresses []*provision.AppInternalAddress `json:",omitempty" bson:"-"`
+	InternalAddresses []provision.AppInternalAddress `json:",omitempty" bson:"-"`
 
 	Quota       quota.Quota
 	builder     builder.Builder
