@@ -5550,3 +5550,20 @@ func (s *S) TestGetUUID(c *check.C) {
 	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")
 	c.Assert(storedApp.UUID, check.DeepEquals, uuid)
 }
+
+func (s *S) TestFillInternalAddresses(c *check.C) {
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := app.FillInternalAddresses(context.Background())
+	c.Assert(err, check.IsNil)
+	c.Assert(app.InternalAddresses, check.HasLen, 2)
+	c.Assert(app.InternalAddresses[0], check.DeepEquals, &provision.AppInternalAddress{
+		Domain:   "test-web.fake-cluster.local",
+		Protocol: "TCP",
+		Port:     80,
+	})
+	c.Assert(app.InternalAddresses[1], check.DeepEquals, &provision.AppInternalAddress{
+		Domain:   "test-logs.fake-cluster.local",
+		Protocol: "UDP",
+		Port:     12201,
+	})
+}

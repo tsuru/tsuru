@@ -5,6 +5,7 @@
 package provisiontest
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,6 +36,7 @@ var (
 	uniqueIpCounter     int32 = 0
 
 	_ provision.NodeProvisioner      = &FakeProvisioner{}
+	_ provision.InterAppProvisioner  = &FakeProvisioner{}
 	_ provision.UpdatableProvisioner = &FakeProvisioner{}
 	_ provision.Provisioner          = &FakeProvisioner{}
 	_ provision.App                  = &FakeApp{}
@@ -1373,6 +1375,22 @@ func (p *FakeProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
 	provApp.app = new
 	p.apps[old.GetName()] = provApp
 	return nil
+}
+
+func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]*provision.AppInternalAddress, error) {
+	return []*provision.AppInternalAddress{
+		{
+			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.GetName()),
+			Port:     80,
+			Protocol: "TCP",
+		},
+		{
+			Domain:   fmt.Sprintf("%s-logs.fake-cluster.local", a.GetName()),
+			Port:     12201,
+			Protocol: "UDP",
+		},
+	}, nil
+
 }
 
 func stringInArray(value string, array []string) bool {
