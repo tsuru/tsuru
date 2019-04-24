@@ -775,9 +775,18 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	}
 	sort.Strings(processes)
 
+	controller, err := getClusterController(p, client)
+	if err != nil {
+		return nil, err
+	}
+	svcInformer, err := controller.getServiceInformer()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, process := range processes {
 		depName := deploymentNameForApp(a, process)
-		service, err := client.CoreV1().Services(ns).Get(depName, metav1.GetOptions{})
+		service, err := svcInformer.Lister().Services(ns).Get(depName)
 
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to fetch service information, serviceName: %q, namespace: %q", depName, ns)
