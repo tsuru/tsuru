@@ -2000,6 +2000,7 @@
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/websocket",
     "golang.org/x/oauth2",
+    "golang.org/x/time/rate",
     "gopkg.in/amz.v3/ec2",
     "gopkg.in/amz.v3/ec2/ec2test",
     "gopkg.in/check.v1",
