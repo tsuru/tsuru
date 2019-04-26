@@ -154,7 +154,7 @@ func (s *S) TestUpgradeNodeContainerErrorMiddle(c *check.C) {
 	err = nodecontainer.AddNewContainer("p2", &c3)
 	c.Assert(err, check.IsNil)
 	err = UpgradeNodeContainer(&m, "bs", "", buf)
-	c.Assert(err, check.ErrorMatches, `.*myerr.*`)
+	c.Assert(err, check.ErrorMatches, `(?s).*myerr.*`)
 	c.Assert(m.calls, check.DeepEquals, []ncCall{
 		{conf: &c1, pool: "", filter: PoolFilter{Exclude: []string{"p1", "p2"}}, placementOnly: false},
 		{conf: &c2, pool: "p1", filter: PoolFilter{Include: []string{"p1"}}, placementOnly: false},

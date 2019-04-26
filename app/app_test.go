@@ -2845,7 +2845,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"repository":  "",
 		"teams":       nil,
 		"units":       []interface{}{},
-		"error":       "unable to list app units: my err",
 		"ip":          "name.fakerouter.com",
 		"cname":       nil,
 		"owner":       "",
@@ -2878,6 +2877,8 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
+	c.Assert(result["error"], check.Matches, `(?s)unable to list app units: my err.*`)
+	delete(result, "error")
 	c.Assert(result, check.DeepEquals, expected)
 }
 
