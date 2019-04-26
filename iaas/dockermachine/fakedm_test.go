@@ -5,8 +5,6 @@
 package dockermachine
 
 import (
-	"errors"
-
 	"github.com/tsuru/tsuru/iaas"
 	check "gopkg.in/check.v1"
 )
@@ -37,7 +35,7 @@ func (s *S) TestCreateMachineFake(c *check.C) {
 		},
 	}
 	m, err := d.CreateMachine(opts)
-	c.Assert(err, check.DeepEquals, errors.New("failed"))
+	c.Assert(err, check.ErrorMatches, "failed")
 	c.Assert(m.Base.Id, check.Equals, "my-machine")
 }
 
