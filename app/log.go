@@ -20,12 +20,15 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"golang.org/x/time/rate"
 )
 
 var (
 	bulkMaxWaitMongoTime = 1 * time.Second
 	bulkMaxNumberMsgs    = 1000
 	bulkQueueMaxSize     = 10000
+
+	rateLimitWarningInterval = 5 * time.Second
 
 	buckets = append([]float64{0.1, 0.5}, prometheus.ExponentialBuckets(1, 1.6, 15)...)
 
@@ -64,6 +67,11 @@ var (
 		Help: "The number of log entries dropped due to full buffers.",
 	}, []string{"app"})
 
+	logsDroppedRateLimit = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_dropped_rate_limit_total",
+		Help: "The number of log entries dropped due to rate limit exceeded.",
+	}, []string{"app"})
+
 	logsMongoFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "tsuru_logs_mongo_full_duration_seconds",
 		Help:    "The latency distributions for log messages to be stored in database.",
@@ -84,6 +92,7 @@ func init() {
 	prometheus.MustRegister(logsEnqueued)
 	prometheus.MustRegister(logsWritten)
 	prometheus.MustRegister(logsDropped)
+	prometheus.MustRegister(logsDroppedRateLimit)
 	prometheus.MustRegister(logsQueueBlockedTotal)
 	prometheus.MustRegister(logsMongoFullLatency)
 	prometheus.MustRegister(logsMongoLatency)
@@ -369,6 +378,27 @@ func (p *bulkProcessor) stopWait() {
 	<-p.finished
 }
 
+func (p *bulkProcessor) rateLimitWarning(rateLimit int) *Applog {
+	return &Applog{
+		AppName: p.appName,
+		Date:    time.Now(),
+		Message: fmt.Sprintf("Log messages dropped due to exceeded rate limit. Limit: %v logs/s.", rateLimit),
+		Source:  "tsuru",
+		Unit:    "api",
+	}
+}
+
+func updateLogRateLimiter(rateLimiter *rate.Limiter) *rate.Limiter {
+	rateLimit, _ := config.GetInt("log:app-log-rate-limit")
+	if rateLimit <= 0 {
+		return nil
+	}
+	if rateLimiter == nil || rateLimiter.Burst() != rateLimit {
+		return rate.NewLimiter(rate.Limit(rateLimit), rateLimit)
+	}
+	return rateLimiter
+}
+
 func (p *bulkProcessor) run() {
 	defer close(p.finished)
 	t := time.NewTimer(p.maxWaitTime)
@@ -376,11 +406,15 @@ func (p *bulkProcessor) run() {
 	bulkBuffer := make([]interface{}, p.bulkSize)
 	shouldReturn := false
 	var lastMessage *msgWithTS
+	var lastRateNotice time.Time
+	logsInAppQueue := logsInAppQueues.WithLabelValues(p.appName)
+	logsDropped := logsDroppedRateLimit.WithLabelValues(p.appName)
+	rateLimiter := updateLogRateLimiter(nil)
 	for {
 		var flush bool
 		select {
 		case msgExtra := <-p.ch:
-			logsInAppQueues.WithLabelValues(p.appName).Set(float64(len(p.ch)))
+			logsInAppQueue.Set(float64(len(p.ch)))
 			if msgExtra == nil {
 				flush = true
 				shouldReturn = true
@@ -390,6 +424,18 @@ func (p *bulkProcessor) run() {
 				flush = true
 				break
 			}
+
+			if rateLimiter != nil && !rateLimiter.Allow() {
+				logsDropped.Inc()
+				if time.Since(lastRateNotice) > rateLimitWarningInterval {
+					lastRateNotice = time.Now()
+					bulkBuffer[pos] = p.rateLimitWarning(rateLimiter.Burst())
+					pos++
+				}
+				flush = p.bulkSize == pos
+				break
+			}
+
 			lastMessage = msgExtra
 			bulkBuffer[pos] = msgExtra.msg
 			pos++
@@ -403,6 +449,7 @@ func (p *bulkProcessor) run() {
 				lastMessage = nil
 				pos = 0
 			}
+			rateLimiter = updateLogRateLimiter(rateLimiter)
 		}
 		if shouldReturn {
 			return

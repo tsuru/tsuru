@@ -40,14 +40,28 @@ func insertLogs(appName string, logs []interface{}) error {
 	return conn.AppLogCollection(appName).Insert(logs...)
 }
 
+func compareLogsNoDate(c *check.C, logs1 []Applog, logs2 []Applog) {
+	compareLogsDate(c, logs1, logs2, false)
+}
+
 func compareLogs(c *check.C, logs1 []Applog, logs2 []Applog) {
+	compareLogsDate(c, logs1, logs2, true)
+}
+
+func compareLogsDate(c *check.C, logs1 []Applog, logs2 []Applog, compareDate bool) {
 	for i := range logs1 {
 		logs1[i].MongoID = ""
 		logs1[i].Date = logs1[i].Date.UTC()
+		if !compareDate {
+			logs1[i].Date = time.Time{}
+		}
 	}
 	for i := range logs2 {
 		logs2[i].MongoID = ""
 		logs2[i].Date = logs2[i].Date.UTC()
+		if !compareDate {
+			logs2[i].Date = time.Time{}
+		}
 	}
 	c.Assert(logs1, check.DeepEquals, logs2)
 }
@@ -408,4 +422,97 @@ func (s *S) TestBulkProcessorCustomQueueSize(c *check.C) {
 	defer config.Unset("log:queue-size")
 	processor := initBulkProcessor(time.Second, 100, "")
 	c.Assert(cap(processor.ch), check.Equals, 10)
+}
+
+func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
+	config.Set("log:app-log-rate-limit", 1)
+	defer config.Unset("log:app-log-rate-limit")
+	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	listener, err := NewLogListener(&app, Applog{})
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
+	dispatcher := NewlogDispatcher(2000000)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := Applog{
+		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+	}
+	dispatcher.Send(&logMsg)
+	dispatcher.Send(&logMsg)
+	dispatcher.Shutdown(context.Background())
+	logs, err := app.LastLogs(2, Applog{})
+	c.Assert(err, check.IsNil)
+	compareLogsNoDate(c, logs, []Applog{
+		logMsg,
+		{
+			Message: "Log messages dropped due to exceeded rate limit. Limit: 1 logs/s.",
+			Source:  "tsuru",
+			AppName: "myapp1",
+			Unit:    "api",
+		},
+	})
+}
+
+type fakeFlusher struct {
+	counter int
+}
+
+func (f *fakeFlusher) flush(msgs []interface{}, lastMsg *msgWithTS) bool {
+	f.counter += len(msgs)
+	return true
+}
+
+func (s *S) BenchmarkBulkProcessorRun(c *check.C) {
+	c.StopTimer()
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := &msgWithTS{
+		msg: &Applog{
+			Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+		},
+		arriveTime: time.Now(),
+	}
+
+	processor := initBulkProcessor(time.Second, 1000, "myapp1")
+	flusher := &fakeFlusher{}
+	processor.flushable = flusher
+	go processor.run()
+	c.StartTimer()
+	for i := 0; i < c.N; i++ {
+		processor.ch <- logMsg
+	}
+	processor.stopWait()
+	c.StopTimer()
+	c.Assert(flusher.counter, check.Equals, c.N)
+}
+
+func (s *S) BenchmarkBulkProcessorRunRateLimited(c *check.C) {
+	config.Set("log:app-log-rate-limit", 100)
+	defer config.Unset("log:app-log-rate-limit")
+	c.StopTimer()
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := &msgWithTS{
+		msg: &Applog{
+			Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+		},
+		arriveTime: time.Now(),
+	}
+
+	processor := initBulkProcessor(time.Second, 1000, "myapp1")
+	flusher := &fakeFlusher{}
+	processor.flushable = flusher
+	go processor.run()
+	c.StartTimer()
+	for i := 0; i < c.N; i++ {
+		processor.ch <- logMsg
+	}
+	processor.stopWait()
+	c.StopTimer()
+	c.Assert(flusher.counter <= c.N, check.Equals, true)
 }
