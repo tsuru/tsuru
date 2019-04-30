@@ -123,11 +123,13 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 		// though so the impact of this extra log message is really small.
 		err = a.Log("Logs initialization", "tsuru", "")
 		if err != nil {
+			conn.Close()
 			return nil, err
 		}
 		err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
 	}
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 	lastId := lastLog.MongoID
