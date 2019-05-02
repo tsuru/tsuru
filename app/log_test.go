@@ -456,6 +456,38 @@ func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 	})
 }
 
+func (s *S) TestLogDispatcherSendGlobalRateLimit(c *check.C) {
+	config.Set("log:global-app-log-rate-limit", 1)
+	defer config.Unset("log:global-app-log-rate-limit")
+	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	listener, err := NewLogListener(&app, Applog{})
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
+	dispatcher := NewlogDispatcher(2000000)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := Applog{
+		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+	}
+	dispatcher.Send(&logMsg)
+	dispatcher.Send(&logMsg)
+	dispatcher.Shutdown(context.Background())
+	logs, err := app.LastLogs(2, Applog{})
+	c.Assert(err, check.IsNil)
+	compareLogsNoDate(c, logs, []Applog{
+		logMsg,
+		{
+			Message: "Log messages dropped due to exceeded global rate limit. Global Limit: 1 logs/s.",
+			Source:  "tsuru",
+			AppName: "myapp1",
+			Unit:    "api",
+		},
+	})
+}
+
 type fakeFlusher struct {
 	counter int
 }
