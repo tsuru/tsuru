@@ -6265,3 +6265,56 @@ func (s *S) TestListCertificates(c *check.C) {
 		},
 	})
 }
+
+type fakeEncoder struct {
+	done chan struct{}
+	msg  interface{}
+}
+
+func (e *fakeEncoder) Encode(msg interface{}) error {
+	e.msg = msg
+	close(e.done)
+	return nil
+}
+
+func (s *S) TestFollowLogs(c *check.C) {
+	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	enc := &fakeEncoder{
+		done: make(chan struct{}),
+	}
+	l, err := app.NewLogListener(&a, app.Applog{})
+	c.Assert(err, check.IsNil)
+	go func() {
+		err = a.Log("xyz", "", "")
+		c.Assert(err, check.IsNil)
+		<-enc.done
+		cancel()
+	}()
+	err = followLogs(ctx, l, enc)
+	c.Assert(err, check.IsNil)
+	msgSlice, ok := enc.msg.([]app.Applog)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(msgSlice, check.HasLen, 1)
+	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
+}
+
+func (s *S) TestFollowLogsTimeout(c *check.C) {
+	old := logTailIdleTimeout
+	logTailIdleTimeout = 100 * time.Millisecond
+	defer func() { logTailIdleTimeout = old }()
+	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	enc := &fakeEncoder{
+		done: make(chan struct{}),
+	}
+	l, err := app.NewLogListener(&a, app.Applog{})
+	c.Assert(err, check.IsNil)
+	err = followLogs(ctx, l, enc)
+	c.Assert(err, check.ErrorMatches, `.*timeout.*`)
+}

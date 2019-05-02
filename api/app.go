@@ -5,6 +5,7 @@
 package api
 
 import (
+	stdContext "context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -37,6 +38,10 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+)
+
+var (
+	logTailIdleTimeout = 5 * time.Minute
 )
 
 func appTarget(appName string) event.Target {
@@ -1169,21 +1174,32 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if follow != "1" {
 		return nil
 	}
-	closeChan := r.Context().Done()
 	l, err := app.NewLogListener(&a, filterLog)
 	if err != nil {
 		return err
 	}
-	logTracker.add(l)
+	return followLogs(r.Context(), l, encoder)
+}
+
+type msgEncoder interface {
+	Encode(interface{}) error
+}
+
+func followLogs(ctx stdContext.Context, listener *app.LogListener, encoder msgEncoder) error {
+	logTracker.add(listener)
 	defer func() {
-		logTracker.remove(l)
-		l.Close()
+		logTracker.remove(listener)
+		listener.Close()
 	}()
-	logChan := l.ListenChan()
+	closeChan := ctx.Done()
+	logChan := listener.ListenChan()
+	idleTimer := time.NewTimer(logTailIdleTimeout)
 	for {
 		var logMsg app.Applog
 		var chOpen bool
 		select {
+		case <-idleTimer.C:
+			return fmt.Errorf("timeout after %v waiting for log messages", logTailIdleTimeout)
 		case <-closeChan:
 			return nil
 		case logMsg, chOpen = <-logChan:
@@ -1193,10 +1209,13 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		err := encoder.Encode([]app.Applog{logMsg})
 		if err != nil {
-			break
+			return err
 		}
+		if !idleTimer.Stop() {
+			<-idleTimer.C
+		}
+		idleTimer.Reset(logTailIdleTimeout)
 	}
-	return nil
 }
 
 func getServiceInstance(serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
