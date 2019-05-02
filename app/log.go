@@ -29,6 +29,7 @@ var (
 	bulkQueueMaxSize     = 10000
 
 	rateLimitWarningInterval = 5 * time.Second
+	globalRateLimiter        = rate.NewLimiter(rate.Inf, 1)
 
 	buckets = append([]float64{0.1, 0.5}, prometheus.ExponentialBuckets(1, 1.6, 15)...)
 
@@ -390,7 +391,23 @@ func (p *bulkProcessor) rateLimitWarning(rateLimit int) *Applog {
 	}
 }
 
+func (p *bulkProcessor) globalRateLimitWarning() *Applog {
+	return &Applog{
+		AppName: p.appName,
+		Date:    time.Now(),
+		Message: fmt.Sprintf("Log messages dropped due to exceeded global rate limit. Global Limit: %v logs/s.", globalRateLimiter.Limit()),
+		Source:  "tsuru",
+		Unit:    "api",
+	}
+}
+
 func updateLogRateLimiter(rateLimiter *rate.Limiter) *rate.Limiter {
+	globalRateLimit, _ := config.GetInt("log:global-app-log-rate-limit")
+	if globalRateLimit <= 0 {
+		globalRateLimiter.SetLimit(rate.Inf)
+	} else if globalRateLimit != int(globalRateLimiter.Limit()) {
+		globalRateLimiter.SetLimitAt(time.Now().Add(-2*time.Second), rate.Limit(globalRateLimit))
+	}
 	rateLimit, _ := config.GetInt("log:app-log-rate-limit")
 	if rateLimit <= 0 {
 		return nil
@@ -427,11 +444,18 @@ func (p *bulkProcessor) run() {
 				break
 			}
 
-			if rateLimiter != nil && !rateLimiter.Allow() {
+			globalAllow := globalRateLimiter.Allow()
+			if !globalAllow || (rateLimiter != nil && !rateLimiter.Allow()) {
 				logsDropped.Inc()
 				if time.Since(lastRateNotice) > rateLimitWarningInterval {
 					lastRateNotice = time.Now()
-					bulkBuffer[pos] = p.rateLimitWarning(rateLimiter.Burst())
+					var warning *Applog
+					if globalAllow {
+						warning = p.rateLimitWarning(rateLimiter.Burst())
+					} else {
+						warning = p.globalRateLimitWarning()
+					}
+					bulkBuffer[pos] = warning
 					pos++
 				}
 				flush = p.bulkSize == pos
