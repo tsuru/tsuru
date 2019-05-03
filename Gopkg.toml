@@ -250,5 +250,5 @@ required = [
   branch = "master"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/globalsign/mgo"
+  version = "r2018.06.15"
