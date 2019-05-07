@@ -469,7 +469,7 @@ func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
 		Metadata: map[string]string{"foo": "bar", "key": "value"},
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/node?foo=bar", nil)
+	req, err := http.NewRequest("GET", "/node?metadata.foo=bar", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -486,7 +486,7 @@ func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
 		{Address: "host2.com:2375", Provisioner: "fake", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"foo": "bar"}},
 		{Address: "host3.com:2375", Provisioner: "fake", Pool: "pool3", Status: "enabled", Metadata: map[string]string{"foo": "bar", "key": "value"}},
 	})
-	req, err = http.NewRequest("GET", "/node?foo=bar&key=value", nil)
+	req, err = http.NewRequest("GET", "/node?metadata.foo=bar&metadata.key=value", nil)
 	c.Assert(err, check.IsNil)
 	rec = httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())

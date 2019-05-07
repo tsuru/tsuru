@@ -28,6 +28,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 func validateNodeAddress(address string) error {
@@ -217,7 +218,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   200: Ok
 //   204: No content
 func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var filter map[string]string
+	filter := &provTypes.NodeFilter{}
 	err := ParseInput(r, &filter)
 	if err != nil {
 		return err
