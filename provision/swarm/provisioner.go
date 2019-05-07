@@ -463,7 +463,7 @@ func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, 
 	return nodeList, nil
 }
 
-func (p *swarmProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+func (p *swarmProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
 	clusters, err := allClusters()
 	if err != nil {
 		if errors.Cause(err) == provTypes.ErrNoCluster {
@@ -479,7 +479,7 @@ func (p *swarmProvisioner) ListNodesByFilter(filter map[string]string) ([]provis
 		}
 		for i := range nodes {
 			wrapped := &swarmNodeWrapper{Node: &nodes[i], provisioner: p, client: client}
-			if node.HasAllMetadata(wrapped.MetadataNoPrefix(), filter) {
+			if node.HasAllMetadata(wrapped.MetadataNoPrefix(), filter.Metadata) {
 				nodeList = append(nodeList, wrapped)
 			}
 		}

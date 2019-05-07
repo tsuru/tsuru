@@ -70,7 +70,7 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	filter := map[string]string{"pool": "test-default"}
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
 	nodes, err := s.p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -80,7 +80,7 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 	c.Assert(nodes[1].Metadata(), check.DeepEquals, map[string]string{
 		"tsuru.io/pool": "test-default",
 	})
-	filter = map[string]string{"pool": "p1", "m1": "v1"}
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "p1", "m1": "v1"}}
 	nodes, err = s.p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)

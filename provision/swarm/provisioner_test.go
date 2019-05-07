@@ -250,12 +250,12 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 	}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	filter := map[string]string{"pool": "bonehunters"}
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "bonehunters"}}
 	nodes, err := s.p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes[0].Pool(), check.DeepEquals, "bonehunters")
 	c.Assert(nodes[1].Pool(), check.DeepEquals, "bonehunters")
-	filter = map[string]string{"m1": "v1"}
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
 	nodes, err = s.p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)

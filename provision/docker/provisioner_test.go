@@ -43,6 +43,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -2498,23 +2499,27 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 	mainDockerProvisioner = p
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	listedNodes, err := p.ListNodesByFilter(map[string]string{"pool": "test-default", "m1": "v1"})
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default", "m1": "v1"}}
+	listedNodes, err := p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 	})
-	listedNodes, err = p.ListNodesByFilter(map[string]string{"pool": "test-default"})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 		&clusterNodeWrapper{Node: &nodes[1], prov: p},
 	})
-	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v1"})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
 		&clusterNodeWrapper{Node: &nodes[0], prov: p},
 	})
-	listedNodes, err = p.ListNodesByFilter(map[string]string{"m1": "v2"})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v2"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
 }

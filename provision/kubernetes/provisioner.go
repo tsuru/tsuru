@@ -827,7 +827,7 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addr
 	return nodes, nil
 }
 
-func (p *kubernetesProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+func (p *kubernetesProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
 	var nodes []provision.Node
 	kubeConf := getKubeConfig()
 	err := forEachCluster(func(c *ClusterClient) error {
@@ -835,7 +835,7 @@ func (p *kubernetesProvisioner) ListNodesByFilter(filter map[string]string) ([]p
 		if err != nil {
 			return err
 		}
-		nodes, err = p.listNodesForClusterWithFilter(c, filter)
+		nodes, err = p.listNodesForClusterWithFilter(c, filter.Metadata)
 		if err != nil {
 			return err
 		}

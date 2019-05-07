@@ -460,7 +460,7 @@ type NodeProvisioner interface {
 	ListNodes(addressFilter []string) ([]Node, error)
 
 	// ListNodesByFilters returns a list of filtered nodes by filter.
-	ListNodesByFilter(filter map[string]string) ([]Node, error)
+	ListNodesByFilter(filter *provTypes.NodeFilter) ([]Node, error)
 
 	// GetNode retrieves an existing node by its address.
 	GetNode(address string) (Node, error)

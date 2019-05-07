@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -596,7 +597,7 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 	return result, nil
 }
 
-func (p *FakeProvisioner) ListNodesByFilter(filter map[string]string) ([]provision.Node, error) {
+func (p *FakeProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	if err := p.getError("ListNodesByFilter"); err != nil {
@@ -604,7 +605,7 @@ func (p *FakeProvisioner) ListNodesByFilter(filter map[string]string) ([]provisi
 	}
 	result := make([]provision.Node, 0, len(p.nodes))
 	filterFunc := func(meta map[string]string) bool {
-		for key, value := range filter {
+		for key, value := range filter.Metadata {
 			metaValue := meta[key]
 			if value != metaValue {
 				return false
