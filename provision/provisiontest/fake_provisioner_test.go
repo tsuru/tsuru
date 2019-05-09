@@ -1236,14 +1236,15 @@ func (s *S) TestFakeProvisionerListNodesByFilter(c *check.C) {
 	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool", Metadata: map[string]string{
 		"m1": "v1",
 	}})
-	filter := &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1", "m2": "v2"}}
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
 	nodes, err := p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
 		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1", "m2": "v2"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1"}, p: p},
 	})
-	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m2": "v2"}}
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1", "m2": "v2"}}
 	nodes, err = p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
