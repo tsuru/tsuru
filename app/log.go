@@ -313,25 +313,25 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 	return d
 }
 
-func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) bool {
+func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) error {
 	conn, err := db.LogConn()
 	if err != nil {
 		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
-		return false
+		return err
 	}
 	coll := conn.AppLogCollection(d.appName)
 	err = coll.Insert(msgs...)
 	coll.Close()
 	if err != nil {
 		log.Errorf("[log flusher] unable to insert logs: %s", err)
-		return false
+		return err
 	}
 	if lastMessage != nil {
 		logsMongoLatency.Observe(time.Since(lastMessage.arriveTime).Seconds())
 		logsMongoFullLatency.Observe(time.Since(lastMessage.msg.Date).Seconds())
 	}
 	logsWritten.WithLabelValues(d.appName).Add(float64(len(msgs)))
-	return true
+	return nil
 }
 
 type bulkProcessor struct {
@@ -342,7 +342,7 @@ type bulkProcessor struct {
 	ch          chan *msgWithTS
 	nextNotify  *time.Timer
 	flushable   interface {
-		flush([]interface{}, *msgWithTS) bool
+		flush([]interface{}, *msgWithTS) error
 	}
 }
 
@@ -401,6 +401,16 @@ func (p *bulkProcessor) globalRateLimitWarning() *Applog {
 	}
 }
 
+func (p *bulkProcessor) flushErrorMessage(err error) *Applog {
+	return &Applog{
+		AppName: p.appName,
+		Date:    time.Now(),
+		Message: fmt.Sprintf("Log messages dropped due to mongodb insert error: %v", err),
+		Source:  "tsuru",
+		Unit:    "api",
+	}
+}
+
 func updateLogRateLimiter(rateLimiter *rate.Limiter) *rate.Limiter {
 	globalRateLimit, _ := config.GetInt("log:global-app-log-rate-limit")
 	if globalRateLimit <= 0 {
@@ -440,8 +450,7 @@ func (p *bulkProcessor) run() {
 				break
 			}
 			if pos == p.bulkSize {
-				flush = true
-				break
+				pos--
 			}
 
 			globalAllow := globalRateLimiter.Allow()
@@ -471,9 +480,13 @@ func (p *bulkProcessor) run() {
 			t.Reset(p.maxWaitTime)
 		}
 		if flush && pos > 0 {
-			if p.flushable.flush(bulkBuffer[:pos], lastMessage) {
-				lastMessage = nil
+			err := p.flushable.flush(bulkBuffer[:pos], lastMessage)
+			if err == nil {
 				pos = 0
+				lastMessage = nil
+			} else {
+				bulkBuffer[0] = p.flushErrorMessage(err)
+				pos = 1
 			}
 			rateLimiter = updateLogRateLimiter(rateLimiter)
 		}
