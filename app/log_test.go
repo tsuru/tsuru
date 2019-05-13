@@ -373,9 +373,6 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
-	logMsg := Applog{
-		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
-	}
 	oldDbURL, err := config.Get("database:url")
 	c.Assert(err, check.IsNil)
 	var count int32
@@ -389,16 +386,21 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 		return oldDbURL
 	})
 	defer config.Set("database:url", oldDbURL)
-	for i := 0; i < 10; i++ {
-		dispatcher.Send(&logMsg)
-	}
+	dispatcher.Send(&Applog{
+		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+	})
 	<-dbOk
+	dispatcher.Send(&Applog{
+		Date: baseTime, Message: "msg2", Source: "web", AppName: "myapp1", Unit: "unit1",
+	})
 	timeout := time.After(10 * time.Second)
+	var logs []Applog
+	var logsErr error
 loop:
 	for {
-		logs, logsErr := app.LastLogs(10, Applog{})
+		logs, logsErr = app.LastLogs(2, Applog{})
 		c.Assert(logsErr, check.IsNil)
-		if len(logs) == 10 {
+		if len(logs) == 2 {
 			break
 		}
 		select {
@@ -409,6 +411,20 @@ loop:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
+	compareLogsNoDate(c, logs, []Applog{
+		{
+			Source:  "tsuru",
+			AppName: "myapp1",
+			Unit:    "api",
+			Message: "Log messages dropped due to mongodb insert error: no reachable servers",
+		},
+		{
+			Source:  "web",
+			AppName: "myapp1",
+			Unit:    "unit1",
+			Message: "msg2",
+		},
+	})
 	dispatcher.Shutdown(context.Background())
 }
 
@@ -492,9 +508,9 @@ type fakeFlusher struct {
 	counter int
 }
 
-func (f *fakeFlusher) flush(msgs []interface{}, lastMsg *msgWithTS) bool {
+func (f *fakeFlusher) flush(msgs []interface{}, lastMsg *msgWithTS) error {
 	f.counter += len(msgs)
-	return true
+	return nil
 }
 
 func (s *S) BenchmarkBulkProcessorRun(c *check.C) {
