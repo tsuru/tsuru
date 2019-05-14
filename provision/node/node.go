@@ -220,4 +220,3 @@ func HasAllMetadata(base, wanted map[string]string) bool {
 	}
 	return true
 }
-
