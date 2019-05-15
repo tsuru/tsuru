@@ -319,7 +319,11 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) err
 		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
 		return err
 	}
-	coll := conn.AppLogCollection(d.appName)
+	coll, err := conn.CreateAppLogCollection(d.appName)
+	if err != nil {
+		log.Errorf("[log flusher] unable to create collection in mongodb: %s", err)
+		return err
+	}
 	err = coll.Insert(msgs...)
 	coll.Close()
 	if err != nil {

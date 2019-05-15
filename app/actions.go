@@ -120,12 +120,11 @@ func createApp(app *App) error {
 	}
 
 	logConn, err := db.LogConn()
-	if err != nil {
-		return err
+	if err == nil {
+		defer logConn.Close()
+		logConn.CreateAppLogCollection(app.Name)
 	}
-	defer logConn.Close()
-	_, err = logConn.CreateAppLogCollection(app.Name)
-	return err
+	return nil
 }
 
 func removeApp(app *App) error {
