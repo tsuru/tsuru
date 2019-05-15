@@ -1772,7 +1772,11 @@ func (app *App) Log(message, source, unit string) error {
 			return err
 		}
 		defer conn.Close()
-		return conn.AppLogCollection(app.Name).Insert(logs...)
+		coll, err := conn.CreateAppLogCollection(app.Name)
+		if err != nil {
+			return err
+		}
+		return coll.Insert(logs...)
 	}
 	return nil
 }
