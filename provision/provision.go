@@ -459,6 +459,9 @@ type NodeProvisioner interface {
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
 
+	// ListNodesByFilters returns a list of filtered nodes by filter.
+	ListNodesByFilter(filter *provTypes.NodeFilter) ([]Node, error)
+
 	// GetNode retrieves an existing node by its address.
 	GetNode(address string) (Node, error)
 

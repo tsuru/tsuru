@@ -463,6 +463,30 @@ func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, 
 	return nodeList, nil
 }
 
+func (p *swarmProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
+	clusters, err := allClusters()
+	if err != nil {
+		if errors.Cause(err) == provTypes.ErrNoCluster {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var nodeList []provision.Node
+	for _, client := range clusters {
+		nodes, err := client.ListNodes(docker.ListNodesOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for i := range nodes {
+			wrapped := &swarmNodeWrapper{Node: &nodes[i], provisioner: p, client: client}
+			if node.HasAllMetadata(wrapped.MetadataNoPrefix(), filter.Metadata) {
+				nodeList = append(nodeList, wrapped)
+			}
+		}
+	}
+	return nodeList, nil
+}
+
 func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 	nodes, err := p.ListNodes([]string{address})
 	if err != nil {

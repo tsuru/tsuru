@@ -48,6 +48,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
 	"github.com/tsuru/tsuru/safe"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var (
@@ -1004,6 +1005,19 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 			}
 		}
 		result = append(result, &clusterNodeWrapper{Node: n, prov: p})
+	}
+	return result, nil
+}
+
+func (p *dockerProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
+	nodes, err := p.Cluster().UnfilteredNodesForMetadata(filter.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]provision.Node, len(nodes))
+	for i := range nodes {
+		n := &nodes[i]
+		result[i] = &clusterNodeWrapper{Node: n, prov: p}
 	}
 	return result, nil
 }

@@ -60,6 +60,36 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 	c.Assert(nodes, check.HasLen, 0)
 }
 
+func (s *S) TestListNodesWithFilter(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
+	nodes, err := s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "test-default",
+	})
+	c.Assert(nodes[1].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "test-default",
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "p1", "m1": "v1"}}
+	nodes, err = s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+		"tsuru.io/m1":   "v1",
+	})
+}
+
 func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	s.mock.MockfakeNodes(c)
 	nodes, err := s.p.ListNodes([]string{"192.168.99.1"})

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -1223,6 +1224,32 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
 		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{}, p: p},
+	})
+}
+
+func (s *S) TestFakeProvisionerListNodesByFilter(c *check.C) {
+	p := NewFakeProvisioner()
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Pool: "mypool", Metadata: map[string]string{
+		"m1": "v1",
+		"m2": "v2",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Pool: "mypool", Metadata: map[string]string{
+		"m1": "v1",
+	}})
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
+	nodes, err := p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	sort.Sort(NodeList(nodes))
+	c.Assert(nodes, check.DeepEquals, []provision.Node{
+		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1", "m2": "v2"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1"}, p: p},
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1", "m2": "v2"}}
+	nodes, err = p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	sort.Sort(NodeList(nodes))
+	c.Assert(nodes, check.DeepEquals, []provision.Node{
+		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1", "m2": "v2"}, p: p},
 	})
 }
 

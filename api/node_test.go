@@ -451,6 +451,58 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	})
 }
 
+func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
+	err := s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "host1.com:2375",
+		Pool:    "pool1",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address:  "host2.com:2375",
+		Pool:     "pool2",
+		Metadata: map[string]string{"foo": "bar"},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address:  "host3.com:2375",
+		Pool:     "pool3",
+		Metadata: map[string]string{"foo": "bar", "key": "value"},
+	})
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("GET", "/node?metadata.foo=bar", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	s.testServer.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
+	var result apiTypes.ListNodeResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	sort.Slice(result.Nodes, func(i, j int) bool {
+		return result.Nodes[i].Address < result.Nodes[j].Address
+	})
+	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
+		{Address: "host2.com:2375", Provisioner: "fake", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"foo": "bar"}},
+		{Address: "host3.com:2375", Provisioner: "fake", Pool: "pool3", Status: "enabled", Metadata: map[string]string{"foo": "bar", "key": "value"}},
+	})
+	req, err = http.NewRequest("GET", "/node?metadata.foo=bar&metadata.key=value", nil)
+	c.Assert(err, check.IsNil)
+	rec = httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	s.testServer.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
+	err = json.Unmarshal(rec.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	sort.Slice(result.Nodes, func(i, j int) bool {
+		return result.Nodes[i].Address < result.Nodes[j].Address
+	})
+	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
+		{Address: "host3.com:2375", Provisioner: "fake", Pool: "pool3", Status: "enabled", Metadata: map[string]string{"foo": "bar", "key": "value"}},
+	})
+}
+
 func (s *S) TestListUnitsByHostNotFound(c *check.C) {
 	req, err := http.NewRequest("GET", "/node/http://notfound.com:4243/containers", nil)
 	c.Assert(err, check.IsNil)

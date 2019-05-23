@@ -217,16 +217,23 @@ func (s *MapStorage) UpdateNode(node Node) error {
 	return nil
 }
 
+func hasAllMetadata(base, wanted map[string]string) bool {
+	for key, value := range wanted {
+		nodeVal := base[key]
+		if nodeVal != value {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *MapStorage) RetrieveNodesByMetadata(metadata map[string]string) ([]Node, error) {
 	s.nMut.Lock()
 	defer s.nMut.Unlock()
 	filteredNodes := []Node{}
 	for _, node := range s.nodes {
-		for key, value := range metadata {
-			nodeVal, ok := node.Metadata[key]
-			if ok && nodeVal == value {
-				filteredNodes = append(filteredNodes, node)
-			}
+		if hasAllMetadata(node.Metadata, metadata) {
+			filteredNodes = append(filteredNodes, node)
 		}
 	}
 	return filteredNodes, nil
