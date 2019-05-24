@@ -28,4 +28,5 @@ var (
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
+	AppLog                    app.AppLogService
 )

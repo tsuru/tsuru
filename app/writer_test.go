@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -43,14 +44,14 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(1, Applog{})
+	logs, err := instance.LastLogs(1, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, string(data))
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
@@ -61,14 +62,14 @@ func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a, Source: "cool-test"}
+	writer := LogWriter{AppName: a.Name, Source: "cool-test"}
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(1, Applog{})
+	logs, err := instance.LastLogs(1, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, string(data))
 	c.Assert(logs[0].Source, check.Equals, "cool-test")
@@ -81,7 +82,7 @@ func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	var apps []App
 	s.conn.Apps().Find(bson.M{"name": "down"}).All(&apps)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	data := []byte("ble")
 	n, err := writer.Write(data)
 	c.Assert(err, check.IsNil)
@@ -93,7 +94,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	writer.Async()
 	data := []byte("ble")
 	_, err = writer.Write(data)
@@ -104,7 +105,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(1, Applog{})
+	logs, err := instance.LastLogs(1, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, "ble")
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
@@ -115,7 +116,7 @@ func (s *WriterSuite) TestLogWriterAsyncTimeout(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	writer.Async()
 	err = writer.Wait(0)
 	c.Assert(err, check.ErrorMatches, "timeout waiting for writer to finish")
@@ -129,7 +130,7 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	writer.Async()
 	for i := 0; i < 100; i++ {
 		data := []byte("ble")
@@ -143,7 +144,7 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(100, Applog{})
+	logs, err := instance.LastLogs(100, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 100)
 	for i := 0; i < 100; i++ {
@@ -164,7 +165,7 @@ func (s *WriterSuite) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 		}
 	}
 	for i := 0; i < 100; i++ {
-		writer := LogWriter{App: &a}
+		writer := LogWriter{AppName: a.Name}
 		writer.Async()
 		go writeFn(&writer)
 		go writeFn(&writer)
@@ -179,7 +180,7 @@ func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	writer.Async()
 	writer.Close()
 	data := []byte("ble")
@@ -190,7 +191,7 @@ func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(1, Applog{})
+	logs, err := instance.LastLogs(1, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
 }
@@ -200,7 +201,7 @@ func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{App: &a}
+	writer := LogWriter{AppName: a.Name}
 	writer.Close()
 	data := []byte("ble")
 	_, err = writer.Write(data)
@@ -210,7 +211,7 @@ func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(1, Applog{})
+	logs, err := instance.LastLogs(1, appTypes.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
 }
