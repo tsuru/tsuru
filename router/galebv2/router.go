@@ -295,10 +295,14 @@ func (r *galebRouter) setCName(cname, name string, wait bool) (err error) {
 	}
 	virtualhost := r.virtualHostName(backendName)
 	_, err = r.client.AddVirtualHostWithGroup(cname, virtualhost, wait)
-	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
-		return router.ErrCNameExists
+	if !galebClient.IsErrExists(err) {
+		return err
 	}
-	return err
+	err = r.client.UpdateVirtualHostWithGroup(cname, virtualhost, wait)
+	if err != nil {
+		return err
+	}
+	return router.ErrCNameExists
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) (err error) {
@@ -326,7 +330,7 @@ func (r *galebRouter) MoveCName(cname, orgBackend, dstBackend string) (err error
 	if err != nil && !galebClient.IsErrExists(err) {
 		return err
 	}
-	err = r.client.UpdateVirtualHostWithGroup(cname, r.virtualHostName(dstBackendName))
+	err = r.client.UpdateVirtualHostWithGroup(cname, r.virtualHostName(dstBackendName), true)
 	return err
 }
 
