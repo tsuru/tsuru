@@ -10,19 +10,16 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 )
 
-type Logger interface {
-	Log(string, string, string) error
-}
-
 type LogWriter struct {
-	App    Logger
-	Source string
-	msgCh  chan []byte
-	doneCh chan bool
-	closed bool
-	finLk  sync.RWMutex
+	AppName string
+	Source  string
+	msgCh   chan []byte
+	doneCh  chan bool
+	closed  bool
+	finLk   sync.RWMutex
 }
 
 func (w *LogWriter) Async() {
@@ -81,5 +78,5 @@ func (w *LogWriter) write(data []byte) error {
 	if source == "" {
 		source = "tsuru"
 	}
-	return w.App.Log(string(data), source, "api")
+	return servicemanager.AppLog.Add(w.AppName, string(data), source, "api")
 }

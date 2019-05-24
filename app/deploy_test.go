@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/tsuru/servicemanager"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
@@ -645,7 +647,7 @@ func (s *S) TestDeployAppShowLogLinesOnStartupError(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.Log("msg1", "src1", "unit1")
+	err = servicemanager.AppLog.Add(a.Name, "msg1", "src1", "unit1")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{

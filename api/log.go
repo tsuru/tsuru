@@ -7,31 +7,15 @@ package api
 import (
 	"encoding/json"
 	"io"
-	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/net/websocket"
 )
-
-var (
-	onceDispatcher   = sync.Once{}
-	globalDispatcher *app.LogDispatcher
-)
-
-func getDispatcher() *app.LogDispatcher {
-	onceDispatcher.Do(func() {
-		queueSize, _ := config.GetInt("server:app-log-buffer-size")
-		if queueSize == 0 {
-			queueSize = 500000
-		}
-		globalDispatcher = app.NewlogDispatcher(queueSize)
-	})
-	return globalDispatcher
-}
 
 func addLogs(ws *websocket.Conn) {
 	var err error
@@ -61,10 +45,9 @@ func addLogs(ws *websocket.Conn) {
 }
 
 func scanLogs(stream io.Reader) error {
-	dispatcher := getDispatcher()
 	decoder := json.NewDecoder(stream)
 	for {
-		var entry app.Applog
+		var entry appTypes.Applog
 		err := decoder.Decode(&entry)
 		if err != nil {
 			if err == io.EOF {
@@ -75,7 +58,7 @@ func scanLogs(stream io.Reader) error {
 		if entry.Date.IsZero() || entry.AppName == "" || entry.Message == "" {
 			continue
 		}
-		err = dispatcher.Send(&entry)
+		err = servicemanager.AppLog.Enqueue(&entry)
 		if err != nil {
 			return err
 		}

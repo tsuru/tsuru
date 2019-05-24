@@ -8,28 +8,28 @@ import (
 	"context"
 	"sync"
 
-	"github.com/tsuru/tsuru/app"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type logStreamTracker struct {
 	sync.Mutex
-	conn map[*app.LogListener]struct{}
+	conn map[appTypes.LogWatcher]struct{}
 }
 
-func (t *logStreamTracker) add(l *app.LogListener) {
+func (t *logStreamTracker) add(l appTypes.LogWatcher) {
 	t.Lock()
 	defer t.Unlock()
 	if t.conn == nil {
-		t.conn = make(map[*app.LogListener]struct{})
+		t.conn = make(map[appTypes.LogWatcher]struct{})
 	}
 	t.conn[l] = struct{}{}
 }
 
-func (t *logStreamTracker) remove(l *app.LogListener) {
+func (t *logStreamTracker) remove(l appTypes.LogWatcher) {
 	t.Lock()
 	defer t.Unlock()
 	if t.conn == nil {
-		t.conn = make(map[*app.LogListener]struct{})
+		t.conn = make(map[appTypes.LogWatcher]struct{})
 	}
 	delete(t.conn, l)
 }

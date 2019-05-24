@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
+	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
@@ -139,6 +140,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AppLog, err = applog.StorageAppLogService()
 	return err
 }
 

@@ -1151,7 +1151,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unit := r.URL.Query().Get("unit")
 	follow := r.URL.Query().Get("follow")
 	appName := r.URL.Query().Get(":app")
-	filterLog := app.Applog{Source: source, Unit: unit}
+	filterLog := appTypes.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -1174,28 +1174,28 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if follow != "1" {
 		return nil
 	}
-	l, err := app.NewLogListener(&a, filterLog)
+	watcher, err := servicemanager.AppLog.Watch(a.Name, source, unit)
 	if err != nil {
 		return err
 	}
-	return followLogs(r.Context(), l, encoder)
+	return followLogs(r.Context(), watcher, encoder)
 }
 
 type msgEncoder interface {
 	Encode(interface{}) error
 }
 
-func followLogs(ctx stdContext.Context, listener *app.LogListener, encoder msgEncoder) error {
-	logTracker.add(listener)
+func followLogs(ctx stdContext.Context, watcher appTypes.LogWatcher, encoder msgEncoder) error {
+	logTracker.add(watcher)
 	defer func() {
-		logTracker.remove(listener)
-		listener.Close()
+		logTracker.remove(watcher)
+		watcher.Close()
 	}()
 	closeChan := ctx.Done()
-	logChan := listener.ListenChan()
+	logChan := watcher.Chan()
 	idleTimer := time.NewTimer(logTailIdleTimeout)
 	for {
-		var logMsg app.Applog
+		var logMsg appTypes.Applog
 		var chOpen bool
 		select {
 		case <-idleTimer.C:
@@ -1207,7 +1207,7 @@ func followLogs(ctx stdContext.Context, listener *app.LogListener, encoder msgEn
 		if !chOpen {
 			return nil
 		}
-		err := encoder.Encode([]app.Applog{logMsg})
+		err := encoder.Encode([]appTypes.Applog{logMsg})
 		if err != nil {
 			return err
 		}
@@ -1515,7 +1515,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	unit := InputValue(r, "unit")
 	for _, log := range logs {
-		err := a.Log(log, source, unit)
+		err = servicemanager.AppLog.Add(a.Name, log, source, unit)
 		if err != nil {
 			return err
 		}
