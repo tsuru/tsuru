@@ -65,13 +65,16 @@ func open(addr string) (*mgo.Session, error) {
 		return nil, err
 	}
 	dialInfo.FailFast = true
+	dialInfo.Timeout = 30 * time.Second
+	dialInfo.PoolTimeout = time.Minute
+	dialInfo.ReadTimeout = time.Minute
+	dialInfo.WriteTimeout = time.Minute
 	dialInfo.DialServer = instrumentedDialServer(dialInfo.Timeout)
 	session, err := mgo.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err
 	}
 	session.SetSyncTimeout(10 * time.Second)
-	session.SetSocketTimeout(time.Minute)
 	return session, nil
 }
 
