@@ -794,6 +794,7 @@ func (cv *certificateValidator) start() {
 	}
 	cv.once.Do(func() {
 		cv.stopCh = make(chan bool)
+		cv.stopDoneCh = make(chan bool)
 		if cv.shutdownServerFunc == nil {
 			cv.shutdownServerFunc = func(err error) {
 				cv.conf.shutdown(cv.conf.shutdownTimeout)
