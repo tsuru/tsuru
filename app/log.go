@@ -84,6 +84,16 @@ var (
 		Help:    "The latency distributions for log messages to be stored in database.",
 		Buckets: buckets,
 	})
+
+	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_logs_app_tail_current",
+		Help: "The current number of active log tail queries for an app.",
+	}, []string{"app"})
+
+	logsAppTailEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_app_tail_entries_total",
+		Help: "The number of log entries read in tail requests for an app.",
+	}, []string{"app"})
 )
 
 func init() {
@@ -97,6 +107,8 @@ func init() {
 	prometheus.MustRegister(logsQueueBlockedTotal)
 	prometheus.MustRegister(logsMongoFullLatency)
 	prometheus.MustRegister(logsMongoLatency)
+	prometheus.MustRegister(logsAppTail)
+	prometheus.MustRegister(logsAppTailEntries)
 }
 
 type LogListener struct {
@@ -158,7 +170,11 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	query := coll.Find(mkQuery())
 	tailTimeout := 10 * time.Second
 	iter := query.Sort("$natural").Tail(tailTimeout)
+	tailCountMetric := logsAppTail.WithLabelValues(a.Name)
+	entriesMetric := logsAppTailEntries.WithLabelValues(a.Name)
 	go func() {
+		tailCountMetric.Inc()
+		defer tailCountMetric.Dec()
 		defer close(c)
 		defer func() {
 			if r := recover(); r != nil {
@@ -174,6 +190,7 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 				lastId = applog.MongoID
 				select {
 				case c <- applog:
+					entriesMetric.Inc()
 				case <-quit:
 					iter.Close()
 					return
