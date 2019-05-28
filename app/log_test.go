@@ -308,6 +308,7 @@ func (s *S) TestLogDispatcherSendExistingCollection(c *check.C) {
 	logsInQueue.Set(0)
 	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
 	coll, err := s.logConn.CreateAppLogCollection("myapp1")
 	c.Assert(err, check.IsNil)
 	err = coll.DropCollection()
