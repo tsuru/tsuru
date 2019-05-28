@@ -13,6 +13,7 @@ package db
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
@@ -242,4 +243,14 @@ func (s *Storage) Volumes() *storage.Collection {
 func (s *Storage) VolumeBinds() *storage.Collection {
 	c := s.Collection("volume_binds")
 	return c
+}
+
+func IsCollectionExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if queryErr, ok := err.(*mgo.QueryError); ok && queryErr.Code == 48 {
+		return true
+	}
+	return strings.Contains(err.Error(), "already exists")
 }
