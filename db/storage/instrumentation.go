@@ -35,10 +35,11 @@ var (
 		Help: "The total number of errors during storage operations.",
 	}, []string{"op"})
 
-	latencies = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "tsuru_storage_duration_seconds",
-		Help: "The storage operations latency distributions.",
-	})
+	latencies = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "tsuru_storage_duration_seconds",
+		Help:    "The storage operations latency distributions.",
+		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60, 120},
+	}, []string{"op"})
 )
 
 func init() {
@@ -52,7 +53,7 @@ func instrumentedDialServer(timeout time.Duration) func(*mgo.ServerAddr) (net.Co
 	return func(addr *mgo.ServerAddr) (net.Conn, error) {
 		t0 := time.Now()
 		defer func() {
-			latencies.Observe(time.Since(t0).Seconds())
+			latencies.WithLabelValues(opDial).Observe(time.Since(t0).Seconds())
 		}()
 		conn, err := net.DialTimeout("tcp", addr.TCPAddr().String(), timeout)
 		if err != nil {
@@ -75,11 +76,11 @@ type instrumentedConn struct {
 func (c *instrumentedConn) Read(b []byte) (n int, err error) {
 	t0 := time.Now()
 	defer func() {
+		latencies.WithLabelValues(opRead).Observe(time.Since(t0).Seconds())
 		opBytes.WithLabelValues(opRead).Add(float64(n))
 		if err != nil {
 			opErrors.WithLabelValues(opRead).Inc()
 		}
-		latencies.Observe(time.Since(t0).Seconds())
 	}()
 	return c.tcpConn.Read(b)
 }
@@ -87,17 +88,19 @@ func (c *instrumentedConn) Read(b []byte) (n int, err error) {
 func (c *instrumentedConn) Write(b []byte) (n int, err error) {
 	t0 := time.Now()
 	defer func() {
+		latencies.WithLabelValues(opWrite).Observe(time.Since(t0).Seconds())
 		opBytes.WithLabelValues(opWrite).Add(float64(n))
 		if err != nil {
 			opErrors.WithLabelValues(opWrite).Inc()
 		}
-		latencies.Observe(time.Since(t0).Seconds())
 	}()
 	return c.tcpConn.Write(b)
 }
 
 func (c *instrumentedConn) Close() (err error) {
+	t0 := time.Now()
 	defer func() {
+		latencies.WithLabelValues(opClose).Observe(time.Since(t0).Seconds())
 		openConns.Dec()
 		if err != nil {
 			opErrors.WithLabelValues(opClose).Inc()
