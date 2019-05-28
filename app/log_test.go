@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -301,6 +302,34 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	recvMsg := <-ch
 	recvMsg.Date = baseTime
 	compareLogs(c, []Applog{recvMsg}, []Applog{logMsg})
+}
+
+func (s *S) TestLogDispatcherSendExistingCollection(c *check.C) {
+	logsInQueue.Set(0)
+	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	coll, err := s.logConn.CreateAppLogCollection("myapp1")
+	c.Assert(err, check.IsNil)
+	err = coll.DropCollection()
+	c.Assert(err, check.IsNil)
+	// create collection with mongodb command to avoid create cache on mgo side
+	cmd := bson.D{
+		{Name: "create", Value: "logs_myapp1"},
+		{Name: "capped", Value: true},
+		{Name: "size", Value: 1000000},
+	}
+	err = coll.Database.Run(cmd, nil)
+	c.Assert(err, check.IsNil)
+	dispatcher := NewlogDispatcher(2000000)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := Applog{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"}
+	dispatcher.Send(&logMsg)
+	dispatcher.Shutdown(context.Background())
+	logs, err := app.LastLogs(10, Applog{})
+	c.Assert(err, check.IsNil)
+	compareLogs(c, logs, []Applog{logMsg})
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {

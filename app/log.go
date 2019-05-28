@@ -321,7 +321,7 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) err
 	}
 	defer conn.Close()
 	coll, err := conn.CreateAppLogCollection(d.appName)
-	if err != nil {
+	if err != nil && !db.IsCollectionExistsError(err) {
 		log.Errorf("[log flusher] unable to create collection in mongodb: %s", err)
 		return err
 	}
