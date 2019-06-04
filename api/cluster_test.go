@@ -202,6 +202,46 @@ func (s *S) TestListClustersNoContent(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent, check.Commentf("body: %q", recorder.Body.String()))
 }
 
+func (s *S) TestClusterInfo(c *check.C) {
+	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+		return &provision.Cluster{
+			Name:        "c1",
+			Addresses:   []string{"addr1"},
+			Provisioner: "fake",
+			Default:     true,
+			ClientKey:   []byte("xyz"),
+		}, nil
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.8/provisioner/clusters/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	var retCluster provision.Cluster
+	err = json.Unmarshal(recorder.Body.Bytes(), &retCluster)
+	c.Assert(err, check.IsNil)
+	c.Assert(retCluster, check.DeepEquals, provision.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Provisioner: "fake",
+		Default:     true,
+		ClientKey:   []byte("xyz"),
+	})
+}
+
+func (s *S) TestClusterInfoNotFound(c *check.C) {
+	s.mockService.Cluster.OnFindByName = func(name string) (*provision.Cluster, error) {
+		return nil, provision.ErrClusterNotFound
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.8/provisioner/clusters/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound, check.Commentf("body: %q", recorder.Body.String()))
+}
+
 func (s *S) TestDeleteClusterNotFound(c *check.C) {
 	s.mockService.Cluster.OnDelete = func(_ provision.Cluster) error {
 		return provision.ErrClusterNotFound
