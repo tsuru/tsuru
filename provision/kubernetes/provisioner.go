@@ -835,10 +835,11 @@ func (p *kubernetesProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) 
 		if err != nil {
 			return err
 		}
-		nodes, err = p.listNodesForClusterWithFilter(c, filter.Metadata)
+		clusterNodes, err := p.listNodesForClusterWithFilter(c, filter.Metadata)
 		if err != nil {
 			return err
 		}
+		nodes = append(nodes, clusterNodes...)
 		return nil
 	})
 	if err == provTypes.ErrNoCluster {
