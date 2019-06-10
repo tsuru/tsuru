@@ -50,7 +50,7 @@ var (
 		passwordClusterKey:     "Password used to connect to the cluster.",
 		overcommitClusterKey:   "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
 		namespaceLabelsKey:     "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
-		externalPolicyLocalKey: "Use external policy local in created services. This is not recomended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
+		externalPolicyLocalKey: "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
 		routerAddressLocalKey:  "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
 	}
 )

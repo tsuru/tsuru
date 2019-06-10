@@ -302,7 +302,7 @@ func newMachine(h *host.Host) (*Machine, error) {
 	}
 	address, err := h.Driver.GetIP()
 	if err != nil || address == "" {
-		return nil, errors.Wrap(err, "failed to retrive host ip")
+		return nil, errors.Wrap(err, "failed to retrieve host ip")
 	}
 	m.Base.Address = address
 	if h.AuthOptions() != nil {
