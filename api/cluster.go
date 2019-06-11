@@ -204,7 +204,6 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return permission.ErrUnauthorized
 	}
 	var provCluster provTypes.Cluster
-	err = ParseInput(r, &provCluster)
 	provCluster.Name = r.URL.Query().Get(":name")
 	if err != nil {
 		return err
