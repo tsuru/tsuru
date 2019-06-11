@@ -16,7 +16,8 @@ import (
 var _ Logger = &syslogLogger{}
 
 func NewSyslogLogger(tag string, debug bool) (Logger, error) {
-	w, err := syslog.New(syslog.LOG_INFO, tag)
+	priority := syslog.LOG_LOCAL0 | syslog.LOG_INFO
+	w, err := syslog.New(priority, tag)
 	if err != nil {
 		return nil, err
 	}
