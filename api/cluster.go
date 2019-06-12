@@ -203,9 +203,8 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	var provCluster provTypes.Cluster
-	provCluster.Name = r.URL.Query().Get(":name")
-	cluster, err := servicemanager.Cluster.FindByName(provCluster.Name)
+	name := r.URL.Query().Get(":name")
+	cluster, err := servicemanager.Cluster.FindByName(name)
 	if err != nil {
 		if err == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
