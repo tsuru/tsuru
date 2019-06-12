@@ -205,9 +205,6 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	}
 	var provCluster provTypes.Cluster
 	provCluster.Name = r.URL.Query().Get(":name")
-	if err != nil {
-		return err
-	}
 	cluster, err := servicemanager.Cluster.FindByName(provCluster.Name)
 	if err != nil {
 		if err == provTypes.ErrClusterNotFound {
