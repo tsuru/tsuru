@@ -189,6 +189,35 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	return json.NewEncoder(w).Encode(clusters)
 }
 
+// title: provisioner cluster info
+// path: /provisioner/clusters/{name}
+// method: GET
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Cluster not found
+func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowed := permission.Check(t, permission.PermClusterRead)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	name := r.URL.Query().Get(":name")
+	cluster, err := servicemanager.Cluster.FindByName(name)
+	if err != nil {
+		if err == provTypes.ErrClusterNotFound {
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(cluster)
+}
+
 // title: delete provisioner cluster
 // path: /provisioner/clusters/{name}
 // method: DELETE
