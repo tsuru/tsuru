@@ -14,7 +14,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -45,7 +47,14 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 }
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
-	err := ensurePoolNamespace(client, pool)
+	belongs, err := poolBelongsToCluster(client.Cluster, pool)
+	if err != nil {
+		return err
+	}
+	if !belongs {
+		return nil
+	}
+	err = ensurePoolNamespace(client, pool)
 	if err != nil {
 		return err
 	}
@@ -236,4 +245,25 @@ func ensureNodeContainers(a provision.App) error {
 		return errors.Wrapf(err, "unable to ensure node containers running: %s", buf.String())
 	}
 	return nil
+}
+
+func poolBelongsToCluster(cluster *provTypes.Cluster, poolName string) (bool, error) {
+	if poolName == "" {
+		return true, nil
+	}
+	poolData, err := pool.GetPoolByName(poolName)
+	if err != nil {
+		if err == pool.ErrPoolNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	poolCluster, err := servicemanager.Cluster.FindByPool(poolData.Provisioner, poolName)
+	if err != nil {
+		if err == provTypes.ErrNoCluster {
+			return false, nil
+		}
+		return false, err
+	}
+	return poolCluster.Name == cluster.Name, nil
 }
