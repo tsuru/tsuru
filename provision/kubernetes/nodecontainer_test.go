@@ -14,6 +14,7 @@ import (
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -169,11 +170,13 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	}
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
-	m := nodeContainerManager{}
-	pool := "mypool"
-	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
+	poolName := "mypool"
+	err = pool.AddPool(pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
-	ns := s.client.PoolNamespace(pool)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, poolName, servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	ns := s.client.PoolNamespace(poolName)
 	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
@@ -204,14 +207,14 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 				"tsuru.io/is-node-container":   "true",
 				"tsuru.io/provisioner":         "kubernetes",
 				"tsuru.io/node-container-name": "bs",
-				"tsuru.io/node-container-pool": pool,
+				"tsuru.io/node-container-pool": poolName,
 			},
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/node-container-name": "bs",
-					"tsuru.io/node-container-pool": pool,
+					"tsuru.io/node-container-pool": poolName,
 				},
 			},
 			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
@@ -227,7 +230,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						"tsuru.io/is-node-container":   "true",
 						"tsuru.io/provisioner":         "kubernetes",
 						"tsuru.io/node-container-name": "bs",
-						"tsuru.io/node-container-pool": pool,
+						"tsuru.io/node-container-pool": poolName,
 					},
 				},
 				Spec: apiv1.PodSpec{
@@ -286,18 +289,41 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	})
 }
 
+func (s *S) TestManagerDeployNodeContainerIgnoreInvalidPools(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "anotherpool", Provisioner: "docker"})
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, "anotherpool", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	ns := "default"
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 0)
+}
+
 func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
-	pool := "mypool"
+	poolName := "mypool"
+	err := pool.AddPool(pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
 	var counter int32
 	s.client.PrependReactor("create", "daemonsets", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)
 		s.client.AppsV1()
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*appsv1.DaemonSet)
 		c.Assert(ok, check.Equals, true)
-		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.PoolNamespace(pool))
+		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.PoolNamespace(poolName))
 		return kTesting.RunReactionsAfter(&s.client.Fake, action)
 	})
 	c1 := nodecontainer.NodeContainerConfig{
@@ -314,10 +340,10 @@ func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 			Binds:         []string{"/xyz:/abc:ro"},
 		},
 	}
-	err := nodecontainer.AddNewContainer("", &c1)
+	err = nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	m := nodeContainerManager{}
-	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
+	err = m.DeployNodeContainer(&c1, poolName, servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -404,10 +430,12 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	m := nodeContainerManager{}
-	pool := "main"
-	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
+	poolName := "main"
+	err = pool.AddPool(pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
-	ns := s.client.PoolNamespace(pool)
+	err = m.DeployNodeContainer(&c1, poolName, servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	ns := s.client.PoolNamespace(poolName)
 	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
@@ -469,10 +497,12 @@ func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	m := nodeContainerManager{}
-	pool := "main"
-	err = m.DeployNodeContainer(&c1, pool, servicecommon.PoolFilter{}, false)
+	poolName := "main"
+	err = pool.AddPool(pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
-	ns := s.client.PoolNamespace("pool")
+	err = m.DeployNodeContainer(&c1, poolName, servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	ns := s.client.PoolNamespace(poolName)
 	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)

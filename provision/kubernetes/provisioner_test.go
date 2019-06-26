@@ -1613,7 +1613,14 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 			Binds:         []string{"/xyz:/abc:ro"},
 		},
 	}
-	err := nodecontainer.AddNewContainer("", &c1)
+	err := pool.AddPool(pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
+	c.Assert(err, check.IsNil)
+
+	err = nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	c2 := c1
 	c2.Config.Env = []string{"e1=v1"}
@@ -1621,6 +1628,9 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c3 := c1
 	err = nodecontainer.AddNewContainer("p2", &c3)
+	c.Assert(err, check.IsNil)
+	c4 := c1
+	err = nodecontainer.AddNewContainer("p-ignored", &c4)
 	c.Assert(err, check.IsNil)
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
@@ -1635,6 +1645,9 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p-ignored")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 0)
 }
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
