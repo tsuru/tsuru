@@ -961,7 +961,12 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	variables := []bind.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
-		variables = append(variables, bind.EnvVar{Name: v.Name, Value: v.Value, Public: !e.Private})
+		variables = append(variables, bind.EnvVar{
+			Name:   v.Name,
+			Value:  v.Value,
+			Public: !e.Private,
+			Alias:  v.Alias,
+		})
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
