@@ -1551,8 +1551,6 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-var envVarRegexp = regexp.MustCompile(`\$([^{}]+)|\${([^{}]+)}`)
-
 func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
 	delete(toInterpolate, envName)
 	if toInterpolate[varName] != "" {
@@ -1574,14 +1572,9 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	var toInterpolateKeys []string
 	for _, e := range app.Env {
 		mergedEnvs[e.Name] = e
-		result := envVarRegexp.FindStringSubmatch(e.Value)
-		if result != nil && len(result) == 3 {
-			for _, r := range result[1:] {
-				if r != "" {
-					toInterpolate[e.Name] = r
-					toInterpolateKeys = append(toInterpolateKeys, e.Name)
-				}
-			}
+		if e.Alias != "" {
+			toInterpolate[e.Name] = e.Alias
+			toInterpolateKeys = append(toInterpolateKeys, e.Name)
 		}
 	}
 	for _, e := range app.ServiceEnvs {

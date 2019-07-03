@@ -3108,36 +3108,34 @@ func (s *S) TestEnvsInterpolate(c *check.C) {
 		},
 		Env: map[string]bind.EnvVar{
 			"a":  {Name: "a", Value: "1"},
-			"aa": {Name: "aa", Value: "${c}"},
-			"b":  {Name: "b", Value: "$a"},
-			"c":  {Name: "c", Value: "$b"},
+			"aa": {Name: "aa", Alias: "c"},
+			"b":  {Name: "b", Alias: "a"},
+			"c":  {Name: "c", Alias: "b"},
 
 			// Mutual recursion
-			"e": {Name: "e", Value: "$f"},
-			"f": {Name: "f", Value: "$e"},
+			"e": {Name: "e", Alias: "f"},
+			"f": {Name: "f", Alias: "e"},
 
 			// Self recursion
-			"g": {Name: "g", Value: "$g"},
+			"g": {Name: "g", Alias: "g"},
 
 			// Service envs
-			"h": {Name: "h", Value: "${DB_HOST}"},
-			"i": {Name: "i", Value: "$DB_HOST"},
+			"h": {Name: "h", Alias: "DB_HOST"},
 
 			// Not found
-			"j": {Name: "j", Value: "$notfound"},
+			"i": {Name: "i", Alias: "notfound"},
 		},
 	}
 	expected := map[string]bind.EnvVar{
 		"a":              {Name: "a", Value: "1"},
-		"b":              {Name: "b", Value: "1"},
-		"c":              {Name: "c", Value: "1"},
-		"aa":             {Name: "aa", Value: "1"},
-		"e":              {Name: "e", Value: "$f"},
-		"f":              {Name: "f", Value: "$f"},
-		"g":              {Name: "g", Value: "$g"},
-		"h":              {Name: "h", Value: "host1"},
-		"i":              {Name: "i", Value: "host1"},
-		"j":              {Name: "j", Value: "$notfound"},
+		"aa":             {Name: "aa", Value: "1", Alias: "c"},
+		"b":              {Name: "b", Value: "1", Alias: "a"},
+		"c":              {Name: "c", Value: "1", Alias: "b"},
+		"e":              {Name: "e", Value: "", Alias: "f"},
+		"f":              {Name: "f", Value: "", Alias: "e"},
+		"g":              {Name: "g", Value: "", Alias: "g"},
+		"h":              {Name: "h", Value: "host1", Alias: "DB_HOST"},
+		"i":              {Name: "i", Value: "", Alias: "notfound"},
 		"DB_HOST":        {Name: "DB_HOST", Value: "host1"},
 		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}"},
 	}
