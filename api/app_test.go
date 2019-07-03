@@ -3084,6 +3084,7 @@ func (s *S) TestGetEnv(c *check.C) {
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
 		"public": true,
+		"alias":  "",
 	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
@@ -3114,8 +3115,8 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
 	expected := []map[string]interface{}{
-		{"name": "DATABASE_HOST", "value": "localhost", "public": true},
-		{"name": "DATABASE_USER", "value": "root", "public": true},
+		{"name": "DATABASE_HOST", "value": "localhost", "public": true, "alias": ""},
+		{"name": "DATABASE_USER", "value": "root", "public": true, "alias": ""},
 	}
 	var got []map[string]interface{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
@@ -3177,6 +3178,7 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
 		"public": true,
+		"alias":  "",
 	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
@@ -3191,8 +3193,8 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3229,14 +3231,69 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	d := apiTypes.Envs{
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "", "MY_DB_HOST"},
+			{"MY_DB_HOST", "localhost", ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Alias:  "MY_DB_HOST",
+		Public: true,
+	})
+	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "MY_DB_HOST",
+		Value:  "localhost",
+		Public: true,
+	})
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 2 new environment variables ----\n"}
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Alias", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Name", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3279,8 +3336,8 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3309,9 +3366,9 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		},
 	}, eventtest.HasEvent)
 	d = apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "127.0.0.1"},
-			{"DATABASE_PORT", "6379"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "127.0.0.1", ""},
+			{"DATABASE_PORT", "6379", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3356,9 +3413,9 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
-			{"DATABASE_USER", "root"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
+			{"DATABASE_USER", "root", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3411,8 +3468,8 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "http://foo.com:8080"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "http://foo.com:8080", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3458,8 +3515,8 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: true,
 		Private:   false,
@@ -3548,8 +3605,8 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3573,8 +3630,8 @@ func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"INVALID ENV", "value"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"INVALID ENV", "value", ""},
 		},
 	}
 	v, err := form.EncodeToValues(&d)

@@ -7,7 +7,7 @@ package api
 // Envs represents the configuration of an environment variable data
 // for the remote API
 type Envs struct {
-	Envs      []struct{ Name, Value string }
+	Envs      []struct{ Name, Value, Alias string }
 	NoRestart bool
 	Private   bool
 }
