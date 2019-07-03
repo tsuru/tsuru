@@ -2929,6 +2929,8 @@ definitions:
         type: string
       value:
         type: string
+      alias:
+        type: string
   EnvSetData:
     description: Data sent to the environment set endpoint.
     type: object
