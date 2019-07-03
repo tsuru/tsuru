@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -1550,14 +1551,45 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
+var envVarRegexp = regexp.MustCompile(`\$([^{}]+)|\${([^{}]+)}`)
+
+func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
+	delete(toInterpolate, envName)
+	if toInterpolate[varName] != "" {
+		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
+		return
+	}
+	if _, isSet := mergedEnvs[varName]; !isSet {
+		return
+	}
+	env := mergedEnvs[envName]
+	env.Value = mergedEnvs[varName].Value
+	mergedEnvs[envName] = env
+}
+
 // Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bind.EnvVar {
 	mergedEnvs := make(map[string]bind.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
+	toInterpolate := make(map[string]string)
+	var toInterpolateKeys []string
 	for _, e := range app.Env {
 		mergedEnvs[e.Name] = e
+		result := envVarRegexp.FindStringSubmatch(e.Value)
+		if result != nil && len(result) == 3 {
+			for _, r := range result[1:] {
+				if r != "" {
+					toInterpolate[e.Name] = r
+					toInterpolateKeys = append(toInterpolateKeys, e.Name)
+				}
+			}
+		}
 	}
 	for _, e := range app.ServiceEnvs {
 		mergedEnvs[e.Name] = e.EnvVar
+	}
+	sort.Strings(toInterpolateKeys)
+	for _, envName := range toInterpolateKeys {
+		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
 	}
 	mergedEnvs[TsuruServicesEnvVar] = serviceEnvsFromEnvVars(app.ServiceEnvs)
 	return mergedEnvs
