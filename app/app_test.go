@@ -3096,6 +3096,55 @@ func (s *S) TestEnvs(c *check.C) {
 	c.Assert(env, check.DeepEquals, expected)
 }
 
+func (s *S) TestEnvsInterpolate(c *check.C) {
+	app := App{
+		Name: "time",
+		ServiceEnvs: []bind.ServiceEnvVar{
+			{
+				EnvVar:       bind.EnvVar{Name: "DB_HOST", Value: "host1"},
+				ServiceName:  "srv1",
+				InstanceName: "inst1",
+			},
+		},
+		Env: map[string]bind.EnvVar{
+			"a":  {Name: "a", Value: "1"},
+			"aa": {Name: "aa", Value: "${c}"},
+			"b":  {Name: "b", Value: "$a"},
+			"c":  {Name: "c", Value: "$b"},
+
+			// Mutual recursion
+			"e": {Name: "e", Value: "$f"},
+			"f": {Name: "f", Value: "$e"},
+
+			// Self recursion
+			"g": {Name: "g", Value: "$g"},
+
+			// Service envs
+			"h": {Name: "h", Value: "${DB_HOST}"},
+			"i": {Name: "i", Value: "$DB_HOST"},
+
+			// Not found
+			"j": {Name: "j", Value: "$notfound"},
+		},
+	}
+	expected := map[string]bind.EnvVar{
+		"a":              {Name: "a", Value: "1"},
+		"b":              {Name: "b", Value: "1"},
+		"c":              {Name: "c", Value: "1"},
+		"aa":             {Name: "aa", Value: "1"},
+		"e":              {Name: "e", Value: "$f"},
+		"f":              {Name: "f", Value: "$f"},
+		"g":              {Name: "g", Value: "$g"},
+		"h":              {Name: "h", Value: "host1"},
+		"i":              {Name: "i", Value: "host1"},
+		"j":              {Name: "j", Value: "$notfound"},
+		"DB_HOST":        {Name: "DB_HOST", Value: "host1"},
+		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}"},
+	}
+	env := app.Envs()
+	c.Assert(env, check.DeepEquals, expected)
+}
+
 func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 	app := App{
 		Name: "time",
