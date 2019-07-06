@@ -6351,7 +6351,7 @@ func (s *S) TestFollowLogs(c *check.C) {
 		<-enc.done
 		cancel()
 	}()
-	err = followLogs(ctx, l, enc)
+	err = followLogs(ctx, a.Name, l, enc)
 	c.Assert(err, check.IsNil)
 	msgSlice, ok := enc.msg.([]appTypes.Applog)
 	c.Assert(ok, check.Equals, true)
@@ -6373,6 +6373,6 @@ func (s *S) TestFollowLogsTimeout(c *check.C) {
 	}
 	l, err := servicemanager.AppLog.Watch(a.Name, "", "")
 	c.Assert(err, check.IsNil)
-	err = followLogs(ctx, l, enc)
+	err = followLogs(ctx, a.Name, l, enc)
 	c.Assert(err, check.ErrorMatches, `.*timeout.*`)
 }

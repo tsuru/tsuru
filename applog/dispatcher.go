@@ -14,8 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/shutdown"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"golang.org/x/time/rate"
@@ -82,16 +80,6 @@ var (
 		Help:    "The latency distributions for log messages to be stored in database.",
 		Buckets: buckets,
 	})
-
-	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tsuru_logs_app_tail_current",
-		Help: "The current number of active log tail queries for an app.",
-	}, []string{"app"})
-
-	logsAppTailEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_app_tail_entries_total",
-		Help: "The number of log entries read in tail requests for an app.",
-	}, []string{"app"})
 )
 
 func init() {
@@ -105,16 +93,15 @@ func init() {
 	prometheus.MustRegister(logsQueueBlockedTotal)
 	prometheus.MustRegister(logsMongoFullLatency)
 	prometheus.MustRegister(logsMongoLatency)
-	prometheus.MustRegister(logsAppTail)
-	prometheus.MustRegister(logsAppTailEntries)
 }
 
-type LogDispatcher struct {
+type logDispatcher struct {
 	mu             sync.RWMutex
 	dispatchers    map[string]*appLogDispatcher
 	msgCh          chan *msgWithTS
 	shuttingDown   int32
 	doneProcessing chan struct{}
+	storage        appTypes.AppLogStorage
 }
 
 type msgWithTS struct {
@@ -122,19 +109,19 @@ type msgWithTS struct {
 	arriveTime time.Time
 }
 
-func newlogDispatcher(chanSize int) *LogDispatcher {
-	d := &LogDispatcher{
+func newlogDispatcher(chanSize int, storage appTypes.AppLogStorage) *logDispatcher {
+	d := &logDispatcher{
 		dispatchers:    make(map[string]*appLogDispatcher),
 		msgCh:          make(chan *msgWithTS, chanSize),
 		doneProcessing: make(chan struct{}),
+		storage:        storage,
 	}
 	go d.runWriter()
-	shutdown.Register(d)
 	logsQueueSize.Set(float64(chanSize))
 	return d
 }
 
-func (d *LogDispatcher) getMessageDispatcher(msg *appTypes.Applog) *appLogDispatcher {
+func (d *logDispatcher) getMessageDispatcher(msg *appTypes.Applog) *appLogDispatcher {
 	appName := msg.AppName
 	d.mu.RLock()
 	appD, ok := d.dispatchers[appName]
@@ -143,7 +130,7 @@ func (d *LogDispatcher) getMessageDispatcher(msg *appTypes.Applog) *appLogDispat
 		d.mu.Lock()
 		appD, ok = d.dispatchers[appName]
 		if !ok {
-			appD = newAppLogDispatcher(appName)
+			appD = newAppLogDispatcher(appName, d.storage)
 			d.dispatchers[appName] = appD
 		}
 		d.mu.Unlock()
@@ -153,7 +140,7 @@ func (d *LogDispatcher) getMessageDispatcher(msg *appTypes.Applog) *appLogDispat
 	return appD
 }
 
-func (d *LogDispatcher) runWriter() {
+func (d *logDispatcher) runWriter() {
 	defer close(d.doneProcessing)
 	for msgExtra := range d.msgCh {
 		if msgExtra == nil {
@@ -165,7 +152,7 @@ func (d *LogDispatcher) runWriter() {
 	}
 }
 
-func (d *LogDispatcher) Send(msg *appTypes.Applog) error {
+func (d *logDispatcher) send(msg *appTypes.Applog) error {
 	if atomic.LoadInt32(&d.shuttingDown) == 1 {
 		return errors.New("log dispatcher is shutting down")
 	}
@@ -182,11 +169,7 @@ func (d *LogDispatcher) Send(msg *appTypes.Applog) error {
 	return nil
 }
 
-func (a *LogDispatcher) String() string {
-	return "log dispatcher"
-}
-
-func (d *LogDispatcher) Shutdown(ctx context.Context) error {
+func (d *logDispatcher) shutdown(ctx context.Context) error {
 	atomic.StoreInt32(&d.shuttingDown, 1)
 	d.msgCh <- nil
 	<-d.doneProcessing
@@ -199,38 +182,24 @@ func (d *LogDispatcher) Shutdown(ctx context.Context) error {
 
 type appLogDispatcher struct {
 	appName string
+	storage appTypes.AppLogStorage
 	*bulkProcessor
 }
 
-func newAppLogDispatcher(appName string) *appLogDispatcher {
+func newAppLogDispatcher(appName string, storage appTypes.AppLogStorage) *appLogDispatcher {
 	d := &appLogDispatcher{
 		bulkProcessor: initBulkProcessor(bulkMaxWaitMongoTime, bulkMaxNumberMsgs, appName),
 		appName:       appName,
+		storage:       storage,
 	}
 	d.flushable = d
 	go d.run()
 	return d
 }
 
-func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) error {
-	conn, err := db.LogConn()
+func (d *appLogDispatcher) flush(msgs []*appTypes.Applog, lastMessage *msgWithTS) error {
+	err := d.storage.InsertApp(d.appName, msgs...)
 	if err != nil {
-		log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
-		return err
-	}
-	defer conn.Close()
-	coll, err := conn.CreateAppLogCollection(d.appName)
-	if err != nil && !db.IsCollectionExistsError(err) {
-		log.Errorf("[log flusher] unable to create collection in mongodb: %s", err)
-		return err
-	}
-	unsafeWrite, _ := config.GetBool("log:unsafe-write")
-	if unsafeWrite {
-		coll.Database.Session.SetSafe(nil)
-	}
-	err = coll.Insert(msgs...)
-	if err != nil {
-		log.Errorf("[log flusher] unable to insert logs: %s", err)
 		return err
 	}
 	if lastMessage != nil {
@@ -249,7 +218,7 @@ type bulkProcessor struct {
 	ch          chan *msgWithTS
 	nextNotify  *time.Timer
 	flushable   interface {
-		flush([]interface{}, *msgWithTS) error
+		flush([]*appTypes.Applog, *msgWithTS) error
 	}
 }
 
@@ -339,7 +308,7 @@ func (p *bulkProcessor) run() {
 	defer close(p.finished)
 	t := time.NewTimer(p.maxWaitTime)
 	pos := 0
-	bulkBuffer := make([]interface{}, p.bulkSize)
+	bulkBuffer := make([]*appTypes.Applog, p.bulkSize)
 	shouldReturn := false
 	var lastMessage *msgWithTS
 	var lastRateNotice time.Time

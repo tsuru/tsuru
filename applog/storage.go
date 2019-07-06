@@ -9,36 +9,47 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
+type storageLogService struct {
+	dispatcher *logDispatcher
+	storage    appTypes.AppLogStorage
+}
+
 func StorageAppLogService() (appTypes.AppLogService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
 	queueSize, _ := config.GetInt("server:app-log-buffer-size")
 	if queueSize == 0 {
 		queueSize = 500000
 	}
-	return &storageLogService{
-		dispatcher: newlogDispatcher(queueSize),
-	}, nil
-}
-
-type storageLogService struct {
-	dispatcher *LogDispatcher
+	s := &storageLogService{
+		dispatcher: newlogDispatcher(queueSize, dbDriver.AppLogStorage),
+		storage:    dbDriver.AppLogStorage,
+	}
+	shutdown.Register(s)
+	return s, nil
 }
 
 func (s *storageLogService) Enqueue(entry *appTypes.Applog) error {
-	return s.dispatcher.Send(entry)
+	return s.dispatcher.send(entry)
 }
 
 func (s *storageLogService) Add(appName, message, source, unit string) error {
 	messages := strings.Split(message, "\n")
-	logs := make([]interface{}, 0, len(messages))
+	logs := make([]*appTypes.Applog, 0, len(messages))
 	for _, msg := range messages {
 		if msg != "" {
-			l := appTypes.Applog{
+			l := &appTypes.Applog{
 				Date:    time.Now().In(time.UTC),
 				Message: msg,
 				Source:  source,
@@ -51,56 +62,17 @@ func (s *storageLogService) Add(appName, message, source, unit string) error {
 	if len(logs) == 0 {
 		return nil
 	}
-	conn, err := db.LogConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	coll, err := conn.CreateAppLogCollection(appName)
-	if err != nil {
-		return err
-	}
-	return coll.Insert(logs...)
+	return s.storage.InsertApp(appName, logs...)
 }
 
 func (s *storageLogService) List(filters appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	conn, err := db.LogConn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	logs := []appTypes.Applog{}
-	q := bson.M{}
-	if filters.Source != "" {
-		q["source"] = filters.Source
-	}
-	if filters.Unit != "" {
-		q["unit"] = filters.Unit
-	}
-	if filters.InvertFilters {
-		for k, v := range q {
-			q[k] = bson.M{"$ne": v}
-		}
-	}
-	err = conn.AppLogCollection(filters.AppName).Find(q).Sort("-$natural").Limit(filters.Limit).All(&logs)
-	if err != nil {
-		return nil, err
-	}
-	l := len(logs)
-	for i := 0; i < l/2; i++ {
-		logs[i], logs[l-1-i] = logs[l-1-i], logs[i]
-	}
-	return logs, nil
+	return s.storage.List(filters)
 }
 
 func (s *storageLogService) Watch(appName, source, unit string) (appTypes.LogWatcher, error) {
-	listener, err := newLogListener(s, appName, appTypes.Applog{Source: source, Unit: unit})
-	if err != nil {
-		return nil, err
-	}
-	return listener, nil
+	return s.storage.Watch(appName, source, unit)
 }
 
 func (s *storageLogService) Shutdown(ctx context.Context) error {
-	return s.dispatcher.Shutdown(ctx)
+	return s.dispatcher.shutdown(ctx)
 }

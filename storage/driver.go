@@ -32,6 +32,7 @@ type DbDriver struct {
 	ServiceBrokerStorage             service.ServiceBrokerStorage
 	ServiceBrokerCatalogCacheStorage cache.CacheStorage
 	PlatformImageStorage             image.PlatformImageStorage
+	AppLogStorage                    app.AppLogStorage
 }
 
 var (

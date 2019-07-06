@@ -19,7 +19,7 @@ type AppLogService interface {
 }
 
 type AppLogStorage interface {
-	Insert(msgs ...Applog) error
+	InsertApp(appName string, msgs ...*Applog) error
 	List(args ListLogArgs) ([]Applog, error)
 	Watch(appName, source, unit string) (LogWatcher, error)
 }

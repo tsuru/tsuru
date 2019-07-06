@@ -20,22 +20,22 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	logsInQueue.Set(0)
 	svc, err := StorageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := newLogListener(svc, "myapp1", appTypes.Applog{})
+	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)
 	defer listener.Close()
-	dispatcher := newlogDispatcher(2000000)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	logMsg := appTypes.Applog{
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
-	dispatcher.Send(&logMsg)
-	dispatcher.Shutdown(context.Background())
+	dispatcher.send(&logMsg)
+	dispatcher.shutdown(context.Background())
 	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 1})
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []appTypes.Applog{logMsg})
-	err = dispatcher.Send(&logMsg)
+	err = dispatcher.send(&logMsg)
 	c.Assert(err, check.ErrorMatches, `log dispatcher is shutting down`)
 	var dtoMetric dto.Metric
 	logsInQueue.Write(&dtoMetric)
@@ -47,7 +47,9 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
-	dispatcher := newlogDispatcher(2000000)
+	svc, err := StorageAppLogService()
+	c.Assert(err, check.IsNil)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
@@ -61,13 +63,11 @@ func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			dispatcher.Send(&logMsg[i%len(logMsg)])
+			dispatcher.send(&logMsg[i%len(logMsg)])
 		}(i)
 	}
 	wg.Wait()
-	dispatcher.Shutdown(context.Background())
-	svc, err := StorageAppLogService()
-	c.Assert(err, check.IsNil)
+	dispatcher.shutdown(context.Background())
 	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: nConcurrent / 2})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, nConcurrent/2)
@@ -77,8 +77,10 @@ func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
+	svc, err := StorageAppLogService()
+	c.Assert(err, check.IsNil)
 	logsInQueue.Set(0)
-	dispatcher := newlogDispatcher(2000000)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
@@ -89,17 +91,19 @@ func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
 	nConcurrent := 100
 	for i := 0; i < nConcurrent; i++ {
 		go func(i int) {
-			dispatcher.Send(&logMsg[i%len(logMsg)])
+			dispatcher.send(&logMsg[i%len(logMsg)])
 		}(i)
 	}
-	dispatcher.Shutdown(context.Background())
+	dispatcher.shutdown(context.Background())
 	var dtoMetric dto.Metric
 	logsInQueue.Write(&dtoMetric)
 	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
 }
 
 func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
-	dispatcher := newlogDispatcher(2000000)
+	svc, err := StorageAppLogService()
+	c.Assert(err, check.IsNil)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
@@ -116,15 +120,13 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 		return oldDbURL
 	})
 	defer config.Set("database:url", oldDbURL)
-	dispatcher.Send(&appTypes.Applog{
+	dispatcher.send(&appTypes.Applog{
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	})
 	<-dbOk
-	dispatcher.Send(&appTypes.Applog{
+	dispatcher.send(&appTypes.Applog{
 		Date: baseTime, Message: "msg2", Source: "web", AppName: "myapp1", Unit: "unit1",
 	})
-	svc, err := StorageAppLogService()
-	c.Assert(err, check.IsNil)
 	timeout := time.After(10 * time.Second)
 	var logs []appTypes.Applog
 	var logsErr error
@@ -157,7 +159,7 @@ loop:
 			Message: "msg2",
 		},
 	})
-	dispatcher.Shutdown(context.Background())
+	dispatcher.shutdown(context.Background())
 }
 
 func (s *S) TestBulkProcessorQueueSizeDefault(c *check.C) {
@@ -177,19 +179,19 @@ func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 	defer config.Unset("log:app-log-rate-limit")
 	svc, err := StorageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := newLogListener(svc, "myapp1", appTypes.Applog{})
+	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)
 	defer listener.Close()
-	dispatcher := newlogDispatcher(2000000)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	logMsg := appTypes.Applog{
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
-	dispatcher.Send(&logMsg)
-	dispatcher.Send(&logMsg)
-	dispatcher.Shutdown(context.Background())
+	dispatcher.send(&logMsg)
+	dispatcher.send(&logMsg)
+	dispatcher.shutdown(context.Background())
 	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
@@ -208,19 +210,19 @@ func (s *S) TestLogDispatcherSendGlobalRateLimit(c *check.C) {
 	defer config.Unset("log:global-app-log-rate-limit")
 	svc, err := StorageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := newLogListener(svc, "myapp1", appTypes.Applog{})
+	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)
 	defer listener.Close()
-	dispatcher := newlogDispatcher(2000000)
+	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	logMsg := appTypes.Applog{
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
-	dispatcher.Send(&logMsg)
-	dispatcher.Send(&logMsg)
-	dispatcher.Shutdown(context.Background())
+	dispatcher.send(&logMsg)
+	dispatcher.send(&logMsg)
+	dispatcher.shutdown(context.Background())
 	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
@@ -238,7 +240,7 @@ type fakeFlusher struct {
 	counter int
 }
 
-func (f *fakeFlusher) flush(msgs []interface{}, lastMsg *msgWithTS) error {
+func (f *fakeFlusher) flush(msgs []*appTypes.Applog, lastMsg *msgWithTS) error {
 	f.counter += len(msgs)
 	return nil
 }
