@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -42,7 +43,22 @@ import (
 
 var (
 	logTailIdleTimeout = 5 * time.Minute
+
+	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_logs_app_tail_current",
+		Help: "The current number of active log tail queries for an app.",
+	}, []string{"app"})
+
+	logsAppTailEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_app_tail_entries_total",
+		Help: "The number of log entries read in tail requests for an app.",
+	}, []string{"app"})
 )
+
+func init() {
+	prometheus.MustRegister(logsAppTail)
+	prometheus.MustRegister(logsAppTailEntries)
+}
 
 func appTarget(appName string) event.Target {
 	return event.Target{Type: event.TargetTypeApp, Value: appName}
@@ -1178,22 +1194,29 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return followLogs(r.Context(), watcher, encoder)
+	return followLogs(r.Context(), a.Name, watcher, encoder)
 }
 
 type msgEncoder interface {
 	Encode(interface{}) error
 }
 
-func followLogs(ctx stdContext.Context, watcher appTypes.LogWatcher, encoder msgEncoder) error {
+func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatcher, encoder msgEncoder) error {
 	logTracker.add(watcher)
 	defer func() {
 		logTracker.remove(watcher)
 		watcher.Close()
 	}()
+
+	tailCountMetric := logsAppTail.WithLabelValues(appName)
+	tailCountMetric.Inc()
+	defer tailCountMetric.Dec()
+
 	closeChan := ctx.Done()
 	logChan := watcher.Chan()
 	idleTimer := time.NewTimer(logTailIdleTimeout)
+
+	entriesMetric := logsAppTailEntries.WithLabelValues(appName)
 	for {
 		var logMsg appTypes.Applog
 		var chOpen bool
@@ -1203,6 +1226,7 @@ func followLogs(ctx stdContext.Context, watcher appTypes.LogWatcher, encoder msg
 		case <-closeChan:
 			return nil
 		case logMsg, chOpen = <-logChan:
+			entriesMetric.Inc()
 		}
 		if !chOpen {
 			return nil

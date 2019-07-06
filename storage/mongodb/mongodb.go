@@ -22,6 +22,7 @@ func init() {
 		ClusterStorage:                   &clusterStorage{},
 		ServiceBrokerStorage:             &serviceBrokerStorage{},
 		ServiceBrokerCatalogCacheStorage: serviceBrokerCatalogCacheStorage(),
+		AppLogStorage:                    &applogStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }

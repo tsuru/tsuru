@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package applog
+package mongodb
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ func isSessionClosed(r interface{}) bool {
 	return fmt.Sprintf("%v", r) == "Session already closed"
 }
 
-func newLogListener(svc appTypes.AppLogService, appName string, filterLog appTypes.Applog) (*logListener, error) {
+func newLogListener(svc appTypes.AppLogStorage, appName string, filterLog appTypes.Applog) (*logListener, error) {
 	conn, err := db.LogConn()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,12 @@ func newLogListener(svc appTypes.AppLogService, appName string, filterLog appTyp
 		// Next() call wouldn't block). So if the collection is empty we insert
 		// the very first log line in it. This is quite rare in the real world
 		// though so the impact of this extra log message is really small.
-		err = svc.Add(appName, "Logs initialization", "tsuru", "")
+		err = svc.InsertApp(appName, &appTypes.Applog{
+			Date:    time.Now().In(time.UTC),
+			Message: "Logs initialization",
+			Source:  "tsuru",
+			AppName: appName,
+		})
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -75,11 +80,7 @@ func newLogListener(svc appTypes.AppLogService, appName string, filterLog appTyp
 	query := coll.Find(mkQuery())
 	tailTimeout := 10 * time.Second
 	iter := query.Sort("$natural").Tail(tailTimeout)
-	tailCountMetric := logsAppTail.WithLabelValues(appName)
-	entriesMetric := logsAppTailEntries.WithLabelValues(appName)
 	go func() {
-		tailCountMetric.Inc()
-		defer tailCountMetric.Dec()
 		defer close(c)
 		defer func() {
 			if r := recover(); r != nil {
@@ -95,7 +96,6 @@ func newLogListener(svc appTypes.AppLogService, appName string, filterLog appTyp
 				lastId = applog.MongoID
 				select {
 				case c <- applog:
-					entriesMetric.Inc()
 				case <-quit:
 					iter.Close()
 					return

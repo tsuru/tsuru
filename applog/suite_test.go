@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
@@ -24,7 +24,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "app_applog_pkg_tests")
+	config.Set("database:name", "applog_pkg_tests")
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -38,46 +38,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
-	s.dropAppLogCollections(c)
-}
-
-func (s *S) dropAppLogCollections(c *check.C) {
-	logConn, err := db.LogConn()
-	c.Assert(err, check.IsNil)
-	defer logConn.Close()
-	logdb := logConn.AppLogCollection("myapp").Database
-	colls, err := logdb.CollectionNames()
-	if err != nil {
-		return
-	}
-	for _, coll := range colls {
-		if len(coll) > 5 && coll[0:5] == "logs_" {
-			logdb.C(coll).DropCollection()
-		}
-	}
-}
-
-func createAppLogCollection(appName string) error {
-	conn, err := db.LogConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	_, err = conn.CreateAppLogCollection(appName)
-	// Ignore collection already exists error (code 48)
-	if queryErr, ok := err.(*mgo.QueryError); !ok || queryErr.Code != 48 {
-		return err
-	}
-	return nil
-}
-
-func insertLogs(appName string, logs []interface{}) error {
-	conn, err := db.LogConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.AppLogCollection(appName).Insert(logs...)
 }
 
 func compareLogsNoDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog) {
