@@ -30,6 +30,7 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
 }
 
@@ -38,6 +39,33 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
+}
+
+type ServiceSuite struct {
+	svcFunc func() (appTypes.AppLogService, error)
+	svc     appTypes.AppLogService
+}
+
+func (s *ServiceSuite) SetUpSuite(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "applog_pkg_service_suite_tests")
+}
+
+func (s *ServiceSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
+func (s *ServiceSuite) SetUpTest(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Apps().Database)
+	s.svc, err = s.svcFunc()
+	c.Assert(err, check.IsNil)
+	c.Logf("Service: %T", s.svc)
 }
 
 func compareLogsNoDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog) {
