@@ -133,7 +133,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	s.setupMocks()
-	servicemanager.AppLog, err = applog.StorageAppLogService()
+	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }
 

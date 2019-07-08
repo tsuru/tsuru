@@ -80,7 +80,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(_ string) (*serviceTypes.BrokerCatalog, error) {
 		return nil, fmt.Errorf("not found")
 	}
-	servicemanager.AppLog, err = applog.StorageAppLogService()
+	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }
 

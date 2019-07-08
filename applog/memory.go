@@ -23,7 +23,7 @@ type memoryLogService struct {
 	bufferMap sync.Map
 }
 
-func MemoryAppLogService() (appTypes.AppLogService, error) {
+func memoryAppLogService() (appTypes.AppLogService, error) {
 	return &memoryLogService{}, nil
 }
 

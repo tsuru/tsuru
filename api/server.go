@@ -143,7 +143,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.AppLog, err = applog.StorageAppLogService()
+	servicemanager.AppLog, err = applog.AppLogService()
 	return err
 }
 
