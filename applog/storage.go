@@ -20,7 +20,7 @@ type storageLogService struct {
 	storage    appTypes.AppLogStorage
 }
 
-func StorageAppLogService() (appTypes.AppLogService, error) {
+func storageAppLogService() (appTypes.AppLogService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()

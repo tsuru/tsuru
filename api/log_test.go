@@ -233,6 +233,6 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	c.StopTimer()
 	servicemanager.AppLog.(shutdown.Shutdownable).Shutdown(context.Background())
 	var err error
-	servicemanager.AppLog, err = applog.StorageAppLogService()
+	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }

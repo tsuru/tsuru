@@ -18,7 +18,7 @@ import (
 
 func (s *S) TestLogDispatcherSend(c *check.C) {
 	logsInQueue.Set(0)
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)
@@ -47,7 +47,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
@@ -77,7 +77,7 @@ func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	logsInQueue.Set(0)
 	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
@@ -101,7 +101,7 @@ func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	dispatcher := newlogDispatcher(2000000, svc.(*storageLogService).storage)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
@@ -177,7 +177,7 @@ func (s *S) TestBulkProcessorCustomQueueSize(c *check.C) {
 func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 	config.Set("log:app-log-rate-limit", 1)
 	defer config.Unset("log:app-log-rate-limit")
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)
@@ -208,7 +208,7 @@ func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 func (s *S) TestLogDispatcherSendGlobalRateLimit(c *check.C) {
 	config.Set("log:global-app-log-rate-limit", 1)
 	defer config.Unset("log:global-app-log-rate-limit")
-	svc, err := StorageAppLogService()
+	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
 	listener, err := svc.Watch("myapp1", "", "")
 	c.Assert(err, check.IsNil)

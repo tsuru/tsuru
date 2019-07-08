@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	_ = check.Suite(&ServiceSuite{svcFunc: StorageAppLogService})
-	_ = check.Suite(&ServiceSuite{svcFunc: MemoryAppLogService})
+	_ = check.Suite(&ServiceSuite{svcFunc: storageAppLogService})
+	_ = check.Suite(&ServiceSuite{svcFunc: memoryAppLogService})
 )
 
 func (s *ServiceSuite) Test_LogService_Add(c *check.C) {

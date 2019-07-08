@@ -179,7 +179,7 @@ func (s *S) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	setupMocks(s)
-	servicemanager.AppLog, err = applog.StorageAppLogService()
+	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }
 
