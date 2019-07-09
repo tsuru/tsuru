@@ -10,6 +10,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -61,6 +62,9 @@ func (s *memoryLogService) Add(appName, message, source, unit string) error {
 }
 
 func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	if args.AppName == "" {
+		return nil, errors.New("app name required to list logs")
+	}
 	buffer := s.getAppBuffer(args.AppName)
 	if buffer.length == 0 {
 		return []appTypes.Applog{}, nil
@@ -124,6 +128,9 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 	next := &ringEntry{
 		log:  entry,
 		size: entrySize(entry),
+	}
+	if next.size > maxAppBufferSize {
+		return
 	}
 	if b.start == nil {
 		b.start = next
