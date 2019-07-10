@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/config"
 	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/api/tracker"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
@@ -144,6 +145,13 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.AppLog, err = applog.AppLogService()
+	if err != nil {
+		return err
+	}
+	servicemanager.InstanceTracker, err = tracker.InstanceService()
+	if err != nil {
+		return err
+	}
 	return err
 }
 
