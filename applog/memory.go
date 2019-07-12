@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 )
@@ -20,6 +21,41 @@ const (
 	watchBufferSize  = 1000
 	sizeofTime       = unsafe.Sizeof(time.Time{})
 )
+
+var (
+	logsMemoryReceived = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_memory_received_total",
+		Help: "The number of in memory log entries received for processing.",
+	}, []string{"app"})
+
+	logsMemoryEvicted = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_memory_evicted_total",
+		Help: "The number of in memory log entries removed due to full buffer.",
+	}, []string{"app"})
+
+	logsMemoryBlockedWatch = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_memory_watch_blocked_seconds_total",
+		Help: "The total time spent blocked trying to notify watchers of new logs.",
+	}, []string{"app"})
+
+	logsMemorySize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_logs_memory_size",
+		Help: "The size in bytes for in memory log entries of a given app.",
+	}, []string{"app"})
+
+	logsMemoryLength = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_logs_memory_length",
+		Help: "The number of in memory log entries for a given app.",
+	}, []string{"app"})
+)
+
+func init() {
+	prometheus.MustRegister(logsMemoryReceived)
+	prometheus.MustRegister(logsMemoryEvicted)
+	prometheus.MustRegister(logsMemoryBlockedWatch)
+	prometheus.MustRegister(logsMemorySize)
+	prometheus.MustRegister(logsMemoryLength)
+}
 
 type memoryLogService struct {
 	bufferMap sync.Map
@@ -32,6 +68,7 @@ func memoryAppLogService() (appTypes.AppLogService, error) {
 func (s *memoryLogService) Enqueue(entry *appTypes.Applog) error {
 	buffer := s.getAppBuffer(entry.AppName)
 	buffer.add(entry)
+	logsMemoryReceived.WithLabelValues(entry.AppName).Inc()
 	return nil
 }
 
@@ -144,13 +181,17 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 	b.end = b.end.next
 	b.length++
 	newFullSize := b.size + next.size
+	evicted := logsMemoryEvicted.WithLabelValues(b.appName)
 	for newFullSize > maxAppBufferSize {
 		newFullSize -= b.start.size
 		b.start = b.start.next
 		b.start.prev = b.end
 		b.length--
+		evicted.Inc()
 	}
 	b.size = newFullSize
+	logsMemorySize.WithLabelValues(b.appName).Set(float64(b.size))
+	logsMemoryLength.WithLabelValues(b.appName).Set(float64(b.length))
 	for _, w := range b.watchers {
 		if w.source != "" && w.source != entry.Source {
 			continue
@@ -158,7 +199,13 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 		if w.unit != "" && w.unit != entry.Unit {
 			continue
 		}
-		w.ch <- *entry
+		select {
+		case w.ch <- *entry:
+		default:
+			t0 := time.Now()
+			w.ch <- *entry
+			logsMemoryBlockedWatch.WithLabelValues(b.appName).Add(time.Since(t0).Seconds())
+		}
 	}
 }
 
