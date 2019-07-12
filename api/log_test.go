@@ -16,10 +16,9 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/servicemanager"
-
-	"github.com/tsuru/tsuru/app"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -81,9 +80,9 @@ loop:
 			logs1 []appTypes.Applog
 			logs2 []appTypes.Applog
 		)
-		logs1, err = a1.LastLogs(3, appTypes.Applog{})
+		logs1, err = a1.LastLogs(servicemanager.AppLog, 3, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
-		logs2, err = a2.LastLogs(2, appTypes.Applog{})
+		logs2, err = a2.LastLogs(servicemanager.AppLog, 2, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs1) == 3 && len(logs2) == 2 {
 			break
@@ -95,7 +94,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(3, appTypes.Applog{})
+	logs, err := a1.LastLogs(servicemanager.AppLog, 3, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
@@ -103,7 +102,7 @@ loop:
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
 		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
 	})
-	logs, err = a2.LastLogs(2, appTypes.Applog{})
+	logs, err = a2.LastLogs(servicemanager.AppLog, 2, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
@@ -157,7 +156,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 loop:
 	for {
 		var logs1 []appTypes.Applog
-		logs1, err = a1.LastLogs(nConcurrency, appTypes.Applog{})
+		logs1, err = a1.LastLogs(servicemanager.AppLog, nConcurrency, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs1) == nConcurrency {
 			break
@@ -169,7 +168,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(1, appTypes.Applog{})
+	logs, err := a1.LastLogs(servicemanager.AppLog, 1, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []appTypes.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},

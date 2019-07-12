@@ -1170,7 +1170,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	source := r.URL.Query().Get("source")
 	unit := r.URL.Query().Get("unit")
-	follow := r.URL.Query().Get("follow")
+	follow := r.URL.Query().Get("follow") == "1"
 	appName := r.URL.Query().Get(":app")
 	filterLog := appTypes.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
@@ -1183,7 +1183,13 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	logs, err := a.LastLogs(lines, filterLog)
+	logService := servicemanager.AppLog
+	if strings.Contains(r.URL.Path, "/log-instance") {
+		if svcInstance, ok := servicemanager.AppLog.(appTypes.AppLogServiceInstance); ok {
+			logService = svcInstance.Instance()
+		}
+	}
+	logs, err := a.LastLogs(logService, lines, filterLog, t)
 	if err != nil {
 		return err
 	}
@@ -1192,10 +1198,10 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if follow != "1" {
+	if !follow {
 		return nil
 	}
-	watcher, err := servicemanager.AppLog.Watch(a.Name, source, unit)
+	watcher, err := logService.Watch(a.Name, source, unit, t)
 	if err != nil {
 		return err
 	}

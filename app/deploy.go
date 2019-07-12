@@ -15,6 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -23,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -171,6 +173,7 @@ type DeployOptions struct {
 	Event        *event.Event `bson:"-"`
 	Kind         DeployKind
 	Message      string
+	Token        auth.Token
 }
 
 func (o *DeployOptions) GetOrigin() string {
@@ -283,9 +286,9 @@ func Deploy(opts DeployOptions) (string, error) {
 	if err != nil {
 		var logLines []appTypes.Applog
 		if provision.IsStartupError(err) {
-			logLines, _ = opts.App.lastLogs(10, appTypes.Applog{
+			logLines, _ = opts.App.lastLogs(servicemanager.AppLog, 10, appTypes.Applog{
 				Source: "tsuru",
-			}, true)
+			}, true, opts.Token)
 		}
 		err = &errorWithLog{err: err, logs: logLines}
 		return "", err

@@ -55,7 +55,7 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("myapp", "", "")
+	l, err := s.svc.Watch("myapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -158,7 +158,7 @@ func addLog(c *check.C, svc appTypes.AppLogService, appName, message, source, un
 }
 
 func (s *ServiceSuite) TestWatch(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "")
+	l, err := s.svc.Watch("myapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -171,7 +171,7 @@ func (s *ServiceSuite) TestWatch(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
-	l, err := s.svc.Watch("myapp", "web", "u1")
+	l, err := s.svc.Watch("myapp", "web", "u1", nil)
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -194,7 +194,7 @@ func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "")
+	l, err := s.svc.Watch("myapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(l.Chan(), check.NotNil)
 	l.Close()
@@ -203,7 +203,7 @@ func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchClose(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "")
+	l, err := s.svc.Watch("myapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	l.Close()
 	_, ok := <-l.Chan()
@@ -214,7 +214,7 @@ func (s *ServiceSuite) TestWatchDoubleClose(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch("yourapp", "", "")
+	l, err := s.svc.Watch("yourapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	l.Close()
 	l.Close()
@@ -225,7 +225,7 @@ func (s *ServiceSuite) TestWatchNotify(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("fade", "", "")
+	l, err := s.svc.Watch("fade", "", "", nil)
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -276,7 +276,7 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("fade", "tsuru", "unit1")
+	l, err := s.svc.Watch("fade", "tsuru", "unit1", nil)
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -329,7 +329,7 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch("fade", "", "")
+	l, err := s.svc.Watch("fade", "", "", nil)
 	c.Assert(err, check.IsNil)
 	l.Close()
 	addLog(c, s.svc, "fade", "Something went wrong. Check it out:", "tsuru", "")

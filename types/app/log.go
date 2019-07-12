@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/tsuru/tsuru/types/auth"
 )
 
 type LogWatcher interface {
@@ -15,7 +16,11 @@ type AppLogService interface {
 	Enqueue(entry *Applog) error
 	Add(appName, message, source, unit string) error
 	List(args ListLogArgs) ([]Applog, error)
-	Watch(appName, source, unit string) (LogWatcher, error)
+	Watch(appName, source, unit string, t auth.Token) (LogWatcher, error)
+}
+
+type AppLogServiceInstance interface {
+	Instance() AppLogService
 }
 
 type AppLogStorage interface {
@@ -30,6 +35,7 @@ type ListLogArgs struct {
 	Unit          string
 	Limit         int
 	InvertFilters bool
+	Token         auth.Token
 }
 
 // Applog represents a log entry.

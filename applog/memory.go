@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/auth"
 )
 
 const (
@@ -89,7 +90,7 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	return logs[len(logs)-count:], nil
 }
 
-func (s *memoryLogService) Watch(appName, source, unit string) (appTypes.LogWatcher, error) {
+func (s *memoryLogService) Watch(appName, source, unit string, t auth.Token) (appTypes.LogWatcher, error) {
 	buffer := s.getAppBuffer(appName)
 	watcher := &memoryWatcher{
 		buffer: buffer,

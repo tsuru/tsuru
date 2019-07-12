@@ -5579,7 +5579,7 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(5, appTypes.Applog{})
+	logs, err := a.LastLogs(servicemanager.AppLog, 5, appTypes.Applog{}, token)
 	c.Assert(err, check.IsNil)
 	got := make([]string, len(logs))
 	gotSource := make([]string, len(logs))
@@ -6343,7 +6343,7 @@ func (s *S) TestFollowLogs(c *check.C) {
 	enc := &fakeEncoder{
 		done: make(chan struct{}),
 	}
-	l, err := servicemanager.AppLog.Watch(a.Name, "", "")
+	l, err := servicemanager.AppLog.Watch(a.Name, "", "", s.token)
 	c.Assert(err, check.IsNil)
 	go func() {
 		err = servicemanager.AppLog.Add(a.Name, "xyz", "", "")
@@ -6371,7 +6371,7 @@ func (s *S) TestFollowLogsTimeout(c *check.C) {
 	enc := &fakeEncoder{
 		done: make(chan struct{}),
 	}
-	l, err := servicemanager.AppLog.Watch(a.Name, "", "")
+	l, err := servicemanager.AppLog.Watch(a.Name, "", "", s.token)
 	c.Assert(err, check.IsNil)
 	err = followLogs(ctx, a.Name, l, enc)
 	c.Assert(err, check.ErrorMatches, `.*timeout.*`)

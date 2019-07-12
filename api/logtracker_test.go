@@ -23,7 +23,7 @@ func (s *S) TestLogStreamTrackerAddRemove(c *check.C) {
 }
 
 func (s *S) TestLogStreamTrackerShutdown(c *check.C) {
-	l, err := servicemanager.AppLog.Watch("myapp", "", "")
+	l, err := servicemanager.AppLog.Watch("myapp", "", "", nil)
 	c.Assert(err, check.IsNil)
 	logTracker.add(l)
 	logTracker.Shutdown(context.Background())
