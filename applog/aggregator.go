@@ -160,7 +160,7 @@ func (w *aggregateWatcher) watchRequest(req *http.Request) error {
 		var logs []appTypes.Applog
 		err = decoder.Decode(&logs)
 		if err != nil {
-			if err != io.EOF {
+			if err != io.EOF && err != context.Canceled {
 				return errors.WithStack(err)
 			}
 			return nil
