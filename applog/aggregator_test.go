@@ -143,16 +143,20 @@ func (s *S) Test_Aggregator_Watch(c *check.C) {
 	close(ch3)
 }
 
-func (s *S) Test_Aggregator_Watch_WithError(c *check.C) {
-	wg := sync.WaitGroup{}
-	wg.Add(3)
+func (s *S) Test_Aggregator_Watch_WithErrorAfterMessages(c *check.C) {
+	allServersWG := sync.WaitGroup{}
+	allServersWG.Add(3)
+	okServersWG := sync.WaitGroup{}
+	okServersWG.Add(2)
 	rollback := mockServers(3, func(i int, w http.ResponseWriter, r *http.Request) bool {
-		defer wg.Done()
+		defer allServersWG.Done()
 		if i == 1 {
+			okServersWG.Wait()
 			w.WriteHeader(http.StatusInternalServerError)
 			return true
 		}
 		enc := json.NewEncoder(w)
+		notified := false
 		for {
 			response := []appTypes.Applog{{Message: "msg"}}
 			err := enc.Encode(response)
@@ -160,6 +164,10 @@ func (s *S) Test_Aggregator_Watch_WithError(c *check.C) {
 				break
 			}
 			w.(http.Flusher).Flush()
+			if !notified {
+				notified = true
+				okServersWG.Done()
+			}
 			time.Sleep(100 * time.Millisecond)
 		}
 		return true
@@ -172,7 +180,7 @@ func (s *S) Test_Aggregator_Watch_WithError(c *check.C) {
 	defer watcher.Close()
 	doneCh := make(chan struct{})
 	go func() {
-		wg.Wait()
+		allServersWG.Wait()
 		close(doneCh)
 	}()
 	select {
