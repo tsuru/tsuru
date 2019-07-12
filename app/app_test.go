@@ -2512,7 +2512,7 @@ func (s *S) TestLastLogs(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(10, appTypes.Applog{Source: "tsuru"})
+	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 5; i < 15; i++ {
@@ -2544,7 +2544,7 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, err = app.LastLogs(10, appTypes.Applog{})
+	_, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
 	c.Assert(err, check.ErrorMatches, "my doc msg")
 }
 
@@ -2830,7 +2830,7 @@ func (s *S) TestRun(c *check.C) {
 	var logs []appTypes.Applog
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err = app.LastLogs(10, appTypes.Applog{})
+		logs, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs) > 2 {
 			break

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/types/auth"
 )
 
 type storageLogService struct {
@@ -69,7 +70,7 @@ func (s *storageLogService) List(filters appTypes.ListLogArgs) ([]appTypes.Applo
 	return s.storage.List(filters)
 }
 
-func (s *storageLogService) Watch(appName, source, unit string) (appTypes.LogWatcher, error) {
+func (s *storageLogService) Watch(appName, source, unit string, t auth.Token) (appTypes.LogWatcher, error) {
 	return s.storage.Watch(appName, source, unit)
 }
 

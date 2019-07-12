@@ -21,7 +21,7 @@ func AppLogService() (appTypes.AppLogService, error) {
 	case "storage":
 		svc, err = storageAppLogService()
 	case "memory":
-		svc, err = memoryAppLogService()
+		svc, err = aggregatorAppLogService()
 	default:
 		return nil, errors.New(`invalid app log service, valid values are: "storage" or "memory"`)
 	}
