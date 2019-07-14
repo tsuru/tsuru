@@ -19,7 +19,7 @@ import (
 const (
 	maxAppBufferSize = 1 * 1024 * 1024 // 1 MiB
 	watchBufferSize  = 1000
-	sizeofTime       = unsafe.Sizeof(time.Time{})
+	baseLogSize      = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
 )
 
 var (
@@ -251,7 +251,7 @@ func entrySize(entry *appTypes.Applog) uint {
 		len(entry.MongoID) +
 		len(entry.Source) +
 		len(entry.Unit) +
-		int(sizeofTime))
+		int(baseLogSize))
 }
 
 type memoryWatcher struct {
