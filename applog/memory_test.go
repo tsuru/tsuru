@@ -26,6 +26,8 @@ func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	buffer := svc.getAppBuffer("myapp")
 	c.Assert(buffer.length, check.Equals, 10)
 	c.Assert(buffer.size <= maxAppBufferSize, check.Equals, true)
+	c.Assert(buffer.start.prev, check.Equals, buffer.end)
+	c.Assert(buffer.end.next, check.Equals, buffer.start)
 	msgs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
