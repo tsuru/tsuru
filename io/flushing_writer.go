@@ -6,26 +6,40 @@ package io
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/log"
 )
+
+var (
+	_ WriterFlusher = &FlushingWriter{}
+	_ http.Hijacker = &FlushingWriter{}
+)
+
+type WriterFlusher interface {
+	http.ResponseWriter
+	http.Flusher
+}
 
 // FlushingWriter is a custom writer that flushes after writing, if the
 // underlying ResponseWriter is also an http.Flusher.
 type FlushingWriter struct {
-	http.ResponseWriter
-	wrote      bool
-	writeMutex sync.Mutex
+	WriterFlusher
+	MaxLatency   time.Duration
+	writeMutex   sync.Mutex
+	timer        *time.Timer
+	wrote        bool
+	flushPending bool
 }
 
 func (w *FlushingWriter) WriteHeader(code int) {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
 	w.wrote = true
-	w.ResponseWriter.WriteHeader(code)
+	w.WriterFlusher.WriteHeader(code)
 }
 
 // Write writes and flushes the data.
@@ -33,32 +47,57 @@ func (w *FlushingWriter) Write(data []byte) (written int, err error) {
 	w.writeMutex.Lock()
 	defer w.writeMutex.Unlock()
 	w.wrote = true
-	written, err = w.ResponseWriter.Write(data)
+	written, err = w.WriterFlusher.Write(data)
 	if err != nil {
 		return
 	}
-	if f, ok := w.ResponseWriter.(http.Flusher); ok {
-		defer func() {
-			if r := recover(); r != nil {
-				msg := fmt.Sprintf("Error recovered on flushing writer: %#v", r)
-				log.Debugf(msg)
-				err = errors.Errorf(msg)
-			}
-		}()
-		f.Flush()
+	if w.MaxLatency == 0 {
+		w.WriterFlusher.Flush()
+		return
+	}
+	if w.flushPending {
+		return
+	}
+	w.flushPending = true
+	if w.timer == nil {
+		w.timer = time.AfterFunc(w.MaxLatency, w.delayedFlush)
+	} else {
+		w.timer.Reset(w.MaxLatency)
 	}
 	return
 }
 
+func (w *FlushingWriter) delayedFlush() {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
+	if !w.flushPending {
+		return
+	}
+	w.WriterFlusher.Flush()
+	w.flushPending = false
+}
+
+func (w *FlushingWriter) Flush() {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
+	w.flushPending = false
+	if w.timer != nil {
+		w.timer.Stop()
+	}
+	w.WriterFlusher.Flush()
+}
+
 // Wrote returns whether the method WriteHeader has been called or not.
 func (w *FlushingWriter) Wrote() bool {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
 	return w.wrote
 }
 
 // Hijack will hijack the underlying TCP connection, if available in the
 // ResponseWriter.
 func (w *FlushingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+	if hijacker, ok := w.WriterFlusher.(http.Hijacker); ok {
 		return hijacker.Hijack()
 	}
 	return nil, nil, errors.New("cannot hijack connection")
