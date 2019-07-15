@@ -67,14 +67,47 @@ func (s *S) TestContextClearerMiddleware(c *check.C) {
 }
 
 func (s *S) TestFlushingWriterMiddleware(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, check.IsNil)
-	h, log := doHandler()
-	flushingWriterMiddleware(recorder, request, h)
-	c.Assert(log.called, check.Equals, true)
-	_, ok := log.w.(*io.FlushingWriter)
-	c.Assert(ok, check.Equals, true)
+	tests := []struct {
+		url             string
+		config          map[string]time.Duration
+		expectedLatency time.Duration
+	}{
+		{
+			url:             "/",
+			expectedLatency: 0,
+		},
+		{
+			url:             "/",
+			expectedLatency: 0,
+			config:          map[string]time.Duration{},
+		},
+		{
+			url:             "/?:mux-route-name=my-cool-handler",
+			expectedLatency: 0,
+			config:          map[string]time.Duration{},
+		},
+		{
+			url:             "/?:mux-route-name=my-cool-handler",
+			expectedLatency: 2 * time.Second,
+			config: map[string]time.Duration{
+				"my-cool-handler": 2 * time.Second,
+			},
+		},
+	}
+	for _, tt := range tests {
+		flushingWriter := flushingWriterMiddleware{
+			latencyConfig: tt.config,
+		}
+		recorder := httptest.NewRecorder()
+		request, err := http.NewRequest("GET", tt.url, nil)
+		c.Assert(err, check.IsNil)
+		h, log := doHandler()
+		flushingWriter.ServeHTTP(recorder, request, h)
+		c.Assert(log.called, check.Equals, true)
+		fWriter, ok := log.w.(*io.FlushingWriter)
+		c.Assert(ok, check.Equals, true)
+		c.Assert(fWriter.MaxLatency, check.Equals, tt.expectedLatency)
+	}
 }
 
 func (s *S) TestSetRequestIDHeaderMiddleware(c *check.C) {

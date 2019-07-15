@@ -5,6 +5,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -107,4 +108,29 @@ func (s *S) TestDelayedRouterAddAll(c *check.C) {
 		c.Assert(called, check.Equals, true)
 		called = false
 	}
+}
+
+func (s *S) TestDelayedRouterAddNamed(c *check.C) {
+	router := NewRouter()
+	called := false
+	router.AddNamed("my-route", "1.0", "GET", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	for _, prefix := range []string{"/", "/1.0/"} {
+		recorder := httptest.NewRecorder()
+		request, err := http.NewRequest("GET", fmt.Sprintf("%vdream/tel'aran'rhiod", prefix), nil)
+		c.Assert(err, check.IsNil)
+		router.ServeHTTP(recorder, request)
+		c.Assert(called, check.Equals, false)
+		c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
+		c.Assert(request.URL.Query().Get(":mux-route-name"), check.Equals, "my-route")
+		runDelayedHandler(recorder, request)
+		c.Assert(called, check.Equals, true)
+		called = false
+	}
+	namedRoute := router.mux.Get("my-route")
+	c.Assert(namedRoute, check.NotNil)
+	tpl, err := namedRoute.GetPathTemplate()
+	c.Assert(err, check.IsNil)
+	c.Assert(tpl, check.Equals, "/{version:[0-9.]+}/dream/{world}")
 }
