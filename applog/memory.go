@@ -102,6 +102,9 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	if args.AppName == "" {
 		return nil, errors.New("app name required to list logs")
 	}
+	if args.Limit < 0 {
+		return []appTypes.Applog{}, nil
+	}
 	buffer := s.getAppBuffer(args.AppName)
 	if buffer.length == 0 {
 		return []appTypes.Applog{}, nil
