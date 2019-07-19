@@ -115,6 +115,24 @@ func (s *ServiceSuite) Test_LogService_List(c *check.C) {
 	}
 }
 
+func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
+	for i := 0; i < 15; i++ {
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+	}
+	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: -1, AppName: "myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 0)
+}
+
+func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
+	for i := 0; i < 15; i++ {
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+	}
+	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 0, AppName: "myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 15)
+}
+
 func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
 	for i := 0; i < 15; i++ {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")

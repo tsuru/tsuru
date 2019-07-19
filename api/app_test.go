@@ -4292,6 +4292,54 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	c.Assert(logs, check.HasLen, 10)
 }
 
+func (s *S) TestAppLogAllowNegativeLines(c *check.C) {
+	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 15; i++ {
+		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadLog,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=-1", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appLog(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	logs := []appTypes.Applog{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 0)
+}
+
+func (s *S) TestAppLogExplicitZeroLines(c *check.C) {
+	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 15; i++ {
+		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadLog,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=0", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appLog(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	logs := []appTypes.Applog{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 15)
+}
+
 func (s *S) TestAppLogSelectBySource(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)

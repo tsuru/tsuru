@@ -67,6 +67,9 @@ func (s *storageLogService) Add(appName, message, source, unit string) error {
 }
 
 func (s *storageLogService) List(filters appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	if filters.Limit < 0 {
+		return []appTypes.Applog{}, nil
+	}
 	return s.storage.List(filters)
 }
 

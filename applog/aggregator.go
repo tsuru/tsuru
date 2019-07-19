@@ -97,7 +97,7 @@ func (s *aggregatorLogService) Watch(appName, source, unit string, t auth.Token)
 		AppName: appName,
 		Source:  source,
 		Unit:    unit,
-		Limit:   1,
+		Limit:   -1,
 		Token:   t,
 	}
 	requests, err := buildInstanceRequests(args, true)
