@@ -5,9 +5,12 @@
 package kubernetes
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/tsuru/tsuru/api/shutdown"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -41,6 +44,7 @@ import (
 type testProv interface {
 	provision.Provisioner
 	provision.BuilderDeployKubeClient
+	shutdown.Shutdownable
 }
 
 type S struct {
@@ -79,6 +83,13 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := s.p.Shutdown(ctx)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -131,8 +142,18 @@ func (s *S) SetUpTest(c *check.C) {
 			return &plan, nil
 		},
 	}
-	s.mockService.Cluster.OnFindByPool = func(prov, pool string) (*provTypes.Cluster, error) {
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*clus}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
 		return clus, nil
+	}
+	s.mockService.Cluster.OnFindByPools = func(provName string, poolNames []string) (map[string]provTypes.Cluster, error) {
+		ret := make(map[string]provTypes.Cluster)
+		for _, pool := range poolNames {
+			ret[pool] = *clus
+		}
+		return ret, nil
 	}
 	s.b = &kubernetesBuilder{}
 	s.p = kubeProv.GetProvisioner()
