@@ -94,3 +94,7 @@ func (n *kubernetesNodeWrapper) ip() string {
 	}
 	return tsuruNet.URLToHost(n.Address())
 }
+
+func (n *kubernetesNodeWrapper) RawNode() *apiv1.Node {
+	return n.node
+}

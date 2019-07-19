@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"reflect"
 	stdRuntime "runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -325,33 +326,70 @@ func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) f
 	}
 }
 
+func SortNodes(nodes []*apiv1.Node) {
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Name < nodes[j].Name
+	})
+}
+
+func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
+	nodes, err := s.p.(provision.NodeProvisioner).ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	var rawNodes []*apiv1.Node
+	for _, n := range nodes {
+		rawNodes = append(rawNodes, n.(interface{ RawNode() *apiv1.Node }).RawNode())
+	}
+	fn()
+	timeout := time.After(5 * time.Second)
+	for {
+		nodes, err = s.p.(provision.NodeProvisioner).ListNodes(nil)
+		c.Assert(err, check.IsNil)
+		var rawNodesAfter []*apiv1.Node
+		for _, n := range nodes {
+			rawNodesAfter = append(rawNodesAfter, n.(interface{ RawNode() *apiv1.Node }).RawNode())
+		}
+		SortNodes(rawNodes)
+		SortNodes(rawNodesAfter)
+		if !reflect.DeepEqual(rawNodes, rawNodesAfter) {
+			return
+		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-timeout:
+			c.Fatal("timeout waiting for node changes")
+		}
+	}
+}
+
 func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 	if len(urls) > 0 {
 		s.client.GetCluster().Addresses = urls
 		s.client.ClusterInterface.RestConfig().Host = urls[0]
 	}
 	for i := 1; i <= 2; i++ {
-		_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("n%d", i),
-				Labels: map[string]string{
-					"tsuru.io/pool": "test-default",
-				},
-			},
-			Status: apiv1.NodeStatus{
-				Addresses: []apiv1.NodeAddress{
-					{
-						Type:    apiv1.NodeInternalIP,
-						Address: fmt.Sprintf("192.168.99.%d", i),
-					},
-					{
-						Type:    apiv1.NodeExternalIP,
-						Address: fmt.Sprintf("200.0.0.%d", i),
+		s.WaitNodeUpdate(c, func() {
+			_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("n%d", i),
+					Labels: map[string]string{
+						"tsuru.io/pool": "test-default",
 					},
 				},
-			},
+				Status: apiv1.NodeStatus{
+					Addresses: []apiv1.NodeAddress{
+						{
+							Type:    apiv1.NodeInternalIP,
+							Address: fmt.Sprintf("192.168.99.%d", i),
+						},
+						{
+							Type:    apiv1.NodeExternalIP,
+							Address: fmt.Sprintf("200.0.0.%d", i),
+						},
+					},
+				},
+			})
+			c.Assert(err, check.IsNil)
 		})
-		c.Assert(err, check.IsNil)
 	}
 }
 
