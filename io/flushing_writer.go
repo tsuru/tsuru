@@ -33,6 +33,7 @@ type FlushingWriter struct {
 	timer        *time.Timer
 	wrote        bool
 	flushPending bool
+	hijacked     bool
 }
 
 func (w *FlushingWriter) WriteHeader(code int) {
@@ -80,6 +81,9 @@ func (w *FlushingWriter) delayedFlush() {
 func (w *FlushingWriter) Flush() {
 	w.writeMutex.Lock()
 	defer w.writeMutex.Unlock()
+	if w.hijacked {
+		return
+	}
 	w.flushPending = false
 	if w.timer != nil {
 		w.timer.Stop()
@@ -98,6 +102,7 @@ func (w *FlushingWriter) Wrote() bool {
 // ResponseWriter.
 func (w *FlushingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hijacker, ok := w.WriterFlusher.(http.Hijacker); ok {
+		w.hijacked = true
 		return hijacker.Hijack()
 	}
 	return nil, nil, errors.New("cannot hijack connection")

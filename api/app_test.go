@@ -6406,21 +6406,3 @@ func (s *S) TestFollowLogs(c *check.C) {
 	c.Assert(msgSlice, check.HasLen, 1)
 	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
 }
-
-func (s *S) TestFollowLogsTimeout(c *check.C) {
-	old := logTailIdleTimeout
-	logTailIdleTimeout = 100 * time.Millisecond
-	defer func() { logTailIdleTimeout = old }()
-	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	enc := &fakeEncoder{
-		done: make(chan struct{}),
-	}
-	l, err := servicemanager.AppLog.Watch(a.Name, "", "", s.token)
-	c.Assert(err, check.IsNil)
-	err = followLogs(ctx, a.Name, l, enc)
-	c.Assert(err, check.ErrorMatches, `.*timeout.*`)
-}
