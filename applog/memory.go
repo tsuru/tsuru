@@ -12,15 +12,16 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/config"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/auth"
 )
 
 const (
-	maxAppBufferSize     = 1 * 1024 * 1024 // 1 MiB
-	watchBufferSize      = 1000
-	watchWarningInterval = 30 * time.Second
-	baseLogSize          = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
+	defaultMaxAppBufferSize = 1 * 1024 * 1024 // 1 MiB
+	watchBufferSize         = 1000
+	watchWarningInterval    = 30 * time.Second
+	baseLogSize             = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
 )
 
 var (
@@ -158,9 +159,18 @@ func (s *memoryLogService) getAppBuffer(appName string) *appLogBuffer {
 			droppedCounter:  logsMemoryDroppedWatch.WithLabelValues(appName),
 			sizeGauge:       logsMemorySize.WithLabelValues(appName),
 			lengthGauge:     logsMemoryLength.WithLabelValues(appName),
+			bufferMaxSize:   appBufferSize(),
 		})
 	}
 	return buffer.(*appLogBuffer)
+}
+
+func appBufferSize() uint {
+	bufferSize, _ := config.GetUint("log:app-log-memory-buffer-bytes")
+	if bufferSize == 0 {
+		bufferSize = defaultMaxAppBufferSize
+	}
+	return bufferSize
 }
 
 type ringEntry struct {
@@ -174,6 +184,7 @@ type appLogBuffer struct {
 	appName         string
 	size            uint
 	length          int
+	bufferMaxSize   uint
 	start, end      *ringEntry
 	watchers        []*memoryWatcher
 	receivedCounter prometheus.Counter
@@ -191,7 +202,7 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 		log:  entry,
 		size: entrySize(entry),
 	}
-	if next.size > maxAppBufferSize {
+	if next.size > b.bufferMaxSize {
 		return
 	}
 	if b.start == nil {
@@ -205,7 +216,7 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 	b.end = b.end.next
 	b.length++
 	newFullSize := b.size + next.size
-	for newFullSize > maxAppBufferSize {
+	for newFullSize > b.bufferMaxSize {
 		newFullSize -= b.start.size
 		b.start = b.start.next
 		b.start.prev = b.end
