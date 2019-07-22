@@ -14,6 +14,7 @@ import (
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	check "gopkg.in/check.v1"
 )
 
@@ -35,6 +36,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	servicemock.SetMockService(&servicemock.MockService{})
 	config.Unset("iaas:node-protocol")
 	config.Unset("iaas:node-port")
 	HealerInstance = nil

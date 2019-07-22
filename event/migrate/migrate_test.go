@@ -161,6 +161,7 @@ func (s *S) checkEvtMatch(evt *event.Event, c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	evt.ID = evts[0].ID
+	evt.Instance = evts[0].Instance
 	c.Assert(&evts[0], check.DeepEquals, evt)
 
 }

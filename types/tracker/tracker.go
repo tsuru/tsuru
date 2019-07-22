@@ -16,6 +16,7 @@ type TrackedInstance struct {
 
 type InstanceService interface {
 	LiveInstances() ([]TrackedInstance, error)
+	CurrentInstance() (TrackedInstance, error)
 }
 
 type InstanceStorage interface {
