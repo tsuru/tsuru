@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	maxAppBufferSize = 1 * 1024 * 1024 // 1 MiB
-	watchBufferSize  = 1000
-	baseLogSize      = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
+	maxAppBufferSize     = 1 * 1024 * 1024 // 1 MiB
+	watchBufferSize      = 1000
+	watchWarningInterval = 30 * time.Second
+	baseLogSize          = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
 )
 
 var (
@@ -33,9 +34,9 @@ var (
 		Help: "The number of in memory log entries removed due to full buffer.",
 	}, []string{"app"})
 
-	logsMemoryBlockedWatch = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_memory_watch_blocked_seconds_total",
-		Help: "The total time spent blocked trying to notify watchers of new logs.",
+	logsMemoryDroppedWatch = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_memory_watch_dropped_total",
+		Help: "The number of messages dropped in watchers due to a slow client.",
 	}, []string{"app"})
 
 	logsMemorySize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -52,7 +53,7 @@ var (
 func init() {
 	prometheus.MustRegister(logsMemoryReceived)
 	prometheus.MustRegister(logsMemoryEvicted)
-	prometheus.MustRegister(logsMemoryBlockedWatch)
+	prometheus.MustRegister(logsMemoryDroppedWatch)
 	prometheus.MustRegister(logsMemorySize)
 	prometheus.MustRegister(logsMemoryLength)
 }
@@ -132,10 +133,13 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 func (s *memoryLogService) Watch(appName, source, unit string, t auth.Token) (appTypes.LogWatcher, error) {
 	buffer := s.getAppBuffer(appName)
 	watcher := &memoryWatcher{
-		buffer: buffer,
-		ch:     make(chan appTypes.Applog, watchBufferSize),
-		source: source,
-		unit:   unit,
+		buffer:     buffer,
+		ch:         make(chan appTypes.Applog, watchBufferSize),
+		quit:       make(chan struct{}),
+		wg:         &sync.WaitGroup{},
+		nextNotify: time.NewTimer(0),
+		source:     source,
+		unit:       unit,
 	}
 	buffer.addWatcher(watcher)
 	return watcher, nil
@@ -151,7 +155,7 @@ func (s *memoryLogService) getAppBuffer(appName string) *appLogBuffer {
 			appName:         appName,
 			receivedCounter: logsMemoryReceived.WithLabelValues(appName),
 			evictedCounter:  logsMemoryEvicted.WithLabelValues(appName),
-			blockedCounter:  logsMemoryBlockedWatch.WithLabelValues(appName),
+			droppedCounter:  logsMemoryDroppedWatch.WithLabelValues(appName),
 			sizeGauge:       logsMemorySize.WithLabelValues(appName),
 			lengthGauge:     logsMemoryLength.WithLabelValues(appName),
 		})
@@ -174,7 +178,7 @@ type appLogBuffer struct {
 	watchers        []*memoryWatcher
 	receivedCounter prometheus.Counter
 	evictedCounter  prometheus.Counter
-	blockedCounter  prometheus.Counter
+	droppedCounter  prometheus.Counter
 	sizeGauge       prometheus.Gauge
 	lengthGauge     prometheus.Gauge
 }
@@ -213,19 +217,7 @@ func (b *appLogBuffer) add(entry *appTypes.Applog) {
 	b.sizeGauge.Set(float64(b.size))
 	b.lengthGauge.Set(float64(b.length))
 	for _, w := range b.watchers {
-		if w.source != "" && w.source != entry.Source {
-			continue
-		}
-		if w.unit != "" && w.unit != entry.Unit {
-			continue
-		}
-		select {
-		case w.ch <- *entry:
-		default:
-			t0 := time.Now()
-			w.ch <- *entry
-			b.blockedCounter.Add(time.Since(t0).Seconds())
-		}
+		w.notify(entry, b.droppedCounter)
 	}
 }
 
@@ -258,10 +250,40 @@ func entrySize(entry *appTypes.Applog) uint {
 }
 
 type memoryWatcher struct {
-	buffer *appLogBuffer
-	ch     chan appTypes.Applog
-	source string
-	unit   string
+	buffer     *appLogBuffer
+	ch         chan appTypes.Applog
+	quit       chan struct{}
+	wg         *sync.WaitGroup
+	nextNotify *time.Timer
+	source     string
+	unit       string
+}
+
+func (w *memoryWatcher) notify(entry *appTypes.Applog, dropCounter prometheus.Counter) {
+	if w.source != "" && w.source != entry.Source {
+		return
+	}
+	if w.unit != "" && w.unit != entry.Unit {
+		return
+	}
+	select {
+	case w.ch <- *entry:
+	default:
+		dropCounter.Inc()
+		select {
+		case <-w.nextNotify.C:
+			w.wg.Add(1)
+			go func() {
+				defer w.wg.Done()
+				select {
+				case w.ch <- slowWatcherWarning(entry.AppName):
+				case <-w.quit:
+				}
+				w.nextNotify.Reset(watchWarningInterval)
+			}()
+		default:
+		}
+	}
 }
 
 func (w *memoryWatcher) Chan() <-chan appTypes.Applog {
@@ -270,6 +292,18 @@ func (w *memoryWatcher) Chan() <-chan appTypes.Applog {
 
 func (w *memoryWatcher) Close() {
 	if w.buffer.removeWatcher(w) {
+		close(w.quit)
+		w.wg.Wait()
 		close(w.ch)
+	}
+}
+
+func slowWatcherWarning(appName string) appTypes.Applog {
+	return appTypes.Applog{
+		AppName: appName,
+		Date:    time.Now(),
+		Message: "Log messages dropped due to slow tail client or too many messages being produced.",
+		Source:  "tsuru",
+		Unit:    "api",
 	}
 }
