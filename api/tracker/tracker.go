@@ -8,8 +8,10 @@ import (
 	"context"
 	"net"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/log"
@@ -20,7 +22,6 @@ import (
 const (
 	defaultUpdateInterval = 15 * time.Second
 	defaultStaleTimeout   = 50 * time.Second
-	defaultInterfaceName  = "eth0"
 )
 
 var _ trackerTypes.InstanceService = &instanceTracker{}
@@ -44,9 +45,11 @@ func InstanceService() (trackerTypes.InstanceService, error) {
 }
 
 type instanceTracker struct {
-	storage trackerTypes.InstanceStorage
-	quit    chan struct{}
-	done    chan struct{}
+	storage      trackerTypes.InstanceStorage
+	quit         chan struct{}
+	done         chan struct{}
+	mu           sync.Mutex
+	lastInstance *trackerTypes.TrackedInstance
 }
 
 func (t *instanceTracker) start() {
@@ -73,9 +76,31 @@ func (t *instanceTracker) start() {
 }
 
 func (t *instanceTracker) notify() error {
-	interfaceName, _ := config.GetString("tracker:interface")
-	if interfaceName == "" {
-		interfaceName = defaultInterfaceName
+	instance, err := t.getInstance(true)
+	if err != nil {
+		return err
+	}
+	return t.storage.Notify(instance)
+}
+
+func (t *instanceTracker) getInstance(update bool) (trackerTypes.TrackedInstance, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if update || t.lastInstance == nil {
+		instance, err := t.createInstance()
+		if err != nil {
+			return instance, err
+		}
+		t.lastInstance = &instance
+	}
+	return *t.lastInstance, nil
+}
+
+func (t *instanceTracker) createInstance() (trackerTypes.TrackedInstance, error) {
+	var instance trackerTypes.TrackedInstance
+	iface, err := getInterface()
+	if err != nil {
+		return instance, err
 	}
 	ipv4Only, err := config.GetBool("tracker:ipv4-only")
 	if err != nil {
@@ -86,27 +111,23 @@ func (t *instanceTracker) notify() error {
 	if tlsListen != "" {
 		_, tlsPort, err = net.SplitHostPort(tlsListen)
 		if err != nil {
-			return err
+			return instance, err
 		}
 	}
 	listen, _ := config.GetString("listen")
 	if listen != "" {
 		_, port, err = net.SplitHostPort(listen)
 		if err != nil {
-			return err
+			return instance, err
 		}
 	}
 	hostname, err := os.Hostname()
 	if err != nil {
-		return err
-	}
-	iface, err := net.InterfaceByName(interfaceName)
-	if err != nil {
-		return err
+		return instance, err
 	}
 	addresses, err := iface.Addrs()
 	if err != nil {
-		return err
+		return instance, err
 	}
 	ips := make([]string, 0, len(addresses))
 	for _, ifaceAddr := range addresses {
@@ -121,13 +142,13 @@ func (t *instanceTracker) notify() error {
 			}
 		}
 	}
-	instance := trackerTypes.TrackedInstance{
-		Name:      hostname,
-		Port:      port,
-		TLSPort:   tlsPort,
-		Addresses: ips,
-	}
-	return t.storage.Notify(instance)
+	return trackerTypes.TrackedInstance{
+		Name:       hostname,
+		Port:       port,
+		TLSPort:    tlsPort,
+		Addresses:  ips,
+		LastUpdate: time.Now().UTC().Truncate(time.Millisecond),
+	}, nil
 }
 
 func (t *instanceTracker) Shutdown(ctx context.Context) error {
@@ -140,6 +161,10 @@ func (t *instanceTracker) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+func (t *instanceTracker) CurrentInstance() (trackerTypes.TrackedInstance, error) {
+	return t.getInstance(false)
+}
+
 func (t *instanceTracker) LiveInstances() ([]trackerTypes.TrackedInstance, error) {
 	var staleTimeout time.Duration
 	staleTimeoutSeconds, _ := config.GetFloat("tracker:stale-timeout")
@@ -149,4 +174,32 @@ func (t *instanceTracker) LiveInstances() ([]trackerTypes.TrackedInstance, error
 		staleTimeout = defaultStaleTimeout
 	}
 	return t.storage.List(staleTimeout)
+}
+
+func getInterface() (net.Interface, error) {
+	interfaceName, _ := config.GetString("tracker:interface")
+	var interfaceNames []string
+	if interfaceName == "" {
+		interfaceNames = []string{"eth0", "en0"}
+	} else {
+		interfaceNames = []string{interfaceName}
+	}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return net.Interface{}, err
+	}
+	if len(ifaces) == 0 {
+		return net.Interface{}, errors.New("no network interfaces available")
+	}
+	for _, wanted := range interfaceNames {
+		for _, iface := range ifaces {
+			if iface.Name == wanted {
+				return iface, nil
+			}
+		}
+	}
+	if interfaceName != "" {
+		return net.Interface{}, errors.Errorf("interface named %q not found", interfaceName)
+	}
+	return ifaces[0], nil
 }

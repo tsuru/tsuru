@@ -28,6 +28,10 @@ func (m *mockInstanceService) LiveInstances() ([]tracker.TrackedInstance, error)
 	return m.instances, nil
 }
 
+func (m *mockInstanceService) CurrentInstance() (tracker.TrackedInstance, error) {
+	return tracker.TrackedInstance{}, nil
+}
+
 func mockServers(count int, hook func(i int, w http.ResponseWriter, r *http.Request) bool) func() {
 	instanceTracker := &mockInstanceService{}
 	srvs := make([]*httptest.Server, count)

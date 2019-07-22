@@ -6,7 +6,6 @@ package tracker
 
 import (
 	"context"
-	"runtime"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -25,9 +24,6 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "api_tracker_pkg_tests")
-	if runtime.GOOS == "darwin" {
-		config.Set("tracker:interface", "en0")
-	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -53,4 +49,14 @@ func (s *S) Test_InstanceService(c *check.C) {
 	c.Assert(instances, check.HasLen, 1)
 	c.Assert(instances[0].Name, check.Not(check.Equals), "")
 	c.Assert(len(instances[0].Addresses) > 0, check.Equals, true)
+}
+
+func (s *S) Test_InstanceService_CurrentInstance(c *check.C) {
+	svc, err := InstanceService()
+	c.Assert(err, check.IsNil)
+	svc.(*instanceTracker).Shutdown(context.Background())
+	instance, err := svc.CurrentInstance()
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Name, check.Not(check.Equals), "")
+	c.Assert(len(instance.Addresses) > 0, check.Equals, true)
 }
