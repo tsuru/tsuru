@@ -42,8 +42,6 @@ import (
 )
 
 var (
-	logTailIdleTimeout = 5 * time.Minute
-
 	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tsuru_logs_app_tail_current",
 		Help: "The current number of active log tail queries for an app.",
@@ -1225,15 +1223,12 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 
 	closeChan := ctx.Done()
 	logChan := watcher.Chan()
-	idleTimer := time.NewTimer(logTailIdleTimeout)
 
 	entriesMetric := logsAppTailEntries.WithLabelValues(appName)
 	for {
 		var logMsg appTypes.Applog
 		var chOpen bool
 		select {
-		case <-idleTimer.C:
-			return fmt.Errorf("timeout after %v waiting for log messages", logTailIdleTimeout)
 		case <-closeChan:
 			return nil
 		case logMsg, chOpen = <-logChan:
@@ -1246,10 +1241,6 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 		if err != nil {
 			return err
 		}
-		if !idleTimer.Stop() {
-			<-idleTimer.C
-		}
-		idleTimer.Reset(logTailIdleTimeout)
 	}
 }
 
