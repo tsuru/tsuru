@@ -113,13 +113,7 @@ func (s *aggregatorLogService) Watch(appName, source, unit string, t auth.Token)
 	}
 	watcher := &aggregateWatcher{channel: logsCh, cancels: cancels, quit: make(chan struct{})}
 	for i := range requests {
-		req := requests[i]
-		go func() {
-			watchErr := watcher.watchRequest(req)
-			if watchErr != nil {
-				log.Errorf("[watch log instance %v]: %v", req.URL.Host, watchErr)
-			}
-		}()
+		watcher.watchRequest(requests[i])
 	}
 	return watcher, nil
 }
@@ -128,6 +122,7 @@ type aggregateWatcher struct {
 	channel     chan appTypes.Applog
 	quit        chan struct{}
 	cancels     []context.CancelFunc
+	wg          sync.WaitGroup
 	closeCalled int32
 }
 
@@ -143,10 +138,23 @@ func (w *aggregateWatcher) Close() {
 		cancel()
 	}
 	close(w.quit)
+	w.wg.Wait()
+	close(w.channel)
 }
 
-func (w *aggregateWatcher) watchRequest(req *http.Request) error {
-	defer w.Close()
+func (w *aggregateWatcher) watchRequest(req *http.Request) {
+	w.wg.Add(1)
+	go func() {
+		defer w.Close()
+		defer w.wg.Done()
+		err := w.goWatchRequest(req)
+		if err != nil {
+			log.Errorf("[watch log instance %v]: %v", req.URL.Host, err)
+		}
+	}()
+}
+
+func (w *aggregateWatcher) goWatchRequest(req *http.Request) error {
 	rsp, err := tsuruNet.Dial15FullUnlimitedClient.Do(req)
 	if err != nil {
 		return errors.WithStack(err)
@@ -161,7 +169,8 @@ func (w *aggregateWatcher) watchRequest(req *http.Request) error {
 		err = decoder.Decode(&logs)
 		if err != nil {
 			if err != io.EOF && err != context.Canceled {
-				return errors.WithStack(err)
+				buffered, _ := ioutil.ReadAll(decoder.Buffered())
+				return errors.Wrapf(err, "unable to parse as json: %q", string(buffered))
 			}
 			return nil
 		}

@@ -141,6 +141,15 @@ func (s *S) Test_Aggregator_Watch(c *check.C) {
 	c.Check(msgTimeout(c, ch), check.Equals, "msg-2")
 	c.Check(msgTimeout(c, ch), check.Equals, "msg-2")
 	close(ch3)
+	var msg appTypes.Applog
+	var isOpen bool
+	select {
+	case msg, isOpen = <-ch:
+	case <-time.After(5 * time.Second):
+		c.Fatal("timeout waiting for channel close")
+	}
+	c.Assert(msg, check.DeepEquals, appTypes.Applog{})
+	c.Assert(isOpen, check.Equals, false)
 }
 
 func (s *S) Test_Aggregator_Watch_WithErrorAfterMessages(c *check.C) {
