@@ -76,6 +76,69 @@ func (s *S) Test_Aggregator_List(c *check.C) {
 	})
 }
 
+func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
+	rollback := mockServers(6, func(i int, w http.ResponseWriter, r *http.Request) bool {
+		switch i {
+		case 0:
+			w.Write([]byte(`[{
+				"Date": "2019-07-23T10:51:20-03:00",
+				"Message": "msg1",
+				"Source": "web",
+				"AppName": "myapp",
+				"Unit": "unit1"
+			}]`))
+		case 1:
+			w.Write([]byte(`[{
+				"Date": "2019-07-23T13:50:26.634644022Z",
+				"Message": "msg2",
+				"Source": "tsuru",
+				"AppName": "myapp",
+				"Unit": "api"
+			}]`))
+		case 2:
+			w.Write([]byte(`[{
+				"Date": "2019-07-23T12:57:47.197062857Z",
+				"Message": "msg3",
+				"Source": "tsuru",
+				"AppName": "myapp",
+				"Unit": "api"
+			}]`))
+		case 3:
+			w.Write([]byte(`[{
+				"Date": "2019-07-23T13:21:44.675499702Z",
+				"Message": "msg4",
+				"Source": "tsuru",
+				"AppName": "myapp",
+				"Unit": "api"
+			}]`))
+		case 4:
+			w.Write([]byte(`[{
+				"Date": "2019-07-23T13:08:16.014858022Z",
+				"Message": "msg5",
+				"Source": "tsuru",
+				"AppName": "myapp",
+				"Unit": "api"
+			}]`))
+		case 5:
+			w.Write([]byte(`[]`))
+		}
+		return true
+	})
+	defer rollback()
+	svc := &aggregatorLogService{}
+	logs, err := svc.List(appTypes.ListLogArgs{
+		AppName: "myapp",
+		Limit:   1,
+	})
+	c.Assert(err, check.IsNil)
+	compareLogsNoDate(c, logs, []appTypes.Applog{{
+		Message: "msg1",
+		Source:  "web",
+		AppName: "myapp",
+		Unit:    "unit1",
+	}})
+}
+
 func (s *S) Test_Aggregator_List_WithError(c *check.C) {
 	rollback := mockServers(5, func(i int, w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusInternalServerError)

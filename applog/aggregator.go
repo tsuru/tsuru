@@ -83,11 +83,11 @@ func (s *aggregatorLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applo
 	for logs := range logsCh {
 		allLogs = append(allLogs, logs...)
 	}
-	sort.Slice(allLogs, func(i, j int) bool {
+	sort.SliceStable(allLogs, func(i, j int) bool {
 		return allLogs[i].Date.Before(allLogs[j].Date)
 	})
 	if args.Limit > 0 && len(allLogs) > args.Limit {
-		allLogs = allLogs[:args.Limit]
+		allLogs = allLogs[len(allLogs)-args.Limit:]
 	}
 	return allLogs, nil
 }
