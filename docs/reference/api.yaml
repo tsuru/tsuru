@@ -1820,6 +1820,38 @@ paths:
         - cluster
       security:
         - Bearer: []
+  /1.8/provisioner/clusters/{cluster_name}:
+   get:
+     tags:
+     - "cluster"
+     description: "Cluster info"
+     operationId: "ClusterInfo"
+     produces:
+     - "application/json"
+     parameters:
+     - name: "cluster_name"
+       in: "path"
+       description: "Cluster name."
+       required: true
+       type: "string"
+       minLength: 1
+       x-exportParamName: "ClusterName"
+     responses:
+       200:
+         description: "Cluster"
+         schema:
+           type: "object"
+           $ref: "#/definitions/Cluster"
+       401:
+         description: "Unauthorized"
+         schema:
+           $ref: "#/definitions/ErrorMessage"
+       404:
+         description: "Cluster not found"
+         schema:
+           $ref: "#/definitions/ErrorMessage"
+     security:
+     - Bearer: []
   /1.4/volumes/{volume}:
     parameters:
       - name: volume
@@ -2896,6 +2928,8 @@ definitions:
       name:
         type: string
       value:
+        type: string
+      alias:
         type: string
   EnvSetData:
     description: Data sent to the environment set endpoint.

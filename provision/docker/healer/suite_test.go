@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/queue"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	check "gopkg.in/check.v1"
 )
 
@@ -55,6 +56,7 @@ func (s *S) SetUpTest(c *check.C) {
 		m.Destroy()
 	}
 	os.Setenv("TSURU_TARGET", "http://localhost")
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownTest(c *check.C) {

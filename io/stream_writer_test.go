@@ -50,7 +50,33 @@ func (s *S) TestStreamWriterUsesFormatter(c *check.C) {
 	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
 }
 
-func (s *S) TestStreamWriterChukedWrite(c *check.C) {
+func (s *S) TestStreamWriterMultipleNewlines(c *check.C) {
+	data := `[{"message": "a", "source": "tsuru"}]` + "\n\n\n" + `[{"message": "b", "source": "tsuru"}]`
+	var writer bytes.Buffer
+	w := NewStreamWriter(&writer, testFormatter{})
+	_, err := w.Write([]byte(data))
+	c.Assert(err, check.IsNil)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
+	expected := "tsuru-a\ntsuru-b\n"
+	c.Assert(writer.String(), check.Equals, expected)
+	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
+}
+
+func (s *S) TestStreamWriterStartNewline(c *check.C) {
+	data := "\n" + `[{"message": "a", "source": "tsuru"}]`
+	var writer bytes.Buffer
+	w := NewStreamWriter(&writer, testFormatter{})
+	_, err := w.Write([]byte(data))
+	c.Assert(err, check.IsNil)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
+	expected := "tsuru-a\n"
+	c.Assert(writer.String(), check.Equals, expected)
+	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
+}
+
+func (s *S) TestStreamWriterChunkedWrite(c *check.C) {
 	entries := []entry{
 		{Message: "\nSome\nthing\nhappened\n", Source: "tsuru"},
 		{Message: "Something happened again", Source: "tsuru"},
@@ -145,7 +171,7 @@ func (s *S) TestStreamWriterInvalidDataNotReadInChunk(c *check.C) {
 	toWrite := append(b, []byte("\ninvalid data\n")...)
 	n, err := w.Write(toWrite)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\\n\"")
+	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\"")
 	c.Assert(n, check.Equals, len(toWrite))
 	err = w.Close()
 	c.Assert(err, check.IsNil)
@@ -173,7 +199,7 @@ func (s *S) TestStreamWriterOnlyInvalidMessageInChunk(c *check.C) {
 	b := []byte("-----\n")
 	n, err := w.Write(b)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"-----\\n\"")
+	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"-----\"")
 	c.Assert(n, check.Equals, 6)
 	err = w.Close()
 	c.Assert(err, check.IsNil)
@@ -192,7 +218,7 @@ func (s *S) TestStreamWriterInvalidDataNotReadInMultipleChunks(c *check.C) {
 	toWrite := append(b, []byte("\ninvalid data\nmoreinvalid\nsomething")...)
 	n, err := w.Write(toWrite)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\\n\"")
+	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\"")
 	c.Assert(n, check.Equals, len(toWrite))
 	err = w.Close()
 	c.Assert(err, check.IsNil)

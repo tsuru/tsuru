@@ -72,7 +72,11 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 	w.b = append(w.b, b...)
 	writtenCount := len(b)
 	for len(w.b) > 0 {
-		parts := bytes.SplitAfterN(w.b, []byte("\n"), 2)
+		parts := bytes.SplitN(w.b, []byte("\n"), 2)
+		if len(parts) == 2 && len(parts[0]) == 0 {
+			w.b = parts[1]
+			continue
+		}
 		err := w.formatter.Format(w.w, parts[0])
 		if err != nil {
 			if err == ErrInvalidStreamChunk {

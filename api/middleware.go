@@ -78,14 +78,25 @@ func contextClearerMiddleware(w http.ResponseWriter, r *http.Request, next http.
 	next(w, r)
 }
 
-func flushingWriterMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+type flushingWriterMiddleware struct {
+	latencyConfig map[string]time.Duration
+}
+
+func (m *flushingWriterMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	defer func() {
 		if r.Body != nil {
 			r.Body.Close()
 		}
 	}()
-	fw := io.FlushingWriter{ResponseWriter: w}
-	next(&fw, r)
+	if flusher, ok := w.(io.WriterFlusher); ok {
+		flushingWriter := &io.FlushingWriter{WriterFlusher: flusher}
+		defer flushingWriter.Flush()
+		if m.latencyConfig != nil {
+			flushingWriter.MaxLatency = m.latencyConfig[r.URL.Query().Get(":mux-route-name")]
+		}
+		w = flushingWriter
+	}
+	next(w, r)
 }
 
 func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {

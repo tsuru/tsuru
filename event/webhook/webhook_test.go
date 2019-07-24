@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -44,6 +45,7 @@ func (s *S) SetUpTest(c *check.C) {
 	svc, err := WebhookService()
 	c.Assert(err, check.IsNil)
 	s.service = svc.(*webhookService)
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownTest(c *check.C) {

@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/tracker"
 )
 
 var (
@@ -210,6 +211,7 @@ type eventData struct {
 	Running         bool
 	Allowed         AllowedPermission
 	AllowedCancel   AllowedPermission
+	Instance        tracker.TrackedInstance
 }
 
 type cancelInfo struct {
@@ -898,6 +900,10 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 	} else {
 		id.Target = opts.Target
 	}
+	instance, err := servicemanager.InstanceTracker.CurrentInstance()
+	if err != nil {
+		return nil, err
+	}
 	evt = &Event{eventData: eventData{
 		ID:              id,
 		UniqueID:        uniqID,
@@ -912,6 +918,7 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 		Cancelable:      opts.Cancelable,
 		Allowed:         opts.Allowed,
 		AllowedCancel:   opts.AllowedCancel,
+		Instance:        instance,
 	}}
 	evt.Init()
 	maxRetries := 1

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/service"
+	"github.com/tsuru/tsuru/types/tracker"
 )
 
 var (
@@ -28,4 +29,6 @@ var (
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
+	AppLog                    app.AppLogService
+	InstanceTracker           tracker.InstanceService
 )

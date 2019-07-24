@@ -26,7 +26,9 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	trackerTypes "github.com/tsuru/tsuru/types/tracker"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -59,6 +61,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TestNewDone(c *check.C) {
@@ -81,6 +84,7 @@ func (s *S) TestNewDone(c *check.C) {
 		StartTime:      evt.StartTime,
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed:        Allowed(permission.PermAppReadEvents),
+		Instance:       evt.Instance,
 	}}
 	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
@@ -91,6 +95,7 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
+	evts[0].Instance = expected.Instance
 	c.Assert(&evts[0], check.DeepEquals, expected)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
@@ -103,6 +108,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].EndTime = time.Time{}
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
+	evts[0].Instance = expected.Instance
 	expected.Running = false
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	c.Assert(&evts[0], check.DeepEquals, expected)
@@ -135,6 +141,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 		LockUpdateTime:  evt.LockUpdateTime,
 		StartCustomData: evt.StartCustomData,
 		Allowed:         Allowed(permission.PermAppReadEvents),
+		Instance:        evt.Instance,
 	}}
 	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
@@ -159,6 +166,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	expected.Running = false
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	expected.EndCustomData = evts[0].EndCustomData
+	expected.Instance = evts[0].Instance
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
@@ -310,6 +318,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 		StartTime:      evt.StartTime,
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed:        Allowed(permission.PermAppReadEvents),
+		Instance:       evt.Instance,
 	}}
 	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
@@ -320,6 +329,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
+	evts[0].Instance = expected.Instance
 	c.Assert(&evts[0], check.DeepEquals, expected)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
@@ -332,6 +342,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	evts[0].EndTime = time.Time{}
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
+	evts[0].Instance = expected.Instance
 	expected.Running = false
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	c.Assert(&evts[0], check.DeepEquals, expected)
@@ -421,6 +432,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].Instance.Name, check.Not(check.Equals), "")
 	expected := &Event{eventData: eventData{
 		ID:             eventID{ObjId: evts[0].ID.ObjId},
 		UniqueID:       evts[0].UniqueID,
@@ -432,6 +444,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 		EndTime:        evts[0].EndTime,
 		Error:          "myerr",
 		Allowed:        Allowed(permission.PermAppReadEvents),
+		Instance:       evts[0].Instance,
 	}}
 	expected.Init()
 	c.Assert(&evts[0], check.DeepEquals, expected)
@@ -1148,6 +1161,7 @@ func (s *S) TestEventRawInsert(c *check.C) {
 		EndTime:   now.Add(10 * time.Second),
 		Error:     "err x",
 		Log:       "my log",
+		Instance:  trackerTypes.TrackedInstance{Addresses: []string{}},
 	}}
 	evt.Init()
 	err := evt.RawInsert(nil, nil, nil)
@@ -1181,6 +1195,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 			Scheme:   permission.PermAppReadEvents.FullName(),
 			Contexts: []permTypes.PermissionContext{permission.Context(permTypes.CtxApp, "myapp"), permission.Context(permTypes.CtxTeam, "myteam")},
 		},
+		Instance: evt.Instance,
 	}}
 	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)
@@ -1189,6 +1204,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
+	evts[0].Instance = expected.Instance
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
@@ -1250,6 +1266,7 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 		LockUpdateTime:  evt.LockUpdateTime,
 		StartCustomData: evt.StartCustomData,
 		Allowed:         Allowed(permission.PermAppReadEvents),
+		Instance:        evt.Instance,
 	}}
 	expected.Init()
 	c.Assert(evt, check.DeepEquals, expected)

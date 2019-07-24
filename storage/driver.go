@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/service"
+	"github.com/tsuru/tsuru/types/tracker"
 )
 
 type DbDriver struct {
@@ -32,6 +33,8 @@ type DbDriver struct {
 	ServiceBrokerStorage             service.ServiceBrokerStorage
 	ServiceBrokerCatalogCacheStorage cache.CacheStorage
 	PlatformImageStorage             image.PlatformImageStorage
+	AppLogStorage                    app.AppLogStorage
+	InstanceTrackerStorage           tracker.InstanceStorage
 }
 
 var (

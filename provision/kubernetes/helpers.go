@@ -716,7 +716,7 @@ func runPod(args runSinglePodArgs) error {
 	return waitForPod(ctx, args.client, pod, ns, false)
 }
 
-func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
+func (p *kubernetesProvisioner) getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
 	address = tsuruNet.URLToHost(address)
 	node, err := client.CoreV1().Nodes().Get(address, metav1.GetOptions{})
 	if err == nil {
@@ -726,15 +726,23 @@ func getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {
 		return nil, errors.WithStack(err)
 	}
 	node = nil
-	nodeList, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
+	controller, err := getClusterController(p, client)
+	if err != nil {
+		return nil, err
+	}
+	nodeInformer, err := controller.getNodeInformer()
+	if err != nil {
+		return nil, err
+	}
+	nodeList, err := nodeInformer.Lister().List(labels.Everything())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 nodesloop:
-	for i, n := range nodeList.Items {
+	for _, n := range nodeList {
 		for _, addr := range n.Status.Addresses {
 			if addr.Type == apiv1.NodeInternalIP && addr.Address == address {
-				node = &nodeList.Items[i]
+				node = n.DeepCopy()
 				break nodesloop
 			}
 		}

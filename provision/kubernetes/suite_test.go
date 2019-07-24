@@ -6,7 +6,10 @@ package kubernetes
 
 import (
 	"math/rand"
+	"reflect"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -27,8 +30,10 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
@@ -51,7 +56,6 @@ type S struct {
 
 var suiteInstance = &S{}
 var _ = check.Suite(suiteInstance)
-var defaultClientForConfig = ClientForConfig
 
 func Test(t *testing.T) {
 	suiteInstance.t = t
@@ -174,7 +178,10 @@ func (s *S) SetUpTest(c *check.C) {
 		return []provision.Cluster{*clust}, nil
 	}
 	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provision.Cluster, error) {
-		return clust, nil
+		if provName == provisionerName {
+			return clust, nil
+		}
+		return nil, provision.ErrNoCluster
 	}
 	s.mockService.Cluster.OnFindByPools = func(provName string, poolNames []string) (map[string]provision.Cluster, error) {
 		ret := make(map[string]provision.Cluster)
@@ -182,5 +189,40 @@ func (s *S) SetUpTest(c *check.C) {
 			ret[pool] = *clust
 		}
 		return ret, nil
+	}
+}
+
+func (s *S) waitNodeUpdate(c *check.C, fn func()) {
+	s.mock.WaitNodeUpdate(c, fn)
+}
+
+func sortPods(pods []*apiv1.Pod) {
+	sort.Slice(pods, func(i, j int) bool {
+		return pods[i].Name < pods[j].Name
+	})
+}
+
+func (s *S) waitPodUpdate(c *check.C, fn func()) {
+	controller, err := getClusterController(s.p, s.clusterClient)
+	c.Assert(err, check.IsNil)
+	podInformer, err := controller.getPodInformer()
+	c.Assert(err, check.IsNil)
+	pods, err := podInformer.Lister().List(labels.Everything())
+	c.Assert(err, check.IsNil)
+	fn()
+	timeout := time.After(5 * time.Second)
+	for {
+		podsAfter, err := podInformer.Lister().List(labels.Everything())
+		c.Assert(err, check.IsNil)
+		sortPods(pods)
+		sortPods(podsAfter)
+		if !reflect.DeepEqual(pods, podsAfter) {
+			return
+		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-timeout:
+			c.Fatal("timeout waiting for node changes")
+		}
 	}
 }

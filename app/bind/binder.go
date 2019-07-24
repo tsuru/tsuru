@@ -12,6 +12,7 @@ import "io"
 type EnvVar struct {
 	Name   string `json:"name"`
 	Value  string `json:"value"`
+	Alias  string `json:"alias"`
 	Public bool   `json:"public"`
 }
 

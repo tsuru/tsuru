@@ -15,6 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -23,7 +24,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -170,6 +173,7 @@ type DeployOptions struct {
 	Event        *event.Event `bson:"-"`
 	Kind         DeployKind
 	Message      string
+	Token        auth.Token
 }
 
 func (o *DeployOptions) GetOrigin() string {
@@ -208,7 +212,7 @@ func Build(opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in build opts")
 	}
-	logWriter := LogWriter{App: opts.App}
+	logWriter := LogWriter{AppName: opts.App.Name}
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
@@ -232,7 +236,7 @@ func Build(opts DeployOptions) (string, error) {
 
 type errorWithLog struct {
 	err  error
-	logs []Applog
+	logs []appTypes.Applog
 }
 
 func (e *errorWithLog) Cause() error {
@@ -269,7 +273,7 @@ func Deploy(opts DeployOptions) (string, error) {
 		}
 		opts.Image = imageName
 	}
-	logWriter := LogWriter{App: opts.App}
+	logWriter := LogWriter{AppName: opts.App.Name}
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
@@ -280,11 +284,11 @@ func Deploy(opts DeployOptions) (string, error) {
 		log.Errorf("WARNING: unable to ensure quota is up-to-date after deploy: %v", quotaErr)
 	}
 	if err != nil {
-		var logLines []Applog
+		var logLines []appTypes.Applog
 		if provision.IsStartupError(err) {
-			logLines, _ = opts.App.lastLogs(10, Applog{
+			logLines, _ = opts.App.lastLogs(servicemanager.AppLog, 10, appTypes.Applog{
 				Source: "tsuru",
-			}, true)
+			}, true, opts.Token)
 		}
 		err = &errorWithLog{err: err, logs: logLines}
 		return "", err

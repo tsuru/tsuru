@@ -41,6 +41,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/informers"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -95,26 +96,6 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	nodes, err := s.p.ListNodes([]string{"192.168.99.1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-}
-
-func (s *S) TestListNodesTimeoutShort(c *check.C) {
-	wantedTimeout := 1.0
-	config.Set("kubernetes:api-short-timeout", wantedTimeout)
-	defer config.Unset("kubernetes")
-	block := make(chan bool)
-	blackhole := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block
-	}))
-	defer func() { close(block); blackhole.Close() }()
-	s.mock.MockfakeNodes(c, blackhole.URL)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	t0 := time.Now()
-	ClientForConfig = defaultClientForConfig
-	_, err = s.p.ListNodes([]string{})
-	c.Assert(err, check.ErrorMatches, `(?is).*timeout.*`)
-	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)
 }
 
 func (s *S) TestRemoveNode(c *check.C) {
@@ -300,15 +281,17 @@ func (s *S) TestUpdateNode(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p2",
-		Metadata: map[string]string{
-			"m1": "",
-			"m2": "v2",
-		},
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p2",
+			Metadata: map[string]string{
+				"m1": "",
+				"m2": "v2",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -336,15 +319,17 @@ func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p2",
-		Metadata: map[string]string{
-			"m1": "",
-			"m2": "v2",
-		},
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p2",
+			Metadata: map[string]string{
+				"m1": "",
+				"m2": "v2",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -390,12 +375,14 @@ func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p2",
-		IaaSID:  "valid-iaas-id",
+	s.waitNodeUpdate(c, func() {
+		err = s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p2",
+			IaaSID:  "valid-iaas-id",
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -416,14 +403,16 @@ func (s *S) TestUpdateNodeNoPool(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Metadata: map[string]string{
-			"m1": "",
-			"m2": "v2",
-		},
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Metadata: map[string]string{
+				"m1": "",
+				"m2": "v2",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -459,13 +448,15 @@ func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
 	})
 	_, err = s.client.CoreV1().Nodes().Update(n1)
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p2",
-		Metadata: map[string]string{
-			"m1": "",
-			"m2": "v2",
-		},
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p2",
+			Metadata: map[string]string{
+				"m1": "",
+				"m2": "v2",
+			},
+		})
 	})
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -492,11 +483,13 @@ func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 		Pool:    "p1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Disable: true,
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Disable: true,
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -516,11 +509,13 @@ func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{
 		{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
 	})
-	err = s.p.UpdateNode(provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Enable:  true,
+	s.waitNodeUpdate(c, func() {
+		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+			Address: "my-node-addr",
+			Enable:  true,
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err = s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -608,28 +603,25 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	s.mock.MockfakeNodes(c, srv.URL)
 	for _, a := range []provision.App{a1, a2} {
 		for i := 1; i <= 2; i++ {
-			_, err := s.client.CoreV1().Pods("default").Create(&apiv1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
-					Labels: map[string]string{
-						"tsuru.io/app-name":     a.GetName(),
-						"tsuru.io/app-process":  "web",
-						"tsuru.io/app-platform": "python",
+			s.waitPodUpdate(c, func() {
+				_, err := s.client.CoreV1().Pods("default").Create(&apiv1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: fmt.Sprintf("%s-%d", a.GetName(), i),
+						Labels: map[string]string{
+							"tsuru.io/app-name":     a.GetName(),
+							"tsuru.io/app-process":  "web",
+							"tsuru.io/app-platform": "python",
+						},
+						Namespace: "default",
 					},
-					Namespace: "default",
-				},
-				Spec: apiv1.PodSpec{
-					NodeName: fmt.Sprintf("n%d", i),
-				},
+					Spec: apiv1.PodSpec{
+						NodeName: fmt.Sprintf("n%d", i),
+					},
+				})
+				c.Assert(err, check.IsNil)
 			})
-			c.Assert(err, check.IsNil)
 		}
 	}
-	listNodesCalls := 0
-	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (bool, runtime.Object, error) {
-		listNodesCalls++
-		return testing.RunReactionsAfter(&s.client.Fake, action)
-	})
 	_, err := s.client.CoreV1().Services("default").Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-web",
@@ -661,7 +653,6 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	units, err := s.p.Units(a1, a2)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 4)
-	c.Assert(listNodesCalls, check.Equals, 1)
 	sort.Slice(units, func(i, j int) bool {
 		return units[i].ID < units[j].ID
 	})
@@ -746,14 +737,16 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 2)
-	for _, p := range podlist.Items {
-		if p.Labels["tsuru.io/app-process"] == "worker" {
-			deadline := int64(10)
-			p.Spec.ActiveDeadlineSeconds = &deadline
-			_, err = s.client.CoreV1().Pods("default").Update(&p)
-			c.Assert(err, check.IsNil)
+	s.waitPodUpdate(c, func() {
+		for _, p := range podlist.Items {
+			if p.Labels["tsuru.io/app-process"] == "worker" {
+				deadline := int64(10)
+				p.Spec.ActiveDeadlineSeconds = &deadline
+				_, err = s.client.CoreV1().Pods("default").Update(&p)
+				c.Assert(err, check.IsNil)
+			}
 		}
-	}
+	})
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
@@ -781,14 +774,16 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 2)
-	for _, p := range podlist.Items {
-		if p.Labels["tsuru.io/app-process"] == "worker" {
-			p.Status.Phase = apiv1.PodFailed
-			p.Status.Reason = "Evicted"
-			_, err = s.client.CoreV1().Pods("default").Update(&p)
-			c.Assert(err, check.IsNil)
+	s.waitPodUpdate(c, func() {
+		for _, p := range podlist.Items {
+			if p.Labels["tsuru.io/app-process"] == "worker" {
+				p.Status.Phase = apiv1.PodFailed
+				p.Status.Reason = "Evicted"
+				_, err = s.client.CoreV1().Pods("default").Update(&p)
+				c.Assert(err, check.IsNil)
+			}
 		}
-	}
+	})
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
@@ -1613,7 +1608,14 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 			Binds:         []string{"/xyz:/abc:ro"},
 		},
 	}
-	err := nodecontainer.AddNewContainer("", &c1)
+	err := pool.AddPool(pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
+	err = pool.AddPool(pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
+	c.Assert(err, check.IsNil)
+
+	err = nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	c2 := c1
 	c2.Config.Env = []string{"e1=v1"}
@@ -1621,6 +1623,9 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c3 := c1
 	err = nodecontainer.AddNewContainer("p2", &c3)
+	c.Assert(err, check.IsNil)
+	c4 := c1
+	err = nodecontainer.AddNewContainer("p-ignored", &c4)
 	c.Assert(err, check.IsNil)
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
@@ -1635,6 +1640,9 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
+	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p-ignored")).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 0)
 }
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
@@ -1999,7 +2007,6 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:deploy-sidecar-image", "img1")
 	config.Set("kubernetes:deploy-inspect-image", "img2")
 	config.Set("kubernetes:api-timeout", 10)
-	config.Set("kubernetes:api-short-timeout", 0.5)
 	config.Set("kubernetes:pod-ready-timeout", 6)
 	config.Set("kubernetes:pod-running-timeout", 2*60)
 	config.Set("kubernetes:deployment-progress-timeout", 3*60)
@@ -2011,7 +2018,6 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 		DeploySidecarImage:                  "img1",
 		DeployInspectImage:                  "img2",
 		APITimeout:                          10 * time.Second,
-		APIShortTimeout:                     500 * time.Millisecond,
 		PodReadyTimeout:                     6 * time.Second,
 		PodRunningTimeout:                   2 * time.Minute,
 		DeploymentProgressTimeout:           3 * time.Minute,
@@ -2027,7 +2033,6 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.3",
 		DeployInspectImage:                  "tsuru/deploy-agent:0.8.3",
 		APITimeout:                          60 * time.Second,
-		APIShortTimeout:                     5 * time.Second,
 		PodReadyTimeout:                     time.Minute,
 		PodRunningTimeout:                   10 * time.Minute,
 		DeploymentProgressTimeout:           10 * time.Minute,
@@ -2293,6 +2298,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.client = client2
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
 	s.mock.IgnorePool = true
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
@@ -2359,6 +2365,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	})
 	c.Assert(err, check.IsNil)
 	s.client = client2
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
 	s.mock.IgnorePool = true
 	s.mock.IgnoreAppName = true

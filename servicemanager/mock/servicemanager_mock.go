@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/service"
+	"github.com/tsuru/tsuru/types/tracker"
 )
 
 // MockService is a struct to use in tests
@@ -27,6 +28,7 @@ type MockService struct {
 	Cluster                   *provision.MockClusterService
 	ServiceBroker             *service.MockServiceBrokerService
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
+	InstanceTracker           tracker.InstanceService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -41,6 +43,7 @@ func SetMockService(m *MockService) {
 	m.Cluster = &provision.MockClusterService{}
 	m.ServiceBroker = &service.MockServiceBrokerService{}
 	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}
+	m.InstanceTracker = &tracker.MockInstanceService{}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -51,6 +54,7 @@ func SetMockService(m *MockService) {
 	servicemanager.Cluster = m.Cluster
 	servicemanager.ServiceBroker = m.ServiceBroker
 	servicemanager.ServiceBrokerCatalogCache = m.ServiceBrokerCatalogCache
+	servicemanager.InstanceTracker = m.InstanceTracker
 }
 
 func (m *MockService) ResetCache() {

@@ -49,7 +49,6 @@ import (
 const (
 	provisionerName                            = "kubernetes"
 	defaultKubeAPITimeout                      = time.Minute
-	defaultShortKubeAPITimeout                 = 5 * time.Second
 	defaultPodReadyTimeout                     = time.Minute
 	defaultPodRunningTimeout                   = 10 * time.Minute
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
@@ -104,7 +103,6 @@ type kubernetesConfig struct {
 	DeploySidecarImage string
 	DeployInspectImage string
 	APITimeout         time.Duration
-	APIShortTimeout    time.Duration
 	// PodReadyTimeout is the timeout for a pod to become ready after already
 	// running.
 	PodReadyTimeout time.Duration
@@ -138,12 +136,6 @@ func getKubeConfig() kubernetesConfig {
 		conf.APITimeout = time.Duration(apiTimeout * float64(time.Second))
 	} else {
 		conf.APITimeout = defaultKubeAPITimeout
-	}
-	apiShortTimeout, _ := config.GetFloat("kubernetes:api-short-timeout")
-	if apiShortTimeout != 0 {
-		conf.APIShortTimeout = time.Duration(apiShortTimeout * float64(time.Second))
-	} else {
-		conf.APIShortTimeout = defaultShortKubeAPITimeout
 	}
 	podReadyTimeout, _ := config.GetFloat("kubernetes:pod-ready-timeout")
 	if podReadyTimeout != 0 {
@@ -399,12 +391,11 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 	if err != nil {
 		return nil, err
 	}
+	nodeInformer, err := controller.getNodeInformer()
+	if err != nil {
+		return nil, err
+	}
 	if len(baseNodes) == 0 {
-		var nodeInformer v1informers.NodeInformer
-		nodeInformer, err = controller.getNodeInformer()
-		if err != nil {
-			return nil, err
-		}
 		baseNodes, err = nodesForPods(nodeInformer, pods)
 		if err != nil {
 			return nil, err
@@ -425,11 +416,11 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
 		if !ok && pod.Spec.NodeName != "" {
-			node, err = client.CoreV1().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
+			node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
-			nodeMap[pod.Spec.NodeName] = node
+			nodeMap[pod.Spec.NodeName] = node.DeepCopy()
 		}
 		podApp, ok := appMap[l.AppName()]
 		if !ok {
@@ -726,13 +717,8 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	var nodes []provision.Node
-	kubeConf := getKubeConfig()
 	err := forEachCluster(func(c *ClusterClient) error {
-		err := c.SetTimeout(kubeConf.APIShortTimeout)
-		if err != nil {
-			return err
-		}
-		clusterNodes, err := p.listNodesForCluster(c, addressFilter)
+		clusterNodes, err := p.listNodesForCluster(c, nodeFilter{addresses: addressFilter})
 		if err != nil {
 			return err
 		}
@@ -804,23 +790,38 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	return addresses, nil
 }
 
-func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addressFilter []string) ([]provision.Node, error) {
-	var nodes []provision.Node
+type nodeFilter struct {
+	addresses []string
+	metadata  map[string]string
+}
+
+func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, filter nodeFilter) ([]provision.Node, error) {
 	var addressSet set.Set
-	if len(addressFilter) > 0 {
-		addressSet = set.FromSlice(addressFilter)
+	if len(filter.addresses) > 0 {
+		addressSet = set.FromSlice(filter.addresses)
 	}
-	nodeList, err := cluster.CoreV1().Nodes().List(metav1.ListOptions{})
+	controller, err := getClusterController(p, cluster)
+	if err != nil {
+		return nil, err
+	}
+	nodeInformer, err := controller.getNodeInformer()
+	if err != nil {
+		return nil, err
+	}
+	nodeList, err := nodeInformer.Lister().List(labels.Everything())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	for i := range nodeList.Items {
+	var nodes []provision.Node
+	for i := range nodeList {
 		n := &kubernetesNodeWrapper{
-			node:    &nodeList.Items[i],
+			node:    nodeList[i].DeepCopy(),
 			prov:    p,
 			cluster: cluster,
 		}
-		if addressSet == nil || addressSet.Includes(n.Address()) {
+		matchesAddresses := len(addressSet) == 0 || addressSet.Includes(n.Address())
+		matchesMetadata := len(filter.metadata) == 0 || node.HasAllMetadata(n.MetadataNoPrefix(), filter.metadata)
+		if matchesAddresses && matchesMetadata {
 			nodes = append(nodes, n)
 		}
 	}
@@ -829,13 +830,8 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *ClusterClient, addr
 
 func (p *kubernetesProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
 	var nodes []provision.Node
-	kubeConf := getKubeConfig()
 	err := forEachCluster(func(c *ClusterClient) error {
-		err := c.SetTimeout(kubeConf.APIShortTimeout)
-		if err != nil {
-			return err
-		}
-		clusterNodes, err := p.listNodesForClusterWithFilter(c, filter.Metadata)
+		clusterNodes, err := p.listNodesForCluster(c, nodeFilter{metadata: filter.Metadata})
 		if err != nil {
 			return err
 		}
@@ -847,25 +843,6 @@ func (p *kubernetesProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) 
 	}
 	if err != nil {
 		return nil, err
-	}
-	return nodes, nil
-}
-
-func (p *kubernetesProvisioner) listNodesForClusterWithFilter(cluster *ClusterClient, filter map[string]string) ([]provision.Node, error) {
-	var nodes []provision.Node
-	nodeList, err := cluster.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	for i := range nodeList.Items {
-		n := &kubernetesNodeWrapper{
-			node:    &nodeList.Items[i],
-			prov:    p,
-			cluster: cluster,
-		}
-		if node.HasAllMetadata(n.MetadataNoPrefix(), filter) {
-			nodes = append(nodes, n)
-		}
 	}
 	return nodes, nil
 }
@@ -1004,7 +981,7 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*ClusterClien
 		if foundNode != nil {
 			return nil
 		}
-		node, err := getNodeByAddr(c, address)
+		node, err := p.getNodeByAddr(c, address)
 		if err == nil {
 			foundNode = &kubernetesNodeWrapper{
 				node:    node,
@@ -1253,7 +1230,7 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 	}
 	var out string
 	for _, c := range clusters {
-		nodeList, err := p.listNodesForCluster(c, nil)
+		nodeList, err := p.listNodesForCluster(c, nodeFilter{})
 		if err != nil {
 			return "", err
 		}
@@ -1261,6 +1238,9 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 		if len(nodeList) == 0 {
 			out += "    No Kubernetes nodes available\n"
 		}
+		sort.Slice(nodeList, func(i, j int) bool {
+			return nodeList[i].Address() < nodeList[j].Address()
+		})
 		for _, node := range nodeList {
 			out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())
 		}

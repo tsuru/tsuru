@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -3084,6 +3085,7 @@ func (s *S) TestGetEnv(c *check.C) {
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
 		"public": true,
+		"alias":  "",
 	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
@@ -3114,8 +3116,8 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
 	expected := []map[string]interface{}{
-		{"name": "DATABASE_HOST", "value": "localhost", "public": true},
-		{"name": "DATABASE_USER", "value": "root", "public": true},
+		{"name": "DATABASE_HOST", "value": "localhost", "public": true, "alias": ""},
+		{"name": "DATABASE_USER", "value": "root", "public": true, "alias": ""},
 	}
 	var got []map[string]interface{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
@@ -3177,6 +3179,7 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
 		"public": true,
+		"alias":  "",
 	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
@@ -3191,8 +3194,8 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3229,14 +3232,69 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	d := apiTypes.Envs{
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "", "MY_DB_HOST"},
+			{"MY_DB_HOST", "localhost", ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "DATABASE_HOST",
+		Alias:  "MY_DB_HOST",
+		Public: true,
+	})
+	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, bind.EnvVar{
+		Name:   "MY_DB_HOST",
+		Value:  "localhost",
+		Public: true,
+	})
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 2 new environment variables ----\n"}
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Alias", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Name", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3279,8 +3337,8 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3309,9 +3367,9 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		},
 	}, eventtest.HasEvent)
 	d = apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "127.0.0.1"},
-			{"DATABASE_PORT", "6379"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "127.0.0.1", ""},
+			{"DATABASE_PORT", "6379", ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3356,9 +3414,9 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
-			{"DATABASE_USER", "root"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
+			{"DATABASE_USER", "root", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3411,8 +3469,8 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "http://foo.com:8080"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "http://foo.com:8080", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3458,8 +3516,8 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: true,
 		Private:   false,
@@ -3548,8 +3606,8 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"DATABASE_HOST", "localhost"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"DATABASE_HOST", "localhost", ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3573,8 +3631,8 @@ func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value string }{
-			{"INVALID ENV", "value"},
+		Envs: []struct{ Name, Value, Alias string }{
+			{"INVALID ENV", "value", ""},
 		},
 	}
 	v, err := form.EncodeToValues(&d)
@@ -4116,13 +4174,13 @@ func (s *S) TestAppLogFollow(c *check.C) {
 		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
 		c.Assert(splitted, check.HasLen, 2)
 		c.Assert(splitted[0], check.Equals, "[]")
-		logs := []app.Applog{}
+		logs := []appTypes.Applog{}
 		logErr = json.Unmarshal([]byte(splitted[1]), &logs)
 		c.Assert(logErr, check.IsNil)
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "x")
 	}()
-	var listener *app.LogListener
+	var listener appTypes.LogWatcher
 	timeout := time.After(5 * time.Second)
 	for listener == nil {
 		select {
@@ -4135,7 +4193,7 @@ func (s *S) TestAppLogFollow(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	err = a.Log("x", "", "")
+	err = servicemanager.AppLog.Add(a.Name, "x", "", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
 	cancel()
@@ -4165,13 +4223,13 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
 		c.Assert(splitted, check.HasLen, 2)
 		c.Assert(splitted[0], check.Equals, "[]")
-		logs := []app.Applog{}
+		logs := []appTypes.Applog{}
 		logErr = json.Unmarshal([]byte(splitted[1]), &logs)
 		c.Assert(logErr, check.IsNil)
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "y")
 	}()
-	var listener *app.LogListener
+	var listener appTypes.LogWatcher
 	timeout := time.After(5 * time.Second)
 	for listener == nil {
 		select {
@@ -4184,9 +4242,9 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	err = a.Log("x", "app", "")
+	err = servicemanager.AppLog.Add(a.Name, "x", "app", "")
 	c.Assert(err, check.IsNil)
-	err = a.Log("y", "web", "")
+	err = servicemanager.AppLog.Add(a.Name, "y", "web", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
 	cancel()
@@ -4215,7 +4273,7 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		a.Log(strconv.Itoa(i), "source", "")
+		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
@@ -4228,18 +4286,66 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	logs := []app.Applog{}
+	logs := []appTypes.Applog{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
+}
+
+func (s *S) TestAppLogAllowNegativeLines(c *check.C) {
+	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 15; i++ {
+		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadLog,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=-1", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appLog(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	logs := []appTypes.Applog{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 0)
+}
+
+func (s *S) TestAppLogExplicitZeroLines(c *check.C) {
+	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 15; i++ {
+		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadLog,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=0", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appLog(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	logs := []appTypes.Applog{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 15)
 }
 
 func (s *S) TestAppLogSelectBySource(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Log("mars log", "mars", "")
-	a.Log("earth log", "earth", "")
+	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "")
+	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4252,7 +4358,7 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	logs := []app.Applog{}
+	logs := []appTypes.Applog{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
@@ -4264,8 +4370,8 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Log("mars log", "mars", "prospero")
-	a.Log("earth log", "earth", "caliban")
+	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "prospero")
+	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "caliban")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4278,7 +4384,7 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	logs := []app.Applog{}
+	logs := []appTypes.Applog{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
@@ -4295,7 +4401,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	coll, err := s.logConn.CreateAppLogCollection(a.Name)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		l := app.Applog{
+		l := appTypes.Applog{
 			Date:    now.Add(time.Duration(i) * time.Hour),
 			Message: strconv.Itoa(i),
 			Source:  "source",
@@ -4315,7 +4421,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var logs []app.Applog
+	var logs []appTypes.Applog
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 3)
@@ -4328,15 +4434,15 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	app1.Log("app1 log", "source", "")
+	servicemanager.AppLog.Add(app1.Name, "app1 log", "source", "")
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	app2.Log("app2 log", "sourc ", "")
+	servicemanager.AppLog.Add(app2.Name, "app2 log", "sourc ", "")
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
-	app3.Log("app3 log", "tsuru", "")
+	servicemanager.AppLog.Add(app3.Name, "app3 log", "tsuru", "")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4349,7 +4455,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	logs := []app.Applog{}
+	logs := []appTypes.Applog{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	var logged bool
@@ -5471,7 +5577,7 @@ func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *chec
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-type LogList []app.Applog
+type LogList []appTypes.Applog
 
 func (l LogList) Len() int           { return len(l) }
 func (l LogList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
@@ -5521,7 +5627,7 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(5, app.Applog{})
+	logs, err := a.LastLogs(servicemanager.AppLog, 5, appTypes.Applog{}, token)
 	c.Assert(err, check.IsNil)
 	got := make([]string, len(logs))
 	gotSource := make([]string, len(logs))
@@ -6285,36 +6391,18 @@ func (s *S) TestFollowLogs(c *check.C) {
 	enc := &fakeEncoder{
 		done: make(chan struct{}),
 	}
-	l, err := app.NewLogListener(&a, app.Applog{})
+	l, err := servicemanager.AppLog.Watch(a.Name, "", "", s.token)
 	c.Assert(err, check.IsNil)
 	go func() {
-		err = a.Log("xyz", "", "")
+		err = servicemanager.AppLog.Add(a.Name, "xyz", "", "")
 		c.Assert(err, check.IsNil)
 		<-enc.done
 		cancel()
 	}()
-	err = followLogs(ctx, l, enc)
+	err = followLogs(ctx, a.Name, l, enc)
 	c.Assert(err, check.IsNil)
-	msgSlice, ok := enc.msg.([]app.Applog)
+	msgSlice, ok := enc.msg.([]appTypes.Applog)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(msgSlice, check.HasLen, 1)
 	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
-}
-
-func (s *S) TestFollowLogsTimeout(c *check.C) {
-	old := logTailIdleTimeout
-	logTailIdleTimeout = 100 * time.Millisecond
-	defer func() { logTailIdleTimeout = old }()
-	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	enc := &fakeEncoder{
-		done: make(chan struct{}),
-	}
-	l, err := app.NewLogListener(&a, app.Applog{})
-	c.Assert(err, check.IsNil)
-	err = followLogs(ctx, l, enc)
-	c.Assert(err, check.ErrorMatches, `.*timeout.*`)
 }

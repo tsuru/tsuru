@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -41,8 +42,21 @@ import (
 )
 
 var (
-	logTailIdleTimeout = 5 * time.Minute
+	logsAppTail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsuru_logs_app_tail_current",
+		Help: "The current number of active log tail queries for an app.",
+	}, []string{"app"})
+
+	logsAppTailEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_logs_app_tail_entries_total",
+		Help: "The number of log entries read in tail requests for an app.",
+	}, []string{"app"})
 )
+
+func init() {
+	prometheus.MustRegister(logsAppTail)
+	prometheus.MustRegister(logsAppTailEntries)
+}
 
 func appTarget(appName string) event.Target {
 	return event.Target{Type: event.TargetTypeApp, Value: appName}
@@ -961,7 +975,12 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	variables := []bind.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
-		variables = append(variables, bind.EnvVar{Name: v.Name, Value: v.Value, Public: !e.Private})
+		variables = append(variables, bind.EnvVar{
+			Name:   v.Name,
+			Value:  v.Value,
+			Public: !e.Private,
+			Alias:  v.Alias,
+		})
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
@@ -1149,9 +1168,9 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	source := r.URL.Query().Get("source")
 	unit := r.URL.Query().Get("unit")
-	follow := r.URL.Query().Get("follow")
+	follow := r.URL.Query().Get("follow") == "1"
 	appName := r.URL.Query().Get(":app")
-	filterLog := app.Applog{Source: source, Unit: unit}
+	filterLog := appTypes.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -1162,7 +1181,13 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	logs, err := a.LastLogs(lines, filterLog)
+	logService := servicemanager.AppLog
+	if strings.Contains(r.URL.Path, "/log-instance") {
+		if svcInstance, ok := servicemanager.AppLog.(appTypes.AppLogServiceInstance); ok {
+			logService = svcInstance.Instance()
+		}
+	}
+	logs, err := a.LastLogs(logService, lines, filterLog, t)
 	if err != nil {
 		return err
 	}
@@ -1171,50 +1196,51 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if follow != "1" {
+	if !follow {
 		return nil
 	}
-	l, err := app.NewLogListener(&a, filterLog)
+	watcher, err := logService.Watch(a.Name, source, unit, t)
 	if err != nil {
 		return err
 	}
-	return followLogs(r.Context(), l, encoder)
+	return followLogs(r.Context(), a.Name, watcher, encoder)
 }
 
 type msgEncoder interface {
 	Encode(interface{}) error
 }
 
-func followLogs(ctx stdContext.Context, listener *app.LogListener, encoder msgEncoder) error {
-	logTracker.add(listener)
+func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatcher, encoder msgEncoder) error {
+	logTracker.add(watcher)
 	defer func() {
-		logTracker.remove(listener)
-		listener.Close()
+		logTracker.remove(watcher)
+		watcher.Close()
 	}()
+
+	tailCountMetric := logsAppTail.WithLabelValues(appName)
+	tailCountMetric.Inc()
+	defer tailCountMetric.Dec()
+
 	closeChan := ctx.Done()
-	logChan := listener.ListenChan()
-	idleTimer := time.NewTimer(logTailIdleTimeout)
+	logChan := watcher.Chan()
+
+	entriesMetric := logsAppTailEntries.WithLabelValues(appName)
 	for {
-		var logMsg app.Applog
+		var logMsg appTypes.Applog
 		var chOpen bool
 		select {
-		case <-idleTimer.C:
-			return fmt.Errorf("timeout after %v waiting for log messages", logTailIdleTimeout)
 		case <-closeChan:
 			return nil
 		case logMsg, chOpen = <-logChan:
+			entriesMetric.Inc()
 		}
 		if !chOpen {
 			return nil
 		}
-		err := encoder.Encode([]app.Applog{logMsg})
+		err := encoder.Encode([]appTypes.Applog{logMsg})
 		if err != nil {
 			return err
 		}
-		if !idleTimer.Stop() {
-			<-idleTimer.C
-		}
-		idleTimer.Reset(logTailIdleTimeout)
 	}
 }
 
@@ -1515,7 +1541,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	unit := InputValue(r, "unit")
 	for _, log := range logs {
-		err := a.Log(log, source, unit)
+		err = servicemanager.AppLog.Add(a.Name, log, source, unit)
 		if err != nil {
 			return err
 		}

@@ -24,10 +24,12 @@ import (
 	"github.com/tsuru/config"
 	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/api/tracker"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
+	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
@@ -139,6 +141,17 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AppLog, err = applog.AppLogService()
+	if err != nil {
+		return err
+	}
+	servicemanager.InstanceTracker, err = tracker.InstanceService()
+	if err != nil {
+		return err
+	}
 	return err
 }
 
@@ -231,7 +244,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/apps/{app}/units/{unit}", setUnitStatusHandler)
 	m.Add("1.0", "Put", "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(grantAppAccess))
 	m.Add("1.0", "Delete", "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(revokeAppAccess))
-	m.Add("1.0", "Get", "/apps/{app}/log", AuthorizationRequiredHandler(appLog))
+	m.AddNamed("log-get", "1.0", "Get", "/apps/{app}/log", AuthorizationRequiredHandler(appLog))
+	m.AddNamed("log-get-instance", "1.8", "Get", "/apps/{app}/log-instance", AuthorizationRequiredHandler(appLog))
 	logPostHandler := AuthorizationRequiredHandler(addLog)
 	m.Add("1.0", "Post", "/apps/{app}/log", logPostHandler)
 	m.Add("1.0", "Post", "/apps/{appname}/deploy/rollback", AuthorizationRequiredHandler(deployRollback))
@@ -410,6 +424,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(createCluster))
 	m.Add("1.4", "POST", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(updateCluster))
 	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
+	m.Add("1.8", "GET", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(clusterInfo))
 	m.Add("1.3", "DELETE", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(deleteCluster))
 
 	m.Add("1.4", "GET", "/volumes", AuthorizationRequiredHandler(volumesList))
@@ -471,7 +486,12 @@ func RunServer(dry bool) http.Handler {
 		n.Use(newLoggerMiddleware())
 	}
 	n.UseHandler(m)
-	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
+	n.Use(&flushingWriterMiddleware{
+		latencyConfig: map[string]time.Duration{
+			"log-get":          500 * time.Millisecond,
+			"log-get-instance": 500 * time.Millisecond,
+		},
+	})
 	n.Use(negroni.HandlerFunc(setRequestIDHeaderMiddleware))
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))

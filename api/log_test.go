@@ -15,14 +15,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/applog"
+	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/net/websocket"
 	check "gopkg.in/check.v1"
 )
 
-func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {
+func compareLogs(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog) {
 	for i := range logs1 {
 		logs1[i].MongoID = ""
 		logs1[i].Date = logs1[i].Date.UTC()
@@ -73,12 +77,12 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 loop:
 	for {
 		var (
-			logs1 []app.Applog
-			logs2 []app.Applog
+			logs1 []appTypes.Applog
+			logs2 []appTypes.Applog
 		)
-		logs1, err = a1.LastLogs(3, app.Applog{})
+		logs1, err = a1.LastLogs(servicemanager.AppLog, 3, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
-		logs2, err = a2.LastLogs(2, app.Applog{})
+		logs2, err = a2.LastLogs(servicemanager.AppLog, 2, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs1) == 3 && len(logs2) == 2 {
 			break
@@ -90,18 +94,18 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(3, app.Applog{})
+	logs, err := a1.LastLogs(servicemanager.AppLog, 3, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
-	compareLogs(c, logs, []app.Applog{
+	compareLogs(c, logs, []appTypes.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
 		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
 	})
-	logs, err = a2.LastLogs(2, app.Applog{})
+	logs, err = a2.LastLogs(servicemanager.AppLog, 2, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
-	compareLogs(c, logs, []app.Applog{
+	compareLogs(c, logs, []appTypes.Applog{
 		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
 		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
 	})
@@ -151,8 +155,8 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	timeout := time.After(5 * time.Second)
 loop:
 	for {
-		var logs1 []app.Applog
-		logs1, err = a1.LastLogs(nConcurrency, app.Applog{})
+		var logs1 []appTypes.Applog
+		logs1, err = a1.LastLogs(servicemanager.AppLog, nConcurrency, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs1) == nConcurrency {
 			break
@@ -164,9 +168,9 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(1, app.Applog{})
+	logs, err := a1.LastLogs(servicemanager.AppLog, 1, appTypes.Applog{}, nil)
 	c.Assert(err, check.IsNil)
-	compareLogs(c, logs, []app.Applog{
+	compareLogs(c, logs, []appTypes.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
 	})
 }
@@ -226,6 +230,8 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	w.Close()
 	<-done
 	c.StopTimer()
-	globalDispatcher.Shutdown(context.Background())
-	onceDispatcher = sync.Once{}
+	servicemanager.AppLog.(shutdown.Shutdownable).Shutdown(context.Background())
+	var err error
+	servicemanager.AppLog, err = applog.AppLogService()
+	c.Assert(err, check.IsNil)
 }

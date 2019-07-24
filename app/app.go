@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -240,16 +241,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
 	return json.Marshal(&result)
-}
-
-// Applog represents a log entry.
-type Applog struct {
-	MongoID bson.ObjectId `bson:"_id,omitempty" json:"-"`
-	Date    time.Time
-	Message string
-	Source  string
-	AppName string
-	Unit    string
 }
 
 // AcquireApplicationLock acquires an application lock by setting the lock
@@ -1156,7 +1147,7 @@ func (app *App) setEnv(env bind.EnvVar) {
 	}
 	app.Env[env.Name] = env
 	if env.Public {
-		app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
+		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
 	}
 }
 
@@ -1295,10 +1286,10 @@ func (app *App) Run(cmd string, w io.Writer, args provision.RunArgs) error {
 	if !args.Isolated && !app.available() {
 		return errors.New("App must be available to run non-isolated commands")
 	}
-	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")
-	logWriter := LogWriter{App: app, Source: "app-run"}
+	logWriter := LogWriter{AppName: app.Name, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
+	logWriter.Write([]byte(fmt.Sprintf("running '%s'", cmd)))
 	return app.run(cmd, io.MultiWriter(w, &logWriter), args)
 }
 
@@ -1550,14 +1541,38 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
+func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
+	delete(toInterpolate, envName)
+	if toInterpolate[varName] != "" {
+		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
+		return
+	}
+	if _, isSet := mergedEnvs[varName]; !isSet {
+		return
+	}
+	env := mergedEnvs[envName]
+	env.Value = mergedEnvs[varName].Value
+	mergedEnvs[envName] = env
+}
+
 // Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bind.EnvVar {
 	mergedEnvs := make(map[string]bind.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
+	toInterpolate := make(map[string]string)
+	var toInterpolateKeys []string
 	for _, e := range app.Env {
 		mergedEnvs[e.Name] = e
+		if e.Alias != "" {
+			toInterpolate[e.Name] = e.Alias
+			toInterpolateKeys = append(toInterpolateKeys, e.Name)
+		}
 	}
 	for _, e := range app.ServiceEnvs {
 		mergedEnvs[e.Name] = e.EnvVar
+	}
+	sort.Strings(toInterpolateKeys)
+	for _, envName := range toInterpolateKeys {
+		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
 	}
 	mergedEnvs[TsuruServicesEnvVar] = serviceEnvsFromEnvVars(app.ServiceEnvs)
 	return mergedEnvs
@@ -1749,45 +1764,13 @@ func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 	return nil
 }
 
-// Log adds a log message to the app. Specifying a good source is good so the
-// user can filter where the message come from.
-func (app *App) Log(message, source, unit string) error {
-	messages := strings.Split(message, "\n")
-	logs := make([]interface{}, 0, len(messages))
-	for _, msg := range messages {
-		if msg != "" {
-			l := Applog{
-				Date:    time.Now().In(time.UTC),
-				Message: msg,
-				Source:  source,
-				AppName: app.Name,
-				Unit:    unit,
-			}
-			logs = append(logs, l)
-		}
-	}
-	if len(logs) > 0 {
-		conn, err := db.LogConn()
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		coll, err := conn.CreateAppLogCollection(app.Name)
-		if err != nil {
-			return err
-		}
-		return coll.Insert(logs...)
-	}
-	return nil
-}
-
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
-func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
-	return app.lastLogs(lines, filterLog, false)
+func (app *App) LastLogs(logService appTypes.AppLogService, lines int, filterLog appTypes.Applog, t authTypes.Token) ([]appTypes.Applog, error) {
+	return app.lastLogs(logService, lines, filterLog, false, t)
 }
 
-func (app *App) lastLogs(lines int, filterLog Applog, invertFilter bool) ([]Applog, error) {
+func (app *App) lastLogs(logService appTypes.AppLogService, lines int, filterLog appTypes.Applog, invertFilter bool, t authTypes.Token) ([]appTypes.Applog, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -1804,33 +1787,14 @@ func (app *App) lastLogs(lines int, filterLog Applog, invertFilter bool) ([]Appl
 			return nil, errors.New(doc)
 		}
 	}
-	conn, err := db.LogConn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	logs := []Applog{}
-	q := bson.M{}
-	if filterLog.Source != "" {
-		q["source"] = filterLog.Source
-	}
-	if filterLog.Unit != "" {
-		q["unit"] = filterLog.Unit
-	}
-	if invertFilter {
-		for k, v := range q {
-			q[k] = bson.M{"$ne": v}
-		}
-	}
-	err = conn.AppLogCollection(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
-	if err != nil {
-		return nil, err
-	}
-	l := len(logs)
-	for i := 0; i < l/2; i++ {
-		logs[i], logs[l-1-i] = logs[l-1-i], logs[i]
-	}
-	return logs, nil
+	return logService.List(appTypes.ListLogArgs{
+		AppName:       app.Name,
+		InvertFilters: invertFilter,
+		Limit:         lines,
+		Source:        filterLog.Source,
+		Unit:          filterLog.Unit,
+		Token:         t,
+	})
 }
 
 type Filter struct {
@@ -2490,7 +2454,7 @@ func (app *App) Unlock() {
 }
 
 func (app *App) withLogWriter(w io.Writer) io.Writer {
-	logWriter := &LogWriter{App: app}
+	logWriter := &LogWriter{AppName: app.Name}
 	if w != nil {
 		w = io.MultiWriter(w, logWriter)
 	} else {

@@ -87,6 +87,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	opts.User = userName
 	opts.Origin = origin
 	opts.Message = message
+	opts.Token = t
 	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)

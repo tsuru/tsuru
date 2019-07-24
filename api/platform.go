@@ -205,7 +205,7 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-		permission.Check(t, permission.PermPlatformCreate)
+		permission.Check(t, permission.PermPlatformRead)
 	if !canUsePlat {
 		return permission.ErrUnauthorized
 	}

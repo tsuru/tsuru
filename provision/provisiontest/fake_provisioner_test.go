@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -42,6 +43,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	servicemock.SetMockService(&servicemock.MockService{})
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

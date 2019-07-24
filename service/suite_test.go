@@ -8,10 +8,12 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -78,6 +80,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(_ string) (*serviceTypes.BrokerCatalog, error) {
 		return nil, fmt.Errorf("not found")
 	}
+	servicemanager.AppLog, err = applog.AppLogService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

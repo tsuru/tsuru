@@ -171,27 +171,6 @@ func (s *LogStorage) CreateAppLogCollection(appName string) (*storage.Collection
 	return c, err
 }
 
-// LogsCollections returns logs collections for all apps from MongoDB.
-func (s *LogStorage) LogsCollections() ([]*storage.Collection, error) {
-	var names []struct {
-		Name string
-	}
-	conn, err := Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	err = conn.Apps().Find(nil).All(&names)
-	if err != nil {
-		return nil, err
-	}
-	var colls []*storage.Collection
-	for _, name := range names {
-		colls = append(colls, s.Collection("logs_"+name.Name))
-	}
-	return colls, nil
-}
-
 func (s *Storage) Roles() *storage.Collection {
 	return s.Collection("roles")
 }

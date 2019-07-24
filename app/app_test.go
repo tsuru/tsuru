@@ -82,7 +82,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	err = app.Log("msg", "src", "unit")
+	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName(app.Name, "testimage")
 	c.Assert(err, check.IsNil)
@@ -2499,112 +2499,6 @@ func (s *S) TestSleep(c *check.C) {
 	c.Assert(routes, check.HasLen, 1)
 }
 
-func (s *S) TestLog(c *check.C) {
-	a := App{Name: "new-app", TeamOwner: s.team.Name}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		s.logConn.AppLogCollection(a.Name).DropCollection()
-	}()
-	err = a.Log("last log msg", "tsuru", "outermachine")
-	c.Assert(err, check.IsNil)
-	var logs []Applog
-	err = s.logConn.AppLogCollection(a.Name).Find(nil).All(&logs)
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 1)
-	c.Assert(logs[0].Message, check.Equals, "last log msg")
-	c.Assert(logs[0].Source, check.Equals, "tsuru")
-	c.Assert(logs[0].AppName, check.Equals, a.Name)
-	c.Assert(logs[0].Unit, check.Equals, "outermachine")
-}
-
-func (s *S) TestLogShouldAddOneRecordByLine(c *check.C) {
-	a := App{Name: "new-app", TeamOwner: s.team.Name}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		s.logConn.AppLogCollection(a.Name).DropCollection()
-	}()
-	err = a.Log("last log msg\nfirst log", "source", "machine")
-	c.Assert(err, check.IsNil)
-	var logs []Applog
-	err = s.logConn.AppLogCollection(a.Name).Find(nil).Sort("$natural").All(&logs)
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 2)
-	c.Assert(logs[0].Message, check.Equals, "last log msg")
-	c.Assert(logs[1].Message, check.Equals, "first log")
-}
-
-func (s *S) TestLogShouldNotLogBlankLines(c *check.C) {
-	a := App{Name: "ich", TeamOwner: s.team.Name}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	err = a.Log("some message", "tsuru", "machine")
-	c.Assert(err, check.IsNil)
-	err = a.Log("", "", "")
-	c.Assert(err, check.IsNil)
-	count, err := s.logConn.AppLogCollection(a.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
-}
-
-func (s *S) TestLogWithListeners(c *check.C) {
-	var logs struct {
-		l []Applog
-		sync.Mutex
-	}
-	a := App{
-		Name:      "new-app",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	l, err := NewLogListener(&a, Applog{})
-	c.Assert(err, check.IsNil)
-	defer l.Close()
-	go func() {
-		for log := range l.c {
-			logs.Lock()
-			logs.l = append(logs.l, log)
-			logs.Unlock()
-		}
-	}()
-	err = a.Log("last log msg", "tsuru", "machine")
-	c.Assert(err, check.IsNil)
-	defer s.logConn.AppLogCollection(a.Name).DropCollection()
-	done := make(chan bool, 1)
-	q := make(chan bool)
-	go func(quit chan bool) {
-		for range time.Tick(1e3) {
-			select {
-			case <-quit:
-				return
-			default:
-			}
-			logs.Lock()
-			if len(logs.l) == 1 {
-				logs.Unlock()
-				done <- true
-				return
-			}
-			logs.Unlock()
-		}
-	}(q)
-	select {
-	case <-done:
-	case <-time.After(2e9):
-		defer close(q)
-		c.Fatal("Timed out.")
-	}
-	logs.Lock()
-	c.Assert(logs.l, check.HasLen, 1)
-	log := logs.l[0]
-	logs.Unlock()
-	c.Assert(log.Message, check.Equals, "last log msg")
-	c.Assert(log.Source, check.Equals, "tsuru")
-	c.Assert(log.Unit, check.Equals, "machine")
-}
-
 func (s *S) TestLastLogs(c *check.C) {
 	app := App{
 		Name:      "app3",
@@ -2614,53 +2508,17 @@ func (s *S) TestLastLogs(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		app.Log(strconv.Itoa(i), "tsuru", "rdaneel")
+		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
-	app.Log("app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(10, Applog{Source: "tsuru"})
+	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 5; i < 15; i++ {
 		c.Check(logs[i-5].Message, check.Equals, strconv.Itoa(i))
 		c.Check(logs[i-5].Source, check.Equals, "tsuru")
 	}
-}
-
-func (s *S) TestLastLogsUnitFilter(c *check.C) {
-	app := App{
-		Name:      "app3",
-		Platform:  "vougan",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, check.IsNil)
-	for i := 0; i < 15; i++ {
-		app.Log(strconv.Itoa(i), "tsuru", "rdaneel")
-		time.Sleep(1e6) // let the time flow
-	}
-	app.Log("app3 log from circus", "circus", "rdaneel")
-	app.Log("app3 log from tsuru", "tsuru", "seldon")
-	logs, err := app.LastLogs(10, Applog{Source: "tsuru", Unit: "rdaneel"})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 10)
-	for i := 5; i < 15; i++ {
-		c.Check(logs[i-5].Message, check.Equals, strconv.Itoa(i))
-		c.Check(logs[i-5].Source, check.Equals, "tsuru")
-	}
-}
-
-func (s *S) TestLastLogsEmpty(c *check.C) {
-	app := App{
-		Name:      "app33",
-		Platform:  "vougan",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, check.IsNil)
-	logs, err := app.LastLogs(10, Applog{Source: "tsuru"})
-	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.DeepEquals, []Applog{})
 }
 
 type logDisabledFakeProvisioner struct {
@@ -2686,7 +2544,7 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, err = app.LastLogs(10, Applog{})
+	_, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
 	c.Assert(err, check.ErrorMatches, "my doc msg")
 }
 
@@ -2969,10 +2827,10 @@ func (s *S) TestRun(c *check.C) {
 	c.Assert(allExecs[units[0].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
 	c.Assert(allExecs[units[1].GetID()], check.HasLen, 1)
 	c.Assert(allExecs[units[1].GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", expected})
-	var logs []Applog
+	var logs []appTypes.Applog
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err = app.LastLogs(10, Applog{})
+		logs, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs) > 2 {
 			break
@@ -3091,6 +2949,53 @@ func (s *S) TestEnvs(c *check.C) {
 			Name:  "TSURU_SERVICES",
 			Value: "{}",
 		},
+	}
+	env := app.Envs()
+	c.Assert(env, check.DeepEquals, expected)
+}
+
+func (s *S) TestEnvsInterpolate(c *check.C) {
+	app := App{
+		Name: "time",
+		ServiceEnvs: []bind.ServiceEnvVar{
+			{
+				EnvVar:       bind.EnvVar{Name: "DB_HOST", Value: "host1"},
+				ServiceName:  "srv1",
+				InstanceName: "inst1",
+			},
+		},
+		Env: map[string]bind.EnvVar{
+			"a":  {Name: "a", Value: "1"},
+			"aa": {Name: "aa", Alias: "c"},
+			"b":  {Name: "b", Alias: "a"},
+			"c":  {Name: "c", Alias: "b"},
+
+			// Mutual recursion
+			"e": {Name: "e", Alias: "f"},
+			"f": {Name: "f", Alias: "e"},
+
+			// Self recursion
+			"g": {Name: "g", Alias: "g"},
+
+			// Service envs
+			"h": {Name: "h", Alias: "DB_HOST"},
+
+			// Not found
+			"i": {Name: "i", Alias: "notfound"},
+		},
+	}
+	expected := map[string]bind.EnvVar{
+		"a":              {Name: "a", Value: "1"},
+		"aa":             {Name: "aa", Value: "1", Alias: "c"},
+		"b":              {Name: "b", Value: "1", Alias: "a"},
+		"c":              {Name: "c", Value: "1", Alias: "b"},
+		"e":              {Name: "e", Value: "", Alias: "f"},
+		"f":              {Name: "f", Value: "", Alias: "e"},
+		"g":              {Name: "g", Value: "", Alias: "g"},
+		"h":              {Name: "h", Value: "host1", Alias: "DB_HOST"},
+		"i":              {Name: "i", Value: "", Alias: "notfound"},
+		"DB_HOST":        {Name: "DB_HOST", Value: "host1"},
+		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}"},
 	}
 	env := app.Envs()
 	c.Assert(env, check.DeepEquals, expected)
