@@ -238,6 +238,34 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
 }
 
+func (s *S) TestListNodesWithFilter(c *check.C) {
+	s.addCluster(c)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Pool:     "bonehunters",
+		Metadata: map[string]string{"m1": "v1"},
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "bonehunters"}}
+	nodes, err := s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes[0].Pool(), check.DeepEquals, "bonehunters")
+	c.Assert(nodes[1].Pool(), check.DeepEquals, "bonehunters")
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
+	nodes, err = s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, srv.URL())
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.m1":   "v1",
+		"tsuru.pool": "bonehunters",
+	})
+}
+
 func (s *S) TestListNodesEmpty(c *check.C) {
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)

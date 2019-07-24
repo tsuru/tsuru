@@ -771,3 +771,25 @@ func (s *S) TestPoolConstraintSetRequiresPoolExpr(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(rec.Body.String(), check.Equals, "You must provide a Pool Expression\n")
 }
+
+func (s *S) TestPoolGetHandler(c *check.C) {
+	teamName := "angra"
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = pool.AddTeamsToPool(p.Name, []string{teamName})
+	c.Assert(err, check.IsNil)
+	expected := pool.Pool{
+		Name: "pool1",
+	}
+	req, err := http.NewRequest(http.MethodGet, "/pools/pool1", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	s.testServer.ServeHTTP(rec, req)
+	var pool pool.Pool
+	err = json.NewDecoder(rec.Body).Decode(&pool)
+	c.Assert(err, check.IsNil)
+	c.Assert(pool, check.DeepEquals, expected)
+}

@@ -389,6 +389,18 @@ type UpdatableProvisioner interface {
 	UpdateApp(old, new App, w io.Writer) error
 }
 
+// InterAppProvisioner is a provisioner that allows an app to comunicate with each other
+// using internal dns and own load balancers provided by provisioner.
+type InterAppProvisioner interface {
+	InternalAddresses(ctx context.Context, a App) ([]AppInternalAddress, error)
+}
+
+type AppInternalAddress struct {
+	Domain   string
+	Protocol string
+	Port     int32
+}
+
 // MessageProvisioner is a provisioner that provides a welcome message for
 // logging.
 type MessageProvisioner interface {
@@ -446,6 +458,9 @@ type NodeProvisioner interface {
 
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
+
+	// ListNodesByFilters returns a list of filtered nodes by filter.
+	ListNodesByFilter(filter *provTypes.NodeFilter) ([]Node, error)
 
 	// GetNode retrieves an existing node by its address.
 	GetNode(address string) (Node, error)

@@ -5,6 +5,7 @@
 package provisiontest
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -35,6 +37,7 @@ var (
 	uniqueIpCounter     int32 = 0
 
 	_ provision.NodeProvisioner      = &FakeProvisioner{}
+	_ provision.InterAppProvisioner  = &FakeProvisioner{}
 	_ provision.UpdatableProvisioner = &FakeProvisioner{}
 	_ provision.Provisioner          = &FakeProvisioner{}
 	_ provision.App                  = &FakeApp{}
@@ -587,6 +590,32 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 		result = make([]provision.Node, 0, len(p.nodes))
 		for a := range p.nodes {
 			n := p.nodes[a]
+			result = append(result, &n)
+		}
+	}
+	sort.Sort(nodeList(result))
+	return result, nil
+}
+
+func (p *FakeProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	if err := p.getError("ListNodesByFilter"); err != nil {
+		return nil, err
+	}
+	result := make([]provision.Node, 0, len(p.nodes))
+	filterFunc := func(meta map[string]string) bool {
+		for key, value := range filter.Metadata {
+			metaValue := meta[key]
+			if value != metaValue {
+				return false
+			}
+		}
+		return true
+	}
+	for a := range p.nodes {
+		n := p.nodes[a]
+		if filterFunc(n.Meta) {
 			result = append(result, &n)
 		}
 	}
@@ -1373,6 +1402,22 @@ func (p *FakeProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
 	provApp.app = new
 	p.apps[old.GetName()] = provApp
 	return nil
+}
+
+func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
+	return []provision.AppInternalAddress{
+		{
+			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.GetName()),
+			Port:     80,
+			Protocol: "TCP",
+		},
+		{
+			Domain:   fmt.Sprintf("%s-logs.fake-cluster.local", a.GetName()),
+			Port:     12201,
+			Protocol: "UDP",
+		},
+	}, nil
+
 }
 
 func stringInArray(value string, array []string) bool {

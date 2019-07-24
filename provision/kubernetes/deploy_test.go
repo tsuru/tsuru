@@ -756,7 +756,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XGET -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "GET"  -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
 						},
 					},
 				},
@@ -777,12 +777,39 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"sh", "-c",
-							"if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -XPOST -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST"  -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
 						},
 					},
 				},
 			},
 		},
+		{
+			hc: provTypes.TsuruYamlHealthcheck{
+				Path:            "/hc",
+				Scheme:          "https",
+				AllowedFailures: 2,
+				Method:          "POST",
+				Headers: map[string]string{
+					"Host":                      "test.com",
+					"X-Custom-Header":           "test",
+					"X-Injection\"& echo teste": "test",
+				},
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    3,
+				FailureThreshold: 2,
+				TimeoutSeconds:   60,
+				Handler: apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{
+							"sh", "-c",
+							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST" -H "Host: test.com" -H "X-Custom-Header: test" -H "X-Injection\"& echo teste: test" -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
+						},
+					},
+				},
+			},
+		},
+
 		{
 			hc: provTypes.TsuruYamlHealthcheck{
 				Path:        "/hc",
@@ -795,9 +822,10 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				TimeoutSeconds:   60,
 				Handler: apiv1.Handler{
 					HTTPGet: &apiv1.HTTPGetAction{
-						Path:   "/hc",
-						Port:   intstr.FromInt(8888),
-						Scheme: apiv1.URISchemeHTTPS,
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{},
 					},
 				},
 			},
@@ -817,9 +845,10 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				TimeoutSeconds:   2,
 				Handler: apiv1.Handler{
 					HTTPGet: &apiv1.HTTPGetAction{
-						Path:   "/hc",
-						Port:   intstr.FromInt(8888),
-						Scheme: apiv1.URISchemeHTTPS,
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{},
 					},
 				},
 			},
@@ -840,9 +869,10 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				TimeoutSeconds:   2,
 				Handler: apiv1.Handler{
 					HTTPGet: &apiv1.HTTPGetAction{
-						Path:   "/hc",
-						Port:   intstr.FromInt(8888),
-						Scheme: apiv1.URISchemeHTTPS,
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{},
 					},
 				},
 			},
@@ -852,9 +882,51 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				TimeoutSeconds:   2,
 				Handler: apiv1.Handler{
 					HTTPGet: &apiv1.HTTPGetAction{
-						Path:   "/hc",
-						Port:   intstr.FromInt(8888),
-						Scheme: apiv1.URISchemeHTTPS,
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{},
+					},
+				},
+			},
+		},
+		{
+			hc: provTypes.TsuruYamlHealthcheck{
+				Path:   "/hc",
+				Scheme: "https",
+				Headers: map[string]string{
+					"Host":            "test.com",
+					"X-Custom-Header": "test",
+				},
+				UseInRouter:     true,
+				IntervalSeconds: 9,
+				TimeoutSeconds:  2,
+				AllowedFailures: 4,
+				ForceRestart:    true,
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    9,
+				FailureThreshold: 4,
+				TimeoutSeconds:   2,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{{Name: "Host", Value: "test.com"}, {Name: "X-Custom-Header", Value: "test"}},
+					},
+				},
+			},
+			expectedLiveness: &apiv1.Probe{
+				PeriodSeconds:    9,
+				FailureThreshold: 4,
+				TimeoutSeconds:   2,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{{Name: "Host", Value: "test.com"}, {Name: "X-Custom-Header", Value: "test"}},
 					},
 				},
 			},
@@ -1557,7 +1629,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "tsuru/deploy-agent:0.8.2",
+		Image: "tsuru/deploy-agent:0.8.3",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -1672,7 +1744,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.8.2",
+			Image: "tsuru/deploy-agent:0.8.3",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -1836,7 +1908,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 	})
-	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.8.2")
+	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.8.3")
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 
@@ -2019,7 +2091,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.8.2",
+			Image: "tsuru/deploy-agent:0.8.3",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},

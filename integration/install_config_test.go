@@ -123,7 +123,7 @@ func setupGenericClusters() map[string]*genericKubeCluster {
 				"driver":                  "azurekubernetesservice",
 				"count":                   "2",
 				"service-cidr":            "10.0.0.1/24",
-				"dns-service-ip":          "10.0.0.2",
+				"dns-service-ip":          "10.0.0.10",
 				"docker-bridge-cidr":      "10.0.1.1/24",
 				"tenant-id":               os.Getenv("AZURE_TENANT_ID"),
 				"resource-group":          os.Getenv("AZURE_RESOURCE_GROUP"),

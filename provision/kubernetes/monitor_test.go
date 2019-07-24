@@ -20,7 +20,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func (s *S) TestNewRouterController(c *check.C) {
+func (s *S) TestNewClusterController(c *check.C) {
 	s.clusterClient.CustomData = map[string]string{
 		routerAddressLocalKey: "true",
 	}
@@ -46,7 +46,7 @@ func (s *S) TestNewRouterController(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer rebuild.Shutdown(context.Background())
-	_, err = newRouterController(s.p, s.clusterClient)
+	_, err = getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
 	basePod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -67,9 +67,9 @@ func (s *S) TestNewRouterController(c *check.C) {
 }
 
 func (s *S) TestNewRouterControllerSameInstance(c *check.C) {
-	c1, err := newRouterController(s.p, s.clusterClient)
+	c1, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	c2, err := newRouterController(s.p, s.clusterClient)
+	c2, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.Equals, c2)
 }

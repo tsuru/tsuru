@@ -210,3 +210,13 @@ func (nodes NodeList) SplitMetadata() (MetaWithFrequencyList, map[string]string,
 	sort.Sort(group)
 	return group, common, nil
 }
+
+func HasAllMetadata(base, wanted map[string]string) bool {
+	for key, value := range wanted {
+		nodeVal := base[key]
+		if nodeVal != value {
+			return false
+		}
+	}
+	return true
+}

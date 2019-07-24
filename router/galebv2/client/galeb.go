@@ -308,7 +308,7 @@ func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	return resource, err
 }
 
-func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGroup string) error {
+func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGroup string, wait bool) error {
 	virtualHostFullID, virtualHostID, err := c.findItemIDsByName("virtualhost", addr)
 	if err != nil {
 		return err
@@ -328,7 +328,10 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGro
 		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return c.waitStatusOK(virtualHostFullID)
+	if wait {
+		return c.waitStatusOK(virtualHostFullID)
+	}
+	return nil
 }
 
 func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {

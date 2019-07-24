@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -31,11 +32,20 @@ var _ builder.Builder = &dockerBuilder{}
 const (
 	defaultArchiveName = "archive.tar.gz"
 	defaultArchivePath = "/home/application"
+	procfileFileName   = "Procfile"
 )
 
 var (
 	globalLimiter provision.ActionLimiter
 	onceLimiter   sync.Once
+
+	dirPaths = []string{
+		filepath.Join(defaultArchivePath, "current"),
+		"/app/user",
+		"/",
+	}
+
+	tsuruYamlFiles = []string{"tsuru.yml", "tsuru.yaml", "app.yml", "app.yaml"}
 )
 
 type dockerBuilder struct{}
@@ -105,7 +115,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	repo, tag := image.SplitImageName(opts.ImageID)
 	imageID := fmt.Sprintf("%s:%s", repo, tag)
 	fmt.Fprintln(evt, "---- Getting process from image ----")
-	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
+	cmd := generateCatCommand([]string{procfileFileName}, dirPaths)
 	var procfileBuf bytes.Buffer
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
 	defer removeContainer(client, containerID)
@@ -195,8 +205,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 }
 
 func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provTypes.TsuruYamlData, string, error) {
-	path := defaultArchivePath + "/current"
-	cmd := fmt.Sprintf("(cat %[1]s/tsuru.yml || cat %[1]s/tsuru.yaml || cat %[1]s/app.yml || cat %[1]s/app.yaml || true) 2>/dev/null", path)
+	cmd := generateCatCommand(tsuruYamlFiles, dirPaths)
 	var buf bytes.Buffer
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &buf, nil)
 	if err != nil {
@@ -332,4 +341,16 @@ func downloadFromURL(url string) (io.ReadCloser, error) {
 		return nil, errors.New("archive file is empty")
 	}
 	return ioutil.NopCloser(&out), nil
+}
+
+func generateCatCommand(names, dirs []string) string {
+	var cmds []string
+	for _, name := range names {
+		for _, dir := range dirs {
+			path := filepath.Join(dir, name)
+			cmds = append(cmds, fmt.Sprintf("cat %s", path))
+		}
+	}
+	cmds = append(cmds, "true")
+	return fmt.Sprintf("(%s) 2>/dev/null", strings.Join(cmds, " || "))
 }

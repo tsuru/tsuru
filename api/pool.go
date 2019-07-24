@@ -18,6 +18,32 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
+// title: pool get
+// path: /pools/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   404: Not found
+//   401: Unauthorized
+func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	poolName := r.URL.Query().Get(":name")
+	allowed := permission.Check(t, permission.PermPoolRead,
+		permission.Context(permTypes.CtxPool, poolName))
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	retrievedPool, err := pool.GetPoolByName(poolName)
+	if err == pool.ErrPoolNotFound {
+		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(retrievedPool)
+}
+
 // title: pool list
 // path: /pools
 // method: GET

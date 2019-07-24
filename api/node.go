@@ -28,6 +28,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 func validateNodeAddress(address string) error {
@@ -217,6 +218,11 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   200: Ok
 //   204: No content
 func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	filter := &provTypes.NodeFilter{}
+	err := ParseInput(r, &filter)
+	if err != nil {
+		return err
+	}
 	pools, err := permission.ListContextValues(t, permission.PermNodeRead, false)
 	if err != nil {
 		return err
@@ -233,7 +239,11 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 			continue
 		}
 		var nodes []provision.Node
-		nodes, err = nodeProv.ListNodes(nil)
+		if filter != nil {
+			nodes, err = nodeProv.ListNodesByFilter(filter)
+		} else {
+			nodes, err = nodeProv.ListNodes(nil)
+		}
 		if err != nil {
 			allNodes = append(allNodes, provision.NodeSpec{
 				Address: fmt.Sprintf("%s nodes", prov.GetName()),

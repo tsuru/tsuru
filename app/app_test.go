@@ -2845,7 +2845,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"repository":  "",
 		"teams":       nil,
 		"units":       []interface{}{},
-		"error":       "unable to list app units: my err",
 		"ip":          "name.fakerouter.com",
 		"cname":       nil,
 		"owner":       "",
@@ -2878,6 +2877,8 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
+	c.Assert(result["error"], check.Matches, `(?s)unable to list app units: my err.*`)
+	delete(result, "error")
 	c.Assert(result, check.DeepEquals, expected)
 }
 
@@ -5549,4 +5550,21 @@ func (s *S) TestGetUUID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(storedApp.UUID, check.Not(check.DeepEquals), "")
 	c.Assert(storedApp.UUID, check.DeepEquals, uuid)
+}
+
+func (s *S) TestFillInternalAddresses(c *check.C) {
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
+	err := app.FillInternalAddresses(context.Background())
+	c.Assert(err, check.IsNil)
+	c.Assert(app.InternalAddresses, check.HasLen, 2)
+	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "test-web.fake-cluster.local",
+		Protocol: "TCP",
+		Port:     80,
+	})
+	c.Assert(app.InternalAddresses[1], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "test-logs.fake-cluster.local",
+		Protocol: "UDP",
+		Port:     12201,
+	})
 }

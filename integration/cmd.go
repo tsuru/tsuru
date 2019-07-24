@@ -278,7 +278,11 @@ func (r *Result) Compare(expected Expected) error {
 }
 
 func NewCommand(cmd string, args ...string) *Command {
-	return &Command{Command: cmd, Args: args, Timeout: 15 * time.Minute}
+	defaultTimeout, _ := strconv.Atoi(os.Getenv("TSURU_INTEGRATION_COMMAND_TIMEOUT"))
+	if defaultTimeout == 0 {
+		defaultTimeout = 15 * 60
+	}
+	return &Command{Command: cmd, Args: args, Timeout: time.Duration(defaultTimeout) * time.Second}
 }
 
 func (c *Command) WithArgs(args ...string) *Command {

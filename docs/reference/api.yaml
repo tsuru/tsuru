@@ -1627,6 +1627,26 @@ paths:
         in: path
         required: true
         type: string
+    get:
+      operationId: PoolGet
+      description: Get pool information
+      responses:
+        "200":
+          description: Pool data
+          schema:
+            $ref: "#/definitions/Pool"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Pool not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - pool
+      security:
+        - Bearer: []
     delete:
       operationId: PoolDelete
       description: Deletes a pool.

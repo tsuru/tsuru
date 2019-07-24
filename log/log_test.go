@@ -35,7 +35,7 @@ func (s *S) TestLogError(c *check.C) {
 	defer buf.Reset()
 	err := stderrors.New("no stack")
 	Error(err)
-	c.Assert(buf.String(), check.Equals, "ERROR: no stack\n")
+	c.Assert(buf.String(), check.Matches, "(?s)ERROR: no stack.*")
 }
 
 func (s *S) TestLogErrorWithStack(c *check.C) {

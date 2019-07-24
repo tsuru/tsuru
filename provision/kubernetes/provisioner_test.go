@@ -60,6 +60,36 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 	c.Assert(nodes, check.HasLen, 0)
 }
 
+func (s *S) TestListNodesWithFilter(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
+	nodes, err := s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "test-default",
+	})
+	c.Assert(nodes[1].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "test-default",
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "p1", "m1": "v1"}}
+	nodes, err = s.p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "p1",
+		"tsuru.io/m1":   "v1",
+	})
+}
+
 func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	s.mock.MockfakeNodes(c)
 	nodes, err := s.p.ListNodes([]string{"192.168.99.1"})
@@ -1236,6 +1266,76 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	})
 }
 
+func (s *S) TestInternalAddresses(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	s.client.PrependReactor("create", "services", func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		if srv.Name == "myapp-web" {
+			srv.Spec.Ports = []apiv1.ServicePort{
+				{
+					Port:     int32(80),
+					NodePort: int32(30002),
+					Protocol: "TCP",
+				},
+				{
+					Port:     int32(443),
+					NodePort: int32(30003),
+					Protocol: "TCP",
+				},
+			}
+		} else if srv.Name == "myapp-jobs" {
+			srv.Spec.Ports = []apiv1.ServicePort{
+				{
+					Port:     int32(12201),
+					NodePort: int32(30004),
+					Protocol: "UDP",
+				},
+			}
+		}
+
+		return testing.RunReactionsAfter(&s.client.Fake, action)
+	})
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":  "run mycmd web",
+			"jobs": "run mycmd jobs",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+
+	addrs, err := s.p.InternalAddresses(context.Background(), a)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	c.Assert(addrs[0], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "myapp-jobs.default.svc.cluster.local",
+		Protocol: "UDP",
+		Port:     12201,
+	})
+	c.Assert(addrs[1], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "myapp-web.default.svc.cluster.local",
+		Protocol: "TCP",
+		Port:     80,
+	})
+	c.Assert(addrs[2], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "myapp-web.default.svc.cluster.local",
+		Protocol: "TCP",
+		Port:     443,
+	})
+}
+
 func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1924,8 +2024,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.2",
-		DeployInspectImage:                  "tsuru/deploy-agent:0.8.2",
+		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.3",
+		DeployInspectImage:                  "tsuru/deploy-agent:0.8.3",
 		APITimeout:                          60 * time.Second,
 		APIShortTimeout:                     5 * time.Second,
 		PodReadyTimeout:                     time.Minute,
@@ -2320,12 +2420,11 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 }
 
 func (s *S) TestProvisionerInitialize(c *check.C) {
-	clusterControllers = map[string]*routerController{}
-	_, ok := clusterControllers[s.clusterClient.Name]
+	_, ok := s.p.clusterControllers[s.clusterClient.Name]
 	c.Assert(ok, check.Equals, false)
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
-	_, ok = clusterControllers[s.clusterClient.Name]
+	_, ok = s.p.clusterControllers[s.clusterClient.Name]
 	c.Assert(ok, check.Equals, true)
 }
 

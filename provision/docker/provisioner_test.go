@@ -43,6 +43,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -2488,6 +2489,37 @@ func (s *S) TestListNodes(c *check.C) {
 		&clusterNodeWrapper{Node: &nodes[0], prov: s.p},
 	})
 	listedNodes, err = s.p.ListNodes([]string{"notfound"})
+	c.Assert(err, check.IsNil)
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
+}
+
+func (s *S) TestListNodesWithFilter(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	nodes, err := p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default", "m1": "v1"}}
+	listedNodes, err := p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+		&clusterNodeWrapper{Node: &nodes[1], prov: p},
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
+	c.Assert(err, check.IsNil)
+	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
+		&clusterNodeWrapper{Node: &nodes[0], prov: p},
+	})
+	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v2"}}
+	listedNodes, err = p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
 }

@@ -94,7 +94,7 @@ func (s *S) TestMultiError_Error(c *check.C) {
 	c.Assert(multiError.Error(), check.Equals, "multi error created but no errors added")
 
 	multiError.Add(errors.New("foo"))
-	c.Assert(multiError.Error(), check.Equals, "foo")
+	c.Assert(multiError.Error(), check.Matches, "(?s)foo.*")
 
 	multiError.Add(errors.New("bar"))
 	c.Assert(strings.Contains(multiError.Error(), "multiple errors reported (2)"), check.Equals, true)
@@ -108,5 +108,5 @@ func (s *S) TestMultiError_Format(c *check.C) {
 
 	multiError.Add(errors.New("fail"))
 	c.Assert(fmt.Sprintf("%+s", multiError), check.Equals, "fail")
-	c.Assert(fmt.Sprintf("%#v", multiError), check.Equals, `&errors.errorString{s:"fail"}`)
+	c.Assert(fmt.Sprintf("%#v", multiError), check.Matches, `(?s).*errorString.*fail.*`)
 }

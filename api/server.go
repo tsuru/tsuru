@@ -51,7 +51,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.7.0"
+const Version = "1.7.2-rc1"
 
 type TsuruHandler struct {
 	version string
@@ -339,6 +339,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Put", "/pools/{name}", AuthorizationRequiredHandler(poolUpdateHandler))
 	m.Add("1.0", "Post", "/pools/{name}/team", AuthorizationRequiredHandler(addTeamToPoolHandler))
 	m.Add("1.0", "Delete", "/pools/{name}/team", AuthorizationRequiredHandler(removeTeamToPoolHandler))
+	m.Add("1.8", "Get", "/pools/{name}", AuthorizationRequiredHandler(getPoolHandler))
 
 	m.Add("1.3", "Get", "/constraints", AuthorizationRequiredHandler(poolConstraintList))
 	m.Add("1.3", "Put", "/constraints", AuthorizationRequiredHandler(poolConstraintSet))

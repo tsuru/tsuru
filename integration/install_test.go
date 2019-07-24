@@ -299,6 +299,7 @@ func nodeHealer() ExecFlow {
 		newAddrParts := newAddrRegexp.FindStringSubmatch(res.Stdout.String())
 		newAddr := newAddrParts[1]
 		env.Set("newnode-"+poolName, newAddr)
+		waitNodeAddr(c, env, newAddr)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		nodeAddr := env.Get("newnode-" + env.Get("pool"))
@@ -317,8 +318,12 @@ func waitNewNode(c *check.C, env *Environment) string {
 	c.Assert(res, ResultOk)
 	parts := regex.FindStringSubmatch(res.Stdout.String())
 	c.Assert(parts, check.HasLen, 2)
-	nodeAddr := parts[1]
-	regex = regexp.MustCompile("(?i)" + nodeAddr + `.*?\|\s+ready`)
+	return waitNodeAddr(c, env, parts[1])
+}
+
+func waitNodeAddr(c *check.C, env *Environment, nodeAddr string) string {
+	regex := regexp.MustCompile("(?i)" + net.URLToHost(nodeAddr) + `.*?\|\s+ready`)
+	var res *Result
 	ok := retry(5*time.Minute, func() bool {
 		res = T("node-list").Run(env)
 		return regex.MatchString(res.Stdout.String())
@@ -385,7 +390,7 @@ func poolAdd() ExecFlow {
 				}
 				return true
 			})
-			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 2 minutes: %v", res))
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 2 minutes: %v - all nodes: %v", res, T("node-list").Run(env)))
 			for _, ip := range nodeIPs {
 				res = T("node-update", ip, "pool="+poolName).Run(env)
 				c.Assert(res, ResultOk)
