@@ -63,6 +63,9 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	}, permission.Permission{
 		Scheme:  permission.PermUserUpdateQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermUserReadQuota,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())
