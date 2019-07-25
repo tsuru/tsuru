@@ -297,7 +297,7 @@ func toInfo(c *Cluster) *types.ClusterInfo {
 }
 
 // Remove removes a cluster
-func (c *Cluster) Remove(ctx context.Context) error {
+func (c *Cluster) Remove(ctx context.Context, forceRemove bool) error {
 	if err := c.restore(); errors.IsNotFound(err) {
 		return nil
 	} else if err != nil {
@@ -305,7 +305,13 @@ func (c *Cluster) Remove(ctx context.Context) error {
 	}
 
 	if err := c.Driver.Remove(ctx, toInfo(c)); err != nil {
-		return err
+		// Persist store removal must take place despite error to prevent cluster from being stuck in remove state
+		// TODO: We should add a "forceRemove" action to cluster and then revert this to return an error, so that
+		//       the user can see the problem and take appropriate action
+		if !forceRemove {
+			return fmt.Errorf("Error removing cluster [%s] with driver [%s]: %v", c.Name, c.DriverName, err)
+		}
+		logrus.Errorf("Error removing cluster [%s] with driver [%s]. Check for stray resources on cloud provider: %v", c.Name, c.DriverName, err)
 	}
 	return c.PersistStore.Remove(c.Name)
 }
@@ -427,6 +433,8 @@ func flattenIfNotExist(data map[string]interface{}, driverOptions *types.DriverO
 			} else {
 				flattenIfNotExist(v.(map[string]interface{}), driverOptions)
 			}
+		case nil:
+			logrus.Debugf("could not convert %v because value is nil %v=%v", reflect.TypeOf(v), k, v)
 		default:
 			logrus.Warnf("could not convert %v %v=%v", reflect.TypeOf(v), k, v)
 		}

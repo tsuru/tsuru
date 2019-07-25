@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/kontainer-engine/cluster"
 	"github.com/rancher/kontainer-engine/drivers/aks"
 	"github.com/rancher/kontainer-engine/drivers/eks"
 	"github.com/rancher/kontainer-engine/drivers/gke"
-	"github.com/rancher/kontainer-engine/drivers/import"
+	kubeimport "github.com/rancher/kontainer-engine/drivers/import"
 	"github.com/rancher/kontainer-engine/drivers/rke"
 	"github.com/rancher/kontainer-engine/types"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -129,6 +132,8 @@ func flatten(data map[string]interface{}, driverOptions *types.DriverOptions) {
 			} else {
 				flatten(v.(map[string]interface{}), driverOptions)
 			}
+		case nil:
+			logrus.Debugf("could not convert %v because value is nil %v=%v", reflect.TypeOf(v), k, v)
 		default:
 			logrus.Warnf("could not convert %v %v=%v", reflect.TypeOf(v), k, v)
 		}
@@ -160,30 +165,17 @@ func toMap(obj interface{}, format string) (map[string]interface{}, error) {
 	return nil, nil
 }
 
-type EngineService interface {
-	Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error)
-	Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error)
-	Remove(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error
-	GetDriverCreateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags, error)
-	GetDriverUpdateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags, error)
-	GetK8sCapabilities(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.K8SCapabilities, error)
-	ETCDSave(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, backup string) error
-	ETCDRestore(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, backup string) (string, string, string, error)
-	GenerateServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, error)
-	RemoveLegacyServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error
-}
-
-type engineService struct {
+type EngineService struct {
 	store cluster.PersistentStore
 }
 
-func NewEngineService(store cluster.PersistentStore) EngineService {
-	return &engineService{
+func NewEngineService(store cluster.PersistentStore) *EngineService {
+	return &EngineService{
 		store: store,
 	}
 }
 
-func (e *engineService) convertCluster(name string, listenAddr string, spec v3.ClusterSpec) (*cluster.Cluster, error) {
+func (e *EngineService) convertCluster(name string, listenAddr string, spec v3.ClusterSpec) (*cluster.Cluster, error) {
 	// todo: decide whether we need a driver field
 	driverName := ""
 	if spec.ImportedConfig != nil {
@@ -229,7 +221,7 @@ func (e *engineService) convertCluster(name string, listenAddr string, spec v3.C
 }
 
 // Create creates the stub for cluster manager to call
-func (e *engineService) Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
+func (e *EngineService) Create(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return "", "", "", err
@@ -259,7 +251,7 @@ func (e *engineService) Create(ctx context.Context, name string, kontainerDriver
 	return endpoint, cls.ServiceAccountToken, cls.RootCACert, nil
 }
 
-func (e *engineService) getRunningDriver(kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*RunningDriver, error) {
+func (e *EngineService) getRunningDriver(kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*RunningDriver, error) {
 	return &RunningDriver{
 		Name:    kontainerDriver.Name,
 		Builtin: kontainerDriver.Spec.BuiltIn,
@@ -268,7 +260,7 @@ func (e *engineService) getRunningDriver(kontainerDriver *v3.KontainerDriver, cl
 }
 
 // Update creates the stub for cluster manager to call
-func (e *engineService) Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
+func (e *EngineService) Update(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, string, string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return "", "", "", err
@@ -299,7 +291,7 @@ func (e *engineService) Update(ctx context.Context, name string, kontainerDriver
 }
 
 // Remove removes stub for cluster manager to call
-func (e *engineService) Remove(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error {
+func (e *EngineService) Remove(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, forceRemove bool) error {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return err
@@ -319,10 +311,10 @@ func (e *engineService) Remove(ctx context.Context, name string, kontainerDriver
 
 	defer cls.Driver.Close()
 
-	return cls.Remove(ctx)
+	return cls.Remove(ctx, forceRemove)
 }
 
-func (e *engineService) GetDriverCreateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags,
+func (e *EngineService) GetDriverCreateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags,
 	error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
@@ -346,7 +338,7 @@ func (e *engineService) GetDriverCreateOptions(ctx context.Context, name string,
 	return cls.GetDriverCreateOptions(ctx)
 }
 
-func (e *engineService) GetDriverUpdateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags,
+func (e *EngineService) GetDriverUpdateOptions(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (*types.DriverFlags,
 	error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
@@ -370,7 +362,7 @@ func (e *engineService) GetDriverUpdateOptions(ctx context.Context, name string,
 	return cls.GetDriverUpdateOptions(ctx)
 }
 
-func (e *engineService) GetK8sCapabilities(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver,
+func (e *EngineService) GetK8sCapabilities(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver,
 	clusterSpec v3.ClusterSpec) (*types.K8SCapabilities, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
@@ -438,6 +430,18 @@ func (r *RunningDriver) Start() (string, error) {
 
 		cmd := exec.CommandContext(processContext, r.Path, strconv.Itoa(port))
 
+		if os.Getenv("CATTLE_DEV_MODE") == "" {
+			cred, err := getUserCred()
+			if err != nil {
+				return "", errors.WithMessage(err, "get user cred error")
+			}
+
+			cmd.SysProcAttr = &syscall.SysProcAttr{}
+			cmd.SysProcAttr.Credential = cred
+			cmd.SysProcAttr.Chroot = "/opt/jail/driver-jail"
+			cmd.Env = whitelistEnvvars([]string{"PATH=/usr/bin"})
+		}
+
 		// redirect output to console
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -467,7 +471,7 @@ func (r *RunningDriver) Stop() {
 	logrus.Infof("kontainerdriver %v stopped", r.Name)
 }
 
-func (e *engineService) ETCDSave(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, snapshotName string) error {
+func (e *EngineService) ETCDSave(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, snapshotName string) error {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return err
@@ -488,7 +492,7 @@ func (e *engineService) ETCDSave(ctx context.Context, name string, kontainerDriv
 	return cls.ETCDSave(ctx, snapshotName)
 }
 
-func (e *engineService) ETCDRestore(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, backup string) (string, string, string, error) {
+func (e *EngineService) ETCDRestore(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, backup string) (string, string, string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return "", "", "", err
@@ -518,7 +522,28 @@ func (e *engineService) ETCDRestore(ctx context.Context, name string, kontainerD
 
 }
 
-func (e *engineService) GenerateServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, error) {
+func (e *EngineService) ETCDRemoveSnapshot(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec, snapshotName string) error {
+	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
+	if err != nil {
+		return err
+	}
+
+	listenAddr, err := runningDriver.Start()
+	if err != nil {
+		return fmt.Errorf("error starting driver: %v", err)
+	}
+	defer runningDriver.Stop()
+
+	cls, err := e.convertCluster(name, listenAddr, clusterSpec)
+	if err != nil {
+		return err
+	}
+	defer cls.Driver.Close()
+
+	return cls.ETCDRemoveSnapshot(ctx, snapshotName)
+}
+
+func (e *EngineService) GenerateServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) (string, error) {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return "", err
@@ -544,7 +569,7 @@ func (e *engineService) GenerateServiceAccount(ctx context.Context, name string,
 	return cls.ServiceAccountToken, nil
 }
 
-func (e *engineService) RemoveLegacyServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error {
+func (e *EngineService) RemoveLegacyServiceAccount(ctx context.Context, name string, kontainerDriver *v3.KontainerDriver, clusterSpec v3.ClusterSpec) error {
 	runningDriver, err := e.getRunningDriver(kontainerDriver, clusterSpec)
 	if err != nil {
 		return err
@@ -563,4 +588,51 @@ func (e *engineService) RemoveLegacyServiceAccount(ctx context.Context, name str
 	defer cls.Driver.Close()
 
 	return cls.RemoveLegacyServiceAccount(ctx)
+}
+
+// getUserCred looks up the user and provides it in syscall.Credential
+func getUserCred() (*syscall.Credential, error) {
+	u, err := user.Current()
+	if err != nil {
+		uID := os.Getuid()
+		u, err = user.LookupId(strconv.Itoa(uID))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	i, err := strconv.ParseUint(u.Uid, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	uid := uint32(i)
+
+	i, err = strconv.ParseUint(u.Gid, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	gid := uint32(i)
+
+	return &syscall.Credential{Uid: uid, Gid: gid}, nil
+}
+
+func whitelistEnvvars(envvars []string) []string {
+	wl := os.Getenv("CATTLE_KONTAINER_ENGINE_WHITELIST_ENVVARS")
+	envWhiteList := strings.Split(wl, ",")
+
+	if len(envWhiteList) == 0 {
+		envWhiteList = []string{
+			"HTTP_PROXY",
+			"HTTPS_PROXY",
+			"NO_PROXY",
+		}
+	}
+
+	for _, wlVar := range envWhiteList {
+		if val := os.Getenv(wlVar); val != "" {
+			envvars = append(envvars, wlVar+"="+val)
+		}
+	}
+
+	return envvars
 }

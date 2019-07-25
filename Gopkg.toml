@@ -119,7 +119,7 @@ required = [
 [[constraint]]
   name = "github.com/rancher/kontainer-engine"
   source = "github.com/cezarsa/kontainer-engine"
-  branch = "noclientid"
+  branch = "allprs"
 [[override]]
   name = "github.com/rancher/rke"
   branch = "master"

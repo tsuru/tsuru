@@ -952,8 +952,8 @@
   revision = "c90cb954266e1bdd6d1914678fd6909fc5fabbfa"
 
 [[projects]]
-  branch = "noclientid"
-  digest = "1:aa656e554c56a06c2981b024247e1f918bd68622e1912fa78a3ccb5f8904c1e0"
+  branch = "allprs"
+  digest = "1:f0cb34ea45ba7480eb8f73f285ba264641e3ed9facf967a5dff36fa7c6fb2fc1"
   name = "github.com/rancher/kontainer-engine"
   packages = [
     "cluster",
@@ -972,7 +972,7 @@
     "utils",
   ]
   pruneopts = "NUT"
-  revision = "c469f4bb1bc5539e80e15c1046933fa653cd3238"
+  revision = "8b6c46d5dadd1d3a9849b1f738761fa98fcf0ec9"
   source = "github.com/cezarsa/kontainer-engine"
 
 [[projects]]

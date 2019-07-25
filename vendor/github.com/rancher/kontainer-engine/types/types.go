@@ -56,7 +56,9 @@ type Driver interface {
 	RemoveLegacyServiceAccount(ctx context.Context, clusterInfo *ClusterInfo) error
 
 	ETCDSave(ctx context.Context, clusterInfo *ClusterInfo, opts *DriverOptions, snapshotName string) error
-	ETCDRestore(ctx context.Context, clusterInfo *ClusterInfo, opts *DriverOptions, snapshotName string) error
+	ETCDRestore(ctx context.Context, clusterInfo *ClusterInfo, opts *DriverOptions, snapshotName string) (*ClusterInfo, error)
+	ETCDRemoveSnapshot(ctx context.Context, clusterInfo *ClusterInfo, opts *DriverOptions, snapshotName string) error
+
 	GetK8SCapabilities(ctx context.Context, opts *DriverOptions) (*K8SCapabilities, error)
 }
 

@@ -2,10 +2,10 @@ package aks
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strings"
 	"time"
@@ -88,10 +88,8 @@ type state struct {
 
 	// LinuxAdminUsername specifies the username to use for Linux VMs. [optional only when creating]
 	LinuxAdminUsername string `json:"adminUsername,omitempty"`
-	// LinuxSSHPublicKeyContents specifies the content of the SSH configuration for Linux VMs, Opposite to `LinuxSSHPublicKeyPath`. [requirement only when creating]
+	// LinuxSSHPublicKeyContents specifies the content of the SSH configuration for Linux VMs. [requirement only when creating]
 	LinuxSSHPublicKeyContents string `json:"sshPublicKeyContents,omitempty"`
-	// LinuxSSHPublicKeyPath specifies the local path of the SSH configuration for Linux VMs, Opposite to `LinuxSSHPublicKeyContents`. [requirement only when creating]
-	LinuxSSHPublicKeyPath string `json:"sshPublicKey,omitempty"`
 
 	// NetworkDNSServiceIP specifies an IP address assigned to the Kubernetes DNS service, it must be within the Kubernetes Service address range specified in `NetworkServiceCIDR`. [optional only when creating]
 	NetworkDNSServiceIP string `json:"dnsServiceIp,omitempty"`
@@ -272,11 +270,6 @@ func (d *Driver) GetDriverCreateOptions(ctx context.Context) (*types.DriverFlags
 		Type:  types.StringType,
 		Usage: `Contents of the SSH public key used to authenticate with Linux hosts. Opposite to "ssh public key".`,
 	}
-	driverFlag.Options["ssh-public-key"] = &types.Flag{
-		Type:  types.StringType,
-		Usage: `Path to the SSH public key used to authenticate with Linux hosts. Opposite to "ssh public key contents".`,
-	}
-
 	driverFlag.Options["dns-service-ip"] = &types.Flag{
 		Type:  types.StringType,
 		Usage: `An IP address assigned to the Kubernetes DNS service. It must be within the Kubernetes Service address range specified in "service cidr".`,
@@ -404,6 +397,15 @@ func (d *Driver) GetDriverUpdateOptions(ctx context.Context) (*types.DriverFlags
 		Type:  types.StringSliceType,
 		Usage: "Tags for Kubernetes cluster. For example, foo=bar.",
 	}
+	driverFlag.Options["client-id"] = &types.Flag{
+		Type:  types.StringType,
+		Usage: "Azure client ID to use.",
+	}
+	driverFlag.Options["client-secret"] = &types.Flag{
+		Type:     types.StringType,
+		Password: true,
+		Usage:    `Azure client secret associated with the "client id".`,
+	}
 
 	return &driverFlag, nil
 }
@@ -439,7 +441,6 @@ func getStateFromOptions(driverOptions *types.DriverOptions) (state, error) {
 
 	state.LinuxAdminUsername = options.GetValueFromDriverOptions(driverOptions, types.StringType, "admin-username", "adminUsername").(string)
 	state.LinuxSSHPublicKeyContents = options.GetValueFromDriverOptions(driverOptions, types.StringType, "ssh-public-key-contents", "sshPublicKeyContents", "public-key-contents", "publicKeyContents").(string)
-	state.LinuxSSHPublicKeyPath = options.GetValueFromDriverOptions(driverOptions, types.StringType, "ssh-public-key", "sshPublicKey", "public-key", "publicKey").(string)
 
 	state.NetworkDNSServiceIP = options.GetValueFromDriverOptions(driverOptions, types.StringType, "dns-service-ip", "dnsServiceIp").(string)
 	state.NetworkDockerBridgeCIDR = options.GetValueFromDriverOptions(driverOptions, types.StringType, "docker-bridge-cidr", "dockerBridgeCidr").(string)
@@ -496,8 +497,8 @@ func (state state) validate() error {
 		return fmt.Errorf(`"location" is required`)
 	}
 
-	if state.LinuxSSHPublicKeyContents == "" && state.LinuxSSHPublicKeyPath == "" {
-		return fmt.Errorf(`"ssh public key contents or path" is required`)
+	if state.LinuxSSHPublicKeyContents == "" {
+		return fmt.Errorf(`"ssh public key contents" is required`)
 	}
 
 	return nil
@@ -808,7 +809,7 @@ func (d *Driver) createOrUpdate(ctx context.Context, options *types.DriverOption
 				DNSPrefix:      to.StringPtr(agentDNSPrefix),
 				Count:          countPointer,
 				MaxPods:        maxPodsPointer,
-				Name:           to.StringPtr(safeSlice(driverState.AgentName, 12)),
+				Name:           to.StringPtr(driverState.AgentName),
 				OsDiskSizeGB:   osDiskSizeGBPointer,
 				OsType:         containerservice.Linux,
 				StorageProfile: agentStorageProfile,
@@ -820,23 +821,12 @@ func (d *Driver) createOrUpdate(ctx context.Context, options *types.DriverOption
 
 	var linuxProfile *containerservice.LinuxProfile
 	if driverState.hasLinuxProfile() {
-		var publicKey []byte
-		if driverState.LinuxSSHPublicKeyContents == "" {
-			publicKey, err = ioutil.ReadFile(driverState.LinuxSSHPublicKeyPath)
-			if err != nil {
-				return info, err
-			}
-		} else {
-			publicKey = []byte(driverState.LinuxSSHPublicKeyContents)
-		}
-		publicKeyContents := string(publicKey)
-
 		linuxProfile = &containerservice.LinuxProfile{
 			AdminUsername: to.StringPtr(driverState.LinuxAdminUsername),
 			SSH: &containerservice.SSHConfiguration{
 				PublicKeys: &[]containerservice.SSHPublicKey{
 					{
-						KeyData: to.StringPtr(publicKeyContents),
+						KeyData: to.StringPtr(driverState.LinuxSSHPublicKeyContents),
 					},
 				},
 			},
@@ -926,58 +916,80 @@ func (state state) hasAgentPoolProfile() bool {
 }
 
 func (state state) hasLinuxProfile() bool {
-	return state.LinuxAdminUsername != "" && (state.LinuxSSHPublicKeyContents != "" || state.LinuxSSHPublicKeyPath != "")
+	return state.LinuxAdminUsername != "" && (state.LinuxSSHPublicKeyContents != "")
 }
 
 func (d *Driver) ensureLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client *operationalinsights.WorkspacesClient, state state) (workspaceID string, err error) {
-	// log analytics workspaces cannot be created in WCUS region due to capacity limits
-	// so mapped to EUS per discussion with log analytics team
+	// Please keep in sync with
+	// https://github.com/Azure/azure-cli/blob/release/src/azure-cli/azure/cli/command_modules/acs/custom.py#L1996
+
 	locationToOmsRegionCodeMap := map[string]string{
-		"eastus":             "EUS",
-		"westeurope":         "WEU",
-		"southeastasia":      "SEA",
 		"australiasoutheast": "ASE",
-		"usgovvirginia":      "USGV",
-		"westcentralus":      "EUS",
-		"japaneast":          "EJP",
-		"uksouth":            "SUK",
+		"australiaeast":      "EAU",
+		"australiacentral":   "CAU",
 		"canadacentral":      "CCA",
 		"centralindia":       "CIN",
+		"centralus":          "CUS",
+		"eastasia":           "EA",
+		"eastus":             "EUS",
+		"eastus2":            "EUS2",
 		"eastus2euap":        "EAP",
+		"francecentral":      "PAR",
+		"japaneast":          "EJP",
+		"koreacentral":       "SE",
+		"northeurope":        "NEU",
+		"southcentralus":     "SCUS",
+		"southeastasia":      "SEA",
+		"uksouth":            "SUK",
+		"usgovvirginia":      "USGV",
+		"westcentralus":      "EUS",
+		"westeurope":         "WEU",
+		"westus":             "WUS",
+		"westus2":            "WUS2",
 	}
 	regionToOmsRegionMap := map[string]string{
-		"australiaeast":      "australiasoutheast",
+		"australiacentral":   "australiacentral",
+		"australiacentral2":  "australiacentral",
+		"australiaeast":      "australiaeast",
 		"australiasoutheast": "australiasoutheast",
-		"brazilsouth":        "eastus",
+		"brazilsouth":        "southcentralus",
 		"canadacentral":      "canadacentral",
 		"canadaeast":         "canadacentral",
-		"centralus":          "eastus",
-		"eastasia":           "southeastasia",
+		"centralus":          "centralus",
+		"centralindia":       "centralindia",
+		"eastasia":           "eastasia",
 		"eastus":             "eastus",
-		"eastus2":            "eastus",
+		"eastus2":            "eastus2",
+		"francecentral":      "francecentral",
+		"francesouth":        "francecentral",
 		"japaneast":          "japaneast",
 		"japanwest":          "japaneast",
+		"koreacentral":       "koreacentral",
+		"koreasouth":         "koreacentral",
 		"northcentralus":     "eastus",
-		"northeurope":        "westeurope",
-		"southcentralus":     "eastus",
+		"northeurope":        "northeurope",
+		"southafricanorth":   "westeurope",
+		"southafricawest":    "westeurope",
+		"southcentralus":     "southcentralus",
 		"southeastasia":      "southeastasia",
+		"southindia":         "centralindia",
 		"uksouth":            "uksouth",
 		"ukwest":             "uksouth",
 		"westcentralus":      "eastus",
 		"westeurope":         "westeurope",
-		"westus":             "eastus",
-		"westus2":            "eastus",
-		"centralindia":       "centralindia",
-		"southindia":         "centralindia",
 		"westindia":          "centralindia",
-		"koreacentral":       "southeastasia",
-		"koreasouth":         "southeastasia",
-		"francecentral":      "westeurope",
-		"francesouth":        "westeurope",
+		"westus":             "westus",
+		"westus2":            "westus2",
 	}
 
-	workspaceRegion := regionToOmsRegionMap[state.Location]
-	workspaceRegionCode := locationToOmsRegionCodeMap[workspaceRegion]
+	workspaceRegion, ok := regionToOmsRegionMap[state.Location]
+	if !ok {
+		return "", fmt.Errorf("region %s not supported for Log Analytics workspace", state.Location)
+	}
+	workspaceRegionCode, ok := locationToOmsRegionCodeMap[workspaceRegion]
+	if !ok {
+		return "", fmt.Errorf("region %s not supported for Log Analytics workspace", workspaceRegion)
+	}
 
 	workspaceResourceGroup := state.LogAnalyticsWorkspaceResourceGroup
 	if workspaceResourceGroup == "" {
@@ -986,14 +998,17 @@ func (d *Driver) ensureLogAnalyticsWorkspaceForMonitoring(ctx context.Context, c
 
 	workspaceName := state.LogAnalyticsWorkspace
 	if workspaceName == "" {
-		workspaceName = fmt.Sprintf("%s-%s-%s", state.ResourceGroup, state.SubscriptionID, workspaceRegionCode)
+		workspaceName = fmt.Sprintf("%s-%s", state.ResourceGroup, workspaceRegionCode)
+	}
+	if len(workspaceName) > 63 {
+		workspaceName = generateUniqueLogWorkspace(workspaceName)
 	}
 
 	if gotRet, gotErr := client.Get(ctx, workspaceResourceGroup, workspaceName); gotErr == nil {
 		return *gotRet.ID, nil
 	}
 
-	logrus.Info("Create Azure Log Analytics Workspace %q on Resource Group %q", workspaceName, workspaceResourceGroup)
+	logrus.Infof("Create Azure Log Analytics Workspace %q on Resource Group %q", workspaceName, workspaceResourceGroup)
 
 	asyncRet, asyncErr := client.CreateOrUpdate(ctx, workspaceResourceGroup, workspaceName, operationalinsights.Workspace{
 		Location: to.StringPtr(workspaceRegion),
@@ -1387,7 +1402,11 @@ func (d *Driver) ETCDSave(ctx context.Context, clusterInfo *types.ClusterInfo, o
 	return fmt.Errorf("ETCD backup operations are not implemented")
 }
 
-func (d *Driver) ETCDRestore(ctx context.Context, clusterInfo *types.ClusterInfo, opts *types.DriverOptions, snapshotName string) error {
+func (d *Driver) ETCDRestore(ctx context.Context, clusterInfo *types.ClusterInfo, opts *types.DriverOptions, snapshotName string) (*types.ClusterInfo, error) {
+	return nil, fmt.Errorf("ETCD backup operations are not implemented")
+}
+
+func (d *Driver) ETCDRemoveSnapshot(ctx context.Context, clusterInfo *types.ClusterInfo, opts *types.DriverOptions, snapshotName string) error {
 	return fmt.Errorf("ETCD backup operations are not implemented")
 }
 
@@ -1400,4 +1419,13 @@ func (d *Driver) GetK8SCapabilities(ctx context.Context, _ *types.DriverOptions)
 			HealthCheckSupported: true,
 		},
 	}, nil
+}
+
+func generateUniqueLogWorkspace(workspaceName string) string {
+	s := workspaceName[0:46]
+	h := sha256.New()
+	h.Write([]byte(workspaceName))
+	hexHash := h.Sum(nil)
+	shaString := fmt.Sprintf("%x", hexHash)
+	return fmt.Sprintf("%s-%s", s, shaString[0:16])
 }
