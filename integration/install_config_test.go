@@ -52,7 +52,6 @@ func (s *S) getPlatforms() []string {
 		"tsuru/nodejs",
 		"tsuru/php",
 		"tsuru/play",
-		"tsuru/pypy",
 		"tsuru/ruby",
 		"tsuru/static",
 		"tsuru/perl",
