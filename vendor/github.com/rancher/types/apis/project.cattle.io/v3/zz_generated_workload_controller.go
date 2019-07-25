@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,17 @@ var (
 
 		Kind: WorkloadGroupVersionKind.Kind,
 	}
+
+	WorkloadGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "workloads",
+	}
 )
+
+func init() {
+	resource.Put(WorkloadGroupVersionResource)
+}
 
 func NewWorkload(namespace, name string, obj Workload) *Workload {
 	obj.APIVersion, obj.Kind = WorkloadGroupVersionKind.ToAPIVersionAndKind()
@@ -40,7 +51,7 @@ func NewWorkload(namespace, name string, obj Workload) *Workload {
 type WorkloadList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Workload
+	Items           []Workload `json:"items"`
 }
 
 type WorkloadHandlerFunc func(key string, obj *Workload) (runtime.Object, error)
@@ -57,7 +68,9 @@ type WorkloadController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() WorkloadLister
 	AddHandler(ctx context.Context, name string, handler WorkloadHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync WorkloadHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler WorkloadHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler WorkloadHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -76,9 +89,13 @@ type WorkloadInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() WorkloadController
 	AddHandler(ctx context.Context, name string, sync WorkloadHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync WorkloadHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle WorkloadLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle WorkloadLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync WorkloadHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync WorkloadHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle WorkloadLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle WorkloadLifecycle)
 }
 
 type workloadLister struct {
@@ -138,9 +155,39 @@ func (c *workloadController) AddHandler(ctx context.Context, name string, handle
 	})
 }
 
+func (c *workloadController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler WorkloadHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Workload); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *workloadController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler WorkloadHandlerFunc) {
+	resource.PutClusterScoped(WorkloadGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Workload); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *workloadController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler WorkloadHandlerFunc) {
+	resource.PutClusterScoped(WorkloadGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*Workload); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -245,18 +292,36 @@ func (s *workloadClient) AddHandler(ctx context.Context, name string, sync Workl
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *workloadClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync WorkloadHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *workloadClient) AddLifecycle(ctx context.Context, name string, lifecycle WorkloadLifecycle) {
 	sync := NewWorkloadLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *workloadClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle WorkloadLifecycle) {
+	sync := NewWorkloadLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *workloadClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync WorkloadHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *workloadClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync WorkloadHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *workloadClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle WorkloadLifecycle) {
 	sync := NewWorkloadLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *workloadClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle WorkloadLifecycle) {
+	sync := NewWorkloadLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type WorkloadIndexer func(obj *Workload) ([]string, error)

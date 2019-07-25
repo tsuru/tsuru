@@ -5,10 +5,11 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/rancher/rke/hosts"
 	"github.com/rancher/rke/log"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"k8s.io/client-go/util/cert"
 )
 
@@ -16,6 +17,9 @@ func GenerateKubeAPICertificate(ctx context.Context, certs map[string]Certificat
 	// generate API certificate and key
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	kubernetesServiceIP, err := GetKubernetesServiceIP(rkeConfig.Services.KubeAPI.ServiceClusterIPRange)
 	if err != nil {
 		return fmt.Errorf("Failed to get Kubernetes Service IP: %v", err)
@@ -77,6 +81,9 @@ func GenerateKubeControllerCertificate(ctx context.Context, certs map[string]Cer
 	// generate Kube controller-manager certificate and key
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	if certs[KubeControllerCertName].Certificate != nil && !rotate {
 		return nil
 	}
@@ -113,6 +120,9 @@ func GenerateKubeSchedulerCertificate(ctx context.Context, certs map[string]Cert
 	// generate Kube scheduler certificate and key
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	if certs[KubeSchedulerCertName].Certificate != nil && !rotate {
 		return nil
 	}
@@ -149,6 +159,9 @@ func GenerateKubeProxyCertificate(ctx context.Context, certs map[string]Certific
 	// generate Kube Proxy certificate and key
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	if certs[KubeProxyCertName].Certificate != nil && !rotate {
 		return nil
 	}
@@ -185,6 +198,9 @@ func GenerateKubeNodeCertificate(ctx context.Context, certs map[string]Certifica
 	// generate kubelet certificate
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	if certs[KubeNodeCertName].Certificate != nil && !rotate {
 		return nil
 	}
@@ -222,6 +238,9 @@ func GenerateKubeAdminCertificate(ctx context.Context, certs map[string]Certific
 	log.Infof(ctx, "[certificates] Generating admin certificates and kubeconfig")
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	cpHosts := hosts.NodesToHosts(rkeConfig.Nodes, controlRole)
 	if len(configPath) == 0 {
 		configPath = ClusterConfig
@@ -274,6 +293,9 @@ func GenerateAPIProxyClientCertificate(ctx context.Context, certs map[string]Cer
 	//generate API server proxy client key and certs
 	caCrt := certs[RequestHeaderCACertName].Certificate
 	caKey := certs[RequestHeaderCACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("Request Header CA Certificate or Key is empty")
+	}
 	if certs[APIProxyClientCertName].Certificate != nil && !rotate {
 		return nil
 	}
@@ -328,6 +350,9 @@ func GenerateExternalEtcdCertificates(ctx context.Context, certs map[string]Cert
 func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig, configPath, configDir string, rotate bool) error {
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	kubernetesServiceIP, err := GetKubernetesServiceIP(rkeConfig.Services.KubeAPI.ServiceClusterIPRange)
 	if err != nil {
 		return fmt.Errorf("Failed to get Kubernetes Service IP: %v", err)
@@ -335,10 +360,37 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 	clusterDomain := rkeConfig.Services.Kubelet.ClusterDomain
 	etcdHosts := hosts.NodesToHosts(rkeConfig.Nodes, etcdRole)
 	etcdAltNames := GetAltNames(etcdHosts, clusterDomain, kubernetesServiceIP, []string{})
+	var (
+		dnsNames = make([]string, len(etcdAltNames.DNSNames))
+		ips      = []string{}
+	)
+	copy(dnsNames, etcdAltNames.DNSNames)
+	sort.Strings(dnsNames)
+	for _, ip := range etcdAltNames.IPs {
+		ips = append(ips, ip.String())
+	}
+	sort.Strings(ips)
+
 	for _, host := range etcdHosts {
 		etcdName := GetEtcdCrtName(host.InternalAddress)
-		if _, ok := certs[etcdName]; ok && !rotate {
-			continue
+		if _, ok := certs[etcdName]; ok && certs[etcdName].CertificatePEM != "" && !rotate {
+			cert := certs[etcdName].Certificate
+			if cert != nil && len(dnsNames) == len(cert.DNSNames) && len(ips) == len(cert.IPAddresses) {
+				var (
+					certDNSNames = make([]string, len(cert.DNSNames))
+					certIPs      = []string{}
+				)
+				copy(certDNSNames, cert.DNSNames)
+				sort.Strings(certDNSNames)
+				for _, ip := range cert.IPAddresses {
+					certIPs = append(certIPs, ip.String())
+				}
+				sort.Strings(certIPs)
+
+				if reflect.DeepEqual(dnsNames, certDNSNames) && reflect.DeepEqual(ips, certIPs) {
+					continue
+				}
+			}
 		}
 		var serviceKey *rsa.PrivateKey
 		if !rotate {
@@ -384,6 +436,9 @@ func GenerateServiceTokenKey(ctx context.Context, certs map[string]CertificatePK
 	privateAPIKey := certs[ServiceAccountTokenKeyName].Key
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
 	if certs[ServiceAccountTokenKeyName].Certificate != nil {
 		return nil
 	}
@@ -400,6 +455,13 @@ func GenerateServiceTokenKey(ctx context.Context, certs map[string]CertificatePK
 }
 
 func GenerateRKECACerts(ctx context.Context, certs map[string]CertificatePKI, configPath, configDir string) error {
+	if err := GenerateRKEMasterCACert(ctx, certs, configPath, configDir); err != nil {
+		return err
+	}
+	return GenerateRKERequestHeaderCACert(ctx, certs, configPath, configDir)
+}
+
+func GenerateRKEMasterCACert(ctx context.Context, certs map[string]CertificatePKI, configPath, configDir string) error {
 	// generate kubernetes CA certificate and key
 	log.Infof(ctx, "[certificates] Generating CA kubernetes certificates")
 
@@ -408,7 +470,10 @@ func GenerateRKECACerts(ctx context.Context, certs map[string]CertificatePKI, co
 		return err
 	}
 	certs[CACertName] = ToCertObject(CACertName, "", "", caCrt, caKey, nil)
+	return nil
+}
 
+func GenerateRKERequestHeaderCACert(ctx context.Context, certs map[string]CertificatePKI, configPath, configDir string) error {
 	// generate request header client CA certificate and key
 	log.Infof(ctx, "[certificates] Generating Kubernetes API server aggregation layer requestheader client CA certificates")
 	requestHeaderCACrt, requestHeaderCAKey, err := GenerateCACertAndKey(RequestHeaderCACertName, nil)

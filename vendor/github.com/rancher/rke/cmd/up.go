@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/types/apis/management.cattle.io/v3"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"k8s.io/client-go/util/cert"
 )
@@ -77,59 +75,21 @@ func UpCommand() cli.Command {
 	}
 }
 
-func doUpgradeLegacyCluster(ctx context.Context, kubeCluster *cluster.Cluster, fullState *cluster.FullState) error {
-	if _, err := os.Stat(kubeCluster.LocalKubeConfigPath); os.IsNotExist(err) {
-		// there is no kubeconfig. This is a new cluster
-		logrus.Debug("[state] local kubeconfig not found, this is a new cluster")
-		return nil
-	}
-	if _, err := os.Stat(kubeCluster.StateFilePath); err == nil {
-		// this cluster has a previous state, I don't need to upgrade!
-		logrus.Debug("[state] previous state found, this is not a legacy cluster")
-		return nil
-	}
-	// We have a kubeconfig and no current state. This is a legacy cluster or a new cluster with old kubeconfig
-	// let's try to upgrade
-	log.Infof(ctx, "[state] Possible legacy cluster detected, trying to upgrade")
-	if err := cluster.RebuildKubeconfig(ctx, kubeCluster); err != nil {
-		return err
-	}
-	recoveredCluster, err := cluster.GetStateFromKubernetes(ctx, kubeCluster)
-	if err != nil {
-		return err
-	}
-	// if we found a recovered cluster, we will need override the current state
-	if recoveredCluster != nil {
-		recoveredCerts, err := cluster.GetClusterCertsFromKubernetes(ctx, kubeCluster)
-		if err != nil {
-			return err
-		}
-		fullState.CurrentState.RancherKubernetesEngineConfig = recoveredCluster.RancherKubernetesEngineConfig.DeepCopy()
-		fullState.CurrentState.CertificatesBundle = recoveredCerts
-
-		// we don't want to regenerate certificates
-		fullState.DesiredState.CertificatesBundle = recoveredCerts
-		return fullState.WriteStateFile(ctx, kubeCluster.StateFilePath)
-	}
-
-	return nil
-}
-
-func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags cluster.ExternalFlags) (string, string, string, string, map[string]pki.CertificatePKI, error) {
+func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags cluster.ExternalFlags, data map[string]interface{}) (string, string, string, string, map[string]pki.CertificatePKI, error) {
 	var APIURL, caCrt, clientCert, clientKey string
 
 	clusterState, err := cluster.ReadStateFile(ctx, cluster.GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir))
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
-
 	kubeCluster, err := cluster.InitClusterObject(ctx, clusterState.DesiredState.RancherKubernetesEngineConfig.DeepCopy(), flags)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
+	svcOptions, _ := data["k8s-service-options"].(*v3.KubernetesServicesOptions)
 	// check if rotate certificates is triggered
 	if kubeCluster.RancherKubernetesEngineConfig.RotateCertificates != nil {
-		return rebuildClusterWithRotatedCertificates(ctx, dialersOptions, flags)
+		return rebuildClusterWithRotatedCertificates(ctx, dialersOptions, flags, svcOptions)
 	}
 
 	log.Infof(ctx, "Building Kubernetes cluster")
@@ -137,7 +97,6 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
-
 	err = kubeCluster.TunnelHosts(ctx, flags)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
@@ -171,7 +130,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	err = cluster.ReconcileCluster(ctx, kubeCluster, currentCluster, flags)
+	err = cluster.ReconcileCluster(ctx, kubeCluster, currentCluster, flags, svcOptions)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -184,7 +143,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	err = kubeCluster.DeployControlPlane(ctx)
+	err = kubeCluster.DeployControlPlane(ctx, svcOptions)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -205,7 +164,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	err = kubeCluster.DeployWorkerPlane(ctx)
+	err = kubeCluster.DeployWorkerPlane(ctx, svcOptions)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -219,7 +178,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	err = cluster.ConfigureCluster(ctx, kubeCluster.RancherKubernetesEngineConfig, kubeCluster.Certificates, flags, dialersOptions, false)
+	err = cluster.ConfigureCluster(ctx, kubeCluster.RancherKubernetesEngineConfig, kubeCluster.Certificates, flags, dialersOptions, data, false)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -280,7 +239,7 @@ func clusterUpFromCli(ctx *cli.Context) error {
 		return err
 	}
 
-	_, _, _, _, _, err = ClusterUp(context.Background(), hosts.DialersOptions{}, flags)
+	_, _, _, _, _, err = ClusterUp(context.Background(), hosts.DialersOptions{}, flags, map[string]interface{}{})
 	return err
 }
 
@@ -311,7 +270,7 @@ func clusterUpLocal(ctx *cli.Context) error {
 	if err := ClusterInit(context.Background(), rkeConfig, dialers, flags); err != nil {
 		return err
 	}
-	_, _, _, _, _, err = ClusterUp(context.Background(), dialers, flags)
+	_, _, _, _, _, err = ClusterUp(context.Background(), dialers, flags, map[string]interface{}{})
 	return err
 }
 
@@ -339,7 +298,7 @@ func clusterUpDind(ctx *cli.Context) error {
 		return err
 	}
 	// start cluster
-	_, _, _, _, _, err = ClusterUp(context.Background(), dialers, flags)
+	_, _, _, _, _, err = ClusterUp(context.Background(), dialers, flags, map[string]interface{}{})
 	return err
 }
 

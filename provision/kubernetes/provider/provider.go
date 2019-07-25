@@ -223,7 +223,7 @@ func (l *writerLogger) Warnf(msg string, args ...interface{}) {
 }
 
 type engineData struct {
-	engine service.EngineService
+	engine *service.EngineService
 	driver *v3.KontainerDriver
 	spec   v3.ClusterSpec
 }
@@ -302,5 +302,5 @@ func DeleteCluster(ctx context.Context, name string, customData map[string]strin
 		return err
 	}
 	fmt.Fprintf(w, "Deleting cluster %q using driver %q\n", name, engineData.driver.Name)
-	return errors.WithStack(engineData.engine.Remove(ctx, name, engineData.driver, engineData.spec))
+	return errors.WithStack(engineData.engine.Remove(ctx, name, engineData.driver, engineData.spec, false))
 }

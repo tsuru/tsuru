@@ -188,7 +188,7 @@ spec:
       hostNetwork: true
       nodeSelector:
       {{ range $k, $v := .NodeSelector }}
-        {{ $k }}: {{ $v }}
+        {{ $k }}: "{{ $v }}"
       {{ end }}
       {{if eq .RBACConfig "rbac"}}
       serviceAccountName: nginx-ingress-serviceaccount
@@ -275,6 +275,15 @@ spec:
       labels:
         app: default-http-backend
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/os
+                  operator: NotIn
+                  values:
+                    - windows
       terminationGracePeriodSeconds: 60
       containers:
       - name: default-http-backend

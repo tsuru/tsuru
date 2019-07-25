@@ -1,9 +1,11 @@
 package v3
 
 import (
+	"time"
+
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,10 +42,11 @@ type NodeTemplateCondition struct {
 }
 
 type NodeTemplateSpec struct {
-	DisplayName         string `json:"displayName"`
-	Description         string `json:"description"`
-	Driver              string `json:"driver" norman:"nocreate,noupdate"`
-	CloudCredentialName string `json:"cloudCredentialName" norman:"type=reference[cloudCredential]"`
+	DisplayName         string     `json:"displayName"`
+	Description         string     `json:"description"`
+	Driver              string     `json:"driver" norman:"nocreate,noupdate"`
+	CloudCredentialName string     `json:"cloudCredentialName" norman:"type=reference[cloudCredential]"`
+	NodeTaints          []v1.Taint `json:"nodeTaints,omitempty"`
 	NodeCommonParams    `json:",inline"`
 }
 
@@ -149,9 +152,12 @@ type NodePoolSpec struct {
 	Quantity        int               `json:"quantity" norman:"required,default=1"`
 	NodeLabels      map[string]string `json:"nodeLabels"`
 	NodeAnnotations map[string]string `json:"nodeAnnotations"`
+	NodeTaints      []v1.Taint        `json:"nodeTaints,omitempty"`
 
 	DisplayName string `json:"displayName"`
 	ClusterName string `json:"clusterName,omitempty" norman:"type=reference[cluster],noupdate,required"`
+
+	DeleteNotReadyAfterSecs time.Duration `json:"deleteNotReadyAfterSecs" norman:"default=0"`
 }
 
 type NodePoolStatus struct {
@@ -172,6 +178,7 @@ type CustomConfig struct {
 	// SSH Certificate
 	SSHCert string            `yaml:"ssh_cert" json:"sshCert,omitempty"`
 	Label   map[string]string `yaml:"label" json:"label,omitempty"`
+	Taints  []string          `yaml:"taints" json:"taints,omitempty"`
 }
 
 type NodeSpec struct {
@@ -189,8 +196,10 @@ type NodeSpec struct {
 	DisplayName              string            `json:"displayName"`
 	RequestedHostname        string            `json:"requestedHostname,omitempty" norman:"type=hostname,nullable,noupdate,required"`
 	InternalNodeSpec         v1.NodeSpec       `json:"internalNodeSpec"`
+	DesiredNodeTaints        []v1.Taint        `json:"desiredNodeTaints"`
 	DesiredNodeLabels        map[string]string `json:"desiredNodeLabels,omitempty"`
 	DesiredNodeAnnotations   map[string]string `json:"desiredNodeAnnotations,omitempty"`
+	UpdateTaintsFromAPI      *bool             `json:"updateTaintsFromAPI,omitempty"`
 	CurrentNodeLabels        map[string]string `json:"currentNodeLabels,omitempty"`
 	CurrentNodeAnnotations   map[string]string `json:"currentNodeAnnotations,omitempty"`
 	DesiredNodeUnschedulable string            `json:"desiredNodeUnschedulable,omitempty"`
@@ -225,7 +234,10 @@ type NodeDriver struct {
 }
 
 type NodeDriverStatus struct {
-	Conditions []Condition `json:"conditions"`
+	Conditions                  []Condition `json:"conditions"`
+	AppliedURL                  string      `json:"appliedURL"`
+	AppliedChecksum             string      `json:"appliedChecksum"`
+	AppliedDockerMachineVersion string      `json:"appliedDockerMachineVersion"`
 }
 
 var (
@@ -302,4 +314,10 @@ type CloudCredential struct {
 	metav1.TypeMeta `json:",inline"`
 
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec CloudCredentialSpec `json:"spec"`
+}
+
+type CloudCredentialSpec struct {
+	Description string `json:"description,omitempty"`
 }

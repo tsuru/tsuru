@@ -162,6 +162,28 @@ type GithubConfigApplyInput struct {
 	Enabled      bool         `json:"enabled,omitempty"`
 }
 
+type GoogleOauthConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	AuthConfig        `json:",inline" mapstructure:",squash"`
+
+	OauthCredential          string `json:"oauthCredential,omitempty" norman:"required,type=password,notnullable"`
+	ServiceAccountCredential string `json:"serviceAccountCredential,omitempty" norman:"required,type=password,notnullable"`
+	AdminEmail               string `json:"adminEmail,omitempty" norman:"required,notnullable"`
+	Hostname                 string `json:"hostname,omitempty" norman:"required,notnullable,noupdate"`
+	UserInfoEndpoint         string `json:"userInfoEndpoint" norman:"default=https://openidconnect.googleapis.com/v1/userinfo,required,notnullable"`
+}
+
+type GoogleOauthConfigTestOutput struct {
+	RedirectURL string `json:"redirectUrl"`
+}
+
+type GoogleOauthConfigApplyInput struct {
+	GoogleOauthConfig GoogleOauthConfig `json:"googleOauthConfig,omitempty"`
+	Code              string            `json:"code,omitempty"`
+	Enabled           bool              `json:"enabled,omitempty"`
+}
+
 type AzureADConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -314,4 +336,8 @@ type KeyCloakConfig struct {
 
 type OKTAConfig struct {
 	SamlConfig `json:",inline" mapstructure:",squash"`
+}
+
+type AuthSystemImages struct {
+	KubeAPIAuth string `json:"kubeAPIAuth,omitempty"`
 }

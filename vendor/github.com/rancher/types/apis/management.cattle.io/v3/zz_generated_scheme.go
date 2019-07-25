@@ -1,6 +1,7 @@
 package v3
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -102,6 +103,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ListenConfigList{},
 		&Setting{},
 		&SettingList{},
+		&Feature{},
+		&FeatureList{},
 		&ClusterAlert{},
 		&ClusterAlertList{},
 		&ProjectAlert{},
@@ -134,6 +137,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&KontainerDriverList{},
 		&EtcdBackup{},
 		&EtcdBackupList{},
+		&ClusterScan{},
+		&ClusterScanList{},
 		&MonitorMetric{},
 		&MonitorMetricList{},
 		&ClusterMonitorGraph{},
@@ -142,6 +147,19 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ProjectMonitorGraphList{},
 		&CloudCredential{},
 		&CloudCredentialList{},
+		&ClusterTemplate{},
+		&ClusterTemplateList{},
+		&ClusterTemplateRevision{},
+		&ClusterTemplateRevisionList{},
+		&RKEK8sSystemImage{},
+		&RKEK8sSystemImageList{},
+		&RKEK8sServiceOption{},
+		&RKEK8sServiceOptionList{},
+		&RKEAddon{},
+		&RKEAddonList{},
+		&RKEK8sWindowsSystemImage{},
+		&RKEK8sWindowsSystemImageList{},
 	)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,17 @@ var (
 
 		Kind: ServiceAccountTokenGroupVersionKind.Kind,
 	}
+
+	ServiceAccountTokenGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "serviceaccounttokens",
+	}
 )
+
+func init() {
+	resource.Put(ServiceAccountTokenGroupVersionResource)
+}
 
 func NewServiceAccountToken(namespace, name string, obj ServiceAccountToken) *ServiceAccountToken {
 	obj.APIVersion, obj.Kind = ServiceAccountTokenGroupVersionKind.ToAPIVersionAndKind()
@@ -40,7 +51,7 @@ func NewServiceAccountToken(namespace, name string, obj ServiceAccountToken) *Se
 type ServiceAccountTokenList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceAccountToken
+	Items           []ServiceAccountToken `json:"items"`
 }
 
 type ServiceAccountTokenHandlerFunc func(key string, obj *ServiceAccountToken) (runtime.Object, error)
@@ -57,7 +68,9 @@ type ServiceAccountTokenController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() ServiceAccountTokenLister
 	AddHandler(ctx context.Context, name string, handler ServiceAccountTokenHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ServiceAccountTokenHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler ServiceAccountTokenHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler ServiceAccountTokenHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -76,9 +89,13 @@ type ServiceAccountTokenInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() ServiceAccountTokenController
 	AddHandler(ctx context.Context, name string, sync ServiceAccountTokenHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ServiceAccountTokenHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle ServiceAccountTokenLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle ServiceAccountTokenLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync ServiceAccountTokenHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync ServiceAccountTokenHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle ServiceAccountTokenLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle ServiceAccountTokenLifecycle)
 }
 
 type serviceAccountTokenLister struct {
@@ -138,9 +155,39 @@ func (c *serviceAccountTokenController) AddHandler(ctx context.Context, name str
 	})
 }
 
+func (c *serviceAccountTokenController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler ServiceAccountTokenHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*ServiceAccountToken); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *serviceAccountTokenController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler ServiceAccountTokenHandlerFunc) {
+	resource.PutClusterScoped(ServiceAccountTokenGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*ServiceAccountToken); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *serviceAccountTokenController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler ServiceAccountTokenHandlerFunc) {
+	resource.PutClusterScoped(ServiceAccountTokenGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*ServiceAccountToken); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -245,18 +292,36 @@ func (s *serviceAccountTokenClient) AddHandler(ctx context.Context, name string,
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *serviceAccountTokenClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ServiceAccountTokenHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *serviceAccountTokenClient) AddLifecycle(ctx context.Context, name string, lifecycle ServiceAccountTokenLifecycle) {
 	sync := NewServiceAccountTokenLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *serviceAccountTokenClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle ServiceAccountTokenLifecycle) {
+	sync := NewServiceAccountTokenLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *serviceAccountTokenClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync ServiceAccountTokenHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *serviceAccountTokenClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync ServiceAccountTokenHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *serviceAccountTokenClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle ServiceAccountTokenLifecycle) {
 	sync := NewServiceAccountTokenLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *serviceAccountTokenClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle ServiceAccountTokenLifecycle) {
+	sync := NewServiceAccountTokenLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type ServiceAccountTokenIndexer func(obj *ServiceAccountToken) ([]string, error)

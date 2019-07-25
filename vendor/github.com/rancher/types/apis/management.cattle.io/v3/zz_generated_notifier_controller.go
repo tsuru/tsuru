@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,17 @@ var (
 
 		Kind: NotifierGroupVersionKind.Kind,
 	}
+
+	NotifierGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "notifiers",
+	}
 )
+
+func init() {
+	resource.Put(NotifierGroupVersionResource)
+}
 
 func NewNotifier(namespace, name string, obj Notifier) *Notifier {
 	obj.APIVersion, obj.Kind = NotifierGroupVersionKind.ToAPIVersionAndKind()
@@ -40,7 +51,7 @@ func NewNotifier(namespace, name string, obj Notifier) *Notifier {
 type NotifierList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Notifier
+	Items           []Notifier `json:"items"`
 }
 
 type NotifierHandlerFunc func(key string, obj *Notifier) (runtime.Object, error)
@@ -57,7 +68,9 @@ type NotifierController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() NotifierLister
 	AddHandler(ctx context.Context, name string, handler NotifierHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync NotifierHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler NotifierHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler NotifierHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -76,9 +89,13 @@ type NotifierInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() NotifierController
 	AddHandler(ctx context.Context, name string, sync NotifierHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync NotifierHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle NotifierLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle NotifierLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync NotifierHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync NotifierHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle NotifierLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle NotifierLifecycle)
 }
 
 type notifierLister struct {
@@ -138,9 +155,39 @@ func (c *notifierController) AddHandler(ctx context.Context, name string, handle
 	})
 }
 
+func (c *notifierController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler NotifierHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Notifier); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *notifierController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler NotifierHandlerFunc) {
+	resource.PutClusterScoped(NotifierGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Notifier); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *notifierController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler NotifierHandlerFunc) {
+	resource.PutClusterScoped(NotifierGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*Notifier); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -245,18 +292,36 @@ func (s *notifierClient) AddHandler(ctx context.Context, name string, sync Notif
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *notifierClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync NotifierHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *notifierClient) AddLifecycle(ctx context.Context, name string, lifecycle NotifierLifecycle) {
 	sync := NewNotifierLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *notifierClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle NotifierLifecycle) {
+	sync := NewNotifierLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *notifierClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync NotifierHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *notifierClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync NotifierHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *notifierClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle NotifierLifecycle) {
 	sync := NewNotifierLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *notifierClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle NotifierLifecycle) {
+	sync := NewNotifierLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type NotifierIndexer func(obj *Notifier) ([]string, error)

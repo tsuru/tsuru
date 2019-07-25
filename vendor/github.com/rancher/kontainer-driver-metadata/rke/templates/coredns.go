@@ -8,12 +8,16 @@ kind: ServiceAccount
 metadata:
   name: coredns
   namespace: kube-system
+  labels:
+      kubernetes.io/cluster-service: "true"
+      addonmanager.kubernetes.io/mode: Reconcile
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     kubernetes.io/bootstrapping: rbac-defaults
+    addonmanager.kubernetes.io/mode: Reconcile
   name: system:coredns
 rules:
 - apiGroups:
@@ -26,14 +30,21 @@ rules:
   verbs:
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
   labels:
     kubernetes.io/bootstrapping: rbac-defaults
+    addonmanager.kubernetes.io/mode: EnsureExists
   name: system:coredns
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -50,6 +61,8 @@ kind: ConfigMap
 metadata:
   name: coredns
   namespace: kube-system
+  labels:
+      addonmanager.kubernetes.io/mode: EnsureExists
 data:
   Corefile: |
     .:53 {
@@ -57,18 +70,15 @@ data:
         health
         kubernetes {{.ClusterDomain}} {{ if .ReverseCIDRs }}{{ .ReverseCIDRs }}{{ else }}{{ "in-addr.arpa ip6.arpa" }}{{ end }} {
           pods insecure
-	  {{- if .UpstreamNameservers }}
-          upstream {{range $i, $v := .UpstreamNameservers}}{{if $i}} {{end}}{{.}}{{end}}
-	  {{- else }}
           upstream
-          {{- end }}
           fallthrough in-addr.arpa ip6.arpa
+          ttl 30
         }
         prometheus :9153
 	{{- if .UpstreamNameservers }}
-        proxy . {{range $i, $v := .UpstreamNameservers}}{{if $i}} {{end}}{{.}}{{end}}
+        forward . {{range $i, $v := .UpstreamNameservers}}{{if $i}} {{end}}{{.}}{{end}}
 	{{- else }}
-        proxy . "/etc/resolv.conf"
+        forward . "/etc/resolv.conf"
 	{{- end }}
         cache 30
         loop
@@ -76,13 +86,15 @@ data:
         loadbalance
     }
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: coredns
   namespace: kube-system
   labels:
     k8s-app: kube-dns
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
     kubernetes.io/name: "CoreDNS"
 spec:
   replicas: 1
@@ -97,17 +109,21 @@ spec:
     metadata:
       labels:
         k8s-app: kube-dns
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
     spec:
+      priorityClassName: system-cluster-critical
 {{- if eq .RBACConfig "rbac"}}
       serviceAccountName: coredns
 {{- end }}
-      nodeSelector:
-      {{ range $k, $v := .NodeSelector }}
-        {{ $k }}: {{ $v }}
-      {{ end }}
       tolerations:
         - key: "CriticalAddonsOnly"
           operator: "Exists"
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      {{ range $k, $v := .NodeSelector }}
+        {{ $k }}: "{{ $v }}"
+      {{ end }}
       containers:
       - name: coredns
         image: {{.CoreDNSImage}}
@@ -133,14 +149,6 @@ spec:
         - containerPort: 9153
           name: metrics
           protocol: TCP
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_BIND_SERVICE
-            drop:
-            - all
-          readOnlyRootFilesystem: true
         livenessProbe:
           httpGet:
             path: /health
@@ -150,6 +158,19 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - all
+          readOnlyRootFilesystem: true
       dnsPolicy: Default
       volumes:
         - name: config-volume
@@ -170,6 +191,7 @@ metadata:
   labels:
     k8s-app: kube-dns
     kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
     kubernetes.io/name: "CoreDNS"
 spec:
   selector:
@@ -182,8 +204,11 @@ spec:
   - name: dns-tcp
     port: 53
     protocol: TCP
+  - name: metrics
+    port: 9153
+    protocol: TCP
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: coredns-autoscaler
@@ -191,12 +216,19 @@ metadata:
   labels:
     k8s-app: coredns-autoscaler
 spec:
+  selector:
+    matchLabels:
+      k8s-app: coredns-autoscaler
   template:
     metadata:
       labels:
         k8s-app: coredns-autoscaler
     spec:
+{{- if eq .RBACConfig "rbac"}}
       serviceAccountName: coredns-autoscaler
+{{- end }}
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - name: autoscaler
         image: {{.CoreDNSAutoScalerImage}}
@@ -232,7 +264,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["list"]
+    verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["replicationcontrollers/scale"]
     verbs: ["get", "update"]

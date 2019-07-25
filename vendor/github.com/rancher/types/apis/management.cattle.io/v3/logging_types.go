@@ -3,7 +3,7 @@ package v3
 import (
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -56,7 +56,7 @@ type ClusterLoggingSpec struct {
 	LoggingTargets
 	LoggingCommonField
 	ClusterName            string `json:"clusterName" norman:"type=reference[cluster]"`
-	ExcludeSystemComponent bool   `json:"excludeSystemComponent,omitempty"`
+	IncludeSystemComponent *bool  `json:"includeSystemComponent,omitempty" norman:"default=true"`
 }
 
 type ProjectLoggingSpec struct {
@@ -141,6 +141,7 @@ type SyslogConfig struct {
 	Program     string `json:"program,omitempty"`
 	Protocol    string `json:"protocol,omitempty" norman:"default=udp,type=enum,options=udp|tcp"`
 	Token       string `json:"token,omitempty" norman:"type=password"`
+	EnableTLS   bool   `json:"enableTls,omitempty" norman:"default=false"`
 	Certificate string `json:"certificate,omitempty"`
 	ClientCert  string `json:"clientCert,omitempty"`
 	ClientKey   string `json:"clientKey,omitempty"`
@@ -150,6 +151,10 @@ type SyslogConfig struct {
 type FluentForwarderConfig struct {
 	EnableTLS     bool           `json:"enableTls,omitempty" norman:"default=false"`
 	Certificate   string         `json:"certificate,omitempty"`
+	ClientCert    string         `json:"clientCert,omitempty"`
+	ClientKey     string         `json:"clientKey,omitempty"`
+	ClientKeyPass string         `json:"clientKeyPass,omitempty"`
+	SSLVerify     bool           `json:"sslVerify,omitempty"`
 	Compress      bool           `json:"compress,omitempty" norman:"default=true"`
 	FluentServers []FluentServer `json:"fluentServers,omitempty" norman:"required"`
 }
@@ -165,7 +170,10 @@ type FluentServer struct {
 }
 
 type CustomTargetConfig struct {
-	Content string `json:"content,omitempty"`
+	Content     string `json:"content,omitempty"`
+	Certificate string `json:"certificate,omitempty"`
+	ClientCert  string `json:"clientCert,omitempty"`
+	ClientKey   string `json:"clientKey,omitempty"`
 }
 
 type LoggingSystemImages struct {
@@ -180,9 +188,11 @@ type LoggingSystemImages struct {
 type ClusterTestInput struct {
 	ClusterName string `json:"clusterId" norman:"required,type=reference[cluster]"`
 	LoggingTargets
+	OutputTags map[string]string `json:"outputTags,omitempty"`
 }
 
 type ProjectTestInput struct {
 	ProjectName string `json:"projectId" norman:"required,type=reference[project]"`
 	LoggingTargets
+	OutputTags map[string]string `json:"outputTags,omitempty"`
 }

@@ -2,12 +2,15 @@ package util
 
 import (
 	"fmt"
+	"github.com/rancher/rke/metadata"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	ref "github.com/docker/distribution/reference"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -65,46 +68,69 @@ func IsSymlink(file string) (bool, error) {
 	return false, nil
 }
 
-// ValidateVersion - Return error if version is not valid
-// Is version major.minor >= oldest major.minor supported
-// Is version in the AllK8sVersions list
-// Is version not in the "bad" list
-func ValidateVersion(version string) error {
-	// Create target version and current versions list
-	targetVersion, err := StrToSemVer(version)
+func GetTagMajorVersion(tag string) string {
+	splitTag := strings.Split(tag, ".")
+	if len(splitTag) < 2 {
+		return ""
+	}
+	return strings.Join(splitTag[:2], ".")
+}
+
+func IsFileExists(filePath string) (bool, error) {
+	if _, err := os.Stat(filePath); err == nil {
+		return true, nil
+	} else if os.IsNotExist(err) {
+		return false, nil
+	} else {
+		return false, err
+	}
+}
+
+func GetDefaultRKETools(image string) (string, error) {
+	tag, err := GetImageTagFromImage(image)
+	if err != nil || tag == "" {
+		return "", fmt.Errorf("defaultRKETools: no tag %s", image)
+	}
+	defaultImage := metadata.K8sVersionToRKESystemImages[metadata.DefaultK8sVersion].Alpine
+	toReplaceTag, err := GetImageTagFromImage(defaultImage)
+	if err != nil || toReplaceTag == "" {
+		return "", fmt.Errorf("defaultRKETools: no replace tag %s", defaultImage)
+	}
+	image = strings.Replace(image, tag, toReplaceTag, 1)
+	return image, nil
+}
+
+func GetImageTagFromImage(image string) (string, error) {
+	parsedImage, err := ref.ParseNormalizedNamed(image)
 	if err != nil {
-		return fmt.Errorf("%s is not valid semver", version)
+		return "", err
 	}
-	currentVersionsList := []*semver.Version{}
-	for _, ver := range v3.K8sVersionsCurrent {
-		v, err := StrToSemVer(ver)
-		if err != nil {
-			return fmt.Errorf("%s in Current Versions list is not valid semver", ver)
-		}
+	imageTag := parsedImage.(ref.Tagged).Tag()
+	logrus.Debugf("Extracted version [%s] from image [%s]", imageTag, image)
+	return imageTag, nil
+}
 
-		currentVersionsList = append(currentVersionsList, v)
+func StripPasswordFromURL(URL string) (string, error) {
+	u, err := url.Parse(URL)
+	if err != nil {
+		return "", err
 	}
+	_, passSet := u.User.Password()
+	if passSet {
+		return strings.Replace(u.String(), u.User.String()+"@", u.User.Username()+":***@", 1), nil
+	}
+	return u.String(), nil
+}
 
-	// Make sure Target version is greater than or equal to oldest major.minor supported.
-	semver.Sort(currentVersionsList)
-	if targetVersion.Major < currentVersionsList[0].Major {
-		return fmt.Errorf("%s is an unsupported Kubernetes version - see 'rke config --system-images --all' for versions supported with this release", version)
+// GetEnvVar will lookup a given environment variable by key and return the key and value (to show what case got matched) with uppercase key being preferred
+func GetEnvVar(key string) (string, string, bool) {
+	// Uppercase (has precedence over lowercase)
+	if value, ok := os.LookupEnv(strings.ToUpper(key)); ok {
+		return strings.ToUpper(key), value, true
 	}
-	if targetVersion.Major == currentVersionsList[0].Major {
-		if targetVersion.Minor < currentVersionsList[0].Minor {
-			return fmt.Errorf("%s is an unsupported Kubernetes version - see 'rke config --system-images --all' for versions supported with this release", version)
-		}
+	// Lowercase
+	if value, ok := os.LookupEnv(strings.ToLower(key)); ok {
+		return strings.ToLower(key), value, true
 	}
-	// Make sure Target version is in the AllK8sVersions list.
-	_, ok := v3.AllK8sVersions[version]
-	if !ok {
-		return fmt.Errorf("%s is an unsupported Kubernetes version - see 'rke config --system-images --all' for versions supported with this release", version)
-	}
-	// Make sure Target version is not "bad".
-	_, ok = v3.K8sBadVersions[version]
-	if ok {
-		return fmt.Errorf("%s is an unsupported Kubernetes version - see 'rke config --system-images --all' for versions supported with this release", version)
-	}
-
-	return nil
+	return "", "", false
 }

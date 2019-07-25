@@ -3,7 +3,7 @@ package v3
 import (
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extv1 "k8s.io/api/extensions/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +55,7 @@ type ProjectSpec struct {
 	ClusterName                   string                  `json:"clusterName,omitempty" norman:"required,type=reference[cluster]"`
 	ResourceQuota                 *ProjectResourceQuota   `json:"resourceQuota,omitempty"`
 	NamespaceDefaultResourceQuota *NamespaceResourceQuota `json:"namespaceDefaultResourceQuota,omitempty"`
+	ContainerDefaultResourceLimit *ContainerResourceLimit `json:"containerDefaultResourceLimit,omitempty"`
 	EnableProjectMonitoring       bool                    `json:"enableProjectMonitoring" norman:"default=false"`
 }
 
@@ -122,6 +123,7 @@ type ProjectRoleTemplateBinding struct {
 	GroupPrincipalName string `json:"groupPrincipalName,omitempty" norman:"type=reference[principal]"`
 	ProjectName        string `json:"projectName,omitempty" norman:"required,type=reference[project]"`
 	RoleTemplateName   string `json:"roleTemplateName,omitempty" norman:"required,type=reference[roleTemplate]"`
+	ServiceAccount     string `json:"serviceAccount,omitempty" norman:"nocreate,noupdate"`
 }
 
 type ClusterRoleTemplateBinding struct {

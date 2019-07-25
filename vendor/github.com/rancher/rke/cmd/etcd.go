@@ -3,13 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rancher/rke/cluster"
 	"github.com/rancher/rke/hosts"
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/pki"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -30,12 +31,16 @@ func EtcdCommand() cli.Command {
 		},
 		cli.BoolFlag{
 			Name:  "s3",
-			Usage: "Enabled backup to s3, set true or false",
+			Usage: "Enabled backup to s3",
 		},
 		cli.StringFlag{
 			Name:  "s3-endpoint",
 			Usage: "Specify s3 endpoint url",
 			Value: s3Endpoint,
+		},
+		cli.StringFlag{
+			Name:  "s3-endpoint-ca",
+			Usage: "Specify a custom CA cert to connect to S3 endpoint",
 		},
 		cli.StringFlag{
 			Name:  "access-key",
@@ -52,6 +57,10 @@ func EtcdCommand() cli.Command {
 		cli.StringFlag{
 			Name:  "region",
 			Usage: "Specify the s3 bucket location (optional)",
+		},
+		cli.StringFlag{
+			Name:  "folder",
+			Usage: "Specify s3 folder name",
 		},
 	}
 	snapshotFlags = append(snapshotFlags, commonFlags...)
@@ -107,55 +116,66 @@ func RestoreEtcdSnapshot(
 	ctx context.Context,
 	rkeConfig *v3.RancherKubernetesEngineConfig,
 	dialersOptions hosts.DialersOptions,
-	flags cluster.ExternalFlags, snapshotName string) error {
-
+	flags cluster.ExternalFlags,
+	data map[string]interface{},
+	snapshotName string) (string, string, string, string, map[string]pki.CertificatePKI, error) {
+	var APIURL, caCrt, clientCert, clientKey string
 	log.Infof(ctx, "Restoring etcd snapshot %s", snapshotName)
-	stateFilePath := cluster.GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir)
-	rkeFullState, err := cluster.ReadStateFile(ctx, stateFilePath)
+	kubeCluster, err := cluster.InitClusterObject(ctx, rkeConfig, flags)
 	if err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
+	}
+	stateFilePath := cluster.GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir)
+	rkeFullState, _ := cluster.ReadStateFile(ctx, stateFilePath)
+	if err := checkLegacyCluster(ctx, kubeCluster, rkeFullState, flags); err != nil {
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
 	rkeFullState.CurrentState = cluster.State{}
 	if err := rkeFullState.WriteStateFile(ctx, stateFilePath); err != nil {
-		return err
-	}
-	kubeCluster, err := cluster.InitClusterObject(ctx, rkeConfig, flags)
-	if err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	if err := kubeCluster.SetupDialers(ctx, dialersOptions); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	if err := kubeCluster.TunnelHosts(ctx, flags); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
+	}
+	// if we fail after cleanup, we can't find the certs to do the download, we need to redeploy them
+	if err := kubeCluster.DeployRestoreCerts(ctx, rkeFullState.DesiredState.CertificatesBundle); err != nil {
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	// first download and check
 	if err := kubeCluster.PrepareBackup(ctx, snapshotName); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	log.Infof(ctx, "Cleaning old kubernetes cluster")
 	if err := kubeCluster.CleanupNodes(ctx); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	if err := kubeCluster.RestoreEtcdSnapshot(ctx, snapshotName); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
 	if err := ClusterInit(ctx, rkeConfig, dialersOptions, flags); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
-	if _, _, _, _, _, err := ClusterUp(ctx, dialersOptions, flags); err != nil {
-		return err
+	APIURL, caCrt, clientCert, clientKey, certs, err := ClusterUp(ctx, dialersOptions, flags, data)
+	if err != nil {
+		if !strings.Contains(err.Error(), "Provisioning incomplete") {
+			return APIURL, caCrt, clientCert, clientKey, nil, err
+		}
+		log.Warnf(ctx, err.Error())
 	}
+
 	if err := cluster.RestartClusterPods(ctx, kubeCluster); err != nil {
-		return nil
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	if err := kubeCluster.RemoveOldNodes(ctx); err != nil {
-		return err
+		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	log.Infof(ctx, "Finished restoring snapshot [%s] on all etcd hosts", snapshotName)
-	return nil
+	return APIURL, caCrt, clientCert, clientKey, certs, err
 }
 
 func SnapshotSaveEtcdHostsFromCli(ctx *cli.Context) error {
@@ -207,6 +227,33 @@ func RestoreEtcdSnapshotFromCli(ctx *cli.Context) error {
 	// setting up the flags
 	flags := cluster.GetExternalFlags(false, false, false, "", filePath)
 
-	return RestoreEtcdSnapshot(context.Background(), rkeConfig, hosts.DialersOptions{}, flags, etcdSnapshotName)
+	_, _, _, _, _, err = RestoreEtcdSnapshot(context.Background(), rkeConfig, hosts.DialersOptions{}, flags, map[string]interface{}{}, etcdSnapshotName)
+	return err
+}
 
+func SnapshotRemoveFromEtcdHosts(
+	ctx context.Context,
+	rkeConfig *v3.RancherKubernetesEngineConfig,
+	dialersOptions hosts.DialersOptions,
+	flags cluster.ExternalFlags, snapshotName string) error {
+
+	log.Infof(ctx, "Starting snapshot remove on etcd hosts")
+	kubeCluster, err := cluster.InitClusterObject(ctx, rkeConfig, flags)
+	if err != nil {
+		return err
+	}
+	if err := kubeCluster.SetupDialers(ctx, dialersOptions); err != nil {
+		return err
+	}
+
+	if err := kubeCluster.TunnelHosts(ctx, flags); err != nil {
+		return err
+	}
+
+	if err := kubeCluster.RemoveEtcdSnapshot(ctx, snapshotName); err != nil {
+		return err
+	}
+
+	log.Infof(ctx, "Finished removing snapshot [%s] from all etcd hosts", snapshotName)
+	return nil
 }

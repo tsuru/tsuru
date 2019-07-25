@@ -3,7 +3,7 @@ package v3
 import (
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -14,6 +14,8 @@ const (
 )
 
 type BackupConfig struct {
+	// Enable or disable recurring backups in rancher
+	Enabled *bool `yaml:"enabled" json:"enabled,omitempty" norman:"default=true"`
 	// Backup interval in hours
 	IntervalHours int `yaml:"interval_hours" json:"intervalHours,omitempty" norman:"default=12"`
 	// Number of backups to keep
@@ -26,13 +28,17 @@ type S3BackupConfig struct {
 	// Access key ID
 	AccessKey string `yaml:"access_key" json:"accessKey,omitempty"`
 	// Secret access key
-	SecretKey string `yaml:"secret_key" json:"secretKey,omitempty" norman:"required,type=password" `
+	SecretKey string `yaml:"secret_key" json:"secretKey,omitempty" norman:"type=password" `
 	// name of the bucket to use for backup
 	BucketName string `yaml:"bucket_name" json:"bucketName,omitempty"`
 	// AWS Region, AWS spcific
 	Region string `yaml:"region" json:"region,omitempty"`
 	// Endpoint is used if this is not an AWS API
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	// CustomCA is used to connect to custom s3 endpoints
+	CustomCA string `yaml:"custom_ca" json:"customCa,omitempty"`
+	// Folder to place the files
+	Folder string `yaml:"folder" json:"folder,omitempty"`
 }
 type EtcdBackup struct {
 	types.Namespaced
@@ -40,14 +46,21 @@ type EtcdBackup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// backup spec
+	Spec EtcdBackupSpec `json:"spec"`
+	// backup status
+	Status EtcdBackupStatus `yaml:"status" json:"status,omitempty"`
+}
+
+type EtcdBackupSpec struct {
 	// cluster ID
 	ClusterID string `json:"clusterId,omitempty" norman:"required,type=reference[cluster]"`
+	// manual backup flag
+	Manual bool `yaml:"manual" json:"manual,omitempty"`
 	// actual file name on the target
 	Filename string `yaml:"filename" json:"filename,omitempty"`
 	// backupConfig
 	BackupConfig BackupConfig `yaml:",omitempty" json:"backupConfig,omitempty"`
-	// backup status
-	Status EtcdBackupStatus `yaml:"status" json:"status,omitempty"`
 }
 
 type EtcdBackupStatus struct {

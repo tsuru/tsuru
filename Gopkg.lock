@@ -793,6 +793,14 @@
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
 
 [[projects]]
+  branch = "master"
+  digest = "1:9da0619fa33a5e39777f23682390b3337a435080e3ab3d9dddd942c0b6440924"
+  name = "github.com/mcuadros/go-version"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "92cdf37c5b7579ebaf7a036da94b40995972088d"
+
+[[projects]]
   digest = "1:12daa99c0a1b087a7c4a174aceae0395e14ecc6555d075bcab3ca24a5a47ebb1"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -952,6 +960,17 @@
   revision = "c90cb954266e1bdd6d1914678fd6909fc5fabbfa"
 
 [[projects]]
+  branch = "master"
+  digest = "1:d58b464fb509afd0928759eadfad7307a79319fdf9aa1bea1feb71b28b9f2459"
+  name = "github.com/rancher/kontainer-driver-metadata"
+  packages = [
+    "rke",
+    "rke/templates",
+  ]
+  pruneopts = "NUT"
+  revision = "a6ceb896b4e0b3a0eff3a2f5aac379b7c7d2896a"
+
+[[projects]]
   branch = "allprs"
   digest = "1:f0cb34ea45ba7480eb8f73f285ba264641e3ed9facf967a5dff36fa7c6fb2fc1"
   name = "github.com/rancher/kontainer-engine"
@@ -977,7 +996,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0dbf2d9132a18bb91cbc44b67b8126957dd9265773f5a63978827de344c49ece"
+  digest = "1:e5172bc033b52448aee9a96f9b31ad88ef3844963892794be39389c99055d90e"
   name = "github.com/rancher/norman"
   packages = [
     "condition",
@@ -988,6 +1007,7 @@
     "name",
     "objectclient",
     "objectclient/dynamic",
+    "resource",
     "restwatch",
     "types",
     "types/convert",
@@ -996,11 +1016,11 @@
     "types/values",
   ]
   pruneopts = "NUT"
-  revision = "196df5ed9da30dac3aa715879f44616238b8085f"
+  revision = "043a1c919df3ada12d5592e7f0259404cbd7642d"
 
 [[projects]]
   branch = "master"
-  digest = "1:670c0af07f8b36f60c2a596fa48ad703e0706c9f9b3d2ee11f305e963399a609"
+  digest = "1:2f7051cba89b5153d6ffac600cee2bed2edde0ec29d0c4d3dddce02adebbdb8e"
   name = "github.com/rancher/rke"
   packages = [
     "addons",
@@ -1018,17 +1038,18 @@
     "hosts",
     "k8s",
     "log",
+    "metadata",
     "pki",
     "services",
     "templates",
     "util",
   ]
   pruneopts = "NUT"
-  revision = "eedec3c1e9a76708c4821d1172f0ed842b3c9e47"
+  revision = "e9237303880d2a8118b6eeaf92a37408d99adbfe"
 
 [[projects]]
   branch = "master"
-  digest = "1:a1b07a1d81bd716f996302a6849b6d635192d3c5a92cbd2bbbfa17bcebb914ee"
+  digest = "1:b08a70ed392e2169bf0db3384088140d5fe9c8a4dd146b7e9d106197c5c929c8"
   name = "github.com/rancher/types"
   packages = [
     "apis/management.cattle.io/v3",
@@ -1036,7 +1057,7 @@
     "image",
   ]
   pruneopts = "NUT"
-  revision = "81075bc782ea51c08e3931f7d3b81c61923b0ed3"
+  revision = "839eead94ce4d64c40e9cc2ba7994eeb8079bb03"
 
 [[projects]]
   digest = "1:233a8bf9dd186376c4090bf5d28355d0d6d2c163e9a7e1f8c4b846a8a18231c2"

@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"github.com/rancher/rke/metadata"
 	"net"
 	"reflect"
 	"strings"
@@ -17,11 +18,11 @@ import (
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/services"
 	"github.com/rancher/rke/util"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/cert"
@@ -42,6 +43,7 @@ type Cluster struct {
 	DockerDialerFactory              hosts.DialerFactory
 	EtcdHosts                        []*hosts.Host
 	EtcdReadyHosts                   []*hosts.Host
+	ForceDeployCerts                 bool
 	InactiveHosts                    []*hosts.Host
 	K8sWrapTransport                 k8s.WrapTransport
 	KubeClient                       *kubernetes.Clientset
@@ -79,14 +81,16 @@ const (
 	NameLabel    = "name"
 
 	WorkerThreads = util.WorkerThreads
+
+	serviceAccountTokenFileParam = "service-account-key-file"
 )
 
-func (c *Cluster) DeployControlPlane(ctx context.Context) error {
+func (c *Cluster) DeployControlPlane(ctx context.Context, svcOptions *v3.KubernetesServicesOptions) error {
 	// Deploy Etcd Plane
 	etcdNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build etcd node plan map
 	for _, etcdHost := range c.EtcdHosts {
-		etcdNodePlanMap[etcdHost.Address] = BuildRKEConfigNodePlan(ctx, c, etcdHost, etcdHost.DockerInfo)
+		etcdNodePlanMap[etcdHost.Address] = BuildRKEConfigNodePlan(ctx, c, etcdHost, etcdHost.DockerInfo, svcOptions)
 	}
 
 	if len(c.Services.Etcd.ExternalURLs) > 0 {
@@ -101,7 +105,7 @@ func (c *Cluster) DeployControlPlane(ctx context.Context) error {
 	cpNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build cp node plan map
 	for _, cpHost := range c.ControlPlaneHosts {
-		cpNodePlanMap[cpHost.Address] = BuildRKEConfigNodePlan(ctx, c, cpHost, cpHost.DockerInfo)
+		cpNodePlanMap[cpHost.Address] = BuildRKEConfigNodePlan(ctx, c, cpHost, cpHost.DockerInfo, svcOptions)
 	}
 	if err := services.RunControlPlane(ctx, c.ControlPlaneHosts,
 		c.LocalConnDialerFactory,
@@ -116,13 +120,13 @@ func (c *Cluster) DeployControlPlane(ctx context.Context) error {
 	return nil
 }
 
-func (c *Cluster) DeployWorkerPlane(ctx context.Context) error {
+func (c *Cluster) DeployWorkerPlane(ctx context.Context, svcOptions *v3.KubernetesServicesOptions) error {
 	// Deploy Worker plane
 	workerNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build cp node plan map
 	allHosts := hosts.GetUniqueHostList(c.EtcdHosts, c.ControlPlaneHosts, c.WorkerHosts)
 	for _, workerHost := range allHosts {
-		workerNodePlanMap[workerHost.Address] = BuildRKEConfigNodePlan(ctx, c, workerHost, workerHost.DockerInfo)
+		workerNodePlanMap[workerHost.Address] = BuildRKEConfigNodePlan(ctx, c, workerHost, workerHost.DockerInfo, svcOptions)
 	}
 	if err := services.RunWorkerPlane(ctx, allHosts,
 		c.LocalConnDialerFactory,
@@ -157,6 +161,9 @@ func InitClusterObject(ctx context.Context, rkeConfig *v3.RancherKubernetesEngin
 		StateFilePath:                 GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir),
 		PrivateRegistriesMap:          make(map[string]v3.PrivateRegistry),
 	}
+	if metadata.K8sVersionToRKESystemImages == nil {
+		metadata.InitMetadata(ctx)
+	}
 	if len(c.ConfigPath) == 0 {
 		c.ConfigPath = pki.ClusterConfig
 	}
@@ -168,7 +175,7 @@ func InitClusterObject(ctx context.Context, rkeConfig *v3.RancherKubernetesEngin
 	}
 
 	// Setting cluster Defaults
-	err := c.setClusterDefaults(ctx)
+	err := c.setClusterDefaults(ctx, flags)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +191,7 @@ func InitClusterObject(ctx context.Context, rkeConfig *v3.RancherKubernetesEngin
 		return nil, fmt.Errorf("Failed to classify hosts from config file: %v", err)
 	}
 	// validate cluster configuration
-	if err := c.ValidateCluster(); err != nil {
+	if err := c.ValidateCluster(ctx); err != nil {
 		return nil, fmt.Errorf("Failed to validate cluster: %v", err)
 	}
 	return c, nil
@@ -274,7 +281,7 @@ func getLocalConfigAddress(localConfigPath string) (string, error) {
 
 func getLocalAdminConfigWithNewAddress(localConfigPath, cpAddress string, clusterName string) string {
 	config, _ := clientcmd.BuildConfigFromFlags("", localConfigPath)
-	if config == nil {
+	if config == nil || config.BearerToken != "" {
 		return ""
 	}
 	config.Host = fmt.Sprintf("https://%s:6443", cpAddress)
@@ -321,8 +328,8 @@ func ApplyAuthzResources(ctx context.Context, rkeConfig v3.RancherKubernetesEngi
 	return nil
 }
 
-func (c *Cluster) deployAddons(ctx context.Context) error {
-	if err := c.deployK8sAddOns(ctx); err != nil {
+func (c *Cluster) deployAddons(ctx context.Context, data map[string]interface{}) error {
+	if err := c.deployK8sAddOns(ctx, data); err != nil {
 		return err
 	}
 	if err := c.deployUserAddOns(ctx); err != nil {
@@ -338,7 +345,7 @@ func (c *Cluster) deployAddons(ctx context.Context) error {
 func (c *Cluster) SyncLabelsAndTaints(ctx context.Context, currentCluster *Cluster) error {
 	// Handle issue when deleting all controlplane nodes https://github.com/rancher/rancher/issues/15810
 	if currentCluster != nil {
-		cpToDelete := hosts.GetToDeleteHosts(currentCluster.ControlPlaneHosts, c.ControlPlaneHosts, c.InactiveHosts)
+		cpToDelete := hosts.GetToDeleteHosts(currentCluster.ControlPlaneHosts, c.ControlPlaneHosts, c.InactiveHosts, false)
 		if len(cpToDelete) == len(currentCluster.ControlPlaneHosts) {
 			log.Infof(ctx, "[sync] Cleaning left control plane nodes from reconcilation")
 			for _, toDeleteHost := range cpToDelete {
@@ -450,6 +457,7 @@ func ConfigureCluster(
 	crtBundle map[string]pki.CertificatePKI,
 	flags ExternalFlags,
 	dailersOptions hosts.DialersOptions,
+	data map[string]interface{},
 	useKubectl bool) error {
 	// dialer factories are not needed here since we are not uses docker only k8s jobs
 	kubeCluster, err := InitClusterObject(ctx, &rkeConfig, flags)
@@ -462,13 +470,13 @@ func ConfigureCluster(
 	kubeCluster.UseKubectlDeploy = useKubectl
 	if len(kubeCluster.ControlPlaneHosts) > 0 {
 		kubeCluster.Certificates = crtBundle
-		if err := kubeCluster.deployNetworkPlugin(ctx); err != nil {
+		if err := kubeCluster.deployNetworkPlugin(ctx, data); err != nil {
 			if err, ok := err.(*addonError); ok && err.isCritical {
 				return err
 			}
 			log.Warnf(ctx, "Failed to deploy addon execute job [%s]: %v", NetworkPluginResourceName, err)
 		}
-		if err := kubeCluster.deployAddons(ctx); err != nil {
+		if err := kubeCluster.deployAddons(ctx, data); err != nil {
 			return err
 		}
 	}
@@ -486,12 +494,14 @@ func RestartClusterPods(ctx context.Context, kubeCluster *Cluster) error {
 		fmt.Sprintf("%s=%s", KubeAppLabel, CalicoNetworkPlugin),
 		fmt.Sprintf("%s=%s", KubeAppLabel, FlannelNetworkPlugin),
 		fmt.Sprintf("%s=%s", KubeAppLabel, CanalNetworkPlugin),
-		fmt.Sprintf("%s=%s", NameLabel, WeaveNetworkPlugin),
+		fmt.Sprintf("%s=%s", NameLabel, WeaveNetowrkAppName),
 		fmt.Sprintf("%s=%s", AppLabel, NginxIngressAddonAppName),
 		fmt.Sprintf("%s=%s", KubeAppLabel, DefaultMonitoringProvider),
 		fmt.Sprintf("%s=%s", KubeAppLabel, KubeDNSAddonAppName),
 		fmt.Sprintf("%s=%s", KubeAppLabel, KubeDNSAutoscalerAppName),
 		fmt.Sprintf("%s=%s", KubeAppLabel, CoreDNSAutoscalerAppName),
+		fmt.Sprintf("%s=%s", AppLabel, KubeAPIAuthAppName),
+		fmt.Sprintf("%s=%s", AppLabel, CattleClusterAgentAppName),
 	}
 	var errgrp errgroup.Group
 	labelQueue := util.GetObjectQueue(labelsList)
@@ -527,4 +537,21 @@ func (c *Cluster) GetHostInfoMap() map[string]types.Info {
 		hostsInfoMap[host.Address] = host.DockerInfo
 	}
 	return hostsInfoMap
+}
+
+func IsLegacyKubeAPI(ctx context.Context, kubeCluster *Cluster) (bool, error) {
+	log.Infof(ctx, "[controlplane] Check if rotating a legacy cluster")
+	for _, host := range kubeCluster.ControlPlaneHosts {
+		kubeAPIInspect, err := docker.InspectContainer(ctx, host.DClient, host.Address, services.KubeAPIContainerName)
+		if err != nil {
+			return false, err
+		}
+		for _, arg := range kubeAPIInspect.Args {
+			if strings.Contains(arg, serviceAccountTokenFileParam) &&
+				strings.Contains(arg, pki.GetKeyPath(pki.KubeAPICertName)) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

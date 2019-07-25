@@ -20,7 +20,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/rancher/rke/log"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/rke/metadata"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -31,16 +32,9 @@ const (
 	RestartTimeout = 5
 	// StopTimeout in seconds
 	StopTimeout = 5
+	// RetryCount is the amount of retries for Docker operations
+	RetryCount = 3
 )
-
-var K8sDockerVersions = map[string][]string{
-	"1.8":  {"1.11.x", "1.12.x", "1.13.x", "17.03.x"},
-	"1.9":  {"1.11.x", "1.12.x", "1.13.x", "17.03.x"},
-	"1.10": {"1.11.x", "1.12.x", "1.13.x", "17.03.x"},
-	"1.11": {"1.11.x", "1.12.x", "1.13.x", "17.03.x"},
-	"1.12": {"1.11.x", "1.12.x", "1.13.x", "17.03.x", "17.06.x", "17.09.x", "18.06.x"},
-	"1.13": {"1.11.x", "1.12.x", "1.13.x", "17.03.x", "17.06.x", "17.09.x", "18.06.x"},
-}
 
 type dockerConfig struct {
 	Auths map[string]authConfig `json:"auths,omitempty"`
@@ -52,19 +46,19 @@ func DoRunContainer(ctx context.Context, dClient *client.Client, imageCfg *conta
 	if dClient == nil {
 		return fmt.Errorf("[%s] Failed to run container: docker client is nil for container [%s] on host [%s]", plane, containerName, hostname)
 	}
-	container, err := dClient.ContainerInspect(ctx, containerName)
+	container, err := InspectContainer(ctx, dClient, hostname, containerName)
 	if err != nil {
 		if !client.IsErrNotFound(err) {
 			return err
 		}
 		if err := UseLocalOrPull(ctx, dClient, hostname, imageCfg.Image, plane, prsMap); err != nil {
-			return err
+			return fmt.Errorf("Failed to pull image [%s] on host [%s]: %v", imageCfg.Image, hostname, err)
 		}
-		resp, err := dClient.ContainerCreate(ctx, imageCfg, hostCfg, nil, containerName)
+		_, err := CreateContainer(ctx, dClient, hostname, containerName, imageCfg, hostCfg)
 		if err != nil {
 			return fmt.Errorf("Failed to create [%s] container on host [%s]: %v", containerName, hostname, err)
 		}
-		if err := dClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		if err := StartContainer(ctx, dClient, hostname, containerName); err != nil {
 			return fmt.Errorf("Failed to start [%s] container on host [%s]: %v", containerName, hostname, err)
 		}
 		log.Infof(ctx, "[%s] Successfully started [%s] container on host [%s]", plane, containerName, hostname)
@@ -75,9 +69,9 @@ func DoRunContainer(ctx context.Context, dClient *client.Client, imageCfg *conta
 		// check if container is in a restarting loop
 		if container.State.Restarting {
 			logrus.Debugf("[%s] Container [%s] is in a restarting loop [%s]", plane, containerName, hostname)
-			restartTimeoutDuration := RestartTimeout * time.Second
-			if err := dClient.ContainerRestart(ctx, container.ID, &restartTimeoutDuration); err != nil {
-				return fmt.Errorf("Failed to start [%s] container on host [%s]: %v", containerName, hostname, err)
+			err = RestartContainer(ctx, dClient, hostname, containerName)
+			if err != nil {
+				return err
 			}
 		}
 		logrus.Debugf("[%s] Container [%s] is already running on host [%s]", plane, containerName, hostname)
@@ -92,12 +86,51 @@ func DoRunContainer(ctx context.Context, dClient *client.Client, imageCfg *conta
 	}
 
 	// start if not running
-	logrus.Debugf("[%s] Starting stopped container [%s] on host [%s]", plane, containerName, hostname)
-	if err := dClient.ContainerStart(ctx, container.ID, types.ContainerStartOptions{}); err != nil {
+	logrus.Infof("[%s] Starting stopped container [%s] on host [%s]", plane, containerName, hostname)
+	if err := StartContainer(ctx, dClient, hostname, containerName); err != nil {
 		return fmt.Errorf("Failed to start [%s] container on host [%s]: %v", containerName, hostname, err)
 	}
 	log.Infof(ctx, "[%s] Successfully started [%s] container on host [%s]", plane, containerName, hostname)
 	return nil
+}
+
+func DoRunOnetimeContainer(ctx context.Context, dClient *client.Client, imageCfg *container.Config, hostCfg *container.HostConfig, containerName string, hostname string, plane string, prsMap map[string]v3.PrivateRegistry) error {
+	if dClient == nil {
+		return fmt.Errorf("[%s] Failed to run container: docker client is nil for container [%s] on host [%s]", plane, containerName, hostname)
+	}
+	_, err := InspectContainer(ctx, dClient, hostname, containerName)
+	if err != nil {
+		if !client.IsErrNotFound(err) {
+			return err
+		}
+		if err := UseLocalOrPull(ctx, dClient, hostname, imageCfg.Image, plane, prsMap); err != nil {
+			return err
+		}
+		_, err := CreateContainer(ctx, dClient, hostname, containerName, imageCfg, hostCfg)
+		if err != nil {
+			return fmt.Errorf("Failed to create [%s] container on host [%s]: %v", containerName, hostname, err)
+		}
+		if err := StartContainer(ctx, dClient, hostname, containerName); err != nil {
+			return fmt.Errorf("Failed to start [%s] container on host [%s]: %v", containerName, hostname, err)
+		}
+		log.Infof(ctx, "Successfully started [%s] container on host [%s]", containerName, hostname)
+		log.Infof(ctx, "Waiting for [%s] container to exit on host [%s]", containerName, hostname)
+		exitCode, err := WaitForContainer(ctx, dClient, hostname, containerName)
+		if err != nil {
+			return fmt.Errorf("Container [%s] did not complete in time on host [%s]", containerName, hostname)
+		}
+		if exitCode != 0 {
+			stderr, stdout, err := GetContainerLogsStdoutStderr(ctx, dClient, containerName, "1", false)
+			if err != nil {
+				return fmt.Errorf("Unable to retrieve logs for container [%s] on host [%s]: %v", containerName, hostname, err)
+			}
+			stderr = strings.TrimSuffix(stderr, "\n")
+			stdout = strings.TrimSuffix(stdout, "\n")
+			return fmt.Errorf("Container [%s] exited with non-zero exit code [%d] on host [%s]: stdout: %s, stderr: %s", containerName, exitCode, hostname, stdout, stderr)
+		}
+		return nil
+	}
+	return err
 }
 
 func DoRollingUpdateContainer(ctx context.Context, dClient *client.Client, imageCfg *container.Config, hostCfg *container.HostConfig, containerName, hostname, plane string, prsMap map[string]v3.PrivateRegistry) error {
@@ -141,8 +174,7 @@ func DoRemoveContainer(ctx context.Context, dClient *client.Client, containerNam
 		return fmt.Errorf("Failed to remove container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
 	logrus.Debugf("[remove/%s] Checking if container is running on host [%s]", containerName, hostname)
-	// not using the wrapper to check if the error is a NotFound error
-	_, err := dClient.ContainerInspect(ctx, containerName)
+	_, err := InspectContainer(ctx, dClient, hostname, containerName)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			logrus.Debugf("[remove/%s] Container doesn't exist on host [%s]", containerName, hostname)
@@ -163,14 +195,22 @@ func IsContainerRunning(ctx context.Context, dClient *client.Client, hostname st
 	if dClient == nil {
 		return false, fmt.Errorf("Failed to check if container is running: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	logrus.Debugf("Checking if container [%s] is running on host [%s]", containerName, hostname)
-	containers, err := dClient.ContainerList(ctx, types.ContainerListOptions{All: all})
+	var containers []types.Container
+	var err error
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Checking if container [%s] is running on host [%s], try #%d", containerName, hostname, i)
+		containers, err = dClient.ContainerList(ctx, types.ContainerListOptions{All: all})
+		if err != nil {
+			logrus.Warnf("Error checking if container [%s] is running on host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		break
+	}
 	if err != nil {
-		return false, fmt.Errorf("Can't get Docker containers for host [%s]: %v", hostname, err)
-
+		return false, fmt.Errorf("Error checking if container [%s] is running on host [%s]: %v", containerName, hostname, err)
 	}
 	for _, container := range containers {
-		if container.Names[0] == "/"+containerName {
+		if len(container.Names) != 0 && container.Names[0] == "/"+containerName {
 			return true, nil
 		}
 	}
@@ -178,20 +218,27 @@ func IsContainerRunning(ctx context.Context, dClient *client.Client, hostname st
 }
 
 func localImageExists(ctx context.Context, dClient *client.Client, hostname string, containerImage string) (bool, error) {
-	logrus.Debugf("Checking if image [%s] exists on host [%s]", containerImage, hostname)
-	_, _, err := dClient.ImageInspectWithRaw(ctx, containerImage)
-	if err != nil {
-		if client.IsErrNotFound(err) {
-			logrus.Debugf("Image [%s] does not exist on host [%s]: %v", containerImage, hostname, err)
-			return false, nil
+	var err error
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Checking if image [%s] exists on host [%s], try #%d", containerImage, hostname, i)
+		_, _, err = dClient.ImageInspectWithRaw(ctx, containerImage)
+		if err != nil {
+			if client.IsErrNotFound(err) {
+				logrus.Infof("Image [%s] does not exist on host [%s]: %v", containerImage, hostname, err)
+				return false, nil
+			}
+			logrus.Warnf("Error checking if image [%s] exists on host [%s]: %v", containerImage, hostname, err)
+			continue
 		}
-		return false, fmt.Errorf("Error checking if image [%s] exists on host [%s]: %v", containerImage, hostname, err)
+		logrus.Infof("Image [%s] exists on host [%s]", containerImage, hostname)
+		return true, nil
 	}
-	logrus.Debugf("Image [%s] exists on host [%s]", containerImage, hostname)
-	return true, nil
+	return false, fmt.Errorf("Error checking if image [%s] exists on host [%s]: %v", containerImage, hostname, err)
 }
 
 func pullImage(ctx context.Context, dClient *client.Client, hostname string, containerImage string, prsMap map[string]v3.PrivateRegistry) error {
+	var out io.ReadCloser
+	var err error
 	pullOptions := types.ImagePullOptions{}
 
 	regAuth, prURL, err := GetImageRegistryConfig(containerImage, prsMap)
@@ -203,117 +250,190 @@ func pullImage(ctx context.Context, dClient *client.Client, hostname string, con
 	}
 	pullOptions.RegistryAuth = regAuth
 
-	out, err := dClient.ImagePull(ctx, containerImage, pullOptions)
-	if err != nil {
-		return fmt.Errorf("Can't pull Docker image [%s] for host [%s]: %v", containerImage, hostname, err)
+	// Retry up to RetryCount times to pull image
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Pulling image [%s] on host [%s], try #%d", containerImage, hostname, i)
+		out, err = dClient.ImagePull(ctx, containerImage, pullOptions)
+		if err != nil {
+			logrus.Warnf("Can't pull Docker image [%s] on host [%s]: %v", containerImage, hostname, err)
+			continue
+		}
+		defer out.Close()
+		if logrus.GetLevel() == logrus.DebugLevel {
+			io.Copy(os.Stdout, out)
+		} else {
+			io.Copy(ioutil.Discard, out)
+		}
+		return nil
 	}
-	defer out.Close()
-	if logrus.GetLevel() == logrus.DebugLevel {
-		io.Copy(os.Stdout, out)
-	} else {
-		io.Copy(ioutil.Discard, out)
-	}
-
-	return nil
+	// If the for loop does not return, return the error
+	return err
 }
 
 func UseLocalOrPull(ctx context.Context, dClient *client.Client, hostname string, containerImage string, plane string, prsMap map[string]v3.PrivateRegistry) error {
 	if dClient == nil {
 		return fmt.Errorf("[%s] Failed to use local image or pull: docker client is nil for container [%s] on host [%s]", plane, containerImage, hostname)
 	}
-	logrus.Debugf("[%s] Checking image [%s] on host [%s]", plane, containerImage, hostname)
-	imageExists, err := localImageExists(ctx, dClient, hostname, containerImage)
-	if err != nil {
-		return err
+	var imageExists bool
+	var err error
+
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		// Increasing wait time on retry, but not on the first two try
+		if i > 2 {
+			time.Sleep(time.Duration(i) * time.Second)
+		}
+
+		// Check for local image and if error, log and retry
+		imageExists, err = localImageExists(ctx, dClient, hostname, containerImage)
+		if err != nil {
+			logrus.Warnf("[%s] %v", plane, err)
+			continue
+		}
+
+		// Return if image exists to prevent pulling
+		if imageExists {
+			return nil
+		}
+
+		// Try pulling and if error, log and retry
+		err = pullImage(ctx, dClient, hostname, containerImage, prsMap)
+		if err != nil {
+			logrus.Warnf("[%s] Can't pull Docker image [%s] on host [%s]: %v", plane, containerImage, hostname, err)
+			continue
+		}
 	}
-	if imageExists {
-		logrus.Debugf("[%s] No pull necessary, image [%s] exists on host [%s]", plane, containerImage, hostname)
-		return nil
-	}
-	log.Infof(ctx, "[%s] Pulling image [%s] on host [%s]", plane, containerImage, hostname)
-	if err := pullImage(ctx, dClient, hostname, containerImage, prsMap); err != nil {
-		return err
-	}
-	log.Infof(ctx, "[%s] Successfully pulled image [%s] on host [%s]", plane, containerImage, hostname)
-	return nil
+	// If the for loop does not return, return the error
+	return err
 }
 
 func RemoveContainer(ctx context.Context, dClient *client.Client, hostname string, containerName string) error {
 	if dClient == nil {
 		return fmt.Errorf("Failed to remove container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	err := dClient.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
-	if err != nil {
-		return fmt.Errorf("Can't remove Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+	var err error
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Removing container [%s] on host [%s], try #%d", containerName, hostname, i)
+		err = dClient.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
+		if err != nil {
+			logrus.Warningf("Can't remove Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 func RestartContainer(ctx context.Context, dClient *client.Client, hostname, containerName string) error {
 	if dClient == nil {
 		return fmt.Errorf("Failed to restart container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
+	var err error
 	restartTimeout := RestartTimeout * time.Second
-	err := dClient.ContainerRestart(ctx, containerName, &restartTimeout)
-	if err != nil {
-		return fmt.Errorf("Can't restart Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Restarting container [%s] on host [%s], try #%d", containerName, hostname, i)
+		err = dClient.ContainerRestart(ctx, containerName, &restartTimeout)
+		if err != nil {
+			logrus.Warningf("Can't restart Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return nil
 	}
-	return nil
+	return err
 }
 func StopContainer(ctx context.Context, dClient *client.Client, hostname string, containerName string) error {
 	if dClient == nil {
 		return fmt.Errorf("Failed to stop container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
+	var err error
 	// define the stop timeout
 	stopTimeoutDuration := StopTimeout * time.Second
-	err := dClient.ContainerStop(ctx, containerName, &stopTimeoutDuration)
-	if err != nil {
-		return fmt.Errorf("Can't stop Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Stopping container [%s] on host [%s] with stopTimeoutDuration [%s], try #%d", containerName, hostname, stopTimeoutDuration, i)
+		err := dClient.ContainerStop(ctx, containerName, &stopTimeoutDuration)
+		if err != nil {
+			logrus.Warningf("Can't stop Docker container [%s] for host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 func RenameContainer(ctx context.Context, dClient *client.Client, hostname string, oldContainerName string, newContainerName string) error {
 	if dClient == nil {
 		return fmt.Errorf("Failed to rename container: docker client is nil for container [%s] on host [%s]", oldContainerName, hostname)
 	}
-	err := dClient.ContainerRename(ctx, oldContainerName, newContainerName)
-	if err != nil {
-		return fmt.Errorf("Can't rename Docker container [%s] for host [%s]: %v", oldContainerName, hostname, err)
+	var err error
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Renaming container [%s] to [%s] on host [%s], try #%d", oldContainerName, newContainerName, hostname, i)
+		err = dClient.ContainerRename(ctx, oldContainerName, newContainerName)
+		if err != nil {
+			logrus.Warningf("Can't rename Docker container [%s] to [%s] for host [%s]: %v", oldContainerName, newContainerName, hostname, err)
+			continue
+		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 func StartContainer(ctx context.Context, dClient *client.Client, hostname string, containerName string) error {
 	if dClient == nil {
 		return fmt.Errorf("Failed to start container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	if err := dClient.ContainerStart(ctx, containerName, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("Failed to start [%s] container on host [%s]: %v", containerName, hostname, err)
+	var err error
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		logrus.Infof("Starting container [%s] on host [%s], try #%d", containerName, hostname, i)
+		err = dClient.ContainerStart(ctx, containerName, types.ContainerStartOptions{})
+		if err != nil {
+			logrus.Warningf("Can't start Docker container [%s] on host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 func CreateContainer(ctx context.Context, dClient *client.Client, hostname string, containerName string, imageCfg *container.Config, hostCfg *container.HostConfig) (container.ContainerCreateCreatedBody, error) {
 	if dClient == nil {
 		return container.ContainerCreateCreatedBody{}, fmt.Errorf("Failed to create container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	created, err := dClient.ContainerCreate(ctx, imageCfg, hostCfg, nil, containerName)
-	if err != nil {
-		return container.ContainerCreateCreatedBody{}, fmt.Errorf("Failed to create [%s] container on host [%s]: %v", containerName, hostname, err)
+	var err error
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		created, err := dClient.ContainerCreate(ctx, imageCfg, hostCfg, nil, containerName)
+		if err != nil {
+			logrus.Warningf("Failed to create Docker container [%s] on host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return created, nil
 	}
-	return created, nil
+	return container.ContainerCreateCreatedBody{}, fmt.Errorf("Failed to create Docker container [%s] on host [%s]: %v", containerName, hostname, err)
 }
 
 func InspectContainer(ctx context.Context, dClient *client.Client, hostname string, containerName string) (types.ContainerJSON, error) {
 	if dClient == nil {
 		return types.ContainerJSON{}, fmt.Errorf("Failed to inspect container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	inspection, err := dClient.ContainerInspect(ctx, containerName)
-	if err != nil {
-		return types.ContainerJSON{}, fmt.Errorf("Failed to inspect [%s] container on host [%s]: %v", containerName, hostname, err)
+	var err error
+	// Retry up to RetryCount times to see if image exists
+	for i := 1; i <= RetryCount; i++ {
+		inspection, err := dClient.ContainerInspect(ctx, containerName)
+		if err != nil {
+			if client.IsErrNotFound(err) {
+				return types.ContainerJSON{}, err
+			}
+			logrus.Warningf("Failed to inspect Docker container [%s] on host [%s]: %v", containerName, hostname, err)
+			continue
+		}
+		return inspection, nil
 	}
-	return inspection, nil
+	return types.ContainerJSON{}, fmt.Errorf("Failed to inspect Docker container [%s] on host [%s]: %v", containerName, hostname, err)
 }
 
 func StopRenameContainer(ctx context.Context, dClient *client.Client, hostname string, oldContainerName string, newContainerName string) error {
@@ -334,7 +454,7 @@ func StopRenameContainer(ctx context.Context, dClient *client.Client, hostname s
 		return err
 	}
 	if _, err := WaitForContainer(ctx, dClient, hostname, oldContainerName); err != nil {
-		return nil
+		return err
 	}
 	return RenameContainer(ctx, dClient, hostname, oldContainerName, newContainerName)
 
@@ -344,19 +464,22 @@ func WaitForContainer(ctx context.Context, dClient *client.Client, hostname stri
 	if dClient == nil {
 		return 1, fmt.Errorf("Failed waiting for container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
-	// We capture the status exit code of the container
-	statusCh, errCh := dClient.ContainerWait(ctx, containerName, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
+	// 5 minutes timeout, especially for transferring snapshots
+	for retries := 0; retries < 300; retries++ {
+		log.Infof(ctx, "Waiting for [%s] container to exit on host [%s]", containerName, hostname)
+		container, err := InspectContainer(ctx, dClient, hostname, containerName)
 		if err != nil {
-			// if error is present return 1 exit code
-			return 1, fmt.Errorf("Error waiting for container [%s] on host [%s]: %v", containerName, hostname, err)
+			return 1, fmt.Errorf("Could not inspect container [%s] on host [%s]: %s", containerName, hostname, err)
 		}
-	case status := <-statusCh:
-		// return the status exit code of the container
-		return status.StatusCode, nil
+		if container.State.Running {
+			log.Infof(ctx, "Container [%s] is still running on host [%s]", containerName, hostname)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		logrus.Debugf("Exit code for [%s] container on host [%s] is [%d]", containerName, hostname, int64(container.State.ExitCode))
+		return int64(container.State.ExitCode), nil
 	}
-	return 0, nil
+	return 1, fmt.Errorf("Container [%s] did not exit in time on host [%s]", containerName, hostname)
 }
 
 func IsContainerUpgradable(ctx context.Context, dClient *client.Client, imageCfg *container.Config, hostCfg *container.HostConfig, containerName string, hostname string, plane string) (bool, error) {
@@ -400,7 +523,7 @@ func IsSupportedDockerVersion(info types.Info, K8sVersion string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	for _, DockerVersion := range K8sDockerVersions[K8sVersion] {
+	for _, DockerVersion := range metadata.K8sVersionToDockerVersions[K8sVersion] {
 		supportedDockerVersion, err := convertToSemver(DockerVersion)
 		if err != nil {
 			return false, err
@@ -437,7 +560,16 @@ func ReadContainerLogs(ctx context.Context, dClient *client.Client, containerNam
 	if dClient == nil {
 		return nil, fmt.Errorf("Failed reading container logs: docker client is nil for container [%s]", containerName)
 	}
-	return dClient.ContainerLogs(ctx, containerName, types.ContainerLogsOptions{Follow: follow, ShowStdout: true, ShowStderr: true, Timestamps: false, Tail: tail})
+	var err error
+	for i := 1; i <= RetryCount; i++ {
+		logs, err := dClient.ContainerLogs(ctx, containerName, types.ContainerLogsOptions{Follow: follow, ShowStdout: true, ShowStderr: true, Timestamps: false, Tail: tail})
+		if err != nil {
+			logrus.Warnf("Can't read container logs for container [%s]: %v", containerName, err)
+			continue
+		}
+		return logs, nil
+	}
+	return nil, err
 }
 
 func GetContainerLogsStdoutStderr(ctx context.Context, dClient *client.Client, containerName, tail string, follow bool) (string, string, error) {
@@ -448,7 +580,7 @@ func GetContainerLogsStdoutStderr(ctx context.Context, dClient *client.Client, c
 	var containerStdout bytes.Buffer
 	var containerErrLog, containerStdLog string
 	clogs, logserr := ReadContainerLogs(ctx, dClient, containerName, follow, tail)
-	if logserr != nil {
+	if logserr != nil || clogs == nil {
 		logrus.Debugf("logserr: %v", logserr)
 		return containerErrLog, containerStdLog, fmt.Errorf("Failed to get gather logs from container [%s]: %v", containerName, logserr)
 	}
@@ -525,8 +657,7 @@ func DoRestartContainer(ctx context.Context, dClient *client.Client, containerNa
 		return fmt.Errorf("Failed to restart container: docker client is nil for container [%s] on host [%s]", containerName, hostname)
 	}
 	logrus.Debugf("[restart/%s] Checking if container is running on host [%s]", containerName, hostname)
-	// not using the wrapper to check if the error is a NotFound error
-	_, err := dClient.ContainerInspect(ctx, containerName)
+	_, err := InspectContainer(ctx, dClient, hostname, containerName)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			logrus.Debugf("[restart/%s] Container doesn't exist on host [%s]", containerName, hostname)

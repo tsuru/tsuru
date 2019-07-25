@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,17 @@ var (
 
 		Kind: AppRevisionGroupVersionKind.Kind,
 	}
+
+	AppRevisionGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "apprevisions",
+	}
 )
+
+func init() {
+	resource.Put(AppRevisionGroupVersionResource)
+}
 
 func NewAppRevision(namespace, name string, obj AppRevision) *AppRevision {
 	obj.APIVersion, obj.Kind = AppRevisionGroupVersionKind.ToAPIVersionAndKind()
@@ -40,7 +51,7 @@ func NewAppRevision(namespace, name string, obj AppRevision) *AppRevision {
 type AppRevisionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AppRevision
+	Items           []AppRevision `json:"items"`
 }
 
 type AppRevisionHandlerFunc func(key string, obj *AppRevision) (runtime.Object, error)
@@ -57,7 +68,9 @@ type AppRevisionController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() AppRevisionLister
 	AddHandler(ctx context.Context, name string, handler AppRevisionHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync AppRevisionHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler AppRevisionHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler AppRevisionHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -76,9 +89,13 @@ type AppRevisionInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() AppRevisionController
 	AddHandler(ctx context.Context, name string, sync AppRevisionHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync AppRevisionHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle AppRevisionLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle AppRevisionLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync AppRevisionHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync AppRevisionHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle AppRevisionLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle AppRevisionLifecycle)
 }
 
 type appRevisionLister struct {
@@ -138,9 +155,39 @@ func (c *appRevisionController) AddHandler(ctx context.Context, name string, han
 	})
 }
 
+func (c *appRevisionController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler AppRevisionHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*AppRevision); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *appRevisionController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler AppRevisionHandlerFunc) {
+	resource.PutClusterScoped(AppRevisionGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*AppRevision); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *appRevisionController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler AppRevisionHandlerFunc) {
+	resource.PutClusterScoped(AppRevisionGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*AppRevision); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -245,18 +292,36 @@ func (s *appRevisionClient) AddHandler(ctx context.Context, name string, sync Ap
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *appRevisionClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync AppRevisionHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *appRevisionClient) AddLifecycle(ctx context.Context, name string, lifecycle AppRevisionLifecycle) {
 	sync := NewAppRevisionLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *appRevisionClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle AppRevisionLifecycle) {
+	sync := NewAppRevisionLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *appRevisionClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync AppRevisionHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *appRevisionClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync AppRevisionHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *appRevisionClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle AppRevisionLifecycle) {
 	sync := NewAppRevisionLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *appRevisionClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle AppRevisionLifecycle) {
+	sync := NewAppRevisionLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type AppRevisionIndexer func(obj *AppRevision) ([]string, error)

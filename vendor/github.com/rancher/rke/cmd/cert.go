@@ -94,7 +94,7 @@ func rotateRKECertificatesFromCli(ctx *cli.Context) error {
 	if err := ClusterInit(context.Background(), rkeConfig, hosts.DialersOptions{}, externalFlags); err != nil {
 		return err
 	}
-	_, _, _, _, _, err = ClusterUp(context.Background(), hosts.DialersOptions{}, externalFlags)
+	_, _, _, _, _, err = ClusterUp(context.Background(), hosts.DialersOptions{}, externalFlags, map[string]interface{}{})
 	return err
 }
 
@@ -126,7 +126,7 @@ func showRKECertificatesFromCli(ctx *cli.Context) error {
 
 func rebuildClusterWithRotatedCertificates(ctx context.Context,
 	dialersOptions hosts.DialersOptions,
-	flags cluster.ExternalFlags) (string, string, string, string, map[string]pki.CertificatePKI, error) {
+	flags cluster.ExternalFlags, svcOptions *v3.KubernetesServicesOptions) (string, string, string, string, map[string]pki.CertificatePKI, error) {
 	var APIURL, caCrt, clientCert, clientKey string
 	log.Infof(ctx, "Rebuilding Kubernetes cluster with rotated certificates")
 	clusterState, err := cluster.ReadStateFile(ctx, cluster.GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir))
@@ -173,7 +173,16 @@ func rebuildClusterWithRotatedCertificates(ctx context.Context,
 			return APIURL, caCrt, clientCert, clientKey, nil, err
 		}
 	}
-
+	isLegacyKubeAPI, err := cluster.IsLegacyKubeAPI(ctx, kubeCluster)
+	if err != nil {
+		return APIURL, caCrt, clientCert, clientKey, nil, err
+	}
+	if isLegacyKubeAPI {
+		log.Infof(ctx, "[controlplane] Redeploying controlplane to update kubeapi parameters")
+		if err := kubeCluster.DeployControlPlane(ctx, svcOptions); err != nil {
+			return APIURL, caCrt, clientCert, clientKey, nil, err
+		}
+	}
 	if err := services.RestartControlPlane(ctx, kubeCluster.ControlPlaneHosts); err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -204,6 +213,7 @@ func rotateRKECertificates(ctx context.Context, kubeCluster *cluster.Cluster, fl
 	if err := cluster.RotateRKECertificates(ctx, currentCluster, flags, rkeFullState); err != nil {
 		return nil, err
 	}
+	rkeFullState.DesiredState.RancherKubernetesEngineConfig = &kubeCluster.RancherKubernetesEngineConfig
 	return rkeFullState, nil
 }
 

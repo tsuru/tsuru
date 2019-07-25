@@ -15,6 +15,15 @@ spec:
       labels:
         k8s-app: kube-dns-autoscaler
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/os
+                  operator: NotIn
+                  values:
+                    - windows
       serviceAccountName: kube-dns-autoscaler
       containers:
       - name: autoscaler
@@ -51,7 +60,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["list"]
+    verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["replicationcontrollers/scale"]
     verbs: ["get", "update"]
@@ -113,6 +122,10 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+      nodeSelector:
+      {{ range $k, $v := .NodeSelector }}
+        {{ $k }}: "{{ $v }}"
+      {{ end }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -124,6 +137,14 @@ spec:
                     operator: In
                     values: ["kube-dns"]
               topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/os
+                  operator: NotIn
+                  values:
+                    - windows
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
@@ -276,7 +297,6 @@ spec:
   - name: dns-tcp
     port: 53
     protocol: TCP
-{{- if .UpstreamNameservers }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -284,6 +304,11 @@ metadata:
   name: kube-dns
   namespace: kube-system
 data:
+{{- if .UpstreamNameservers }}
   upstreamNameservers: |
     [{{range $i, $v := .UpstreamNameservers}}{{if $i}}, {{end}}{{printf "%q" .}}{{end}}]
+{{- end }}
+{{- if .StubDomains }}
+  stubDomains: |
+    {{ GetKubednsStubDomains .StubDomains }}
 {{- end }}`

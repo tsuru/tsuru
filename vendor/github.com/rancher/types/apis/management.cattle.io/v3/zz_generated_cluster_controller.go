@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,7 +28,17 @@ var (
 		Namespaced:   false,
 		Kind:         ClusterGroupVersionKind.Kind,
 	}
+
+	ClusterGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "clusters",
+	}
 )
+
+func init() {
+	resource.Put(ClusterGroupVersionResource)
+}
 
 func NewCluster(namespace, name string, obj Cluster) *Cluster {
 	obj.APIVersion, obj.Kind = ClusterGroupVersionKind.ToAPIVersionAndKind()
@@ -39,7 +50,7 @@ func NewCluster(namespace, name string, obj Cluster) *Cluster {
 type ClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Cluster
+	Items           []Cluster `json:"items"`
 }
 
 type ClusterHandlerFunc func(key string, obj *Cluster) (runtime.Object, error)
@@ -56,7 +67,9 @@ type ClusterController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() ClusterLister
 	AddHandler(ctx context.Context, name string, handler ClusterHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ClusterHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler ClusterHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler ClusterHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -75,9 +88,13 @@ type ClusterInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() ClusterController
 	AddHandler(ctx context.Context, name string, sync ClusterHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ClusterHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle ClusterLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle ClusterLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync ClusterHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync ClusterHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle ClusterLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle ClusterLifecycle)
 }
 
 type clusterLister struct {
@@ -137,9 +154,39 @@ func (c *clusterController) AddHandler(ctx context.Context, name string, handler
 	})
 }
 
+func (c *clusterController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler ClusterHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Cluster); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *clusterController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler ClusterHandlerFunc) {
+	resource.PutClusterScoped(ClusterGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Cluster); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *clusterController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler ClusterHandlerFunc) {
+	resource.PutClusterScoped(ClusterGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*Cluster); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -244,18 +291,36 @@ func (s *clusterClient) AddHandler(ctx context.Context, name string, sync Cluste
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *clusterClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync ClusterHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *clusterClient) AddLifecycle(ctx context.Context, name string, lifecycle ClusterLifecycle) {
 	sync := NewClusterLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *clusterClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle ClusterLifecycle) {
+	sync := NewClusterLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *clusterClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync ClusterHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *clusterClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync ClusterHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *clusterClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle ClusterLifecycle) {
 	sync := NewClusterLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *clusterClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle ClusterLifecycle) {
+	sync := NewClusterLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type ClusterIndexer func(obj *Cluster) ([]string, error)

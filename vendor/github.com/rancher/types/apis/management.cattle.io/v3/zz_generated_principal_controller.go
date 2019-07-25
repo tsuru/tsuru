@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/norman/controller"
 	"github.com/rancher/norman/objectclient"
+	"github.com/rancher/norman/resource"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,7 +28,17 @@ var (
 		Namespaced:   false,
 		Kind:         PrincipalGroupVersionKind.Kind,
 	}
+
+	PrincipalGroupVersionResource = schema.GroupVersionResource{
+		Group:    GroupName,
+		Version:  Version,
+		Resource: "principals",
+	}
 )
+
+func init() {
+	resource.Put(PrincipalGroupVersionResource)
+}
 
 func NewPrincipal(namespace, name string, obj Principal) *Principal {
 	obj.APIVersion, obj.Kind = PrincipalGroupVersionKind.ToAPIVersionAndKind()
@@ -39,7 +50,7 @@ func NewPrincipal(namespace, name string, obj Principal) *Principal {
 type PrincipalList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Principal
+	Items           []Principal `json:"items"`
 }
 
 type PrincipalHandlerFunc func(key string, obj *Principal) (runtime.Object, error)
@@ -56,7 +67,9 @@ type PrincipalController interface {
 	Informer() cache.SharedIndexInformer
 	Lister() PrincipalLister
 	AddHandler(ctx context.Context, name string, handler PrincipalHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync PrincipalHandlerFunc)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, handler PrincipalHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, handler PrincipalHandlerFunc)
 	Enqueue(namespace, name string)
 	Sync(ctx context.Context) error
 	Start(ctx context.Context, threadiness int) error
@@ -75,9 +88,13 @@ type PrincipalInterface interface {
 	DeleteCollection(deleteOpts *metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Controller() PrincipalController
 	AddHandler(ctx context.Context, name string, sync PrincipalHandlerFunc)
+	AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync PrincipalHandlerFunc)
 	AddLifecycle(ctx context.Context, name string, lifecycle PrincipalLifecycle)
+	AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle PrincipalLifecycle)
 	AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync PrincipalHandlerFunc)
+	AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync PrincipalHandlerFunc)
 	AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle PrincipalLifecycle)
+	AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle PrincipalLifecycle)
 }
 
 type principalLister struct {
@@ -137,9 +154,39 @@ func (c *principalController) AddHandler(ctx context.Context, name string, handl
 	})
 }
 
+func (c *principalController) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, handler PrincipalHandlerFunc) {
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Principal); ok {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
 func (c *principalController) AddClusterScopedHandler(ctx context.Context, name, cluster string, handler PrincipalHandlerFunc) {
+	resource.PutClusterScoped(PrincipalGroupVersionResource)
 	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
 		if obj == nil {
+			return handler(key, nil)
+		} else if v, ok := obj.(*Principal); ok && controller.ObjectInCluster(cluster, obj) {
+			return handler(key, v)
+		} else {
+			return nil, nil
+		}
+	})
+}
+
+func (c *principalController) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, cluster string, handler PrincipalHandlerFunc) {
+	resource.PutClusterScoped(PrincipalGroupVersionResource)
+	c.GenericController.AddHandler(ctx, name, func(key string, obj interface{}) (interface{}, error) {
+		if !enabled() {
+			return nil, nil
+		} else if obj == nil {
 			return handler(key, nil)
 		} else if v, ok := obj.(*Principal); ok && controller.ObjectInCluster(cluster, obj) {
 			return handler(key, v)
@@ -244,18 +291,36 @@ func (s *principalClient) AddHandler(ctx context.Context, name string, sync Prin
 	s.Controller().AddHandler(ctx, name, sync)
 }
 
+func (s *principalClient) AddFeatureHandler(ctx context.Context, enabled func() bool, name string, sync PrincipalHandlerFunc) {
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
+}
+
 func (s *principalClient) AddLifecycle(ctx context.Context, name string, lifecycle PrincipalLifecycle) {
 	sync := NewPrincipalLifecycleAdapter(name, false, s, lifecycle)
 	s.Controller().AddHandler(ctx, name, sync)
+}
+
+func (s *principalClient) AddFeatureLifecycle(ctx context.Context, enabled func() bool, name string, lifecycle PrincipalLifecycle) {
+	sync := NewPrincipalLifecycleAdapter(name, false, s, lifecycle)
+	s.Controller().AddFeatureHandler(ctx, enabled, name, sync)
 }
 
 func (s *principalClient) AddClusterScopedHandler(ctx context.Context, name, clusterName string, sync PrincipalHandlerFunc) {
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
 }
 
+func (s *principalClient) AddClusterScopedFeatureHandler(ctx context.Context, enabled func() bool, name, clusterName string, sync PrincipalHandlerFunc) {
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
+}
+
 func (s *principalClient) AddClusterScopedLifecycle(ctx context.Context, name, clusterName string, lifecycle PrincipalLifecycle) {
 	sync := NewPrincipalLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
 	s.Controller().AddClusterScopedHandler(ctx, name, clusterName, sync)
+}
+
+func (s *principalClient) AddClusterScopedFeatureLifecycle(ctx context.Context, enabled func() bool, name, clusterName string, lifecycle PrincipalLifecycle) {
+	sync := NewPrincipalLifecycleAdapter(name+"_"+clusterName, true, s, lifecycle)
+	s.Controller().AddClusterScopedFeatureHandler(ctx, enabled, name, clusterName, sync)
 }
 
 type PrincipalIndexer func(obj *Principal) ([]string, error)

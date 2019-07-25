@@ -3,7 +3,7 @@ package v3
 import (
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
-	"github.com/rancher/types/apis/project.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/project.cattle.io/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,8 +28,9 @@ type MultiClusterApp struct {
 type MultiClusterAppSpec struct {
 	TemplateVersionName  string          `json:"templateVersionName,omitempty" norman:"type=reference[templateVersion],required"`
 	Answers              []Answer        `json:"answers,omitempty"`
-	Targets              []Target        `json:"targets,omitempty" norman:"required"`
+	Targets              []Target        `json:"targets,omitempty" norman:"required,noupdate"`
 	Members              []Member        `json:"members,omitempty"`
+	Roles                []string        `json:"roles,omitempty" norman:"type=array[reference[roleTemplate]],required"`
 	RevisionHistoryLimit int             `json:"revisionHistoryLimit,omitempty" norman:"default=10"`
 	UpgradeStrategy      UpgradeStrategy `json:"upgradeStrategy,omitempty"`
 }
@@ -42,6 +43,7 @@ type MultiClusterAppStatus struct {
 type Target struct {
 	ProjectName string `json:"projectName,omitempty" norman:"type=reference[project],required"`
 	AppName     string `json:"appName,omitempty" norman:"type=reference[v3/projects/schemas/app]"`
+	State       string `json:"state,omitempty"`
 	Healthstate string `json:"healthState,omitempty"`
 }
 
@@ -56,7 +58,7 @@ type Member struct {
 	UserPrincipalName  string `json:"userPrincipalName,omitempty" norman:"type=reference[principal]"`
 	DisplayName        string `json:"displayName,omitempty"`
 	GroupPrincipalName string `json:"groupPrincipalName,omitempty" norman:"type=reference[principal]"`
-	AccessType         string `json:"accessType,omitempty" norman:"type=enum,options=all|readonly|update"`
+	AccessType         string `json:"accessType,omitempty" norman:"type=enum,options=owner|member|read-only"`
 }
 
 type UpgradeStrategy struct {
@@ -79,4 +81,9 @@ type MultiClusterAppRevision struct {
 
 type MultiClusterAppRollbackInput struct {
 	RevisionName string `json:"revisionName,omitempty" norman:"type=reference[multiClusterAppRevision]"`
+}
+
+type UpdateMultiClusterAppTargetsInput struct {
+	Projects []string `json:"projects" norman:"type=array[reference[project]],required"`
+	Answers  []Answer `json:"answers"`
 }
