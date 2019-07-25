@@ -368,7 +368,7 @@ func poolAdd() ExecFlow {
 			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
 				env.Add("multinodepools", poolName)
 			}
-			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(30 * time.Minute).Run(env)
+			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(45 * time.Minute).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			readyRegex := regexp.MustCompile("(?i)^ready")
