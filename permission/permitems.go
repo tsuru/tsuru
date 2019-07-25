@@ -214,6 +214,7 @@ var (
 	PermUserDelete                       = PermissionRegistry.get("user.delete")                         // [global user]
 	PermUserRead                         = PermissionRegistry.get("user.read")                           // [global user]
 	PermUserReadEvents                   = PermissionRegistry.get("user.read.events")                    // [global user]
+	PermUserReadQuota                    = PermissionRegistry.get("user.read.quota")                     // [global user]
 	PermUserUpdate                       = PermissionRegistry.get("user.update")                         // [global user]
 	PermUserUpdateKey                    = PermissionRegistry.get("user.update.key")                     // [global user]
 	PermUserUpdateKeyAdd                 = PermissionRegistry.get("user.update.key.add")                 // [global user]
