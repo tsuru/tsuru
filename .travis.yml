@@ -9,8 +9,7 @@ addons:
       - rpm
 # test stage automatically added for each go version
 go:
-  - 1.11.x
-  - master
+  - 1.12.x
 # script used in the automatically added test stage
 script:
   - 'if [ "${JOB}" = "test" ]; then make race; fi'
@@ -22,12 +21,16 @@ script:
   - 'if [ "${JOB}" = "checkapidocs" ]; then make check-api-doc; fi'
   - 'if [ "${JOB}" = "validateapispec" ]; then make validate-api-spec; fi'
   - 'if [ "${JOB}" = "validatecodegen" ]; then ./hack/verify-codegen.sh; fi'
+  - 'if [ "${JOB}" = "verifyvendor" ]; then ./hack/verify-vendor.sh; fi'
 env:
   global:
+    - GOPROXY=https://proxy.golang.org
+    - GO111MODULE=on
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.11
+    - GO_FOR_RELEASE=1.12
     - IMAGE_NAME=tsuru/api
   matrix:
+    - JOB=verifyvendor
     - JOB=test
     - JOB=bench
     - JOB=leakdetector
@@ -40,22 +43,9 @@ jobs:
   fast_finish: true
   allow_failures:
     - go: master
-  exclude:
-    - go: master
-      env: JOB=bench
-    - go: master
-      env: JOB=gometalinter
-    - go: master
-      env: JOB=checkhandlers
-    - go: master
-      env: JOB=checkevents
-    - go: master
-      env: JOB=checkapidocs
-    - go: master
-      env: JOB=validateapispec
-    - go: master
-      env: JOB=validatecodegen
   include:
+    - go: master
+      env: JOB=test
     - stage: deploy
       script:
         - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/

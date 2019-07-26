@@ -5,7 +5,6 @@
 BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
-TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 .PHONY: all check-path test race docs install tsurud $(TSR_BIN)
 
@@ -28,8 +27,8 @@ endif
 	@exit 0
 
 _go_test:
-	go clean $(GO_EXTRAFLAGS) $(TSR_PKGS)
-	go test $(GO_EXTRAFLAGS) $(TSR_PKGS) -check.v
+	go clean $(GO_EXTRAFLAGS) ./...
+	go test $(GO_EXTRAFLAGS) ./... -check.v
 
 _tsurud_dry:
 	go build $(GO_EXTRAFLAGS) -o tsurud ./cmd/tsurud
@@ -46,15 +45,15 @@ lint: metalint
 	misc/check-contributors.sh
 
 metalint:
-	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-	go install $(TSR_PKGS)
-	go test -i $(TSR_PKGS)
-	echo "$(TSR_PKGS)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
+	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin
+	go install ./...
+	go test -i ./...
+	echo "$$(go list ./... | grep -v /vendor/)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
 		time golangci-lint run -c ./.golangci.yml
 
 race:
-	go test $(GO_EXTRAFLAGS) -race -i $(TSR_PKGS)
-	go test $(GO_EXTRAFLAGS) -race $(TSR_PKGS)
+	go test $(GO_EXTRAFLAGS) -race -i ./...
+	go test $(GO_EXTRAFLAGS) -race ./...
 
 _install_api_doc:
 	@go get $(GO_EXTRAFLAGS) github.com/tsuru/tsuru-api-docs
@@ -63,7 +62,7 @@ api-doc: _install_api_doc
 	@tsuru-api-docs | grep -v missing > docs/handlers.yml
 
 check-api-doc: _install_api_doc
-	@exit $(tsuru-api-docs | grep missing | wc -l)
+	@exit $$(tsuru-api-docs | grep missing | wc -l)
 
 doc-deps:
 	@pip install -r requirements.txt
@@ -109,7 +108,7 @@ release:
 	@echo "$(version) released!"
 
 install:
-	go install $(GO_EXTRAFLAGS) $(TSR_PKGS) $$(go list ../tsuru-client/... | grep -v /vendor/)
+	go install $(GO_EXTRAFLAGS) ./... $$(go list ../tsuru-client/... | grep -v /vendor/)
 
 serve: run-tsurud-api
 
