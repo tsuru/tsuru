@@ -728,7 +728,12 @@ func (a AzureClient) GetPrivateIPAddress(resourceGroup, name string) (string, er
 // the goal state (running) or times out.
 func (a AzureClient) StartVirtualMachine(resourceGroup, name string) error {
 	log.Info("Starting virtual machine.", logutil.Fields{"vm": name})
-	if _, err := a.virtualMachinesClient().Start(context.TODO(), resourceGroup, name); err != nil {
+	future, err := a.virtualMachinesClient().Start(context.TODO(), resourceGroup, name)
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.virtualMachinesClient().Client)
+	if err != nil {
 		return err
 	}
 	return a.waitVMPowerState(resourceGroup, name, Running, waitStartTimeout)
@@ -738,7 +743,12 @@ func (a AzureClient) StartVirtualMachine(resourceGroup, name string) error {
 // the goal state (stopped) or times out.
 func (a AzureClient) StopVirtualMachine(resourceGroup, name string) error {
 	log.Info("Stopping virtual machine.", logutil.Fields{"vm": name})
-	if _, err := a.virtualMachinesClient().PowerOff(context.TODO(), resourceGroup, name); err != nil {
+	future, err := a.virtualMachinesClient().PowerOff(context.TODO(), resourceGroup, name)
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.virtualMachinesClient().Client)
+	if err != nil {
 		return err
 	}
 	return a.waitVMPowerState(resourceGroup, name, Stopped, waitPowerOffTimeout)
@@ -748,7 +758,12 @@ func (a AzureClient) StopVirtualMachine(resourceGroup, name string) error {
 // the goal state (stopped) or times out.
 func (a AzureClient) RestartVirtualMachine(resourceGroup, name string) error {
 	log.Info("Restarting virtual machine.", logutil.Fields{"vm": name})
-	if _, err := a.virtualMachinesClient().Restart(context.TODO(), resourceGroup, name); err != nil {
+	future, err := a.virtualMachinesClient().Restart(context.TODO(), resourceGroup, name)
+	if err != nil {
+		return err
+	}
+	err = future.WaitForCompletionRef(context.TODO(), a.virtualMachinesClient().Client)
+	if err != nil {
 		return err
 	}
 	return a.waitVMPowerState(resourceGroup, name, Running, waitStartTimeout)

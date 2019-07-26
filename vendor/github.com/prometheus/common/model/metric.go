@@ -21,7 +21,6 @@ import (
 )
 
 var (
-	separator = []byte{0}
 	// MetricNameRE is a regular expression matching valid metric
 	// names. Note that the IsValidMetricName function performs the same
 	// check but faster than a match with this regular expression.
@@ -44,7 +43,7 @@ func (m Metric) Before(o Metric) bool {
 
 // Clone returns a copy of the Metric.
 func (m Metric) Clone() Metric {
-	clone := Metric{}
+	clone := make(Metric, len(m))
 	for k, v := range m {
 		clone[k] = v
 	}
