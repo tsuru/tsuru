@@ -1,0 +1,1 @@
+web: build/monsterweb --binding 0.0.0.0:$PORT --mongodb-url $MONGO_URL --mongodb-database $MONGO_DATABASE --mongodb-prefix $MONGO_PREFIX
