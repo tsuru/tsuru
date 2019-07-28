@@ -51,6 +51,9 @@ func (s *S) TestListNodes(c *check.C) {
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Address() < nodes[j].Address()
+	})
 	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.1")
 	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.2")
 }
