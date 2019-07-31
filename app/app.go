@@ -237,6 +237,9 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["lock"] = app.Lock
 	result["tags"] = app.Tags
 	result["routers"] = routers
+	if len(app.InternalAddresses) > 0 {
+		result["internalAddresses"] = app.InternalAddresses
+	}
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
