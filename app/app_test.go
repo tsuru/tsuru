@@ -2587,16 +2587,29 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
+		InternalAddresses: []provision.AppInternalAddress{
+			{
+				Domain:   "name.cluster.local",
+				Protocol: "TCP",
+				Port:     4000,
+			},
+		},
 	}
 	err = routertest.FakeRouter.AddBackend(&app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"name":        "name",
-		"platform":    "Framework",
-		"repository":  "git@" + repositorytest.ServerHost + ":name.git",
-		"teams":       []interface{}{"team1"},
-		"units":       []interface{}{},
-		"ip":          "name.fakerouter.com",
+		"name":       "name",
+		"platform":   "Framework",
+		"repository": "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":      []interface{}{"team1"},
+		"units":      []interface{}{},
+		"ip":         "name.fakerouter.com",
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "name.cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(4000),
+			}},
 		"cname":       []interface{}{"name.mycompany.com"},
 		"owner":       "appOwner",
 		"deploys":     float64(7),
