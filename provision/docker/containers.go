@@ -195,6 +195,9 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		destHosts = []string{toHost}
 		suffix = " -> " + toHost
 	}
+	if c.HostAddr == toHost {
+		return c;
+	}
 	if !p.isDryMode {
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}

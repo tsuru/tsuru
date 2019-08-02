@@ -183,6 +183,29 @@ func (s *S) TestMoveOneContainer(c *check.C) {
 	c.Assert(p.Movings(), check.DeepEquals, expectedMovings)
 }
 
+func (s *S) TestMoveOneContainerSameHost(c *check.C) {
+	p, err := NewFakeDockerProvisioner()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	cont := container.Container{Container: types.Container{ID: "cont1"}}
+	p.SetContainers("localhost", []container.Container{cont})
+
+	errors := make(chan error, 1)
+	result := p.MoveOneContainer(cont, "localhost", errors, nil, nil, nil)
+	expected := cont
+	c.Assert(result, check.DeepEquals, expected)
+	select {
+	case err := <-errors:
+		c.Fatal(err)
+	default:
+	}
+	containers := p.Containers("localhost")
+	c.Assert(containers, check.HasLen, 1)
+	expectedContainers := []cont
+	c.Assert(containers, check.DeepEquals, expectedContainers)
+	c.Assert(p.Movings(), check.HasLen, 0)
+}
+
 func (s *S) TestMoveOneContainerRecreate(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
