@@ -1492,9 +1492,9 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 				{
 					Name:  conf.name,
 					Image: conf.image,
-					VolumeMounts: append([]apiv1.VolumeMount{
+					VolumeMounts: []apiv1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
-					}),
+					},
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       conf.asEnvs(),
@@ -1529,10 +1529,10 @@ func newDeployAgentContainer(conf deployAgentConfig) apiv1.Container {
 	return apiv1.Container{
 		Name:  conf.name,
 		Image: conf.image,
-		VolumeMounts: append([]apiv1.VolumeMount{
+		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
-		}),
+		},
 		Stdin:     true,
 		StdinOnce: true,
 		Env:       conf.asEnvs(),
