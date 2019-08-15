@@ -119,7 +119,8 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 			if !okK || !okV {
 				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
 			}
-			headerMap[k] = v
+			value, _ := config.Get(fmt.Sprintf("%s:headers:%s", configPrefix, k))
+			headerMap[k] = value.(string)
 		}
 	}
 	baseRouter := &apiRouter{
