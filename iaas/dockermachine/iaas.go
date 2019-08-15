@@ -152,7 +152,13 @@ func (i *dockerMachineIaaS) buildDriverOpts(driverName string, params map[string
 		for k, v := range config.(map[interface{}]interface{}) {
 			switch k := k.(type) {
 			case string:
-				driverOpts[k] = v
+				value, _ := i.base.GetConfig(fmt.Sprintf("driver:options:%s", k))
+				switch value := value.(type) {
+				case string:
+					driverOpts[k] = value
+				default:
+					driverOpts[k] = v
+				}
 			}
 		}
 	}
