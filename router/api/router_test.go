@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -395,13 +396,15 @@ func (s *S) TestCreateRouterSupport(c *check.C) {
 
 func (s *S) TestCreateCustomHeaders(c *check.C) {
 	s.apiRouter.router.HandleFunc("/custom", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-CUSTOM") == "" {
+		if r.Header.Get("X-CUSTOM") != "HI" || r.Header.Get("X-CUSTOM-ENV") != "XYZ" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	})
-	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI"})
+	os.Setenv("ROUTER_ENV_HEADER_OPT", "XYZ")
+	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI", "X-CUSTOM-ENV": "$ROUTER_ENV_HEADER_OPT"})
 	defer config.Unset("router:apirouter:headers")
+	defer os.Unsetenv("ROUTER_ENV_HEADER_OPT")
 	r, err := createRouter("apirouter", "routers:apirouter")
 	c.Assert(err, check.IsNil)
 	_, code, err := r.(*struct {
