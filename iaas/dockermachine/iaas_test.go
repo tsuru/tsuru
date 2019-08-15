@@ -7,18 +7,23 @@ package dockermachine
 import (
 	"strings"
 
+	"os"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestBuildDriverOpts(c *check.C) {
+	os.Setenv("OPTION_DOCKERMACHINE_SECRET", "XYZ")
 	config.Set("iaas:dockermachine:driver:options", map[interface{}]interface{}{
 		"options1": 1,
 		"options2": "2",
 		"options3": "3",
+		"options4": "$OPTION_DOCKERMACHINE_SECRET",
 	})
 	defer config.Unset("iaas:dockermachine:driver:options")
+	defer os.Unsetenv("OPTION_DOCKERMACHINE_SECRET")
 	dm := newDockerMachineIaaS("dockermachine")
 	driverOpts := dm.(*dockerMachineIaaS).buildDriverOpts("amazonec2", map[string]string{
 		"options2": "new2",
@@ -27,6 +32,7 @@ func (s *S) TestBuildDriverOpts(c *check.C) {
 		"options1":                      1,
 		"options2":                      "new2",
 		"options3":                      "3",
+		"options4":                      "XYZ",
 		"amazonec2-use-private-address": true,
 	}
 	c.Assert(driverOpts, check.DeepEquals, expectedOpts)
