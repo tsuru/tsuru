@@ -61,6 +61,7 @@ func mountsForVolume(v volume.Volume, app provision.App) ([]mount.Mount, error) 
 		Prefix:      tsuruLabelPrefix,
 		Pool:        v.Pool,
 		Plan:        v.Plan.Name,
+		Team:        v.TeamOwner,
 	})
 	var mounts []mount.Mount
 	for _, b := range binds {
