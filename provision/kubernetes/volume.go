@@ -196,6 +196,7 @@ func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, 
 		Prefix:      tsuruLabelPrefix,
 		Pool:        v.Pool,
 		Plan:        v.Plan.Name,
+		Team:        v.TeamOwner,
 	})
 	capacity := apiv1.ResourceList{
 		apiv1.ResourceStorage: opts.Capacity,

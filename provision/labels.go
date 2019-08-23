@@ -41,6 +41,7 @@ var (
 	labelVolumeName = "volume-name"
 	labelVolumePool = "volume-pool"
 	labelVolumePlan = "volume-plan"
+	labelVolumeTeam = "volume-team"
 
 	labelRouterName = "router-name"
 	labelRouterType = "router-type"
@@ -432,6 +433,7 @@ type VolumeLabelsOpts struct {
 	Provisioner string
 	Pool        string
 	Plan        string
+	Team        string
 	Prefix      string
 }
 
@@ -442,6 +444,7 @@ func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
 		labelVolumeName:  opts.Name,
 		labelVolumePool:  opts.Pool,
 		labelVolumePlan:  opts.Plan,
+		labelVolumeTeam:  opts.Team,
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
