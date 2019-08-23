@@ -51,6 +51,7 @@ func (s *S) TestMountsForApp(c *check.C) {
 					"tsuru.volume-name": "v1",
 					"tsuru.volume-plan": "p1",
 					"tsuru.volume-pool": "bonehunters",
+					"tsuru.volume-team": "admin",
 				},
 				DriverConfig: &mount.Driver{
 					Name: "local",
@@ -74,6 +75,7 @@ func (s *S) TestMountsForApp(c *check.C) {
 					"tsuru.volume-name": "v1",
 					"tsuru.volume-plan": "p1",
 					"tsuru.volume-pool": "bonehunters",
+					"tsuru.volume-team": "admin",
 				},
 				DriverConfig: &mount.Driver{
 					Name: "local",
