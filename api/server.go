@@ -234,8 +234,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Delete", "/apps/{app}/env", AuthorizationRequiredHandler(unsetEnv))
 	m.Add("1.0", "Get", "/apps", AuthorizationRequiredHandler(appList))
 	m.Add("1.0", "Post", "/apps", AuthorizationRequiredHandler(createApp))
-	forceDeleteLockHandler := AuthorizationRequiredHandler(forceDeleteLock)
-	m.Add("1.0", "Delete", "/apps/{app}/lock", forceDeleteLockHandler)
+	m.Add("1.0", "Delete", "/apps/{app}/lock", AuthorizationRequiredHandler(forceDeleteLock))
 	m.Add("1.0", "Put", "/apps/{app}/units", AuthorizationRequiredHandler(addUnits))
 	m.Add("1.0", "Delete", "/apps/{app}/units", AuthorizationRequiredHandler(removeUnits))
 	registerUnitHandler := AuthorizationRequiredHandler(registerUnit)
@@ -496,14 +495,6 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
-		logPostHandler,
-		runHandler,
-		forceDeleteLockHandler,
-		registerUnitHandler,
-		setUnitStatusHandler,
-		diffDeployHandler,
-	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {

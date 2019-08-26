@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -3764,21 +3763,6 @@ func (s *S) TestGetCname(c *check.C) {
 	c.Assert(a.GetCname(), check.DeepEquals, a.CName)
 }
 
-func (s *S) TestGetLock(c *check.C) {
-	a := App{
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Owner:       "someone",
-			Reason:      "/app/my-app/deploy",
-			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-		},
-	}
-	c.Assert(a.GetLock().GetLocked(), check.Equals, a.Lock.Locked)
-	c.Assert(a.GetLock().GetOwner(), check.Equals, a.Lock.Owner)
-	c.Assert(a.GetLock().GetReason(), check.Equals, a.Lock.Reason)
-	c.Assert(a.GetLock().GetAcquireDate(), check.Equals, a.Lock.AcquireDate)
-}
-
 func (s *S) TestGetPlatform(c *check.C) {
 	a := App{Platform: "django"}
 	c.Assert(a.GetPlatform(), check.Equals, a.Platform)
@@ -3948,206 +3932,6 @@ func (s *S) TestAppSetUpdatePlatform(c *check.C) {
 	app, err := GetByName("someapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UpdatePlatform, check.Equals, true)
-}
-
-func (s *S) TestAppAcquireApplicationLock(c *check.C) {
-	a := App{
-		Name:      "someapp",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	app, err := GetByName("someapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Lock.Locked, check.Equals, true)
-	c.Assert(app.Lock.Owner, check.Equals, "foo")
-	c.Assert(app.Lock.Reason, check.Equals, "/something")
-	c.Assert(app.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppAcquireApplicationLockNonExistentApp(c *check.C) {
-	locked, err := AcquireApplicationLock("myApp", "foo", "/something")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, false)
-}
-
-func (s *S) TestAppAcquireApplicationLockAlreadyLocked(c *check.C) {
-	a := App{
-		Name: "someapp",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "/app/my-app/deploy",
-			Owner:       "someone",
-			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-		},
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, false)
-	app, err := GetByName("someapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Lock.Locked, check.Equals, true)
-	c.Assert(app.Lock.Owner, check.Equals, "someone")
-	c.Assert(app.Lock.Reason, check.Equals, "/app/my-app/deploy")
-	c.Assert(app.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppAcquireApplicationLockWait(c *check.C) {
-	a := App{Name: "test-lock-app", TeamOwner: s.team.Name}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Wait()
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second)
-		ReleaseApplicationLock(a.Name)
-	}()
-	locked, err = AcquireApplicationLockWait(a.Name, "zzz", "/other", 10*time.Second)
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Lock.Locked, check.Equals, true)
-	c.Assert(app.Lock.Owner, check.Equals, "zzz")
-	c.Assert(app.Lock.Reason, check.Equals, "/other")
-	c.Assert(app.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppAcquireApplicationLockWaitWithoutRelease(c *check.C) {
-	a := App{Name: "test-lock-app", TeamOwner: s.team.Name}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	locked, err = AcquireApplicationLockWait(a.Name, "zzz", "/other", 500*time.Millisecond)
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, false)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Lock.Locked, check.Equals, true)
-	c.Assert(app.Lock.Owner, check.Equals, "foo")
-	c.Assert(app.Lock.Reason, check.Equals, "/something")
-	c.Assert(app.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppAcquireApplicationLockWaitMany(c *check.C) {
-	a1 := App{Name: "test-lock-app1", TeamOwner: s.team.Name}
-	err := CreateApp(&a1, s.user)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "test-lock-app2", TeamOwner: s.team.Name}
-	err = CreateApp(&a2, s.user)
-	c.Assert(err, check.IsNil)
-	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "foo", "/something", 0)
-	c.Assert(err, check.IsNil)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Wait()
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second)
-		ReleaseApplicationLockMany([]string{a1.Name, a2.Name})
-	}()
-	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 10*time.Second)
-	c.Assert(err, check.IsNil)
-	app1, err := GetByName(a1.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app1.Lock.Locked, check.Equals, true)
-	c.Assert(app1.Lock.Owner, check.Equals, "zzz")
-	c.Assert(app1.Lock.Reason, check.Equals, "/other")
-	c.Assert(app1.Lock.AcquireDate, check.NotNil)
-	app2, err := GetByName(a2.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app2.Lock.Locked, check.Equals, true)
-	c.Assert(app2.Lock.Owner, check.Equals, "zzz")
-	c.Assert(app2.Lock.Reason, check.Equals, "/other")
-	c.Assert(app2.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppAcquireApplicationLockWaitManyPartialFailure(c *check.C) {
-	a1 := App{Name: "test-lock-app1", TeamOwner: s.team.Name}
-	err := CreateApp(&a1, s.user)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "test-lock-app2", TeamOwner: s.team.Name}
-	err = CreateApp(&a2, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := AcquireApplicationLock(a2.Name, "x", "y")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	err = AcquireApplicationLockWaitMany([]string{a1.Name, a2.Name}, "zzz", "/other", 0)
-	c.Assert(err, check.DeepEquals, appTypes.ErrAppNotLocked{
-		App: a2.Name,
-	})
-	app1, err := GetByName(a1.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app1.Lock.Locked, check.Equals, false)
-	app2, err := GetByName(a2.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app2.Lock.Locked, check.Equals, true)
-	c.Assert(app2.Lock.Owner, check.Equals, "x")
-	c.Assert(app2.Lock.Reason, check.Equals, "y")
-	c.Assert(app2.Lock.AcquireDate, check.NotNil)
-}
-
-func (s *S) TestAppLockStringUnlocked(c *check.C) {
-	lock := appTypes.AppLock{Locked: false}
-	c.Assert(lock.String(), check.Equals, "Not locked")
-}
-
-func (s *S) TestAppLockStringLocked(c *check.C) {
-	lock := appTypes.AppLock{
-		Locked:      true,
-		Reason:      "/app/my-app/deploy",
-		Owner:       "someone",
-		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-	}
-	c.Assert(lock.String(), check.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T.*")
-}
-
-func (s *S) TestAppLockMarshalJSON(c *check.C) {
-	lock := appTypes.AppLock{
-		Locked:      true,
-		Reason:      "/app/my-app/deploy",
-		Owner:       "someone",
-		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-	}
-	data, err := lock.MarshalJSON()
-	c.Assert(err, check.IsNil)
-	var a appTypes.AppLock
-	err = json.Unmarshal(data, &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(a, check.DeepEquals, lock)
-}
-
-func (s *S) TestAppLockGetLocked(c *check.C) {
-	lock := appTypes.AppLock{Locked: true}
-	c.Assert(lock.GetLocked(), check.Equals, lock.Locked)
-}
-
-func (s *S) TestAppLockGetReason(c *check.C) {
-	lock := appTypes.AppLock{Reason: "/app/my-app/deploy"}
-	c.Assert(lock.GetReason(), check.Equals, lock.Reason)
-}
-
-func (s *S) TestAppLockGetOwner(c *check.C) {
-	lock := appTypes.AppLock{Owner: "someone"}
-	c.Assert(lock.GetOwner(), check.Equals, lock.Owner)
-}
-
-func (s *S) TestAppLockGetAcquireDate(c *check.C) {
-	lock := appTypes.AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
-	c.Assert(lock.GetAcquireDate(), check.Equals, lock.AcquireDate)
 }
 
 func (s *S) TestAppRegisterUnit(c *check.C) {
@@ -5158,11 +4942,16 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	locked, err := AcquireApplicationLock("test2", "me", "because yes")
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: "test2"},
+		Kind:     permission.PermAppUpdate,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
+	defer evt.Done(nil)
 	err = RenameTeam("t2", "t9000")
-	c.Assert(err, check.ErrorMatches, `unable to acquire lock for app "test2"`)
+	c.Assert(err, check.ErrorMatches, `unable to create event: event locked: app\(test2\).*`)
 	var dbApps []App
 	err = s.conn.Apps().Find(nil).Sort("name").All(&dbApps)
 	c.Assert(err, check.IsNil)
@@ -5173,7 +4962,7 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 	c.Assert(dbApps[1].Teams, check.DeepEquals, []string{"t3", "t1"})
 }
 
-func (s *S) TestRenameTeamUnchanagedLockedApp(c *check.C) {
+func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 	apps := []App{
 		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},
 		{Name: "test2", TeamOwner: "t2", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t3", "t1"}},
@@ -5183,9 +4972,14 @@ func (s *S) TestRenameTeamUnchanagedLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	locked, err := AcquireApplicationLock("test3", "me", "because yes")
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: "test3"},
+		Kind:     permission.PermAppUpdate,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
+	defer evt.Done(nil)
 	err = RenameTeam("t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App

@@ -10,7 +10,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/api/shutdown"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"k8s.io/client-go/util/workqueue"
 	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus"
 )
@@ -96,7 +99,7 @@ func Initialize(finder func(string) (RebuildApp, error)) error {
 	return nil
 }
 
-func runRoutesRebuildOnce(appName string, lock bool) error {
+func runRoutesRebuildOnce(appName string, lock bool) (err error) {
 	if appFinder == nil {
 		return errors.New("no appFinder available")
 	}
@@ -108,15 +111,26 @@ func runRoutesRebuildOnce(appName string, lock bool) error {
 		log.Errorf("[routes-rebuild-task] app %q not found, ignoring task", appName)
 		return nil
 	}
+	var result map[string]RebuildRoutesResult
 	if lock {
-		var locked bool
-		locked, err = a.InternalLock("rebuild-routes-task")
-		if err != nil || !locked {
-			return errors.Errorf("unable to lock app %q: %v", appName, err)
+		var evt *event.Event
+		evt, err = event.NewInternal(&event.Opts{
+			Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+			InternalKind: "rebuild-routes-task",
+			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+		})
+		if err != nil {
+			return errors.Errorf("unable to create rebuild routes event %q: %v", appName, err)
 		}
-		defer a.Unlock()
+		defer func() {
+			if err != nil || resultHasChanges(result) {
+				evt.DoneCustomData(err, result)
+				return
+			}
+			evt.Abort()
+		}()
 	}
-	_, err = rebuildRoutesAsync(a, false)
+	result, err = rebuildRoutesAsync(a, false)
 	if err != nil {
 		return errors.Wrapf(err, "error rebuilding app %q", appName)
 	}

@@ -58,14 +58,6 @@ func (err ManyTeamsError) Error() string {
 	return "You belong to more than one team, choose one to be owner for this app."
 }
 
-type ErrAppNotLocked struct {
-	App string
-}
-
-func (e ErrAppNotLocked) Error() string {
-	return fmt.Sprintf("unable to lock app %q", e.App)
-}
-
 type PlanValidationError struct {
 	Field string
 }

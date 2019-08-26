@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/safe"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -269,7 +268,7 @@ func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, n
 	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
 	customData.Result, err = scaler.scale(pool, nodes)
 	if err != nil {
-		if _, ok := err.(appTypes.ErrAppNotLocked); ok {
+		if _, ok := errors.Cause(err).(event.ErrEventLocked); ok {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
 			return
 		}
@@ -513,15 +512,24 @@ func preciseUnitsByNode(pool string, nodes []provision.Node) (map[string][]provi
 	if err != nil {
 		return nil, err
 	}
-	appNames := make([]string, len(appsInPool))
-	for i, a := range appsInPool {
-		appNames[i] = a.Name
+	if len(appsInPool) > 0 {
+		appTargets := make([]event.Target, len(appsInPool))
+		allowedCtx := make([]permTypes.PermissionContext, len(appsInPool))
+		for i, a := range appsInPool {
+			appTargets[i] = event.Target{Type: event.TargetTypeApp, Value: a.Name}
+			allowedCtx[i] = permission.Context(permTypes.CtxApp, a.Name)
+		}
+		var evt *event.Event
+		evt, err = event.NewInternalMany(appTargets, &event.Opts{
+			InternalKind: "node auto scale",
+			Allowed:      event.Allowed(permission.PermAppReadEvents, allowedCtx...),
+			RetryTimeout: lockWaitTimeout,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create app event")
+		}
+		defer evt.Abort()
 	}
-	err = app.AcquireApplicationLockWaitMany(appNames, app.InternalAppName, "node auto scale", lockWaitTimeout)
-	if err != nil {
-		return nil, err
-	}
-	defer app.ReleaseApplicationLockMany(appNames)
 	unitsByNode := map[string][]provision.Unit{}
 	for _, node := range nodes {
 		var nodeUnits []provision.Unit

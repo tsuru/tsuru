@@ -335,33 +335,3 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
-
-func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *check.C) {
-	myApp := app.App{
-		Name: "my-app",
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest(http.MethodPost, "/apps/my-app/", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	handler := func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-		a, appErr := app.GetByName(r.URL.Query().Get(":app"))
-		c.Assert(appErr, check.IsNil)
-		c.Assert(a.Lock.Reason, check.Equals, "POST /apps/my-app/")
-		c.Assert(a.Lock.Owner, check.Equals, s.token.GetUserName())
-		c.Assert(a.Lock.Locked, check.Equals, true)
-		c.Assert(a.Lock.AcquireDate, check.NotNil)
-		return nil
-	}
-	RegisterHandler("/apps/{app}/", http.MethodPost, AuthorizationRequiredHandler(handler))
-	defer resetHandlers()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	a, err := app.GetByName(request.URL.Query().Get(":app"))
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Lock.Locked, check.Equals, false)
-}

@@ -239,18 +239,6 @@ type App interface {
 	SetQuotaInUse(int) error
 }
 
-type AppLock interface {
-	json.Marshaler
-
-	GetLocked() bool
-
-	GetReason() string
-
-	GetOwner() string
-
-	GetAcquireDate() time.Time
-}
-
 // RollbackableDeployer is a provisioner that allows rolling back to a
 // previously deployed version.
 type RollbackableDeployer interface {

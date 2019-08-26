@@ -319,10 +319,6 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 	return nil
 }
 
-func (a *FakeApp) GetLock() provision.AppLock {
-	return nil
-}
-
 func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
 	units := make([]bind.Unit, len(a.units))
 	for i := range a.units {

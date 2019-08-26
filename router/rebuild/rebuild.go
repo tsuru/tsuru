@@ -26,8 +26,6 @@ type RebuildApp interface {
 	GetRouters() []appTypes.AppRouter
 	GetHealthcheckData() (routerTypes.HealthcheckData, error)
 	RoutableAddresses() ([]url.URL, error)
-	InternalLock(string) (bool, error)
-	Unlock()
 }
 
 func RebuildRoutes(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
@@ -50,6 +48,15 @@ func rebuildRoutes(app RebuildApp, dry, wait bool) (map[string]RebuildRoutesResu
 		}
 	}
 	return result, multi.ToError()
+}
+
+func resultHasChanges(result map[string]RebuildRoutesResult) bool {
+	for _, routerResult := range result {
+		if len(routerResult.Added) > 0 || len(routerResult.Removed) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func diffRoutes(old []*url.URL, new []url.URL) (toAdd []*url.URL, toRemove []*url.URL) {

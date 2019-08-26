@@ -52,6 +52,7 @@ github.com/tsuru/tsuru/api.nodeContainerInfo
 github.com/tsuru/tsuru/api.nodeContainerList
 github.com/tsuru/tsuru/api.nodeHealingRead
 github.com/tsuru/tsuru/api.tokenList
+github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.bsEnvSetHandler
