@@ -54,6 +54,8 @@ var (
 		Name: "tsuru_events_expired_total",
 		Help: "The total number of events expired",
 	}, []string{"kind"})
+
+	defaultAppRetryTimeout = 10 * time.Second
 )
 
 const (
@@ -388,6 +390,7 @@ type Opts struct {
 	Cancelable    bool
 	Allowed       AllowedPermission
 	AllowedCancel AllowedPermission
+	RetryTimeout  time.Duration
 }
 
 func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) AllowedPermission {
@@ -722,6 +725,9 @@ func New(opts *Opts) (*Event, error) {
 	if opts.Kind == nil {
 		return nil, ErrNoKind
 	}
+	if opts.RetryTimeout == 0 && opts.Target.Type == TargetTypeApp {
+		opts.RetryTimeout = defaultAppRetryTimeout
+	}
 	return newEvt(opts)
 }
 
@@ -739,6 +745,20 @@ func NewInternal(opts *Opts) (*Event, error) {
 		return nil, ErrNoInternalKind
 	}
 	return newEvt(opts)
+}
+
+func NewInternalMany(targets []Target, opts *Opts) (*Event, error) {
+	if len(targets) == 0 {
+		return nil, errors.New("event must have at least one target")
+	}
+	opts.Target = targets[0]
+	for _, target := range targets[1:] {
+		opts.ExtraTargets = append(opts.ExtraTargets, ExtraTarget{
+			Target: target,
+			Lock:   true,
+		})
+	}
+	return NewInternal(opts)
 }
 
 func makeBSONRaw(in interface{}) (bson.Raw, error) {
@@ -812,6 +832,24 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 }
 
 func newEvt(opts *Opts) (evt *Event, err error) {
+	timeoutCh := time.After(opts.RetryTimeout)
+	for {
+		evt, err := newEvtOnce(opts)
+		if err == nil {
+			return evt, nil
+		}
+		if _, ok := err.(ErrEventLocked); !ok {
+			return nil, err
+		}
+		select {
+		case <-timeoutCh:
+			return nil, err
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func newEvtOnce(opts *Opts) (evt *Event, err error) {
 	var k Kind
 	defer func() {
 		eventCurrent.WithLabelValues(k.Name).Inc()

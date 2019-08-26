@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -138,6 +137,9 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		case *tsuruErrors.HTTP:
 			code = t.Code
 		}
+		if errors.Cause(err) == appTypes.ErrAppNotFound {
+			code = http.StatusNotFound
+		}
 		if verbosity == 0 {
 			err = fmt.Errorf("%s", err)
 		} else {
@@ -175,82 +177,6 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 		}
 	}
 	next(w, r)
-}
-
-type appLockMiddleware struct {
-	excludedHandlers []http.Handler
-}
-
-var lockWaitDuration time.Duration = 10 * time.Second
-
-func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if r.Method == "GET" {
-		next(w, r)
-		return
-	}
-	currentHandler := context.GetDelayedHandler(r)
-	if currentHandler != nil {
-		currentHandlerPtr := reflect.ValueOf(currentHandler).Pointer()
-		for _, h := range m.excludedHandlers {
-			if reflect.ValueOf(h).Pointer() == currentHandlerPtr {
-				next(w, r)
-				return
-			}
-		}
-	}
-	appName := r.URL.Query().Get(":app")
-	if appName == "" {
-		appName = r.URL.Query().Get(":appname")
-	}
-	if appName == "" {
-		next(w, r)
-		return
-	}
-	t := context.GetAuthToken(r)
-	var owner string
-	if t != nil {
-		if t.IsAppToken() {
-			owner = t.GetAppName()
-		} else {
-			owner = t.GetUserName()
-		}
-	}
-	_, err := app.GetByName(appName)
-	if err == appTypes.ErrAppNotFound {
-		context.AddRequestError(r, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()})
-		return
-	}
-	ok, err := app.AcquireApplicationLockWait(appName, owner, fmt.Sprintf("%s %s", r.Method, r.URL.Path), lockWaitDuration)
-	if err != nil {
-		context.AddRequestError(r, errors.Wrap(err, "Error trying to acquire application lock"))
-		return
-	}
-	if ok {
-		defer func() {
-			if !context.IsPreventUnlock(r) {
-				app.ReleaseApplicationLock(appName)
-			}
-		}()
-		next(w, r)
-		return
-	}
-	a, err := app.GetByName(appName)
-	if err != nil {
-		if err == appTypes.ErrAppNotFound {
-			err = &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		} else {
-			err = errors.Wrap(err, "Error to get application")
-		}
-	} else {
-		httpErr := &tsuruErrors.HTTP{Code: http.StatusConflict}
-		if a.Lock.Locked {
-			httpErr.Message = a.Lock.String()
-		} else {
-			httpErr.Message = "Not locked anymore, please try again."
-		}
-		err = httpErr
-	}
-	context.AddRequestError(r, err)
 }
 
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {

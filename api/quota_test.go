@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -448,7 +447,7 @@ func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, appTypes.ErrAppNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, "App shangrila not found.\n")
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {

@@ -17,7 +17,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
@@ -25,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -433,24 +436,31 @@ func (s *S) TestAppLocker(c *check.C) {
 	hasLock := locker.Lock(appName)
 	c.Assert(hasLock, check.Equals, true)
 	c.Assert(locker.refCount[appName], check.Equals, 1)
-	appDB, err = app.GetByName(appName)
-	c.Assert(err, check.IsNil)
-	c.Assert(appDB.Lock.Locked, check.Equals, true)
-	c.Assert(appDB.Lock.Owner, check.Equals, app.InternalAppName)
-	c.Assert(appDB.Lock.Reason, check.Equals, "container-move")
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+	})
+	c.Assert(err, check.FitsTypeOf, event.ErrEventLocked{})
 	hasLock = locker.Lock(appName)
 	c.Assert(hasLock, check.Equals, true)
 	c.Assert(locker.refCount[appName], check.Equals, 2)
 	locker.Unlock(appName)
 	c.Assert(locker.refCount[appName], check.Equals, 1)
-	appDB, err = app.GetByName(appName)
-	c.Assert(err, check.IsNil)
-	c.Assert(appDB.Lock.Locked, check.Equals, true)
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+	})
+	c.Assert(err, check.FitsTypeOf, event.ErrEventLocked{})
 	locker.Unlock(appName)
 	c.Assert(locker.refCount[appName], check.Equals, 0)
-	appDB, err = app.GetByName(appName)
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(appDB.Lock.Locked, check.Equals, false)
 }
 
 func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
@@ -462,9 +472,12 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 	hasLock := locker.Lock(appName)
 	c.Assert(hasLock, check.Equals, true)
 	c.Assert(locker.refCount[appName], check.Equals, 1)
-	appDB, err = app.GetByName(appName)
-	c.Assert(err, check.IsNil)
-	c.Assert(appDB.Lock.Locked, check.Equals, true)
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+	})
+	c.Assert(err, check.FitsTypeOf, event.ErrEventLocked{})
 	otherLocker := &appLocker{}
 	hasLock = otherLocker.Lock(appName)
 	c.Assert(hasLock, check.Equals, false)

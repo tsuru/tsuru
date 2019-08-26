@@ -16,7 +16,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -244,112 +243,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
 	return json.Marshal(&result)
-}
-
-// AcquireApplicationLock acquires an application lock by setting the lock
-// field in the database.  This method is already called by a connection
-// middleware on requests with :app or :appname params that have side-effects.
-func AcquireApplicationLock(appName string, owner string, reason string) (bool, error) {
-	return AcquireApplicationLockWait(appName, owner, reason, 0)
-}
-
-// Same as AcquireApplicationLock but it keeps trying to acquire the lock
-// until timeout is reached.
-func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
-	timeoutChan := time.After(timeout)
-	for {
-		appLock := appTypes.AppLock{
-			Locked:      true,
-			Reason:      reason,
-			Owner:       owner,
-			AcquireDate: time.Now().In(time.UTC),
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return false, err
-		}
-		err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": bson.M{"$in": []interface{}{false, nil}}}, bson.M{"$set": bson.M{"lock": appLock}})
-		conn.Close()
-		if err == nil {
-			return true, nil
-		}
-		if err != mgo.ErrNotFound {
-			return false, err
-		}
-		select {
-		case <-timeoutChan:
-			return false, nil
-		case <-time.After(300 * time.Millisecond):
-		}
-	}
-}
-
-func AcquireApplicationLockWaitMany(appNames []string, owner string, reason string, timeout time.Duration) error {
-	lockedApps := make(chan string, len(appNames))
-	errCh := make(chan error, len(appNames))
-	wg := sync.WaitGroup{}
-	for _, appName := range appNames {
-		wg.Add(1)
-		go func(appName string) {
-			defer wg.Done()
-			locked, err := AcquireApplicationLockWait(appName, owner, reason, timeout)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			if !locked {
-				errCh <- appTypes.ErrAppNotLocked{App: appName}
-				return
-			}
-			lockedApps <- appName
-		}(appName)
-	}
-	wg.Wait()
-	close(lockedApps)
-	close(errCh)
-	err := <-errCh
-	if err != nil {
-		for appName := range lockedApps {
-			ReleaseApplicationLock(appName)
-		}
-		return err
-	}
-	return nil
-}
-
-func ReleaseApplicationLockMany(appNames []string) {
-	for _, appName := range appNames {
-		ReleaseApplicationLock(appName)
-	}
-}
-
-// ReleaseApplicationLock releases a lock hold on an app, currently it's called
-// by a middleware, however, ideally, it should be called individually by each
-// handler since they might be doing operations in background.
-func ReleaseApplicationLock(appName string) {
-	var err error
-	retries := 3
-	for i := 0; i < retries; i++ {
-		err = releaseApplicationLockOnce(appName)
-		if err == nil {
-			return
-		}
-		time.Sleep(time.Second * time.Duration(i+1))
-	}
-	log.Error(err)
-}
-
-func releaseApplicationLockOnce(appName string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return errors.Wrapf(err, "error getting DB, couldn't unlock %s", appName)
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": appTypes.AppLock{}}})
-	if err != nil {
-		return errors.Wrapf(err, "Error updating entry, couldn't unlock %s", appName)
-	}
-	return nil
 }
 
 // GetByName queries the database to find an app identified by the given
@@ -1521,11 +1414,6 @@ func (app *App) GetCname() []string {
 	return app.CName
 }
 
-// GetLock returns the app lock information.
-func (app *App) GetLock() provision.AppLock {
-	return &app.Lock
-}
-
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform
@@ -2448,14 +2336,6 @@ func (app *App) RoutableAddresses() ([]url.URL, error) {
 	return prov.RoutableAddresses(app)
 }
 
-func (app *App) InternalLock(reason string) (bool, error) {
-	return AcquireApplicationLock(app.Name, InternalAppName, reason)
-}
-
-func (app *App) Unlock() {
-	ReleaseApplicationLock(app.Name)
-}
-
 func (app *App) withLogWriter(w io.Writer) io.Writer {
 	logWriter := &LogWriter{AppName: app.Name}
 	if w != nil {
@@ -2480,15 +2360,16 @@ func RenameTeam(oldName, newName string) error {
 		return err
 	}
 	for _, a := range apps {
-		var locked bool
-		locked, err = AcquireApplicationLock(a.Name, InternalAppName, "team rename")
+		var evt *event.Event
+		evt, err = event.NewInternal(&event.Opts{
+			Target:       event.Target{Type: event.TargetTypeApp, Value: a.Name},
+			InternalKind: "team rename",
+			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.Name)),
+		})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "unable to create event")
 		}
-		if !locked {
-			return errors.Errorf("unable to acquire lock for app %q", a.Name)
-		}
-		defer ReleaseApplicationLock(a.Name)
+		defer evt.Abort()
 	}
 	bulk := conn.Apps().Bulk()
 	for _, a := range apps {

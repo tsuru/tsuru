@@ -48,6 +48,7 @@ func setBaseConfig() {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	defaultAppRetryTimeout = 200 * time.Millisecond
 	setBaseConfig()
 	throttlingInfo = map[string]ThrottlingSpec{}
 	conn, err := db.Conn()
@@ -379,6 +380,62 @@ func (s *S) TestNewLockExpired(c *check.C) {
 	c.Assert(evts[1].Running, check.Equals, false)
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[1].Error, check.Matches, `event expired, no update for [\d.]+\w+`)
+}
+
+func (s *S) TestNewLockRetry(c *check.C) {
+	evt1, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	doneCh := make(chan struct{})
+	go func() {
+		_, lockErr := New(&Opts{
+			Target:       Target{Type: "app", Value: "myapp"},
+			Kind:         permission.PermAppUpdateEnvUnset,
+			Owner:        s.token,
+			Allowed:      Allowed(permission.PermAppReadEvents),
+			RetryTimeout: 5 * time.Second,
+		})
+		c.Assert(lockErr, check.IsNil)
+		close(doneCh)
+	}()
+	time.Sleep(500 * time.Millisecond)
+	evt1.Done(nil)
+	select {
+	case <-doneCh:
+	case <-time.After(10 * time.Second):
+		c.Fatal("timeout waiting for event to be created")
+	}
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	c.Assert(evts[0].Kind.Name, check.Equals, "app.update.env.unset")
+	c.Assert(evts[1].Kind.Name, check.Equals, "app.update.env.set")
+	c.Assert(evts[0].Running, check.Equals, true)
+	c.Assert(evts[1].Running, check.Equals, false)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[1].Error, check.Equals, "")
+}
+
+func (s *S) TestNewLockRetryError(c *check.C) {
+	_, err := New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = New(&Opts{
+		Target:       Target{Type: "app", Value: "myapp"},
+		Kind:         permission.PermAppUpdateEnvUnset,
+		Owner:        s.token,
+		Allowed:      Allowed(permission.PermAppReadEvents),
+		RetryTimeout: time.Second,
+	})
+	c.Assert(err, check.ErrorMatches, `event locked: app\(myapp\) running "app.update.env.set".*`)
 }
 
 func (s *S) TestNewEventBlocked(c *check.C) {

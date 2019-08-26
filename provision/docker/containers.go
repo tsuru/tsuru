@@ -21,10 +21,12 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/rebuild"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -34,6 +36,7 @@ const (
 type appLocker struct {
 	mut      sync.Mutex
 	refCount map[string]int
+	evtMap   map[string]*event.Event
 }
 
 func (l *appLocker) Lock(appName string) bool {
@@ -42,14 +45,23 @@ func (l *appLocker) Lock(appName string) bool {
 	if l.refCount == nil {
 		l.refCount = make(map[string]int)
 	}
+	if l.evtMap == nil {
+		l.evtMap = make(map[string]*event.Event)
+	}
 	if l.refCount[appName] > 0 {
 		l.refCount[appName]++
 		return true
 	}
-	ok, err := app.AcquireApplicationLockWait(appName, app.InternalAppName, "container-move", lockWaitTimeout)
-	if err != nil || !ok {
+	evt, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
+		InternalKind: "container-move",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
+		RetryTimeout: lockWaitTimeout,
+	})
+	if err != nil {
 		return false
 	}
+	l.evtMap[appName] = evt
 	l.refCount[appName]++
 	return true
 }
@@ -64,7 +76,10 @@ func (l *appLocker) Unlock(appName string) {
 	if l.refCount[appName] <= 0 {
 		l.refCount[appName] = 0
 		rebuild.RoutesRebuildOrEnqueue(appName)
-		app.ReleaseApplicationLock(appName)
+		if l.evtMap == nil || l.evtMap[appName] == nil {
+			return
+		}
+		l.evtMap[appName].Abort()
 	}
 }
 
@@ -411,11 +426,23 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 	if err != nil {
 		return nil, err
 	}
-	err = app.AcquireApplicationLockWaitMany(appNames, app.InternalAppName, "rebalance check", lockWaitTimeout)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to lock apps for container count")
+	if len(appNames) > 0 {
+		appTargets := make([]event.Target, len(appNames))
+		allowedCtx := make([]permTypes.PermissionContext, len(appNames))
+		for i, appName := range appNames {
+			appTargets[i] = event.Target{Type: event.TargetTypeApp, Value: appName}
+			allowedCtx[i] = permission.Context(permTypes.CtxApp, appName)
+		}
+		evt, err := event.NewInternalMany(appTargets, &event.Opts{
+			InternalKind: "rebalance check",
+			Allowed:      event.Allowed(permission.PermAppReadEvents, allowedCtx...),
+			RetryTimeout: lockWaitTimeout,
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to lock apps for container count")
+		}
+		defer evt.Abort()
 	}
-	defer app.ReleaseApplicationLockMany(appNames)
 	result := map[string][]container.Container{}
 	for _, n := range nodes {
 		nodeConts, err := p.listRunningContainersByHost(net.URLToHost(n.Address))

@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2018 tsuru authors. All rights reserved.
+// Copyright 2019 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,7 +13,6 @@ var (
 	PermAppAdmin                         = PermissionRegistry.get("app.admin")                           // [global app team pool]
 	PermAppAdminQuota                    = PermissionRegistry.get("app.admin.quota")                     // [global app team pool]
 	PermAppAdminRoutes                   = PermissionRegistry.get("app.admin.routes")                    // [global app team pool]
-	PermAppAdminUnlock                   = PermissionRegistry.get("app.admin.unlock")                    // [global app team pool]
 	PermAppBuild                         = PermissionRegistry.get("app.build")                           // [global app team pool]
 	PermAppCreate                        = PermissionRegistry.get("app.create")                          // [global team]
 	PermAppDelete                        = PermissionRegistry.get("app.delete")                          // [global app team pool]

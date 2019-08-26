@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -30,6 +31,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -158,9 +160,12 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(u0, check.DeepEquals, u0Again)
 	c.Assert(u1, check.DeepEquals, u1Again)
-	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, s.appInstance.GetName())),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
 }
 
 func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
@@ -602,9 +607,12 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, s.appInstance.GetName())),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
 }
 
 func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
@@ -933,19 +941,22 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, s.appInstance.GetName())),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
 	s.logBuf.Reset()
 	a := newConfig()
 	a.runOnce()
-	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
+	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to create app event: event locked: app\(myapp\).*`)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 0)
+	c.Assert(evts, check.HasLen, 1)
 }
 
 func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
@@ -954,18 +965,21 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, s.appInstance.GetName())),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
 	a := newConfig()
 	a.runOnce()
-	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
+	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to create app event: event locked: app\(myapp\).*`)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 0)
+	c.Assert(evts, check.HasLen, 1)
 }
 
 func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {

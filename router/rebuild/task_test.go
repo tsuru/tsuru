@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
 
@@ -47,7 +50,7 @@ func (s *S) TestRoutesRebuildOrEnqueueForceEnqueue(c *check.C) {
 	rebuild.RoutesRebuildOrEnqueue(a.GetName())
 	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
 	routertest.FakeRouter.RemoveFailForIp(invalidAddr.String())
-	waitFor(c, 5*time.Second, func() bool {
+	waitFor(c, 10*time.Second, func() bool {
 		return !routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String())
 	})
 	rebuild.Shutdown(context.Background())
@@ -61,17 +64,21 @@ func (s *S) TestRoutesRebuildOrEnqueueLocked(c *check.C) {
 	}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(a.Name, "me", "mine")
+	evt, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.Name)),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.AddRoutes(a.GetName(), []*url.URL{invalidAddr})
 	c.Assert(err, check.IsNil)
 	rebuild.LockedRoutesRebuildOrEnqueue(a.GetName())
 	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
-	app.ReleaseApplicationLock(a.Name)
-	waitFor(c, 5*time.Second, func() bool {
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	waitFor(c, 10*time.Second, func() bool {
 		return !routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String())
 	})
 	rebuild.Shutdown(context.Background())

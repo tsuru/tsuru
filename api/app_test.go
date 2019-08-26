@@ -1800,7 +1800,7 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Matches, "^App not found\n$")
+	c.Assert(recorder.Body.String(), check.Matches, "^App myappx not found.\n$")
 }
 
 func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
@@ -2378,31 +2378,6 @@ func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Check(e.Code, check.Equals, http.StatusNotFound)
 	c.Check(e.Message, check.Equals, "App not found")
-}
-
-func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
-	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
-	c.Assert(err, check.IsNil)
-	c.Assert(locked, check.Equals, true)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	unit := units[0]
-	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.ID, body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
 }
 
 func (s *S) TestSetNodeStatus(c *check.C) {
@@ -5728,10 +5703,14 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 }
 
 func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Lock: appTypes.AppLock{
-		Locked: true, Reason: "/test", Owner: "x",
-	}}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: app1.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app1.GetName())),
+	})
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
@@ -5743,18 +5722,22 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Matches, "app1: App locked by x, running /test. Acquired in .*\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %s", recorder.Body.String()))
+	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app1\\) running \"anything\" start by internal.*\n")
 }
 
 func (s *S) TestSwapApp2Locked(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Lock: appTypes.AppLock{
-		Locked: true, Reason: "/test", Owner: "x",
-	}}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeApp, Value: app2.GetName()},
+		InternalKind: "anything",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app2.GetName())),
+	})
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
 	request, err := http.NewRequest("POST", "/swap", b)
@@ -5764,7 +5747,7 @@ func (s *S) TestSwapApp2Locked(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Matches, "app2: App locked by x, running /test. Acquired in .*\n")
+	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app2\\) running \"anything\" start by internal.*\n")
 }
 
 func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
@@ -5911,7 +5894,7 @@ func (s *S) TestStopHandler(c *check.C) {
 }
 
 func (s *S) TestForceDeleteLock(c *check.C) {
-	a := app.App{Name: "locked", Lock: appTypes.AppLock{Locked: true}}
+	a := app.App{Name: "locked"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -5919,37 +5902,8 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "")
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock.Locked, check.Equals, false)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.admin.unlock",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestForceDeleteLockOnlyWithPermission(c *check.C) {
-	a := app.App{Name: "locked", Lock: appTypes.AppLock{Locked: true}, Teams: []string{s.team.Name}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock.Locked, check.Equals, true)
+	c.Assert(recorder.Code, check.Equals, http.StatusGone)
+	c.Assert(recorder.Body.String(), check.Equals, "app unlock is deprecated, this call does nothing\n")
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {

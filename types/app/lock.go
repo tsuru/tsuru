@@ -5,8 +5,6 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -16,45 +14,4 @@ type AppLock struct {
 	Reason      string
 	Owner       string
 	AcquireDate time.Time
-}
-
-func (l *AppLock) String() string {
-	if !l.Locked {
-		return "Not locked"
-	}
-	return fmt.Sprintf("App locked by %s, running %s. Acquired in %s",
-		l.Owner,
-		l.Reason,
-		l.AcquireDate.Format(time.RFC3339),
-	)
-}
-
-func (l *AppLock) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Locked      bool   `json:"Locked"`
-		Reason      string `json:"Reason"`
-		Owner       string `json:"Owner"`
-		AcquireDate string `json:"AcquireDate"`
-	}{
-		Locked:      l.Locked,
-		Reason:      l.Reason,
-		Owner:       l.Owner,
-		AcquireDate: l.AcquireDate.Format(time.RFC3339),
-	})
-}
-
-func (l *AppLock) GetLocked() bool {
-	return l.Locked
-}
-
-func (l *AppLock) GetReason() string {
-	return l.Reason
-}
-
-func (l *AppLock) GetOwner() string {
-	return l.Owner
-}
-
-func (l *AppLock) GetAcquireDate() time.Time {
-	return l.AcquireDate
 }

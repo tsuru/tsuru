@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -26,7 +25,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
@@ -361,171 +359,6 @@ func (s *S) TestRunDelayedHandlerWithHandler(c *check.C) {
 	context.SetDelayedHandler(request, h)
 	runDelayedHandler(recorder, request)
 	c.Assert(log.called, check.Equals, true)
-}
-
-func (s *S) TestAppLockMiddlewareDoesNothingWithoutApp(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/", nil)
-	c.Assert(err, check.IsNil)
-	h, log := doHandler()
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, true)
-}
-
-func (s *S) TestAppLockMiddlewareDoesNothingForGetRequests(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:app=abc", nil)
-	c.Assert(err, check.IsNil)
-	h, log := doHandler()
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, true)
-}
-
-func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=abc", nil)
-	c.Assert(err, check.IsNil)
-	h, log := doHandler()
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, false)
-	httpErr := context.GetRequestError(request).(*tsuruErrors.HTTP)
-	c.Assert(httpErr.Code, check.Equals, http.StatusNotFound)
-	c.Assert(httpErr.Message, check.Equals, "App not found")
-	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
-	c.Assert(err, check.IsNil)
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, false)
-	httpErr = context.GetRequestError(request).(*tsuruErrors.HTTP)
-	c.Assert(httpErr.Code, check.Equals, http.StatusNotFound)
-	c.Assert(httpErr.Message, check.Equals, "App not found")
-}
-
-func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
-	oldDuration := lockWaitDuration
-	lockWaitDuration = time.Second
-	defer func() { lockWaitDuration = oldDuration }()
-	myApp := app.App{
-		Name: "my-app",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "/app/my-app/deploy",
-			Owner:       "someone",
-			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-		},
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
-	c.Assert(err, check.IsNil)
-	h, log := doHandler()
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, false)
-	httpErr := context.GetRequestError(request).(*tsuruErrors.HTTP)
-	c.Assert(httpErr.Code, check.Equals, http.StatusConflict)
-	c.Assert(httpErr.Message, check.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10.*")
-}
-
-func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *check.C) {
-	myApp := app.App{
-		Name: "my-app",
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
-	c.Assert(err, check.IsNil)
-	called := false
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(appErr, check.IsNil)
-		c.Assert(a.Lock.Locked, check.Equals, true)
-		called = true
-	})
-	c.Assert(called, check.Equals, true)
-	a, err := app.GetByName(request.URL.Query().Get(":app"))
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Lock.Locked, check.Equals, false)
-}
-
-func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *check.C) {
-	myApp := app.App{
-		Name: "my-app",
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
-	c.Assert(err, check.IsNil)
-	called := false
-	context.SetPreventUnlock(request)
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(appErr, check.IsNil)
-		c.Assert(a.Lock.Locked, check.Equals, true)
-		called = true
-	})
-	c.Assert(called, check.Equals, true)
-	a, err := app.GetByName(request.URL.Query().Get(":app"))
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Lock.Locked, check.Equals, true)
-}
-
-func (s *S) TestAppLockMiddlewareDoesNothingForExcludedHandlers(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=abc", nil)
-	c.Assert(err, check.IsNil)
-	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	context.SetDelayedHandler(request, finalHandler)
-	h, log := doHandler()
-	m := &appLockMiddleware{
-		excludedHandlers: []http.Handler{finalHandler},
-	}
-	m.ServeHTTP(recorder, request, h)
-	c.Assert(log.called, check.Equals, true)
-}
-
-func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
-	myApp := app.App{
-		Name: "my-app",
-		Lock: appTypes.AppLock{
-			Locked:      true,
-			Reason:      "/app/my-app/deploy",
-			Owner:       "someone",
-			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
-		},
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
-	c.Assert(err, check.IsNil)
-	called := false
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Wait()
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second)
-		app.ReleaseApplicationLock(myApp.Name)
-	}()
-	m := &appLockMiddleware{}
-	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(appErr, check.IsNil)
-		c.Assert(a.Lock.Locked, check.Equals, true)
-		called = true
-	})
-	c.Assert(called, check.Equals, true)
-	a, err := app.GetByName(request.URL.Query().Get(":app"))
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Lock.Locked, check.Equals, false)
 }
 
 func (s *S) TestLoggerMiddleware(c *check.C) {

@@ -78,7 +78,10 @@ func getAppFromContext(name string, r *http.Request) (app.App, error) {
 func getApp(name string) (*app.App, error) {
 	a, err := app.GetByName(name)
 	if err != nil {
-		return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
+		if err == appTypes.ErrAppNotFound {
+			return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
+		}
+		return nil, err
 	}
 	return a, nil
 }
@@ -132,7 +135,7 @@ type miniApp struct {
 	CName     []string             `json:"cname"`
 	IP        string               `json:"ip"`
 	Routers   []appTypes.AppRouter `json:"routers"`
-	Lock      provision.AppLock    `json:"lock"`
+	Lock      appTypes.AppLock     `json:"lock"`
 	Tags      []string             `json:"tags"`
 	Error     string               `json:"error,omitempty"`
 }
@@ -153,7 +156,7 @@ func minifyApp(app app.App, unitData app.AppUnitsResponse) (miniApp, error) {
 		Units:     unitData.Units,
 		CName:     app.CName,
 		Routers:   app.Routers,
-		Lock:      &app.Lock,
+		Lock:      app.Lock,
 		Tags:      app.Tags,
 		Error:     errorStr,
 	}
@@ -1568,29 +1571,13 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
-	locked1, err := app.AcquireApplicationLockWait(app1Name, t.GetUserName(), "/swap", lockWaitDuration)
-	if err != nil {
-		return err
-	}
-	defer app.ReleaseApplicationLock(app1Name)
-	locked2, err := app.AcquireApplicationLockWait(app2Name, t.GetUserName(), "/swap", lockWaitDuration)
-	if err != nil {
-		return err
-	}
-	defer app.ReleaseApplicationLock(app2Name)
 	app1, err := getApp(app1Name)
 	if err != nil {
 		return err
 	}
-	if !locked1 {
-		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app1.Name, &app1.Lock)}
-	}
 	app2, err := getApp(app2Name)
 	if err != nil {
 		return err
-	}
-	if !locked2 {
-		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app2.Name, &app2.Lock)}
 	}
 	allowed1 := permission.Check(t, permission.PermAppUpdateSwap,
 		contextsForApp(app1)...,
@@ -1612,6 +1599,9 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
 	})
 	if err != nil {
+		if _, locked := err.(event.ErrEventLocked); locked {
+			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+		}
 		return err
 	}
 	defer func() { evt.Done(err) }()
@@ -1728,34 +1718,9 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//   410: Not available anymore
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	appName := r.URL.Query().Get(":app")
-	a, err := getAppFromContext(appName, r)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppAdminUnlock,
-		contextsForApp(&a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppAdminUnlock,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	app.ReleaseApplicationLock(a.Name)
-	return nil
+	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
 func isDeployAgentUA(r *http.Request) bool {

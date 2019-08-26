@@ -10,6 +10,7 @@ github.com/tsuru/tsuru/api.addLog
 github.com/tsuru/tsuru/api.logout
 github.com/tsuru/tsuru/api.login
 github.com/tsuru/tsuru/api.samlCallbackLogin
+github.com/tsuru/tsuru/api.forceDeleteLock
 EOF
 )
 ignored=$(echo "$ignored" | sort)
