@@ -10,7 +10,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
-	github.com/andrestc/docker-machine-driver-cloudstack v0.7.0
+	github.com/andrestc/docker-machine-driver-cloudstack v0.8.0
 	github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e // indirect
 	github.com/aws/aws-sdk-go v1.16.21
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7

@@ -55,6 +55,7 @@ type Driver struct {
 	DiskOffering         string
 	DiskOfferingID       string
 	DiskSize             int
+	RootDiskSize         int64
 	Network              string
 	NetworkID            string
 	Zone                 string
@@ -183,6 +184,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "cloudstack-disk-size",
 			Usage: "Disk offering custom size",
 		},
+		mcnflag.IntFlag{
+			Name:  "cloudstack-root-disk-size",
+			Usage: "Root disk custom size",
+		},
 		mcnflag.BoolFlag{
 			Name:  "cloudstack-delete-volumes",
 			Usage: "Whether or not to delete data volumes associated with the machine upon removal",
@@ -237,6 +242,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
 	d.DeleteVolumes = flags.Bool("cloudstack-delete-volumes")
 	d.DiskSize = flags.Int("cloudstack-disk-size")
+	d.RootDiskSize = int64(flags.Int("cloudstack-root-disk-size"))
 	d.DisplayName = flags.String("cloudstack-displayname")
 	d.SwarmMaster = flags.Bool("swarm-master")
 	d.SwarmDiscovery = flags.String("swarm-discovery")
@@ -388,6 +394,9 @@ func (d *Driver) Create() error {
 		if d.DiskSize != 0 {
 			p.SetSize(int64(d.DiskSize))
 		}
+	}
+	if d.RootDiskSize != 0 {
+		p.SetRootdisksize(d.RootDiskSize)
 	}
 	if d.NetworkType == "Basic" {
 		if err := d.createSecurityGroup(); err != nil {

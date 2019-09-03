@@ -34,7 +34,7 @@ github.com/Nvveen/Gotty
 github.com/RobotsAndPencils/go-saml/util
 # github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 github.com/ajg/form
-# github.com/andrestc/docker-machine-driver-cloudstack v0.7.0
+# github.com/andrestc/docker-machine-driver-cloudstack v0.8.0
 github.com/andrestc/docker-machine-driver-cloudstack
 # github.com/aws/aws-sdk-go v1.16.21
 github.com/aws/aws-sdk-go/aws

@@ -27,6 +27,8 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/andrestc/docker-machine-driver-cloudstack v0.7.0 h1:sGQF6+p1EglCQ4NN8C6Gd7gk7MmVJh5vkX1NKgjsw7U=
 github.com/andrestc/docker-machine-driver-cloudstack v0.7.0/go.mod h1:SibR3pVQl6Zw60/S4BJ4Ctf1ECV0I2fsFEvCFZCPsU0=
+github.com/andrestc/docker-machine-driver-cloudstack v0.8.0 h1:teRfUVwTTDAOYzIxoZTDHRpLkzueJm/TMHoUjMVJIWw=
+github.com/andrestc/docker-machine-driver-cloudstack v0.8.0/go.mod h1:SibR3pVQl6Zw60/S4BJ4Ctf1ECV0I2fsFEvCFZCPsU0=
 github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e h1:h0gP0hBU6DsA5IQduhLWGOEfIUKzJS5hhXQBSgHuF/g=
 github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e/go.mod h1:QmP9hvJ91BbJmGVGSbutW19IC0Q9phDCLGaomwTJbgU=
 github.com/aws/aws-sdk-go v1.16.21 h1:9dSP0kDCz1tPkPVvaJkXW+DvuWiJta/plpAxhbc/tgA=

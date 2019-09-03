@@ -2,11 +2,10 @@ language: go
 
 env:
   global:
-    - GO_FOR_RELEASE=1.8
+    - GO_FOR_RELEASE=1.12
 
 go:
-  - 1.7
-  - 1.8
+  - 1.12
   - tip
 
 install:
