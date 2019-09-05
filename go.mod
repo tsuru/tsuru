@@ -155,6 +155,7 @@ require (
 	k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
 	k8s.io/kube-openapi v0.0.0-20190709113604-33be087ad058 // indirect
 	k8s.io/kubernetes v1.12.0
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace (
