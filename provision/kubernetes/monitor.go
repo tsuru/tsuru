@@ -6,7 +6,9 @@ package kubernetes
 
 import (
 	"context"
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,11 +19,17 @@ import (
 	"k8s.io/client-go/informers"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
 	informerSyncTimeout = 10 * time.Second
+
+	leaderElectionName = "tsuru-controller"
 )
 
 type clusterController struct {
@@ -32,6 +40,8 @@ type clusterController struct {
 	serviceInformer v1informers.ServiceInformer
 	nodeInformer    v1informers.NodeInformer
 	stopCh          chan struct{}
+	leader          int32
+	cancel          context.CancelFunc
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -47,11 +57,18 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	if c, ok := p.clusterControllers[cluster.Name]; ok {
 		return c, nil
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	c := &clusterController{
 		cluster: cluster,
 		stopCh:  make(chan struct{}),
+		cancel:  cancel,
 	}
-	err := c.start()
+	err := c.initLeaderElection(ctx)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	err = c.start()
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +87,11 @@ func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
 
 func (c *clusterController) stop() {
 	close(c.stopCh)
+	c.cancel()
+}
+
+func (c *clusterController) isLeader() bool {
+	return atomic.LoadInt32(&c.leader) == 1
 }
 
 func (c *clusterController) start() error {
@@ -79,18 +101,27 @@ func (c *clusterController) start() error {
 	}
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			if !c.isLeader() {
+				return
+			}
 			err := c.onAdd(obj)
 			if err != nil {
 				log.Errorf("[router-update-controller] error on add pod event: %v", err)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
+			if !c.isLeader() {
+				return
+			}
 			err := c.onUpdate(oldObj, newObj)
 			if err != nil {
 				log.Errorf("[router-update-controller] error on update pod event: %v", err)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
+			if !c.isLeader() {
+				return
+			}
 			err := c.onDelete(obj)
 			if err != nil {
 				log.Errorf("[router-update-controller] error on delete pod event: %v", err)
@@ -242,6 +273,58 @@ func (c *clusterController) waitForSync(informer cache.SharedInformer) error {
 	defer cancel()
 	cache.WaitForCacheSync(ctx.Done(), informer.HasSynced)
 	return errors.Wrap(ctx.Err(), "error waiting for informer sync")
+}
+
+func (c *clusterController) initLeaderElection(ctx context.Context) error {
+	id, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	broadcaster := record.NewBroadcaster()
+	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
+		Component: leaderElectionName,
+	})
+	lock, err := resourcelock.New(
+		resourcelock.EndpointsResourceLock,
+		c.cluster.Namespace(),
+		leaderElectionName,
+		c.cluster.CoreV1(),
+		resourcelock.ResourceLockConfig{
+			Identity:      id,
+			EventRecorder: recorder,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 10 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				atomic.StoreInt32(&c.leader, 1)
+			},
+			OnStoppedLeading: func() {
+				atomic.StoreInt32(&c.leader, 0)
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			le.Run(ctx)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+		}
+	}()
+	return nil
 }
 
 var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
