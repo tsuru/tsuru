@@ -1213,3 +1213,43 @@ func (s *S) TestVersionWithAPI(c *check.C) {
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
 		check.Equals, "tsuru version 5.0.\nAPI Server version 1.7.4\n")
 }
+
+func (s *S) TestVersionWithoutEnvVar(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Send response to be tested
+		rw.Write([]byte(`{"version":"1.7.4"}`))
+	}))
+
+	client := NewClient(ts.Client(), &context, mngr)
+	err := command.Run(&context, client)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestVersionAPIInvalidURL(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Send response to be tested
+		rw.Write([]byte(`{"version":"1.7.4"}`))
+	}))
+
+	client := NewClient(&http.Client{}, &context, mngr)
+
+	ts.URL = "faketsuru.io"
+	os.Setenv("TSURU_TARGET", ts.URL)
+	defer os.Unsetenv("TSURU_TARGET")
+	err := command.Run(&context, client)
+	c.Assert(err, check.NotNil)
+}
