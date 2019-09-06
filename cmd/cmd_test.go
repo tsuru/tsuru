@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"syscall"
@@ -617,7 +618,7 @@ func (s *S) TestVersion(c *check.C) {
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\n")
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\nAPI Server not found")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
@@ -1188,4 +1189,27 @@ func (c *FailCommandCustom) Info() *Info {
 
 func (c *FailCommandCustom) Run(context *Context, client *Client) error {
 	return c.err
+}
+
+func (s *S) TestVersionWithAPI(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Send response to be tested
+		rw.Write([]byte(`{"version":"1.7.4"}`))
+	}))
+
+	client := NewClient(&http.Client{}, &context, mngr)
+
+	os.Setenv("TSURU_TARGET", ts.URL)
+	defer os.Unsetenv("TSURU_TARGET")
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "tsuru version 5.0.\nAPI Server version 1.7.4\n")
 }

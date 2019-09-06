@@ -621,39 +621,38 @@ func versionString(manager *Manager) string {
 }
 
 func apiVersionString(client *Client) (string, error) {
+	if client == nil {
+		return "API Server not found", nil
+	}
 	url, err := GetURL("/info")
 	if err != nil {
 		return "", err
 	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	resp, err := client.Do(req)
-	if err != nil {
-		return "", nil
-	}
-	// if resp.StatusCode == http.StatusOK {
-	// 	return fmt.Sprintf("API version: %s\n", resp.Body), nil
-	// }
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return "", nil
-	}
-
-	var version_struct map[string]string
-
-	err = json.Unmarshal(body, &version_struct)
 	if err != nil {
 		return "", err
 	}
 
-	if _, exists := version_struct["version"]; !exists {
-		return fmt.Sprintf("No API version found\n"), nil
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("API version %s\n", version_struct["version"]), nil
+	err = resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	var version map[string]string
+
+	err = json.Unmarshal(body, &version)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("API Server version %s\n", version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {
@@ -663,7 +662,6 @@ func (c *version) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprint(context.Stdout, apiVersion)
 
 	return nil
