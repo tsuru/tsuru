@@ -1430,10 +1430,14 @@ func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 		created = true
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		var result docker.Config
-		json.Unmarshal(data, &result)
-		sort.Strings(result.Env)
-		c.Assert(result.Env, check.DeepEquals, []string{"ENV=OK", "PORT=8888", "TSURU_HOST=", "TSURU_PROCESSNAME=", "port=8888"})
+		var config docker.Config
+		json.Unmarshal(data, &config)
+		sort.Strings(config.Env)
+		c.Assert(config.Env, check.DeepEquals, []string{"ENV=OK", "PORT=8888", "TSURU_HOST=", "TSURU_PROCESSNAME=", "port=8888"})
+		var createOpts docker.CreateContainerOptions
+		json.Unmarshal(data, &createOpts)
+		c.Assert(createOpts.HostConfig, check.NotNil)
+		c.Assert(createOpts.HostConfig.AutoRemove, check.Equals, true)
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -362,6 +362,9 @@ func (p *dockerProvisioner) runCommandInContainer(image string, app provision.Ap
 			Tty:          stdin != nil,
 			Labels:       labelSet.ToLabels(),
 		},
+		HostConfig: &docker.HostConfig{
+			AutoRemove: true,
+		},
 	}
 	cluster := p.Cluster()
 	schedOpts := &container.SchedulerOpts{
