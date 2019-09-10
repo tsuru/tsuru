@@ -132,7 +132,7 @@ func (s *S) TestImplicitTopicsHelp(c *check.C) {
 	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 The following commands are available in the "foo" topic:
 
@@ -359,7 +359,7 @@ func (s *S) TestRunCommandThatDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -378,7 +378,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestHelpWithTopics(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -404,7 +404,7 @@ Use glb help <topicname> to get more information about a topic.
 }
 
 func (s *S) TestHelpFromTopic(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Targets
 
@@ -436,7 +436,7 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestRunWithoutArgsShouldRunHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -451,7 +451,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestDashDashHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -466,7 +466,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestRunCommandWithDashHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -479,7 +479,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestRunCommandWithDashH(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -492,7 +492,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -505,7 +505,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestDashDashHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -532,7 +532,7 @@ func (s *S) TestDuplicateHFlag(c *check.C) {
 }
 
 func (s *S) TestHelpFlaggedCommand(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb with-flags
 
@@ -550,7 +550,7 @@ Flags:
 }
 
 func (s *S) TestHelpFlaggedMultilineCommand(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb with-flags
 
@@ -569,7 +569,7 @@ Flags:
 }
 
 func (s *S) TestHelpDeprecatedCmd(c *check.C) {
-	expectedStdout := `glb version 1.0.
+	expectedStdout := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -594,7 +594,7 @@ Foo do anything or nothing.
 func (s *S) TestHelpDeprecatedCmdWritesWarningFirst(c *check.C) {
 	expected := `WARNING: "bar" is deprecated. Showing help for "foo" instead.
 
-glb version 1.0.
+Client version: 1.0.
 
 Usage: glb foo
 
@@ -618,11 +618,11 @@ func (s *S) TestVersion(c *check.C) {
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\nAPI Server not found")
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\nServer not found")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
-	expected := "glb version 1.0.\n"
+	expected := "Client version: 1.0.\n"
 	globalManager.Run([]string{"--version"})
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
@@ -654,7 +654,7 @@ func (cmd *ArgCmd) Run(ctx *Context, client *Client) error {
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 ERROR: wrong number of arguments.
 
@@ -672,7 +672,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestRunWithTooManyArguments(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 ERROR: wrong number of arguments.
 
@@ -690,7 +690,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *check.C) {
-	expected := `tsuru version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: tsuru foo
 
@@ -1211,7 +1211,7 @@ func (s *S) TestVersionWithAPI(c *check.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
-		check.Equals, "tsuru version 5.0.\nAPI Server version 1.7.4\n")
+		check.Equals, "Client version: 5.0.\nServer version: 1.7.4\n")
 }
 
 func (s *S) TestVersionWithoutEnvVar(c *check.C) {

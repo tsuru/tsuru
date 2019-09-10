@@ -617,12 +617,12 @@ func versionString(manager *Manager) string {
 	if GitHash != "" {
 		suffix = fmt.Sprintf(" hash %s\n", GitHash)
 	}
-	return fmt.Sprintf("%s version %s.%s", manager.name, manager.version, suffix)
+	return fmt.Sprintf("Client version: %s.%s", manager.version, suffix)
 }
 
 func apiVersionString(client *Client) (string, error) {
 	if client == nil {
-		return "API Server not found", nil
+		return "Server not found", nil
 	}
 	url, err := GetURL("/info")
 	if err != nil {
@@ -652,7 +652,7 @@ func apiVersionString(client *Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("API Server version %s\n", version["version"]), nil
+	return fmt.Sprintf("Server version: %s\n", version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {
