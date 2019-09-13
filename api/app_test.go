@@ -1770,6 +1770,26 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
+func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	opts := pool.AddPoolOptions{Name: "test"}
+	err = pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("pool=test&noRestart=true")
+	request, err := http.NewRequest("PUT", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Matches, "^You must restart the app when changing the pool.\n$")
+}
+
 func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend"}
 	err := s.conn.Apps().Insert(&a)
