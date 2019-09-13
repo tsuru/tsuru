@@ -4726,6 +4726,30 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+}
+
+func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
+	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, plan.Name)
+		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
@@ -4769,6 +4793,45 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
 	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
+	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, plan.Name)
+		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4826,7 +4889,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
 	updateData := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake-hc"}}, Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.NotNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)

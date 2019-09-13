@@ -445,7 +445,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
 			&destroyAppOldProvisioner)
-	} else if app.Plan != oldApp.Plan {
+	} else if app.Plan != oldApp.Plan && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app, &oldApp, args.Writer)
