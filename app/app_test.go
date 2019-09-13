@@ -4565,6 +4565,7 @@ func (s *S) TestUpdatePool(c *check.C) {
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePoolOtherProv(c *check.C) {
@@ -4626,6 +4627,7 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
