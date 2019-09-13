@@ -543,7 +543,11 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(updateData, evt)
+	err = a.Update(app.UpdateAppArgs{
+		UpdateData:    updateData,
+		Writer:        evt,
+		ShouldRestart: false,
+	})
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}

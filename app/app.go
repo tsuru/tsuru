@@ -351,14 +351,20 @@ func (app *App) configureCreateRouters() error {
 	return nil
 }
 
+type UpdateAppArgs struct {
+	UpdateData    App
+	Writer        io.Writer
+	ShouldRestart bool
+}
+
 // Update changes informations of the application.
-func (app *App) Update(updateData App, w io.Writer) (err error) {
-	description := updateData.Description
-	planName := updateData.Plan.Name
-	poolName := updateData.Pool
-	teamOwner := updateData.TeamOwner
-	platform := updateData.Platform
-	tags := processTags(updateData.Tags)
+func (app *App) Update(args UpdateAppArgs) (err error) {
+	description := args.UpdateData.Description
+	planName := args.UpdateData.Plan.Name
+	poolName := args.UpdateData.Pool
+	teamOwner := args.UpdateData.TeamOwner
+	platform := args.UpdateData.Platform
+	tags := processTags(args.UpdateData.Tags)
 	oldApp := *app
 
 	if description != "" {
@@ -414,7 +420,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		app.Platform = p
 		app.PlatformVersion = v
 	}
-	if updateData.UpdatePlatform {
+	if args.UpdateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
 	err = app.validate()
@@ -442,7 +448,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	} else if app.Plan != oldApp.Plan {
 		actions = append(actions, &restartApp)
 	}
-	return action.NewPipeline(actions...).Execute(app, &oldApp, w)
+	return action.NewPipeline(actions...).Execute(app, &oldApp, args.Writer)
 }
 
 func validateVolumes(app *App) error {
