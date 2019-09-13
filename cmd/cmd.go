@@ -622,37 +622,40 @@ func versionString(manager *Manager) string {
 
 func apiVersionString(client *Client) (string, error) {
 	if client == nil {
-		return "Server not found", nil
+		return "", fmt.Errorf("Null Client Exception")
 	}
+
 	url, err := GetURL("/info")
 	if err != nil {
 		return "", err
 	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
+
+	serverVersionPrefix := "Server version: "
 	resp, err := client.Do(req)
 	if err != nil {
+		if isUnauthorized(err) {
+			return fmt.Sprintf("%s Can't retrieve server version, user %v", serverVersionPrefix, err), nil
+		}
 		return "", err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	err = resp.Body.Close()
+	defer resp.Body.Close()
 	if err != nil {
 		return "", err
 	}
 
 	var version map[string]string
-
 	err = json.Unmarshal(body, &version)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Server version: %s\n", version["version"]), nil
+	return fmt.Sprintf("%s%s\n", serverVersionPrefix, version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {

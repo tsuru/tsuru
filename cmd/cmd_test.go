@@ -617,8 +617,8 @@ func (s *S) TestVersion(c *check.C) {
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\nServer not found")
+	c.Assert(err, check.ErrorMatches, "Null Client Exception")
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\n")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
