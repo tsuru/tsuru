@@ -1211,7 +1211,7 @@ func (s *S) TestVersionWithAPI(c *check.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
-		check.Equals, "Client version: 5.0.\nServer version: 1.7.4\n")
+		check.Equals, "Client version: 5.0.\nServer version: 1.7.4.\n")
 }
 
 func (s *S) TestVersionWithoutEnvVar(c *check.C) {
