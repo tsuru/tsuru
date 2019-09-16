@@ -622,7 +622,7 @@ func versionString(manager *Manager) string {
 
 func apiVersionString(client *Client) (string, error) {
 	if client == nil {
-		return "", fmt.Errorf("Null Client Exception")
+		return "", fmt.Errorf("client cannot be nil")
 	}
 
 	url, err := GetURL("/info")
@@ -635,13 +635,10 @@ func apiVersionString(client *Client) (string, error) {
 		return "", err
 	}
 
-	serverVersionPrefix := "Server version: "
 	resp, err := client.Do(req)
 	if err != nil {
-		if isUnauthorized(err) {
-			return fmt.Sprintf("%s Can't retrieve server version, user %v", serverVersionPrefix, err), nil
-		}
-		return "", err
+		// if we return the error, stdout won't flush until the prompt
+		return fmt.Sprintf("Unable to retrieve server version: %v", err), nil
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -655,7 +652,7 @@ func apiVersionString(client *Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s%s\n", serverVersionPrefix, version["version"]), nil
+	return fmt.Sprintf("Server version: %s\n", version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {

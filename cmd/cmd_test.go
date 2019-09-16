@@ -617,12 +617,12 @@ func (s *S) TestVersion(c *check.C) {
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
-	c.Assert(err, check.ErrorMatches, "Null Client Exception")
+	c.Assert(err, check.ErrorMatches, "client cannot be nil")
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\n")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
-	expected := "Client version: 1.0.\n"
+	expected := "Client version: 1.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down."
 	globalManager.Run([]string{"--version"})
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
@@ -1229,7 +1229,9 @@ func (s *S) TestVersionWithoutEnvVar(c *check.C) {
 
 	client := NewClient(ts.Client(), &context, mngr)
 	err := command.Run(&context, client)
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down.")
 }
 
 func (s *S) TestVersionAPIInvalidURL(c *check.C) {
@@ -1247,9 +1249,11 @@ func (s *S) TestVersionAPIInvalidURL(c *check.C) {
 
 	client := NewClient(&http.Client{}, &context, mngr)
 
-	ts.URL = "faketsuru.io"
+	ts.URL = "notvalid.test"
 	os.Setenv("TSURU_TARGET", ts.URL)
 	defer os.Unsetenv("TSURU_TARGET")
 	err := command.Run(&context, client)
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (notvalid.test), it's probably down.")
 }
