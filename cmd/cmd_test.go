@@ -1200,7 +1200,6 @@ func (s *S) TestVersionWithAPI(c *check.C) {
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// Send response to be tested
 		rw.Write([]byte(`{"version":"1.7.4"}`))
 	}))
 	defer ts.Close()
@@ -1224,7 +1223,6 @@ func (s *S) TestVersionWithoutEnvVar(c *check.C) {
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// Send response to be tested
 		rw.Write([]byte(`{"version":"1.7.4"}`))
 	}))
 	defer ts.Close()
@@ -1241,7 +1239,6 @@ func (s *S) TestVersionAPIInvalidURL(c *check.C) {
 	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
 	mngr.e = &exiter
-	c.Assert(exiter.value(), check.Equals, 0)
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 
@@ -1251,6 +1248,7 @@ func (s *S) TestVersionAPIInvalidURL(c *check.C) {
 	os.Setenv("TSURU_TARGET", URL)
 	defer os.Unsetenv("TSURU_TARGET")
 	err := command.Run(&context, client)
+	c.Assert(exiter.value(), check.Equals, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
 		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (notvalid.test), it's probably down.")

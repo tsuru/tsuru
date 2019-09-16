@@ -642,7 +642,6 @@ func apiVersionString(client *Client) (string, error) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
 	if err != nil {
 		return "", err
 	}
@@ -652,7 +651,9 @@ func apiVersionString(client *Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Server version: %s\n", version["version"]), nil
+
+	resp.Body.Close()
+	return fmt.Sprintf("Server version: %s.\n", version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {
