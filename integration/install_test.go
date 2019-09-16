@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -390,6 +391,9 @@ func poolAdd() ExecFlow {
 				}
 				return true
 			})
+			if noPoolOnKubeMasters, _ := strconv.ParseBool(env.Get("no_pool_on_kube_masters")); noPoolOnKubeMasters {
+				nodeIPs = nil
+			}
 			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 2 minutes: %v - all nodes: %v", res, T("node-list").Run(env)))
 			for _, ip := range nodeIPs {
 				res = T("node-update", ip, "pool="+poolName).Run(env)
