@@ -1203,6 +1203,7 @@ func (s *S) TestVersionWithAPI(c *check.C) {
 		// Send response to be tested
 		rw.Write([]byte(`{"version":"1.7.4"}`))
 	}))
+	defer ts.Close()
 
 	client := NewClient(&http.Client{}, &context, mngr)
 
@@ -1226,6 +1227,7 @@ func (s *S) TestVersionWithoutEnvVar(c *check.C) {
 		// Send response to be tested
 		rw.Write([]byte(`{"version":"1.7.4"}`))
 	}))
+	defer ts.Close()
 
 	client := NewClient(ts.Client(), &context, mngr)
 	err := command.Run(&context, client)
@@ -1239,18 +1241,14 @@ func (s *S) TestVersionAPIInvalidURL(c *check.C) {
 	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
 	mngr.e = &exiter
+	c.Assert(exiter.value(), check.Equals, 0)
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// Send response to be tested
-		rw.Write([]byte(`{"version":"1.7.4"}`))
-	}))
-
 	client := NewClient(&http.Client{}, &context, mngr)
 
-	ts.URL = "notvalid.test"
-	os.Setenv("TSURU_TARGET", ts.URL)
+	URL := "notvalid.test"
+	os.Setenv("TSURU_TARGET", URL)
 	defer os.Unsetenv("TSURU_TARGET")
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
