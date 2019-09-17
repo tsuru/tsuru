@@ -187,7 +187,7 @@ func RunServer(dry bool) http.Handler {
 	if disableIndex, _ := config.GetBool("disable-index-page"); !disableIndex {
 		m.Add("1.0", "Get", "/", Handler(index))
 	}
-	m.Add("1.0", "Get", "/info", Handler(info))
+	m.Add("1.0", "Get", "/info", AuthorizationRequiredHandler(info))
 
 	m.Add("1.0", "Get", "/services/instances", AuthorizationRequiredHandler(serviceInstances))
 	m.Add("1.0", "Get", "/services/{service}/instances/{instance}", AuthorizationRequiredHandler(serviceInstance))

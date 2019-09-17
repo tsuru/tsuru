@@ -16,6 +16,7 @@ import (
 func (s *S) TestInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/info", nil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

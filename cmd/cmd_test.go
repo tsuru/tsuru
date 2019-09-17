@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"syscall"
@@ -131,7 +132,7 @@ func (s *S) TestImplicitTopicsHelp(c *check.C) {
 	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 The following commands are available in the "foo" topic:
 
@@ -358,7 +359,7 @@ func (s *S) TestRunCommandThatDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -377,7 +378,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestHelpWithTopics(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -403,7 +404,7 @@ Use glb help <topicname> to get more information about a topic.
 }
 
 func (s *S) TestHelpFromTopic(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Targets
 
@@ -435,7 +436,7 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestRunWithoutArgsShouldRunHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -450,7 +451,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestDashDashHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb command [args]
 
@@ -465,7 +466,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestRunCommandWithDashHelp(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -478,7 +479,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestRunCommandWithDashH(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -491,7 +492,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -504,7 +505,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestDashDashHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -531,7 +532,7 @@ func (s *S) TestDuplicateHFlag(c *check.C) {
 }
 
 func (s *S) TestHelpFlaggedCommand(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb with-flags
 
@@ -549,7 +550,7 @@ Flags:
 }
 
 func (s *S) TestHelpFlaggedMultilineCommand(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: glb with-flags
 
@@ -568,7 +569,7 @@ Flags:
 }
 
 func (s *S) TestHelpDeprecatedCmd(c *check.C) {
-	expectedStdout := `glb version 1.0.
+	expectedStdout := `Client version: 1.0.
 
 Usage: glb foo
 
@@ -593,7 +594,7 @@ Foo do anything or nothing.
 func (s *S) TestHelpDeprecatedCmdWritesWarningFirst(c *check.C) {
 	expected := `WARNING: "bar" is deprecated. Showing help for "foo" instead.
 
-glb version 1.0.
+Client version: 1.0.
 
 Usage: glb foo
 
@@ -616,12 +617,12 @@ func (s *S) TestVersion(c *check.C) {
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\n")
+	c.Assert(err, check.ErrorMatches, "client cannot be nil")
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\n")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
-	expected := "glb version 1.0.\n"
+	expected := "Client version: 1.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down."
 	globalManager.Run([]string{"--version"})
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
@@ -653,7 +654,7 @@ func (cmd *ArgCmd) Run(ctx *Context, client *Client) error {
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 ERROR: wrong number of arguments.
 
@@ -671,7 +672,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestRunWithTooManyArguments(c *check.C) {
-	expected := `glb version 1.0.
+	expected := `Client version: 1.0.
 
 ERROR: wrong number of arguments.
 
@@ -689,7 +690,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *check.C) {
-	expected := `tsuru version 1.0.
+	expected := `Client version: 1.0.
 
 Usage: tsuru foo
 
@@ -1188,4 +1189,67 @@ func (c *FailCommandCustom) Info() *Info {
 
 func (c *FailCommandCustom) Run(context *Context, client *Client) error {
 	return c.err
+}
+
+func (s *S) TestVersionWithAPI(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte(`{"version":"1.7.4"}`))
+	}))
+	defer ts.Close()
+
+	client := NewClient(&http.Client{}, &context, mngr)
+
+	os.Setenv("TSURU_TARGET", ts.URL)
+	defer os.Unsetenv("TSURU_TARGET")
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "Client version: 5.0.\nServer version: 1.7.4.\n")
+}
+
+func (s *S) TestVersionWithoutEnvVar(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte(`{"version":"1.7.4"}`))
+	}))
+	defer ts.Close()
+
+	client := NewClient(ts.Client(), &context, mngr)
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down.")
+}
+
+func (s *S) TestVersionAPIInvalidURL(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
+
+	client := NewClient(&http.Client{}, &context, mngr)
+
+	URL := "notvalid.test"
+	os.Setenv("TSURU_TARGET", URL)
+	defer os.Unsetenv("TSURU_TARGET")
+	err := command.Run(&context, client)
+	c.Assert(exiter.value(), check.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
+		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (notvalid.test), it's probably down.")
 }

@@ -6,8 +6,11 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -614,11 +617,54 @@ func versionString(manager *Manager) string {
 	if GitHash != "" {
 		suffix = fmt.Sprintf(" hash %s\n", GitHash)
 	}
-	return fmt.Sprintf("%s version %s.%s", manager.name, manager.version, suffix)
+	return fmt.Sprintf("Client version: %s.%s", manager.version, suffix)
+}
+
+func apiVersionString(client *Client) (string, error) {
+	if client == nil {
+		return "", fmt.Errorf("client cannot be nil")
+	}
+
+	url, err := GetURL("/info")
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// if we return the error, stdout won't flush until the prompt
+		return fmt.Sprintf("Unable to retrieve server version: %v", err), nil
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var version map[string]string
+	err = json.Unmarshal(body, &version)
+	if err != nil {
+		return "", err
+	}
+
+	resp.Body.Close()
+	return fmt.Sprintf("Server version: %s.\n", version["version"]), nil
 }
 
 func (c *version) Run(context *Context, client *Client) error {
 	fmt.Fprint(context.Stdout, versionString(c.manager))
+
+	apiVersion, err := apiVersionString(client)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(context.Stdout, apiVersion)
+
 	return nil
 }
 
