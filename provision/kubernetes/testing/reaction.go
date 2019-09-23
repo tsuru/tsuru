@@ -127,8 +127,6 @@ type StreamResult struct {
 }
 
 func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
-	srv, wg := s.CreateDeployReadyServer(c)
-	s.MockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
@@ -139,6 +137,8 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
+	srv, wg := s.CreateDeployReadyServer(c)
+	s.MockfakeNodes(c, srv.URL)
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
@@ -156,13 +156,13 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 }
 
 func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
-	srv, wg := s.CreateDeployReadyServer(c)
-	s.MockfakeNodes(c, srv.URL)
 	podReaction, podReady := s.buildPodReaction(c)
 	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
+	srv, wg := s.CreateDeployReadyServer(c)
+	s.MockfakeNodes(c, srv.URL)
 	return func() {
 			rollbackDeployment()
 			podReady.Wait()
