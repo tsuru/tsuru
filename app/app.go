@@ -2393,8 +2393,19 @@ func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
 		return routerTypes.HealthcheckData{}, err
 	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
-	if err != nil || yamlData.Healthcheck == nil {
+	if err != nil {
 		return routerTypes.HealthcheckData{}, err
+	}
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return routerTypes.HealthcheckData{}, err
+	}
+	if hcProv, ok := prov.(provision.HCProvisioner); ok {
+		if hcProv.HandlesHC() {
+			return routerTypes.HealthcheckData{
+				TCPOnly: true,
+			}, nil
+		}
 	}
 	return yamlData.ToRouterHC(), nil
 }

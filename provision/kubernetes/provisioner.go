@@ -73,6 +73,7 @@ var (
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
+	_ provision.HCProvisioner            = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
@@ -1521,4 +1522,8 @@ func isDefaultPort(portsConfig []provTypes.TsuruYamlKubernetesProcessPortConfig)
 	return portsConfig[0].Protocol == defaultPort.Protocol &&
 		portsConfig[0].Port == defaultPort.Port &&
 		portsConfig[0].TargetPort == defaultPort.TargetPort
+}
+
+func (p *kubernetesProvisioner) HandlesHC() bool {
+	return true
 }

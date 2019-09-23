@@ -491,6 +491,12 @@ func (r *galebRouter) SetHealthcheck(name string, data routerTypes.HealthcheckDa
 	if err != nil {
 		return err
 	}
+	poolName := r.poolName(backendName)
+	if data.TCPOnly {
+		return r.client.UpdatePoolProperties(poolName, galebClient.BackendPoolHealthCheck{
+			HcTCPOnly: true,
+		})
+	}
 	if data.Path == "" {
 		data.Path = "/"
 	}
@@ -501,5 +507,5 @@ func (r *galebRouter) SetHealthcheck(name string, data routerTypes.HealthcheckDa
 	if data.Status != 0 {
 		poolHealthCheck.HcHTTPStatusCode = fmt.Sprintf("%d", data.Status)
 	}
-	return r.client.UpdatePoolProperties(r.poolName(backendName), poolHealthCheck)
+	return r.client.UpdatePoolProperties(poolName, poolHealthCheck)
 }

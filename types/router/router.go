@@ -5,7 +5,8 @@
 package router
 
 type HealthcheckData struct {
-	Path   string
-	Status int
-	Body   string
+	Path    string
+	Status  int
+	Body    string
+	TCPOnly bool
 }
