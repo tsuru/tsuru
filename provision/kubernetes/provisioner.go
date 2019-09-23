@@ -1471,7 +1471,7 @@ func normalizeConfigs(img image.ImageMetadata, yamlData provTypes.TsuruYamlData)
 	return config
 }
 
-func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bind.EnvVar {
+func envsForApp(a provision.App, process, imageName string, isDeploy bool) []bind.EnvVar {
 	envs := provision.EnvsForApp(a, process, isDeploy)
 	if isDeploy {
 		return envs

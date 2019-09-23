@@ -2454,14 +2454,15 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
 		"processes": map[string]interface{}{
-			"web": "python proc1.py",
+			"web":   "python proc1.py",
+			"other": "my proc",
 		},
 	})
 	c.Assert(err, check.IsNil)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "web", "myimg:v2", false)
+	envs := envsForApp(fa, "web", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "web"},
@@ -2469,6 +2470,16 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_web", Value: "8888"},
+	})
+
+	envs = envsForApp(fa, "other", "myimg:v2", false)
+	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
+		{Name: "e1", Value: "v1"},
+		{Name: "TSURU_PROCESSNAME", Value: "other"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_other", Value: "8888"},
 	})
 }
 
@@ -2527,7 +2538,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "proc1", "myimg:v2", false)
+	envs := envsForApp(fa, "proc1", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
@@ -2535,7 +2546,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc1", Value: "8080,9000"},
 	})
 
-	envs = EnvsForApp(fa, "proc2", "myimg:v2", false)
+	envs = envsForApp(fa, "proc2", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
@@ -2543,7 +2554,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc2", Value: "8000"},
 	})
 
-	envs = EnvsForApp(fa, "proc3", "myimg:v2", false)
+	envs = envsForApp(fa, "proc3", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
@@ -2551,7 +2562,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc3", Value: "8080"},
 	})
 
-	envs = EnvsForApp(fa, "proc4", "myimg:v2", false)
+	envs = envsForApp(fa, "proc4", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
@@ -2561,14 +2572,14 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc4", Value: "8888"},
 	})
 
-	envs = EnvsForApp(fa, "proc5", "myimg:v2", false)
+	envs = envsForApp(fa, "proc5", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
 		{Name: "TSURU_HOST", Value: ""},
 	})
 
-	envs = EnvsForApp(fa, "proc6", "myimg:v2", false)
+	envs = envsForApp(fa, "proc6", "myimg:v2", false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},

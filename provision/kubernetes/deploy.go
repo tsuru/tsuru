@@ -393,10 +393,14 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error) {
+func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port provTypes.TsuruYamlKubernetesProcessPortConfig, isWebProcess bool) (hcResult, error) {
 	var result hcResult
-	if hc == nil || hc.Path == "" {
+	if !isWebProcess {
+		//TODO: add support to multiple HCs
 		return result, nil
+	}
+	if hc == nil || hc.Path == "" {
+		return defaultHC(port), nil
 	}
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
@@ -430,7 +434,7 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		Handler: apiv1.Handler{
 			HTTPGet: &apiv1.HTTPGetAction{
 				Path:        hc.Path,
-				Port:        intstr.FromInt(port),
+				Port:        intstr.FromInt(port.TargetPort),
 				Scheme:      apiv1.URIScheme(hc.Scheme),
 				HTTPHeaders: headers,
 			},
@@ -441,6 +445,23 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		result.liveness = probe
 	}
 	return result, nil
+}
+
+func defaultHC(port provTypes.TsuruYamlKubernetesProcessPortConfig) hcResult {
+	var result hcResult
+
+	if port.Protocol != "" && port.Protocol != string(apiv1.ProtocolTCP) {
+		return result
+	}
+
+	result.readiness = &apiv1.Probe{
+		Handler: apiv1.Handler{
+			TCPSocket: &apiv1.TCPSocketAction{
+				Port: intstr.FromInt(port.TargetPort),
+			},
+		},
+	}
+	return result
 }
 
 func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
@@ -500,7 +521,7 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process string, isWebProcess bool, imageName string, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -513,10 +534,6 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
-	webProcessName, err := image.GetImageWebProcessName(imageName)
-	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
-	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
@@ -526,9 +543,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 		return nil, nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
-	if process == webProcessName && len(processPorts) > 0 {
-		//TODO: add support to multiple HCs
-		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
+	if len(processPorts) > 0 {
+		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0], isWebProcess)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -661,7 +677,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 }
 
 func appEnvs(a provision.App, process, imageName string, isDeploy bool) []apiv1.EnvVar {
-	appEnvs := EnvsForApp(a, process, imageName, isDeploy)
+	appEnvs := envsForApp(a, process, imageName, isDeploy)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
 		envs[i] = apiv1.EnvVar{Name: envData.Name, Value: envData.Value}
@@ -953,7 +969,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, img, replicas, labels)
+	webProcessName, err := image.GetImageWebProcessName(img)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	isWebProcess := process == webProcessName
+	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, isWebProcess, img, replicas, labels)
 	if err != nil {
 		return err
 	}
@@ -1134,13 +1155,6 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-func getTargetPortsForImage(imageData image.ImageMetadata) []string {
-	if len(imageData.ExposedPorts) > 0 {
-		return imageData.ExposedPorts
-	}
-	return []string{provision.WebProcessDefaultPort() + "/tcp"}
-}
-
 func extractPortNumberAndProtocol(port string) (int, string, error) {
 	parts := strings.SplitN(port, "/", 2)
 	if len(parts) != 2 {
@@ -1150,43 +1164,63 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 	return portInt, parts[1], err
 }
 
-func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+func getPortConfigForProcess(tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, bool, error) {
+	if tsuruYamlData.Kubernetes == nil {
+		return nil, false, nil
+	}
 	portConfigFound := false
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
-	if tsuruYamlData.Kubernetes != nil {
-		for _, group := range tsuruYamlData.Kubernetes.Groups {
-			for podName, podConfig := range group {
-				if podName == process {
-					if portConfigFound {
-						return nil, fmt.Errorf("duplicated process name: %s", podName)
-					}
-					portConfigFound = true
-					ports = podConfig.Ports
-					for i := range ports {
-						if len(ports[i].Protocol) == 0 {
-							ports[i].Protocol = string(apiv1.ProtocolTCP)
-						} else {
-							ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
-						}
-						if len(ports[i].Name) == 0 {
-							prefix := defaultHttpPortName
-							if ports[i].Protocol == string(apiv1.ProtocolUDP) {
-								prefix = defaultUdpPortName
-							}
-							ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
-						}
-						if ports[i].TargetPort > 0 && ports[i].Port == 0 {
-							ports[i].Port = ports[i].TargetPort
-						} else if ports[i].Port > 0 && ports[i].TargetPort == 0 {
-							ports[i].TargetPort = ports[i].Port
-						}
-					}
-					break
-				}
+	for _, group := range tsuruYamlData.Kubernetes.Groups {
+		for podName, podConfig := range group {
+			if podName != process {
+				continue
 			}
+			if portConfigFound {
+				return nil, true, fmt.Errorf("duplicated process name: %s", podName)
+			}
+			portConfigFound = true
+			ports = podConfig.Ports
+			break
 		}
 	}
-	if portConfigFound {
+
+	for i := range ports {
+		if len(ports[i].Protocol) == 0 {
+			ports[i].Protocol = string(apiv1.ProtocolTCP)
+		} else {
+			ports[i].Protocol = strings.ToUpper(ports[i].Protocol)
+		}
+		if len(ports[i].Name) == 0 {
+			prefix := defaultHttpPortName
+			if ports[i].Protocol == string(apiv1.ProtocolUDP) {
+				prefix = defaultUdpPortName
+			}
+			ports[i].Name = fmt.Sprintf("%s-%d", prefix, i+1)
+		}
+		if ports[i].TargetPort > 0 && ports[i].Port == 0 {
+			ports[i].Port = ports[i].TargetPort
+		} else if ports[i].Port > 0 && ports[i].TargetPort == 0 {
+			ports[i].TargetPort = ports[i].Port
+		}
+	}
+
+	return ports, portConfigFound, nil
+}
+
+func getTargetPortsForImage(imageData image.ImageMetadata) []string {
+	if len(imageData.ExposedPorts) > 0 {
+		return imageData.ExposedPorts
+	}
+	return []string{provision.WebProcessDefaultPort() + "/tcp"}
+}
+
+func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+	ports, found, err := getPortConfigForProcess(tsuruYamlData, process)
+	if err != nil {
+		return nil, err
+	}
+
+	if found {
 		return ports, nil
 	}
 
@@ -1210,9 +1244,6 @@ func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTy
 			ports[i].Port = portInt
 		}
 		ports[i].TargetPort = portInt
-	}
-	if len(ports) == 0 {
-		ports = append(ports, defaultPort)
 	}
 	return ports, nil
 }

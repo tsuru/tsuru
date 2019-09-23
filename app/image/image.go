@@ -227,18 +227,22 @@ func GetImageWebProcessName(imageName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return getImageWebProcessNameFromMetaData(data), nil
+}
+
+func getImageWebProcessNameFromMetaData(data ImageMetadata) string {
 	if len(data.Processes) == 0 {
-		return "", nil
+		return ""
 	}
 	var processes []string
 	for name := range data.Processes {
 		if name == "web" || len(data.Processes) == 1 {
-			return name, nil
+			return name
 		}
 		processes = append(processes, name)
 	}
 	sort.Strings(processes)
-	return processes[0], nil
+	return processes[0]
 }
 
 func AllAppProcesses(appName string) ([]string, error) {
