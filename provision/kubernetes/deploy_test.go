@@ -745,76 +745,8 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		{},
 		{
 			hc: provTypes.TsuruYamlHealthcheck{
-				Path:           "/hc",
-				TimeoutSeconds: 10,
-			},
-			expectedReadiness: &apiv1.Probe{
-				PeriodSeconds:    3,
-				FailureThreshold: 0,
-				TimeoutSeconds:   10,
-				Handler: apiv1.Handler{
-					Exec: &apiv1.ExecAction{
-						Command: []string{
-							"sh", "-c",
-							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "GET"  -o /dev/null http://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
-						},
-					},
-				},
-			},
-		},
-		{
-			hc: provTypes.TsuruYamlHealthcheck{
-				Path:            "/hc",
-				Scheme:          "https",
-				AllowedFailures: 2,
-				Method:          "POST",
-			},
-			expectedReadiness: &apiv1.Probe{
-				PeriodSeconds:    3,
-				FailureThreshold: 2,
-				TimeoutSeconds:   60,
-				Handler: apiv1.Handler{
-					Exec: &apiv1.ExecAction{
-						Command: []string{
-							"sh", "-c",
-							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST"  -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
-						},
-					},
-				},
-			},
-		},
-		{
-			hc: provTypes.TsuruYamlHealthcheck{
-				Path:            "/hc",
-				Scheme:          "https",
-				AllowedFailures: 2,
-				Method:          "POST",
-				Headers: map[string]string{
-					"Host":                      "test.com",
-					"X-Custom-Header":           "test",
-					"X-Injection\"& echo teste": "test",
-				},
-			},
-			expectedReadiness: &apiv1.Probe{
-				PeriodSeconds:    3,
-				FailureThreshold: 2,
-				TimeoutSeconds:   60,
-				Handler: apiv1.Handler{
-					Exec: &apiv1.ExecAction{
-						Command: []string{
-							"sh", "-c",
-							`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X "POST" -H "Host: test.com" -H "X-Custom-Header: test" -H "X-Injection\"& echo teste: test" -o /dev/null https://localhost:8888/hc && touch /tmp/onetimeprobesuccessful; fi`,
-						},
-					},
-				},
-			},
-		},
-
-		{
-			hc: provTypes.TsuruYamlHealthcheck{
-				Path:        "/hc",
-				Scheme:      "https",
-				UseInRouter: true,
+				Path:   "/hc",
+				Scheme: "https",
 			},
 			expectedReadiness: &apiv1.Probe{
 				PeriodSeconds:    10,
@@ -834,7 +766,6 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
-				UseInRouter:     true,
 				IntervalSeconds: 9,
 				TimeoutSeconds:  2,
 				AllowedFailures: 4,
@@ -857,7 +788,6 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
-				UseInRouter:     true,
 				IntervalSeconds: 9,
 				TimeoutSeconds:  2,
 				AllowedFailures: 4,
@@ -898,7 +828,6 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 					"Host":            "test.com",
 					"X-Custom-Header": "test",
 				},
-				UseInRouter:     true,
 				IntervalSeconds: 9,
 				TimeoutSeconds:  2,
 				AllowedFailures: 4,
@@ -1456,9 +1385,8 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 			"p2":  "cmd2",
 		},
 		"healthcheck": provTypes.TsuruYamlHealthcheck{
-			Path:        "/hc",
-			Method:      "POST",
-			UseInRouter: true,
+			Path:   "/hc",
+			Method: "POST",
 		},
 	})
 	c.Assert(err, check.IsNil)
