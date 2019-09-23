@@ -490,3 +490,11 @@ func subMap(m map[string]string, keys ...string) map[string]string {
 	}
 	return result
 }
+
+func IsServiceLabelSet(prefix string) *LabelSet {
+	labels := map[string]string{
+		labelIsTsuru:   strconv.FormatBool(true),
+		labelIsService: strconv.FormatBool(true),
+	}
+	return &LabelSet{Labels: labels, Prefix: prefix}
+}

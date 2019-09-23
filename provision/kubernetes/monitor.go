@@ -13,9 +13,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
@@ -40,8 +43,10 @@ type clusterController struct {
 	serviceInformer v1informers.ServiceInformer
 	nodeInformer    v1informers.NodeInformer
 	stopCh          chan struct{}
-	leader          int32
 	cancel          context.CancelFunc
+	resourceVers    map[types.NamespacedName]string
+	leader          int32
+	wg              sync.WaitGroup
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -59,17 +64,19 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &clusterController{
-		cluster: cluster,
-		stopCh:  make(chan struct{}),
-		cancel:  cancel,
+		cluster:      cluster,
+		stopCh:       make(chan struct{}),
+		cancel:       cancel,
+		resourceVers: make(map[types.NamespacedName]string),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
-		cancel()
+		c.stop()
 		return nil, err
 	}
 	err = c.start()
 	if err != nil {
+		c.stop()
 		return nil, err
 	}
 	p.clusterControllers[cluster.Name] = c
@@ -88,6 +95,7 @@ func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
 func (c *clusterController) stop() {
 	close(c.stopCh)
 	c.cancel()
+	c.wg.Wait()
 }
 
 func (c *clusterController) isLeader() bool {
@@ -136,19 +144,25 @@ func (c *clusterController) onAdd(obj interface{}) error {
 	return nil
 }
 
-func (c *clusterController) onUpdate(oldObj, newObj interface{}) error {
-	newPod := oldObj.(*apiv1.Pod)
-	oldPod := newObj.(*apiv1.Pod)
-	if newPod.ResourceVersion == oldPod.ResourceVersion {
+func (c *clusterController) onUpdate(_, newObj interface{}) error {
+	newPod := newObj.(*apiv1.Pod)
+	name := types.NamespacedName{Namespace: newPod.Namespace, Name: newPod.Name}
+	// We keep our own track of handled resource versions and ignore oldObj
+	// because of leader election. It's possible for the message containing
+	// different resource versions to arrive while the current instance was not
+	// a leader yet. We only want to consider a pod version as handled if it
+	// arrived while we were leader.
+	if c.resourceVers[name] == newPod.ResourceVersion {
 		return nil
 	}
-	c.addPod(newPod)
+	c.resourceVers[name] = newPod.ResourceVersion
+	c.enqueuePod(newPod)
 	return nil
 }
 
 func (c *clusterController) onDelete(obj interface{}) error {
 	if pod, ok := obj.(*apiv1.Pod); ok {
-		c.addPod(pod)
+		c.enqueuePodDelete(pod)
 		return nil
 	}
 	tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -159,11 +173,17 @@ func (c *clusterController) onDelete(obj interface{}) error {
 	if !ok {
 		return errors.Errorf("tombstone contained object that is not a Pod: %#v", obj)
 	}
-	c.addPod(pod)
+	c.enqueuePodDelete(pod)
 	return nil
 }
 
-func (c *clusterController) addPod(pod *apiv1.Pod) {
+func (c *clusterController) enqueuePodDelete(pod *apiv1.Pod) {
+	name := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
+	delete(c.resourceVers, name)
+	c.enqueuePod(pod)
+}
+
+func (c *clusterController) enqueuePod(pod *apiv1.Pod) {
 	labelSet := labelSetFromMeta(&pod.ObjectMeta)
 	appName := labelSet.AppName()
 	if appName == "" {
@@ -314,7 +334,9 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	c.wg.Add(1)
 	go func() {
+		defer c.wg.Done()
 		for {
 			le.Run(ctx)
 			select {
@@ -340,6 +362,8 @@ var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFacto
 			timeoutSec := int64(timeout.Seconds())
 			opts.TimeoutSeconds = &timeoutSec
 		}
+		ls := provision.IsServiceLabelSet(tsuruLabelPrefix)
+		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
 	})
 	return informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc), nil
 }
