@@ -411,40 +411,17 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 	if hc.TimeoutSeconds == 0 {
 		hc.TimeoutSeconds = 60
 	}
+	if hc.AllowedFailures == 0 {
+		hc.AllowedFailures = 3
+	}
+	if hc.Method != http.MethodGet {
+		return result, errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+	}
 	headers := []apiv1.HTTPHeader{}
 	for header, value := range hc.Headers {
 		headers = append(headers, apiv1.HTTPHeader{Name: header, Value: value})
 	}
 	sort.Slice(headers, func(i, j int) bool { return headers[i].Name < headers[j].Name })
-	if !hc.UseInRouter {
-		url := fmt.Sprintf("%s://localhost:%d/%s", hc.Scheme, port, strings.TrimPrefix(hc.Path, "/"))
-		headersCurl := []string{}
-		for _, header := range headers {
-			s := fmt.Sprintf("%s: %s", header.Name, header.Value)
-			headersCurl = append(headersCurl, fmt.Sprintf("-H %q", s))
-		}
-		result.readiness = &apiv1.Probe{
-			FailureThreshold: int32(hc.AllowedFailures),
-			PeriodSeconds:    int32(3),
-			TimeoutSeconds:   int32(hc.TimeoutSeconds),
-			Handler: apiv1.Handler{
-				Exec: &apiv1.ExecAction{
-					Command: []string{
-						"sh", "-c",
-						fmt.Sprintf(`if [ ! -f /tmp/onetimeprobesuccessful ]; then curl -ksSf -X %[1]q %[2]s -o /dev/null %[3]s && touch /tmp/onetimeprobesuccessful; fi`,
-							hc.Method, strings.Join(headersCurl, " "), url),
-					},
-				},
-			},
-		}
-		return result, nil
-	}
-	if hc.Method != http.MethodGet {
-		return result, errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
-	}
-	if hc.AllowedFailures == 0 {
-		hc.AllowedFailures = 3
-	}
 	hc.Scheme = strings.ToUpper(hc.Scheme)
 	probe := &apiv1.Probe{
 		FailureThreshold: int32(hc.AllowedFailures),
