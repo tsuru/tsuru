@@ -43,6 +43,7 @@ type BackendPoolHealthCheck struct {
 	HcPath           string `json:"hc_path,omitempty"`
 	HcBody           string `json:"hc_body,omitempty"`
 	HcHTTPStatusCode string `json:"hc_http_status_code,omitempty"`
+	HcTCPOnly        bool   `json:"hc_tcp_only,omitempty"`
 }
 
 type Pool struct {

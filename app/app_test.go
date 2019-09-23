@@ -48,6 +48,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
 )
@@ -5278,5 +5279,42 @@ func (s *S) TestFillInternalAddresses(c *check.C) {
 		Domain:   "test-logs.fake-cluster.local",
 		Protocol: "UDP",
 		Port:     12201,
+	})
+}
+
+func (s *S) TestGetHealthcheckData(c *check.C) {
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	hcData, err := a.GetHealthcheckData()
+	c.Assert(err, check.IsNil)
+	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
+		Path: "/",
+	})
+}
+
+type hcProv struct {
+	provisiontest.FakeProvisioner
+}
+
+func (p *hcProv) HandlesHC() bool {
+	return true
+}
+
+func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "hcprov"
+	provision.Register("hcprov", func() (provision.Provisioner, error) {
+		return &hcProv{}, nil
+	})
+	defer provision.Unregister("hcprov")
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	hcData, err := a.GetHealthcheckData()
+	c.Assert(err, check.IsNil)
+	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
+		TCPOnly: true,
 	})
 }

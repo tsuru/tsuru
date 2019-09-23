@@ -415,6 +415,13 @@ type UnitStatusProvisioner interface {
 	SetUnitStatus(Unit, Status) error
 }
 
+// HCProvisioner is a provisioner that may handle loadbalancing healthchecks.
+type HCProvisioner interface {
+	// HandlesHC returns true if the provisioner will handle healthchecking
+	// instead of the router.
+	HandlesHC() bool
+}
+
 type AddNodeOptions struct {
 	IaaSID     string
 	Address    string

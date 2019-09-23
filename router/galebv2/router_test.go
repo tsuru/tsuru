@@ -21,8 +21,10 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/router"
 	galebClient "github.com/tsuru/tsuru/router/galebv2/client"
 	"github.com/tsuru/tsuru/router/routertest"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -259,6 +261,7 @@ func (s *fakeGalebServer) updatePool(w http.ResponseWriter, r *http.Request) {
 	existingPool.HcBody = pool.HcBody
 	existingPool.HcHTTPStatusCode = pool.HcHTTPStatusCode
 	existingPool.HcPath = pool.HcPath
+	existingPool.HcTCPOnly = pool.HcTCPOnly
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -536,4 +539,42 @@ func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {
 	err = gRouter.AddRoutes("backend1", addrs)
 	c.Assert(err, check.ErrorMatches, `(?s)POST /target: invalid response code: 500: error for http://10.10.10.5:8080.*`)
 	c.Check(fakeServer.targets["http://10.10.10.5:8080"], check.IsNil)
+}
+
+func (s *S) TestSetHealthcheck(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.IsNil)
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck("backend1", routerTypes.HealthcheckData{
+		Path: "/",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(fakeServer.pools["1"], check.FitsTypeOf, &galebClient.Pool{})
+	c.Check(fakeServer.pools["1"].(*galebClient.Pool).HcTCPOnly, check.Equals, false)
+	c.Check(fakeServer.pools["1"].(*galebClient.Pool).HcPath, check.Equals, "/")
+}
+
+func (s *S) TestSetHealthcheckTCPOnly(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	c.Assert(err, check.IsNil)
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck("backend1", routerTypes.HealthcheckData{
+		TCPOnly: true,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(fakeServer.pools["1"], check.FitsTypeOf, &galebClient.Pool{})
+	c.Check(fakeServer.pools["1"].(*galebClient.Pool).HcTCPOnly, check.Equals, true)
+	c.Check(fakeServer.pools["1"].(*galebClient.Pool).HcPath, check.Equals, "")
 }
