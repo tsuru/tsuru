@@ -21,6 +21,8 @@ github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 h1:GmKJxiZbNy8VrLxN/UNwmQytQv7dYHQ/xOiGfjOf9Ig=
 github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01/go.mod h1:3SAoF0F5EbcOuBD5WT9nYkbIJieBS84cUQXADbXeBsU=
+github.com/ahmetb/go-linq v3.0.0+incompatible h1:qQkjjOXKrKOTy83X8OpRmnKflXKQIL/mC/gMVVDMhOA=
+github.com/ahmetb/go-linq v3.0.0+incompatible/go.mod h1:PFffvbdbtw+QTB0WKRP0cNht7vnCfnGlEpak/DVg5cY=
 github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f h1:zvClvFQwU++UpIUBGC8YmDlfhUrweEy1R1Fj1gu5iIM=
 github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f/go.mod h1:uL1WgH+h2mgNtvBq0339dVnzXdBETtL2LeUXaIv25UY=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
@@ -39,6 +41,8 @@ github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7 h1:1dPDAaaaEemTa
 github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=
 github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38 h1:szLW82/T7mgZycdlzxu4qVwA9cNiaSNMWlhN0utNdjs=
 github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
+github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081 h1:nERdkUtJ2vbNjbR59fPsKfwztXWaiJUQrJYmYXV7CTg=
+github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081/go.mod h1:B3TZHoY3EjMaI/cEzZDGB2sRv7LVC/BdGvsRU43nllE=
 github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20190725184110-8b6c46d5dadd h1:JmGR1BJeJ4A9jheroTytFgnMspjcHXypa+CdupofI7M=
 github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20190725184110-8b6c46d5dadd/go.mod h1:iAOHGubAx5sEuLsyq/6XhZZOBplIP8n3UDl7pcSKUHQ=
 github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935 h1:5zCYEyUB91XDlstHctPrAoWkD7j+Wfb5FRTppDEZF8k=
@@ -298,8 +302,6 @@ github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446/go.mod h1:uY
 github.com/rogpeppe/go-charset v0.0.0-20180617210344-2471d30d28b4/go.mod h1:qgYeAmZ5ZIpBWTGllZSQnw97Dj+woV0toclVaRGI8pc=
 github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38 h1:sCM/dygb6aUis1zTbLwPVHbq6IzPYlDpBnje41fCzM4=
 github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38/go.mod h1:OjYR6KxoWOe9+dOlXeiCJd4dIbED4Oo8wpS89o0pwOo=
-github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 h1:y8vpp0FfqRunnOezh5NVGD7SnqRHe0lptTp9/Oc2xL0=
-github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471/go.mod h1:yeYR4SlaRZJct6lwNRKR+qd0CocnxxWDE7Vh5dxsn/w=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=

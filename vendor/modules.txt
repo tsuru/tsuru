@@ -424,7 +424,7 @@ github.com/rancher/types/apis/project.cattle.io/v3
 github.com/rancher/types/image
 # github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38
 github.com/sajari/fuzzy
-# github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471
+# github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
 github.com/samalba/dockerclient
 # github.com/satori/go.uuid v1.2.0
 github.com/satori/go.uuid
@@ -749,11 +749,11 @@ k8s.io/apimachinery/pkg/labels
 k8s.io/apimachinery/pkg/runtime/schema
 k8s.io/apimachinery/pkg/runtime/serializer
 k8s.io/apimachinery/pkg/selection
+k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/httpstream/spdy
 k8s.io/apimachinery/pkg/util/intstr
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/pkg/runtime
-k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/httpstream
 k8s.io/apimachinery/pkg/conversion
 k8s.io/apimachinery/pkg/util/json
