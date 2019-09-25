@@ -45,6 +45,7 @@ type clusterController struct {
 	stopCh          chan struct{}
 	cancel          context.CancelFunc
 	resourceVers    map[types.NamespacedName]string
+	startedAt       time.Time
 	leader          int32
 	wg              sync.WaitGroup
 }
@@ -68,6 +69,7 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		stopCh:       make(chan struct{}),
 		cancel:       cancel,
 		resourceVers: make(map[types.NamespacedName]string),
+		startedAt:    time.Now(),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
@@ -94,6 +96,13 @@ func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
 
 func (c *clusterController) stop() {
 	close(c.stopCh)
+	// HACK(cezarsa): ridiculous hack trying to prevent race condition
+	// described in https://github.com/kubernetes/kubernetes/pull/83112. As
+	// soon as it's merged we should remove this. Here we wait at least one
+	// second between starting and stopping the controller. stop() shouldn't be
+	// called too frequently during runtime and it'll be most certainly longer
+	// lived, this mostly affects tests.
+	<-time.After(time.Second - time.Since(c.startedAt))
 	c.cancel()
 	c.wg.Wait()
 }
