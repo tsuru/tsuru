@@ -1171,8 +1171,14 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	source := r.URL.Query().Get("source")
 	unit := r.URL.Query().Get("unit")
-	follow := r.URL.Query().Get("follow") == "1"
+	follow, _ := strconv.ParseBool(r.URL.Query().Get("follow"))
+	invert, _ := strconv.ParseBool(r.URL.Query().Get("invert-filters"))
 	appName := r.URL.Query().Get(":app")
+
+	if invert && follow {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: `Log following with inverted filters are not supported yet.`}
+	}
+
 	filterLog := appTypes.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1190,7 +1196,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			logService = svcInstance.Instance()
 		}
 	}
-	logs, err := a.LastLogs(logService, lines, filterLog, t)
+	logs, err := a.LastLogs(logService, lines, filterLog, invert, t)
 	if err != nil {
 		return err
 	}
