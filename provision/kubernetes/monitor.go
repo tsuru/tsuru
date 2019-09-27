@@ -36,18 +36,19 @@ const (
 )
 
 type clusterController struct {
-	mu              sync.Mutex
-	cluster         *ClusterClient
-	informerFactory informers.SharedInformerFactory
-	podInformer     v1informers.PodInformer
-	serviceInformer v1informers.ServiceInformer
-	nodeInformer    v1informers.NodeInformer
-	stopCh          chan struct{}
-	cancel          context.CancelFunc
-	resourceVers    map[types.NamespacedName]string
-	startedAt       time.Time
-	leader          int32
-	wg              sync.WaitGroup
+	mu                 sync.Mutex
+	cluster            *ClusterClient
+	informerFactory    informers.SharedInformerFactory
+	podInformerFactory informers.SharedInformerFactory
+	podInformer        v1informers.PodInformer
+	serviceInformer    v1informers.ServiceInformer
+	nodeInformer       v1informers.NodeInformer
+	stopCh             chan struct{}
+	cancel             context.CancelFunc
+	resourceVers       map[types.NamespacedName]string
+	startedAt          time.Time
+	leader             int32
+	wg                 sync.WaitGroup
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -251,7 +252,7 @@ func (c *clusterController) getPodInformerWait(wait bool) (v1informers.PodInform
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.podInformer == nil {
-		err := c.withInformerFactory(func(factory informers.SharedInformerFactory) {
+		err := c.withPodInformerFactory(func(factory informers.SharedInformerFactory) {
 			c.podInformer = factory.Core().V1().Pods()
 			c.podInformer.Informer()
 		})
@@ -281,8 +282,27 @@ func (c *clusterController) getFactory() (informers.SharedInformerFactory, error
 		return c.informerFactory, nil
 	}
 	var err error
-	c.informerFactory, err = InformerFactory(c.cluster)
+	c.informerFactory, err = InformerFactory(c.cluster, nil)
 	return c.informerFactory, err
+}
+
+func (c *clusterController) withPodInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
+	factory, err := c.getPodFactory()
+	if err != nil {
+		return err
+	}
+	fn(factory)
+	factory.Start(c.stopCh)
+	return nil
+}
+
+func (c *clusterController) getPodFactory() (informers.SharedInformerFactory, error) {
+	if c.podInformerFactory != nil {
+		return c.podInformerFactory, nil
+	}
+	var err error
+	c.podInformerFactory, err = podInformerFactory(c.cluster)
+	return c.podInformerFactory, err
 }
 
 func contextWithCancelByChannel(ctx context.Context, ch chan struct{}, timeout time.Duration) (context.Context, func()) {
@@ -366,7 +386,14 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	return nil
 }
 
-var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
+func podInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
+	return InformerFactory(client, internalinterfaces.TweakListOptionsFunc(func(opts *metav1.ListOptions) {
+		ls := provision.IsServiceLabelSet(tsuruLabelPrefix)
+		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
+	}))
+}
+
+var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
 	timeout := client.restConfig.Timeout
 	restConfig := *client.restConfig
 	restConfig.Timeout = 0
@@ -379,8 +406,9 @@ var InformerFactory = func(client *ClusterClient) (informers.SharedInformerFacto
 			timeoutSec := int64(timeout.Seconds())
 			opts.TimeoutSeconds = &timeoutSec
 		}
-		ls := provision.IsServiceLabelSet(tsuruLabelPrefix)
-		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
+		if tweak != nil {
+			tweak(opts)
+		}
 	})
 	return informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc), nil
 }

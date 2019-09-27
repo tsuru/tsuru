@@ -35,6 +35,7 @@ import (
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -123,7 +124,7 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)
-	InformerFactory = func(client *ClusterClient) (informers.SharedInformerFactory, error) {
+	InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
 	s.p = &kubernetesProvisioner{
