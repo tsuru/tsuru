@@ -220,6 +220,7 @@ func buildInstanceRequests(args appTypes.ListLogArgs, follow bool) ([]*http.Requ
 		urlValues.Add("lines", strconv.Itoa(args.Limit))
 		urlValues.Add("source", args.Source)
 		urlValues.Add("unit", args.Unit)
+		urlValues.Add("invert-filters", strconv.FormatBool(args.InvertFilters))
 		if follow {
 			urlValues.Add("follow", "1")
 		}
