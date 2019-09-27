@@ -164,6 +164,20 @@ func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 	}
 }
 
+func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
+	for i := 0; i < 15; i++ {
+		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel")
+		time.Sleep(1e6) // let the time flow
+	}
+	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
+	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
+	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertFilters: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 1)
+	c.Check(logs[0].Message, check.Equals, "app3 log from circus")
+	c.Check(logs[0].Source, check.Equals, "circus")
+}
+
 func (s *ServiceSuite) Test_LogService_ListEmpty(c *check.C) {
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
