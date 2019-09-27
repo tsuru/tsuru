@@ -4,17 +4,43 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/rke/cluster"
 	"github.com/rancher/rke/hosts"
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/pki"
+	"github.com/rancher/rke/pki/cert"
 	"github.com/rancher/rke/services"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/urfave/cli"
-	"k8s.io/client-go/util/cert"
 )
 
 func CertificateCommand() cli.Command {
+	rotateFlags := []cli.Flag{
+		cli.StringFlag{
+			Name:   "config",
+			Usage:  "Specify an alternate cluster YAML file",
+			Value:  pki.ClusterConfig,
+			EnvVar: "RKE_CONFIG",
+		},
+		cli.StringSliceFlag{
+			Name: "service",
+			Usage: fmt.Sprintf("Specify a k8s service to rotate certs, (allowed values: %s, %s, %s, %s, %s, %s)",
+				services.KubeAPIContainerName,
+				services.KubeControllerContainerName,
+				services.SchedulerContainerName,
+				services.KubeletContainerName,
+				services.KubeproxyContainerName,
+				services.EtcdContainerName,
+			),
+		},
+		cli.BoolFlag{
+			Name:  "rotate-ca",
+			Usage: "Rotate all certificates including CA certs",
+		},
+	}
+	rotateFlags = append(rotateFlags, commonFlags...)
 	return cli.Command{
 		Name:  "cert",
 		Usage: "Certificates management for RKE cluster",
@@ -23,29 +49,7 @@ func CertificateCommand() cli.Command {
 				Name:   "rotate",
 				Usage:  "Rotate RKE cluster certificates",
 				Action: rotateRKECertificatesFromCli,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:   "config",
-						Usage:  "Specify an alternate cluster YAML file",
-						Value:  pki.ClusterConfig,
-						EnvVar: "RKE_CONFIG",
-					},
-					cli.StringSliceFlag{
-						Name: "service",
-						Usage: fmt.Sprintf("Specify a k8s service to rotate certs, (allowed values: %s, %s, %s, %s, %s, %s)",
-							services.KubeAPIContainerName,
-							services.KubeControllerContainerName,
-							services.SchedulerContainerName,
-							services.KubeletContainerName,
-							services.KubeproxyContainerName,
-							services.EtcdContainerName,
-						),
-					},
-					cli.BoolFlag{
-						Name:  "rotate-ca",
-						Usage: "Rotate all certificates including CA certs",
-					},
-				},
+				Flags:  rotateFlags,
 			},
 			cli.Command{
 				Name:   "generate-csr",
@@ -69,6 +73,7 @@ func CertificateCommand() cli.Command {
 }
 
 func rotateRKECertificatesFromCli(ctx *cli.Context) error {
+	logrus.Infof("Running RKE version: %v", ctx.App.Version)
 	k8sComponents := ctx.StringSlice("service")
 	rotateCACerts := ctx.Bool("rotate-ca")
 	clusterFile, filePath, err := resolveClusterFile(ctx)
@@ -99,6 +104,7 @@ func rotateRKECertificatesFromCli(ctx *cli.Context) error {
 }
 
 func generateCSRFromCli(ctx *cli.Context) error {
+	logrus.Infof("Running RKE version: %v", ctx.App.Version)
 	clusterFile, filePath, err := resolveClusterFile(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to resolve cluster file: %v", err)
@@ -126,7 +132,7 @@ func showRKECertificatesFromCli(ctx *cli.Context) error {
 
 func rebuildClusterWithRotatedCertificates(ctx context.Context,
 	dialersOptions hosts.DialersOptions,
-	flags cluster.ExternalFlags, svcOptions *v3.KubernetesServicesOptions) (string, string, string, string, map[string]pki.CertificatePKI, error) {
+	flags cluster.ExternalFlags, svcOptionData map[string]*v3.KubernetesServicesOptions) (string, string, string, string, map[string]pki.CertificatePKI, error) {
 	var APIURL, caCrt, clientCert, clientKey string
 	log.Infof(ctx, "Rebuilding Kubernetes cluster with rotated certificates")
 	clusterState, err := cluster.ReadStateFile(ctx, cluster.GetStateFilePath(flags.ClusterFilePath, flags.ConfigDir))
@@ -179,7 +185,7 @@ func rebuildClusterWithRotatedCertificates(ctx context.Context,
 	}
 	if isLegacyKubeAPI {
 		log.Infof(ctx, "[controlplane] Redeploying controlplane to update kubeapi parameters")
-		if err := kubeCluster.DeployControlPlane(ctx, svcOptions); err != nil {
+		if err := kubeCluster.DeployControlPlane(ctx, svcOptionData); err != nil {
 			return APIURL, caCrt, clientCert, clientKey, nil, err
 		}
 	}

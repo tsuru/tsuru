@@ -29,12 +29,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/date"
+	"github.com/Azure/go-autorest/version"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -61,6 +61,9 @@ const (
 
 	// msiEndpoint is the well known endpoint for getting MSI authentications tokens
 	msiEndpoint = "http://169.254.169.254/metadata/identity/oauth2/token"
+
+	// the default number of attempts to refresh an MSI authentication token
+	defaultMaxMSIRefreshAttempts = 5
 )
 
 // OAuthTokenProvider is an interface which should be implemented by an access token retriever
@@ -93,16 +96,25 @@ type RefresherWithContext interface {
 type TokenRefreshCallback func(Token) error
 
 // Token encapsulates the access token used to authorize Azure requests.
+// https://docs.microsoft.com/en-us/azure/active-directory/develop/v1-oauth2-client-creds-grant-flow#service-to-service-access-token-response
 type Token struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 
-	ExpiresIn string `json:"expires_in"`
-	ExpiresOn string `json:"expires_on"`
-	NotBefore string `json:"not_before"`
+	ExpiresIn json.Number `json:"expires_in"`
+	ExpiresOn json.Number `json:"expires_on"`
+	NotBefore json.Number `json:"not_before"`
 
 	Resource string `json:"resource"`
 	Type     string `json:"token_type"`
+}
+
+func newToken() Token {
+	return Token{
+		ExpiresIn: "0",
+		ExpiresOn: "0",
+		NotBefore: "0",
+	}
 }
 
 // IsZero returns true if the token object is zero-initialized.
@@ -112,12 +124,12 @@ func (t Token) IsZero() bool {
 
 // Expires returns the time.Time when the Token expires.
 func (t Token) Expires() time.Time {
-	s, err := strconv.Atoi(t.ExpiresOn)
+	s, err := t.ExpiresOn.Float64()
 	if err != nil {
 		s = -3600
 	}
 
-	expiration := date.NewUnixTimeFromSeconds(float64(s))
+	expiration := date.NewUnixTimeFromSeconds(s)
 
 	return time.Time(expiration).UTC()
 }
@@ -214,6 +226,8 @@ func (secret *ServicePrincipalCertificateSecret) SignJwt(spt *ServicePrincipalTo
 
 	token := jwt.New(jwt.SigningMethodRS256)
 	token.Header["x5t"] = thumbprint
+	x5c := []string{base64.StdEncoding.EncodeToString(secret.Certificate.Raw)}
+	token.Header["x5c"] = x5c
 	token.Claims = jwt.MapClaims{
 		"aud": spt.inner.OauthConfig.TokenEndpoint.String(),
 		"iss": spt.inner.ClientID,
@@ -323,6 +337,8 @@ type ServicePrincipalToken struct {
 	refreshLock      *sync.RWMutex
 	sender           Sender
 	refreshCallbacks []TokenRefreshCallback
+	// MaxMSIRefreshAttempts is the maximum number of attempts to refresh an MSI token.
+	MaxMSIRefreshAttempts int
 }
 
 // MarshalTokenJSON returns the marshalled inner token.
@@ -408,6 +424,7 @@ func NewServicePrincipalTokenWithSecret(oauthConfig OAuthConfig, id string, reso
 	}
 	spt := &ServicePrincipalToken{
 		inner: servicePrincipalToken{
+			Token:         newToken(),
 			OauthConfig:   oauthConfig,
 			Secret:        secret,
 			ClientID:      id,
@@ -647,6 +664,7 @@ func newServicePrincipalTokenFromMSI(msiEndpoint, resource string, userAssignedI
 
 	spt := &ServicePrincipalToken{
 		inner: servicePrincipalToken{
+			Token: newToken(),
 			OauthConfig: OAuthConfig{
 				TokenEndpoint: *msiEndpointURL,
 			},
@@ -655,9 +673,10 @@ func newServicePrincipalTokenFromMSI(msiEndpoint, resource string, userAssignedI
 			AutoRefresh:   true,
 			RefreshWithin: defaultRefresh,
 		},
-		refreshLock:      &sync.RWMutex{},
-		sender:           &http.Client{},
-		refreshCallbacks: callbacks,
+		refreshLock:           &sync.RWMutex{},
+		sender:                &http.Client{},
+		refreshCallbacks:      callbacks,
+		MaxMSIRefreshAttempts: defaultMaxMSIRefreshAttempts,
 	}
 
 	if userAssignedID != nil {
@@ -772,6 +791,7 @@ func (spt *ServicePrincipalToken) refreshInternal(ctx context.Context, resource 
 	if err != nil {
 		return fmt.Errorf("adal: Failed to build the refresh request. Error = '%v'", err)
 	}
+	req.Header.Add("User-Agent", version.UserAgent())
 	req = req.WithContext(ctx)
 	if !isIMDS(spt.inner.OauthConfig.TokenEndpoint) {
 		v := url.Values{}
@@ -811,7 +831,7 @@ func (spt *ServicePrincipalToken) refreshInternal(ctx context.Context, resource 
 
 	var resp *http.Response
 	if isIMDS(spt.inner.OauthConfig.TokenEndpoint) {
-		resp, err = retry(spt.sender, req)
+		resp, err = retryForIMDS(spt.sender, req, spt.MaxMSIRefreshAttempts)
 	} else {
 		resp, err = spt.sender.Do(req)
 	}
@@ -850,7 +870,8 @@ func (spt *ServicePrincipalToken) refreshInternal(ctx context.Context, resource 
 	return spt.InvokeRefreshCallbacks(token)
 }
 
-func retry(sender Sender, req *http.Request) (resp *http.Response, err error) {
+// retry logic specific to retrieving a token from the IMDS endpoint
+func retryForIMDS(sender Sender, req *http.Request, maxAttempts int) (resp *http.Response, err error) {
 	// copied from client.go due to circular dependency
 	retries := []int{
 		http.StatusRequestTimeout,      // 408
@@ -875,7 +896,6 @@ func retry(sender Sender, req *http.Request) (resp *http.Response, err error) {
 
 	// see https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/how-to-use-vm-token#retry-guidance
 
-	const maxAttempts int = 5
 	const maxDelay time.Duration = 60 * time.Second
 
 	attempt := 0
@@ -884,7 +904,9 @@ func retry(sender Sender, req *http.Request) (resp *http.Response, err error) {
 	for attempt < maxAttempts {
 		resp, err = sender.Do(req)
 		// retry on temporary network errors, e.g. transient network failures.
-		if (err != nil && !isTemporaryNetworkError(err)) || resp.StatusCode == http.StatusOK || !containsInt(retries, resp.StatusCode) {
+		// if we don't receive a response then assume we can't connect to the
+		// endpoint so we're likely not running on an Azure VM so don't retry.
+		if (err != nil && !isTemporaryNetworkError(err)) || resp == nil || resp.StatusCode == http.StatusOK || !containsInt(retries, resp.StatusCode) {
 			return
 		}
 

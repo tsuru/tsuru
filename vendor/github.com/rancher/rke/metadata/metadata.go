@@ -18,6 +18,8 @@ var (
 	K8sVersionToDockerVersions  map[string][]string
 	K8sVersionsCurrent          []string
 	K8sBadVersions              = map[string]bool{}
+
+	K8sVersionToWindowsServiceOptions map[string]v3.KubernetesServicesOptions
 )
 
 func InitMetadata(ctx context.Context) error {
@@ -28,7 +30,7 @@ func InitMetadata(ctx context.Context) error {
 	return nil
 }
 
-const RKEVersionDev = "0.2.3"
+const RKEVersionDev = "v0.2.3"
 
 func initAddonTemplates() {
 	K8sVersionToTemplates = rke.DriverData.K8sVersionedTemplates
@@ -36,6 +38,7 @@ func initAddonTemplates() {
 
 func initServiceOptions() {
 	K8sVersionToServiceOptions = interface{}(rke.DriverData.K8sVersionServiceOptions).(map[string]v3.KubernetesServicesOptions)
+	K8sVersionToWindowsServiceOptions = rke.DriverData.K8sVersionWindowsServiceOptions
 }
 
 func initDockerOptions() {
@@ -50,7 +53,7 @@ func initK8sRKESystemImages() {
 		RKEVersion = RKEVersionDev
 	}
 	DefaultK8sVersion = rkeData.RKEDefaultK8sVersions["default"]
-	if defaultK8sVersion, ok := rkeData.RKEDefaultK8sVersions[RKEVersion]; ok {
+	if defaultK8sVersion, ok := rkeData.RKEDefaultK8sVersions[RKEVersion[1:]]; ok {
 		DefaultK8sVersion = defaultK8sVersion
 	}
 	maxVersionForMajorK8sVersion := map[string]string{}
@@ -80,7 +83,7 @@ func initK8sRKESystemImages() {
 				continue
 			}
 		}
-		if curr, ok := maxVersionForMajorK8sVersion[majorVersion]; !ok || k8sVersion > curr {
+		if curr, ok := maxVersionForMajorK8sVersion[majorVersion]; !ok || mVersion.Compare(k8sVersion, curr, ">") {
 			maxVersionForMajorK8sVersion[majorVersion] = k8sVersion
 		}
 	}

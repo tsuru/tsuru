@@ -346,6 +346,7 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 		c.cluster.Namespace(),
 		leaderElectionName,
 		c.cluster.CoreV1(),
+		c.cluster.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
 			Identity:      id,
 			EventRecorder: recorder,

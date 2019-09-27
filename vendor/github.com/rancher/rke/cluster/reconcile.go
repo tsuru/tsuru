@@ -10,21 +10,24 @@ import (
 	"github.com/rancher/rke/k8s"
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/pki"
+	"github.com/rancher/rke/pki/cert"
 	"github.com/rancher/rke/services"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/cert"
 )
 
 const (
 	unschedulableEtcdTaint    = "node-role.kubernetes.io/etcd=true:NoExecute"
 	unschedulableControlTaint = "node-role.kubernetes.io/controlplane=true:NoSchedule"
 
+	unschedulableEtcdTaintKey    = "node-role.kubernetes.io/etcd=:NoExecute"
+	unschedulableControlTaintKey = "node-role.kubernetes.io/controlplane=:NoSchedule"
+
 	EtcdPlaneNodesReplacedErr = "Etcd plane nodes are replaced. Stopping provisioning. Please restore your cluster from backup."
 )
 
-func ReconcileCluster(ctx context.Context, kubeCluster, currentCluster *Cluster, flags ExternalFlags, svcOptions *v3.KubernetesServicesOptions) error {
+func ReconcileCluster(ctx context.Context, kubeCluster, currentCluster *Cluster, flags ExternalFlags, svcOptionData map[string]*v3.KubernetesServicesOptions) error {
 	logrus.Debugf("[reconcile] currentCluster: %+v\n", currentCluster)
 	log.Infof(ctx, "[reconcile] Reconciling cluster state")
 	kubeCluster.UpdateWorkersOnly = flags.UpdateOnly
@@ -46,7 +49,7 @@ func ReconcileCluster(ctx context.Context, kubeCluster, currentCluster *Cluster,
 	syncLabels(ctx, currentCluster, kubeCluster)
 	syncNodeRoles(ctx, currentCluster, kubeCluster)
 
-	if err := reconcileEtcd(ctx, currentCluster, kubeCluster, kubeClient, svcOptions); err != nil {
+	if err := reconcileEtcd(ctx, currentCluster, kubeCluster, kubeClient, svcOptionData); err != nil {
 		return fmt.Errorf("Failed to reconcile etcd plane: %v", err)
 	}
 
@@ -172,20 +175,71 @@ func reconcileHost(ctx context.Context, toDeleteHost *hosts.Host, worker, etcd b
 	return nil
 }
 
-func reconcileEtcd(ctx context.Context, currentCluster, kubeCluster *Cluster, kubeClient *kubernetes.Clientset, svcOptions *v3.KubernetesServicesOptions) error {
-	log.Infof(ctx, "[reconcile] Check etcd hosts to be deleted")
+func reconcileEtcd(ctx context.Context, currentCluster, kubeCluster *Cluster, kubeClient *kubernetes.Clientset, svcOptionData map[string]*v3.KubernetesServicesOptions) error {
+	etcdToDelete := hosts.GetToDeleteHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts, kubeCluster.InactiveHosts, false)
+	etcdToAdd := hosts.GetToAddHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts)
+	clientCert := cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeNodeCertName].Certificate)
+	clientKey := cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeNodeCertName].Key)
+
+	// check if the whole etcd plane is replaced
 	if isEtcdPlaneReplaced(ctx, currentCluster, kubeCluster) {
-		logrus.Warnf("%v", EtcdPlaneNodesReplacedErr)
 		return fmt.Errorf("%v", EtcdPlaneNodesReplacedErr)
 	}
-	// get tls for the first current etcd host
-	clientCert := cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeNodeCertName].Certificate)
-	clientkey := cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeNodeCertName].Key)
+	// check if Node changed its public IP
+	for i := range etcdToDelete {
+		for j := range etcdToAdd {
+			if etcdToDelete[i].InternalAddress == etcdToAdd[j].InternalAddress {
+				etcdToDelete[i].Address = etcdToAdd[j].Address
+			}
+			break
+		}
+	}
+	// handle etcd member delete
+	if err := deleteEtcdMembers(ctx, currentCluster, kubeCluster, kubeClient, clientCert, clientKey, etcdToDelete); err != nil {
+		return err
+	}
+	// handle etcd member add
+	return addEtcdMembers(ctx, currentCluster, kubeCluster, kubeClient, svcOptionData, clientCert, clientKey, etcdToAdd)
+}
 
-	etcdToDelete := hosts.GetToDeleteHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts, kubeCluster.InactiveHosts, false)
+func addEtcdMembers(ctx context.Context, currentCluster, kubeCluster *Cluster, kubeClient *kubernetes.Clientset, svcOptionData map[string]*v3.KubernetesServicesOptions, clientCert, clientKey []byte, etcdToAdd []*hosts.Host) error {
+	log.Infof(ctx, "[reconcile] Check etcd hosts to be added")
+	for _, etcdHost := range etcdToAdd {
+		kubeCluster.UpdateWorkersOnly = false
+		etcdHost.ToAddEtcdMember = true
+	}
+	for _, etcdHost := range etcdToAdd {
+		// Check if the host already part of the cluster -- this will cover cluster with lost quorum
+		isEtcdMember, err := services.IsEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientKey)
+		if err != nil {
+			return err
+		}
+		if !isEtcdMember {
+			if err := services.AddEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientKey); err != nil {
+				return err
+			}
+		}
+		etcdHost.ToAddEtcdMember = false
+		kubeCluster.setReadyEtcdHosts()
+
+		etcdNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
+		for _, etcdReadyHost := range kubeCluster.EtcdReadyHosts {
+			etcdNodePlanMap[etcdReadyHost.Address] = BuildRKEConfigNodePlan(ctx, kubeCluster, etcdReadyHost, etcdReadyHost.DockerInfo, svcOptionData)
+		}
+		// this will start the newly added etcd node and make sure it started correctly before restarting other node
+		// https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member
+		if err := services.ReloadEtcdCluster(ctx, kubeCluster.EtcdReadyHosts, etcdHost, currentCluster.LocalConnDialerFactory, clientCert, clientKey, currentCluster.PrivateRegistriesMap, etcdNodePlanMap, kubeCluster.SystemImages.Alpine); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteEtcdMembers(ctx context.Context, currentCluster, kubeCluster *Cluster, kubeClient *kubernetes.Clientset, clientCert, clientKey []byte, etcdToDelete []*hosts.Host) error {
+	log.Infof(ctx, "[reconcile] Check etcd hosts to be deleted")
 	for _, etcdHost := range etcdToDelete {
 		etcdHost.IsEtcd = false
-		if err := services.RemoveEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientkey); err != nil {
+		if err := services.RemoveEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientKey); err != nil {
 			log.Warnf(ctx, "[reconcile] %v", err)
 			continue
 		}
@@ -197,36 +251,6 @@ func reconcileEtcd(ctx context.Context, currentCluster, kubeCluster *Cluster, ku
 		if err := reconcileHost(ctx, etcdHost, false, true, currentCluster.SystemImages.Alpine, currentCluster.DockerDialerFactory, currentCluster.PrivateRegistriesMap, currentCluster.PrefixPath, currentCluster.Version); err != nil {
 			log.Warnf(ctx, "[reconcile] Couldn't clean up etcd node [%s]: %v", etcdHost.Address, err)
 			continue
-		}
-	}
-	log.Infof(ctx, "[reconcile] Check etcd hosts to be added")
-	etcdToAdd := hosts.GetToAddHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts)
-	for _, etcdHost := range etcdToAdd {
-		kubeCluster.UpdateWorkersOnly = false
-		etcdHost.ToAddEtcdMember = true
-	}
-	for _, etcdHost := range etcdToAdd {
-		// Check if the host already part of the cluster -- this will cover cluster with lost quorum
-		isEtcdMember, err := services.IsEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientkey)
-		if err != nil {
-			return err
-		}
-		if !isEtcdMember {
-			if err := services.AddEtcdMember(ctx, etcdHost, kubeCluster.EtcdHosts, currentCluster.LocalConnDialerFactory, clientCert, clientkey); err != nil {
-				return err
-			}
-		}
-		etcdHost.ToAddEtcdMember = false
-		kubeCluster.setReadyEtcdHosts()
-
-		etcdNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
-		for _, etcdReadyHost := range kubeCluster.EtcdReadyHosts {
-			etcdNodePlanMap[etcdReadyHost.Address] = BuildRKEConfigNodePlan(ctx, kubeCluster, etcdReadyHost, etcdReadyHost.DockerInfo, svcOptions)
-		}
-		// this will start the newly added etcd node and make sure it started correctly before restarting other node
-		// https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/runtime-configuration.md#add-a-new-member
-		if err := services.ReloadEtcdCluster(ctx, kubeCluster.EtcdReadyHosts, etcdHost, currentCluster.LocalConnDialerFactory, clientCert, clientkey, currentCluster.PrivateRegistriesMap, etcdNodePlanMap, kubeCluster.SystemImages.Alpine); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -366,14 +390,92 @@ func checkCertificateChanges(ctx context.Context, currentCluster, kubeCluster *C
 }
 
 func isEtcdPlaneReplaced(ctx context.Context, currentCluster, kubeCluster *Cluster) bool {
-	etcdToDeleteInactive := hosts.GetToDeleteHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts, kubeCluster.InactiveHosts, true)
+	numCurrentEtcdHosts := len(currentCluster.EtcdHosts)
+	// We had and have no etcd hosts, nothing was replaced
+	if numCurrentEtcdHosts == 0 && len(kubeCluster.EtcdHosts) == 0 {
+		return false
+	}
+
 	// old etcd nodes are down, we added new ones
-	if len(etcdToDeleteInactive) == len(currentCluster.EtcdHosts) {
+	numEtcdToDeleteInactive := len(hosts.GetToDeleteHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts, kubeCluster.InactiveHosts, true))
+	if numEtcdToDeleteInactive == numCurrentEtcdHosts {
 		return true
 	}
+
 	// one or more etcd nodes are removed from cluster.yaml and replaced
 	if len(hosts.GetHostListIntersect(kubeCluster.EtcdHosts, currentCluster.EtcdHosts)) == 0 {
 		return true
 	}
 	return false
+}
+
+func syncTaints(ctx context.Context, currentCluster, kubeCluster *Cluster) {
+	var currentHosts, expectedHosts []*hosts.Host
+	var currentTaints, expectedTaints map[string]map[string]string
+	// handling taints in configuration
+	if currentCluster != nil {
+		currentHosts = hosts.GetUniqueHostList(currentCluster.EtcdHosts, currentCluster.ControlPlaneHosts, currentCluster.WorkerHosts)
+		currentTaints = getHostsTaintsMap(currentHosts)
+	}
+	expectedHosts = hosts.GetUniqueHostList(kubeCluster.EtcdHosts, kubeCluster.ControlPlaneHosts, kubeCluster.WorkerHosts)
+	expectedTaints = getHostsTaintsMap(expectedHosts)
+
+	for _, host := range expectedHosts {
+		var toAddTaints, toDelTaints []string
+		currentSet := currentTaints[host.Address]
+		expectedSet := expectedTaints[host.Address]
+		for key, expected := range expectedSet {
+			current, ok := currentSet[key]
+			// create or update taints in host.
+			// by deleting the old taint and creating the new taint to do the update logic.
+			if expected != current {
+				toAddTaints = append(toAddTaints, expected)
+				if ok { // if found but the values are different, the current taint will be deleted.
+					toDelTaints = append(toDelTaints, current)
+				}
+			}
+		}
+		for key, current := range currentSet {
+			_, ok := expectedSet[key]
+			if !ok { // remove the taints which can't be found in the expected taints
+				toDelTaints = append(toDelTaints, current)
+			}
+		}
+		host.ToAddTaints = append(host.ToAddTaints, toAddTaints...)
+		host.ToDelTaints = append(host.ToDelTaints, toDelTaints...)
+	}
+}
+
+//getHostsTaintsMap return the taint set with unique key & effect for each host
+func getHostsTaintsMap(list []*hosts.Host) map[string]map[string]string {
+	rtn := make(map[string]map[string]string)
+	for _, item := range list {
+		set := make(map[string]string)
+		for _, taint := range item.RKEConfigNode.Taints {
+			key := getTaintKey(taint)
+			value := getTaintValue(taint)
+			if key == unschedulableEtcdTaintKey ||
+				key == unschedulableControlTaintKey {
+				logrus.Warnf("taint %s is reserved, ignore this taint", value)
+				continue
+			}
+			if _, ok := set[key]; ok {
+				logrus.Warnf("duplicated taint %s in host %s, ignore this taint", value, item.Address)
+				continue
+			}
+			set[key] = value
+		}
+		if len(set) > 0 {
+			rtn[item.Address] = set
+		}
+	}
+	return rtn
+}
+
+func getTaintKey(taint v3.RKETaint) string {
+	return fmt.Sprintf("%s=:%s", taint.Key, taint.Effect)
+}
+
+func getTaintValue(taint v3.RKETaint) string {
+	return fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect)
 }

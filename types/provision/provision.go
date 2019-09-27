@@ -41,6 +41,18 @@ type TsuruYamlKubernetesConfig struct {
 	Groups map[string]TsuruYamlKubernetesGroup `json:"groups,omitempty"`
 }
 
+func (in *TsuruYamlKubernetesConfig) DeepCopyInto(out *TsuruYamlKubernetesConfig) {
+	if in.Groups == nil {
+		return
+	}
+	if out.Groups == nil {
+		out.Groups = make(map[string]TsuruYamlKubernetesGroup)
+	}
+	for k, v := range in.Groups {
+		out.Groups[k] = v
+	}
+}
+
 type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesProcessConfig
 
 type TsuruYamlKubernetesProcessConfig struct {

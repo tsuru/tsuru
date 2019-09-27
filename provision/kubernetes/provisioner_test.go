@@ -1232,7 +1232,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		} else {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1292,7 +1292,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 			}
 		}
 
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 
 	evt, err := event.New(&event.Opts{
@@ -1451,14 +1451,14 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		deploy <- struct{}{}
 		<-attach
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodRunning
 		testing.UpdatePodContainerStatus(pod, true)
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1582,7 +1582,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -1940,7 +1940,7 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodFailed
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -2113,7 +2113,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 				NodePort: int32(30002),
 			},
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	_, err = s.client.CoreV1().Nodes().Create(&apiv1.Node{
 		ObjectMeta: metav1.ObjectMeta{

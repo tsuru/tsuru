@@ -52,8 +52,10 @@ const (
 	// FlannelBackendVxLanNetworkIdentify should be greater than or equal to 4096 if using VxLan mode in the cluster with Windows nodes
 	FlannelBackendVxLanNetworkIdentify = "flannel_backend_vni"
 
-	CalicoNetworkPlugin = "calico"
-	CalicoCloudProvider = "calico_cloud_provider"
+	CalicoNetworkPlugin   = "calico"
+	CalicoNodeLabel       = "calico-node"
+	CalicoControllerLabel = "calico-kube-controllers"
+	CalicoCloudProvider   = "calico_cloud_provider"
 
 	CanalNetworkPlugin      = "canal"
 	CanalIface              = "canal_iface"
@@ -64,7 +66,7 @@ const (
 	CanalFlannelBackendVxLanNetworkIdentify = "canal_flannel_backend_vni"
 
 	WeaveNetworkPlugin  = "weave"
-	WeaveNetowrkAppName = "weave-net"
+	WeaveNetworkAppName = "weave-net"
 	// List of map keys to be used with network templates
 
 	// EtcdEndpoints is the server address for Etcd, used by calico
@@ -94,6 +96,7 @@ const (
 	NodeImage          = "NodeImage"
 	ControllersImage   = "ControllersImage"
 	CanalFlannelImg    = "CanalFlannelImg"
+	FlexVolImg         = "FlexVolImg"
 	WeaveLoopbackImage = "WeaveLoopbackImage"
 
 	Calicoctl = "Calicoctl"
@@ -104,6 +107,8 @@ const (
 	WeavePassword    = "WeavePassword"
 	RBACConfig       = "RBACConfig"
 	ClusterVersion   = "ClusterVersion"
+
+	NodeSelector = "NodeSelector"
 )
 
 var EtcdPortList = []string{
@@ -122,6 +127,8 @@ var WorkerPortList = []string{
 var EtcdClientPortList = []string{
 	EtcdPort1,
 }
+
+var CalicoNetworkLabels = []string{CalicoNodeLabel, CalicoControllerLabel}
 
 func (c *Cluster) deployNetworkPlugin(ctx context.Context, data map[string]interface{}) error {
 	log.Infof(ctx, "[network] Setting up network plugin: %s", c.Network.Plugin)
@@ -164,6 +171,7 @@ func (c *Cluster) doFlannelDeploy(ctx context.Context, data map[string]interface
 		},
 		RBACConfig:     c.Authorization.Mode,
 		ClusterVersion: util.GetTagMajorVersion(c.Version),
+		NodeSelector:   c.Network.NodeSelector,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(flannelConfig, data)
 	if err != nil {
@@ -174,6 +182,7 @@ func (c *Cluster) doFlannelDeploy(ctx context.Context, data map[string]interface
 
 func (c *Cluster) doCalicoDeploy(ctx context.Context, data map[string]interface{}) error {
 	clientConfig := pki.GetConfigPath(pki.KubeNodeCertName)
+
 	calicoConfig := map[string]interface{}{
 		KubeCfg:          clientConfig,
 		ClusterCIDR:      c.ClusterCIDR,
@@ -182,7 +191,9 @@ func (c *Cluster) doCalicoDeploy(ctx context.Context, data map[string]interface{
 		Calicoctl:        c.SystemImages.CalicoCtl,
 		ControllersImage: c.SystemImages.CalicoControllers,
 		CloudProvider:    c.Network.Options[CalicoCloudProvider],
+		FlexVolImg:       c.SystemImages.CalicoFlexVol,
 		RBACConfig:       c.Authorization.Mode,
+		NodeSelector:     c.Network.NodeSelector,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(calicoConfig, data)
 	if err != nil {
@@ -214,11 +225,13 @@ func (c *Cluster) doCanalDeploy(ctx context.Context, data map[string]interface{}
 		CanalFlannelImg: c.SystemImages.CanalFlannel,
 		RBACConfig:      c.Authorization.Mode,
 		CanalInterface:  c.Network.Options[CanalIface],
+		FlexVolImg:      c.SystemImages.CanalFlexVol,
 		FlannelBackend: map[string]interface{}{
 			"Type": c.Network.Options[CanalFlannelBackendType],
 			"VNI":  flannelVni,
 			"Port": flannelPort,
 		},
+		NodeSelector: c.Network.NodeSelector,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(canalConfig, data)
 	if err != nil {
@@ -235,6 +248,7 @@ func (c *Cluster) doWeaveDeploy(ctx context.Context, data map[string]interface{}
 		CNIImage:           c.SystemImages.WeaveCNI,
 		WeaveLoopbackImage: c.SystemImages.Alpine,
 		RBACConfig:         c.Authorization.Mode,
+		NodeSelector:       c.Network.NodeSelector,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(weaveConfig, data)
 	if err != nil {
@@ -245,14 +259,12 @@ func (c *Cluster) doWeaveDeploy(ctx context.Context, data map[string]interface{}
 
 func (c *Cluster) getNetworkPluginManifest(pluginConfig, data map[string]interface{}) (string, error) {
 	switch c.Network.Plugin {
-	case FlannelNetworkPlugin:
-		return templates.CompileTemplateFromMap(templates.GetVersionedTemplates(FlannelNetworkPlugin, data, c.Version), pluginConfig)
-	case CalicoNetworkPlugin:
-		return templates.CompileTemplateFromMap(templates.GetVersionedTemplates(CalicoNetworkPlugin, data, c.Version), pluginConfig)
-	case CanalNetworkPlugin:
-		return templates.CompileTemplateFromMap(templates.GetVersionedTemplates(CanalNetworkPlugin, data, c.Version), pluginConfig)
-	case WeaveNetworkPlugin:
-		return templates.CompileTemplateFromMap(templates.GetVersionedTemplates(WeaveNetworkPlugin, data, c.Version), pluginConfig)
+	case CanalNetworkPlugin, FlannelNetworkPlugin, CalicoNetworkPlugin, WeaveNetworkPlugin:
+		tmplt, err := templates.GetVersionedTemplates(c.Network.Plugin, data, c.Version)
+		if err != nil {
+			return "", err
+		}
+		return templates.CompileTemplateFromMap(tmplt, pluginConfig)
 	default:
 		return "", fmt.Errorf("[network] Unsupported network plugin: %s", c.Network.Plugin)
 	}

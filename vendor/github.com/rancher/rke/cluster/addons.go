@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	rkeData "github.com/rancher/kontainer-driver-metadata/rke/templates"
+	"github.com/rancher/rke/templates"
 	"os"
 	"os/exec"
 	"time"
@@ -13,8 +15,10 @@ import (
 	"strings"
 
 	"github.com/rancher/rke/addons"
+	"github.com/rancher/rke/authz"
 	"github.com/rancher/rke/k8s"
 	"github.com/rancher/rke/log"
+	"github.com/rancher/rke/services"
 	"github.com/rancher/rke/util"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -46,6 +50,7 @@ type ingressOptions struct {
 	Options        map[string]string
 	NodeSelector   map[string]string
 	ExtraArgs      map[string]string
+	DNSPolicy      string
 	AlpineImage    string
 	IngressImage   string
 	IngressBackend string
@@ -54,6 +59,7 @@ type ingressOptions struct {
 type MetricsServerOptions struct {
 	RBACConfig         string
 	Options            map[string]string
+	NodeSelector       map[string]string
 	MetricsServerImage string
 	Version            string
 }
@@ -261,7 +267,11 @@ func (c *Cluster) deployKubeDNS(ctx context.Context, data map[string]interface{}
 		StubDomains:            c.DNS.StubDomains,
 		NodeSelector:           c.DNS.NodeSelector,
 	}
-	kubeDNSYaml, err := addons.GetKubeDNSManifest(KubeDNSConfig, data)
+	tmplt, err := templates.GetVersionedTemplates(rkeData.KubeDNS, data, c.Version)
+	if err != nil {
+		return err
+	}
+	kubeDNSYaml, err := templates.CompileTemplateFromMap(tmplt, KubeDNSConfig)
 	if err != nil {
 		return err
 	}
@@ -284,7 +294,11 @@ func (c *Cluster) deployCoreDNS(ctx context.Context, data map[string]interface{}
 		ReverseCIDRs:           c.DNS.ReverseCIDRs,
 		NodeSelector:           c.DNS.NodeSelector,
 	}
-	coreDNSYaml, err := addons.GetCoreDNSManifest(CoreDNSConfig, data)
+	tmplt, err := templates.GetVersionedTemplates(rkeData.CoreDNS, data, c.Version)
+	if err != nil {
+		return err
+	}
+	coreDNSYaml, err := templates.CompileTemplateFromMap(tmplt, CoreDNSConfig)
 	if err != nil {
 		return err
 	}
@@ -321,9 +335,14 @@ func (c *Cluster) deployMetricServer(ctx context.Context, data map[string]interf
 		MetricsServerImage: c.SystemImages.MetricsServer,
 		RBACConfig:         c.Authorization.Mode,
 		Options:            c.Monitoring.Options,
+		NodeSelector:       c.Monitoring.NodeSelector,
 		Version:            util.GetTagMajorVersion(versionTag),
 	}
-	metricsYaml, err := addons.GetMetricsServerManifest(MetricsServerConfig, data)
+	tmplt, err := templates.GetVersionedTemplates(rkeData.MetricsServer, data, c.Version)
+	if err != nil {
+		return err
+	}
+	metricsYaml, err := templates.CompileTemplateFromMap(tmplt, MetricsServerConfig)
 	if err != nil {
 		return err
 	}
@@ -469,6 +488,7 @@ func (c *Cluster) deployIngress(ctx context.Context, data map[string]interface{}
 		Options:        c.Ingress.Options,
 		NodeSelector:   c.Ingress.NodeSelector,
 		ExtraArgs:      c.Ingress.ExtraArgs,
+		DNSPolicy:      c.Ingress.DNSPolicy,
 		IngressImage:   c.SystemImages.Ingress,
 		IngressBackend: c.SystemImages.IngressBackend,
 	}
@@ -481,14 +501,23 @@ func (c *Cluster) deployIngress(ctx context.Context, data map[string]interface{}
 			ingressConfig.AlpineImage = c.SystemImages.Alpine
 		}
 	}
-
+	tmplt, err := templates.GetVersionedTemplates(rkeData.NginxIngress, data, c.Version)
+	if err != nil {
+		return err
+	}
 	// Currently only deploying nginx ingress controller
-	ingressYaml, err := addons.GetNginxIngressManifest(ingressConfig, data)
+	ingressYaml, err := templates.CompileTemplateFromMap(tmplt, ingressConfig)
 	if err != nil {
 		return err
 	}
 	if err := c.doAddonDeploy(ctx, ingressYaml, IngressAddonResourceName, false); err != nil {
 		return err
+	}
+	// ingress runs in it's own namespace, so it needs it's own role/rolebinding for PSP
+	if c.Authorization.Mode == services.RBACAuthorizationMode && c.Services.KubeAPI.PodSecurityPolicy {
+		if err := authz.ApplyDefaultPodSecurityPolicyRole(ctx, c.LocalKubeConfigPath, NginxIngressAddonAppName, c.K8sWrapTransport); err != nil {
+			return fmt.Errorf("Failed to apply default PodSecurityPolicy ClusterRole and ClusterRoleBinding: %v", err)
+		}
 	}
 	log.Infof(ctx, "[ingress] ingress controller %s deployed successfully", c.Ingress.Provider)
 	return nil

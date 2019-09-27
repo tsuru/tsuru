@@ -89,7 +89,7 @@ metadata:
   name: metrics-server
   namespace: kube-system
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: metrics-server
@@ -115,7 +115,20 @@ spec:
                   operator: NotIn
                   values:
                     - windows
+                - key: node-role.kubernetes.io/worker
+                  operator: Exists
+{{if .NodeSelector}}
+      nodeSelector:
+      {{ range $k, $v := .NodeSelector }}
+        {{ $k }}: "{{ $v }}"
+      {{ end }}
+{{end}}
       serviceAccountName: metrics-server
+      tolerations:
+      - effect: NoExecute
+        operator: Exists
+      - effect: NoSchedule
+        operator: Exists
       containers:
       - name: metrics-server
         image: {{ .MetricsServerImage }}

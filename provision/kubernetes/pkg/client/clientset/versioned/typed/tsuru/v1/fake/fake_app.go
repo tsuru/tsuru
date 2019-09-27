@@ -7,7 +7,7 @@
 package fake
 
 import (
-	tsuru_v1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,20 +27,20 @@ var appsResource = schema.GroupVersionResource{Group: "tsuru.io", Version: "v1",
 var appsKind = schema.GroupVersionKind{Group: "tsuru.io", Version: "v1", Kind: "App"}
 
 // Get takes name of the app, and returns the corresponding app object, and an error if there is any.
-func (c *FakeApps) Get(name string, options v1.GetOptions) (result *tsuru_v1.App, err error) {
+func (c *FakeApps) Get(name string, options v1.GetOptions) (result *tsuruv1.App, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(appsResource, c.ns, name), &tsuru_v1.App{})
+		Invokes(testing.NewGetAction(appsResource, c.ns, name), &tsuruv1.App{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*tsuru_v1.App), err
+	return obj.(*tsuruv1.App), err
 }
 
 // List takes label and field selectors, and returns the list of Apps that match those selectors.
-func (c *FakeApps) List(opts v1.ListOptions) (result *tsuru_v1.AppList, err error) {
+func (c *FakeApps) List(opts v1.ListOptions) (result *tsuruv1.AppList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(appsResource, appsKind, c.ns, opts), &tsuru_v1.AppList{})
+		Invokes(testing.NewListAction(appsResource, appsKind, c.ns, opts), &tsuruv1.AppList{})
 
 	if obj == nil {
 		return nil, err
@@ -50,8 +50,8 @@ func (c *FakeApps) List(opts v1.ListOptions) (result *tsuru_v1.AppList, err erro
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &tsuru_v1.AppList{}
-	for _, item := range obj.(*tsuru_v1.AppList).Items {
+	list := &tsuruv1.AppList{ListMeta: obj.(*tsuruv1.AppList).ListMeta}
+	for _, item := range obj.(*tsuruv1.AppList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -67,31 +67,31 @@ func (c *FakeApps) Watch(opts v1.ListOptions) (watch.Interface, error) {
 }
 
 // Create takes the representation of a app and creates it.  Returns the server's representation of the app, and an error, if there is any.
-func (c *FakeApps) Create(app *tsuru_v1.App) (result *tsuru_v1.App, err error) {
+func (c *FakeApps) Create(app *tsuruv1.App) (result *tsuruv1.App, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(appsResource, c.ns, app), &tsuru_v1.App{})
+		Invokes(testing.NewCreateAction(appsResource, c.ns, app), &tsuruv1.App{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*tsuru_v1.App), err
+	return obj.(*tsuruv1.App), err
 }
 
 // Update takes the representation of a app and updates it. Returns the server's representation of the app, and an error, if there is any.
-func (c *FakeApps) Update(app *tsuru_v1.App) (result *tsuru_v1.App, err error) {
+func (c *FakeApps) Update(app *tsuruv1.App) (result *tsuruv1.App, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(appsResource, c.ns, app), &tsuru_v1.App{})
+		Invokes(testing.NewUpdateAction(appsResource, c.ns, app), &tsuruv1.App{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*tsuru_v1.App), err
+	return obj.(*tsuruv1.App), err
 }
 
 // Delete takes name of the app and deletes it. Returns an error if one occurs.
 func (c *FakeApps) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(appsResource, c.ns, name), &tsuru_v1.App{})
+		Invokes(testing.NewDeleteAction(appsResource, c.ns, name), &tsuruv1.App{})
 
 	return err
 }
@@ -100,17 +100,17 @@ func (c *FakeApps) Delete(name string, options *v1.DeleteOptions) error {
 func (c *FakeApps) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(appsResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &tsuru_v1.AppList{})
+	_, err := c.Fake.Invokes(action, &tsuruv1.AppList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched app.
-func (c *FakeApps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *tsuru_v1.App, err error) {
+func (c *FakeApps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *tsuruv1.App, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(appsResource, c.ns, name, data, subresources...), &tsuru_v1.App{})
+		Invokes(testing.NewPatchSubresourceAction(appsResource, c.ns, name, pt, data, subresources...), &tsuruv1.App{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*tsuru_v1.App), err
+	return obj.(*tsuruv1.App), err
 }

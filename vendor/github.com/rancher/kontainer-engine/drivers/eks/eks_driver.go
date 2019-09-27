@@ -41,65 +41,73 @@ const (
 )
 
 var amiForRegionAndVersion = map[string]map[string]string{
+	"1.14": map[string]string{
+		"us-east-2":      "ami-0f841722be384ed96",
+		"us-east-1":      "ami-08739803f18dcc019",
+		"us-west-2":      "ami-038a987c6425a84ad",
+		"ap-east-1":      "ami-0fc4b0a16426993b5",
+		"ap-south-1":     "ami-0e9f7f3edab94472d",
+		"ap-northeast-1": "ami-055d09694b6e5591a",
+		"ap-northeast-2": "ami-023bb403131889300",
+		"ap-southeast-1": "ami-0d26e45a1e5422b8e",
+		"ap-southeast-2": "ami-0d8e3da32bd74f39b",
+		"eu-central-1":   "ami-0f64557dd6506a4aa",
+		"eu-west-1":      "ami-0497f6feb9d494baf",
+		"eu-west-2":      "ami-010d34c5744286662",
+		"eu-west-3":      "ami-04fada31d8c50b7a8",
+		"eu-north-1":     "ami-0a4a5386eb62c775e",
+		"me-south-1":     "ami-0b7e753bbd3a0ae24",
+	},
 	"1.13": map[string]string{
-		"us-east-2":      "ami-07ebcae043cf995aa",
-		"us-east-1":      "ami-08c4955bcc43b124e",
-		"us-west-2":      "ami-089d3b6350c1769a6",
-		"ap-south-1":     "ami-0410a80d323371237",
-		"ap-northeast-1": "ami-04c0f02f5e148c80a",
-		"ap-northeast-2": "ami-0b7997a20f8424fb1",
-		"ap-southeast-1": "ami-087e0fca60fb5737a",
-		"ap-southeast-2": "ami-082dfea752d9163f6",
-		"eu-central-1":   "ami-02d5e7ca7bc498ef9",
-		"eu-west-1":      "ami-09bbefc07310f7914",
-		"eu-west-2":      "ami-0f03516f22468f14e",
-		"eu-west-3":      "ami-051015c2c2b73aaea",
-		"eu-north-1":     "ami-0c31ee32297e7397d",
+		"us-east-2":      "ami-0355b5edf93d47112",
+		"us-east-1":      "ami-08198f90fe8bc57f0",
+		"us-west-2":      "ami-0dc5bf48daa40eb35",
+		"ap-east-1":      "ami-056314bd2d2acbdc1",
+		"ap-south-1":     "ami-00f4cff050d28ee2d",
+		"ap-northeast-1": "ami-0262013b4d50142a2",
+		"ap-northeast-2": "ami-0d9a543e7c4279c11",
+		"ap-southeast-1": "ami-0013f4890e2ce167b",
+		"ap-southeast-2": "ami-01cd15b342b7edf5e",
+		"eu-central-1":   "ami-01ffee931e45bb6bf",
+		"eu-west-1":      "ami-00ea6211202297fe8",
+		"eu-west-2":      "ami-0ef7099142dae7023",
+		"eu-west-3":      "ami-00cc28b5bcb9dc724",
+		"eu-north-1":     "ami-01d7a7c38f882ef68",
+		"me-south-1":     "ami-0ae4a6a2950a3546e",
 	},
 	"1.12": map[string]string{
-		"us-east-2":      "ami-0e8d353285e26a68c",
-		"us-east-1":      "ami-0200e65a38edfb7e1",
-		"us-west-2":      "ami-0f11fd98b02f12a4c",
-		"ap-south-1":     "ami-0644de45344ce867e",
-		"ap-northeast-1": "ami-0dfbca8d183884f02",
-		"ap-northeast-2": "ami-0a9d12fe9c2a31876",
-		"ap-southeast-1": "ami-040bdde117f3828ab",
-		"ap-southeast-2": "ami-01bfe815f644becc0",
-		"eu-central-1":   "ami-09ed3f40a2b3c11f1",
-		"eu-west-1":      "ami-091fc251b67b776c3",
-		"eu-west-2":      "ami-0bc8d0262346bd65e",
-		"eu-west-3":      "ami-0084dea61e480763e",
-		"eu-north-1":     "ami-022cd6a50742d611a",
+		"us-east-2":      "ami-0d60b7264ed85e022",
+		"us-east-1":      "ami-0259ce67309f76e0b",
+		"us-west-2":      "ami-0315dd35bf204311d",
+		"ap-east-1":      "ami-0fafd65fe31195cb5",
+		"ap-south-1":     "ami-0d9c7adc50f0c3f04",
+		"ap-northeast-1": "ami-08b2cecec9f2d5964",
+		"ap-northeast-2": "ami-0bbe543cd7fc2acd1",
+		"ap-southeast-1": "ami-07696966feacc8e7b",
+		"ap-southeast-2": "ami-07621fc1a7675f06c",
+		"eu-central-1":   "ami-0fe22fc725c19301f",
+		"eu-west-1":      "ami-0a6be9528ebb8999d",
+		"eu-west-2":      "ami-0a8dc5b3290842d3e",
+		"eu-west-3":      "ami-01dbd2d713c939649",
+		"eu-north-1":     "ami-0586fb63f5c466e3c",
+		"me-south-1":     "ami-08eab8b7cd9f43bd0",
 	},
 	"1.11": map[string]string{
-		"us-east-2":      "ami-088dad958fbfa643e",
-		"us-east-1":      "ami-053e2ac42d872cc20",
-		"us-west-2":      "ami-0743039b7c66a18f5",
-		"ap-south-1":     "ami-01d152acba5840ba2",
-		"ap-northeast-1": "ami-07765e1384d2e372c",
-		"ap-northeast-2": "ami-0656df091f27461cd",
-		"ap-southeast-1": "ami-084e9f3625a1a4a09",
-		"ap-southeast-2": "ami-03050c93b7e745696",
-		"eu-central-1":   "ami-020f08a17c3c4251c",
-		"eu-west-1":      "ami-07d0c92a42077ec9b",
-		"eu-west-2":      "ami-0ff8a4dc1632ee425",
-		"eu-west-3":      "ami-0569332dde21e3f1a",
-		"eu-north-1":     "ami-0fc8c638bc80fcecf",
-	},
-	"1.10": map[string]string{
-		"us-east-2":      "ami-0295a10750423107d",
-		"us-east-1":      "ami-05c9fba3332ccbc43",
-		"us-west-2":      "ami-0fc349241eb7b1222",
-		"ap-south-1":     "ami-0a183946b284a9841",
-		"ap-northeast-1": "ami-0f93f5579e6e79e96",
-		"ap-northeast-2": "ami-0412ddfd70b9c54bd",
-		"ap-southeast-1": "ami-0538e8e564078659c",
-		"ap-southeast-2": "ami-009caed75bdc3a2f0",
-		"eu-central-1":   "ami-032fc49751b7a5f83",
-		"eu-west-1":      "ami-03f9c85cd73fb9f4a",
-		"eu-west-2":      "ami-05c9cec73d17bf97f",
-		"eu-west-3":      "ami-0df95e4cd302d42f7",
-		"eu-north-1":     "ami-0ef218c64404e4bdf",
+		"us-east-2":      "ami-0f01aa60d08b56b51",
+		"us-east-1":      "ami-0277d42c17d2fd9f6",
+		"us-west-2":      "ami-0e024bc930f00f7a2",
+		"ap-east-1":      "ami-01efe02a8386b4448",
+		"ap-south-1":     "ami-0fee6e6300019359b",
+		"ap-northeast-1": "ami-0acea8b886f0e3f8f",
+		"ap-northeast-2": "ami-01e754bb06dedfd13",
+		"ap-southeast-1": "ami-04aff8301e51a47e4",
+		"ap-southeast-2": "ami-0cb611c369549e9c9",
+		"eu-central-1":   "ami-0157324517811932f",
+		"eu-west-1":      "ami-0ed6bcde59efbec8a",
+		"eu-west-2":      "ami-0b2d004b35f3153c4",
+		"eu-west-3":      "ami-0c592c8c15d5a2824",
+		"eu-north-1":     "ami-019c885c71264830f",
+		"me-south-1":     "ami-0f19239ec6bfc1fd4",
 	},
 }
 
@@ -127,6 +135,7 @@ type state struct {
 
 	MinimumASGSize int64
 	MaximumASGSize int64
+	DesiredASGSize int64
 	NodeVolumeSize *int64
 
 	UserData string
@@ -205,6 +214,13 @@ func (d *Driver) GetDriverCreateOptions(ctx context.Context) (*types.DriverFlags
 			DefaultInt: 3,
 		},
 	}
+	driverFlag.Options["desired-nodes"] = &types.Flag{
+		Type:  types.IntType,
+		Usage: "The desired number of worker nodes",
+		Default: &types.Default{
+			DefaultInt: 3,
+		},
+	}
 	driverFlag.Options["node-volume-size"] = &types.Flag{
 		Type:  types.IntPointerType,
 		Usage: "The volume size for each node",
@@ -266,7 +282,7 @@ func (d *Driver) GetDriverCreateOptions(ctx context.Context) (*types.DriverFlags
 	driverFlag.Options["kubernetes-version"] = &types.Flag{
 		Type:    types.StringType,
 		Usage:   "The kubernetes master version",
-		Default: &types.Default{DefaultString: "1.10"},
+		Default: &types.Default{DefaultString: "1.13"},
 	}
 
 	return &driverFlag, nil
@@ -280,7 +296,7 @@ func (d *Driver) GetDriverUpdateOptions(ctx context.Context) (*types.DriverFlags
 	driverFlag.Options["kubernetes-version"] = &types.Flag{
 		Type:    types.StringType,
 		Usage:   "The kubernetes version to update",
-		Default: &types.Default{DefaultString: "1.10"},
+		Default: &types.Default{DefaultString: "1.13"},
 	}
 	driverFlag.Options["access-key"] = &types.Flag{
 		Type:  types.StringType,
@@ -312,6 +328,7 @@ func getStateFromOptions(driverOptions *types.DriverOptions) (state, error) {
 	state.InstanceType = options.GetValueFromDriverOptions(driverOptions, types.StringType, "instance-type", "instanceType").(string)
 	state.MinimumASGSize = options.GetValueFromDriverOptions(driverOptions, types.IntType, "minimum-nodes", "minimumNodes").(int64)
 	state.MaximumASGSize = options.GetValueFromDriverOptions(driverOptions, types.IntType, "maximum-nodes", "maximumNodes").(int64)
+	state.DesiredASGSize = options.GetValueFromDriverOptions(driverOptions, types.IntType, "desired-nodes", "desiredNodes").(int64)
 	state.NodeVolumeSize, _ = options.GetValueFromDriverOptions(driverOptions, types.IntPointerType, "node-volume-size", "nodeVolumeSize").(*int64)
 	state.VirtualNetwork = options.GetValueFromDriverOptions(driverOptions, types.StringType, "virtual-network", "virtualNetwork").(string)
 	state.Subnets = options.GetValueFromDriverOptions(driverOptions, types.StringSliceType, "subnets").(*types.StringSlice).Value
@@ -365,8 +382,20 @@ func (state *state) validate() error {
 		return fmt.Errorf("maximum nodes must be greater than 0")
 	}
 
+	if state.DesiredASGSize < 1 {
+		return fmt.Errorf("desired nodes must be greater than 0")
+	}
+
 	if state.MaximumASGSize < state.MinimumASGSize {
 		return fmt.Errorf("maximum nodes cannot be less than minimum nodes")
+	}
+
+	if state.DesiredASGSize < state.MinimumASGSize {
+		return fmt.Errorf("desired nodes cannot be less than minimum nodes")
+	}
+
+	if state.DesiredASGSize > state.MaximumASGSize {
+		return fmt.Errorf("desired nodes cannot be greater than maximum nodes")
 	}
 
 	if state.NodeVolumeSize != nil && *state.NodeVolumeSize < 1 {
@@ -674,6 +703,8 @@ func (d *Driver) Create(ctx context.Context, options *types.DriverOptions, _ *ty
 				int(state.MinimumASGSize)))},
 			{ParameterKey: aws.String("NodeAutoScalingGroupMaxSize"), ParameterValue: aws.String(strconv.Itoa(
 				int(state.MaximumASGSize)))},
+			{ParameterKey: aws.String("NodeAutoScalingGroupDesiredCapacity"), ParameterValue: aws.String(strconv.Itoa(
+				int(state.DesiredASGSize)))},
 			{ParameterKey: aws.String("NodeVolumeSize"), ParameterValue: aws.String(strconv.Itoa(
 				int(volumeSize)))},
 			{ParameterKey: aws.String("NodeInstanceType"), ParameterValue: aws.String(state.InstanceType)},
@@ -885,7 +916,9 @@ func (d *Driver) waitForClusterReady(svc *eks.EKS, state state) (*eks.DescribeCl
 		status = *cluster.Cluster.Status
 
 		if status == eks.ClusterStatusFailed {
-			return nil, fmt.Errorf("cluster creation failed - cluster information: %s", cluster.Cluster.String())
+			return nil, fmt.Errorf("creation failed for cluster named %q with ARN %q",
+				aws.StringValue(cluster.Cluster.Name),
+				aws.StringValue(cluster.Cluster.Arn))
 		}
 	}
 

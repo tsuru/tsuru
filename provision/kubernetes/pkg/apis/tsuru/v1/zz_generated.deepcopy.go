@@ -9,6 +9,7 @@
 package v1
 
 import (
+	provision "github.com/tsuru/tsuru/types/provision"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -43,7 +44,7 @@ func (in *App) DeepCopyObject() runtime.Object {
 func (in *AppList) DeepCopyInto(out *AppList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]App, len(*in))
@@ -79,25 +80,36 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		in, out := &in.Deployments, &out.Deployments
 		*out = make(map[string][]string, len(*in))
 		for key, val := range *in {
+			var outVal []string
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				(*out)[key] = make([]string, len(val))
-				copy((*out)[key], val)
+				in, out := &val, &outVal
+				*out = make([]string, len(*in))
+				copy(*out, *in)
 			}
+			(*out)[key] = outVal
 		}
 	}
 	if in.Services != nil {
 		in, out := &in.Services, &out.Services
 		*out = make(map[string][]string, len(*in))
 		for key, val := range *in {
+			var outVal []string
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				(*out)[key] = make([]string, len(val))
-				copy((*out)[key], val)
+				in, out := &val, &outVal
+				*out = make([]string, len(*in))
+				copy(*out, *in)
 			}
+			(*out)[key] = outVal
 		}
+	}
+	if in.Configs != nil {
+		in, out := &in.Configs, &out.Configs
+		*out = new(provision.TsuruYamlKubernetesConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

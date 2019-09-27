@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/safe"
@@ -314,7 +313,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		} else if new < 2 {
 			c.Assert(ns.ObjectMeta.Name, check.Equals, s.client.Namespace())
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1194,7 +1193,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 			depCopy.Status.UnavailableReplicas = 0
 			s.client.AppsV1().Deployments(ns).Update(&depCopy)
 		}()
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
 		close(watchCalled)
@@ -1247,7 +1246,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		name := action.(ktesting.DeleteAction).GetName()
 		c.Assert(name, check.DeepEquals, "myapp-web")
 		deleteCalled = true
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	deployCreated := make(chan struct{})
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -1259,7 +1258,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 			dep.Status.UnavailableReplicas = 1
 			deployCreated <- struct{}{}
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	go func(evt event.Event) {
 		<-deployCreated
@@ -1317,7 +1316,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 			dep.Status.UnavailableReplicas = 1
 			deployCreated <- struct{}{}
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	go func(evt event.Event) {
 		<-deployCreated
@@ -1548,7 +1547,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1818,7 +1817,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		inputFile:         "/data/context.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -1892,7 +1891,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 			podCopy.Status.ContainerStatuses = nil
 			s.clusterClient.CoreV1().Pods(ns).Update(&podCopy)
 		}()
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
 		close(watchCalled)
@@ -2157,7 +2156,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
 		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	}
 	s.client.PrependReactor("create", "deployments", reaction)
 	s.client.PrependReactor("update", "deployments", reaction)
@@ -2167,7 +2166,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 			Type:   apiv1.PodReady,
 			Status: apiv1.ConditionFalse,
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
@@ -2251,7 +2250,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			})
 			c.Assert(repErr, check.IsNil)
 		}()
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	}
 	s.client.PrependReactor("create", "deployments", reaction)
 	s.client.PrependReactor("update", "deployments", reaction)
@@ -2265,7 +2264,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			Kind: "ReplicaSet",
 			Name: "replica-for-myapp-p1",
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
@@ -2324,7 +2323,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			rollbackObj = obj.(*extensions.DeploymentRollback)
 			return true, rollbackObj, nil
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -2352,7 +2351,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			})
 			c.Assert(repErr, check.IsNil)
 		}()
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -2365,7 +2364,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			Kind: "ReplicaSet",
 			Name: "replica-for-myapp-p1",
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
@@ -2414,11 +2413,11 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		obj := action.(ktesting.CreateAction).GetObject()
 		if action.GetSubresource() == "rollback" {
 			rollbackCalled = true
-			return testing.RunReactionsAfter(&s.client.Fake, action)
+			return false, nil, nil
 		}
 		dep := obj.(*appsv1.Deployment)
 		dep.Status.UnavailableReplicas = 2
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -2426,7 +2425,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 			Type:   apiv1.PodReady,
 			Status: apiv1.ConditionFalse,
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},

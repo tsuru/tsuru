@@ -108,7 +108,7 @@ func SnapshotSaveEtcdHosts(
 		return err
 	}
 
-	log.Infof(ctx, "Finished saving snapshot [%s] on all etcd hosts", snapshotName)
+	log.Infof(ctx, "Finished saving/uploading snapshot [%s] on all etcd hosts", snapshotName)
 	return nil
 }
 
@@ -179,6 +179,7 @@ func RestoreEtcdSnapshot(
 }
 
 func SnapshotSaveEtcdHostsFromCli(ctx *cli.Context) error {
+	logrus.Infof("Running RKE version: %v", ctx.App.Version)
 	clusterFile, filePath, err := resolveClusterFile(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to resolve cluster file: %v", err)
@@ -206,6 +207,7 @@ func SnapshotSaveEtcdHostsFromCli(ctx *cli.Context) error {
 }
 
 func RestoreEtcdSnapshotFromCli(ctx *cli.Context) error {
+	logrus.Infof("Running RKE version: %v", ctx.App.Version)
 	clusterFile, filePath, err := resolveClusterFile(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to resolve cluster file: %v", err)

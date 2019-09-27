@@ -14,9 +14,9 @@ import (
 	"github.com/rancher/rke/docker"
 	"github.com/rancher/rke/hosts"
 	"github.com/rancher/rke/log"
+	"github.com/rancher/rke/pki/cert"
 	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
-	"k8s.io/client-go/util/cert"
 )
 
 const (
@@ -32,6 +32,14 @@ func DeployCertificatesOnPlaneHost(ctx context.Context, host *hosts.Host, rkeCon
 	if forceDeploy {
 		env = append(env, "FORCE_DEPLOY=true")
 	}
+	if host.IsEtcd &&
+		rkeConfig.Services.Etcd.UID != 0 &&
+		rkeConfig.Services.Etcd.GID != 0 {
+		env = append(env,
+			[]string{fmt.Sprintf("ETCD_UID=%d", rkeConfig.Services.Etcd.UID),
+				fmt.Sprintf("ETCD_GID=%d", rkeConfig.Services.Etcd.GID)}...)
+	}
+
 	return doRunDeployer(ctx, host, env, certDownloaderImage, prsMap)
 }
 
@@ -87,11 +95,27 @@ func doRunDeployer(ctx context.Context, host *hosts.Host, containerEnv []string,
 		Cmd:   []string{"cert-deployer"},
 		Env:   containerEnv,
 	}
+	if host.DockerInfo.OSType == "windows" { // compatible with Windows
+		imageCfg = &container.Config{
+			Image: certDownloaderImage,
+			Cmd: []string{
+				"pwsh", "-NoLogo", "-NonInteractive", "-File", "c:/usr/bin/cert-deployer.ps1",
+			},
+			Env: containerEnv,
+		}
+	}
 	hostCfg := &container.HostConfig{
 		Binds: []string{
 			fmt.Sprintf("%s:/etc/kubernetes:z", path.Join(host.PrefixPath, "/etc/kubernetes")),
 		},
 		Privileged: true,
+	}
+	if host.DockerInfo.OSType == "windows" { // compatible with Windows
+		hostCfg = &container.HostConfig{
+			Binds: []string{
+				fmt.Sprintf("%s:c:/etc/kubernetes", path.Join(host.PrefixPath, "/etc/kubernetes")),
+			},
+		}
 	}
 	_, err = docker.CreateContainer(ctx, host.DClient, host.Address, CrtDownloaderContainer, imageCfg, hostCfg)
 	if err != nil {
@@ -174,25 +198,39 @@ func FetchCertificatesFromHost(ctx context.Context, extraHosts []*hosts.Host, ho
 	for certName, config := range crtList {
 		certificate := CertificatePKI{}
 		crt, err := FetchFileFromHost(ctx, GetCertTempPath(certName), image, host, prsMap, CertFetcherContainer, "certificates")
-		// I will only exit with an error if it's not a not-found-error and this is not an etcd certificate
-		if err != nil && !strings.HasPrefix(certName, "kube-etcd") {
+		// Return error if the certificate file is not found but only if its not etcd or request header certificate
+		if err != nil && !strings.HasPrefix(certName, "kube-etcd") &&
+			certName != RequestHeaderCACertName &&
+			certName != APIProxyClientCertName &&
+			certName != KubeAdminCertName {
 			// IsErrNotFound doesn't catch this because it's a custom error
 			if isFileNotFoundErr(err) {
-				return nil, nil
+				return nil, fmt.Errorf("Certificate %s is not found", GetCertTempPath(certName))
 			}
 			return nil, err
 
 		}
-		// If I can't find an etcd I will not fail and will create it later.
-		if crt == "" && strings.HasPrefix(certName, "kube-etcd") {
+		// If I can't find an etcd or request header ca I will not fail and will create it later.
+		if crt == "" && (strings.HasPrefix(certName, "kube-etcd") ||
+			certName == RequestHeaderCACertName ||
+			certName == APIProxyClientCertName ||
+			certName == KubeAdminCertName) {
 			tmpCerts[certName] = CertificatePKI{}
 			continue
 		}
 		key, err := FetchFileFromHost(ctx, GetKeyTempPath(certName), image, host, prsMap, CertFetcherContainer, "certificate")
-
+		if err != nil {
+			if isFileNotFoundErr(err) {
+				return nil, fmt.Errorf("Key %s is not found", GetKeyTempPath(certName))
+			}
+			return nil, err
+		}
 		if config {
 			config, err := FetchFileFromHost(ctx, GetConfigTempPath(certName), image, host, prsMap, CertFetcherContainer, "certificate")
 			if err != nil {
+				if isFileNotFoundErr(err) {
+					return nil, fmt.Errorf("Config %s is not found", GetConfigTempPath(certName))
+				}
 				return nil, err
 			}
 			certificate.Config = config
