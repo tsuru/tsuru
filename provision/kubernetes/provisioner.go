@@ -213,15 +213,25 @@ func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
 }
 
 func (p *kubernetesProvisioner) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	return provider.CreateCluster(ctx, c.Name, c.CreateData, c.Writer)
+	if len(c.CreateData) > 0 {
+		return provider.CreateCluster(ctx, c.Name, c.CreateData, c.Writer)
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	return provider.UpdateCluster(ctx, c.Name, c.CreateData, c.Writer)
+	if len(c.CreateData) > 0 {
+		return provider.UpdateCluster(ctx, c.Name, c.CreateData, c.Writer)
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
-	return provider.DeleteCluster(ctx, c.Name, c.CreateData, c.Writer)
+	stopClusterControllerByName(p, c.Name)
+	if len(c.CreateData) > 0 {
+		return provider.DeleteCluster(ctx, c.Name, c.CreateData, c.Writer)
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) GetName() string {

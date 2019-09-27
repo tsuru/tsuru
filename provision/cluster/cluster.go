@@ -143,7 +143,7 @@ func (s *clusterService) Delete(c provTypes.Cluster) error {
 	if err != nil {
 		return err
 	}
-	if createProv, ok := prov.(ClusterProvider); ok && len(c.CreateData) > 0 {
+	if createProv, ok := prov.(ClusterProvider); ok {
 		err = createProv.DeleteCluster(context.Background(), &c)
 		if err != nil {
 			return err
@@ -190,7 +190,7 @@ func (s *clusterService) initCluster(c provTypes.Cluster, isNewCluster bool) err
 	if err != nil {
 		return err
 	}
-	if createProv, ok := prov.(ClusterProvider); ok && len(c.CreateData) > 0 {
+	if createProv, ok := prov.(ClusterProvider); ok {
 		if isNewCluster {
 			err = createProv.CreateCluster(context.Background(), &c)
 		} else {

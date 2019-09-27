@@ -86,12 +86,16 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 }
 
 func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
+	stopClusterControllerByName(p, cluster.Name)
+}
+
+func stopClusterControllerByName(p *kubernetesProvisioner, clusterName string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if c, ok := p.clusterControllers[cluster.Name]; ok {
+	if c, ok := p.clusterControllers[clusterName]; ok {
 		c.stop()
 	}
-	delete(p.clusterControllers, cluster.Name)
+	delete(p.clusterControllers, clusterName)
 }
 
 func (c *clusterController) stop() {
@@ -313,6 +317,10 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
 		Component: leaderElectionName,
 	})
+	// err = ensureNamespace(c.cluster, c.cluster.Namespace())
+	// if err != nil {
+	// 	return err
+	// }
 	lock, err := resourcelock.New(
 		resourcelock.EndpointsResourceLock,
 		c.cluster.Namespace(),
