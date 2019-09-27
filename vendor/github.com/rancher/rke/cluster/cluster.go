@@ -3,11 +3,12 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"github.com/rancher/rke/metadata"
 	"net"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rancher/rke/pki/cert"
 
 	"github.com/docker/docker/api/types"
 	"github.com/rancher/rke/authz"
@@ -15,6 +16,7 @@ import (
 	"github.com/rancher/rke/hosts"
 	"github.com/rancher/rke/k8s"
 	"github.com/rancher/rke/log"
+	"github.com/rancher/rke/metadata"
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/services"
 	"github.com/rancher/rke/util"
@@ -25,7 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/cert"
+	"k8s.io/client-go/transport"
 )
 
 type Cluster struct {
@@ -45,7 +47,7 @@ type Cluster struct {
 	EtcdReadyHosts                   []*hosts.Host
 	ForceDeployCerts                 bool
 	InactiveHosts                    []*hosts.Host
-	K8sWrapTransport                 k8s.WrapTransport
+	K8sWrapTransport                 transport.WrapperFunc
 	KubeClient                       *kubernetes.Clientset
 	KubernetesServiceIP              net.IP
 	LocalKubeConfigPath              string
@@ -83,14 +85,16 @@ const (
 	WorkerThreads = util.WorkerThreads
 
 	serviceAccountTokenFileParam = "service-account-key-file"
+
+	SystemNamespace = "kube-system"
 )
 
-func (c *Cluster) DeployControlPlane(ctx context.Context, svcOptions *v3.KubernetesServicesOptions) error {
+func (c *Cluster) DeployControlPlane(ctx context.Context, svcOptionData map[string]*v3.KubernetesServicesOptions) error {
 	// Deploy Etcd Plane
 	etcdNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build etcd node plan map
 	for _, etcdHost := range c.EtcdHosts {
-		etcdNodePlanMap[etcdHost.Address] = BuildRKEConfigNodePlan(ctx, c, etcdHost, etcdHost.DockerInfo, svcOptions)
+		etcdNodePlanMap[etcdHost.Address] = BuildRKEConfigNodePlan(ctx, c, etcdHost, etcdHost.DockerInfo, svcOptionData)
 	}
 
 	if len(c.Services.Etcd.ExternalURLs) > 0 {
@@ -105,7 +109,7 @@ func (c *Cluster) DeployControlPlane(ctx context.Context, svcOptions *v3.Kuberne
 	cpNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build cp node plan map
 	for _, cpHost := range c.ControlPlaneHosts {
-		cpNodePlanMap[cpHost.Address] = BuildRKEConfigNodePlan(ctx, c, cpHost, cpHost.DockerInfo, svcOptions)
+		cpNodePlanMap[cpHost.Address] = BuildRKEConfigNodePlan(ctx, c, cpHost, cpHost.DockerInfo, svcOptionData)
 	}
 	if err := services.RunControlPlane(ctx, c.ControlPlaneHosts,
 		c.LocalConnDialerFactory,
@@ -120,13 +124,13 @@ func (c *Cluster) DeployControlPlane(ctx context.Context, svcOptions *v3.Kuberne
 	return nil
 }
 
-func (c *Cluster) DeployWorkerPlane(ctx context.Context, svcOptions *v3.KubernetesServicesOptions) error {
+func (c *Cluster) DeployWorkerPlane(ctx context.Context, svcOptionData map[string]*v3.KubernetesServicesOptions) error {
 	// Deploy Worker plane
 	workerNodePlanMap := make(map[string]v3.RKEConfigNodePlan)
 	// Build cp node plan map
 	allHosts := hosts.GetUniqueHostList(c.EtcdHosts, c.ControlPlaneHosts, c.WorkerHosts)
 	for _, workerHost := range allHosts {
-		workerNodePlanMap[workerHost.Address] = BuildRKEConfigNodePlan(ctx, c, workerHost, workerHost.DockerInfo, svcOptions)
+		workerNodePlanMap[workerHost.Address] = BuildRKEConfigNodePlan(ctx, c, workerHost, workerHost.DockerInfo, svcOptionData)
 	}
 	if err := services.RunWorkerPlane(ctx, allHosts,
 		c.LocalConnDialerFactory,
@@ -248,7 +252,7 @@ func rebuildLocalAdminConfig(ctx context.Context, kubeCluster *Cluster) error {
 			newConfig = pki.GetKubeConfigX509WithData(kubeURL, kubeCluster.ClusterName, pki.KubeAdminCertName, caData, crtData, keyData)
 		}
 		if err := pki.DeployAdminConfig(ctx, newConfig, kubeCluster.LocalKubeConfigPath); err != nil {
-			return fmt.Errorf("Failed to redeploy local admin config with new host")
+			return fmt.Errorf("Failed to redeploy local admin config with new host: %v", err)
 		}
 		workingConfig = newConfig
 		if _, err := GetK8sVersion(kubeCluster.LocalKubeConfigPath, kubeCluster.K8sWrapTransport); err == nil {
@@ -261,9 +265,9 @@ func rebuildLocalAdminConfig(ctx context.Context, kubeCluster *Cluster) error {
 	return nil
 }
 
-func isLocalConfigWorking(ctx context.Context, localKubeConfigPath string, k8sWrapTransport k8s.WrapTransport) bool {
+func isLocalConfigWorking(ctx context.Context, localKubeConfigPath string, k8sWrapTransport transport.WrapperFunc) bool {
 	if _, err := GetK8sVersion(localKubeConfigPath, k8sWrapTransport); err != nil {
-		log.Infof(ctx, "[reconcile] Local config is not valid, rebuilding admin config")
+		log.Infof(ctx, "[reconcile] Local config is not valid (error: %v), rebuilding admin config", err)
 		return false
 	}
 	return true
@@ -316,12 +320,15 @@ func ApplyAuthzResources(ctx context.Context, rkeConfig v3.RancherKubernetesEngi
 		if err := authz.ApplySystemNodeClusterRoleBinding(ctx, kubeCluster.LocalKubeConfigPath, kubeCluster.K8sWrapTransport); err != nil {
 			return fmt.Errorf("Failed to apply the ClusterRoleBinding needed for node authorization: %v", err)
 		}
+		if err := authz.ApplyKubeAPIClusterRole(ctx, kubeCluster.LocalKubeConfigPath, kubeCluster.K8sWrapTransport); err != nil {
+			return fmt.Errorf("Failed to apply the ClusterRole and Binding needed for node kubeapi proxy: %v", err)
+		}
 	}
 	if kubeCluster.Authorization.Mode == services.RBACAuthorizationMode && kubeCluster.Services.KubeAPI.PodSecurityPolicy {
 		if err := authz.ApplyDefaultPodSecurityPolicy(ctx, kubeCluster.LocalKubeConfigPath, kubeCluster.K8sWrapTransport); err != nil {
 			return fmt.Errorf("Failed to apply default PodSecurityPolicy: %v", err)
 		}
-		if err := authz.ApplyDefaultPodSecurityPolicyRole(ctx, kubeCluster.LocalKubeConfigPath, kubeCluster.K8sWrapTransport); err != nil {
+		if err := authz.ApplyDefaultPodSecurityPolicyRole(ctx, kubeCluster.LocalKubeConfigPath, SystemNamespace, kubeCluster.K8sWrapTransport); err != nil {
 			return fmt.Errorf("Failed to apply default PodSecurityPolicy ClusterRole and ClusterRoleBinding: %v", err)
 		}
 	}
@@ -347,7 +354,7 @@ func (c *Cluster) SyncLabelsAndTaints(ctx context.Context, currentCluster *Clust
 	if currentCluster != nil {
 		cpToDelete := hosts.GetToDeleteHosts(currentCluster.ControlPlaneHosts, c.ControlPlaneHosts, c.InactiveHosts, false)
 		if len(cpToDelete) == len(currentCluster.ControlPlaneHosts) {
-			log.Infof(ctx, "[sync] Cleaning left control plane nodes from reconcilation")
+			log.Infof(ctx, "[sync] Cleaning left control plane nodes from reconciliation")
 			for _, toDeleteHost := range cpToDelete {
 				if err := cleanControlNode(ctx, c, currentCluster, toDeleteHost); err != nil {
 					return err
@@ -355,6 +362,9 @@ func (c *Cluster) SyncLabelsAndTaints(ctx context.Context, currentCluster *Clust
 			}
 		}
 	}
+
+	// sync node taints. Add or remove taints from hosts
+	syncTaints(ctx, currentCluster, c)
 
 	if len(c.ControlPlaneHosts) > 0 {
 		log.Infof(ctx, "[sync] Syncing nodes Labels and Taints")
@@ -491,10 +501,9 @@ func RestartClusterPods(ctx context.Context, kubeCluster *Cluster) error {
 		return fmt.Errorf("Failed to initialize new kubernetes client: %v", err)
 	}
 	labelsList := []string{
-		fmt.Sprintf("%s=%s", KubeAppLabel, CalicoNetworkPlugin),
 		fmt.Sprintf("%s=%s", KubeAppLabel, FlannelNetworkPlugin),
 		fmt.Sprintf("%s=%s", KubeAppLabel, CanalNetworkPlugin),
-		fmt.Sprintf("%s=%s", NameLabel, WeaveNetowrkAppName),
+		fmt.Sprintf("%s=%s", NameLabel, WeaveNetworkAppName),
 		fmt.Sprintf("%s=%s", AppLabel, NginxIngressAddonAppName),
 		fmt.Sprintf("%s=%s", KubeAppLabel, DefaultMonitoringProvider),
 		fmt.Sprintf("%s=%s", KubeAppLabel, KubeDNSAddonAppName),
@@ -502,6 +511,9 @@ func RestartClusterPods(ctx context.Context, kubeCluster *Cluster) error {
 		fmt.Sprintf("%s=%s", KubeAppLabel, CoreDNSAutoscalerAppName),
 		fmt.Sprintf("%s=%s", AppLabel, KubeAPIAuthAppName),
 		fmt.Sprintf("%s=%s", AppLabel, CattleClusterAgentAppName),
+	}
+	for _, calicoLabel := range CalicoNetworkLabels {
+		labelsList = append(labelsList, fmt.Sprintf("%s=%s", KubeAppLabel, calicoLabel))
 	}
 	var errgrp errgroup.Group
 	labelQueue := util.GetObjectQueue(labelsList)

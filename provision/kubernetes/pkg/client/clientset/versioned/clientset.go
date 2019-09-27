@@ -7,7 +7,6 @@
 package versioned
 
 import (
-	glog "github.com/golang/glog"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -17,8 +16,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TsuruV1() tsuruv1.TsuruV1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Tsuru() tsuruv1.TsuruV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -30,12 +27,6 @@ type Clientset struct {
 
 // TsuruV1 retrieves the TsuruV1Client
 func (c *Clientset) TsuruV1() tsuruv1.TsuruV1Interface {
-	return c.tsuruV1
-}
-
-// Deprecated: Tsuru retrieves the default version of TsuruClient.
-// Please explicitly pick a version.
-func (c *Clientset) Tsuru() tsuruv1.TsuruV1Interface {
 	return c.tsuruV1
 }
 
@@ -62,7 +53,6 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
-		glog.Errorf("failed to create the DiscoveryClient: %v", err)
 		return nil, err
 	}
 	return &cs, nil

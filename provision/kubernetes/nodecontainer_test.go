@@ -324,7 +324,7 @@ func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*appsv1.DaemonSet)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Namespace, check.Equals, s.client.PoolNamespace(poolName))
-		return kTesting.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -549,7 +549,7 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		ds := action.(ktesting.CreateAction).GetObject().(*appsv1.DaemonSet)
 		ds.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
-		return kTesting.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	}
 	s.client.PrependReactor("create", "daemonsets", reaction)
 	s.client.PrependReactor("update", "daemonsets", reaction)

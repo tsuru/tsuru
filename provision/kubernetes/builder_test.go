@@ -16,13 +16,11 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	kfake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -31,11 +29,7 @@ func (s *S) TestBuildPod(c *check.C) {
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	fakePods, ok := s.client.Core().Pods(ns).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		c.Assert(containers, check.HasLen, 2)
@@ -55,7 +49,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -85,11 +79,9 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
-	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		c.Assert(containers, check.HasLen, 2)
@@ -109,7 +101,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -166,7 +158,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 		ns, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Namespace)
 		c.Assert(ok, check.Equals, true)
 		c.Assert(ns.ObjectMeta.Name, check.Equals, nsName)
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	client := KubeClient{}
 	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
@@ -192,11 +184,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	nsName, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		if containers[0].Name == "myapp-v1-deploy" {
@@ -219,7 +207,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 
 	client := KubeClient{}
@@ -249,11 +237,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *chec
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	nsName, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	fakePods, ok := s.client.Core().Pods(nsName).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		if containers[0].Name == "myapp-v1-deploy" {
@@ -276,7 +260,7 @@ cat >/dev/null && /bin/deploy-agent`)
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
 			})
 		}
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 
 	client := KubeClient{}
@@ -313,9 +297,7 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 func (s *S) TestBuildImage(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace()).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		c.Assert(containers, check.HasLen, 1)
@@ -332,7 +314,7 @@ func (s *S) TestBuildImage(c *check.C) {
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
@@ -347,9 +329,7 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	}
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
-	fakePods, ok := s.client.Core().Pods(s.client.Namespace()).(*kfake.FakePods)
-	c.Assert(ok, check.Equals, true)
-	fakePods.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
 		c.Assert(containers, check.HasLen, 1)
@@ -366,7 +346,7 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 		})
-		return testing.RunReactionsAfter(&s.client.Fake, action)
+		return false, nil, nil
 	})
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}

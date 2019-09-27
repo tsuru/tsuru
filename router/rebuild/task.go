@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"k8s.io/client-go/util/workqueue"
-	_ "k8s.io/kubernetes/pkg/util/workqueue/prometheus"
 )
 
 const rebuildWorkers = 20

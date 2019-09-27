@@ -1,6 +1,33 @@
 package templates
 
 const (
+	KubeAPIClusterRole = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: proxy-clusterrole-kubeapiserver
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - nodes/log
+  - nodes/spec
+  verbs: ["get", "list", "watch", "create"]`
+	KubeAPIClusterRoleBinding = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: proxy-role-binding-kubernetes-master
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: proxy-clusterrole-kubeapiserver
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: kube-apiserver`
 	SystemNodeClusterRoleBinding = `
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -41,11 +68,10 @@ subjects:
   name: rke-job-deployer`
 
 	DefaultPodSecurityPolicy = `
-apiVersion: extensions/v1beta1
+apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: default-psp
-  namespace: kube-system
   annotations:
     seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
 spec:
@@ -75,7 +101,6 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: default-psp-role
-  namespace: kube-system
 rules:
 - apiGroups: ['extensions']
   resources: ['podsecuritypolicies']
@@ -88,7 +113,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: default-psp-rolebinding
-  namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
