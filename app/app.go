@@ -1657,11 +1657,7 @@ func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
-func (app *App) LastLogs(logService appTypes.AppLogService, lines int, filterLog appTypes.Applog, t authTypes.Token) ([]appTypes.Applog, error) {
-	return app.lastLogs(logService, lines, filterLog, false, t)
-}
-
-func (app *App) lastLogs(logService appTypes.AppLogService, lines int, filterLog appTypes.Applog, invertFilter bool, t authTypes.Token) ([]appTypes.Applog, error) {
+func (app *App) LastLogs(logService appTypes.AppLogService, lines int, filterLog appTypes.Applog, invertFilter bool, t authTypes.Token) ([]appTypes.Applog, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err

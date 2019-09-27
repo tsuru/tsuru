@@ -4341,6 +4341,32 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	c.Assert(logs[0].Source, check.Equals, "mars")
 }
 
+func (s *S) TestAppLogSelectBySourceInvert(c *check.C) {
+	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "")
+	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadLog,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10&invert-filters=true", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = appLog(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	logs := []appTypes.Applog{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 1)
+	c.Assert(logs[0].Message, check.Equals, "earth log")
+	c.Assert(logs[0].Source, check.Equals, "earth")
+}
+
 func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -5602,7 +5628,7 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(servicemanager.AppLog, 5, appTypes.Applog{}, token)
+	logs, err := a.LastLogs(servicemanager.AppLog, 5, appTypes.Applog{}, false, token)
 	c.Assert(err, check.IsNil)
 	got := make([]string, len(logs))
 	gotSource := make([]string, len(logs))

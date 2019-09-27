@@ -286,7 +286,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	if err != nil {
 		var logLines []appTypes.Applog
 		if provision.IsStartupError(err) {
-			logLines, _ = opts.App.lastLogs(servicemanager.AppLog, 10, appTypes.Applog{
+			logLines, _ = opts.App.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{
 				Source: "tsuru",
 			}, true, opts.Token)
 		}

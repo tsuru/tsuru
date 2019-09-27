@@ -2511,13 +2511,33 @@ func (s *S) TestLastLogs(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, nil)
+	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, false, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 5; i < 15; i++ {
 		c.Check(logs[i-5].Message, check.Equals, strconv.Itoa(i))
 		c.Check(logs[i-5].Source, check.Equals, "tsuru")
 	}
+}
+
+func (s *S) TestLastLogsInvertFilters(c *check.C) {
+	app := App{
+		Name:      "app3",
+		Platform:  "vougan",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 15; i++ {
+		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
+		time.Sleep(1e6) // let the time flow
+	}
+	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, true, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 1)
+	c.Check(logs[0].Message, check.Equals, "app3 log from circus")
+	c.Check(logs[0].Source, check.Equals, "circus")
 }
 
 type logDisabledFakeProvisioner struct {
@@ -2543,7 +2563,7 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
+	_, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, false, nil)
 	c.Assert(err, check.ErrorMatches, "my doc msg")
 }
 
@@ -2842,7 +2862,7 @@ func (s *S) TestRun(c *check.C) {
 	var logs []appTypes.Applog
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, nil)
+		logs, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, false, nil)
 		c.Assert(err, check.IsNil)
 		if len(logs) > 2 {
 			break
