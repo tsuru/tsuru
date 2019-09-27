@@ -317,10 +317,10 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
 		Component: leaderElectionName,
 	})
-	// err = ensureNamespace(c.cluster, c.cluster.Namespace())
-	// if err != nil {
-	// 	return err
-	// }
+	err = ensureNamespace(c.cluster, c.cluster.Namespace())
+	if err != nil {
+		return err
+	}
 	lock, err := resourcelock.New(
 		resourcelock.EndpointsResourceLock,
 		c.cluster.Namespace(),
