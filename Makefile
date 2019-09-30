@@ -128,7 +128,7 @@ run-tsurud-token: $(TSR_BIN)
 	$(TSR_BIN) token
 
 validate-api-spec:
-	go get github.com/go-swagger/go-swagger/cmd/swagger
+	cd / && go get github.com/go-swagger/go-swagger/cmd/swagger@v0.19.0
 	swagger validate ./docs/reference/api.yaml
 
 test-int:
