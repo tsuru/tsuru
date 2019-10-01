@@ -5358,10 +5358,6 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 }
 
 func (s *S) TestUnbindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	err := s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -5372,6 +5368,10 @@ func (s *S) TestUnbindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
 		Scheme:  permission.PermServiceInstanceUpdateUnbind,
 		Context: permission.Context(permTypes.CtxTeam, "anotherteam"),
 	})
+
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	err := s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
 
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
