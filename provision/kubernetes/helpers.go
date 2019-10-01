@@ -248,31 +248,98 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, d
 	return newCount > 0, nil
 }
 
-func notReadyPodEvents(client *ClusterClient, a provision.App, process string) ([]string, error) {
+type podErrorMessage struct {
+	podName string
+	message string
+}
+
+func notReadyPodEvents(client *ClusterClient, a provision.App, process string) ([]podErrorMessage, error) {
+	const (
+		eventReasonUnhealthy        = "Unhealthy"
+		eventReasonFailedScheduling = "FailedScheduling"
+	)
+
 	pods, err := podsForAppProcess(client, a, process)
 	if err != nil {
 		return nil, err
 	}
-	var podsForEvts []*apiv1.Pod
-podsLoop:
-	for i, pod := range pods.Items {
+	var messages []podErrorMessage
+	for _, pod := range pods.Items {
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
-				podsForEvts = append(podsForEvts, &pods.Items[i])
-				continue podsLoop
+				msg := fmt.Sprintf("Pod %q not ready", pod.Name)
+				if cond.Message != "" {
+					msg = fmt.Sprintf("%s: %s", msg, cond.Message)
+				} else if cond.Reason != "" {
+					msg = fmt.Sprintf("%s: %s", msg, cond.Reason)
+				}
+				messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
 			}
 		}
-	}
-	var messages []string
-	ns, err := client.AppNamespace(a)
-	if err != nil {
-		return nil, err
-	}
-	for _, pod := range podsForEvts {
-		err = newInvalidPodPhaseError(client, pod, ns)
-		messages = append(messages, fmt.Sprintf("Pod %s: %v", pod.Name, err))
+		for _, contStatus := range pod.Status.ContainerStatuses {
+			termState := contStatus.State.Terminated
+			if termState == nil && contStatus.State.Waiting != nil && contStatus.LastTerminationState.Terminated != nil {
+				termState = contStatus.LastTerminationState.Terminated
+			}
+			if termState == nil {
+				continue
+			}
+			msg := fmt.Sprintf("Pod %q has crashed %d times: Exited with status %d", pod.Name, contStatus.RestartCount, termState.ExitCode)
+			if termState.Message != "" {
+				msg = fmt.Sprintf("%s: %s", msg, termState.Message)
+			}
+			messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
+		}
+		lastEvt, err := lastEventForPod(client, &pod)
+		if err != nil {
+			return messages, err
+		}
+		if lastEvt == nil {
+			continue
+		}
+		var msg string
+		switch lastEvt.Reason {
+		case eventReasonUnhealthy:
+			msg = fmt.Sprintf("Pod %q failed health check", pod.Name)
+			probeMsg := probeMsg(pod)
+			if probeMsg != "" {
+				msg = fmt.Sprintf("%s, %s", msg, probeMsg)
+			}
+		case eventReasonFailedScheduling:
+			msg = fmt.Sprintf("Pod %q could not be scheduled", pod.Name)
+		default:
+			if lastEvt.Type == apiv1.EventTypeWarning {
+				msg = fmt.Sprintf("Pod %q with warning", pod.Name)
+			}
+		}
+		if msg != "" {
+			if lastEvt.Message != "" {
+				msg = fmt.Sprintf("%s: %s", msg, lastEvt.Message)
+			}
+			messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
+		}
 	}
 	return messages, nil
+}
+
+func probeMsg(pod apiv1.Pod) string {
+	if len(pod.Spec.Containers) == 0 {
+		return ""
+	}
+	probe := pod.Spec.Containers[0].ReadinessProbe
+	if probe == nil {
+		return ""
+	}
+	if probe.Handler.HTTPGet != nil {
+		return fmt.Sprintf("HTTP GET to %s on port %s", probe.Handler.HTTPGet.Path, probe.Handler.HTTPGet.Port.String())
+	}
+	if probe.Handler.TCPSocket != nil {
+		return fmt.Sprintf("TCP connect on port %s", probe.Handler.TCPSocket.Port.String())
+	}
+	if probe.Handler.Exec != nil {
+		return fmt.Sprintf("Command exec %q", probe.Handler.Exec.Command)
+	}
+	return ""
 }
 
 func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, namespace string) error {
@@ -308,18 +375,34 @@ func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, ori
 	})
 }
 
+func eventsForPod(client *ClusterClient, pod *apiv1.Pod) (*apiv1.EventList, error) {
+	eventsInterface := client.CoreV1().Events(pod.Namespace)
+	selector := eventsInterface.GetFieldSelector(&pod.Name, &pod.Namespace, nil, nil)
+	options := metav1.ListOptions{
+		FieldSelector: selector.String(),
+	}
+	return eventsInterface.List(options)
+}
+
+func lastEventForPod(client *ClusterClient, pod *apiv1.Pod) (*apiv1.Event, error) {
+	events, err := eventsForPod(client, pod)
+	if err != nil {
+		return nil, err
+	}
+	if len(events.Items) > 0 {
+		return &events.Items[len(events.Items)-1], nil
+	}
+	return nil, nil
+}
+
 func newInvalidPodPhaseError(client *ClusterClient, pod *apiv1.Pod, namespace string) error {
 	phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
 	if pod.Status.Message != "" {
 		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
 	}
 	retErr := errors.Errorf("invalid pod phase %s", phaseWithMsg)
-	eventsInterface := client.CoreV1().Events(namespace)
-	selector := eventsInterface.GetFieldSelector(&pod.Name, &namespace, nil, nil)
-	options := metav1.ListOptions{FieldSelector: selector.String()}
-	events, err := eventsInterface.List(options)
-	if err == nil && len(events.Items) > 0 {
-		lastEvt := events.Items[len(events.Items)-1]
+	lastEvt, err := lastEventForPod(client, pod)
+	if err == nil && lastEvt != nil {
 		retErr = errors.Errorf("%v - last event: %s", retErr, lastEvt.Message)
 	}
 	return retErr

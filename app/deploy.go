@@ -256,7 +256,7 @@ func (e *errorWithLog) Error() string {
 	if len(e.logs) > 0 {
 		logPart = fmt.Sprintf("\n---- Last %d log messages: ----\n%s", len(e.logs), e.formatLogLines())
 	}
-	return fmt.Sprintf("---- ERROR during deploy: ----\n%v%s", e.err, logPart)
+	return fmt.Sprintf("\n---- ERROR during deploy: ----\n%v\n%s", e.err, logPart)
 }
 
 // Deploy runs a deployment of an application. It will first try to run an

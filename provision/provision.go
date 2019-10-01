@@ -685,7 +685,8 @@ func (e *Error) Error() string {
 }
 
 type ErrUnitStartup struct {
-	Err error
+	BadUnits []string
+	Err      error
 }
 
 func (e ErrUnitStartup) Error() string {
