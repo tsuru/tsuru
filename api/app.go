@@ -1375,6 +1375,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
 		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 			permission.Context(permTypes.CtxServiceInstance, instance.Name),
 		)...,
 	)
