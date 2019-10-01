@@ -328,19 +328,11 @@ func (c *clusterController) waitForSync(informer cache.SharedInformer) error {
 	return errors.Wrap(ctx.Err(), "error waiting for informer sync")
 }
 
-func (c *clusterController) initLeaderElection(ctx context.Context) error {
-	id, err := os.Hostname()
-	if err != nil {
-		return err
-	}
+func (c *clusterController) createElector(hostID string) (*leaderelection.LeaderElector, error) {
 	broadcaster := record.NewBroadcaster()
 	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
 		Component: leaderElectionName,
 	})
-	err = ensureNamespace(c.cluster, c.cluster.Namespace())
-	if err != nil {
-		return err
-	}
 	lock, err := resourcelock.New(
 		resourcelock.EndpointsResourceLock,
 		c.cluster.Namespace(),
@@ -348,12 +340,12 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 		c.cluster.CoreV1(),
 		c.cluster.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
-			Identity:      id,
+			Identity:      hostID,
 			EventRecorder: recorder,
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Lock:          lock,
@@ -370,17 +362,34 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 		},
 	})
 	if err != nil {
+		return nil, err
+	}
+	return le, nil
+}
+
+func (c *clusterController) initLeaderElection(ctx context.Context) error {
+	id, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	err = ensureNamespace(c.cluster, c.cluster.Namespace())
+	if err != nil {
 		return err
 	}
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
 		for {
+			le, err := c.createElector(id)
+			if err != nil {
+				log.Errorf("unable to create leader elector: %v", err)
+				continue
+			}
 			le.Run(ctx)
 			select {
 			case <-ctx.Done():
 				return
-			default:
+			case <-time.After(500 * time.Millisecond):
 			}
 		}
 	}()

@@ -727,16 +727,27 @@ const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
 func createDeployTimeoutError(client *ClusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
 	messages, err := notReadyPodEvents(client, a, processName)
-	var msgErrorPart string
-	if err == nil {
-		for _, m := range messages {
-			fmt.Fprintf(w, " ---> Pod not ready in time: %s\n", m)
-		}
-		if len(messages) > 0 {
-			msgErrorPart = ": " + strings.Join(messages, ", ")
-		}
+	if err != nil {
+		return errors.Wrap(err, "Unknown error deploying application")
 	}
-	return errors.Errorf("timeout waiting %s after %v waiting for units%s", label, timeout, msgErrorPart)
+	if len(messages) == 0 {
+		// This should not be possible.
+		return errors.New("Unknown error deploying application.")
+	}
+	var msgsStr []string
+	badUnitsSet := make(map[string]struct{})
+	for _, m := range messages {
+		badUnitsSet[m.podName] = struct{}{}
+		msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s\n", m.message))
+	}
+	var badUnits []string
+	for u := range badUnitsSet {
+		badUnits = append(badUnits, u)
+	}
+	return provision.ErrUnitStartup{
+		BadUnits: badUnits,
+		Err:      errors.New(strings.Join(msgsStr, "\n")),
+	}
 }
 
 func filteredPodEvents(client *ClusterClient, evtResourceVersion, podName, namespace string) (watch.Interface, error) {
@@ -894,7 +905,11 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		case <-timeout:
 			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		case <-ctx.Done():
-			return revision, ctx.Err()
+			err = ctx.Err()
+			if err == context.Canceled {
+				err = errors.Wrap(err, "canceled by user action")
+			}
+			return revision, err
 		}
 		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
@@ -952,20 +967,23 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		if oldDep != nil && (newRevision == "" || oldRevision == newRevision) {
 			oldDep.Generation = 0
 			oldDep.ResourceVersion = ""
-			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n")
 			_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(oldDep)
 		} else if oldDep == nil && newDep != nil {
 			// We have just created the deployment, so we need to remove it
-			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n ---> %s <---\n", err)
+			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
 			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
-			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
 			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
 				Name: depName,
 			})
 		}
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
+		}
+		if _, ok := err.(provision.ErrUnitStartup); ok {
+			return err
 		}
 		return provision.ErrUnitStartup{Err: err}
 	}
