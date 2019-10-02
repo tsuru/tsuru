@@ -471,6 +471,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:     ia.RouterOpts,
 	}
 	tags, _ := InputValues(r, "tag")
+	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
 	updateData.Tags = append(updateData.Tags, tags...) // for compatibility
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
@@ -491,6 +492,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
 	}
 	if updateData.Pool != "" {
+		if noRestart {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must restart the app when changing the pool."}
+		}
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePool)
 	}
 	if updateData.TeamOwner != "" {
@@ -543,7 +547,11 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(updateData, evt)
+	err = a.Update(app.UpdateAppArgs{
+		UpdateData:    updateData,
+		Writer:        evt,
+		ShouldRestart: !noRestart,
+	})
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}

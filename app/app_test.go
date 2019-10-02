@@ -4466,7 +4466,7 @@ func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	updateData := App{Name: app.Name, Description: "bleble"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4478,7 +4478,7 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Description: "bleble"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4490,7 +4490,7 @@ func (s *S) TestUpdateAppPlatform(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Platform: "heimerdinger"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4503,7 +4503,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Platform: "python:v3"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4525,7 +4525,7 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 		return &authTypes.Team{Name: teamName}, nil
 	}
 	updateData := App{Name: "example", TeamOwner: teamName}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4537,7 +4537,7 @@ func (s *S) TestUpdateTeamOwnerNotExists(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", TeamOwner: "newowner"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "team not found")
 	dbApp, err := GetByName(app.Name)
@@ -4560,11 +4560,12 @@ func (s *S) TestUpdatePool(c *check.C) {
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePoolOtherProv(c *check.C) {
@@ -4597,7 +4598,7 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	c.Assert(p2.Provisioned(&app), check.Equals, false)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4621,11 +4622,12 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
@@ -4666,7 +4668,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	c.Assert(p2.Provisioned(&app), check.Equals, false)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.ErrorMatches, "can't change the provisioner of an app with binded volumes")
 }
 
@@ -4701,7 +4703,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 	c.Assert(p1.GetUnits(&app), check.HasLen, 1)
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 }
 
@@ -4721,7 +4723,31 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(updateData, new(bytes.Buffer))
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+}
+
+func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
+	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, plan.Name)
+		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4749,7 +4775,7 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(updateData, new(bytes.Buffer))
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.ErrorMatches, `App plan "something" is not allowed on pool "pool1"`)
 }
 
@@ -4768,7 +4794,46 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(updateData, new(bytes.Buffer))
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
+	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, plan.Name)
+		return &plan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, plan}, nil
+	}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4798,7 +4863,7 @@ func (s *S) TestUpdatePlanNotFound(c *check.C) {
 		return nil, appTypes.ErrPlanNotFound
 	}
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "some-unknown-plan"}}
-	err := app.Update(updateData, new(bytes.Buffer))
+	err := app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.Equals, appTypes.ErrPlanNotFound)
 }
 
@@ -4826,7 +4891,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
 	updateData := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake-hc"}}, Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(updateData, new(bytes.Buffer))
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.NotNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -4856,7 +4921,7 @@ func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Tags: []string{"tag2 ", "  tag3  ", "", " tag3", "  "}}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4868,7 +4933,7 @@ func (s *S) TestUpdatePlatform(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{UpdatePlatform: true}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4880,7 +4945,7 @@ func (s *S) TestUpdateWithEmptyTagsRemovesAllTags(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Description: "ble", Tags: []string{}}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4892,7 +4957,7 @@ func (s *S) TestUpdateWithoutTagsKeepsOriginalTags(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Description: "ble", Tags: nil}
-	err = app.Update(updateData, new(bytes.Buffer))
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
@@ -4923,7 +4988,7 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}, Description: "bleble", Pool: "test2"}
-	err = a.Update(updateData, new(bytes.Buffer))
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -5216,7 +5281,7 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	err = app.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Description: "updated description"}
-	err = app.Update(updateData, nil)
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: nil})
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -5265,7 +5330,7 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 		},
 		Blacklist: true,
 	})
-	err = app.Update(App{Pool: optsPool2.Name}, nil)
+	err = app.Update(UpdateAppArgs{UpdateData: App{Pool: optsPool2.Name}, Writer: nil})
 	c.Assert(err, check.NotNil)
 }
 
