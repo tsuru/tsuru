@@ -4767,6 +4767,37 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	c.Assert(e.Message, check.Equals, service.ErrServiceInstanceNotFound.Error())
 }
 
+func (s *S) TestBindHandlerReturns403IfUserIsNotTeamOwner(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppUpdateBind,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxTeam, "anotherteam"),
+	})
+
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	err := s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
+		a.Name, instance.ServiceName, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = bindServiceInstance(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+}
+
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateBind,
