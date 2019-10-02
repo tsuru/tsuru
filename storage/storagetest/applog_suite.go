@@ -42,7 +42,7 @@ func addLog(c *check.C, storage app.AppLogStorage, appName, msg, source, unit st
 }
 
 func (s *AppLogSuite) TestWatch(c *check.C) {
-	l, err := s.AppLogStorage.Watch("myapp", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -55,7 +55,7 @@ func (s *AppLogSuite) TestWatch(c *check.C) {
 }
 
 func (s *AppLogSuite) TestWatchFiltered(c *check.C) {
-	l, err := s.AppLogStorage.Watch("myapp", "web", "u1")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "myapp", Source: "web", Units: []string{"u1"}})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -78,7 +78,7 @@ func (s *AppLogSuite) TestWatchFiltered(c *check.C) {
 }
 
 func (s *AppLogSuite) TestWatchClosingChannel(c *check.C) {
-	l, err := s.AppLogStorage.Watch("myapp", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(l.Chan(), check.NotNil)
 	l.Close()
@@ -87,7 +87,7 @@ func (s *AppLogSuite) TestWatchClosingChannel(c *check.C) {
 }
 
 func (s *AppLogSuite) TestWatchClose(c *check.C) {
-	l, err := s.AppLogStorage.Watch("myapp", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	_, ok := <-l.Chan()
@@ -98,7 +98,7 @@ func (s *AppLogSuite) TestWatchDoubleClose(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.AppLogStorage.Watch("yourapp", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "yourapp"})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	l.Close()
@@ -109,7 +109,7 @@ func (s *AppLogSuite) TestWatchNotify(c *check.C) {
 		l []app.Applog
 		sync.Mutex
 	}
-	l, err := s.AppLogStorage.Watch("fade", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "fade"})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -162,7 +162,7 @@ func (s *AppLogSuite) TestWatchNotifyFiltered(c *check.C) {
 		l []app.Applog
 		sync.Mutex
 	}
-	l, err := s.AppLogStorage.Watch("fade", "tsuru", "unit1")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "fade", Source: "tsuru", Units: []string{"unit1"}})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -217,7 +217,7 @@ func (s *AppLogSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.AppLogStorage.Watch("fade", "", "")
+	l, err := s.AppLogStorage.Watch(app.ListLogArgs{AppName: "fade"})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	addLog(c, s.AppLogStorage, "fade", "Something went wrong. Check it out:", "tsuru", "")
@@ -237,19 +237,21 @@ func (s *AppLogSuite) TestLogStorageList(c *check.C) {
 	}
 }
 
-func (s *AppLogSuite) TestLogStorageListUnitFilter(c *check.C) {
+func (s *AppLogSuite) TestLogStorageListUnitsFilter(c *check.C) {
 	for i := 0; i < 15; i++ {
 		addLog(c, s.AppLogStorage, "app3", strconv.Itoa(i), "tsuru", "rdaneel")
 	}
 	addLog(c, s.AppLogStorage, "app3", "app3 log from circus", "circus", "rdaneel")
 	addLog(c, s.AppLogStorage, "app3", "app3 log from tsuru", "tsuru", "seldon")
-	logs, err := s.AppLogStorage.List(app.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Unit: "rdaneel"})
+	addLog(c, s.AppLogStorage, "app3", "app3 other log from tsuru", "tsuru", "rgiskard")
+	logs, err := s.AppLogStorage.List(app.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Units: []string{"rdaneel", "rgiskard"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
-	for i := 5; i < 15; i++ {
-		c.Check(logs[i-5].Message, check.Equals, strconv.Itoa(i))
-		c.Check(logs[i-5].Source, check.Equals, "tsuru")
+	for i := 6; i < 15; i++ {
+		c.Check(logs[i-6].Message, check.Equals, strconv.Itoa(i))
+		c.Check(logs[i-6].Source, check.Equals, "tsuru")
 	}
+	c.Check(logs[9].Message, check.Equals, "app3 other log from tsuru")
 }
 
 func (s *AppLogSuite) TestLogStorageListEmpty(c *check.C) {

@@ -33,14 +33,14 @@ func isSessionClosed(r interface{}) bool {
 	return fmt.Sprintf("%v", r) == "Session already closed"
 }
 
-func newLogListener(svc appTypes.AppLogStorage, appName string, filterLog appTypes.Applog) (*logListener, error) {
+func newLogListener(svc appTypes.AppLogStorage, args appTypes.ListLogArgs) (*logListener, error) {
 	conn, err := db.LogConn()
 	if err != nil {
 		return nil, err
 	}
 	c := make(chan appTypes.Applog, 10)
 	quit := make(chan struct{})
-	coll := conn.AppLogCollection(appName)
+	coll := conn.AppLogCollection(args.AppName)
 	var lastLog appTypes.Applog
 	err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
 	if err == mgo.ErrNotFound {
@@ -48,11 +48,11 @@ func newLogListener(svc appTypes.AppLogStorage, appName string, filterLog appTyp
 		// Next() call wouldn't block). So if the collection is empty we insert
 		// the very first log line in it. This is quite rare in the real world
 		// though so the impact of this extra log message is really small.
-		err = svc.InsertApp(appName, &appTypes.Applog{
+		err = svc.InsertApp(args.AppName, &appTypes.Applog{
 			Date:    time.Now().In(time.UTC),
 			Message: "Logs initialization",
 			Source:  "tsuru",
-			AppName: appName,
+			AppName: args.AppName,
 		})
 		if err != nil {
 			conn.Close()
@@ -66,15 +66,8 @@ func newLogListener(svc appTypes.AppLogStorage, appName string, filterLog appTyp
 	}
 	lastId := lastLog.MongoID
 	mkQuery := func() bson.M {
-		m := bson.M{
-			"_id": bson.M{"$gt": lastId},
-		}
-		if filterLog.Source != "" {
-			m["source"] = filterLog.Source
-		}
-		if filterLog.Unit != "" {
-			m["unit"] = filterLog.Unit
-		}
+		m := makeQuery(args)
+		m["_id"] = bson.M{"$gt": lastId}
 		return m
 	}
 	query := coll.Find(mkQuery())

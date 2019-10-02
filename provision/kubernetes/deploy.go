@@ -738,7 +738,7 @@ func createDeployTimeoutError(client *ClusterClient, a provision.App, processNam
 	badUnitsSet := make(map[string]struct{})
 	for _, m := range messages {
 		badUnitsSet[m.podName] = struct{}{}
-		msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s\n", m.message))
+		msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s", m.message))
 	}
 	var badUnits []string
 	for u := range badUnitsSet {

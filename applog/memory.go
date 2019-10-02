@@ -13,8 +13,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/auth"
 )
 
 const (
@@ -116,9 +116,10 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	}
 	logs := make([]appTypes.Applog, args.Limit)
 	var count int
+	unitsSet := set.FromSlice(args.Units)
 	for current := buffer.end; count < args.Limit; {
-		if (args.Source == "" || (args.Source == current.log.Source) != args.InvertFilters) &&
-			(args.Unit == "" || (args.Unit == current.log.Unit) != args.InvertFilters) {
+		if (args.Source == "" || (args.Source == current.log.Source) != args.InvertSource) &&
+			(len(args.Units) == 0 || unitsSet.Includes(current.log.Unit)) {
 
 			logs[len(logs)-count-1] = *current.log
 			count++
@@ -131,16 +132,16 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	return logs[len(logs)-count:], nil
 }
 
-func (s *memoryLogService) Watch(appName, source, unit string, t auth.Token) (appTypes.LogWatcher, error) {
-	buffer := s.getAppBuffer(appName)
+func (s *memoryLogService) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	buffer := s.getAppBuffer(args.AppName)
 	watcher := &memoryWatcher{
 		buffer:     buffer,
 		ch:         make(chan appTypes.Applog, watchBufferSize),
 		quit:       make(chan struct{}),
 		wg:         &sync.WaitGroup{},
 		nextNotify: time.NewTimer(0),
-		source:     source,
-		unit:       unit,
+		filter:     args,
+		unitsSet:   set.FromSlice(args.Units),
 	}
 	buffer.addWatcher(watcher)
 	return watcher, nil
@@ -266,15 +267,15 @@ type memoryWatcher struct {
 	quit       chan struct{}
 	wg         *sync.WaitGroup
 	nextNotify *time.Timer
-	source     string
-	unit       string
+	filter     appTypes.ListLogArgs
+	unitsSet   set.Set
 }
 
 func (w *memoryWatcher) notify(entry *appTypes.Applog, dropCounter prometheus.Counter) {
-	if w.source != "" && w.source != entry.Source {
+	if w.filter.Source != "" && ((w.filter.Source != entry.Source) != w.filter.InvertSource) {
 		return
 	}
-	if w.unit != "" && w.unit != entry.Unit {
+	if len(w.filter.Units) > 0 && !w.unitsSet.Includes(entry.Unit) {
 		return
 	}
 	select {

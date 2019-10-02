@@ -4351,7 +4351,7 @@ func (s *S) TestAppLogSelectBySourceInvert(c *check.C) {
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10&invert-filters=true", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10&invert-source=true", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -4372,12 +4372,13 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "prospero")
+	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "mahnmut")
 	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "caliban")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	url := fmt.Sprintf("/apps/%s/log/?:app=%s&unit=caliban&lines=10", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&unit=caliban&unit=mahnmut&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -4388,10 +4389,13 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	logs := []appTypes.Applog{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 1)
-	c.Assert(logs[0].Message, check.Equals, "earth log")
-	c.Assert(logs[0].Source, check.Equals, "earth")
-	c.Assert(logs[0].Unit, check.Equals, "caliban")
+	c.Assert(logs, check.HasLen, 2)
+	c.Assert(logs[0].Message, check.Equals, "mars log")
+	c.Assert(logs[0].Source, check.Equals, "mars")
+	c.Assert(logs[0].Unit, check.Equals, "mahnmut")
+	c.Assert(logs[1].Message, check.Equals, "earth log")
+	c.Assert(logs[1].Source, check.Equals, "earth")
+	c.Assert(logs[1].Unit, check.Equals, "caliban")
 }
 
 func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
@@ -5628,7 +5632,10 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(servicemanager.AppLog, 5, appTypes.Applog{}, false, token)
+	logs, err := a.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		Limit: 5,
+		Token: token,
+	})
 	c.Assert(err, check.IsNil)
 	got := make([]string, len(logs))
 	gotSource := make([]string, len(logs))
@@ -6371,7 +6378,10 @@ func (s *S) TestFollowLogs(c *check.C) {
 	enc := &fakeEncoder{
 		done: make(chan struct{}),
 	}
-	l, err := servicemanager.AppLog.Watch(a.Name, "", "", s.token)
+	l, err := servicemanager.AppLog.Watch(appTypes.ListLogArgs{
+		AppName: a.Name,
+		Token:   s.token,
+	})
 	c.Assert(err, check.IsNil)
 	go func() {
 		err = servicemanager.AppLog.Add(a.Name, "xyz", "", "")

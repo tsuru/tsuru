@@ -1169,17 +1169,13 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	source := r.URL.Query().Get("source")
-	unit := r.URL.Query().Get("unit")
-	follow, _ := strconv.ParseBool(r.URL.Query().Get("follow"))
-	invert, _ := strconv.ParseBool(r.URL.Query().Get("invert-filters"))
-	appName := r.URL.Query().Get(":app")
+	urlValues := r.URL.Query()
+	source := urlValues.Get("source")
+	units := urlValues["unit"]
+	follow, _ := strconv.ParseBool(urlValues.Get("follow"))
+	invert, _ := strconv.ParseBool(urlValues.Get("invert-source"))
+	appName := urlValues.Get(":app")
 
-	if invert && follow {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: `Log following with inverted filters are not supported yet.`}
-	}
-
-	filterLog := appTypes.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -1196,7 +1192,15 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			logService = svcInstance.Instance()
 		}
 	}
-	logs, err := a.LastLogs(logService, lines, filterLog, invert, t)
+	listArgs := appTypes.ListLogArgs{
+		AppName:      a.Name,
+		Limit:        lines,
+		Source:       source,
+		InvertSource: invert,
+		Units:        units,
+		Token:        t,
+	}
+	logs, err := a.LastLogs(logService, listArgs)
 	if err != nil {
 		return err
 	}
@@ -1208,7 +1212,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !follow {
 		return nil
 	}
-	watcher, err := logService.Watch(a.Name, source, unit, t)
+	watcher, err := logService.Watch(listArgs)
 	if err != nil {
 		return err
 	}

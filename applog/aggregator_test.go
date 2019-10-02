@@ -69,7 +69,7 @@ func (s *S) Test_Aggregator_List(c *check.C) {
 		c.Assert(r.URL.Query().Get("lines"), check.Equals, "0")
 		c.Assert(r.URL.Query().Get("source"), check.Equals, "")
 		c.Assert(r.URL.Query().Get("unit"), check.Equals, "")
-		c.Assert(r.URL.Query().Get("invert-filters"), check.Equals, "false")
+		c.Assert(r.URL.Query().Get("invert-source"), check.Equals, "false")
 		c.Assert(r.URL.Query().Get("follow"), check.Equals, "")
 		return false
 	})
@@ -93,19 +93,19 @@ func (s *S) Test_Aggregator_ListFilter(c *check.C) {
 		c.Assert(r.URL.Path, check.Equals, "/apps/myapp/log-instance")
 		c.Assert(r.URL.Query().Get("lines"), check.Equals, "10")
 		c.Assert(r.URL.Query().Get("source"), check.Equals, "tsuru")
-		c.Assert(r.URL.Query().Get("unit"), check.Equals, "myunit")
-		c.Assert(r.URL.Query().Get("invert-filters"), check.Equals, "true")
+		c.Assert(r.URL.Query()["unit"], check.DeepEquals, []string{"myunit", "otherunit"})
+		c.Assert(r.URL.Query().Get("invert-source"), check.Equals, "true")
 		c.Assert(r.URL.Query().Get("follow"), check.Equals, "")
 		return false
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(appTypes.ListLogArgs{
-		AppName:       "myapp",
-		Source:        "tsuru",
-		Unit:          "myunit",
-		InvertFilters: true,
-		Limit:         10,
+		AppName:      "myapp",
+		Source:       "tsuru",
+		Units:        []string{"myunit", "otherunit"},
+		InvertSource: true,
+		Limit:        10,
 	})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
@@ -232,7 +232,9 @@ func (s *S) Test_Aggregator_Watch(c *check.C) {
 	_ = rollback
 	defer rollback()
 	svc := &aggregatorLogService{}
-	watcher, err := svc.Watch("myapp", "", "", nil)
+	watcher, err := svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	defer watcher.Close()
 	ch := watcher.Chan()
@@ -288,7 +290,9 @@ func (s *S) Test_Aggregator_Watch_WithErrorAfterMessages(c *check.C) {
 	_ = rollback
 	defer rollback()
 	svc := &aggregatorLogService{}
-	watcher, err := svc.Watch("myapp", "", "", nil)
+	watcher, err := svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	defer watcher.Close()
 	doneCh := make(chan struct{})
