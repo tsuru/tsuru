@@ -55,7 +55,9 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("myapp", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -155,13 +157,15 @@ func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 	}
 	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
 	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Unit: "rdaneel"})
+	s.svc.Add("app3", "app3 other log from tsuru", "tsuru", "rgiskard")
+	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Units: []string{"rdaneel", "rgiskard"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
-	for i := 5; i < 15; i++ {
-		c.Check(logs[i-5].Message, check.Equals, strconv.Itoa(i))
-		c.Check(logs[i-5].Source, check.Equals, "tsuru")
+	for i := 6; i < 15; i++ {
+		c.Check(logs[i-6].Message, check.Equals, strconv.Itoa(i))
+		c.Check(logs[i-6].Source, check.Equals, "tsuru")
 	}
+	c.Check(logs[9].Message, check.Equals, "app3 other log from tsuru")
 }
 
 func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
@@ -171,7 +175,7 @@ func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
 	}
 	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
 	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertFilters: true})
+	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertSource: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Check(logs[0].Message, check.Equals, "app3 log from circus")
@@ -190,7 +194,9 @@ func addLog(c *check.C, svc appTypes.AppLogService, appName, message, source, un
 }
 
 func (s *ServiceSuite) TestWatch(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -203,7 +209,42 @@ func (s *ServiceSuite) TestWatch(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
-	l, err := s.svc.Watch("myapp", "web", "u1", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+		Source:  "web",
+		Units:   []string{"u1", "u9"},
+	})
+	c.Assert(err, check.IsNil)
+	defer l.Close()
+	c.Assert(l.Chan(), check.NotNil)
+	logs := []appTypes.Applog{
+		{Message: "1", Source: "web", Unit: "u1"},
+		{Message: "2", Source: "worker", Unit: "u1"},
+		{Message: "3", Source: "web", Unit: "u1"},
+		{Message: "4", Source: "web", Unit: "u2"},
+		{Message: "5", Source: "web", Unit: "u1"},
+		{Message: "6", Source: "web", Unit: "u9"},
+	}
+	for _, log := range logs {
+		addLog(c, s.svc, "myapp", log.Message, log.Source, log.Unit)
+	}
+	logMsg := <-l.Chan()
+	c.Assert(logMsg.Message, check.Equals, "1")
+	logMsg = <-l.Chan()
+	c.Assert(logMsg.Message, check.Equals, "3")
+	logMsg = <-l.Chan()
+	c.Assert(logMsg.Message, check.Equals, "5")
+	logMsg = <-l.Chan()
+	c.Assert(logMsg.Message, check.Equals, "6")
+}
+
+func (s *ServiceSuite) TestWatchFilteredInvertSource(c *check.C) {
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName:      "myapp",
+		Source:       "web",
+		InvertSource: true,
+		Units:        []string{"u1"},
+	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
@@ -218,15 +259,13 @@ func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 		addLog(c, s.svc, "myapp", log.Message, log.Source, log.Unit)
 	}
 	logMsg := <-l.Chan()
-	c.Assert(logMsg.Message, check.Equals, "1")
-	logMsg = <-l.Chan()
-	c.Assert(logMsg.Message, check.Equals, "3")
-	logMsg = <-l.Chan()
-	c.Assert(logMsg.Message, check.Equals, "5")
+	c.Assert(logMsg.Message, check.Equals, "2")
 }
 
 func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(l.Chan(), check.NotNil)
 	l.Close()
@@ -235,7 +274,9 @@ func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchClose(c *check.C) {
-	l, err := s.svc.Watch("myapp", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "myapp",
+	})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	_, ok := <-l.Chan()
@@ -246,7 +287,9 @@ func (s *ServiceSuite) TestWatchDoubleClose(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch("yourapp", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "yourapp",
+	})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	l.Close()
@@ -257,7 +300,9 @@ func (s *ServiceSuite) TestWatchNotify(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("fade", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "fade",
+	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -308,7 +353,11 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch("fade", "tsuru", "unit1", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "fade",
+		Source:  "tsuru",
+		Units:   []string{"unit1"},
+	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
@@ -361,7 +410,9 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch("fade", "", "", nil)
+	l, err := s.svc.Watch(appTypes.ListLogArgs{
+		AppName: "fade",
+	})
 	c.Assert(err, check.IsNil)
 	l.Close()
 	addLog(c, s.svc, "fade", "Something went wrong. Check it out:", "tsuru", "")

@@ -697,6 +697,20 @@ func (e ErrUnitStartup) IsStartupError() bool {
 	return true
 }
 
+func (e ErrUnitStartup) Units() []string {
+	return e.BadUnits
+}
+
+func StartupBadUnits(err error) []string {
+	se, ok := errors.Cause(err).(interface {
+		Units() []string
+	})
+	if ok {
+		return se.Units()
+	}
+	return nil
+}
+
 func IsStartupError(err error) bool {
 	se, ok := errors.Cause(err).(interface {
 		IsStartupError() bool

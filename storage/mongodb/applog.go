@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/types/app"
-	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type applogStorage struct{}
@@ -57,18 +56,7 @@ func (s *applogStorage) List(args app.ListLogArgs) ([]app.Applog, error) {
 	}
 	defer conn.Close()
 	logs := []app.Applog{}
-	q := bson.M{}
-	if args.Source != "" {
-		q["source"] = args.Source
-	}
-	if args.Unit != "" {
-		q["unit"] = args.Unit
-	}
-	if args.InvertFilters {
-		for k, v := range q {
-			q[k] = bson.M{"$ne": v}
-		}
-	}
+	q := makeQuery(args)
 	err = conn.AppLogCollection(args.AppName).Find(q).Sort("-$natural").Limit(args.Limit).All(&logs)
 	if err != nil {
 		return nil, err
@@ -80,10 +68,25 @@ func (s *applogStorage) List(args app.ListLogArgs) ([]app.Applog, error) {
 	return logs, nil
 }
 
-func (s *applogStorage) Watch(appName, source, unit string) (app.LogWatcher, error) {
-	listener, err := newLogListener(s, appName, appTypes.Applog{Source: source, Unit: unit})
+func (s *applogStorage) Watch(args app.ListLogArgs) (app.LogWatcher, error) {
+	listener, err := newLogListener(s, args)
 	if err != nil {
 		return nil, err
 	}
 	return listener, nil
+}
+
+func makeQuery(args app.ListLogArgs) bson.M {
+	q := bson.M{}
+	if args.Source != "" {
+		var sourceFilter interface{} = args.Source
+		if args.InvertSource {
+			sourceFilter = bson.M{"$ne": args.Source}
+		}
+		q["source"] = sourceFilter
+	}
+	if len(args.Units) > 0 {
+		q["unit"] = bson.M{"$in": args.Units}
+	}
+	return q
 }

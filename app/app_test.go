@@ -2512,7 +2512,10 @@ func (s *S) TestLastLogs(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, false, nil)
+	logs, err := app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		Limit:  10,
+		Source: "tsuru",
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 5; i < 15; i++ {
@@ -2534,7 +2537,11 @@ func (s *S) TestLastLogsInvertFilters(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, true, nil)
+	logs, err := app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		Limit:        10,
+		Source:       "tsuru",
+		InvertSource: true,
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Check(logs[0].Message, check.Equals, "app3 log from circus")
@@ -2564,7 +2571,9 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, false, nil)
+	_, err = app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		Limit: 10,
+	})
 	c.Assert(err, check.ErrorMatches, "my doc msg")
 }
 
@@ -2863,7 +2872,9 @@ func (s *S) TestRun(c *check.C) {
 	var logs []appTypes.Applog
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err = app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{}, false, nil)
+		logs, err = app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+			Limit: 10,
+		})
 		c.Assert(err, check.IsNil)
 		if len(logs) > 2 {
 			break

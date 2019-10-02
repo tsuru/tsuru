@@ -244,9 +244,10 @@ func (e *errorWithLog) Cause() error {
 }
 
 func (e *errorWithLog) formatLogLines() string {
+	const timeFormat = "2006-01-02 15:04:05 -0700"
 	linesStr := make([]string, len(e.logs))
 	for i, l := range e.logs {
-		linesStr[i] = fmt.Sprintf("    %s[%s][%s]: %s", l.Date.Format(time.RFC3339), l.Source, l.Unit, l.Message)
+		linesStr[i] = fmt.Sprintf("    %s [%s][%s]: %s", l.Date.Local().Format(timeFormat), l.Source, l.Unit, l.Message)
 	}
 	return strings.Join(linesStr, "\n")
 }
@@ -286,9 +287,14 @@ func Deploy(opts DeployOptions) (string, error) {
 	if err != nil {
 		var logLines []appTypes.Applog
 		if provision.IsStartupError(err) {
-			logLines, _ = opts.App.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{
-				Source: "tsuru",
-			}, true, opts.Token)
+			units := provision.StartupBadUnits(err)
+			logLines, _ = opts.App.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+				Source:       "tsuru",
+				InvertSource: true,
+				Units:        units,
+				Token:        opts.Token,
+				Limit:        10,
+			})
 		}
 		err = &errorWithLog{err: err, logs: logLines}
 		return "", err

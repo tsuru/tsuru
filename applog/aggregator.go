@@ -22,7 +22,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/auth"
 )
 
 type aggregatorLogService struct {
@@ -92,14 +91,8 @@ func (s *aggregatorLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applo
 	return allLogs, nil
 }
 
-func (s *aggregatorLogService) Watch(appName, source, unit string, t auth.Token) (appTypes.LogWatcher, error) {
-	args := appTypes.ListLogArgs{
-		AppName: appName,
-		Source:  source,
-		Unit:    unit,
-		Limit:   -1,
-		Token:   t,
-	}
+func (s *aggregatorLogService) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	args.Limit = -1
 	requests, err := buildInstanceRequests(args, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "[aggregator service]")
@@ -219,8 +212,10 @@ func buildInstanceRequests(args appTypes.ListLogArgs, follow bool) ([]*http.Requ
 		urlValues := url.Values{}
 		urlValues.Add("lines", strconv.Itoa(args.Limit))
 		urlValues.Add("source", args.Source)
-		urlValues.Add("unit", args.Unit)
-		urlValues.Add("invert-filters", strconv.FormatBool(args.InvertFilters))
+		for _, u := range args.Units {
+			urlValues.Add("unit", u)
+		}
+		urlValues.Add("invert-source", strconv.FormatBool(args.InvertSource))
 		if follow {
 			urlValues.Add("follow", "1")
 		}

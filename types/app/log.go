@@ -16,7 +16,7 @@ type AppLogService interface {
 	Enqueue(entry *Applog) error
 	Add(appName, message, source, unit string) error
 	List(args ListLogArgs) ([]Applog, error)
-	Watch(appName, source, unit string, t auth.Token) (LogWatcher, error)
+	Watch(args ListLogArgs) (LogWatcher, error)
 }
 
 type AppLogServiceInstance interface {
@@ -26,16 +26,16 @@ type AppLogServiceInstance interface {
 type AppLogStorage interface {
 	InsertApp(appName string, msgs ...*Applog) error
 	List(args ListLogArgs) ([]Applog, error)
-	Watch(appName, source, unit string) (LogWatcher, error)
+	Watch(args ListLogArgs) (LogWatcher, error)
 }
 
 type ListLogArgs struct {
-	AppName       string
-	Source        string
-	Unit          string
-	Limit         int
-	InvertFilters bool
-	Token         auth.Token
+	AppName      string
+	Source       string
+	Units        []string
+	Limit        int
+	InvertSource bool
+	Token        auth.Token
 }
 
 // Applog represents a log entry.
