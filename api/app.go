@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	pkgErrors "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -405,7 +406,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
-			if _, ok := e.Err.(*quota.QuotaExceededError); ok {
+			if _, ok := pkgErrors.Cause(e.Err).(*quota.QuotaExceededError); ok {
 				return &errors.HTTP{
 					Code:    http.StatusForbidden,
 					Message: "Quota exceeded",

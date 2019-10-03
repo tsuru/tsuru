@@ -235,8 +235,29 @@ func Build(opts DeployOptions) (string, error) {
 }
 
 type errorWithLog struct {
-	err  error
-	logs []appTypes.Applog
+	err    error
+	action string
+	logs   []appTypes.Applog
+}
+
+func newErrorWithLog(base error, app *App, action string) *errorWithLog {
+	logErr := &errorWithLog{
+		err:    base,
+		action: action,
+	}
+	if provision.IsStartupError(base) {
+		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
+		token, _ := AuthScheme.Auth(tokenValue)
+		units := provision.StartupBadUnits(base)
+		logErr.logs, _ = app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+			Source:       "tsuru",
+			InvertSource: true,
+			Units:        units,
+			Token:        token,
+			Limit:        10,
+		})
+	}
+	return logErr
 }
 
 func (e *errorWithLog) Cause() error {
@@ -257,7 +278,7 @@ func (e *errorWithLog) Error() string {
 	if len(e.logs) > 0 {
 		logPart = fmt.Sprintf("\n---- Last %d log messages: ----\n%s", len(e.logs), e.formatLogLines())
 	}
-	return fmt.Sprintf("\n---- ERROR during deploy: ----\n%v\n%s", e.err, logPart)
+	return fmt.Sprintf("\n---- ERROR during %s: ----\n%v\n%s", e.action, e.err, logPart)
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -285,19 +306,7 @@ func Deploy(opts DeployOptions) (string, error) {
 		log.Errorf("WARNING: unable to ensure quota is up-to-date after deploy: %v", quotaErr)
 	}
 	if err != nil {
-		var logLines []appTypes.Applog
-		if provision.IsStartupError(err) {
-			units := provision.StartupBadUnits(err)
-			logLines, _ = opts.App.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
-				Source:       "tsuru",
-				InvertSource: true,
-				Units:        units,
-				Token:        opts.Token,
-				Limit:        10,
-			})
-		}
-		err = &errorWithLog{err: err, logs: logLines}
-		return "", err
+		return "", newErrorWithLog(err, opts.App, "deploy")
 	}
 	err = incrementDeploy(opts.App)
 	if err != nil {

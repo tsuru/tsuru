@@ -2173,7 +2173,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, `Quota exceeded. Available: 2, Requested: 3.`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*Quota exceeded. Available: 2, Requested: 3.*`)
 	c.Assert(eventtest.EventDesc{
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
