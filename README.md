@@ -12,7 +12,7 @@ With tsuru, you don’t need to think about servers at all. As an application de
 - Manage apps using the `tsuru` command-line tool
 - Deploy apps using the Git version control system
 
-Links:
+Links here:
 
 - Full Documentation: https://docs.tsuru.io
 - How to Contribute: https://docs.tsuru.io/stable/contributing/
@@ -29,7 +29,7 @@ With the purpose of testing tsuru and/or for development, you can use the [insta
 
 Download the latest release for your platform at: https://github.com/tsuru/tsuru-client/releases/
 
-Example for release `1.1.1` and `OS X`:
+Example For Release `1.1.1` and `OS X`:
 
 ```
 $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz | tar xz
@@ -41,7 +41,7 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 $ tsuru install create
 ```
 
-### From Source
+###  Source
 
 #### Getting tsuru-client
 
