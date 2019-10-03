@@ -64,6 +64,9 @@ func (s *applogStorage) List(args app.ListLogArgs) ([]app.Applog, error) {
 	if args.Unit != "" {
 		q["unit"] = args.Unit
 	}
+	if args.Level > 0 {
+		q["level"] = args.Level
+	}
 	if args.InvertFilters {
 		for k, v := range q {
 			q[k] = bson.M{"$ne": v}

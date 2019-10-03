@@ -118,7 +118,8 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	var count int
 	for current := buffer.end; count < args.Limit; {
 		if (args.Source == "" || (args.Source == current.log.Source) != args.InvertFilters) &&
-			(args.Unit == "" || (args.Unit == current.log.Unit) != args.InvertFilters) {
+			(args.Unit == "" || (args.Unit == current.log.Unit) != args.InvertFilters) &&
+			(args.Level == 0 || (args.Level == current.log.Level) != args.InvertFilters) {
 
 			logs[len(logs)-count-1] = *current.log
 			count++
