@@ -736,7 +736,7 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	quotaErr := app.fixQuota()
 	if err != nil {
-		return err
+		return newErrorWithLog(err, app, "add units")
 	}
 	return quotaErr
 }
@@ -756,7 +756,7 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	quotaErr := app.fixQuota()
 	if err != nil {
-		return err
+		return newErrorWithLog(err, app, "remove units")
 	}
 	return quotaErr
 }
@@ -1247,7 +1247,7 @@ func (app *App) Restart(process string, w io.Writer) error {
 	err = prov.Restart(app, process, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
-		return err
+		return newErrorWithLog(err, app, "restart")
 	}
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return nil
@@ -1317,7 +1317,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
 		rebuild.RoutesRebuildOrEnqueue(app.Name)
-		return err
+		return newErrorWithLog(err, app, "sleep")
 	}
 	return nil
 }
@@ -1548,7 +1548,11 @@ func (app *App) restartIfUnits(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return prov.Restart(app, "", w)
+	err = prov.Restart(app, "", w)
+	if err != nil {
+		return newErrorWithLog(err, app, "restart")
+	}
+	return nil
 }
 
 // AddCName adds a CName to app. It updates the attribute,
@@ -1976,7 +1980,7 @@ func (app *App) Start(w io.Writer, process string) error {
 	err = prov.Start(app, process)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
-		return err
+		return newErrorWithLog(err, app, "start")
 	}
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err

@@ -21,6 +21,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
+	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
@@ -760,7 +761,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(1, "web", nil)
-	e, ok := err.(*quota.QuotaExceededError)
+	e, ok := pkgErrors.Cause(err).(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(0))
 	c.Assert(e.Requested, check.Equals, uint(1))
@@ -806,7 +807,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "App is not provisioned.")
+	c.Assert(err, check.ErrorMatches, "(?s).*App is not provisioned.*")
 }
 
 func (s *S) TestAddUnitsIsAtomic(c *check.C) {
@@ -936,7 +937,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 	s.provisioner.AddUnits(&app, 3, "web", nil)
 	for _, test := range tests {
 		err := app.RemoveUnits(test.n, "web", nil)
-		c.Check(err, check.ErrorMatches, test.expected)
+		c.Check(err, check.ErrorMatches, "(?s).*"+test.expected+".*")
 	}
 }
 
