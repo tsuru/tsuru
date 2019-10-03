@@ -34,6 +34,7 @@ type ListLogArgs struct {
 	Source        string
 	Unit          string
 	Limit         int
+	Level         int
 	InvertFilters bool
 	Token         auth.Token
 }
@@ -46,4 +47,5 @@ type Applog struct {
 	Source  string
 	AppName string
 	Unit    string
+	Level   int
 }
