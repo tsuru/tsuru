@@ -82,7 +82,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
+	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit", 0)
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName(app.Name, "testimage")
 	c.Assert(err, check.IsNil)
@@ -2508,10 +2508,10 @@ func (s *S) TestLastLogs(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
+		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel", 6)
 		time.Sleep(1e6) // let the time flow
 	}
-	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel", 6)
 	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, false, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
@@ -2530,10 +2530,10 @@ func (s *S) TestLastLogsInvertFilters(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
+		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel", 6)
 		time.Sleep(1e6) // let the time flow
 	}
-	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel", 6)
 	logs, err := app.LastLogs(servicemanager.AppLog, 10, appTypes.Applog{Source: "tsuru"}, true, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
