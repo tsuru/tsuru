@@ -1,4 +1,7 @@
 language: go
+cache:
+  directories:
+    - $GOPATH/pkg/mod
 install: true
 sudo: required
 addons:
