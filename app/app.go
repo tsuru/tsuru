@@ -1051,7 +1051,7 @@ func (app *App) setEnv(env bind.EnvVar) {
 	}
 	app.Env[env.Name] = env
 	if env.Public {
-		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
+		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api", 6)
 	}
 }
 

@@ -78,5 +78,5 @@ func (w *LogWriter) write(data []byte) error {
 	if source == "" {
 		source = "tsuru"
 	}
-	return servicemanager.AppLog.Add(w.AppName, string(data), source, "api")
+	return servicemanager.AppLog.Add(w.AppName, string(data), source, "api", 6)
 }
