@@ -315,7 +315,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -348,7 +348,7 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -383,7 +383,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -417,7 +417,7 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -748,7 +748,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Builder deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
@@ -772,7 +772,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Builder deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
@@ -797,7 +797,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Builder deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
@@ -821,7 +821,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Builder deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {
@@ -850,7 +850,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
+	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -885,7 +885,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
+	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v2")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -1040,7 +1040,7 @@ func (s *S) TestRebuild(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Builder deploy called")
+	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
 	c.Assert(imgID, check.Equals, "app-image")
 }
 

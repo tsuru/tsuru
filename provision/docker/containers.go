@@ -214,14 +214,18 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: c.ExpectedStatus()}}
-	var pipeWriter io.Writer
+	var evtClone *event.Event
+	var pipelineWriter io.Writer
 	evt, _ := writer.(*event.Event)
 	if evt != nil {
-		evtClone := *evt
+		evtClone = evt.Clone()
 		evtClone.SetLogWriter(ioutil.Discard)
-		pipeWriter = &evtClone
+		pipelineWriter = evtClone
 	}
-	addedContainers, err := p.runReplaceUnitsPipeline(pipeWriter, a, toAdd, []container.Container{c}, imageID, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(pipelineWriter, a, toAdd, []container.Container{c}, imageID, destHosts...)
+	if evt != nil {
+		evt.LogsFrom(evtClone)
+	}
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,

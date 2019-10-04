@@ -438,7 +438,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Archive deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Archive deploy called")
 	c.Assert(p.apps[app.GetName()].lastArchive, check.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
 }
 
@@ -491,7 +491,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Upload deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Upload deploy called")
 	c.Assert(p.apps[app.GetName()].lastFile, check.Equals, file)
 }
 
@@ -542,7 +542,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Image deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Image deploy called")
 	c.Assert(p.apps[app.GetName()].image, check.Equals, "image/deploy")
 }
 
@@ -1279,7 +1279,7 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[m1:x1\].*filtering pool: mypool.*`)
+	c.Assert(w.String(), check.Matches, `(?s).*rebalancing - dry: false, force: false.*filtering metadata: map\[m1:x1\].*filtering pool: mypool.*`)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	var addrs []string
@@ -1317,7 +1317,7 @@ func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*`)
+	c.Assert(w.String(), check.Matches, `(?s).*rebalancing - dry: false, force: false.*`)
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
@@ -1464,7 +1464,7 @@ func (s *S) TestRebuildDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Rebuild deploy called")
+	c.Assert(evt.Log, check.Matches, ".*Rebuild deploy called")
 }
 
 func (s *S) TestUpdateApp(c *check.C) {

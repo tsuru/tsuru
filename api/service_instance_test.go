@@ -836,7 +836,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Message, check.Equals, "service instance successfully removed\n")
+	c.Assert(msg.Message, check.Matches, ".*service instance successfully removed\n")
 	_, err = service.GetServiceInstance("foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 	c.Assert(eventtest.EventDesc{
@@ -901,8 +901,8 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	expected := ""
-	expected += `{"Message":"service instance successfully removed\n"}` + "\n"
-	c.Assert(recorder.Body.String(), check.Equals, expected)
+	expected += `{"Message":".*service instance successfully removed\\n"}` + "\n"
+	c.Assert(recorder.Body.String(), check.Matches, expected)
 	instance, err := service.GetServiceInstance("foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, nil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{"app-instance"})
@@ -910,10 +910,10 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	expected = ""
-	expected += `{"Message":"Unbind app \"app-instance\" ...\n"}` + "\n"
-	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
-	expected += `{"Message":"service instance successfully removed\n"}` + "\n"
-	c.Assert(recorder.Body.String(), check.Equals, expected)
+	expected += `{"Message":".*Unbind app \\"app-instance\\" ...\\n"}.*` + "\n"
+	expected += `{"Message":".*\\n.*Instance \\"foo-instance\\" is not bound to the app \\"app-instance\\" anymore.\\n"}` + "\n"
+	expected += `{"Message":".*service instance successfully removed\\n"}` + "\n"
+	c.Assert(recorder.Body.String(), check.Matches, expected)
 	_, err = service.GetServiceInstance("foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 }

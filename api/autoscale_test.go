@@ -72,8 +72,8 @@ func (s *S) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(history[0].Action, check.Equals, "rebalance")
 	c.Assert(history[1].Reason, check.Equals, "r1")
 	c.Assert(history[0].Reason, check.Equals, "r2")
-	c.Assert(history[1].Log, check.Equals, "my evt1\n")
-	c.Assert(history[0].Log, check.Equals, "my evt2\n")
+	c.Assert(history[1].Log, check.Matches, ".*my evt1\n")
+	c.Assert(history[0].Log, check.Matches, ".*my evt2\n")
 }
 
 func (s *S) TestAutoScaleRunHandler(c *check.C) {
@@ -94,14 +94,12 @@ func (s *S) TestAutoScaleRunHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	body := recorder.Body.String()
-	parts := strings.Split(body, "\n")
-	c.Assert(parts, check.DeepEquals, []string{
-		`{"Message":"running scaler *autoscale.countScaler for \"pool\": \"pool1\"\n"}`,
-		`{"Message":"rebalancing - dry: false, force: false\n"}`,
-		`{"Message":"filtering pool: pool1\n"}`,
-		`{"Message":"nothing to do for \"pool\": \"pool1\"\n"}`,
-		``,
-	})
+	c.Assert(body, check.Matches,
+		`{"Message":".*running scaler \*autoscale.countScaler for \\"pool\\": \\"pool1\\"\\n"}`+"\n"+
+			`{"Message":".*rebalancing - dry: false, force: false\\n"}`+"\n"+
+			`{"Message":".*filtering pool: pool1\\n"}`+"\n"+
+			`{"Message":".*nothing to do for \\"pool\\": \\"pool1\\"\\n"}`+"\n",
+	)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool},
 		Owner:  s.token.GetUserName(),

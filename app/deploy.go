@@ -101,7 +101,7 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	}
 	list := make([]DeployData, len(evts))
 	for i := range evts {
-		list[i] = *eventToDeployData(&evts[i], validImages, false)
+		list[i] = *eventToDeployData(evts[i], validImages, false)
 	}
 	return list, nil
 }

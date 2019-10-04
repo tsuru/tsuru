@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -62,6 +61,8 @@ const (
 	rejectLocked    = "locked"
 	rejectBlocked   = "blocked"
 	rejectThrottled = "throttled"
+
+	timeFormat = "2006-01-02 15:04:05 -0700"
 )
 
 var (
@@ -206,14 +207,20 @@ type eventData struct {
 	Owner           Owner
 	LockUpdateTime  time.Time
 	Error           string
-	Log             string    `bson:",omitempty"`
-	RemoveDate      time.Time `bson:",omitempty"`
+	Log             string     `bson:",omitempty"`
+	StructuredLog   []logEntry `bson:",omitempty"`
+	RemoveDate      time.Time  `bson:",omitempty"`
 	CancelInfo      cancelInfo
 	Cancelable      bool
 	Running         bool
 	Allowed         AllowedPermission
 	AllowedCancel   AllowedPermission
 	Instance        tracker.TrackedInstance
+}
+
+type logEntry struct {
+	Date    time.Time
+	Message string
 }
 
 type cancelInfo struct {
@@ -369,8 +376,9 @@ func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
 
 type Event struct {
 	eventData
-	logBuffer *safe.Buffer
-	logWriter io.Writer
+	noTimestamp bool
+	logMu       sync.Mutex
+	logWriter   io.Writer
 }
 
 type ExtraTarget struct {
@@ -388,6 +396,7 @@ type Opts struct {
 	CustomData    interface{}
 	DisableLock   bool
 	Cancelable    bool
+	NoTimestamp   bool
 	Allowed       AllowedPermission
 	AllowedCancel AllowedPermission
 	RetryTimeout  time.Duration
@@ -594,6 +603,13 @@ func GetKinds() ([]Kind, error) {
 	return kinds, nil
 }
 
+func transformEvent(data eventData) *Event {
+	var event Event
+	event.eventData = data
+	event.fillLegacyLog()
+	return &event
+}
+
 func GetRunning(target Target, kind string) (*Event, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -601,20 +617,20 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	var evt Event
-	evt.Init()
+	var evtData eventData
 	err = coll.Find(bson.M{
 		"_id":       eventID{Target: target},
 		"kind.name": kind,
 		"running":   true,
-	}).One(&evt.eventData)
+	}).One(&evtData)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, ErrEventNotFound
 		}
 		return nil, err
 	}
-	return &evt, nil
+	evt := transformEvent(evtData)
+	return evt, nil
 }
 
 func GetByHexID(hexid string) (*Event, error) {
@@ -631,25 +647,25 @@ func GetByID(id bson.ObjectId) (*Event, error) {
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	var evt Event
-	evt.Init()
+	var evtData eventData
 	err = coll.Find(bson.M{
 		"uniqueid": id,
-	}).One(&evt.eventData)
+	}).One(&evtData)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, ErrEventNotFound
 		}
 		return nil, err
 	}
-	return &evt, nil
+	evt := transformEvent(evtData)
+	return evt, nil
 }
 
-func All() ([]Event, error) {
+func All() ([]*Event, error) {
 	return List(nil)
 }
 
-func List(filter *Filter) ([]Event, error) {
+func List(filter *Filter) ([]*Event, error) {
 	limit := 0
 	skip := 0
 	var query bson.M
@@ -692,10 +708,9 @@ func List(filter *Filter) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	evts := make([]Event, len(allData))
+	evts := make([]*Event, len(allData))
 	for i := range evts {
-		evts[i].Init()
-		evts[i].eventData = allData[i]
+		evts[i] = transformEvent(allData[i])
 	}
 	return evts, nil
 }
@@ -957,8 +972,9 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 		Allowed:         opts.Allowed,
 		AllowedCancel:   opts.AllowedCancel,
 		Instance:        instance,
-	}}
-	evt.Init()
+	},
+		noTimestamp: opts.NoTimestamp,
+	}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
@@ -1056,6 +1072,8 @@ func (e *Event) RawInsert(start, other, end interface{}) error {
 	}
 	defer conn.Close()
 	coll := conn.Events()
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
 	return coll.Insert(e.eventData)
 }
 
@@ -1094,21 +1112,24 @@ func (e *Event) SetOtherCustomData(data interface{}) error {
 func (e *Event) Logf(format string, params ...interface{}) {
 	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Type, e.Target.Value, e.Kind, format), params...)
 	format += "\n"
-	if e.logWriter != nil {
-		fmt.Fprintf(e.logWriter, format, params...)
-	}
-	if e.logBuffer != nil {
-		fmt.Fprintf(e.logBuffer, format, params...)
-	}
+	fmt.Fprintf(e, format, params...)
 }
 
 func (e *Event) Write(data []byte) (int, error) {
 	if e.logWriter != nil {
-		e.logWriter.Write(data)
+		if e.noTimestamp {
+			e.logWriter.Write(data)
+		} else {
+			formatted := addLinePrefix(string(data), time.Now().Local().Format(timeFormat)+": ")
+			e.logWriter.Write([]byte(formatted))
+		}
 	}
-	if e.logBuffer != nil {
-		e.logBuffer.Write(data)
-	}
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
+	e.StructuredLog = append(e.StructuredLog, logEntry{
+		Date:    time.Now().UTC(),
+		Message: string(data),
+	})
 	return len(data), nil
 }
 
@@ -1146,6 +1167,8 @@ func (e *Event) CancelableContext(ctx context.Context) (context.Context, context
 }
 
 func (e *Event) TryCancel(reason, owner string) error {
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
 	if !e.Cancelable || !e.Running {
 		return ErrNotCancelable
 	}
@@ -1177,6 +1200,8 @@ func (e *Event) TryCancel(reason, owner string) error {
 }
 
 func (e *Event) AckCancel() (bool, error) {
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
 	if !e.Cancelable || !e.Running {
 		return false, nil
 	}
@@ -1225,6 +1250,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
 	defer func() {
+		e.fillLegacyLog()
 		eventDuration.WithLabelValues(e.Kind.Name).Observe(time.Since(e.StartTime).Seconds())
 		eventCurrent.WithLabelValues(e.Kind.Name).Dec()
 		if err != nil {
@@ -1256,14 +1282,13 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		return err
 	}
 	e.Running = false
-	if e.logBuffer != nil {
-		e.Log = e.logBuffer.String()
-	}
 	var dbEvt Event
 	err = coll.FindId(e.ID).One(&dbEvt.eventData)
 	if err == nil {
 		e.OtherCustomData = dbEvt.OtherCustomData
 	}
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
 	if len(e.ID.ObjId) != 0 {
 		return coll.UpdateId(e.ID, e.eventData)
 	}
@@ -1272,10 +1297,35 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	return coll.Insert(e.eventData)
 }
 
-func (e *Event) Init() {
-	if e.logBuffer == nil {
-		e.logBuffer = &safe.Buffer{}
+func (e *Event) fillLegacyLog() {
+	if e.Log != "" || len(e.StructuredLog) == 0 {
+		return
 	}
+	msgs := make([]string, len(e.StructuredLog))
+	for i, entry := range e.StructuredLog {
+		msgs[i] = addLinePrefix(entry.Message, entry.Date.Local().Format(timeFormat)+": ")
+	}
+	e.Log = strings.Join(msgs, "")
+}
+
+func (e *Event) Clone() *Event {
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
+	e2 := Event{
+		eventData:   e.eventData,
+		noTimestamp: e.noTimestamp,
+		logWriter:   e.logWriter,
+	}
+	e2.eventData.StructuredLog = nil
+	return &e2
+}
+
+func (e *Event) LogsFrom(origin *Event) {
+	e.logMu.Lock()
+	defer e.logMu.Unlock()
+	origin.logMu.Lock()
+	defer origin.logMu.Unlock()
+	e.StructuredLog = append(e.StructuredLog, origin.StructuredLog...)
 }
 
 func checkIsExpired(coll *storage.Collection, id interface{}) bool {
@@ -1315,7 +1365,6 @@ func Migrate(query bson.M, cb func(*Event) error) error {
 	var evtData eventData
 	for iter.Next(&evtData) {
 		evt := &Event{eventData: evtData}
-		evt.Init()
 		err = cb(evt)
 		if err != nil {
 			return errors.Wrapf(err, "unable to migrate %#v", evt)
@@ -1326,4 +1375,14 @@ func Migrate(query bson.M, cb func(*Event) error) error {
 		}
 	}
 	return iter.Close()
+}
+
+func addLinePrefix(data string, prefix string) string {
+	suffix := ""
+	if data[len(data)-1] == '\n' {
+		data = data[:len(data)-1]
+		suffix = "\n"
+	}
+	replacement := "\n" + prefix
+	return prefix + strings.ReplaceAll(data, "\n", replacement) + suffix
 }

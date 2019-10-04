@@ -87,7 +87,7 @@ func (s *S) TestNewDone(c *check.C) {
 		Allowed:        Allowed(permission.PermAppReadEvents),
 		Instance:       evt.Instance,
 	}}
-	expected.Init()
+
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -97,7 +97,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err = All()
@@ -112,7 +112,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].Instance = expected.Instance
 	expected.Running = false
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewCustomDataDone(c *check.C) {
@@ -144,7 +144,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 		Allowed:         Allowed(permission.PermAppReadEvents),
 		Instance:        evt.Instance,
 	}}
-	expected.Init()
+
 	c.Assert(evt, check.DeepEquals, expected)
 	customData = struct{ A string }{A: "other"}
 	err = evt.DoneCustomData(nil, customData)
@@ -168,7 +168,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	expected.EndCustomData = evts[0].EndCustomData
 	expected.Instance = evts[0].Instance
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewLocks(c *check.C) {
@@ -321,7 +321,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 		Allowed:        Allowed(permission.PermAppReadEvents),
 		Instance:       evt.Instance,
 	}}
-	expected.Init()
+
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -331,7 +331,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err = All()
@@ -346,7 +346,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	evts[0].Instance = expected.Instance
 	expected.Running = false
 	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewLockExpired(c *check.C) {
@@ -503,8 +503,8 @@ func (s *S) TestEventDoneError(c *check.C) {
 		Allowed:        Allowed(permission.PermAppReadEvents),
 		Instance:       evts[0].Instance,
 	}}
-	expected.Init()
-	c.Assert(&evts[0], check.DeepEquals, expected)
+
+	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestEventLogf(c *check.C) {
@@ -521,7 +521,7 @@ func (s *S) TestEventLogf(c *check.C) {
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
+	c.Assert(evts[0].Log, check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
 }
 
 func (s *S) TestEventLogfWithWriter(c *check.C) {
@@ -535,13 +535,13 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 	buf := bytes.Buffer{}
 	evt.SetLogWriter(&buf)
 	evt.Logf("%s %d", "hey", 42)
-	c.Assert(buf.String(), check.Equals, "hey 42\n")
+	c.Assert(buf.String(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
+	c.Assert(evts[0].Log, check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
 }
 
 func (s *S) TestEventCancel(c *check.C) {
@@ -1162,10 +1162,10 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	n, err := writer.Write([]byte("hey"))
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 3)
-	c.Assert(evt.logBuffer.String(), check.Equals, "hey")
+	c.Assert(evt.StructuredLog, check.HasLen, 1)
+	c.Assert(evt.StructuredLog[0].Message, check.Equals, "hey")
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "hey")
 	evt2, err := New(&Opts{
 		Target:     Target{Type: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
@@ -1177,11 +1177,10 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	var otherWriter bytes.Buffer
 	evt2.SetLogWriter(&otherWriter)
 	evt2.Write([]byte("hey2"))
-	c.Assert(evt2.logBuffer.String(), check.Equals, "hey2")
-	c.Assert(otherWriter.String(), check.Equals, "hey2")
+	c.Assert(evt2.StructuredLog, check.HasLen, 1)
+	c.Assert(evt2.StructuredLog[0].Message, check.Equals, "hey2")
 	err = evt2.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt2.Log, check.Equals, "hey2")
 }
 
 func (s *S) TestGetTargetType(c *check.C) {
@@ -1220,14 +1219,14 @@ func (s *S) TestEventRawInsert(c *check.C) {
 		Log:       "my log",
 		Instance:  trackerTypes.TrackedInstance{Addresses: []string{}},
 	}}
-	evt.Init()
+
 	err := evt.RawInsert(nil, nil, nil)
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	evt.ID = eventID{ObjId: evt.UniqueID}
-	c.Assert(&evts[0], check.DeepEquals, evt)
+	c.Assert(evts[0], check.DeepEquals, evt)
 }
 
 func (s *S) TestNewWithPermission(c *check.C) {
@@ -1254,7 +1253,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		},
 		Instance: evt.Instance,
 	}}
-	expected.Init()
+
 	c.Assert(evt, check.DeepEquals, expected)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -1262,7 +1261,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
-	c.Assert(&evts[0], check.DeepEquals, expected)
+	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewLockRetryRace(c *check.C) {
@@ -1325,7 +1324,7 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 		Allowed:         Allowed(permission.PermAppReadEvents),
 		Instance:        evt.Instance,
 	}}
-	expected.Init()
+
 	c.Assert(evt, check.DeepEquals, expected)
 }
 

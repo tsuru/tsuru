@@ -185,10 +185,9 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []tsuruIo.SimpleJsonMessage{
-		{Message: "No units to move in localhost\n"},
-		{Message: "Containers moved successfully!\n"},
-	})
+	c.Assert(result, check.HasLen, 2)
+	c.Assert(result[0].Message, check.Matches, ".*No units to move in localhost\n")
+	c.Assert(result[1].Message, check.Matches, ".*Containers moved successfully!\n")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeNode, Value: "localhost"},
 		Owner:  s.token.GetUserName(),
@@ -238,7 +237,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		server := api.RunServer(true)
 		server.ServeHTTP(recorder, request)
-		c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
+		c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*Log config successfully updated.\\n"}`+"\n")
 		c.Assert(recorder.Code, check.Equals, http.StatusOK)
 		c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 		var pool string
@@ -294,7 +293,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*Log config successfully updated.\\n"}`+"\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
@@ -342,8 +341,8 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	server.ServeHTTP(recorder, request)
 	responseParts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(responseParts, check.HasLen, 17)
-	c.Assert(responseParts[0], check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}")
-	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app2, app3]\\n\"}")
+	c.Assert(responseParts[0], check.Matches, `{"Message":".*Log config successfully updated.\\n"}`)
+	c.Assert(responseParts[1], check.Matches, `{"Message":".*Restarting 2 applications: \[app2, app3\]\\n"}`)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)

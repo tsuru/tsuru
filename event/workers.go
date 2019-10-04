@@ -66,7 +66,6 @@ func (l *eventCleaner) tryCleaning() error {
 	}
 	for _, evtData := range allData {
 		evt := Event{eventData: evtData}
-		evt.Init()
 		lastUpdate := evt.LockUpdateTime.UTC()
 		err = evt.Done(errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
 		if err != nil {
