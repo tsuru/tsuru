@@ -81,7 +81,7 @@ func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
-	expected.Init()
+
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: event.TargetTypeApp, Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}
@@ -101,7 +101,7 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
-	expected.Init()
+
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: event.TargetTypeApp, Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}
@@ -123,7 +123,7 @@ func (s *S) TestMigrateRCEventsInvalidTarget(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()
 	var expected event.Event
-	expected.Init()
+
 	expected.UniqueID = id
 	expected.Target = event.Target{Type: "some-invalid-target", Value: "a1"}
 	expected.Owner = event.Owner{Type: event.OwnerTypeUser, Name: "u1"}
@@ -162,6 +162,6 @@ func (s *S) checkEvtMatch(evt *event.Event, c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	evt.ID = evts[0].ID
 	evt.Instance = evts[0].Instance
-	c.Assert(&evts[0], check.DeepEquals, evt)
+	c.Assert(evts[0], check.DeepEquals, evt)
 
 }

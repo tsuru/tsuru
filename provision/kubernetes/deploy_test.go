@@ -1260,11 +1260,13 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		}
 		return false, nil, nil
 	})
-	go func(evt event.Event) {
+	go func(id string) {
 		<-deployCreated
-		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
+		evtDB, errCancel := event.GetByHexID(id)
 		c.Assert(errCancel, check.IsNil)
-	}(*evt)
+		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
+		c.Assert(errCancel, check.IsNil)
+	}(evt.UniqueID.Hex())
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
@@ -1318,11 +1320,13 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		}
 		return false, nil, nil
 	})
-	go func(evt event.Event) {
+	go func(id string) {
 		<-deployCreated
-		errCancel := evt.TryCancel("Because i want.", "admin@admin.com")
+		evtDB, errCancel := event.GetByHexID(id)
 		c.Assert(errCancel, check.IsNil)
-	}(*evt)
+		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
+		c.Assert(errCancel, check.IsNil)
+	}(evt.UniqueID.Hex())
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)

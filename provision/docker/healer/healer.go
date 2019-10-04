@@ -98,7 +98,7 @@ func ListHealingHistory(filter string) ([]types.HealingEvent, error) {
 	}
 	healingEvts := make([]types.HealingEvent, len(evts))
 	for i := range evts {
-		healingEvts[i], err = toHealingEvt(&evts[i])
+		healingEvts[i], err = toHealingEvt(evts[i])
 		if err != nil {
 			return nil, err
 		}

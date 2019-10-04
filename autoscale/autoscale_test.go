@@ -144,7 +144,11 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 				"_id": "http://n2:2",
 			}},
 		},
-		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*rebalancing - dry: false, force: true.*`,
+		LogMatches: []string{
+			`.*running scaler.*countScaler.*pool1.*`,
+			`.*new machine created.*`,
+			`.*rebalancing - dry: false, force: true.*`,
+		},
 	}, eventtest.HasEvent)
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -236,7 +240,10 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 			"result.toremove":    nodeMatch,
 			"nodes":              nodeMatch,
 		},
-		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*running event "remove".*pool1.*`,
+		LogMatches: []string{
+			`.*running scaler.*countScaler.*pool1.*`,
+			`.*running event "remove".*pool1.*`,
+		},
 	}, eventtest.HasEvent)
 }
 
@@ -357,7 +364,9 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 			"result.reason":      "number of free slots is -4",
 			"nodes":              bson.M{"$size": 1},
 		},
-		LogMatches: `(?s).*not all required nodes were created: error adding new node*`,
+		LogMatches: []string{
+			`.*not all required nodes were created: error adding new node.*`,
+		},
 	}, eventtest.HasEvent)
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)
@@ -400,7 +409,12 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *
 			"nodes":              bson.M{"$size": 0},
 		},
 		ErrorMatches: `error adding new node http://n3:3: my error adding node`,
-		LogMatches:   `(?s).*running scaler.*countScaler.*pool1.*new machine created.*.*error adding new node http://n3:3: my error adding node.*rebalancing - dry: false, force: false.*`,
+		LogMatches: []string{
+			`.*running scaler.*countScaler.*pool1.*`,
+			`.*new machine created.*`,
+			`.*error adding new node http://n3:3: my error adding node.*`,
+			`.*rebalancing - dry: false, force: false.*`,
+		},
 	}, eventtest.HasEvent)
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)
@@ -431,7 +445,12 @@ func (s *S) TestAutoScaleConfigRunOnceSingleNodeAddNodesErrorNoRebalance(c *chec
 			"nodes":              bson.M{"$size": 0},
 		},
 		ErrorMatches: `error adding new node http://n2:2: my error adding node`,
-		LogMatches:   `(?s).*running scaler.*countScaler.*pool1.*new machine created.*.*error adding new node http://n2:2: my error adding node.*rebalancing - dry: false, force: false.*`,
+		LogMatches: []string{
+			`.*running scaler.*countScaler.*pool1.*`,
+			`.*new machine created.*`,
+			`.*error adding new node http://n2:2: my error adding node.*`,
+			`.*rebalancing - dry: false, force: false.*`,
+		},
 	}, eventtest.HasEvent)
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)
@@ -463,7 +482,10 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 			"result.toadd":       0,
 			"result.torebalance": true,
 		},
-		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*rebalancing - dry: false, force: false.*`,
+		LogMatches: []string{
+			`.*running scaler.*countScaler.*pool1.*`,
+			`.*rebalancing - dry: false, force: false.*`,
+		},
 	}, eventtest.HasEvent)
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)

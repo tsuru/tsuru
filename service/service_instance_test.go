@@ -813,7 +813,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		Event: evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Matches, "remove instance")
+	c.Assert(buf.String(), check.Matches, ".*remove instance")
 	c.Assert(reqs, check.HasLen, 5)
 	c.Assert(reqs[0].Method, check.Equals, "POST")
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
@@ -958,7 +958,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 		Event:       evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Matches, `(?s)\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\).*remove instance`)
+	c.Assert(buf.String(), check.Matches, `(?s).*\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\).*remove instance`)
 	c.Assert(reqs, check.HasLen, 5)
 	c.Assert(reqs[0].Method, check.Equals, "POST")
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")

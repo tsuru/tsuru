@@ -23,7 +23,7 @@ type EventDesc struct {
 	StartCustomData interface{}
 	EndCustomData   interface{}
 	OtherCustomData interface{}
-	LogMatches      string
+	LogMatches      []string
 	ErrorMatches    string
 	IsEmpty         bool
 }
@@ -50,7 +50,7 @@ func queryPartCustom(query map[string]interface{}, name string, value interface{
 				name: bson.M{"$elemMatch": el},
 			})
 		}
-		query["$and"] = queryPart
+		addAndBlock(query, queryPart)
 	}
 }
 
@@ -80,7 +80,7 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 		}
 		return true, ""
 	}
-	query := map[string]interface{}{
+	query := bson.M{
 		"target":     evt.Target,
 		"kind.name":  evt.Kind,
 		"owner.name": evt.Owner,
@@ -93,14 +93,21 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 				"extratargets": t,
 			})
 		}
-		query["$and"] = andBlock
+		addAndBlock(query, andBlock)
 	}
 	queryPartCustom(query, "startcustomdata", evt.StartCustomData)
 	queryPartCustom(query, "endcustomdata", evt.EndCustomData)
 	queryPartCustom(query, "othercustomdata", evt.OtherCustomData)
-	if evt.LogMatches != "" {
-		query["log"] = bson.M{"$regex": evt.LogMatches}
+	if len(evt.LogMatches) > 0 {
+		var andBlock []bson.M
+		for _, m := range evt.LogMatches {
+			andBlock = append(andBlock, bson.M{
+				"structuredlog.message": bson.M{"$regex": m},
+			})
+		}
+		addAndBlock(query, andBlock)
 	}
+
 	if evt.ErrorMatches != "" {
 		query["error"] = bson.M{"$regex": evt.ErrorMatches, "$options": "s"}
 	} else {
@@ -121,10 +128,10 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	return true, ""
 }
 
-func debugEvts(evts []event.Event) string {
+func debugEvts(evts []*event.Event) string {
 	var msgs []string
 	for i := range evts {
-		evt := &evts[i]
+		evt := evts[i]
 		var sData, oData, eData interface{}
 		evt.StartData(&sData)
 		evt.OtherData(&oData)
@@ -175,4 +182,16 @@ func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, strin
 
 var EvtEquals check.Checker = &evtEqualsChecker{
 	check.CheckerInfo{Name: "EvtEquals", Params: []string{"obtained", "expected"}},
+}
+
+func addAndBlock(query bson.M, parts []bson.M) {
+	if len(parts) == 0 {
+		return
+	}
+	andBlock, ok := query["$and"].([]bson.M)
+	if !ok {
+		andBlock = []bson.M{}
+	}
+	andBlock = append(andBlock, parts...)
+	query["$and"] = andBlock
 }

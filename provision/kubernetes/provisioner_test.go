@@ -1469,18 +1469,20 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	go func(evt event.Event) {
-		img, errDeploy := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", &evt)
+	go func(evt *event.Event) {
+		img, errDeploy := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", evt)
 		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
-	}(*evt)
+	}(evt)
 	select {
 	case <-deploy:
 	case <-time.After(time.Second * 15):
 		c.Fatal("timeout waiting for deploy to start")
 	}
-	err = evt.TryCancel("because I want.", "admin@admin.com")
+	evtDB, err := event.GetByHexID(evt.UniqueID.Hex())
+	c.Assert(err, check.IsNil)
+	err = evtDB.TryCancel("because I want.", "admin@admin.com")
 	attach <- struct{}{}
 	c.Assert(err, check.IsNil)
 	select {

@@ -577,7 +577,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\""\s+running build hook.*`)
+	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\"".+running build hook.*`)
 	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(3))
 }
 
