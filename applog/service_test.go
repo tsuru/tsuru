@@ -19,7 +19,7 @@ var (
 )
 
 func (s *ServiceSuite) Test_LogService_Add(c *check.C) {
-	err := s.svc.Add("myapp", "last log msg", "tsuru", "outermachine")
+	err := s.svc.Add("myapp", "last log msg", "tsuru", "outermachine", 0)
 	c.Assert(err, check.IsNil)
 	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
@@ -31,7 +31,7 @@ func (s *ServiceSuite) Test_LogService_Add(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_AddShouldAddOneRecordByLine(c *check.C) {
-	err := s.svc.Add("myapp", "last log msg\nfirst log", "tsuru", "outermachine")
+	err := s.svc.Add("myapp", "last log msg\nfirst log", "tsuru", "outermachine", 0)
 	c.Assert(err, check.IsNil)
 	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
@@ -41,9 +41,9 @@ func (s *ServiceSuite) Test_LogService_AddShouldAddOneRecordByLine(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_AddShouldNotLogBlankLines(c *check.C) {
-	err := s.svc.Add("ich", "some message", "tsuru", "machine")
+	err := s.svc.Add("ich", "some message", "tsuru", "machine", 0)
 	c.Assert(err, check.IsNil)
-	err = s.svc.Add("ich", "", "", "")
+	err = s.svc.Add("ich", "", "", "", 0)
 	c.Assert(err, check.IsNil)
 	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "ich"})
 	c.Assert(err, check.IsNil)
@@ -65,7 +65,7 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 			logs.Unlock()
 		}
 	}()
-	err = s.svc.Add("myapp", "last log msg", "tsuru", "machine")
+	err = s.svc.Add("myapp", "last log msg", "tsuru", "machine", 0)
 	c.Assert(err, check.IsNil)
 	done := make(chan bool, 1)
 	q := make(chan bool)
@@ -102,10 +102,10 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_List(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 		time.Sleep(1e6) // let the time flow
 	}
-	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel")
+	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel", 0)
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
@@ -117,7 +117,7 @@ func (s *ServiceSuite) Test_LogService_List(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 	}
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: -1, AppName: "myapp"})
 	c.Assert(err, check.IsNil)
@@ -126,7 +126,7 @@ func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 	}
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 0, AppName: "myapp"})
 	c.Assert(err, check.IsNil)
@@ -135,10 +135,10 @@ func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 		time.Sleep(1e6) // let the time flow
 	}
-	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel")
+	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel", 0)
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 1000, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 15)
@@ -150,11 +150,11 @@ func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 		time.Sleep(1e6) // let the time flow
 	}
-	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
-	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
+	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel", 0)
+	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon", 0)
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Unit: "rdaneel"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
@@ -166,11 +166,11 @@ func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 
 func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
 	for i := 0; i < 15; i++ {
-		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel")
+		s.svc.Add("app3", strconv.Itoa(i), "tsuru", "rdaneel", 0)
 		time.Sleep(1e6) // let the time flow
 	}
-	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
-	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
+	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel", 0)
+	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon", 0)
 	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertFilters: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
@@ -184,8 +184,8 @@ func (s *ServiceSuite) Test_LogService_ListEmpty(c *check.C) {
 	c.Assert(logs, check.DeepEquals, []appTypes.Applog{})
 }
 
-func addLog(c *check.C, svc appTypes.AppLogService, appName, message, source, unit string) {
-	err := svc.Add(appName, message, source, unit)
+func addLog(c *check.C, svc appTypes.AppLogService, appName, message, source, unit string, level int) {
+	err := svc.Add(appName, message, source, unit, level)
 	c.Assert(err, check.IsNil)
 }
 
@@ -194,10 +194,10 @@ func (s *ServiceSuite) TestWatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	c.Assert(l.Chan(), check.NotNil)
-	addLog(c, s.svc, "myapp", "123", "", "")
+	addLog(c, s.svc, "myapp", "123", "", "", 0)
 	logMsg := <-l.Chan()
 	c.Assert(logMsg.Message, check.Equals, "123")
-	addLog(c, s.svc, "myapp", "456", "", "")
+	addLog(c, s.svc, "myapp", "456", "", "", 0)
 	logMsg = <-l.Chan()
 	c.Assert(logMsg.Message, check.Equals, "456")
 }
@@ -215,7 +215,7 @@ func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 		{Message: "5", Source: "web", Unit: "u1"},
 	}
 	for _, log := range logs {
-		addLog(c, s.svc, "myapp", log.Message, log.Source, log.Unit)
+		addLog(c, s.svc, "myapp", log.Message, log.Source, log.Unit, log.Level)
 	}
 	logMsg := <-l.Chan()
 	c.Assert(logMsg.Message, check.Equals, "1")
@@ -272,7 +272,7 @@ func (s *ServiceSuite) TestWatchNotify(c *check.C) {
 		{Message: "This program has performed an illegal operation.", Source: "tsuru", Unit: "some", AppName: "fade"},
 	}
 	for _, log := range ms {
-		addLog(c, s.svc, "fade", log.Message, log.Source, log.Unit)
+		addLog(c, s.svc, "fade", log.Message, log.Source, log.Unit, log.Level)
 	}
 	done := make(chan bool, 1)
 	q := make(chan bool)
@@ -324,7 +324,7 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 		{Message: "Last one.", Source: "tsuru", Unit: "unit2"},
 	}
 	for _, log := range ms {
-		addLog(c, s.svc, "fade", log.Message, log.Source, log.Unit)
+		addLog(c, s.svc, "fade", log.Message, log.Source, log.Unit, log.Level)
 	}
 	done := make(chan bool, 1)
 	q := make(chan bool)
@@ -364,5 +364,5 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	l, err := s.svc.Watch("fade", "", "", nil)
 	c.Assert(err, check.IsNil)
 	l.Close()
-	addLog(c, s.svc, "fade", "Something went wrong. Check it out:", "tsuru", "")
+	addLog(c, s.svc, "fade", "Something went wrong. Check it out:", "tsuru", "", 0)
 }

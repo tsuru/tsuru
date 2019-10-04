@@ -20,7 +20,7 @@ var (
 func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	svc := memoryLogService{}
 	for i := 0; i < 20; i++ {
-		err := svc.Add("myapp", bigMessage, "tsuru", fmt.Sprintf("unit-%d", i))
+		err := svc.Add("myapp", bigMessage, "tsuru", fmt.Sprintf("unit-%d", i), 0)
 		c.Assert(err, check.IsNil)
 	}
 	buffer := svc.getAppBuffer("myapp")
@@ -44,11 +44,38 @@ func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	})
 }
 
+func (s *S) Test_MemoryLogService_AddLogLevel(c *check.C) {
+	svc := memoryLogService{}
+	for i := 0; i < 20; i++ {
+		err := svc.Add("myapp", bigMessage, "tsuru", fmt.Sprintf("unit-%d", i), 3)
+		c.Assert(err, check.IsNil)
+	}
+	buffer := svc.getAppBuffer("myapp")
+	c.Assert(buffer.length, check.Equals, 10)
+	c.Assert(buffer.size <= defaultMaxAppBufferSize, check.Equals, true)
+	c.Assert(buffer.start.prev, check.Equals, buffer.end)
+	c.Assert(buffer.end.next, check.Equals, buffer.start)
+	msgs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp", Level: 3})
+	c.Assert(err, check.IsNil)
+	compareLogsNoDate(c, msgs, []appTypes.Applog{
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-10", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-11", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-12", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-13", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-14", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-15", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-16", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-17", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-18", Level: 3},
+		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-19", Level: 3},
+	})
+}
+
 func (s *S) Test_MemoryLogService_MessageLargerThanLimit(c *check.C) {
 	svc := memoryLogService{}
-	err := svc.Add("myapp", bigMessage, "tsuru", "avranakern")
+	err := svc.Add("myapp", bigMessage, "tsuru", "avranakern", 0)
 	c.Assert(err, check.IsNil)
-	err = svc.Add("myapp", hugeMessage, "tsuru", "portia")
+	err = svc.Add("myapp", hugeMessage, "tsuru", "portia", 0)
 	c.Assert(err, check.IsNil)
 	buffer := svc.getAppBuffer("myapp")
 	c.Assert(buffer.length, check.Equals, 1)
@@ -63,13 +90,13 @@ func (s *S) Test_MemoryLogService_MessageLargerThanLimit(c *check.C) {
 func (s *S) Test_MemoryLogService_MessagExactLimit(c *check.C) {
 	svc := memoryLogService{}
 	buffer := svc.getAppBuffer("myapp")
-	err := svc.Add("myapp", bigMessage, "tsuru", "avranakern0")
+	err := svc.Add("myapp", bigMessage, "tsuru", "avranakern0", 0)
 	c.Assert(err, check.IsNil)
 	newSize := defaultMaxAppBufferSize - (int(buffer.size) - len(bigMessage))
 	newMessage := strings.Repeat("x", newSize)
-	err = svc.Add("myapp", newMessage, "tsuru", "avranakern1")
+	err = svc.Add("myapp", newMessage, "tsuru", "avranakern1", 0)
 	c.Assert(err, check.IsNil)
-	err = svc.Add("myapp", newMessage, "tsuru", "avranakern2")
+	err = svc.Add("myapp", newMessage, "tsuru", "avranakern2", 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(buffer.length, check.Equals, 1)
 	c.Assert(buffer.size == defaultMaxAppBufferSize, check.Equals, true)
