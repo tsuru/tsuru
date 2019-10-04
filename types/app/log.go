@@ -14,7 +14,7 @@ type LogWatcher interface {
 
 type AppLogService interface {
 	Enqueue(entry *Applog) error
-	Add(appName, message, source, unit string) error
+	Add(appName, message, source, unit string, level int) error
 	List(args ListLogArgs) ([]Applog, error)
 	Watch(appName, source, unit string, t auth.Token) (LogWatcher, error)
 }

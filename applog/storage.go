@@ -45,7 +45,7 @@ func (s *storageLogService) Enqueue(entry *appTypes.Applog) error {
 	return s.dispatcher.send(entry)
 }
 
-func (s *storageLogService) Add(appName, message, source, unit string) error {
+func (s *storageLogService) Add(appName, message, source, unit string, level int) error {
 	messages := strings.Split(message, "\n")
 	logs := make([]*appTypes.Applog, 0, len(messages))
 	for _, msg := range messages {
@@ -56,6 +56,7 @@ func (s *storageLogService) Add(appName, message, source, unit string) error {
 				Source:  source,
 				AppName: appName,
 				Unit:    unit,
+				Level:   level,
 			}
 			logs = append(logs, l)
 		}

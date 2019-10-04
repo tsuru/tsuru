@@ -47,8 +47,8 @@ func (s *aggregatorLogService) Enqueue(entry *appTypes.Applog) error {
 	return s.base.Enqueue(entry)
 }
 
-func (s *aggregatorLogService) Add(appName, message, source, unit string) error {
-	return s.base.Add(appName, message, source, unit)
+func (s *aggregatorLogService) Add(appName, message, source, unit string, level int) error {
+	return s.base.Add(appName, message, source, unit, level)
 }
 
 func (s *aggregatorLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
