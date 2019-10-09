@@ -45,7 +45,7 @@ func toAutoScaleEvent(evt *event.Event) (Event, error) {
 		EndTime:       evt.EndTime,
 		Successful:    evt.Error == "",
 		Error:         evt.Error,
-		Log:           evt.Log,
+		Log:           evt.Log(),
 	}
 	if data.Result != nil {
 		if data.Result.ToAdd > 0 {

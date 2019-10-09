@@ -2049,7 +2049,7 @@ func (s *S) TestAddUnits(c *check.C) {
 		Kind:            "app.update.unit.add",
 		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
 	}, eventtest.HasEvent)
-	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
 }
 
 func (s *S) TestAddUnitsUnlimited(c *check.C) {
@@ -2080,7 +2080,7 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 		Kind:            "app.update.unit.add",
 		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
 	}, eventtest.HasEvent)
-	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
 }
 
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *check.C) {
@@ -2151,7 +2151,7 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
-	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
 	c.Assert(eventtest.EventDesc{
 		Target:          appTarget("armorandsword"),
 		Owner:           s.token.GetUserName(),
@@ -2236,7 +2236,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 			{"name": ":app", "value": "velha"},
 		},
 	}, eventtest.HasEvent)
-	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*removing 2 units"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*removing 2 units","Timestamp":".*"}`+"\n")
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *check.C) {
@@ -2841,7 +2841,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":"lots of files","Timestamp":".*"}`+"\n")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
@@ -2878,7 +2878,7 @@ func (s *S) TestRun(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of\nfiles"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":"lots of\\nfiles","Timestamp":".*"}`+"\n")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
@@ -2915,7 +2915,7 @@ func (s *S) TestRunIsolated(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
+	c.Assert(recorder.Body.String(), check.Matches, `{"Message":"lots of files","Timestamp":".*"}`+"\n")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
@@ -2949,9 +2949,9 @@ func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	expected := `{"Message":"failure output"}` + "\n" +
-		`{"Message":"","Error":"something went wrong"}` + "\n"
-	c.Assert(recorder.Body.String(), check.Equals, expected)
+	expected := `{"Message":"failure output","Timestamp":".*"}` + "\n" +
+		`{"Message":"","Timestamp":".*","Error":"something went wrong"}` + "\n"
+	c.Assert(recorder.Body.String(), check.Matches, expected)
 	c.Assert(eventtest.EventDesc{
 		Target:       appTarget(a.Name),
 		Owner:        s.token.GetUserName(),
@@ -3211,7 +3211,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n"}
+		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3264,7 +3264,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
 		Public: true,
 	})
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n"}
+		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3310,7 +3310,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n"}
+		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3385,7 +3385,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n"}
+		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3534,7 +3534,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n"}
+		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3669,7 +3669,7 @@ func (s *S) TestUnsetEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Unsetting 1 environment variables ----\\n"}
+		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3710,7 +3710,7 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Unsetting 1 environment variables ----\\n"}
+		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -4588,13 +4588,13 @@ func (s *S) TestBindHandler(c *check.C) {
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 8)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app"}`)
-	c.Assert(parts[2], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
-	c.Assert(parts[3], check.Equals, `{"Message":"The following environment variables are available for use in your app:\n\n"}`)
-	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[5], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[6], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
+	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[5], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[6], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
 	c.Assert(parts[7], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -4721,7 +4721,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 2)
-	c.Assert(parts[0], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
 	c.Assert(parts[1], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -4950,12 +4950,12 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 7)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n"}`)
-	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
-	c.Assert(parts[2], check.Equals, `{"Message":"The following environment variables are available for use in your app:\n\n"}`)
-	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
 	c.Assert(parts[6], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name, "service_name": instance.ServiceName}).One(&result)
@@ -5054,9 +5054,9 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 4)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
 	c.Assert(parts[3], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -5152,8 +5152,8 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 3)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
 	c.Assert(parts[2], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -5246,10 +5246,10 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	c.Assert(ok, check.Equals, false)
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 5)
-	c.Assert(parts[0], check.Matches, `{"Message":".*\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \(\\"/resources/my-mysql/bind-app\\"\): invalid response: my unbind err \(code: 500\)\\n"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":".*restarting app"}`)
-	c.Assert(parts[3], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n"}`)
+	c.Assert(parts[0], check.Matches, `{"Message":".*\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \(\\"/resources/my-mysql/bind-app\\"\): invalid response: my unbind err \(code: 500\)\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
 	c.Assert(parts[4], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -5505,8 +5505,8 @@ func (s *S) TestRestartHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Restarting the app \\"stress\\" ----\\n"}`+"\n"+
-			`{"Message":".*restarting app"}`+"\n",
+		`{"Message":".*---- Restarting the app \\"stress\\" ----\\n","Timestamp":".*"}`+"\n"+
+			`{"Message":".*restarting app","Timestamp":".*"}`+"\n",
 	)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5539,8 +5539,8 @@ func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Restarting process \\"web\\" ----\\n"}`+"\n"+
-			`{"Message":".*restarting app"}`+"\n",
+		`{"Message":".*---- Restarting process \\"web\\" ----\\n","Timestamp":".*"}`+"\n"+
+			`{"Message":".*restarting app","Timestamp":".*"}`+"\n",
 	)
 	restarts := s.provisioner.Restarts(&a, "web")
 	c.Assert(restarts, check.Equals, 1)
@@ -5608,7 +5608,7 @@ func (s *S) TestSleepHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*\\n.* ---\\u003e Putting the app \\"stress\\" to sleep\\n"}`+"\n",
+		`{"Message":".*\\n.* ---\\u003e Putting the app \\"stress\\" to sleep\\n","Timestamp":".*"}`+"\n",
 	)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5971,7 +5971,7 @@ func (s *S) TestStartHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*\\n.* ---\\u003e Starting the process \\"web\\"\\n"}`+"\n",
+		`{"Message":".*\\n.* ---\\u003e Starting the process \\"web\\"\\n","Timestamp":".*"}`+"\n",
 	)
 	starts := s.provisioner.Starts(&a, "web")
 	c.Assert(starts, check.Equals, 1)
@@ -6003,7 +6003,7 @@ func (s *S) TestStopHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*\\n.* ---\\u003e Stopping the process \\"web\\"\\n"}`+"\n",
+		`{"Message":".*\\n.* ---\\u003e Stopping the process \\"web\\"\\n","Timestamp":".*"}`+"\n",
 	)
 	stops := s.provisioner.Stops(&a, "web")
 	c.Assert(stops, check.Equals, 1)

@@ -901,7 +901,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	expected := ""
-	expected += `{"Message":".*service instance successfully removed\\n"}` + "\n"
+	expected += `{"Message":".*service instance successfully removed\\n","Timestamp":".*"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Matches, expected)
 	instance, err := service.GetServiceInstance("foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, nil)
@@ -910,9 +910,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	expected = ""
-	expected += `{"Message":".*Unbind app \\"app-instance\\" ...\\n"}.*` + "\n"
-	expected += `{"Message":".*\\n.*Instance \\"foo-instance\\" is not bound to the app \\"app-instance\\" anymore.\\n"}` + "\n"
-	expected += `{"Message":".*service instance successfully removed\\n"}` + "\n"
+	expected += `{"Message":".*Unbind app \\"app-instance\\" ...\\n","Timestamp":".*"}.*` + "\n"
+	expected += `{"Message":".*\\n.*Instance \\"foo-instance\\" is not bound to the app \\"app-instance\\" anymore.\\n","Timestamp":".*"}` + "\n"
+	expected += `{"Message":".*service instance successfully removed\\n","Timestamp":".*"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Matches, expected)
 	_, err = service.GetServiceInstance("foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)

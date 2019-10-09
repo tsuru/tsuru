@@ -95,10 +95,10 @@ func (s *S) TestAutoScaleRunHandler(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	body := recorder.Body.String()
 	c.Assert(body, check.Matches,
-		`{"Message":".*running scaler \*autoscale.countScaler for \\"pool\\": \\"pool1\\"\\n"}`+"\n"+
-			`{"Message":".*rebalancing - dry: false, force: false\\n"}`+"\n"+
-			`{"Message":".*filtering pool: pool1\\n"}`+"\n"+
-			`{"Message":".*nothing to do for \\"pool\\": \\"pool1\\"\\n"}`+"\n",
+		`{"Message":".*running scaler \*autoscale.countScaler for \\"pool\\": \\"pool1\\"\\n","Timestamp":".*"}`+"\n"+
+			`{"Message":".*rebalancing - dry: false, force: false\\n","Timestamp":".*"}`+"\n"+
+			`{"Message":".*filtering pool: pool1\\n","Timestamp":".*"}`+"\n"+
+			`{"Message":".*nothing to do for \\"pool\\": \\"pool1\\"\\n","Timestamp":".*"}`+"\n",
 	)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool},

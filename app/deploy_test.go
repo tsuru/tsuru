@@ -748,7 +748,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
@@ -772,7 +772,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
@@ -797,7 +797,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
@@ -821,7 +821,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Builder deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {

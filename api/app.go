@@ -868,12 +868,11 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      appTarget(appName),
-		Kind:        permission.PermAppRun,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(InputFields(r)),
-		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-		NoTimestamp: true,
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppRun,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
 		return err
