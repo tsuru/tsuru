@@ -240,7 +240,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	opts.Event = evt
 	imageID, err = app.Deploy(opts)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
 	}
 	return nil
 }
@@ -360,7 +360,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	opts.Event = evt
 	imageID, err = app.Deploy(opts)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ package event
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -521,7 +522,10 @@ func (s *S) TestEventLogf(c *check.C) {
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Log, check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
+	c.Assert(evts[0].Log(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
+	asJson, err := json.Marshal(evts[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(string(asJson), check.Matches, `(?s).*"Log":"\d{4}-\d{2}-\d{2}.*: hey 42\\n".*`)
 }
 
 func (s *S) TestEventLogfWithWriter(c *check.C) {
@@ -535,13 +539,13 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 	buf := bytes.Buffer{}
 	evt.SetLogWriter(&buf)
 	evt.Logf("%s %d", "hey", 42)
-	c.Assert(buf.String(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
+	c.Assert(buf.String(), check.Matches, `hey 42`+"\n")
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Log, check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
+	c.Assert(evts[0].Log(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
 }
 
 func (s *S) TestEventCancel(c *check.C) {

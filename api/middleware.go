@@ -148,7 +148,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		flushing, ok := w.(*io.FlushingWriter)
 		if ok && flushing.Wrote() {
 			if w.Header().Get("Content-Type") == "application/x-json-stream" {
-				data, marshalErr := json.Marshal(io.SimpleJsonMessage{Error: err.Error()})
+				data, marshalErr := json.Marshal(io.SimpleJsonMessage{Error: err.Error(), Timestamp: time.Now().UTC()})
 				if marshalErr == nil {
 					w.Write(append(data, "\n"...))
 				}

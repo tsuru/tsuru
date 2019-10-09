@@ -438,7 +438,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Archive deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Archive deploy called")
 	c.Assert(p.apps[app.GetName()].lastArchive, check.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
 }
 
@@ -491,7 +491,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Upload deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Upload deploy called")
 	c.Assert(p.apps[app.GetName()].lastFile, check.Equals, file)
 }
 
@@ -542,7 +542,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Image deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Image deploy called")
 	c.Assert(p.apps[app.GetName()].image, check.Equals, "image/deploy")
 }
 
@@ -1464,7 +1464,7 @@ func (s *S) TestRebuildDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Matches, ".*Rebuild deploy called")
+	c.Assert(evt.Log(), check.Matches, ".*Rebuild deploy called")
 }
 
 func (s *S) TestUpdateApp(c *check.C) {

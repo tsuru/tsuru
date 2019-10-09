@@ -11,29 +11,17 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-type streamWriter struct {
-	w         io.Writer
-	b         []byte
-	formatter Formatter
+type wrapWriter struct {
+	w io.Writer
 }
 
-type syncWriter struct {
-	w  io.Writer
-	mu sync.Mutex
-}
-
-func (w *syncWriter) Write(b []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.w.Write(b)
-}
-
-func (w *syncWriter) FD() uintptr {
+func (w *wrapWriter) FD() uintptr {
 	fd := 0
 	switch v := w.w.(type) {
 	case withFd:
@@ -42,6 +30,23 @@ func (w *syncWriter) FD() uintptr {
 		fd = int(v.FD())
 	}
 	return uintptr(fd)
+}
+
+type streamWriter struct {
+	wrapWriter
+	b         []byte
+	formatter Formatter
+}
+
+type syncWriter struct {
+	wrapWriter
+	mu sync.Mutex
+}
+
+func (w *syncWriter) Write(b []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(b)
 }
 
 var ErrInvalidStreamChunk = errors.New("invalid stream chunk")
@@ -54,7 +59,15 @@ func NewStreamWriter(w io.Writer, formatter Formatter) *streamWriter {
 	if formatter == nil {
 		formatter = &SimpleJsonMessageFormatter{}
 	}
-	return &streamWriter{w: &syncWriter{w: w}, formatter: formatter}
+	return &streamWriter{
+		wrapWriter: wrapWriter{
+			w: &tsWriter{
+				wrapWriter:  wrapWriter{w: &syncWriter{wrapWriter: wrapWriter{w: w}}},
+				needsPrefix: true,
+			},
+		},
+		formatter: formatter,
+	}
 }
 
 func (w *streamWriter) Close() error {
@@ -98,14 +111,16 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 }
 
 type SimpleJsonMessage struct {
-	Message string
-	Error   string `json:",omitempty"`
+	Message   string
+	Timestamp time.Time
+	Error     string `json:",omitempty"`
 }
 
 type SimpleJsonMessageFormatter struct {
-	pipeReader io.Reader
-	pipeWriter io.WriteCloser
-	done       chan struct{}
+	pipeReader  io.Reader
+	pipeWriter  io.WriteCloser
+	done        chan struct{}
+	NoTimestamp bool
 }
 
 func likeJSON(str string) bool {
@@ -131,6 +146,62 @@ func (f *SimpleJsonMessageFormatter) Close() error {
 	return nil
 }
 
+type tsWriter struct {
+	wrapWriter
+	ts          time.Time
+	mu          sync.Mutex
+	needsPrefix bool
+}
+
+func (w *tsWriter) setTS(ts time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.ts = ts
+}
+
+func (w *tsWriter) Write(data []byte) (int, error) {
+	w.mu.Lock()
+	ts := w.ts
+	w.mu.Unlock()
+
+	if ts.IsZero() {
+		return w.w.Write(data)
+	}
+	if len(data) == 0 {
+		return 0, nil
+	}
+
+	const timeFormat = "2006-01-02 15:04:05 -0700"
+	prefix := []byte(ts.Local().Format(timeFormat) + ": ")
+
+	if w.needsPrefix {
+		w.w.Write(prefix)
+	}
+
+	nl := []byte("\n")
+	pos := 0
+	for {
+		oldPos := pos
+		newPos := bytes.Index(data[pos:], nl)
+		if newPos == -1 {
+			w.needsPrefix = false
+			w.w.Write(data[oldPos:])
+			break
+		}
+		pos += newPos
+		if pos == len(data)-1 {
+			w.needsPrefix = true
+			w.w.Write(data[oldPos:])
+			break
+		}
+		w.w.Write(data[oldPos:pos])
+		w.w.Write(data[pos : pos+1])
+		w.w.Write(prefix)
+		pos++
+	}
+	return len(data), nil
+}
+
 func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	if len(data) == 0 || (len(data) == 1 && data[0] == '\n') {
 		return nil
@@ -142,6 +213,9 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	}
 	if msg.Error != "" {
 		return errors.New(msg.Error)
+	}
+	if tsw, ok := out.(*tsWriter); ok && !f.NoTimestamp {
+		tsw.setTS(msg.Timestamp)
 	}
 	if likeJSON(msg.Message) {
 		if f.pipeWriter == nil {
@@ -178,7 +252,7 @@ type SimpleJsonMessageEncoderWriter struct {
 }
 
 func (w *SimpleJsonMessageEncoderWriter) Write(msg []byte) (int, error) {
-	err := w.Encode(SimpleJsonMessage{Message: string(msg)})
+	err := w.Encode(SimpleJsonMessage{Message: string(msg), Timestamp: time.Now().UTC()})
 	if err != nil {
 		return 0, err
 	}

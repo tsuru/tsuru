@@ -1126,7 +1126,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -1167,7 +1167,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -1210,7 +1210,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -1262,12 +1262,8 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var body map[string]string
-	err = json.Unmarshal(recorder.Body.Bytes(), &body)
-	c.Assert(err, check.IsNil)
-	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": "Invalid version: v3"})
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid version: v3\n")
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
@@ -1380,7 +1376,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Builder deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Builder deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),

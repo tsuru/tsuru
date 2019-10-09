@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	check "gopkg.in/check.v1"
 )
@@ -243,6 +244,27 @@ func (s *S) TestSimpleJsonMessageFormatter(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "")
 }
 
+func (s *S) TestSimpleJsonMessageFormatterWithTS(c *check.C) {
+	buf := bytes.Buffer{}
+	ts := time.Unix(0, 0).Format(time.RFC3339)
+	streamWriter := NewStreamWriter(&buf, nil)
+	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "my\nmsg\n", "timestamp": "%s"}`, ts)))
+	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "other", "timestamp": "%s"}`, ts)))
+	streamWriter.Write([]byte(fmt.Sprintf(`{"message": " msg\n", "timestamp": "%s"}`, ts)))
+	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "more", "timestamp": "%s"}`, ts)))
+	streamWriter.Write([]byte(fmt.Sprintf(`{"message": "\nmsgs", "timestamp": "%s"}`, ts)))
+	c.Assert(buf.String(), check.Matches, ".+: my\n.+: msg\n.+: other msg\n.+: more\n.+: msgs")
+
+	buf = bytes.Buffer{}
+	streamWriterNoTs := NewStreamWriter(&buf, &SimpleJsonMessageFormatter{NoTimestamp: true})
+	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "my\nmsg\n", "timestamp": "%s"}`, ts)))
+	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "other", "timestamp": "%s"}`, ts)))
+	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": " msg\n", "timestamp": "%s"}`, ts)))
+	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "more", "timestamp": "%s"}`, ts)))
+	streamWriterNoTs.Write([]byte(fmt.Sprintf(`{"message": "\nmsgs", "timestamp": "%s"}`, ts)))
+	c.Assert(buf.String(), check.Matches, "my\nmsg\nother msg\nmore\nmsgs")
+}
+
 var mockPullOutput = `{"status":"Pulling from tsuru/static","id":"latest"}
 {"status":"Already exists","progressDetail":{},"id":"a6aa3b66376f"}
 {"status":"Pulling fs layer","progressDetail":{},"id":"106572778bf7"}
@@ -289,26 +311,27 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	streamWriter := NewStreamWriter(&outBuf, nil)
 	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
 	c.Assert(err, check.IsNil)
-	c.Assert(written, check.Equals, 4612)
+	c.Assert(written > 5900, check.Equals, true)
 	err = streamWriter.Close()
 	c.Assert(err, check.IsNil)
-	c.Assert(outBuf.String(), check.Equals, "no json 1\n"+
-		"latest: Pulling from tsuru/static\n"+
-		"a6aa3b66376f: Already exists\n"+
-		"106572778bf7: Pulling fs layer\n"+
-		"bac681833e51: Pulling fs layer\n"+
-		"7302e23ef08a: Pulling fs layer\n"+
-		"bac681833e51: Verifying Checksum\n"+
-		"bac681833e51: Download complete\n"+
-		"106572778bf7: Verifying Checksum\n"+
-		"106572778bf7: Download complete\n"+
-		"7302e23ef08a: Verifying Checksum\n"+
-		"7302e23ef08a: Download complete\n"+
-		"106572778bf7: Pull complete\n"+
-		"bac681833e51: Pull complete\n"+
-		"7302e23ef08a: Pull complete\n"+
-		"Digest: sha256:b754472891aa7e33fc0214e3efa988174f2c2289285fcae868b7ec8b6675fc77\n"+
-		"Status: Downloaded newer image for 192.168.50.4:5000/tsuru/static\n"+
+	prefix := ".+: "
+	c.Assert(outBuf.String(), check.Matches, "no json 1\n"+
+		prefix+"latest: Pulling from tsuru/static\n"+
+		prefix+"a6aa3b66376f: Already exists\n"+
+		prefix+"106572778bf7: Pulling fs layer\n"+
+		prefix+"bac681833e51: Pulling fs layer\n"+
+		prefix+"7302e23ef08a: Pulling fs layer\n"+
+		prefix+"bac681833e51: Verifying Checksum\n"+
+		prefix+"bac681833e51: Download complete\n"+
+		prefix+"106572778bf7: Verifying Checksum\n"+
+		prefix+"106572778bf7: Download complete\n"+
+		prefix+"7302e23ef08a: Verifying Checksum\n"+
+		prefix+"7302e23ef08a: Download complete\n"+
+		prefix+"106572778bf7: Pull complete\n"+
+		prefix+"bac681833e51: Pull complete\n"+
+		prefix+"7302e23ef08a: Pull complete\n"+
+		prefix+"Digest: sha256:b754472891aa7e33fc0214e3efa988174f2c2289285fcae868b7ec8b6675fc77\n"+
+		prefix+"Status: Downloaded newer image for 192.168.50.4:5000/tsuru/static\n"+
 		"no json 2\n")
 }
 
@@ -319,11 +342,11 @@ func (s *S) TestSimpleJsonMessageEncoderWriter(c *check.C) {
 	written, err := writer.Write([]byte("my cool msg"))
 	c.Assert(written, check.Equals, 11)
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, `{"Message":"my cool msg"}`+"\n")
+	c.Assert(buf.String(), check.Matches, `{"Message":"my cool msg","Timestamp":".*"}`+"\n")
 }
 
 func (s *S) TestSyncWriterFD(c *check.C) {
-	w := syncWriter{w: os.Stdout}
+	w := syncWriter{wrapWriter: wrapWriter{w: os.Stdout}}
 	fd := int(w.FD())
 	c.Assert(fd, check.Not(check.Equals), 0)
 	w.w = &bytes.Buffer{}

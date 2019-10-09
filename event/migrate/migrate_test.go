@@ -89,7 +89,6 @@ func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
 	expected.StartTime = now
 	expected.EndTime = now.Add(time.Minute)
 	expected.Error = "err1"
-	expected.Log = "log1"
 	expected.Allowed = event.Allowed(permission.PermAppReadEvents)
 	s.checkEvtMatch(&expected, c)
 }
@@ -109,7 +108,6 @@ func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	expected.StartTime = now
 	expected.EndTime = now.Add(time.Minute)
 	expected.Error = "err1"
-	expected.Log = "log1"
 	expected.Allowed = event.Allowed(permission.PermAppReadEvents,
 		append(permission.Contexts(permTypes.CtxTeam, a.Teams),
 			permission.Context(permTypes.CtxApp, a.Name),
@@ -131,7 +129,6 @@ func (s *S) TestMigrateRCEventsInvalidTarget(c *check.C) {
 	expected.StartTime = now
 	expected.EndTime = now.Add(time.Minute)
 	expected.Error = "err1"
-	expected.Log = "log1"
 	expected.Allowed = event.Allowed(permission.PermDebug)
 	s.checkEvtMatch(&expected, c)
 }
@@ -146,7 +143,6 @@ func (s *S) checkEvtMatch(evt *event.Event, c *check.C) {
 		"kind":       evt.Kind,
 		"owner":      evt.Owner,
 		"error":      evt.Error,
-		"log":        evt.Log,
 		"cancelable": evt.Cancelable,
 		"running":    evt.Running,
 	}

@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 
 	goVersion "github.com/hashicorp/go-version"
@@ -673,9 +674,14 @@ func ExtractProgramName(path string) string {
 	return parts[len(parts)-1]
 }
 
-var fsystem fs.Fs
+var (
+	fsystem   fs.Fs
+	fsystemMu sync.Mutex
+)
 
 func filesystem() fs.Fs {
+	fsystemMu.Lock()
+	defer fsystemMu.Unlock()
 	if fsystem == nil {
 		fsystem = fs.OsFs{}
 	}

@@ -208,7 +208,7 @@ type eventData struct {
 	LockUpdateTime  time.Time
 	Error           string
 	Log             string     `bson:",omitempty"`
-	StructuredLog   []logEntry `bson:",omitempty"`
+	StructuredLog   []LogEntry `bson:",omitempty"`
 	RemoveDate      time.Time  `bson:",omitempty"`
 	CancelInfo      cancelInfo
 	Cancelable      bool
@@ -218,7 +218,7 @@ type eventData struct {
 	Instance        tracker.TrackedInstance
 }
 
-type logEntry struct {
+type LogEntry struct {
 	Date    time.Time
 	Message string
 }
@@ -376,9 +376,8 @@ func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
 
 type Event struct {
 	eventData
-	noTimestamp bool
-	logMu       sync.Mutex
-	logWriter   io.Writer
+	logMu     sync.Mutex
+	logWriter io.Writer
 }
 
 type ExtraTarget struct {
@@ -396,7 +395,6 @@ type Opts struct {
 	CustomData    interface{}
 	DisableLock   bool
 	Cancelable    bool
-	NoTimestamp   bool
 	Allowed       AllowedPermission
 	AllowedCancel AllowedPermission
 	RetryTimeout  time.Duration
@@ -972,9 +970,7 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 		Allowed:         opts.Allowed,
 		AllowedCancel:   opts.AllowedCancel,
 		Instance:        instance,
-	},
-		noTimestamp: opts.NoTimestamp,
-	}
+	}}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
@@ -1117,16 +1113,11 @@ func (e *Event) Logf(format string, params ...interface{}) {
 
 func (e *Event) Write(data []byte) (int, error) {
 	if e.logWriter != nil {
-		if e.noTimestamp {
-			e.logWriter.Write(data)
-		} else {
-			formatted := addLinePrefix(string(data), time.Now().Local().Format(timeFormat)+": ")
-			e.logWriter.Write([]byte(formatted))
-		}
+		e.logWriter.Write(data)
 	}
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
-	e.StructuredLog = append(e.StructuredLog, logEntry{
+	e.StructuredLog = append(e.StructuredLog, LogEntry{
 		Date:    time.Now().UTC(),
 		Message: string(data),
 	})
@@ -1297,24 +1288,34 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	return coll.Insert(e.eventData)
 }
 
-func (e *Event) fillLegacyLog() {
-	if e.Log != "" || len(e.StructuredLog) == 0 {
-		return
+func (e *Event) Log() string {
+	if len(e.StructuredLog) == 0 {
+		return e.eventData.Log
 	}
 	msgs := make([]string, len(e.StructuredLog))
 	for i, entry := range e.StructuredLog {
+		if entry.Date.IsZero() {
+			msgs[i] = entry.Message
+			continue
+		}
 		msgs[i] = addLinePrefix(entry.Message, entry.Date.Local().Format(timeFormat)+": ")
 	}
-	e.Log = strings.Join(msgs, "")
+	return strings.Join(msgs, "")
+}
+
+func (e *Event) fillLegacyLog() {
+	if e.eventData.Log != "" || len(e.StructuredLog) == 0 {
+		return
+	}
+	e.eventData.Log = e.Log()
 }
 
 func (e *Event) Clone() *Event {
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
 	e2 := Event{
-		eventData:   e.eventData,
-		noTimestamp: e.noTimestamp,
-		logWriter:   e.logWriter,
+		eventData: e.eventData,
+		logWriter: e.logWriter,
 	}
 	e2.eventData.StructuredLog = nil
 	return &e2

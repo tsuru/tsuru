@@ -135,7 +135,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 		data.Message = startOpts.Message
 	}
 	if full {
-		data.Log = evt.Log
+		data.Log = evt.Log()
 		var otherData map[string]string
 		err = evt.OtherData(&otherData)
 		if err == nil {
@@ -415,7 +415,9 @@ func deployDataToEvent(data *DeployData) error {
 	evt.StartTime = data.Timestamp
 	evt.EndTime = data.Timestamp.Add(data.Duration)
 	evt.Error = data.Error
-	evt.Log = data.Log
+	evt.StructuredLog = []event.LogEntry{
+		{Message: data.Log},
+	}
 	evt.RemoveDate = data.RemoveDate
 	a, err := GetByName(data.App)
 	if err == nil {
