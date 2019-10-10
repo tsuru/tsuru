@@ -5,7 +5,6 @@
 package dockermachine
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -26,6 +26,8 @@ import (
 var errDriverNotSet = errors.Errorf("driver is mandatory")
 var invalidHostnameChars = regexp.MustCompile(`[^a-z0-9-]`)
 
+var onceLogConfig sync.Once
+
 func init() {
 	iaas.RegisterIaasProvider("dockermachine", newDockerMachineIaaS)
 }
@@ -36,8 +38,17 @@ type dockerMachineIaaS struct {
 }
 
 func newDockerMachineIaaS(name string) iaas.IaaS {
+	base := iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "dockermachine", IaaSName: name}}
+	onceLogConfig.Do(func() {
+		std := log.GetStdLogger()
+		if std != nil {
+			debugConf, _ := base.GetConfigString("debug")
+			isDebug, _ := strconv.ParseBool(debugConf)
+			InitLogging(std.Writer(), std.Writer(), isDebug)
+		}
+	})
 	return &dockerMachineIaaS{
-		base:       iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "dockermachine", IaaSName: name}},
+		base:       base,
 		apiFactory: NewDockerMachine,
 	}
 }
@@ -101,7 +112,6 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	if userDataFileParam != "" {
 		delete(params, userDataFileParam)
 	}
-	buf := &bytes.Buffer{}
 	debugConf, _ := i.base.GetConfigString("debug")
 	if debugConf == "" {
 		debugConf = "false"
@@ -111,18 +121,13 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		return nil, errors.Wrap(err, "failed to parse debug config")
 	}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
-		CaPath:    caPath,
-		OutWriter: buf,
-		ErrWriter: buf,
-		IsDebug:   isDebug,
+		CaPath:  caPath,
+		IsDebug: isDebug,
 	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		dockerMachine.Close()
-		log.Debug(buf.String())
-	}()
+	defer dockerMachine.Close()
 	m, err := dockerMachine.CreateMachine(CreateMachineOpts{
 		Name:                      machineName,
 		DriverName:                driverName,
@@ -169,7 +174,6 @@ func (i *dockerMachineIaaS) buildDriverOpts(driverName string, params map[string
 }
 
 func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
-	buf := &bytes.Buffer{}
 	debugConf, _ := i.base.GetConfigString("debug")
 	if debugConf == "" {
 		debugConf = "false"
@@ -179,17 +183,12 @@ func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 		return errors.Wrap(err, "failed to parse debug config")
 	}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
-		OutWriter: buf,
-		ErrWriter: buf,
-		IsDebug:   isDebug,
+		IsDebug: isDebug,
 	})
 	if err != nil {
 		return err
 	}
-	defer func() {
-		dockerMachine.Close()
-		log.Debug(buf.String())
-	}()
+	defer dockerMachine.Close()
 	return dockerMachine.DeleteMachine(m)
 }
 
