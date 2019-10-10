@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/tsuru/tsuru/iaas"
@@ -23,6 +24,25 @@ func (s *S) TestNewDockerMachine(c *check.C) {
 	pathInfo, err := os.Stat(dm.StorePath)
 	c.Assert(err, check.IsNil)
 	c.Assert(pathInfo.IsDir(), check.Equals, true)
+}
+
+func (s *S) TestNewDockerMachineRaceCheck(c *check.C) {
+	wg := sync.WaitGroup{}
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+			c.Assert(err, check.IsNil)
+			defer dmAPI.Close()
+			dm := dmAPI.(*DockerMachine)
+			c.Assert(dm.client, check.NotNil)
+			pathInfo, err := os.Stat(dm.StorePath)
+			c.Assert(err, check.IsNil)
+			c.Assert(pathInfo.IsDir(), check.Equals, true)
+		}()
+	}
+	wg.Wait()
 }
 
 func (s *S) TestNewDockerMachineCreatesStoreIfDefinedAndDoesNotExists(c *check.C) {
