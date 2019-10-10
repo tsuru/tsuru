@@ -35,8 +35,6 @@ type DockerMachine struct {
 
 type DockerMachineConfig struct {
 	CaPath    string
-	OutWriter io.Writer
-	ErrWriter io.Writer
 	StorePath string
 	IsDebug   bool
 }
@@ -72,6 +70,20 @@ type Machine struct {
 	Host *host.Host
 }
 
+func InitLogging(outWriter, errorWriter io.Writer, isDebug bool) {
+	if outWriter != nil {
+		log.SetOutWriter(outWriter)
+	} else {
+		log.SetOutWriter(ioutil.Discard)
+	}
+	if errorWriter != nil {
+		log.SetOutWriter(errorWriter)
+	} else {
+		log.SetOutWriter(ioutil.Discard)
+	}
+	log.SetDebug(isDebug)
+}
+
 func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	storePath := config.StorePath
 	temp := false
@@ -100,17 +112,6 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 			return nil, errors.Wrap(err, "failed to copy ca key file")
 		}
 	}
-	if config.OutWriter != nil {
-		log.SetOutWriter(config.OutWriter)
-	} else {
-		log.SetOutWriter(ioutil.Discard)
-	}
-	if config.ErrWriter != nil {
-		log.SetOutWriter(config.ErrWriter)
-	} else {
-		log.SetOutWriter(ioutil.Discard)
-	}
-	log.SetDebug(config.IsDebug)
 	client := libmachine.NewClient(storePath, certsPath)
 	client.IsDebug = config.IsDebug
 	if _, err := os.Stat(client.GetMachinesDir()); os.IsNotExist(err) {
