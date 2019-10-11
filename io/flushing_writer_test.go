@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"time"
 
 	check "gopkg.in/check.v1"
@@ -165,4 +166,25 @@ func (h *hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		Writer: bufio.NewWriterSize(h.ResponseWriter, 1),
 	}
 	return h.conn, &rw, nil
+}
+
+func (s *S) TestFlushingWriterFlushAfterWrite(c *check.C) {
+	wg := sync.WaitGroup{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := w.(WriterFlusher)
+		c.Assert(ok, check.Equals, true)
+		fw := FlushingWriter{WriterFlusher: flusher}
+		defer fw.Flush()
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fw.Write([]byte("a"))
+			}()
+		}
+	}))
+	defer srv.Close()
+	_, err := http.Get(srv.URL)
+	c.Assert(err, check.IsNil)
+	wg.Wait()
 }
