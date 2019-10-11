@@ -6,6 +6,7 @@ package io
 
 import (
 	"bufio"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -34,6 +35,7 @@ type FlushingWriter struct {
 	wrote        bool
 	flushPending bool
 	hijacked     bool
+	closed       bool
 }
 
 func (w *FlushingWriter) WriteHeader(code int) {
@@ -47,6 +49,9 @@ func (w *FlushingWriter) WriteHeader(code int) {
 func (w *FlushingWriter) Write(data []byte) (written int, err error) {
 	w.writeMutex.Lock()
 	defer w.writeMutex.Unlock()
+	if w.closed {
+		return 0, io.EOF
+	}
 	w.wrote = true
 	written, err = w.WriterFlusher.Write(data)
 	if err != nil {
@@ -78,9 +83,7 @@ func (w *FlushingWriter) delayedFlush() {
 	w.flushPending = false
 }
 
-func (w *FlushingWriter) Flush() {
-	w.writeMutex.Lock()
-	defer w.writeMutex.Unlock()
+func (w *FlushingWriter) flush() {
 	if w.hijacked {
 		return
 	}
@@ -89,6 +92,19 @@ func (w *FlushingWriter) Flush() {
 		w.timer.Stop()
 	}
 	w.WriterFlusher.Flush()
+}
+
+func (w *FlushingWriter) Flush() {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
+	w.flush()
+}
+
+func (w *FlushingWriter) Close() {
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
+	w.flush()
+	w.closed = true
 }
 
 // Wrote returns whether the method WriteHeader has been called or not.
