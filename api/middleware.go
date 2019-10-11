@@ -89,7 +89,7 @@ func (m *flushingWriterMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}()
 	if flusher, ok := w.(io.WriterFlusher); ok {
 		flushingWriter := &io.FlushingWriter{WriterFlusher: flusher}
-		defer flushingWriter.Flush()
+		defer flushingWriter.Close()
 		if m.latencyConfig != nil {
 			flushingWriter.MaxLatency = m.latencyConfig[r.URL.Query().Get(":mux-route-name")]
 		}
