@@ -31,42 +31,46 @@ func (e *configError) Error() string {
 
 type Driver struct {
 	*drivers.BaseDriver
-	Id                   string
-	ApiURL               string
-	ApiKey               string
-	SecretKey            string
-	HTTPGETOnly          bool
-	JobTimeOut           int64
-	UsePrivateIP         bool
-	UsePortForward       bool
-	PublicIP             string
-	PublicIPID           string
-	DisassociatePublicIP bool
-	SSHKeyPair           string
-	PrivateIP            string
-	CIDRList             []string
-	FirewallRuleIds      []string
-	Expunge              bool
-	Template             string
-	TemplateID           string
-	ServiceOffering      string
-	ServiceOfferingID    string
-	DeleteVolumes        bool
-	DiskOffering         string
-	DiskOfferingID       string
-	DiskSize             int
-	RootDiskSize         int64
-	Network              string
-	NetworkID            string
-	Zone                 string
-	ZoneID               string
-	NetworkType          string
-	UserDataFile         string
-	UserData             string
-	Project              string
-	ProjectID            string
-	Tags                 []string
-	DisplayName          string
+	Id                    string
+	ApiURL                string
+	ApiKey                string
+	SecretKey             string
+	HTTPGETOnly           bool
+	JobTimeOut            int64
+	UsePrivateIP          bool
+	UsePortForward        bool
+	PublicIP              string
+	PublicIPID            string
+	DisassociatePublicIP  bool
+	SSHKeyPair            string
+	PrivateIP             string
+	CIDRList              []string
+	FirewallRuleIds       []string
+	Expunge               bool
+	Template              string
+	TemplateID            string
+	ServiceOffering       string
+	ServiceOfferingID     string
+	DeleteVolumes         bool
+	DiskOffering          string
+	DiskOfferingID        string
+	DiskSize              int
+	RootDiskSize          int64
+	Network               []string
+	NetworkID             []string
+	Zone                  string
+	ZoneID                string
+	NetworkType           string
+	UserDataFile          string
+	UserData              string
+	Project               string
+	ProjectID             string
+	PublicInterfaceIndex  int
+	PrivateInterfaceIndex int
+	Domain                string
+	DomainID              string
+	Tags                  []string
+	DisplayName           string
 }
 
 // GetCreateFlags registers the flags this driver adds to
@@ -110,6 +114,14 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:  "cloudstack-public-ip",
 			Usage: "CloudStack Public IP",
+		},
+		mcnflag.IntFlag{
+			Name:  "cloudstack-public-network-index",
+			Usage: "Cloudstack public network interface index",
+		},
+		mcnflag.IntFlag{
+			Name:  "cloudstack-private-network-index",
+			Usage: "Cloudstack private network interface index",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-ssh-user",
@@ -161,12 +173,24 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "CloudStack Userdata file",
 		},
 		mcnflag.StringFlag{
+			Name:  "cloudstack-userdata-base64",
+			Usage: "CloudStack Userdata Base64",
+		},
+		mcnflag.StringFlag{
 			Name:  "cloudstack-project",
 			Usage: "CloudStack project",
 		},
 		mcnflag.StringFlag{
 			Name:  "cloudstack-project-id",
 			Usage: "CloudStack project id",
+		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-domain",
+			Usage: "CloudStack domain",
+		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-domain-id",
+			Usage: "CloudStack domain id",
 		},
 		mcnflag.StringSliceFlag{
 			Name:  "cloudstack-resource-tag",
@@ -246,7 +270,12 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.DisplayName = flags.String("cloudstack-displayname")
 	d.SwarmMaster = flags.Bool("swarm-master")
 	d.SwarmDiscovery = flags.String("swarm-discovery")
+	d.PrivateInterfaceIndex = flags.Int("cloudstack-private-network-index")
+	d.PublicInterfaceIndex = flags.Int("cloudstack-public-network-index")
 	if err := d.setProject(flags.String("cloudstack-project"), flags.String("cloudstack-project-id")); err != nil {
+		return err
+	}
+	if err := d.setDomain(flags.String("cloudstack-domain"), flags.String("cloudstack-domain-id")); err != nil {
 		return err
 	}
 	if err := d.setZone(flags.String("cloudstack-zone"), flags.String("cloudstack-zone-id")); err != nil {
@@ -264,7 +293,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if err := d.setPublicIP(flags.String("cloudstack-public-ip")); err != nil {
 		return err
 	}
-	if err := d.setUserData(flags.String("cloudstack-userdata-file")); err != nil {
+	if err := d.setUserData(flags.String("cloudstack-userdata-file"), flags.String("cloudstack-userdata-base64")); err != nil {
 		return err
 	}
 	if err := d.setDiskOffering(flags.String("cloudstack-disk-offering"), flags.String("cloudstack-disk-offering-id")); err != nil {
@@ -383,8 +412,8 @@ func (d *Driver) Create() error {
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
-	if d.NetworkID != "" {
-		p.SetNetworkids([]string{d.NetworkID})
+	if len(d.NetworkID) > 0 {
+		p.SetNetworkids(d.NetworkID)
 	}
 	if d.ProjectID != "" {
 		p.SetProjectid(d.ProjectID)
@@ -410,7 +439,10 @@ func (d *Driver) Create() error {
 		return err
 	}
 	d.Id = vm.Id
-	d.PrivateIP = vm.Nic[0].Ipaddress
+	if d.PrivateInterfaceIndex >= len(d.NetworkID) {
+		return fmt.Errorf("Private interface index out of bound for network id list")
+	}
+	d.PrivateIP = vm.Nic[d.PrivateInterfaceIndex].Ipaddress
 	if d.NetworkType == "Basic" {
 		d.PublicIP = d.PrivateIP
 	}
@@ -679,30 +711,48 @@ func (d *Driver) setDiskOffering(diskOffering string, diskOfferingID string) err
 }
 
 func (d *Driver) setNetwork(networkName string, networkID string) error {
-	d.Network = networkName
-	d.NetworkID = networkID
-
-	if d.Network == "" && d.NetworkID == "" {
+	if networkName == "" && networkID == "" {
+		d.NetworkID = nil
+		d.Network = nil
 		return nil
 	}
 
 	cs := d.getClient()
 	var network *cloudstack.Network
 	var err error
-	if d.NetworkID != "" {
-		network, _, err = cs.Network.GetNetworkByID(d.NetworkID, d.setParams)
+	var networkIDsResult, networkNamesResult []string
+
+	if networkID != "" {
+		networkIDs := strings.Split(networkID, ",")
+		networkIDsResult = make([]string, len(networkIDs))
+		networkNamesResult = make([]string, len(networkIDs))
+		for _, value := range networkIDs {
+			network, _, err = cs.Network.GetNetworkByID(value, d.setParams)
+			if err != nil {
+				return fmt.Errorf("Unable to get network: %v", err)
+			}
+			networkIDsResult = append(networkIDsResult, network.Id)
+			networkNamesResult = append(networkNamesResult, network.Name)
+		}
 	} else {
-		network, _, err = cs.Network.GetNetworkByName(d.Network, d.setParams)
-	}
-	if err != nil {
-		return fmt.Errorf("Unable to get network: %v", err)
+		networkNames := strings.Split(networkName, ",")
+		networkIDsResult = make([]string, len(networkNames))
+		networkNamesResult = make([]string, len(networkNames))
+		for _, value := range networkNames {
+			network, _, err = cs.Network.GetNetworkByName(value, d.setParams)
+			if err != nil {
+				return fmt.Errorf("Unable to get network: %v", err)
+			}
+			networkIDsResult = append(networkIDsResult, network.Id)
+			networkNamesResult = append(networkNamesResult, network.Name)
+		}
 	}
 
-	d.NetworkID = network.Id
-	d.Network = network.Name
+	d.NetworkID = networkIDsResult
+	d.Network = networkNamesResult
 
-	log.Debugf("network id: %q", d.NetworkID)
-	log.Debugf("network name: %q", d.Network)
+	log.Debugf("network ids: %v", d.NetworkID)
+	log.Debugf("network names: %v", d.Network)
 
 	return nil
 }
@@ -733,8 +783,9 @@ func (d *Driver) setPublicIP(publicip string) error {
 	return nil
 }
 
-func (d *Driver) setUserData(userDataFile string) error {
+func (d *Driver) setUserData(userDataFile string, userDataBase64 string) error {
 	d.UserDataFile = userDataFile
+	d.UserData = userDataBase64
 
 	if d.UserDataFile == "" {
 		return nil
@@ -775,6 +826,35 @@ func (d *Driver) setProject(projectName string, projectID string) error {
 
 	log.Debugf("project id: %s", d.ProjectID)
 	log.Debugf("project name: %s", d.Project)
+
+	return nil
+}
+
+func (d *Driver) setDomain(domainName string, domainID string) error {
+	d.Domain = domainName
+	d.DomainID = domainID
+
+	if d.Domain == "" && d.DomainID == "" {
+		return nil
+	}
+
+	cs := d.getClient()
+	var domain *cloudstack.Domain
+	var err error
+	if d.DomainID != "" {
+		domain, _, err = cs.Domain.GetDomainByID(d.DomainID)
+	} else {
+		domain, _, err = cs.Domain.GetDomainByName(d.Domain)
+	}
+	if err != nil {
+		return fmt.Errorf("Invalid domain: %s", err)
+	}
+
+	d.DomainID = domain.Id
+	d.Domain = domain.Name
+
+	log.Debugf("domain id: %s", d.DomainID)
+	log.Debugf("domain name: %s", d.Domain)
 
 	return nil
 }
@@ -897,8 +977,11 @@ func (d *Driver) associatePublicIP() error {
 	log.Infof("Associating public ip address...")
 	p := cs.Address.NewAssociateIpAddressParams()
 	p.SetZoneid(d.ZoneID)
-	if d.NetworkID != "" {
-		p.SetNetworkid(d.NetworkID)
+	if len(d.NetworkID) > 0 {
+		if d.PublicInterfaceIndex >= len(d.NetworkID) {
+			return fmt.Errorf("associatePublicIP: cloudstack-public-interface-index out of bound")
+		}
+		p.SetNetworkid(d.NetworkID[d.PublicInterfaceIndex])
 	}
 	if d.ProjectID != "" {
 		p.SetProjectid(d.ProjectID)

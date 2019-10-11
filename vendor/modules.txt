@@ -36,7 +36,7 @@ github.com/Nvveen/Gotty
 github.com/RobotsAndPencils/go-saml/util
 # github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 github.com/ajg/form
-# github.com/andrestc/docker-machine-driver-cloudstack v0.8.0
+# github.com/andrestc/docker-machine-driver-cloudstack v0.9.1
 github.com/andrestc/docker-machine-driver-cloudstack
 # github.com/aws/aws-sdk-go v1.16.21
 github.com/aws/aws-sdk-go/aws
@@ -132,7 +132,7 @@ github.com/digitalocean/godo/util
 # github.com/docker/distribution v2.7.1+incompatible
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v0.7.3-0.20190808172531-150530564a14 => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
+# github.com/docker/docker v1.5.0 => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
 github.com/docker/docker/api
 github.com/docker/docker/api/types
 github.com/docker/docker/api/types/blkiodev
@@ -172,7 +172,7 @@ github.com/docker/go-connections/tlsconfig
 github.com/docker/go-units
 # github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4
 github.com/docker/libnetwork/ipamutils
-# github.com/docker/machine v0.0.0-00010101000000-000000000000 => github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935
+# github.com/docker/machine v0.7.0 => github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935
 github.com/docker/machine/commands/mcndirs
 github.com/docker/machine/drivers/amazonec2
 github.com/docker/machine/drivers/azure
