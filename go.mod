@@ -7,7 +7,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
-	github.com/andrestc/docker-machine-driver-cloudstack v0.8.0
+	github.com/andrestc/docker-machine-driver-cloudstack v0.9.1
 	github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e // indirect
 	github.com/aws/aws-sdk-go v1.16.21
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
@@ -20,10 +20,10 @@ require (
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v0.7.3-0.20190808172531-150530564a14
+	github.com/docker/docker v1.5.0
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
-	github.com/docker/machine v0.0.0-00010101000000-000000000000
+	github.com/docker/machine v0.7.0
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/exoscale/egoscale v0.9.31 // indirect
