@@ -452,12 +452,9 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			srvName := deploymentNameForApp(podApp, appProcess)
 			ports, ok := portsMap[srvName]
 			if !ok {
-				svcPorts, err := getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
-				if err != nil && !k8sErrors.IsNotFound(errors.Cause(err)) {
+				ports, err = getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
+				if err != nil {
 					return nil, err
-				}
-				if len(svcPorts) != 0 {
-					ports = svcPorts
 				}
 				portsMap[srvName] = ports
 			}
@@ -616,6 +613,9 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	pubPort, err := getServicePort(svcInformer, srvName, ns)
 	if err != nil {
 		return nil, err
+	}
+	if pubPort == 0 {
+		return nil, nil
 	}
 	routerLocal, err := client.RouterAddressLocal(a.GetPool())
 	if err != nil {
@@ -786,6 +786,9 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		service, err := svcInformer.Lister().Services(ns).Get(depName)
 
 		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				continue
+			}
 			return nil, errors.Wrapf(err, "unable to fetch service information, serviceName: %q, namespace: %q", depName, ns)
 		}
 

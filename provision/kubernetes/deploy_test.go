@@ -1101,6 +1101,55 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	c.Assert(err, check.ErrorMatches, "duplicated process name: web")
 }
 
+func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "proc1",
+		},
+		"kubernetes": provTypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
+				"mypod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
+					"web": {
+						Ports: nil,
+					},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{})
+
+	_, err = s.client.CoreV1().Services(ns).Get("myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	srv, err := s.client.CoreV1().Services(ns).Get("myapp-web-units", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
+		{
+			Name:       "http-headless-1",
+			Protocol:   "TCP",
+			Port:       int32(8888),
+			TargetPort: intstr.FromInt(8888),
+		},
+	})
+}
+
 func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	config.Set("docker:registry", "myreg.com")
 	config.Set("docker:registry-auth:username", "user")
