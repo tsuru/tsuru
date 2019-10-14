@@ -589,10 +589,13 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 
 func getServicePort(svcInformer v1informers.ServiceInformer, srvName, namespace string) (int32, error) {
 	ports, err := getServicePorts(svcInformer, srvName, namespace)
-	if err != nil || len(ports) == 0 {
+	if err != nil {
 		return 0, err
 	}
-	return ports[0], nil
+	if len(ports) > 0 {
+		return ports[0], nil
+	}
+	return 0, nil
 }
 
 func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace string) ([]int32, error) {
@@ -601,6 +604,9 @@ func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace
 	}
 	srv, err := svcInformer.Lister().Services(namespace).Get(srvName)
 	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, errors.WithStack(err)
 	}
 	svcPorts := make([]int32, len(srv.Spec.Ports))

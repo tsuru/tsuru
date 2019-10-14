@@ -1334,6 +1334,43 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	})
 }
 
+func (s *S) TestInternalAddressesNoService(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd web",
+		},
+		"kubernetes": map[string]interface{}{
+			"groups": map[string]interface{}{
+				"pod1": map[string]interface{}{
+					"web": map[string]interface{}{
+						"ports": []interface{}{},
+					},
+				},
+			},
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+
+	addrs, err := s.p.InternalAddresses(context.Background(), a)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	c.Assert(addrs, check.HasLen, 0)
+}
+
 func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
