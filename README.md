@@ -64,7 +64,7 @@ $ tsuru install config init
 Replace the tsuru API image tag with the latest tag in `install-compose.yml`:
 
 ```
-$ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
+$ sed -i '' -e 's/api:v1/api:latest/g' install-compose.yml
 ```
 
 #### Call tsuru installer
