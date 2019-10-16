@@ -128,7 +128,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 	}
 	var err error
 	var deployOptions DeployOptions
-	if err := evt.StartData(&deployOptions); err == nil {
+	if err = evt.StartData(&deployOptions); err == nil {
 		data.Commit = deployOptions.Commit
 		data.Origin = deployOptions.GetOrigin()
 		data.Message = deployOptions.Message
