@@ -36,8 +36,9 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
 			Allowed:  event.Allowed(permission.PermApp),
 			CustomData: DeployOptions{
-				Commit: d.Commit,
-				Origin: d.Origin,
+				Commit:  d.Commit,
+				Origin:  d.Origin,
+				Message: d.Message,
 			},
 		})
 		evt.StartTime = d.Timestamp
@@ -59,7 +60,7 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff", Origin: "app-deploy"},
 		{App: "g1", Timestamp: time.Now().Add(-1800 * time.Second), Log: "logs", Diff: "diff"},
-		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff", Commit: "abcdef1234567890"},
+		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff", Commit: "abcdef1234567890", Message: "my awesome commit..."},
 	}
 	insertDeploysAsEvents(insert, c)
 	deploys, err := ListDeploys(nil, 0, 0)
@@ -81,6 +82,7 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 		c.Assert(deploys[i].Log, check.Equals, "")
 		c.Assert(deploys[i].Diff, check.Equals, "")
 		c.Assert(deploys[i].Origin, check.Equals, origins[i])
+		c.Assert(deploys[i].Message, check.Equals, expected[i].Message)
 	}
 }
 
