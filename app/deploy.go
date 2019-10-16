@@ -15,7 +15,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -127,24 +126,26 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 		Error:     evt.Error,
 		User:      evt.Owner.Name,
 	}
-	var startOpts DeployOptions
-	err := evt.StartData(&startOpts)
-	if err == nil {
-		data.Commit = startOpts.Commit
-		data.Origin = startOpts.GetOrigin()
-		data.Message = startOpts.Message
+	var err error
+	var deployOptions DeployOptions
+	if err := evt.StartData(&deployOptions); err == nil {
+		data.Commit = deployOptions.Commit
+		data.Origin = deployOptions.GetOrigin()
+		data.Message = deployOptions.Message
+	} else {
+		log.Errorf("cannot decode the event's start custom data value: event %s - %v", evt.UniqueID, err)
 	}
 	if full {
 		data.Log = evt.Log()
 		var otherData map[string]string
-		err = evt.OtherData(&otherData)
-		if err == nil {
+		if err = evt.OtherData(&otherData); err == nil {
 			data.Diff = otherData["diff"]
+		} else {
+			log.Errorf("cannot decode the event's other custom data value: event %s - %v", evt.UniqueID, err)
 		}
 	}
 	var endData map[string]string
-	err = evt.EndData(&endData)
-	if err == nil {
+	if err = evt.EndData(&endData); err == nil {
 		data.Image = endData["image"]
 		if validImages != nil {
 			data.CanRollback = validImages.Includes(data.Image)
@@ -153,6 +154,8 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 				data.Image = parts[0][0]
 			}
 		}
+	} else {
+		log.Errorf("cannot decode the event's end custom data value: event %s - %v", evt.UniqueID, err)
 	}
 	return data
 }
@@ -173,7 +176,6 @@ type DeployOptions struct {
 	Event        *event.Event `bson:"-"`
 	Kind         DeployKind
 	Message      string
-	Token        auth.Token
 }
 
 func (o *DeployOptions) GetOrigin() string {
