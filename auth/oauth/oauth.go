@@ -200,19 +200,9 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 		}
 		return nil, err
 	}
-	config, err := s.loadConfig()
-	if err != nil {
-		return nil, err
+	if !token.Token.Valid() {
+		return token, auth.ErrInvalidToken
 	}
-	client := config.Client(context.Background(), &token.Token)
-	t0 := time.Now()
-	rsp, err := client.Get(s.InfoURL)
-	requestLatencies.Observe(time.Since(t0).Seconds())
-	if err != nil {
-		requestErrors.Inc()
-		return nil, err
-	}
-	defer rsp.Body.Close()
 	return token, nil
 }
 

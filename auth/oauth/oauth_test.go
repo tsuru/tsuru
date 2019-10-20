@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -157,9 +158,24 @@ func (s *S) TestOAuthAuth(c *check.C) {
 	scheme := OAuthScheme{}
 	token, err := scheme.Auth("bearer myvalidtoken")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.reqs, check.HasLen, 1)
-	c.Assert(s.reqs[0].URL.Path, check.Equals, "/user")
+	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.GetValue(), check.Equals, "myvalidtoken")
+}
+
+func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
+	token := Token{
+		Token: oauth2.Token{
+			AccessToken: "myexpiredtoken",
+			Expiry:      time.Now().Add(time.Minute * -1),
+		},
+		UserEmail: "x@x.com",
+	}
+	err := token.save()
+	c.Assert(err, check.IsNil)
+	scheme := OAuthScheme{}
+	_, err = scheme.Auth("bearer myexpiredtoken")
+	c.Assert(s.reqs, check.HasLen, 0)
+	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestOAuthAppLogin(c *check.C) {
