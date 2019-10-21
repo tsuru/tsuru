@@ -335,7 +335,7 @@ paths:
           required: true
           in: body
           schema:
-            $ref: "#/definitions/App"
+            $ref: "#/definitions/AppCreateData"
       produces:
         - application/json
       consumes:
@@ -2852,6 +2852,42 @@ definitions:
         type: string
       owner:
         type: string
+  AppCreateData:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: App name.
+      tags:
+        type: array
+        items:
+          type: string
+        description: App tags.
+      router:
+        type: string
+        description: App router name.
+      routeropts:
+        type: object
+        additionalProperties:
+          type: string
+        description: Custom router options.
+      plan:
+        type: string
+        description: App plan name.
+      pool:
+        type: string
+        description: App pool name.
+      platform:
+        type: string
+        description: App platform.
+      description:
+        type: string
+        description: App description.
+      teamOwner:
+        type: string
+        description: Team that owns the app.
   AppCreateResponse:
     description: Newly created app information.
     type: object
