@@ -432,8 +432,15 @@ paths:
           type: string
           minLength: 1
           description: App name.
+        - name: appUpdateData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AppUpdateData"
       produces:
-      - application/x-json-stream
+        - application/json
+      consumes:
+        - application/json
       responses:
         '200':
           description: App updated
@@ -2873,6 +2880,32 @@ definitions:
         additionalProperties:
           type: string
         description: Custom router options.
+      plan:
+        type: string
+        description: App plan name.
+      pool:
+        type: string
+        description: App pool name.
+      platform:
+        type: string
+        description: App platform.
+      description:
+        type: string
+        description: App description.
+      teamOwner:
+        type: string
+        description: Team that owns the app.
+  AppUpdateData:
+    type: object
+    properties:
+      imageReset:
+        type: bool
+        description: Forces next deploy to build app image from scratch.
+      tags:
+        type: array
+        items:
+          type: string
+        description: App tags.
       plan:
         type: string
         description: App plan name.
