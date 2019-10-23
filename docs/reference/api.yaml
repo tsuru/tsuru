@@ -2899,7 +2899,7 @@ definitions:
     type: object
     properties:
       imageReset:
-        type: bool
+        type: boolean
         description: Forces next deploy to build app image from scratch.
       tags:
         type: array
