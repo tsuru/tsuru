@@ -5,7 +5,10 @@
 package kubernetes
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -32,7 +35,12 @@ func (b *kubernetesBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 		return err
 	}
 	inputStream := builder.CompressDockerFile(opts.Data)
-	return client.BuildImage(opts.Name, opts.ImageName, inputStream, opts.Output, opts.Ctx)
+	images := []string{opts.ImageName}
+	imageName, _ := image.SplitImageName(opts.ImageName)
+	for _, tag := range opts.ExtraTags {
+		images = append(images, fmt.Sprintf("%s:%s", imageName, tag))
+	}
+	return client.BuildImage(opts.Name, images, inputStream, opts.Output, opts.Ctx)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {

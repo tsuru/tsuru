@@ -17,6 +17,7 @@ type Platform struct {
 type PlatformOptions struct {
 	Name      string
 	ImageName string
+	ExtraTags []string
 	Args      map[string]string
 	Input     io.Reader
 	Output    io.Writer

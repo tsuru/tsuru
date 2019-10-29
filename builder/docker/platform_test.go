@@ -48,6 +48,63 @@ func (s *S) TestPlatformAdd(c *check.C) {
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
 }
 
+func (s *S) TestPlatformAddWithExtraTags(c *check.C) {
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
+	c.Assert(err, check.IsNil)
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var b dockerBuilder
+	dockerfile := "FROM tsuru/java"
+	err = b.PlatformAdd(appTypes.PlatformOptions{
+		Name:      "test",
+		ImageName: "localhost:3030/tsuru/test:v1",
+		ExtraTags: []string{"latest"},
+		Args:      map[string]string{"dockerfile": "http://localhost"},
+		Output:    ioutil.Discard,
+		Input:     strings.NewReader(dockerfile),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(requests) >= 4, check.Equals, true)
+	var buildPath bool
+	var tagLatest bool
+	var pushV1 bool
+	var pushLatest bool
+	for _, r := range requests {
+		c.Logf("%#v\n\n", r.URL)
+		switch r.URL.Path {
+		case "/build":
+			queryString := r.URL.Query()
+			c.Assert(queryString.Get("t"), check.Equals, "localhost:3030/tsuru/test:v1")
+			c.Assert(queryString.Get("remote"), check.Equals, "")
+			buildPath = true
+
+		case "/images/localhost:3030/tsuru/test:v1/tag":
+			queryString := r.URL.Query()
+			c.Assert(queryString.Get("tag"), check.Equals, "latest")
+			tagLatest = true
+
+		case "/images/localhost:3030/tsuru/test/push":
+			tag := r.URL.Query().Get("tag")
+			if tag == "latest" {
+				pushLatest = true
+			}
+			if tag == "v1" {
+				pushV1 = true
+			}
+		}
+	}
+	c.Assert(buildPath, check.Equals, true)
+	c.Assert(pushV1, check.Equals, true)
+	c.Assert(pushLatest, check.Equals, true)
+	c.Assert(tagLatest, check.Equals, true)
+}
+
 func (s *S) TestPlatformAddProvisionerError(c *check.C) {
 	var requests []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {

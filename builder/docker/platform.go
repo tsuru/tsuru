@@ -74,7 +74,38 @@ func (b *dockerBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	imageName, tag := image.SplitImageName(opts.ImageName)
+	imageName, imageTag := image.SplitImageName(opts.ImageName)
+	var buf safe.Buffer
+	pushOpts := docker.PushImageOptions{
+		Name:              imageName,
+		Tag:               imageTag,
+		OutputStream:      &buf,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(imageName))
+	if err != nil {
+		log.Errorf("[docker] Failed to push image %q (%s): %s", opts.Name, err, buf.String())
+		return err
+	}
+
+	for _, tag := range opts.ExtraTags {
+		if err = tagAndPush(client, opts.ImageName, imageName, tag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func tagAndPush(client provision.BuilderDockerClient, sourceImageName, imageName, tag string) error {
+	tagOpts := docker.TagImageOptions{
+		Repo: imageName,
+		Tag:  tag,
+	}
+	err := client.TagImage(sourceImageName, tagOpts)
+	if err != nil {
+		log.Errorf("[docker] Failed to tag image %s:%s (%s)", sourceImageName, tag, err)
+		return err
+	}
 	var buf safe.Buffer
 	pushOpts := docker.PushImageOptions{
 		Name:              imageName,
@@ -84,7 +115,7 @@ func (b *dockerBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	}
 	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(imageName))
 	if err != nil {
-		log.Errorf("[docker] Failed to push image %q (%s): %s", opts.Name, err, buf.String())
+		log.Errorf("[docker] Failed to push image %q (%s): %s", sourceImageName, err, buf.String())
 		return err
 	}
 	return nil

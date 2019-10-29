@@ -87,6 +87,7 @@ func PlatformAdd(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
+	opts.ExtraTags = []string{"latest"}
 	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
@@ -108,6 +109,7 @@ func PlatformUpdate(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
+	opts.ExtraTags = []string{"latest"}
 	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {

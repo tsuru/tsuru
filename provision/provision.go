@@ -277,7 +277,7 @@ type ExecDockerClient interface {
 
 type BuilderKubeClient interface {
 	BuildPod(App, *event.Event, io.Reader, string) (string, error)
-	BuildImage(name, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error
+	BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error
 	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *provTypes.TsuruYamlData, error)
 	DownloadFromContainer(App, string) (io.ReadCloser, error)
 }
