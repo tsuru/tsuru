@@ -105,7 +105,7 @@ func (c *KubeClient) DownloadFromContainer(app provision.App, imageName string) 
 	return reader, nil
 }
 
-func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
+func (c *KubeClient) BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error {
 	buildPodName := fmt.Sprintf("%s-image-build", name)
 	client, err := clusterForPoolOrAny("")
 	if err != nil {
@@ -115,7 +115,7 @@ func (c *KubeClient) BuildImage(name string, image string, inputStream io.Reader
 	params := createPodParams{
 		client:            client,
 		podName:           buildPodName,
-		destinationImages: []string{image},
+		destinationImages: images,
 		inputFile:         "/data/context.tar.gz",
 		attachInput:       inputStream,
 		attachOutput:      output,
