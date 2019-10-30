@@ -173,7 +173,7 @@ func (i *dockerMachineIaaS) buildDriverOpts(driverName string, params map[string
 	return driverOpts
 }
 
-func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
+func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) (err error) {
 	debugConf, _ := i.base.GetConfigString("debug")
 	if debugConf == "" {
 		debugConf = "false"
@@ -188,7 +188,21 @@ func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 	if err != nil {
 		return err
 	}
-	defer dockerMachine.Close()
+	defer func() {
+		defer func() {
+			// There are situations where dockerMachine.Close() can panic after
+			// an error on DeleteMachine, we don't want this panic going up the
+			// stack.
+			if r := recover(); r != nil {
+				if err == nil {
+					err = errors.Errorf("panic in dockermachine close: %v", r)
+				} else {
+					err = errors.Wrapf(err, "panic in dockermachine close after error: %v", r)
+				}
+			}
+		}()
+		dockerMachine.Close()
+	}()
 	return dockerMachine.DeleteMachine(m)
 }
 
