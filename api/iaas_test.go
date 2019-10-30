@@ -12,15 +12,21 @@ import (
 	"strings"
 
 	"github.com/ajg/form"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	check "gopkg.in/check.v1"
 )
 
-type TestIaaS struct{}
+type TestIaaS struct {
+	deleteErr error
+}
 
-func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
+func (t TestIaaS) DeleteMachine(m *iaas.Machine) error {
+	if t.deleteErr != nil {
+		return t.deleteErr
+	}
 	m.Status = "destroyed"
 	return nil
 }
@@ -44,10 +50,8 @@ func newTestIaaS(string) iaas.IaaS {
 func (s *S) TestMachinesList(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	_, err := iaas.CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
-	defer (&iaas.Machine{Id: "myid1"}).Destroy()
 	c.Assert(err, check.IsNil)
 	_, err = iaas.CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid2"})
-	defer (&iaas.Machine{Id: "myid2"}).Destroy()
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/iaas/machines", nil)
@@ -103,6 +107,52 @@ func (s *S) TestMachinesDestroyError(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "machine not found\n")
+}
+
+func (s *S) TestMachinesDestroyIaaSError(c *check.C) {
+	iaas.RegisterIaasProvider("test-iaas-err", func(string) iaas.IaaS {
+		return TestIaaS{deleteErr: errors.New("my iaas error")}
+	})
+	_, err := iaas.CreateMachineForIaaS("test-iaas-err", map[string]string{"id": "myid1"})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/iaas/machines/myid1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "failed to destroy machine in the IaaS: my iaas error\n")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas-err"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":machine_id", "value": "myid1"},
+		},
+		ErrorMatches: `.*my iaas error`,
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestMachinesDestroyIaaSErrorForce(c *check.C) {
+	iaas.RegisterIaasProvider("test-iaas-err", func(string) iaas.IaaS {
+		return TestIaaS{deleteErr: errors.New("my iaas error")}
+	})
+	_, err := iaas.CreateMachineForIaaS("test-iaas-err", map[string]string{"id": "myid1"})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/iaas/machines/myid1?force=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas-err"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":machine_id", "value": "myid1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTemplateList(c *check.C) {

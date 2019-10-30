@@ -53,7 +53,7 @@ func (s *S) SetUpTest(c *check.C) {
 	iaas.ResetAll()
 	machines, _ := iaas.ListMachines()
 	for _, m := range machines {
-		m.Destroy()
+		m.Destroy(iaas.DestroyParams{})
 	}
 	os.Setenv("TSURU_TARGET", "http://localhost")
 	servicemock.SetMockService(&servicemock.MockService{})

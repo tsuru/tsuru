@@ -40,11 +40,15 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 type TestIaaS struct {
-	cmds []string
+	cmds      []string
+	deleteErr error
 }
 
 func (i *TestIaaS) DeleteMachine(m *Machine) error {
 	i.cmds = append(i.cmds, "delete")
+	if i.deleteErr != nil {
+		return i.deleteErr
+	}
 	m.Status = "destroyed"
 	return nil
 }

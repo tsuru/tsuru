@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/auth"
@@ -64,6 +65,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if machineID == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "machine id is required"}
 	}
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 	m, err := iaas.FindMachineById(machineID)
 	if err != nil {
 		if err == iaas.ErrMachineNotFound {
@@ -87,7 +89,9 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return m.Destroy()
+	return m.Destroy(iaas.DestroyParams{
+		Force: force,
+	})
 }
 
 // title: machine template list
