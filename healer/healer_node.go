@@ -144,7 +144,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		Disable: true,
 	})
 	if err != nil {
-		machine.Destroy()
+		machine.Destroy(iaas.DestroyParams{})
 		return nil, errors.Wrapf(err, "Can't auto-heal after %d failures for node %s: error unregistering old node", failures, failingHost)
 	}
 	newAddr := machine.FormatNodeAddress()
@@ -169,7 +169,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 			healthNode.ResetFailures()
 		}
 		node.Provisioner().UpdateNode(provision.UpdateNodeOptions{Address: failingAddr, Enable: true})
-		machine.Destroy()
+		machine.Destroy(iaas.DestroyParams{})
 		return nil, errors.Wrapf(err, "Can't auto-heal after %d failures for node %s: error registering new node", failures, failingHost)
 	}
 	nodeSpec := provision.NodeToSpec(node)
@@ -189,7 +189,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	}
 	failingMachine, err := iaas.FindMachineById(node.IaaSID())
 	if err == nil {
-		err = failingMachine.Destroy()
+		err = failingMachine.Destroy(iaas.DestroyParams{})
 		if err != nil {
 			multiErr.Add(errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost))
 		}

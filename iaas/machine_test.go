@@ -5,6 +5,8 @@
 package iaas
 
 import (
+	"errors"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -165,9 +167,40 @@ func (s *S) TestFindMachineByAddress(c *check.C) {
 func (s *S) TestDestroy(c *check.C) {
 	m, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
 	c.Assert(err, check.IsNil)
-	err = m.Destroy()
+	err = m.Destroy(DestroyParams{})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Status, check.Equals, "destroyed")
+	machines, err := ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 0)
+}
+
+func (s *S) TestDestroyWithError(c *check.C) {
+	RegisterIaasProvider("err", func(name string) IaaS {
+		return &TestIaaS{
+			deleteErr: errors.New("my forced err"),
+		}
+	})
+	m, err := CreateMachineForIaaS("err", map[string]string{"id": "myid1"})
+	c.Assert(err, check.IsNil)
+	err = m.Destroy(DestroyParams{})
+	c.Assert(err, check.ErrorMatches, `failed to destroy machine in the IaaS: my forced err`)
+	machines, err := ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+}
+
+func (s *S) TestDestroyWithErrorAndForce(c *check.C) {
+	RegisterIaasProvider("err", func(name string) IaaS {
+		return &TestIaaS{
+			deleteErr: errors.New("my forced err"),
+		}
+	})
+	m, err := CreateMachineForIaaS("err", map[string]string{"id": "myid1"})
+	c.Assert(err, check.IsNil)
+	err = m.Destroy(DestroyParams{Force: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Status, check.Not(check.Equals), "destroyed")
 	machines, err := ListMachines()
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 0)

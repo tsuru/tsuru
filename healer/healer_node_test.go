@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 
@@ -131,7 +132,7 @@ func (s *S) TestHealerHealNodeSameAddrMachineDestroyed(c *check.C) {
 	config.Set("iaas:node-port", 1)
 	m, err := iaas.FindMachineById(nodes[0].IaaSID())
 	c.Assert(err, check.IsNil)
-	err = m.Destroy()
+	err = m.Destroy(iaas.DestroyParams{})
 	c.Assert(err, check.IsNil)
 
 	created, err := healer.healNode(nodes[0])
@@ -343,13 +344,9 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "addr1")
 
-	buf := bytes.Buffer{}
-	log.SetLogger(log.NewWriterLogger(&buf, false))
-	defer log.SetLogger(nil)
 	created, err := healer.healNode(nodes[0])
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `.*my destroy error`)
 	c.Assert(created.Address, check.Equals, "http://addr2:2")
-	c.Assert(buf.String(), check.Matches, "(?s).*my destroy error.*")
 
 	nodes, err = p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -358,8 +355,11 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
-	c.Assert(machines, check.HasLen, 1)
-	c.Assert(machines[0].Address, check.Equals, "addr2")
+	c.Assert(machines, check.HasLen, 2)
+	addresses := []string{machines[0].Address, machines[1].Address}
+	sort.Strings(addresses)
+	c.Assert(addresses[0], check.Equals, "addr1")
+	c.Assert(addresses[1], check.Equals, "addr2")
 }
 
 func (s *S) TestHealerHealNodeDestroyNotFound(c *check.C) {
@@ -394,7 +394,7 @@ func (s *S) TestHealerHealNodeDestroyNotFound(c *check.C) {
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "addr1")
 
-	err = machine.Destroy()
+	err = machine.Destroy(iaas.DestroyParams{})
 	c.Assert(err, check.IsNil)
 
 	buf := bytes.Buffer{}

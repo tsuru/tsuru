@@ -70,6 +70,10 @@ type Machine struct {
 	ClientKey      []byte                 `json:"-"`
 }
 
+type DestroyParams struct {
+	Force bool
+}
+
 func CreateMachine(params map[string]string) (*Machine, error) {
 	return CreateMachineForIaaS("", params)
 }
@@ -102,7 +106,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	m.CreationParams = params
 	err = m.saveToDB(true)
 	if err != nil {
-		m.Destroy()
+		m.Destroy(DestroyParams{})
 		return nil, err
 	}
 	return m, nil
@@ -169,7 +173,7 @@ func FindMachineById(id string) (Machine, error) {
 	return result, err
 }
 
-func (m *Machine) Destroy() error {
+func (m *Machine) Destroy(params DestroyParams) error {
 	iaas, err := getIaasProvider(m.Iaas)
 	if err != nil {
 		return err
@@ -179,7 +183,11 @@ func (m *Machine) Destroy() error {
 	machineDestroyDuration.WithLabelValues(m.Iaas).Observe(time.Since(t0).Seconds())
 	if err != nil {
 		machineDestroyErrors.WithLabelValues(m.Iaas).Inc()
-		log.Errorf("failed to destroy machine in the IaaS: %s", err)
+		err = errors.Wrapf(err, "failed to destroy machine in the IaaS")
+		if !params.Force {
+			return err
+		}
+		log.Errorf("ignored error due to force: %v", err)
 	}
 	return m.removeFromDB()
 }

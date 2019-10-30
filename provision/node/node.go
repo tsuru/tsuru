@@ -130,7 +130,7 @@ func removeNodeWithNode(node provision.Node, opts provision.RemoveNodeOptions, r
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(opts.Address))
 		if err == nil {
-			err = m.Destroy()
+			err = m.Destroy(iaas.DestroyParams{})
 		}
 		if err != nil && err != iaas.ErrMachineNotFound {
 			multi.Add(errors.Wrapf(err, "unable to destroy machine in iaas"))
