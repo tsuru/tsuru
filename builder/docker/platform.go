@@ -23,11 +23,7 @@ import (
 
 var _ builder.Builder = &dockerBuilder{}
 
-func (b *dockerBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts)
-}
-
-func (b *dockerBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
+func (b *dockerBuilder) PlatformBuild(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts)
 }
 

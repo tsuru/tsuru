@@ -55,7 +55,7 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	err = builder.PlatformAdd(opts)
+	err = builder.PlatformBuild(opts)
 	if err != nil {
 		if imgErr := servicemanager.PlatformImage.DeleteImages(opts.Name); imgErr != nil {
 			log.Errorf("unable to remove platform images: %s", imgErr)
@@ -116,7 +116,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 		if err != nil {
 			return err
 		}
-		err = builder.PlatformUpdate(opts)
+		err = builder.PlatformBuild(opts)
 		if err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func (s *platformService) Rollback(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	err = builder.PlatformUpdate(opts)
+	err = builder.PlatformBuild(opts)
 	if err != nil {
 		return err
 	}

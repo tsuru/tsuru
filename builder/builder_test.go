@@ -54,65 +54,32 @@ func (s S) TestRegistry(c *check.C) {
 	c.Assert(builders, check.HasLen, 3)
 }
 
-func (s S) TestPlatformAdd(c *check.C) {
+func (s S) TestPlatformBuild(c *check.C) {
 	b1 := MockBuilder{}
 	b2 := MockBuilder{
-		OnPlatformAdd: callPlatformWithError,
+		OnPlatformBuild: callPlatformWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformAdd(appTypes.PlatformOptions{})
+	err := PlatformBuild(appTypes.PlatformOptions{})
 	c.Assert(err, check.IsNil)
 }
 
-func (s S) TestPlatformAddError(c *check.C) {
+func (s S) TestPlatformBuildError(c *check.C) {
 	b1 := MockBuilder{
-		OnPlatformAdd: callPlatformWithError,
+		OnPlatformBuild: callPlatformWithError,
 	}
 	b2 := MockBuilder{
-		OnPlatformAdd: callPlatformWithError,
+		OnPlatformBuild: callPlatformWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformAdd(appTypes.PlatformOptions{})
+	err := PlatformBuild(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
-func (s S) TestPlatformAddNoBuilder(c *check.C) {
-	err := PlatformAdd(appTypes.PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "No builder available")
-}
-
-func (s S) TestPlatformUpdate(c *check.C) {
-	b1 := MockBuilder{
-		OnPlatformUpdate: callPlatformWithError,
-	}
-	b2 := MockBuilder{}
-	Register("builder1", &b1)
-	Register("builder2", &b2)
-	err := PlatformUpdate(appTypes.PlatformOptions{})
-	c.Assert(err, check.IsNil)
-}
-
-func (s S) TestPlatformUpdateError(c *check.C) {
-	b1 := MockBuilder{
-		OnPlatformUpdate: callPlatformWithError,
-	}
-	b2 := MockBuilder{
-		OnPlatformUpdate: callPlatformWithError,
-	}
-	b3 := MockBuilder{
-		OnPlatformUpdate: callPlatformWithError,
-	}
-	Register("builder1", &b1)
-	Register("builder2", &b2)
-	Register("builder3", &b3)
-	err := PlatformUpdate(appTypes.PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*something is wrong.*")
-}
-
-func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
-	err := PlatformUpdate(appTypes.PlatformOptions{})
+func (s S) TestPlatformBuildNoBuilder(c *check.C) {
+	err := PlatformBuild(appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }
 
