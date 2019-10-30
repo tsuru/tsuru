@@ -17,11 +17,7 @@ import (
 
 var _ builder.Builder = &kubernetesBuilder{}
 
-func (b *kubernetesBuilder) PlatformAdd(opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts)
-}
-
-func (b *kubernetesBuilder) PlatformUpdate(opts appTypes.PlatformOptions) error {
+func (b *kubernetesBuilder) PlatformBuild(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts)
 }
 
@@ -29,6 +25,7 @@ func (b *kubernetesBuilder) PlatformRemove(name string) error {
 	// Kubernetes already removes unused images on nodes.
 	return nil
 }
+
 func (b *kubernetesBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	client, err := getKubeClient()
 	if err != nil {

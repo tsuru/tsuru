@@ -111,7 +111,7 @@ func (s *PlatformSuite) TestPlatformCreateWithStorageError(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
-	s.builder.OnPlatformAdd = func(appTypes.PlatformOptions) error {
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) error {
 		return errors.New("something wrong happened")
 	}
 	name := "test-platform-add"
@@ -207,7 +207,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	args := make(map[string]string)
 	args["disabled"] = ""
 
-	s.builder.OnPlatformUpdate = func(o appTypes.PlatformOptions) error {
+	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) error {
 		c.Assert(o.Data, check.NotNil)
 		return nil
 	}
@@ -577,7 +577,7 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 			},
 		},
 	}
-	s.builder.OnPlatformUpdate = func(o appTypes.PlatformOptions) error {
+	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) error {
 		c.Assert(o.Data, check.NotNil)
 		return nil
 	}

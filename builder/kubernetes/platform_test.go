@@ -15,7 +15,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func (s *S) TestBuildPlatform(c *check.C) {
+func (s *S) TestPlatformBuild(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -43,6 +43,6 @@ func (s *S) TestBuildPlatform(c *check.C) {
 		Output:    &safe.Buffer{},
 		Ctx:       context.Background(),
 	}
-	err := s.b.buildPlatform(opts)
+	err := s.b.PlatformBuild(opts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
