@@ -177,11 +177,7 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
-	rawDriver, err := json.Marshal(m.CustomData)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal machine data")
-	}
-	host, err := d.client.NewHost(m.CreationParams["driver"], rawDriver)
+	host, err := d.hostFromCustomData(m.CreationParams["driver"], m.CustomData)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize host")
 	}
@@ -221,13 +217,9 @@ func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, err
 		return nil, errors.New("custom data is required")
 	}
 	opts.Base.CustomData["SSHKeyPath"] = filepath.Join(d.client.GetMachinesDir(), opts.Base.Id, "id_rsa")
-	rawDriver, err := json.Marshal(opts.Base.CustomData)
+	h, err := d.hostFromCustomData(opts.DriverName, opts.Base.CustomData)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to marshal driver data")
-	}
-	h, err := d.client.NewHost(opts.DriverName, rawDriver)
-	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	err = ioutil.WriteFile(h.Driver.GetSSHKeyPath(), opts.SSHPrivateKey, 0700)
 	if err != nil {
@@ -355,4 +347,30 @@ func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) e
 	}
 	err := driver.SetConfigFromFlags(opts)
 	return errors.Wrap(err, "failed to set driver configuration")
+}
+
+func (d *DockerMachine) hostFromCustomData(driverName string, data map[string]interface{}) (*host.Host, error) {
+	if driverName == "cloudstack" && data != nil {
+		// In recent versions of cloudstack driver network is now a string
+		// slice. Here we convert from the old representation to the new one.
+		for _, field := range []string{"Network", "NetworkID"} {
+			netData, hasField := data[field]
+			if !hasField {
+				continue
+			}
+			switch v := netData.(type) {
+			case string:
+				data[field] = []string{v}
+			}
+		}
+	}
+	rawDriver, err := json.Marshal(data)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to marshal driver data")
+	}
+	h, err := d.client.NewHost(driverName, rawDriver)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return h, nil
 }
