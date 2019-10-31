@@ -1613,7 +1613,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "tsuru/deploy-agent:0.8.3",
+		Image: "tsuru/deploy-agent:0.8.4",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -1728,7 +1728,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.8.3",
+			Image: "tsuru/deploy-agent:0.8.4",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
@@ -1892,7 +1892,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
 	})
-	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.8.3")
+	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.8.4")
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 
@@ -2075,7 +2075,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.8.3",
+			Image: "tsuru/deploy-agent:0.8.4",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
