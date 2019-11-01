@@ -37,6 +37,7 @@ const (
 	namespaceLabelsKey     = "namespace-labels"
 	externalPolicyLocalKey = "external-policy-local"
 	routerAddressLocalKey  = "router-local"
+	disableHeadlessKey     = "disable-headless"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -52,6 +53,7 @@ var (
 		namespaceLabelsKey:     "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
 		externalPolicyLocalKey: "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
 		routerAddressLocalKey:  "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
+		disableHeadlessKey:     "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
 	}
 )
 
@@ -271,6 +273,18 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 		labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 	return labels, nil
+}
+
+func (c *ClusterClient) headlessEnabled(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return true, nil
+	}
+	config := c.configForContext(pool, disableHeadlessKey)
+	if config == "" {
+		return true, nil
+	}
+	disableHeadless, err := strconv.ParseBool(config)
+	return !disableHeadless, err
 }
 
 func (c *ClusterClient) configForContext(context, key string) string {

@@ -2655,3 +2655,77 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 }
+
+func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	s.clusterClient.CustomData[disableHeadlessKey] = "true"
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Plan = appTypes.Plan{Memory: 1024}
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-units", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	srv, err := s.client.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv, check.DeepEquals, &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: ns,
+			Labels: map[string]string{
+				"app":                           "myapp-p1",
+				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/is-service":           "true",
+				"tsuru.io/is-build":             "false",
+				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/app-name":             "myapp",
+				"tsuru.io/app-process":          "p1",
+				"tsuru.io/app-process-replicas": "1",
+				"tsuru.io/app-platform":         "",
+				"tsuru.io/app-pool":             "test-default",
+				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/builder":              "",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-process":     "p1",
+				"tsuru.io/is-build":        "false",
+				"tsuru.io/is-isolated-run": "false",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+					Name:       "http-default-1",
+				},
+			},
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+		},
+	})
+}
