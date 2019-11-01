@@ -988,11 +988,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return provision.ErrUnitStartup{Err: err}
 	}
 	expandedLabels := labels.ToLabels()
-	labels.SetIsHeadlessService()
-	expandedLabelsHeadless := labels.ToLabels()
-	rawAppLabel := appLabelForApp(a, process)
-	expandedLabels["app"] = rawAppLabel
-	expandedLabelsHeadless["app"] = rawAppLabel
+	expandedLabels["app"] = appLabelForApp(a, process)
 	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
 	if err != nil {
 		return err
@@ -1042,6 +1038,21 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			return errors.WithStack(err)
 		}
 	}
+	return m.createHeadlessService(svcPorts, ns, a, process, labels, annotations)
+}
+
+func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns string, a provision.App, process string, labels, annotations *provision.LabelSet) error {
+	enabled, err := m.client.headlessEnabled(a.GetPool())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if !enabled {
+		return nil
+	}
+
+	labels.SetIsHeadlessService()
+	expandedLabelsHeadless := labels.ToLabels()
+	expandedLabelsHeadless["app"] = appLabelForApp(a, process)
 
 	headlessPorts := []apiv1.ServicePort{}
 	for i, svcPort := range svcPorts {
@@ -1061,6 +1072,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			TargetPort: intstr.FromInt(kubeConf.HeadlessServicePort),
 		})
 	}
+
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceNameForApp(a, process),
