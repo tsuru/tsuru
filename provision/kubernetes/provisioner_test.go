@@ -65,6 +65,8 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 }
 
 func (s *S) TestListNodesWithFilter(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	s.mock.MockfakeNodes(c)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
@@ -160,6 +162,8 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 }
 
 func (s *S) TestAddNode(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -186,6 +190,8 @@ func (s *S) TestAddNode(c *check.C) {
 }
 
 func (s *S) TestAddNodePrefixed(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -227,6 +233,8 @@ func (s *S) TestAddNodePrefixed(c *check.C) {
 }
 
 func (s *S) TestAddNodeExisting(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	s.mock.MockfakeNodes(c)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "n1",
@@ -247,6 +255,8 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 }
 
 func (s *S) TestAddNodeIaaSID(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -275,7 +285,40 @@ func (s *S) TestAddNodeIaaSID(c *check.C) {
 	})
 }
 
+func (s *S) TestAddNodeExistingRegisterDisable(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "n1",
+		Pool:    "Pxyz",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	n, err := s.p.GetNode("n1")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "192.168.99.1")
+	c.Assert(n.Pool(), check.Equals, "Pxyz")
+	c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
+		"tsuru.io/pool": "Pxyz",
+		"tsuru.io/m1":   "v1",
+	})
+}
+
+func (s *S) TestAddNodeRegisterDisabled(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Pool:    "p1",
+		Metadata: map[string]string{
+			"m1": "v1",
+		},
+	})
+	c.Assert(err, check.ErrorMatches, `node not found`)
+}
+
 func (s *S) TestUpdateNode(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -313,6 +356,8 @@ func (s *S) TestUpdateNode(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -370,6 +415,8 @@ func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -398,6 +445,8 @@ func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeNoPool(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -434,6 +483,8 @@ func (s *S) TestUpdateNodeNoPool(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
@@ -481,6 +532,8 @@ func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
+	config.Set("kubernetes:register-node", true)
+	defer config.Unset("kubernetes:register-node")
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "my-node-addr",
 		Pool:    "p1",
