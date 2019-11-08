@@ -119,6 +119,9 @@ type kubernetesConfig struct {
 	// HeadlessServicePort is the port used in headless service, by default the
 	// same port number used for container is used.
 	HeadlessServicePort int
+	// RegisterNode if set will make tsuru add a node object to the kubernetes
+	// API. Otherwise tsuru will expect the node to be already registered.
+	RegisterNode bool
 }
 
 func getKubeConfig() kubernetesConfig {
@@ -166,6 +169,7 @@ func getKubeConfig() kubernetesConfig {
 	if conf.HeadlessServicePort == 0 {
 		conf.HeadlessServicePort, _ = strconv.Atoi(provision.WebProcessDefaultPort())
 	}
+	conf.RegisterNode, _ = config.GetBool("kubernetes:register-node")
 	return conf
 }
 
@@ -919,30 +923,38 @@ func appendKV(s, outSep, innSep string, m map[string]string) {
 	}
 }
 
-func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
+func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) (err error) {
 	client, err := clusterForPool(opts.Pool)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err == nil {
+			servicecommon.RebuildRoutesPoolApps(opts.Pool)
+		}
+	}()
 	hostAddr := tsuruNet.URLToHost(opts.Address)
-	node := &apiv1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: hostAddr,
-		},
+	conf := getKubeConfig()
+	if conf.RegisterNode {
+		node := &apiv1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: hostAddr,
+			},
+		}
+		setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
+		_, err = client.CoreV1().Nodes().Create(node)
+		if err == nil {
+			return nil
+		}
+		if !k8sErrors.IsAlreadyExists(err) {
+			return errors.WithStack(err)
+		}
 	}
-	setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
-	_, err = client.CoreV1().Nodes().Create(node)
-	if k8sErrors.IsAlreadyExists(err) {
-		return p.internalNodeUpdate(provision.UpdateNodeOptions{
-			Address:  hostAddr,
-			Metadata: opts.Metadata,
-			Pool:     opts.Pool,
-		}, opts.IaaSID)
-	}
-	if err == nil {
-		servicecommon.RebuildRoutesPoolApps(opts.Pool)
-	}
-	return err
+	return p.internalNodeUpdate(provision.UpdateNodeOptions{
+		Address:  hostAddr,
+		Metadata: opts.Metadata,
+		Pool:     opts.Pool,
+	}, opts.IaaSID)
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
