@@ -91,7 +91,19 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz", Tags: []string{"tag 1", "tag 2"}}
+	instance := ServiceInstance{
+		Name:        "my-redis",
+		ServiceName: "redis",
+		TeamOwner:   "theteam",
+		Description: "xyz",
+		Tags:        []string{"tag 1", "tag 2"},
+		Parameters: map[string]interface{}{
+			"p1": "v1",
+			"p2": map[string]interface{}{
+				"complex1": "complexvalue1",
+			},
+		},
+	}
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "Request-ID")
@@ -104,12 +116,14 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
-		"name":        {"my-redis"},
-		"user":        {"my@user"},
-		"team":        {"theteam"},
-		"description": {"xyz"},
-		"eventid":     {evt.UniqueID.Hex()},
-		"tags":        {"tag 1", "tag 2"},
+		"name":                   {"my-redis"},
+		"user":                   {"my@user"},
+		"team":                   {"theteam"},
+		"description":            {"xyz"},
+		"eventid":                {evt.UniqueID.Hex()},
+		"tags":                   {"tag 1", "tag 2"},
+		"parameters.p1":          {"v1"},
+		"parameters.p2.complex1": {"complexvalue1"},
 	})
 	c.Assert("Request-ID", check.Equals, h.request.Header.Get("Request-ID"))
 	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
@@ -217,7 +231,20 @@ func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 	config.Set("request-id-header", requestIDHeader)
 	defer config.Unset("request-id-header")
 	var requests int32
-	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", TeamOwner: "team-owner", Description: "my service", Tags: []string{"tag1", "tag2"}, PlanName: "small"}
+	instance := ServiceInstance{
+		Name:        "his-redis",
+		ServiceName: "redis",
+		TeamOwner:   "team-owner",
+		Description: "my service",
+		Tags:        []string{"tag1", "tag2"},
+		PlanName:    "small",
+		Parameters: map[string]interface{}{
+			"p1": "v1",
+			"p2": map[string]interface{}{
+				"complex1": "complexvalue1",
+			},
+		},
+	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&requests, 1)
 		c.Check(r.Method, check.Equals, http.MethodPut)
@@ -227,6 +254,8 @@ func (s *S) TestUpdateShouldSendAPutRequestToTheResourceURL(c *check.C) {
 		c.Check(r.Form["tags"], check.DeepEquals, instance.Tags)
 		c.Check(r.FormValue("team"), check.Equals, instance.TeamOwner)
 		c.Check(r.FormValue("plan"), check.Equals, instance.PlanName)
+		c.Assert(r.FormValue("parameters.p1"), check.Equals, "v1")
+		c.Assert(r.FormValue("parameters.p2.complex1"), check.Equals, "complexvalue1")
 		c.Check(r.Header.Get(requestIDHeader), check.Equals, requestIDValue)
 		c.Assert(r.Header.Get("Authorization"), check.Equals, "Basic dXNlcjphYmNkZQ==")
 		w.WriteHeader(http.StatusOK)
@@ -334,6 +363,41 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 		"app-hosts": {"her-app.fakerouter.com"},
 		"user":      {"my@user"},
 		"eventid":   {evt.UniqueID.Hex()},
+	}
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
+}
+
+func (s *S) TestBindAppWithParams(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	bindParams := map[string]interface{}{
+		"p1": "v1",
+		"p2": map[string]interface{}{
+			"complex1": "complexvalue1",
+		},
+	}
+	_, err := client.BindApp(&instance, a, bindParams, evt, "")
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-app")
+	c.Assert(h.method, check.Equals, http.MethodPost)
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{
+		"app-name":               {"her-app"},
+		"app-host":               {"her-app.fakerouter.com"},
+		"app-hosts":              {"her-app.fakerouter.com"},
+		"user":                   {"my@user"},
+		"eventid":                {evt.UniqueID.Hex()},
+		"parameters.p1":          {"v1"},
+		"parameters.p2.complex1": {"complexvalue1"},
 	}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
