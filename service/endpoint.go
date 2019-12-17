@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ajg/form"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -72,6 +73,7 @@ func (c *endpointClient) Create(instance *ServiceInstance, evt *event.Event, req
 	if instance.Description != "" {
 		params["description"] = []string{instance.Description}
 	}
+	addParameters(params, instance.Parameters)
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
 	resp, err = c.issueRequest("/resources", "POST", params, requestID)
 	if err == nil {
@@ -97,6 +99,7 @@ func (c *endpointClient) Update(instance *ServiceInstance, evt *event.Event, req
 		"user":        {evt.Owner.Name},
 		"eventid":     {evt.UniqueID.Hex()},
 	}
+	addParameters(params, instance.Parameters)
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
@@ -131,7 +134,7 @@ func (c *endpointClient) Destroy(instance *ServiceInstance, evt *event.Event, re
 	return err
 }
 
-func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, _ BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
@@ -144,6 +147,7 @@ func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, _ Bind
 		"user":      {evt.Owner.Name},
 		"eventid":   {evt.UniqueID.Hex()},
 	}
+	addParameters(params, bindParams)
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
@@ -419,4 +423,17 @@ func (c *endpointClient) jsonFromResponse(resp *http.Response, v interface{}) er
 		return err
 	}
 	return json.Unmarshal(body, &v)
+}
+
+func addParameters(dst url.Values, params map[string]interface{}) {
+	if params == nil || dst == nil {
+		return
+	}
+	encoded, err := form.EncodeToValues(params)
+	if err != nil {
+		errors.Wrapf(err, "unable to encode parameters")
+	}
+	for key, value := range encoded {
+		dst["parameters."+key] = value
+	}
 }
