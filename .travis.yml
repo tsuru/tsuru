@@ -1,6 +1,7 @@
 language: go
 cache:
   directories:
+    - $HOME/.cache/go-build
     - $GOPATH/pkg/mod
 install: true
 sudo: required
