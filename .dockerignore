@@ -1,4 +1,10 @@
-**
-!tsurud
-!build/tsurud
-!etc/*
+.git/
+docs/
+
+.travis.yaml
+AUTHORS
+CONTRIBUTORS
+CONTRIBUTING.md
+Dockerfile
+README.md
+docker-compose.yml
