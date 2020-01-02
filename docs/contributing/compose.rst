@@ -6,102 +6,124 @@
 Building a development environment with Docker Compose
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-To follow this how-to you need to have Docker_ and Compose_ installed in your machine.
+This guide shows you how to run the Tsuru on a single host using Docker Compose.
+That is mainly useful for development and test environments since it
+allows you quickly to start and down the required components of Tsuru.
 
-First clone the tsuru_ project from GitHub:
+.. WARNING::
 
-::
+  No security and high availability concerns were employed in this installation
+  method. Do not run it on production environments.
 
-    $ git clone https://github.com/tsuru/tsuru.git
+In order to follow this guide, you need installing the Docker_ (v1.13.0 or later),
+`Docker Compose`_ (v1.10.0 or later) and the `Tsuru client`_ (newest possible).
+After getting these tools, make sure they are running correctly on your system.
 
-Enter the ``tsuru`` directory and execute ``build-compose.sh``. It will
-take some time:
+.. _Docker:  https://docs.docker.com/engine/installation/
+.. _`Docker Compose`: https://docs.docker.com/compose/install/
+.. _Tsuru: https://github.com/tsuru/tsuru
+.. _`Tsuru client`: https://tsuru-client.readthedocs.io/en/latest/installing.html
 
-::
-
-    $ cd tsuru
-    $ ./build-compose.sh
-
-At the first time you run is possible that api and planb fails, just run ``docker-compose up -d`` to fix it.
-::
-
-    $ docker-compose up -d
-
-Now you have tsuru dependencies, tsuru api and one docker node running in your machine. You can check
-running ``docker-compose ps``:
-
-::
-
-    $ docker-compose ps
-
-You have a fresh tsuru installed, so you need to create the admin user running tsurud inside container.
-
-::
-
-    $ docker-compose exec api tsurud root-user-create admin@example.com
-
-Then configure the tsuru target:
-
-::
-
-    $ tsuru target-add development http://127.0.0.1:8080 -s
-
-You need to create one pool of nodes and add node1 as a tsuru node.
-::
-
-    $ tsuru pool-add development -p -d
-    $ tsuru node-add --register address=http://node1:2375 pool=development
-
-Everytime you change tsuru and want to test you need to run ``build-compose.sh`` to build tsurud, generate and run the new api.
-
-If you want to use gandalf, generate one app token and insert into docker-compose.yml file in gandalf environment TSURU_TOKEN.
-
-::
-
-    $ docker-compose stop api
-    $ docker-compose run --entrypoint="/bin/sh -c" api "tsurud token"
-    // insert token into docker-compose.yml
-    $ docker-compose up -d
-
-.. _Docker: https://docs.docker.com/engine/installation/
-.. _Compose: https://docs.docker.com/compose/install/
-.. _tsuru: https://github.com/tsuru/tsuru
-
-Kubernetes Integration
+Running Docker Compose
 ----------------------
 
-One can register a minikube instance as a cluster in tsuru to be able to orchestrate tsuru applications on minikube.
+Pull the latest source code available at Tsuru's repository at GitHub. Navigate
+to the newly-created ``tsuru`` directory and run the Docker Compose to up.
 
-Start minikube:
+.. code:: bash
 
-::
+   $ git clone https://github.com/tsuru/tsuru.git
+   $ cd tsuru
+   $ docker-compose up -d
 
-    $ minikube start --insecure-registry=10.0.0.0/8
+.. NOTE::
+
+  For making new changes in the Tsuru server effective, you need to rebuild and
+  run the ``api`` service. This can be done by running the ``docker-compose up
+  --build -d api`` command.
+
+Whether everything works as expected, you have a fresh and ready to use
+installation of Tsuru.
+
+Creating admin user
+-------------------
+
+To be able to manage that Tsuru installation, you need create a administrator user
+who is able to execute any privileged action on Tsuru. You can do that executing the
+command shown below.
+
+.. code:: bash
+
+    $ docker-compose exec api tsurud root-user-create admin@tsuru.example.com
+
+That command will prompt a password and its confirmation. Make sure to remeber the
+chosen credential, it will be used in the next step.
+
+Login on Tsuru API
+------------------
+
+Create a new target pointing to the local Tsuru API, then log on.
+
+.. code:: bash
+
+    $ tsuru target-add -s development http://127.0.0.1:8080
+    $ tsuru login admin@tsuru.example.com
+
+The login command will prompt the password for you, fill that with the credential
+entered before.
+
+Adding a Docker pool
+--------------------
+
+Create a new pool (using the default provisioner - ``docker``),  so add the
+Docker node into.
+
+.. code:: bash
+
+  $ tsuru pool-add --public --default docker-pool
+  $ tsuru node-add --register address=http://node:2375 pool=docker-pool
+
+
+Adding a Kubernetes pool
+------------------------
+
+You can also integrating with a Kubenertes cluster provided via Minikube.
+
+.. code:: bash
+
+  $ minikube start --insecure-registry=registry.tsuru.172.42.0.21.nip.io:5000
 
 Create a pool in tsuru to be managed by the cluster:
 
-::
+.. code:: bash
 
-    $ tsuru pool add kubepool --provisioner kubernetes
-
+  $ tsuru pool-add kube-pool --provisioner kubernetes
 
 Register your minikube as a tsuru cluster:
 
-::
+.. code:: bash
 
-    $ tsuru cluster add minikube kubernetes --addr https://`minikube ip`:8443 --cacert $HOME/.minikube/ca.crt --clientcert $HOME/.minikube/apiserver.crt --clientkey $HOME/.minikube/apiserver.key --pool kubepool
+  $ tsuru cluster-add minikube kubernetes \
+      --pool kube-pool \
+      --addr https://$(minikube ip):8443 \
+      --cacert ~/.minikube/ca.crt \
+      --clientcert ~/.minikube/apiserver.crt \
+      --clientkey ~/.minikube/apiserver.key
 
-Check your node IP:
+.. code:: bash
 
-::
+  $ tsuru node-update $(tsuru node-list -q -f tsuru.io/cluster=kube-pool) pool=kube-pool
 
-    $ tsuru node list -f tsuru.io/cluster=minikube
+.. _Minikube: https://kubernetes.io/docs/setup/learning-environment/minikube/
 
-Add this IP address as a member of kubepool:
+You are ready to create and deploy apps either to Docker or Kubernetes pools.
 
-::
+Cleaning up
+-----------
 
-    $ tsuru node update <node ip> pool=kubepool
+To erase all Tsuru installation made above, you can just run.
+.. code:: bash
 
-You are ready to create and deploy apps kubernetes.
+  $ docker-compose down --volumes --rmi all
+  $ minikube delete
 
