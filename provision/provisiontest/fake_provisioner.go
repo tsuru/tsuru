@@ -856,7 +856,7 @@ func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App, img string, evt *event.Event) (string, error) {
+func (p *FakeProvisioner) Deploy(app provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
 	if err := p.getError("Deploy"); err != nil {
 		return "", err
 	}
@@ -866,7 +866,11 @@ func (p *FakeProvisioner) Deploy(app provision.App, img string, evt *event.Event
 	if !ok {
 		return "", errNotProvisioned
 	}
-	pApp.image = img
+	if img.IsBuild() {
+		pApp.image = img.BuildImageName()
+	} else {
+		pApp.image = img.BaseImageName()
+	}
 	evt.Write([]byte("Builder deploy called"))
 	p.apps[app.GetName()] = pApp
 	return fakeAppImage, nil

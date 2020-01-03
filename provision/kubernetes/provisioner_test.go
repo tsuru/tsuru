@@ -928,6 +928,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		app:               a,
 		sourceImage:       "myimg",
 		destinationImages: []string{"destimg"},
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
 	meta, err := image.GetImageMetaData("destimg")
@@ -1108,7 +1109,9 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -1146,7 +1149,9 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1186,7 +1191,9 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1216,7 +1223,9 @@ func (s *S) TestDeploy(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1266,7 +1275,9 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
@@ -1301,7 +1312,9 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1363,7 +1376,9 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1414,7 +1429,9 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1473,7 +1490,9 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1559,8 +1578,10 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
+	newImg, err := image.AppNewBuildImageName(a.GetName(), "", "")
+	c.Assert(err, check.IsNil)
 	go func(evt *event.Event) {
-		img, errDeploy := s.p.Deploy(a, "tsuru/app-myapp:v1-builder", evt)
+		img, errDeploy := s.p.Deploy(a, newImg, evt)
 		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
@@ -1599,7 +1620,9 @@ func (s *S) TestRollback(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", deployEvt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, deployEvt)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	customData = map[string]interface{}{
@@ -1609,7 +1632,9 @@ func (s *S) TestRollback(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v2", customData)
 	c.Assert(err, check.IsNil)
-	img, err = s.p.Deploy(a, "tsuru/app-myapp:v2", deployEvt)
+	newImg, err = image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err = s.p.Deploy(a, newImg, deployEvt)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
 	deployEvt.Done(err)
@@ -1683,7 +1708,9 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "registry.example.com/tsuru/app-myapp:v1-builder", evt)
+	newImg, err := image.AppNewBuildImageName(a.GetName(), "", "")
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
@@ -2176,7 +2203,9 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2277,7 +2306,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2340,7 +2371,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	}
 	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
 	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, "tsuru/app-myapp:v1", evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	img, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()

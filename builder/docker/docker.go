@@ -27,7 +27,7 @@ const (
 	archiveFileName = "archive.tar.gz"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (image.NewImageInfo, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&uploadToContainer,
@@ -38,11 +38,11 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 	pipeline := action.NewPipeline(actions...)
 	imageName, err := image.GetBuildImage(app)
 	if err != nil {
-		return "", log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
+		return image.NewImageInfo{}, log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
 	}
-	buildingImage, err := image.AppNewBuilderImageName(app.GetName(), app.GetTeamOwner(), imageTag)
+	buildingImage, err := image.AppNewBuildImageName(app.GetName(), app.GetTeamOwner(), imageTag)
 	if err != nil {
-		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+		return image.NewImageInfo{}, log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
 	archiveFileURI := fmt.Sprintf("file://%s/%s", archiveDirPath, archiveFileName)
 	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
@@ -65,7 +65,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute build pipeline for app %s - %s", app.GetName(), err)
-		return "", err
+		return image.NewImageInfo{}, err
 	}
 	return buildingImage, nil
 }

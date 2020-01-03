@@ -692,24 +692,20 @@ func taskContainerID(task *swarm.Task) string {
 	return contStatus.ContainerID
 }
 
-func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {
-	if !strings.HasSuffix(buildImageID, "-builder") {
-		err := deployProcesses(a, buildImageID, nil)
+func (p *swarmProvisioner) Deploy(a provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
+	if !img.IsBuild() {
+		err := deployProcesses(a, img.BaseImageName(), nil)
 		if err != nil {
 			return "", err
 		}
-		return buildImageID, nil
+		return img.BaseImageName(), nil
 	}
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
 	}
-	deployImage, err := image.AppNewImageName(a.GetName())
-	if err != nil {
-		return "", err
-	}
 	cmds := dockercommon.DeployCmds(a)
-	srvID, task, err := runOnceBuildCmds(client, a, cmds, buildImageID, deployImage, evt)
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, img.BuildImageName(), img.BaseImageName(), evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
@@ -720,15 +716,15 @@ func (p *swarmProvisioner) Deploy(a provision.App, buildImageID string, evt *eve
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(nodeClient, deployImage, taskContainerID(task), a)
+	_, err = commitPushBuildImage(nodeClient, img.BaseImageName(), taskContainerID(task), a)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	err = deployProcesses(a, deployImage, nil)
+	err = deployProcesses(a, img.BaseImageName(), nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return deployImage, nil
+	return img.BaseImageName(), nil
 }
 
 func (p *swarmProvisioner) ExecuteCommand(opts provision.ExecOptions) error {

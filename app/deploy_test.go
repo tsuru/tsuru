@@ -258,8 +258,8 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 }
 
 func (s *S) TestBuildApp(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
-		return "registry.somewhere/" + s.team.Name + "/app-some-app:v1-builder", nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "registry.somewhere/" + s.team.Name + "/app-some-app:v1-builder"}, nil
 	}
 	a := App{
 		Name:      "some-app",

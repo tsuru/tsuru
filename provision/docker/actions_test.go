@@ -731,13 +731,13 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, imageID, nil)
+	err = newFakeImage(p, imageID.BaseImageName(), nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageID:     imageID,
+		imageID:     imageID.BaseImageName(),
 		provisioner: p,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
@@ -762,12 +762,12 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	defer coll.Close()
 	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, imageID, nil)
+	err = newFakeImage(p, imageID.BaseImageName(), nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
-		imageID:     imageID,
+		imageID:     imageID.BaseImageName(),
 		provisioner: p,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
@@ -878,7 +878,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BaseImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -1271,12 +1271,12 @@ func (s *S) TestUpdateAppImageForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(app.GetName(), nextImgName)
+	err = image.AppendAppImageName(app.GetName(), nextImgName.BaseImageName())
 	c.Assert(err, check.IsNil)
 	nextImgName, err = image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	registry.AddRepo(registrytest.Repository{Name: "tsuru/app-mightyapp", Tags: map[string]string{"v1": "abcdefg"}})
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BaseImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -1295,7 +1295,7 @@ func (s *S) TestUpdateAppImageForward(c *check.C) {
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(registry.Addr()))
 	c.Assert(err, check.IsNil)
-	args := changeUnitsPipelineArgs{app: app, writer: buf, provisioner: s.p, imageID: nextImgName}
+	args := changeUnitsPipelineArgs{app: app, writer: buf, provisioner: s.p, imageID: nextImgName.BaseImageName()}
 	context := action.FWContext{Params: []interface{}{args}, Previous: &cont}
 	_, err = updateAppImage.Forward(context)
 	c.Assert(err, check.IsNil)

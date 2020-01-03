@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -91,15 +92,16 @@ func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
 func (s *S) TestDeployPodNameForApp(c *check.C) {
 	var tests = []struct {
 		name, expected string
+		version        int
 	}{
-		{"myapp", "myapp-v1-deploy"},
-		{"MYAPP", "myapp-v1-deploy"},
-		{"my-app_app", "my-app-app-v1-deploy"},
+		{"myapp", "myapp-v1-deploy", 1},
+		{"MYAPP", "myapp-v1-deploy", 1},
+		{"my-app_app", "my-app-app-v1-deploy", 1},
+		{"myapp", "myapp-v9-deploy", 9},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		name, err := deployPodNameForApp(a)
-		c.Check(err, check.IsNil)
+		name := deployPodNameForApp(a, builder.MockImageInfo{FakeVersion: tt.version})
 		c.Check(name, check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }

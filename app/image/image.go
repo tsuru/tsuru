@@ -390,10 +390,18 @@ func unmarshalYamlData(data map[string]interface{}) (provTypes.TsuruYamlData, er
 	return result, nil
 }
 
-func AppNewImageName(appName string) (string, error) {
+func AppNewBuildImageName(appName, teamName, customTag string) (NewImageInfo, error) {
+	return appNewImageName(appName, teamName, customTag, true)
+}
+
+func AppNewImageName(appName string) (NewImageInfo, error) {
+	return appNewImageName(appName, "", "", false)
+}
+
+func appNewImageName(appName, teamName, customTag string, isBuild bool) (NewImageInfo, error) {
 	coll, err := appImagesColl()
 	if err != nil {
-		return "", err
+		return NewImageInfo{}, err
 	}
 	defer coll.Close()
 	var imgs appImages
@@ -404,9 +412,15 @@ func AppNewImageName(appName string) (string, error) {
 	}
 	_, err = coll.FindId(appName).Apply(dbChange, &imgs)
 	if err != nil {
-		return "", err
+		return NewImageInfo{}, err
 	}
-	return fmt.Sprintf("%s:v%d", appBasicImageName(appName), imgs.Count), nil
+	return NewImageInfo{
+		appName:   appName,
+		version:   imgs.Count,
+		customTag: customTag,
+		teamName:  teamName,
+		isBuild:   isBuild,
+	}, nil
 }
 
 func AppCurrentImageName(appName string) (string, error) {
@@ -429,14 +443,6 @@ func AppCurrentImageName(appName string) (string, error) {
 		return "", ErrNoImagesAvailable
 	}
 	return imgs.Images[len(imgs.Images)-1], nil
-}
-
-func AppCurrentImageVersion(appName string) (string, error) {
-	version, err := getAppImageVersion(appName)
-	if err == mgo.ErrNotFound || version == 0 {
-		version = 1
-	}
-	return fmt.Sprintf("v%d", version), nil
 }
 
 func AppendAppImageName(appName, imageID string) error {
@@ -621,14 +627,6 @@ func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	return processes
 }
 
-func AppNewBuilderImageName(appName, teamOwner, tag string) (string, error) {
-	if tag == "" {
-		version, _ := getAppImageVersion(appName)
-		tag = fmt.Sprintf("v%d-builder", version+1)
-	}
-	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(appName, teamOwner), tag), nil
-}
-
 func ListAppBuilderImages(appName string) ([]string, error) {
 	coll, err := appBuilderImagesColl()
 	if err != nil {
@@ -783,16 +781,33 @@ func ImageCustomDataColl() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
-func getAppImageVersion(appName string) (int, error) {
-	coll, err := appImagesColl()
-	if err != nil {
-		return 0, err
+type NewImageInfo struct {
+	appName   string
+	teamName  string
+	customTag string
+	version   int
+	isBuild   bool
+}
+
+func (img NewImageInfo) BaseImageName() string {
+	return fmt.Sprintf("%s:v%d", appBasicImageName(img.appName), img.version)
+}
+
+func (img NewImageInfo) BuildImageName() string {
+	if !img.isBuild {
+		return ""
 	}
-	defer coll.Close()
-	var imgs appImages
-	err = coll.FindId(appName).One(&imgs)
-	if err != nil && err != mgo.ErrNotFound {
-		return 0, err
+	tag := img.customTag
+	if tag == "" {
+		tag = fmt.Sprintf("v%d-builder", img.version)
 	}
-	return imgs.Count, nil
+	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(img.appName, img.teamName), tag)
+}
+
+func (img NewImageInfo) Version() int {
+	return img.version
+}
+
+func (img NewImageInfo) IsBuild() bool {
+	return img.isBuild
 }

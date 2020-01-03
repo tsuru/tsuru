@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
@@ -294,14 +295,15 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	builderImgID := s.team.Name + "/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: s.team.Name + "/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
-	imgID, err := s.p.Deploy(&a, builderImgID, evt)
+	buildImg, err := image.AppNewBuildImageName(a.Name, "", "")
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(&a, buildImg, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
@@ -354,14 +356,15 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(&a, builderImgID, evt)
+	buildImg, err := image.AppNewBuildImageName(a.Name, "", "")
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, buildImg, evt)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -410,14 +413,15 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
-	imgID, err := s.p.Deploy(&a, builderImgID, evt)
+	buildImg, err := image.AppNewBuildImageName(a.Name, "", "")
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(&a, buildImg, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
@@ -475,14 +479,15 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	builderImgID := "tsuru/app-" + a.Name + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + a.Name,
 		Tag:        "v1-builder",
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(&a, builderImgID, evt)
+	buildImg, err := image.AppNewBuildImageName(a.Name, "", "")
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, buildImg, evt)
 	c.Assert(err, check.NotNil)
 	compErr, ok := err.(*errors.CompositeError)
 	c.Assert(ok, check.Equals, true)
@@ -510,7 +515,6 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	fakeServer := newFakeServer()
 	defer fakeServer.Close()
-	builderImgID := "tsuru/app-" + app.GetName() + ":v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-" + app.GetName(),
 		Tag:        "v1-builder",
@@ -518,9 +522,11 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
 	done := make(chan bool)
+	buildImg, err := image.AppNewBuildImageName(app.GetName(), "", "")
+	c.Assert(err, check.IsNil)
 	go func() {
 		defer close(done)
-		img, depErr := s.p.Deploy(app, builderImgID, evt)
+		img, depErr := s.p.Deploy(app, buildImg, evt)
 		c.Assert(depErr, check.ErrorMatches, "unit creation canceled by user action")
 		c.Assert(img, check.Equals, "")
 	}()
@@ -575,7 +581,12 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
 			baseImage, err := image.GetBuildImage(app)
 			c.Assert(err, check.IsNil)
-			img, err := p.deployPipeline(app, baseImage, []string{"/bin/test"}, nil)
+			newImg := builder.MockImageInfo{
+				FakeBuildImageName: baseImage,
+				FakeBaseImageName:  "localhost:3030/tsuru/app-" + name + ":v1",
+				FakeIsBuild:        true,
+			}
+			img, err := p.deployPipeline(app, newImg, []string{"/bin/test"}, nil)
 			c.Assert(err, check.IsNil)
 			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
 		}(i)
@@ -652,7 +663,9 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(&a, baseImgName+"-builder", evt)
+	buildImg, err := image.AppNewBuildImageName(a.Name, "", "")
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, buildImg, evt)
 	c.Assert(err, check.ErrorMatches, ".*my awesome error.*")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -731,8 +744,9 @@ func (s *S) TestDeployImageID(c *check.C) {
 			"web": []string{"/bin/sh", "-c", "python test.py"},
 		},
 	}
-	builderImgID := "tsuru/app-" + a.Name + ":v1"
-	err = image.SaveImageCustomData(builderImgID, customData)
+	origImage, err := image.AppNewImageName(a.Name)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData(origImage.BaseImageName(), customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -747,7 +761,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	}
 	err = s.p.Cluster().PullImage(pullOpts, dockercommon.RegistryAuthConfig(pullOpts.Repository))
 	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(&a, builderImgID, evt)
+	_, err = s.p.Deploy(&a, origImage, evt)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)

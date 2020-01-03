@@ -26,26 +26,23 @@ func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKub
 
 type KubeClient struct{}
 
-func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.Reader, tag string) (string, error) {
+func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.Reader, tag string) (provision.NewImageInfo, error) {
 	baseImage, err := image.GetBuildImage(a)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	buildingImage, err := image.AppNewBuilderImageName(a.GetName(), a.GetTeamOwner(), tag)
+	buildingImage, err := image.AppNewBuildImageName(a.GetName(), a.GetTeamOwner(), tag)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	buildPodName, err := buildPodNameForApp(a)
-	if err != nil {
-		return "", err
-	}
+	buildPodName := buildPodNameForApp(a, buildingImage)
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ns, err := client.AppNamespace(a)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer cleanupPod(client, buildPodName, ns)
 	params := createPodParams{
@@ -53,7 +50,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 		client:            client,
 		podName:           buildPodName,
 		sourceImage:       baseImage,
-		destinationImages: []string{buildingImage},
+		destinationImages: []string{buildingImage.BuildImageName()},
 		attachInput:       archiveFile,
 		attachOutput:      evt,
 		inputFile:         "/home/application/archive.tar.gz",
@@ -62,12 +59,12 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	err = createBuildPod(ctx, params)
 	cancel()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return buildingImage, nil
 }
 
-func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID, newImage string) (*docker.Image, string, *provTypes.TsuruYamlData, error) {
+func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID string, newImage provision.NewImageInfo) (*docker.Image, string, *provTypes.TsuruYamlData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, "", nil, err

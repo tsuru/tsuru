@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -47,7 +46,7 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, img provision.NewImageInfo, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -57,30 +56,26 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageID string, co
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	deployImage, err := image.AppNewImageName(app.GetName())
-	if err != nil {
-		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
-	}
 	var writer io.Writer = evt
 	if evt == nil {
 		writer = ioutil.Discard
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       imageID,
+		imageID:       img.BuildImageName(),
 		commands:      commands,
 		writer:        writer,
 		isDeploy:      true,
-		buildingImage: deployImage,
+		buildingImage: img.BaseImageName(),
 		provisioner:   p,
 		event:         evt,
 	}
-	err = container.RunPipelineWithRetry(pipeline, args)
+	err := container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
-	return deployImage, nil
+	return img.BaseImageName(), nil
 }
 
 func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageID string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {

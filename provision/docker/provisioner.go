@@ -375,16 +375,16 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageID string, evt *event
 	return imageID, p.deploy(a, imageID, evt)
 }
 
-func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
-	if !strings.HasSuffix(buildImageID, "-builder") {
-		err := p.deploy(app, buildImageID, evt)
+func (p *dockerProvisioner) Deploy(app provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
+	if !img.IsBuild() {
+		err := p.deploy(app, img.BaseImageName(), evt)
 		if err != nil {
 			return "", err
 		}
-		return buildImageID, nil
+		return img.BaseImageName(), nil
 	}
 	cmds := dockercommon.DeployCmds(app)
-	imageID, err := p.deployPipeline(app, buildImageID, cmds, evt)
+	imageID, err := p.deployPipeline(app, img, cmds, evt)
 	if err != nil {
 		return "", err
 	}

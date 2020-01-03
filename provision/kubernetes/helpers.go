@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -70,22 +69,14 @@ func headlessServiceNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-units", appProcessName(a, process))
 }
 
-func deployPodNameForApp(a provision.App) (string, error) {
-	version, err := image.AppCurrentImageVersion(a.GetName())
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to retrieve app current image version")
-	}
+func deployPodNameForApp(a provision.App, newImg provision.NewImageInfo) string {
 	name := validKubeName(a.GetName())
-	return fmt.Sprintf("%s-%s-deploy", name, version), nil
+	return fmt.Sprintf("%s-v%d-deploy", name, newImg.Version())
 }
 
-func buildPodNameForApp(a provision.App) (string, error) {
-	version, err := image.AppCurrentImageVersion(a.GetName())
-	if err != nil {
-		return "", errors.WithMessage(err, "failed to retrieve app current image version")
-	}
+func buildPodNameForApp(a provision.App, newImg provision.NewImageInfo) string {
 	name := validKubeName(a.GetName())
-	return fmt.Sprintf("%s-%s-build", name, version), nil
+	return fmt.Sprintf("%s-v%d-build", name, newImg.Version())
 }
 
 func appLabelForApp(a provision.App, process string) string {

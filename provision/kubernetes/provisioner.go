@@ -1075,7 +1075,7 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	return errors.WithStack(err)
 }
 
-func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt *event.Event) (string, error) {
+func (p *kubernetesProvisioner) Deploy(a provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
@@ -1083,17 +1083,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 	if err = ensureAppCustomResourceSynced(client, a); err != nil {
 		return "", err
 	}
-	newImage := buildImageID
-	if strings.HasSuffix(buildImageID, "-builder") {
-		newImage, err = image.AppNewImageName(a.GetName())
-		if err != nil {
-			return "", err
-		}
-		var deployPodName string
-		deployPodName, err = deployPodNameForApp(a)
-		if err != nil {
-			return "", err
-		}
+	if img.IsBuild() {
+		deployPodName := deployPodNameForApp(a, img)
 		ns, nsErr := client.AppNamespace(a)
 		if nsErr != nil {
 			return "", nsErr
@@ -1103,8 +1094,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 			app:               a,
 			client:            client,
 			podName:           deployPodName,
-			sourceImage:       buildImageID,
-			destinationImages: []string{newImage},
+			sourceImage:       img.BuildImageName(),
+			destinationImages: []string{img.BaseImageName()},
 			attachOutput:      evt,
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
@@ -1120,11 +1111,11 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, buildImageID string, evt
 		client: client,
 		writer: evt,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, newImage, nil, evt)
+	err = servicecommon.RunServicePipeline(manager, a, img.BaseImageName(), nil, evt)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return newImage, ensureAppCustomResourceSynced(client, a)
+	return img.BaseImageName(), ensureAppCustomResourceSynced(client, a)
 }
 
 func (p *kubernetesProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {

@@ -25,20 +25,20 @@ func init() {
 	builder.Register("kubernetes", &kubernetesBuilder{})
 }
 
-func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
 	p, ok := prov.(provision.BuilderDeployKubeClient)
 	if !ok {
-		return "", errors.New("provisioner not supported")
+		return nil, errors.New("provisioner not supported")
 	}
 	if opts.BuildFromFile {
-		return "", errors.New("build image from Dockerfile is not yet supported")
+		return nil, errors.New("build image from Dockerfile is not yet supported")
 	}
 	if opts.ArchiveURL != "" {
-		return "", errors.New("build image from ArchiveURL is not yet supported by kubernetes builder")
+		return nil, errors.New("build image from ArchiveURL is not yet supported by kubernetes builder")
 	}
 	client, err := p.GetClient(app)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if opts.ImageID != "" {
 		return imageBuild(client, app, opts.ImageID, evt)
@@ -47,36 +47,36 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 		var tarFile io.ReadCloser
 		tarFile, err = downloadFromContainer(client, app, evt)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		opts.ArchiveFile = tarFile
 	}
-	imageID, err := client.BuildPod(app, evt, opts.ArchiveFile, opts.Tag)
+	img, err := client.BuildPod(app, evt, opts.ArchiveFile, opts.Tag)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return imageID, nil
+	return img, nil
 }
 
-func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID string, evt *event.Event) (string, error) {
+func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID string, evt *event.Event) (provision.NewImageInfo, error) {
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
 	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
 	newImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	imageInspect, procfileRaw, tsuruYaml, err := client.ImageTagPushAndInspect(a, imageID, newImage)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	procfile := image.GetProcessesFromProcfile(procfileRaw)
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
 		cmds := append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
 		if len(cmds) == 0 {
-			return "", errors.New("neither Procfile nor entrypoint and cmd set")
+			return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 		}
 		procfile["web"] = cmds
 	}
@@ -84,7 +84,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)
 	}
 	imageData := image.ImageMetadata{
-		Name:       newImage,
+		Name:       newImage.BaseImageName(),
 		Processes:  procfile,
 		CustomData: tsuruYamlToCustomData(tsuruYaml),
 	}
@@ -96,7 +96,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	}
 	err = imageData.Save()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return newImage, nil
 }

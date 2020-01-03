@@ -1148,7 +1148,6 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	builderImgID := "registry.tsuru.io/tsuru/app-myapp:v1-builder"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-myapp",
 		Tag:        "v1-builder",
@@ -1157,7 +1156,9 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
-	imgID, err := s.p.Deploy(a, builderImgID, evt)
+	newImg, err := image.AppNewBuildImageName(a.GetName(), "", "")
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(<-attached, check.Equals, true)
 	c.Assert(tags, check.DeepEquals, []string{"v1", "latest"})
@@ -1206,14 +1207,15 @@ func (s *S) TestDeployImageID(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	builderImgID := "registry.tsuru.io/tsuru/app-myapp:v1"
 	pullOpts := docker.PullImageOptions{
 		Repository: "tsuru/app-myapp",
 		Tag:        "v1",
 	}
 	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
-	deployedImg, err := s.p.Deploy(a, builderImgID, evt)
+	newImg, err := image.AppNewImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	deployedImg, err := s.p.Deploy(a, newImg, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(deployedImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)

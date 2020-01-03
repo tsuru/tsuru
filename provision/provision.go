@@ -275,16 +275,23 @@ type ExecDockerClient interface {
 	InspectExec(execId string) (*docker.ExecInspect, error)
 }
 
+type NewImageInfo interface {
+	BaseImageName() string
+	BuildImageName() string
+	Version() int
+	IsBuild() bool
+}
+
 type BuilderKubeClient interface {
-	BuildPod(App, *event.Event, io.Reader, string) (string, error)
+	BuildPod(App, *event.Event, io.Reader, string) (NewImageInfo, error)
 	BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error
-	ImageTagPushAndInspect(App, string, string) (*docker.Image, string, *provTypes.TsuruYamlData, error)
+	ImageTagPushAndInspect(App, string, NewImageInfo) (*docker.Image, string, *provTypes.TsuruYamlData, error)
 	DownloadFromContainer(App, string) (io.ReadCloser, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
-	Deploy(App, string, *event.Event) (string, error)
+	Deploy(App, NewImageInfo, *event.Event) (string, error)
 }
 
 type BuilderDeployDockerClient interface {

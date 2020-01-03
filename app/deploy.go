@@ -229,11 +229,14 @@ func Build(opts DeployOptions) (string, error) {
 	if !ok {
 		return "", errors.Errorf("provisioner don't implement builder interface")
 	}
-	imageID, err := builderDeploy(builder, &opts, opts.Event)
+	img, err := builderDeploy(builder, &opts, opts.Event)
 	if err != nil {
 		return "", err
 	}
-	return imageID, nil
+	if img.IsBuild() {
+		return img.BuildImageName(), nil
+	}
+	return img.BaseImageName(), nil
 }
 
 type errorWithLog struct {
@@ -346,11 +349,11 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 
 	if opts.Kind != DeployRollback {
 		if deployer, ok := prov.(provision.BuilderDeploy); ok {
-			imageID, err := builderDeploy(deployer, opts, evt)
+			img, err := builderDeploy(deployer, opts, evt)
 			if err != nil {
 				return "", err
 			}
-			return deployer.Deploy(opts.App, imageID, evt)
+			return deployer.Deploy(opts.App, img, evt)
 		}
 	} else {
 		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
@@ -360,7 +363,7 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
 }
 
-func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (string, error) {
+func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (provision.NewImageInfo, error) {
 	isRebuild := opts.Kind == DeployRebuild
 	buildOpts := builder.BuildOpts{
 		BuildFromFile: opts.Build,
@@ -373,7 +376,7 @@ func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event
 	}
 	builder, err := opts.App.getBuilder()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	img, err := builder.Build(prov, opts.App, evt, &buildOpts)
 	if buildOpts.IsTsuruBuilderImage {

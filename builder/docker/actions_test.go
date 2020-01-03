@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
@@ -55,7 +56,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		commands:      cmds,
 		client:        builderClient(client),
 		provisioner:   s.provisioner,
-		buildingImage: images[0].ID,
+		buildingImage: builder.MockImageInfo{FakeBuildImageName: images[0].ID, FakeIsBuild: true},
 		isDeploy:      true,
 	}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
@@ -173,7 +174,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BaseImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -261,9 +262,9 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
-	nextImgName, err := image.AppNewImageName(app.GetName())
+	nextImgName, err := image.AppNewBuildImageName(app.GetName(), "", "")
 	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BuildImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -274,7 +275,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	imgID, err := cont.Commit(builderClient(client), limiter(), buf, false)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1")
+	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1-builder")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
 	args := runContainerActionsArgs{app: app, writer: buf, provisioner: s.provisioner, client: builderClient(client), buildingImage: nextImgName}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
@@ -283,7 +284,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	allImages, err := image.ListAppBuilderImages(args.app.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(len(allImages), check.Equals, 1)
-	c.Assert(allImages[0], check.Equals, "tsuru/app-mightyapp:v1")
+	c.Assert(allImages[0], check.Equals, "tsuru/app-mightyapp:v1-builder")
 }
 
 func (s *S) newContainer(client *docker.Client) (*container.Container, error) {

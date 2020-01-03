@@ -70,18 +70,18 @@ func limiter() provision.ActionLimiter {
 	return globalLimiter
 }
 
-func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
 	p, ok := prov.(provision.BuilderDeployDockerClient)
 	if !ok {
-		return "", errors.New("provisioner not supported: doesn't implement docker builder")
+		return nil, errors.New("provisioner not supported: doesn't implement docker builder")
 	}
 	archiveFullPath := fmt.Sprintf("%s/%s", defaultArchivePath, defaultArchiveName)
 	if opts.BuildFromFile {
-		return "", errors.New("build image from Dockerfile is not yet supported")
+		return nil, errors.New("build image from Dockerfile is not yet supported")
 	}
 	client, err := p.GetClient(app)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var tarFile io.ReadCloser
 	if opts.ArchiveFile != nil && opts.ArchiveSize != 0 {
@@ -90,28 +90,28 @@ func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, e
 		var rcont *docker.Container
 		tarFile, rcont, err = downloadFromContainer(client, app, archiveFullPath)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		defer client.RemoveContainer(docker.RemoveContainerOptions{ID: rcont.ID, Force: true})
 	} else if opts.ArchiveURL != "" {
 		tarFile, err = downloadFromURL(opts.ArchiveURL)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	} else if opts.ImageID != "" {
 		return imageBuild(client, app, opts, evt)
 	} else {
-		return "", errors.New("no valid files found")
+		return nil, errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	imageID, err := b.buildPipeline(p, client, app, tarFile, evt, opts.Tag)
+	img, err := b.buildPipeline(p, client, app, tarFile, evt, opts.Tag)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return imageID, nil
+	return img, nil
 }
 
-func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (string, error) {
+func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (provision.NewImageInfo, error) {
 	repo, tag := image.SplitImageName(opts.ImageID)
 	imageID := fmt.Sprintf("%s:%s", repo, tag)
 	fmt.Fprintln(evt, "---- Getting process from image ----")
@@ -120,15 +120,15 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	containerID, err := runCommandInContainer(client, evt, imageID, cmd, app, &procfileBuf, nil)
 	defer removeContainer(client, containerID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	fmt.Fprintf(evt, "---- Inspecting image %q ----\n", imageID)
 	imageInspect, err := client.InspectImage(imageID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.New("Too many ports. You should especify which one you want to.")
+		return nil, errors.New("Too many ports. You should especify which one you want to.")
 	}
 	if _, ok := imageInspect.Config.Labels["is-tsuru"]; ok {
 		opts.IsTsuruBuilderImage = true
@@ -145,19 +145,19 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	yaml, containerID, err := loadTsuruYaml(client, app, imageID, evt)
 	defer removeContainer(client, containerID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	containerID, err = runBuildHooks(client, app, imageID, evt, yaml)
 	defer removeContainer(client, containerID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	newImage, err := pushImageToRegistry(client, app, imageID, evt)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	imageData := image.ImageMetadata{
-		Name:         newImage,
+		Name:         newImage.BaseImageName(),
 		Processes:    procfile,
 		CustomData:   tsuruYamlToCustomData(yaml),
 		ExposedPorts: make([]string, len(imageInspect.Config.ExposedPorts)),
@@ -169,26 +169,26 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	}
 	err = imageData.Save()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return newImage, nil
 }
 
-func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (string, error) {
+func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (provision.NewImageInfo, error) {
 	newImage, err := image.AppNewImageName(app.GetName())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	repo, tag := image.SplitImageName(newImage)
+	repo, tag := image.SplitImageName(newImage.BaseImageName())
 	err = client.TagImage(imageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	registry, err := config.GetString("docker:registry")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newImage)
+	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newImage.BaseImageName())
 	pushOpts := docker.PushImageOptions{
 		Name:              repo,
 		Tag:               tag,
@@ -197,9 +197,9 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newImage))
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newImage.BaseImageName()))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return newImage, nil
 }
