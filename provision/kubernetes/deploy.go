@@ -176,12 +176,6 @@ type createPodParams struct {
 
 func createBuildPod(ctx context.Context, params createPodParams) error {
 	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
-	if params.podName == "" {
-		var err error
-		if params.podName, err = buildPodNameForApp(params.app); err != nil {
-			return err
-		}
-	}
 	params.cmds = cmds
 	return createPod(ctx, params)
 }
@@ -191,12 +185,6 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 		return fmt.Errorf("no destination images provided")
 	}
 	cmds := dockercommon.DeployCmds(params.app)
-	if params.podName == "" {
-		var err error
-		if params.podName, err = deployPodNameForApp(params.app); err != nil {
-			return err
-		}
-	}
 	params.cmds = cmds
 	repository, tag := image.SplitImageName(params.destinationImages[0])
 	if tag != "latest" {
@@ -1244,11 +1232,8 @@ func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortCo
 	}
 }
 
-func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage string) (InspectData, error) {
-	deployPodName, err := deployPodNameForApp(a)
-	if err != nil {
-		return InspectData{}, err
-	}
+func imageTagAndPush(client *ClusterClient, a provision.App, oldImage string, newImage provision.NewImageInfo) (InspectData, error) {
+	deployPodName := deployPodNameForApp(a, newImage)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -1262,8 +1247,8 @@ func imageTagAndPush(client *ClusterClient, a provision.App, oldImage, newImage 
 	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	destImages := []string{newImage}
-	repository, tag := image.SplitImageName(newImage)
+	destImages := []string{newImage.BaseImageName()}
+	repository, tag := image.SplitImageName(newImage.BaseImageName())
 	if tag != "latest" {
 		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
 	}

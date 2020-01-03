@@ -29,7 +29,7 @@ type runContainerActionsArgs struct {
 	commands      []string
 	writer        io.Writer
 	isDeploy      bool
-	buildingImage string
+	buildingImage provision.NewImageInfo
 	provisioner   provision.BuilderDeployDockerClient
 	client        provision.BuilderDockerClient
 	exposedPort   string
@@ -67,7 +67,7 @@ var createContainer = action.Action{
 				Type:          args.app.GetPlatform(),
 				Name:          contName,
 				Image:         args.imageID,
-				BuildingImage: args.buildingImage,
+				BuildingImage: args.buildingImage.BuildImageName(),
 				ExposedPort:   args.exposedPort,
 			},
 		}
@@ -231,7 +231,7 @@ var updateAppBuilderImage = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		err := image.AppendAppBuilderImageName(args.app.GetName(), args.buildingImage)
+		err := image.AppendAppBuilderImageName(args.app.GetName(), args.buildingImage.BuildImageName())
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to save image name")
 		}

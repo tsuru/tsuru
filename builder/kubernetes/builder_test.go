@@ -34,9 +34,9 @@ func (s *S) TestArchiveFile(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	imgID, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+	c.Assert(img.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
 }
 
 func (s *S) TestArchiveFileWithTag(c *check.C) {
@@ -56,9 +56,9 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 		ArchiveSize: int64(buf.Len()),
 		Tag:         "mytag",
 	}
-	imgID, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(imgID, check.Equals, s.team.Name+"/app-myapp:mytag")
+	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:mytag")
 }
 
 func (s *S) TestArchiveURL(c *check.C) {
@@ -79,9 +79,10 @@ func (s *S) TestArchiveURL(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	imgID, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
-	c.Assert(imgID, check.Equals, "")
+	c.Assert(err, check.ErrorMatches, `build image from ArchiveURL is not yet supported by kubernetes builder`)
+	c.Assert(img, check.IsNil)
 }
 
 func (s *S) TestImageID(c *check.C) {
@@ -107,7 +108,8 @@ func (s *S) TestImageID(c *check.C) {
 	}
 	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.IsBuild(), check.Equals, false)
 }
 
 func (s *S) TestImageIDWithExposedPorts(c *check.C) {
@@ -133,8 +135,9 @@ func (s *S) TestImageIDWithExposedPorts(c *check.C) {
 	}
 	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img)
+	c.Assert(img.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.IsBuild(), check.Equals, false)
+	imd, err := image.GetImageMetaData(img.BaseImageName())
 	c.Assert(err, check.IsNil)
 	sort.Strings(imd.ExposedPorts)
 	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"8000/tcp", "8001/tcp"})
@@ -163,8 +166,9 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 	}
 	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img)
+	c.Assert(img.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.IsBuild(), check.Equals, false)
+	imd, err := image.GetImageMetaData(img.BaseImageName())
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -225,8 +229,9 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	}
 	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img)
+	c.Assert(img.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.IsBuild(), check.Equals, false)
+	imd, err := image.GetImageMetaData(img.BaseImageName())
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
 		"healthcheck": map[string]interface{}{
@@ -294,8 +299,9 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	}
 	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img)
+	c.Assert(img.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img.IsBuild(), check.Equals, false)
+	imd, err := image.GetImageMetaData(img.BaseImageName())
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
 		"hooks": map[string]interface{}{
@@ -347,15 +353,13 @@ func (s *S) TestRebuild(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	imgID, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
-	_, err = image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
+	c.Assert(img.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
 	bopts = builder.BuildOpts{
 		Rebuild: true,
 	}
-	imgID, err = s.b.Build(s.p, a, evt, &bopts)
+	img, err = s.b.Build(s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v2-builder")
+	c.Assert(img.BuildImageName(), check.Equals, "tsuru/app-myapp:v2-builder")
 }

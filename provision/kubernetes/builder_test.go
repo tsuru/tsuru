@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
@@ -129,7 +130,7 @@ func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")
@@ -161,7 +162,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 		return false, nil, nil
 	})
 	client := KubeClient{}
-	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -211,7 +212,7 @@ cat >/dev/null && /bin/deploy-agent`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "registry.example.com/tsuru/app-myapp:tag1", "registry.example.com/tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "registry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "registry.example.com/tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")
@@ -264,7 +265,7 @@ cat >/dev/null && /bin/deploy-agent`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "otherregistry.example.com/tsuru/app-myapp:tag1", "otherregistry.example.com/tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "otherregistry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "otherregistry.example.com/tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")
@@ -284,7 +285,7 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", "tsuru/app-myapp:tag2")
+	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(img.ID, check.Equals, "1234")
 	c.Assert(procfileRaw, check.Equals, "web: make run")

@@ -142,10 +142,10 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildHandler(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		c.Assert(opts.Tag, check.Equals, "mytag")
-		return "tsuruteam/app-otherapp:mytag", nil
+		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "tsuruteam/app-otherapp:mytag"}, nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -195,9 +195,9 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (string, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
-		return "tsuruteam/app-otherapp:mytag", nil
+		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "tsuruteam/app-otherapp:mytag"}, nil
 	}
 	a := app.App{
 		Name:      "otherapp",

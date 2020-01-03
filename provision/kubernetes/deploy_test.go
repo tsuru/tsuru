@@ -1633,6 +1633,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		sourceImage:       "myimg",
 		destinationImages: []string{"destimg"},
 		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
@@ -1697,6 +1698,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 		sourceImage:       "myimg",
 		destinationImages: []string{"destimg"},
 		inputFile:         "/dev/null",
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
@@ -1818,6 +1820,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		sourceImage:       "myimg",
 		destinationImages: []string{"registry.example.com/destimg"},
 		inputFile:         "/dev/null",
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
@@ -1996,6 +1999,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
 	<-podReactorDone
@@ -2028,6 +2032,7 @@ func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.ErrorMatches, `error attaching to myapp-v1-deploy/committer-cont: container finished while attach is running`)
 	<-ch
@@ -2044,6 +2049,7 @@ func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
 		sourceImage:       "myimg",
 		destinationImages: []string{"ip:destimg:v1"},
 		inputFile:         "/dev/null",
+		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)

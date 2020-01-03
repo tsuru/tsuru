@@ -14,30 +14,75 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+func (s *S) TestNewImageInfo_BaseImageName(c *check.C) {
+	tests := []struct {
+		spec        NewImageInfo
+		wantedBase  string
+		wantedBuild string
+		registry    string
+		emptyRepoNS bool
+	}{
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 1},
+			wantedBase:  "tsuru/app-myapp:v1",
+			wantedBuild: "",
+		},
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 2},
+			registry:    "localhost:3030",
+			wantedBase:  "localhost:3030/tsuru/app-myapp:v2",
+			wantedBuild: "",
+		},
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 9, isBuild: true},
+			wantedBase:  "tsuru/app-myapp:v9",
+			wantedBuild: "tsuru/app-myapp:v9-builder",
+		},
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 9, isBuild: true, teamName: "myteam"},
+			wantedBase:  "tsuru/app-myapp:v9",
+			wantedBuild: "tsuru/app-myapp:v9-builder",
+		},
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 9, isBuild: true, teamName: "myteam", customTag: "mytag"},
+			wantedBase:  "tsuru/app-myapp:v9",
+			wantedBuild: "tsuru/app-myapp:mytag",
+		},
+		{
+			spec:        NewImageInfo{appName: "myapp", version: 9, isBuild: true, teamName: "myteam"},
+			emptyRepoNS: true,
+			wantedBase:  "tsuru/app-myapp:v9",
+			wantedBuild: "myteam/app-myapp:v9-builder",
+		},
+	}
+
+	for i, tt := range tests {
+		func() {
+			c.Log("test", i)
+			if tt.registry != "" {
+				config.Set("docker:registry", tt.registry)
+				defer config.Unset("docker:registry")
+			}
+			if tt.emptyRepoNS {
+				config.Unset("docker:repository-namespace")
+				defer config.Set("docker:repository-namespace", "tsuru")
+			}
+			c.Check(tt.spec.BaseImageName(), check.Equals, tt.wantedBase)
+			c.Check(tt.spec.BuildImageName(), check.Equals, tt.wantedBuild)
+		}()
+	}
+}
+
 func (s *S) TestAppNewImageName(c *check.C) {
 	img1, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img1, check.Equals, NewImageInfo{appName: "myapp", version: 1})
 	img2, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+	c.Assert(img2, check.Equals, NewImageInfo{appName: "myapp", version: 2})
 	img3, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(img3, check.Equals, "tsuru/app-myapp:v3")
-}
-
-func (s *S) TestAppNewImageNameWithRegistry(c *check.C) {
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	img1, err := AppNewImageName("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img1, check.Equals, "localhost:3030/tsuru/app-myapp:v1")
-	img2, err := AppNewImageName("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img2, check.Equals, "localhost:3030/tsuru/app-myapp:v2")
-	img3, err := AppNewImageName("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img3, check.Equals, "localhost:3030/tsuru/app-myapp:v3")
+	c.Assert(img3, check.Equals, NewImageInfo{appName: "myapp", version: 3})
 }
 
 func (s *S) TestAppCurrentImageNameWithoutImage(c *check.C) {
@@ -69,22 +114,6 @@ func (s *S) TestAppCurrentImageName(c *check.C) {
 	img2, err := AppCurrentImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
-}
-
-func (s *S) TestAppCurrentImageVersion(c *check.C) {
-	img1, err := AppCurrentImageVersion("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img1, check.Equals, "v1")
-	_, err = AppNewImageName("myapp")
-	c.Assert(err, check.IsNil)
-	img1, err = AppCurrentImageVersion("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img1, check.Equals, "v1")
-	_, err = AppNewImageName("myapp")
-	c.Assert(err, check.IsNil)
-	img2, err := AppCurrentImageVersion("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(img2, check.Equals, "v2")
 }
 
 func (s *S) TestListAppImages(c *check.C) {
