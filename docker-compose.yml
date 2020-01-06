@@ -46,22 +46,23 @@ services:
 
   node:
     image: docker:19.03-dind
-    command: --insecure-registry registry.tsuru.172.42.0.22.nip.io:5000
+    command: --insecure-registry 172.42.0.22:5000
     environment:
       DOCKER_TLS_CERTDIR: ""
     privileged: true
     networks:
     - tsuru-net
+    restart: unless-stopped
 
   api:
     image: tsuru/api:dev
     build: ./
     environment:
-      TSURU_HOST: http://tsuru.172.42.0.20.nip.io:8080
+      TSURU_HOST: http://172.42.0.20:8080
       TSURU_PORT: 8080
       MONGO_URL: mongodb://mongo:27017/
       MONGO_ADDR: mongo
-      REGISTRY_URL: registry.tsuru.172.42.0.22.nip.io:5000
+      REGISTRY_URL: 172.42.0.22:5000
       HIPACHE_DOMAIN: apps.tsuru.172.42.0.21.nip.io:8989
       REDIS_URL: redis:6379
     ports:
