@@ -1135,6 +1135,11 @@ docker:sharedfs:app-isolation
 
 If true, the ``hostdir`` will have subdirectories for each app. All apps will still have access to a shared mount point, however they will be in completely isolated subdirectories.
 
+docker:pids-limit
++++++++++++++++++
+
+Maximum number of pids in a single container. Defaults to unlimited.
+
 .. _iaas_configuration:
 
 IaaS configuration
