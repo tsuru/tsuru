@@ -547,8 +547,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 			},
 		}
 	}
-	maxSurge := intstr.FromString("100%")
-	maxUnavailable := intstr.FromInt(0)
+	maxSurge := client.maxSurge(a.GetPool())
+	maxUnavailable := client.maxUnavailable(a.GetPool())
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   a.GetPool(),
 		Prefix: tsuruLabelPrefix,

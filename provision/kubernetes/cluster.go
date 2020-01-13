@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -38,6 +39,8 @@ const (
 	externalPolicyLocalKey = "external-policy-local"
 	routerAddressLocalKey  = "router-local"
 	disableHeadlessKey     = "disable-headless"
+	maxSurgeKey            = "max-surge"
+	maxUnavailableKey      = "max-unavailable"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -54,6 +57,8 @@ var (
 		externalPolicyLocalKey: "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
 		routerAddressLocalKey:  "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
 		disableHeadlessKey:     "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
+		maxSurgeKey:            "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
+		maxUnavailableKey:      "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
 	}
 )
 
@@ -285,6 +290,30 @@ func (c *ClusterClient) headlessEnabled(pool string) (bool, error) {
 	}
 	disableHeadless, err := strconv.ParseBool(config)
 	return !disableHeadless, err
+}
+
+func (c *ClusterClient) maxSurge(pool string) intstr.IntOrString {
+	defaultSurge := intstr.FromString("100%")
+	if c.CustomData == nil {
+		return defaultSurge
+	}
+	maxSurge := c.configForContext(pool, maxSurgeKey)
+	if maxSurge == "" {
+		return defaultSurge
+	}
+	return intstr.Parse(maxSurge)
+}
+
+func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
+	defaultUnvailable := intstr.FromInt(0)
+	if c.CustomData == nil {
+		return defaultUnvailable
+	}
+	maxUnavailable := c.configForContext(pool, maxUnavailableKey)
+	if maxUnavailable == "" {
+		return defaultUnvailable
+	}
+	return intstr.Parse(maxUnavailable)
 }
 
 func (c *ClusterClient) configForContext(context, key string) string {
