@@ -13,6 +13,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -369,6 +370,10 @@ func (p *dockerProvisioner) runCommandInContainer(image string, app provision.Ap
 		HostConfig: &docker.HostConfig{
 			AutoRemove: true,
 		},
+	}
+	pidsLimit, _ := config.GetInt("docker:pids-limit")
+	if pidsLimit > 0 {
+		createOptions.HostConfig.PidsLimit = int64(pidsLimit)
 	}
 	cluster := p.Cluster()
 	schedOpts := &container.SchedulerOpts{

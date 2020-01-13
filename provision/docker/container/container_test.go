@@ -450,6 +450,43 @@ func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
 	c.Assert(container.Config.Entrypoint, check.DeepEquals, []string{})
 }
 
+func (s *S) TestContainerCreatePidLimit(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	config.Set("docker:pids-limit", 10)
+	defer config.Unset("docker:pids-limit")
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	routertest.FakeRouter.AddBackend(app)
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	img := "tsuru/brainfuck:latest"
+	s.cli.PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	cont := Container{Container: types.Container{
+		Name:    "myName",
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Status:  "created",
+	}}
+	err := cont.Create(&CreateArgs{
+		App:      app,
+		ImageID:  img,
+		Commands: []string{"docker", "run"},
+		Client:   s.cli,
+	})
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, _ := docker.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.HostConfig.PidsLimit, check.Equals, int64(10))
+}
+
 func (s *S) TestContainerNetworkInfo(c *check.C) {
 	inspectOut := `{
 	"NetworkSettings": {
