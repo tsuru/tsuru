@@ -235,10 +235,18 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 		return err
 	}
 	defer rsp.Body.Close()
+	// trigger new webhook event
+	whEvent, err := event.NewInternal(&event.Opts{})
+
+	data, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 400 {
-		data, _ := ioutil.ReadAll(rsp.Body)
-		return errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
+		rspErr := errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
+		whEvent.Done(rspErr)
+		return rspErr
 	}
+
+	whEvent.Write(data)
+	whEvent.Done(nil)
 	return nil
 }
 

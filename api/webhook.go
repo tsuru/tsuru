@@ -90,6 +90,12 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
+	for _, targetType := range webhook.EventFilter.TargetTypes {
+		if targetType == "webhook.run" {
+			return permission.ErrUnauthorized
+		}
+	}
+
 	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
 	if !permission.Check(t, permission.PermWebhookCreate, ctx) {
 		return permission.ErrUnauthorized

@@ -162,6 +162,74 @@ func (s *S) TestWebhookCreate(c *check.C) {
 		},
 	})
 }
+func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
+	webhook1 := eventTypes.Webhook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		EventFilter: eventTypes.WebhookEventFilter{
+			TargetTypes: []string{"webhook.run"},
+		},
+	}
+	bodyData, err := form.EncodeToString(webhook1)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/1.6/events/webhooks", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
+	wh, err := servicemanager.Webhook.Find("wh1")
+	c.Assert(err, check.IsNil)
+	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		Headers:   http.Header{},
+		EventFilter: eventTypes.WebhookEventFilter{
+			TargetTypes:  []string{},
+			TargetValues: []string{},
+			KindTypes:    []string{},
+			KindNames:    []string{"app.deploy"},
+		},
+	})
+}
+
+func (s *S) TestWebhookCreateWithPostMethod(c *check.C) {
+	webhook1 := eventTypes.Webhook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		EventFilter: eventTypes.WebhookEventFilter{
+			KindNames: []string{"app.deploy"},
+		},
+		Method: "POST",
+	}
+	bodyData, err := form.EncodeToString(webhook1)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/1.6/events/webhooks", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
+	wh, err := servicemanager.Webhook.Find("wh1")
+	c.Assert(err, check.IsNil)
+	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		Headers:   http.Header{},
+		EventFilter: eventTypes.WebhookEventFilter{
+			TargetTypes:  []string{},
+			TargetValues: []string{},
+			KindTypes:    []string{},
+			KindNames:    []string{"app.deploy"},
+		},
+	})
+}
 
 func (s *S) TestWebhookCreateAutoTeam(c *check.C) {
 	webhook1 := eventTypes.Webhook{

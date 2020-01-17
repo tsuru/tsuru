@@ -238,4 +238,5 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"webhook.create",
 	"webhook.update",
 	"webhook.delete",
+	"webhook.run",
 )
