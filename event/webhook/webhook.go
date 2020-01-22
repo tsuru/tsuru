@@ -237,6 +237,9 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	defer rsp.Body.Close()
 	// trigger new webhook event
 	whEvent, err := event.NewInternal(&event.Opts{})
+	if err != nil {
+		return err
+	}
 
 	data, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 400 {
@@ -245,7 +248,9 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 		return rspErr
 	}
 
-	whEvent.Write(data)
+	if data != nil {
+		whEvent.Write(data)
+	}
 	whEvent.Done(nil)
 	return nil
 }

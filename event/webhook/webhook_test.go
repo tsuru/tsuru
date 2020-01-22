@@ -68,6 +68,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(evt, check.NotNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	called := make(chan struct{})

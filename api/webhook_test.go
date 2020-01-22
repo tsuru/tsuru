@@ -179,7 +179,7 @@ func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden, check.Commentf("body: %s", recorder.Body.String()))
 	wh, err := servicemanager.Webhook.Find("wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
@@ -192,6 +192,7 @@ func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
 			TargetValues: []string{},
 			KindTypes:    []string{},
 			KindNames:    []string{"app.deploy"},
+			Method:       "POST",
 		},
 	})
 }
