@@ -828,7 +828,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	}()
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	kubeConf := getKubeConfig()
-	timeout := time.After(kubeConf.DeploymentProgressTimeout)
+	timer := time.NewTimer(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
 		dep, err = client.AppsV1().Deployments(ns).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
@@ -837,7 +837,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		revision = dep.Annotations[replicaDepRevision]
 		select {
 		case <-time.After(100 * time.Millisecond):
-		case <-timeout:
+		case <-timer.C:
 			return revision, errors.Errorf("timeout waiting for deployment generation to update")
 		case <-ctx.Done():
 			return revision, ctx.Err()
@@ -857,6 +857,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	maxWaitTimeDuration := time.Duration(maxWaitTime) * time.Second
 	var healthcheckTimeout <-chan time.Time
 	t0 := time.Now()
+	largestReady := int32(0)
 	for {
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
@@ -878,6 +879,13 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		readyUnits := dep.Status.UpdatedReplicas - dep.Status.UnavailableReplicas
 		if oldReadyUnits != readyUnits && readyUnits >= 0 {
 			fmt.Fprintf(w, " ---> %d of %d new units ready\n", readyUnits, specReplicas)
+		}
+		if readyUnits > largestReady {
+			largestReady = readyUnits
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(kubeConf.DeploymentProgressTimeout)
 		}
 		pendingTermination := dep.Status.Replicas - dep.Status.UpdatedReplicas
 		if oldPendingTermination != pendingTermination && pendingTermination > 0 {
@@ -902,7 +910,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			}
 		case <-healthcheckTimeout:
 			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
-		case <-timeout:
+		case <-timer.C:
 			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
 		case <-ctx.Done():
 			err = ctx.Err()
