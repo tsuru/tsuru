@@ -2292,6 +2292,68 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
 }
 
+func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C) {
+	config.Set("docker:healthcheck:max-time", 1)
+	defer config.Unset("docker:healthcheck:max-time")
+	config.Set("kubernetes:deployment-progress-timeout", 3)
+	defer config.Unset("kubernetes:deployment-progress-timeout")
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	buf := bytes.Buffer{}
+	m := serviceManager{client: s.clusterClient, writer: &buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		dep := obj.(*appsv1.Deployment)
+		dep.Status.UnavailableReplicas = *dep.Spec.Replicas
+		return false, nil, nil
+	}
+	s.client.PrependReactor("create", "deployments", reaction)
+
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	depName := deploymentNameForApp(a, "p1")
+	timeout := time.After(10 * time.Second)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-timeout:
+				c.Fatal("timeout waiting for deployment to finish rollout")
+			case <-time.After(time.Second):
+			}
+			dep, depErr := s.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
+			if k8sErrors.IsNotFound(depErr) {
+				continue
+			}
+			c.Assert(depErr, check.IsNil)
+			if dep.Status.UnavailableReplicas == 0 {
+				return
+			}
+			dep.Status.UnavailableReplicas = dep.Status.UnavailableReplicas - 1
+			_, depErr = s.client.AppsV1().Deployments(ns).UpdateStatus(dep)
+			c.Assert(depErr, check.IsNil)
+		}
+	}()
+
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true, Increment: 5},
+	}, nil)
+	c.Assert(err, check.IsNil)
+	waitDep()
+	<-done
+}
+
 func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C) {
 	config.Set("docker:healthcheck:max-time", 1)
 	defer config.Unset("docker:healthcheck:max-time")
