@@ -67,6 +67,12 @@ environment variable for configuring the binding address and the Redis
 endpoint, along with other settings, as `described in PlanB docs
 <https://github.com/tsuru/planb#start-up-flags>`_.
 
+Keep in mind that you will need to change the init file for service in
+``/etc/systemd/system/planb.service`` and add in the line where the 
+``ExecStart`` is located the loading of the environment variable.
+The line will have the following content: 
+``ExecStart=/usr/bin/planb $PLANB_OPTS``.
+
 After changing the file, you only need to start PlanB with:
 
 .. highlight:: bash
