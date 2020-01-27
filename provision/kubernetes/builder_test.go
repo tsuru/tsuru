@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
@@ -130,12 +131,13 @@ func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	evt := s.newTestEvent(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
-	c.Assert(img.ID, check.Equals, "1234")
-	c.Assert(procfileRaw, check.Equals, "web: make run")
-	c.Assert(yamlData.Healthcheck.Path, check.Equals, "/health")
-	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
+	c.Assert(procData.Image.ID, check.Equals, "1234")
+	c.Assert(procData.Procfile, check.Equals, "web: make run")
+	c.Assert(procData.TsuruYaml.Healthcheck.Path, check.Equals, "/health")
+	c.Assert(procData.TsuruYaml.Healthcheck.Scheme, check.Equals, "https")
 }
 
 func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
@@ -162,7 +164,8 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 		return false, nil, nil
 	})
 	client := KubeClient{}
-	_, _, _, err = client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	evt := s.newTestEvent(c, a)
+	_, err = client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -212,12 +215,13 @@ cat >/dev/null && /bin/deploy-agent`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "registry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "registry.example.com/tsuru/app-myapp:tag2"})
+	evt := s.newTestEvent(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "registry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "registry.example.com/tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
-	c.Assert(img.ID, check.Equals, "1234")
-	c.Assert(procfileRaw, check.Equals, "web: make run")
-	c.Assert(yamlData.Healthcheck.Path, check.Equals, "/health")
-	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
+	c.Assert(procData.Image.ID, check.Equals, "1234")
+	c.Assert(procData.Procfile, check.Equals, "web: make run")
+	c.Assert(procData.TsuruYaml.Healthcheck.Path, check.Equals, "/health")
+	c.Assert(procData.TsuruYaml.Healthcheck.Scheme, check.Equals, "https")
 }
 
 func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *check.C) {
@@ -265,12 +269,13 @@ cat >/dev/null && /bin/deploy-agent`)
 	})
 
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "otherregistry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "otherregistry.example.com/tsuru/app-myapp:tag2"})
+	evt := s.newTestEvent(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "otherregistry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "otherregistry.example.com/tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
-	c.Assert(img.ID, check.Equals, "1234")
-	c.Assert(procfileRaw, check.Equals, "web: make run")
-	c.Assert(yamlData.Healthcheck.Path, check.Equals, "/health")
-	c.Assert(yamlData.Healthcheck.Scheme, check.Equals, "https")
+	c.Assert(procData.Image.ID, check.Equals, "1234")
+	c.Assert(procData.Procfile, check.Equals, "web: make run")
+	c.Assert(procData.TsuruYaml.Healthcheck.Path, check.Equals, "/health")
+	c.Assert(procData.TsuruYaml.Healthcheck.Scheme, check.Equals, "https")
 }
 
 func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
@@ -285,14 +290,15 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	img, procfileRaw, yamlData, err := client.ImageTagPushAndInspect(a, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	evt := s.newTestEvent(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
 	c.Assert(err, check.IsNil)
-	c.Assert(img.ID, check.Equals, "1234")
-	c.Assert(procfileRaw, check.Equals, "web: make run")
-	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Name, check.Equals, "http")
-	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Protocol, check.Equals, "TCP")
-	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].Port, check.Equals, 8080)
-	c.Assert(yamlData.Kubernetes.Groups["pod1"]["web"].Ports[0].TargetPort, check.Equals, 8888)
+	c.Assert(procData.Image.ID, check.Equals, "1234")
+	c.Assert(procData.Procfile, check.Equals, "web: make run")
+	c.Assert(procData.TsuruYaml.Kubernetes.Groups["pod1"]["web"].Ports[0].Name, check.Equals, "http")
+	c.Assert(procData.TsuruYaml.Kubernetes.Groups["pod1"]["web"].Ports[0].Protocol, check.Equals, "TCP")
+	c.Assert(procData.TsuruYaml.Kubernetes.Groups["pod1"]["web"].Ports[0].Port, check.Equals, 8080)
+	c.Assert(procData.TsuruYaml.Kubernetes.Groups["pod1"]["web"].Ports[0].TargetPort, check.Equals, 8888)
 }
 
 func (s *S) TestBuildImage(c *check.C) {
@@ -364,10 +370,22 @@ func (s *S) TestDownloadFromContainer(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	client := KubeClient{}
-	archiveReader, err := client.DownloadFromContainer(a, "tsuru/app-myapp:tag1")
+	evt := s.newTestEvent(c, a)
+	archiveReader, err := client.DownloadFromContainer(a, evt, "tsuru/app-myapp:tag1")
 	c.Assert(err, check.IsNil)
 	c.Assert(archiveReader, check.NotNil)
 	archive, err := ioutil.ReadAll(archiveReader)
 	c.Assert(err, check.IsNil)
 	c.Assert(archive, check.DeepEquals, expectedFile)
+}
+
+func (s *S) newTestEvent(c *check.C, a provision.App) *event.Event {
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	return evt
 }

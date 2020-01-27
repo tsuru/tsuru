@@ -282,11 +282,17 @@ type NewImageInfo interface {
 	IsBuild() bool
 }
 
+type InspectData struct {
+	Image     docker.Image
+	TsuruYaml provTypes.TsuruYamlData
+	Procfile  string
+}
+
 type BuilderKubeClient interface {
 	BuildPod(App, *event.Event, io.Reader, string) (NewImageInfo, error)
 	BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error
-	ImageTagPushAndInspect(App, string, NewImageInfo) (*docker.Image, string, *provTypes.TsuruYamlData, error)
-	DownloadFromContainer(App, string) (io.ReadCloser, error)
+	ImageTagPushAndInspect(App, *event.Event, string, NewImageInfo) (InspectData, error)
+	DownloadFromContainer(App, *event.Event, string) (io.ReadCloser, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.
