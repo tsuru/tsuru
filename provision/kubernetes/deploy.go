@@ -307,26 +307,11 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	watch, err := filteredPodEvents(params.client, events.ResourceVersion, params.podName, ns)
+	closeFn, err := logPodEvents(params.client, events.ResourceVersion, params.podName, ns, params.attachOutput)
 	if err != nil {
 		return err
 	}
-	watchDone := make(chan struct{})
-	defer func() {
-		watch.Stop()
-		<-watchDone
-	}()
-	watchCh := watch.ResultChan()
-	go func() {
-		defer close(watchDone)
-		for {
-			msg, isOpen := <-watchCh
-			if !isOpen {
-				return
-			}
-			fmt.Fprintf(params.attachOutput, " ---> %s\n", formatEvtMessage(msg, true))
-		}
-	}()
+	defer closeFn()
 	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
 	err = waitForPodContainersRunning(tctx, params.client, params.pod, ns)
 	cancel()
@@ -374,6 +359,29 @@ func tsuruHostToken(a provision.App) (string, string) {
 func extraRegisterCmds(a provision.App) string {
 	host, token := tsuruHostToken(a)
 	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
+}
+
+func logPodEvents(client *ClusterClient, initialResourceVersion, podName, namespace string, output io.Writer) (func(), error) {
+	watch, err := filteredPodEvents(client, initialResourceVersion, podName, namespace)
+	if err != nil {
+		return nil, err
+	}
+	watchDone := make(chan struct{})
+	watchCh := watch.ResultChan()
+	go func() {
+		defer close(watchDone)
+		for {
+			msg, isOpen := <-watchCh
+			if !isOpen {
+				return
+			}
+			fmt.Fprintf(output, " ---> %s\n", formatEvtMessage(msg, true))
+		}
+	}()
+	return func() {
+		watch.Stop()
+		<-watchDone
+	}, nil
 }
 
 type hcResult struct {
@@ -1240,60 +1248,19 @@ func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortCo
 	}
 }
 
-func imageTagAndPush(client *ClusterClient, a provision.App, oldImage string, newImage provision.NewImageInfo) (InspectData, error) {
-	deployPodName := deployPodNameForApp(a, newImage)
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			IsBuild:     true,
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return InspectData{}, err
-	}
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	destImages := []string{newImage.BaseImageName()}
-	repository, tag := image.SplitImageName(newImage.BaseImageName())
-	if tag != "latest" {
-		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
-	}
-	err = runInspectSidecar(inspectParams{
-		client:            client,
-		stdout:            stdout,
-		stderr:            stderr,
-		app:               a,
-		sourceImage:       oldImage,
-		destinationImages: destImages,
-		podName:           deployPodName,
-		labels:            labels,
-	})
-	if err != nil {
-		return InspectData{}, errors.Wrapf(err, "unable to pull and tag image: stdout: %q, stderr: %q", stdout.String(), stderr.String())
-	}
-	var data InspectData
-	bufData := stdout.String()
-	err = json.NewDecoder(stdout).Decode(&data)
-	if err != nil {
-		return InspectData{}, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
-	}
-	return data, err
-}
-
 type inspectParams struct {
 	sourceImage       string
 	podName           string
 	destinationImages []string
 	stdout            io.Writer
 	stderr            io.Writer
+	eventsOutput      io.Writer
 	client            *ClusterClient
 	labels            *provision.LabelSet
 	app               provision.App
 }
 
-func runInspectSidecar(params inspectParams) error {
+func runInspectSidecar(ctx context.Context, params inspectParams) error {
 	inspectContainer := "inspect-cont"
 	kubeConf := getKubeConfig()
 	pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
@@ -1306,32 +1273,52 @@ func runInspectSidecar(params inspectParams) error {
 	if err != nil {
 		return err
 	}
+
 	ns, err := params.client.AppNamespace(params.app)
 	if err != nil {
 		return err
 	}
+
+	events, err := params.client.CoreV1().Events(ns).List(listOptsForPodEvent(params.podName))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	_, err = params.client.CoreV1().Pods(ns).Create(&pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer cleanupPod(params.client, pod.Name, ns)
-	multiErr := tsuruErrors.NewMultiError()
-	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(ctx, params.client, &pod, ns)
+
+	closeFn, err := logPodEvents(params.client, events.ResourceVersion, params.podName, ns, params.eventsOutput)
+	if err != nil {
+		return err
+	}
+	defer closeFn()
+
+	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
+	err = waitForPodContainersRunning(tctx, params.client, &pod, ns)
 	cancel()
 	if err != nil {
-		multiErr.Add(errors.WithStack(err))
+		messages, msgErr := notReadyPodEventsForPod(params.client, params.podName, ns)
+		if msgErr != nil {
+			return err
+		}
+		var msgsStr []string
+		for _, m := range messages {
+			msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s", m.message))
+		}
+		return errors.New(strings.Join(msgsStr, "\n"))
 	}
-	err = doAttach(context.TODO(), params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil, ns)
+
+	err = doAttach(ctx, params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil, ns)
 	if err != nil {
-		multiErr.Add(errors.WithStack(err))
+		return err
 	}
-	if multiErr.Len() > 0 {
-		return multiErr
-	}
-	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
+
+	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(ctx, params.client, &pod, ns, false)
+	return waitForPod(tctx, params.client, &pod, ns, false)
 }
 
 type deployAgentConfig struct {

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -245,17 +246,29 @@ type podErrorMessage struct {
 }
 
 func notReadyPodEvents(client *ClusterClient, a provision.App, process string) ([]podErrorMessage, error) {
+	pods, err := podsForAppProcess(client, a, process)
+	if err != nil {
+		return nil, err
+	}
+	return notReadyPodEventsForPods(client, pods.Items)
+}
+
+func notReadyPodEventsForPod(client *ClusterClient, podName, ns string) ([]podErrorMessage, error) {
+	pod, err := client.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return notReadyPodEventsForPods(client, []apiv1.Pod{*pod})
+}
+
+func notReadyPodEventsForPods(client *ClusterClient, pods []apiv1.Pod) ([]podErrorMessage, error) {
 	const (
 		eventReasonUnhealthy        = "Unhealthy"
 		eventReasonFailedScheduling = "FailedScheduling"
 	)
 
-	pods, err := podsForAppProcess(client, a, process)
-	if err != nil {
-		return nil, err
-	}
 	var messages []podErrorMessage
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
 				msg := fmt.Sprintf("Pod %q not ready", pod.Name)
@@ -380,6 +393,11 @@ func lastEventForPod(client *ClusterClient, pod *apiv1.Pod) (*apiv1.Event, error
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(events.Items, func(i, j int) bool {
+		return events.Items[i].LastTimestamp.Before(&events.Items[j].LastTimestamp)
+	})
+
 	if len(events.Items) > 0 {
 		return &events.Items[len(events.Items)-1], nil
 	}
@@ -715,7 +733,7 @@ type runSinglePodArgs struct {
 	app      provision.App
 }
 
-func runPod(args runSinglePodArgs) error {
+func runPod(ctx context.Context, args runSinglePodArgs) error {
 	err := ensureNamespaceForApp(args.client, args.app)
 	if err != nil {
 		return err
@@ -775,8 +793,8 @@ func runPod(args runSinglePodArgs) error {
 	defer cleanupPod(args.client, pod.Name, ns)
 	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
-	ctx, cancel := context.WithTimeout(context.Background(), kubeConf.PodRunningTimeout)
-	err = waitForPod(ctx, args.client, pod, ns, true)
+	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
+	err = waitForPod(tctx, args.client, pod, ns, true)
 	cancel()
 	if err != nil {
 		multiErr.Add(err)
@@ -784,16 +802,16 @@ func runPod(args runSinglePodArgs) error {
 	if args.stdin == nil {
 		args.stdin = bytes.NewBufferString(".")
 	}
-	err = doAttach(context.TODO(), args.client, args.stdin, args.stdout, args.stderr, pod.Name, args.name, tty, args.termSize, ns)
+	err = doAttach(ctx, args.client, args.stdin, args.stdout, args.stderr, pod.Name, args.name, tty, args.termSize, ns)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 	}
 	if multiErr.Len() > 0 {
 		return multiErr
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), kubeConf.PodReadyTimeout)
+	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
-	return waitForPod(ctx, args.client, pod, ns, false)
+	return waitForPod(tctx, args.client, pod, ns, false)
 }
 
 func (p *kubernetesProvisioner) getNodeByAddr(client *ClusterClient, address string) (*apiv1.Node, error) {

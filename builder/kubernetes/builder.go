@@ -67,14 +67,14 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	if err != nil {
 		return nil, err
 	}
-	imageInspect, procfileRaw, tsuruYaml, err := client.ImageTagPushAndInspect(a, imageID, newImage)
+	inspectData, err := client.ImageTagPushAndInspect(a, evt, imageID, newImage)
 	if err != nil {
 		return nil, err
 	}
-	procfile := image.GetProcessesFromProcfile(procfileRaw)
+	procfile := image.GetProcessesFromProcfile(inspectData.Procfile)
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
-		cmds := append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
+		cmds := append(inspectData.Image.Config.Entrypoint, inspectData.Image.Config.Cmd...)
 		if len(cmds) == 0 {
 			return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 		}
@@ -86,11 +86,11 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	imageData := image.ImageMetadata{
 		Name:       newImage.BaseImageName(),
 		Processes:  procfile,
-		CustomData: tsuruYamlToCustomData(tsuruYaml),
+		CustomData: tsuruYamlToCustomData(&inspectData.TsuruYaml),
 	}
-	imageData.ExposedPorts = make([]string, len(imageInspect.Config.ExposedPorts))
+	imageData.ExposedPorts = make([]string, len(inspectData.Image.Config.ExposedPorts))
 	i := 0
-	for k := range imageInspect.Config.ExposedPorts {
+	for k := range inspectData.Image.Config.ExposedPorts {
 		imageData.ExposedPorts[i] = string(k)
 		i++
 	}
@@ -118,7 +118,7 @@ func downloadFromContainer(client provision.BuilderKubeClient, app provision.App
 		return nil, errors.Errorf("App %s image not found", app.GetName())
 	}
 	fmt.Fprintln(evt, "---- Downloading archive from image ----")
-	archiveFile, err := client.DownloadFromContainer(app, imageName)
+	archiveFile, err := client.DownloadFromContainer(app, evt, imageName)
 	if err != nil {
 		return nil, err
 	}

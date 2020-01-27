@@ -1186,7 +1186,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(opts provision.ExecOptions) error
 		tty:      opts.Stdin != nil,
 	}
 	if len(opts.Units) == 0 {
-		return runIsolatedCmdPod(client, eOpts)
+		return runIsolatedCmdPod(context.TODO(), client, eOpts)
 	}
 	for _, u := range opts.Units {
 		eOpts.unit = u
@@ -1198,7 +1198,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(opts provision.ExecOptions) error
 	return nil
 }
 
-func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
+func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts) error {
 	baseName := execCommandPodNameForApp(opts.app)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: opts.app,
@@ -1222,7 +1222,7 @@ func runIsolatedCmdPod(client *ClusterClient, opts execOpts) error {
 	for _, envData := range appEnvs {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
-	return runPod(runSinglePodArgs{
+	return runPod(ctx, runSinglePodArgs{
 		client:   client,
 		stdout:   opts.stdout,
 		stderr:   opts.stderr,

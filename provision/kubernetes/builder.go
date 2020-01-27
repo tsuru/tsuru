@@ -7,15 +7,14 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
-	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -64,26 +63,74 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	return buildingImage, nil
 }
 
-func (c *KubeClient) ImageTagPushAndInspect(a provision.App, imageID string, newImage provision.NewImageInfo) (*docker.Image, string, *provTypes.TsuruYamlData, error) {
+func (c *KubeClient) ImageTagPushAndInspect(a provision.App, evt *event.Event, oldImage string, newImage provision.NewImageInfo) (provision.InspectData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		return nil, "", nil, err
+		return provision.InspectData{}, err
 	}
-	inspectData, err := imageTagAndPush(client, a, imageID, newImage)
+	deployPodName := deployPodNameForApp(a, newImage)
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
 	if err != nil {
-		return nil, "", nil, err
+		return provision.InspectData{}, err
 	}
-	return &inspectData.Image, inspectData.Procfile, &inspectData.TsuruYaml, nil
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	destImages := []string{newImage.BaseImageName()}
+	repository, tag := image.SplitImageName(newImage.BaseImageName())
+	if tag != "latest" {
+		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
+	}
+	ctx, cancel := evt.CancelableContext(context.Background())
+	defer cancel()
+	err = runInspectSidecar(ctx, inspectParams{
+		client:            client,
+		stdout:            stdout,
+		stderr:            stderr,
+		eventsOutput:      evt,
+		app:               a,
+		sourceImage:       oldImage,
+		destinationImages: destImages,
+		podName:           deployPodName,
+		labels:            labels,
+	})
+	if err != nil {
+		stdoutData := stdout.String()
+		stderrData := stderr.String()
+		msg := "unable to pull and tag image"
+		if stdoutData != "" {
+			msg = fmt.Sprintf("%s: stdout: %q", msg, stdoutData)
+		}
+		if stderrData != "" {
+			msg = fmt.Sprintf("%s: stderr: %q", msg, stderrData)
+		}
+		return provision.InspectData{}, errors.Errorf("%s:\n%v", msg, err)
+	}
+	var data provision.InspectData
+	bufData := stdout.String()
+	err = json.NewDecoder(stdout).Decode(&data)
+	if err != nil {
+		return provision.InspectData{}, errors.Wrapf(err, "invalid image inspect response: %q", bufData)
+	}
+	return data, err
 }
 
-func (c *KubeClient) DownloadFromContainer(app provision.App, imageName string) (io.ReadCloser, error) {
+func (c *KubeClient) DownloadFromContainer(app provision.App, evt *event.Event, imageName string) (io.ReadCloser, error) {
 	client, err := clusterForPool(app.GetPool())
 	if err != nil {
 		return nil, err
 	}
 	reader, writer := io.Pipe()
 	stderr := &bytes.Buffer{}
+	ctx, cancel := evt.CancelableContext(context.Background())
 	go func() {
+		defer cancel()
 		opts := execOpts{
 			client: client,
 			app:    app,
@@ -92,7 +139,7 @@ func (c *KubeClient) DownloadFromContainer(app provision.App, imageName string) 
 			stdout: writer,
 			stderr: stderr,
 		}
-		err := runIsolatedCmdPod(client, opts)
+		err := runIsolatedCmdPod(ctx, client, opts)
 		if err != nil {
 			writer.CloseWithError(errors.Wrapf(err, "error reading archive, stderr: %q", stderr.String()))
 		} else {
