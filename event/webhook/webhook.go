@@ -239,7 +239,7 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	// trigger new webhook event
 	whEvent, err := event.NewInternal(&event.Opts{
 		InternalKind: "webhook.run",
-		Target:       event.Target{Type: event.TargetType(fmt.Sprintf("webhook:\nMethod: %s\nTarget%s", hook.Method, hook.URL))},
+		Target:       event.Target{Type: event.TargetType(fmt.Sprintf("Event Id: %s", evt.ID.ObjId.Hex()))},
 		Allowed: event.AllowedPermission{
 			Scheme: permission.PermAppReadEvents.FullName(),
 		},
@@ -260,9 +260,12 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	}
 
 	if data != nil {
-		whEvent.Write(data)
+		_, err = whEvent.Write(data)
+		if err != nil {
+			return err
+		}
 	}
-	whEvent.Done(nil)
+
 	return nil
 }
 

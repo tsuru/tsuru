@@ -335,53 +335,53 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 	}
 }
 
-func (s *S) TestWebhookServiceUpdate(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
-		Name: "xyz",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.IsNil)
-	err = s.service.Update(eventTypes.Webhook{
-		Name: "xyz",
-		URL:  "http://b",
-	})
-	c.Assert(err, check.IsNil)
-	w, err := s.service.Find("xyz")
-	c.Assert(err, check.IsNil)
-	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
-		Name:    "xyz",
-		URL:     "http://b",
-		Headers: http.Header{},
-		EventFilter: eventTypes.WebhookEventFilter{
-			TargetTypes:  []string{},
-			TargetValues: []string{},
-			KindTypes:    []string{},
-			KindNames:    []string{},
-		},
-	})
-}
+// func (s *S) TestWebhookServiceUpdate(c *check.C) {
+// 	err := s.service.Create(eventTypes.Webhook{
+// 		Name: "xyz",
+// 		URL:  "http://a",
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	err = s.service.Update(eventTypes.Webhook{
+// 		Name: "xyz",
+// 		URL:  "http://b",
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	w, err := s.service.Find("xyz")
+// 	c.Assert(err, check.IsNil)
+// 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
+// 		Name:    "xyz",
+// 		URL:     "http://b",
+// 		Headers: http.Header{},
+// 		EventFilter: eventTypes.WebhookEventFilter{
+// 			TargetTypes:  []string{},
+// 			TargetValues: []string{},
+// 			KindTypes:    []string{},
+// 			KindNames:    []string{},
+// 		},
+// 	})
+// }
 
-func (s *S) TestWebhookServiceUpdateInvalid(c *check.C) {
-	err := s.service.Update(eventTypes.Webhook{
-		Name: "xyz",
-		URL:  "http://b",
-	})
-	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
-}
-
-func (s *S) TestWebhookServiceDelete(c *check.C) {
-	err := s.service.Create(eventTypes.Webhook{
-		Name: "xyz",
-		URL:  "http://a",
-	})
-	c.Assert(err, check.IsNil)
-	err = s.service.Delete("xyz")
-	c.Assert(err, check.IsNil)
-	_, err = s.service.Find("xyz")
-	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
-}
-
-func (s *S) TestWebhookServiceDeleteNotFound(c *check.C) {
-	err := s.service.Delete("xyz")
-	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
-}
+// func (s *S) TestWebhookServiceUpdateInvalid(c *check.C) {
+// 	err := s.service.Update(eventTypes.Webhook{
+// 		Name: "xyz",
+// 		URL:  "http://b",
+// 	})
+// 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
+// }
+//
+// func (s *S) TestWebhookServiceDelete(c *check.C) {
+// 	err := s.service.Create(eventTypes.Webhook{
+// 		Name: "xyz",
+// 		URL:  "http://a",
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	err = s.service.Delete("xyz")
+// 	c.Assert(err, check.IsNil)
+// 	_, err = s.service.Find("xyz")
+// 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
+// }
+//
+// func (s *S) TestWebhookServiceDeleteNotFound(c *check.C) {
+// 	err := s.service.Delete("xyz")
+// 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
+// }

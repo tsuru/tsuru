@@ -168,7 +168,7 @@ func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
 		Name:      "wh1",
 		URL:       "http://me",
 		EventFilter: eventTypes.WebhookEventFilter{
-			TargetTypes: []string{"webhook.run"},
+			KindNames: []string{"webhook.run"},
 		},
 	}
 	bodyData, err := form.EncodeToString(webhook1)
@@ -180,21 +180,6 @@ func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden, check.Commentf("body: %s", recorder.Body.String()))
-	wh, err := servicemanager.Webhook.Find("wh1")
-	c.Assert(err, check.IsNil)
-	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
-		TeamOwner: s.team.Name,
-		Name:      "wh1",
-		URL:       "http://me",
-		Headers:   http.Header{},
-		EventFilter: eventTypes.WebhookEventFilter{
-			TargetTypes:  []string{},
-			TargetValues: []string{},
-			KindTypes:    []string{},
-			KindNames:    []string{"app.deploy"},
-			Method:       "POST",
-		},
-	})
 }
 
 func (s *S) TestWebhookCreateWithPostMethod(c *check.C) {
@@ -229,6 +214,7 @@ func (s *S) TestWebhookCreateWithPostMethod(c *check.C) {
 			KindTypes:    []string{},
 			KindNames:    []string{"app.deploy"},
 		},
+		Method: "POST",
 	})
 }
 
@@ -342,6 +328,30 @@ func (s *S) TestWebhookUpdate(c *check.C) {
 			KindNames:    []string{"app.deploy"},
 		},
 	})
+}
+
+func (s *S) TestWebhookUpdateLoopWithAnotherWebhook(c *check.C) {
+	webhook1 := eventTypes.Webhook{
+		TeamOwner: s.team.Name,
+		Name:      "wh1",
+		URL:       "http://me",
+		EventFilter: eventTypes.WebhookEventFilter{
+			KindNames: []string{"app.deploy", "webhook.run"},
+		},
+	}
+	err := servicemanager.Webhook.Create(webhook1)
+	c.Assert(err, check.IsNil)
+	webhook1.Name = "---ignored---"
+	webhook1.URL += "/xyz"
+	bodyData, err := form.EncodeToString(webhook1)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", "/1.6/events/webhooks/wh1", strings.NewReader(bodyData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestWebhookUpdateNotFound(c *check.C) {

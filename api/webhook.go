@@ -90,8 +90,8 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-	for _, targetType := range webhook.EventFilter.TargetTypes {
-		if targetType == "webhook.run" {
+	for _, kindName := range webhook.EventFilter.KindNames {
+		if kindName == "webhook.run" {
 			return permission.ErrUnauthorized
 		}
 	}
@@ -139,6 +139,13 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermWebhookUpdate, ctx) {
 		return permission.ErrUnauthorized
 	}
+
+	for _, kindName := range webhook.EventFilter.KindNames {
+		if kindName == "webhook.run" {
+			return permission.ErrUnauthorized
+		}
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
