@@ -65,7 +65,7 @@ services:
         networks:
             - tsuru_net
     node1:
-      image: docker:dind
+        image: docker:dind
         privileged: true
         command: --insecure-registry 10.200.10.1:5000
         ports:
