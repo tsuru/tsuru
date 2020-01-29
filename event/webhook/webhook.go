@@ -258,7 +258,7 @@ func triggerNewWebhookEvent(rsp *http.Response, evt *event.Event) error {
 		err = errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
 		return err
 	}
-	if data != nil {
+	if len(data) > 0 {
 		_, err = whEvent.Write(data)
 		if err != nil {
 			return err

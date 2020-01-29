@@ -89,4 +89,3 @@ networks:
       driver: default
       config:
       - subnet: 172.42.0.0/24
-

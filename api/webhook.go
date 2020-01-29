@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -92,7 +93,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	for _, kindName := range webhook.EventFilter.KindNames {
 		if kindName == "webhook.run" {
-			return permission.ErrUnauthorized
+			return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "can't create a webhook that triggers another webhook"}
 		}
 	}
 
