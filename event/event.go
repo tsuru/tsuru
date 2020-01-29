@@ -1380,10 +1380,13 @@ func Migrate(query bson.M, cb func(*Event) error) error {
 
 func addLinePrefix(data string, prefix string) string {
 	suffix := ""
-	if data[len(data)-1] == '\n' {
-		data = data[:len(data)-1]
-		suffix = "\n"
+	if len(data) > 0 {
+		if data[len(data)-1] == '\n' {
+			data = data[:len(data)-1]
+			suffix = "\n"
+		}
 	}
+
 	replacement := "\n" + prefix
 	return prefix + strings.ReplaceAll(data, "\n", replacement) + suffix
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
 	eventTypes "github.com/tsuru/tsuru/types/event"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -236,36 +237,33 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 		return err
 	}
 	defer rsp.Body.Close()
+
 	// trigger new webhook event
+	return triggerNewWebhookEvent(rsp, evt)
+}
+
+func triggerNewWebhookEvent(rsp *http.Response, evt *event.Event) error {
 	whEvent, err := event.NewInternal(&event.Opts{
 		InternalKind: "webhook.run",
-		Target:       event.Target{Type: event.TargetType(fmt.Sprintf("Event Id: %s", evt.ID.ObjId.Hex()))},
-		Allowed: event.AllowedPermission{
-			Scheme: permission.PermAppReadEvents.FullName(),
+		Target: event.Target{
+			Type:  event.TargetType("Event Id"),
+			Value: evt.ID.ObjId.Hex(),
 		},
+		Allowed:    event.Allowed(permission.PermWebhook, permission.Context(permTypes.CtxService, "webhook")),
 		Cancelable: false,
 	})
-	if err != nil {
-		return err
-	}
-
+	defer whEvent.Done(err)
 	data, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 400 {
-		rspErr := errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
-		err := whEvent.Done(rspErr)
-		if err != nil {
-			return err
-		}
-		return rspErr
+		err = errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
+		return err
 	}
-
 	if data != nil {
 		_, err = whEvent.Write(data)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
