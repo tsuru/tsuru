@@ -179,7 +179,7 @@ func (s *S) TestWebhookCreateWebhookThatTriggersAnotherWebhook(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest, check.Commentf("body: %s", recorder.Body.String()))
+	c.Assert(recorder.Code, check.Equals, http.StatusUnprocessableEntity, check.Commentf("body: %s", recorder.Body.String()))
 }
 
 func (s *S) TestWebhookCreateWithPostMethod(c *check.C) {
@@ -351,7 +351,7 @@ func (s *S) TestWebhookUpdateLoopWithAnotherWebhook(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnprocessableEntity)
 }
 
 func (s *S) TestWebhookUpdateNotFound(c *check.C) {

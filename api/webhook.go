@@ -17,7 +17,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-var errBadWebhookRequest = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "can't create a webhook that triggers another webhook"}
+var errBadWebhookRequest = &tsuruErrors.HTTP{Code: http.StatusUnprocessableEntity, Message: "can't create a webhook that triggers another webhook"}
 
 // title: webhook list
 // path: /events/webhooks
