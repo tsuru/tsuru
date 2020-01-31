@@ -12,7 +12,6 @@ import (
 var (
 	ErrWebhookAlreadyExists = errors.New("webhook already exists with the same name")
 	ErrWebhookNotFound      = errors.New("webhook not found")
-	ErrWebhookLoop          = errors.New("webhook can't trigger another webhook")
 )
 
 type WebhookEventFilter struct {

@@ -17,6 +17,8 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
+var errBadWebhookRequest = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "can't create a webhook that triggers another webhook"}
+
 // title: webhook list
 // path: /events/webhooks
 // method: GET
@@ -93,7 +95,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	for _, kindName := range webhook.EventFilter.KindNames {
 		if kindName == "webhook.run" {
-			return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "can't create a webhook that triggers another webhook"}
+			return errBadWebhookRequest
 		}
 	}
 
@@ -143,7 +145,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 	for _, kindName := range webhook.EventFilter.KindNames {
 		if kindName == "webhook.run" {
-			return permission.ErrUnauthorized
+			return errBadWebhookRequest
 		}
 	}
 
