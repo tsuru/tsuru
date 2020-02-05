@@ -12,10 +12,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -92,16 +93,20 @@ func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
 func (s *S) TestDeployPodNameForApp(c *check.C) {
 	var tests = []struct {
 		name, expected string
-		version        int
 	}{
-		{"myapp", "myapp-v1-deploy", 1},
-		{"MYAPP", "myapp-v1-deploy", 1},
-		{"my-app_app", "my-app-app-v1-deploy", 1},
-		{"myapp", "myapp-v9-deploy", 9},
+		{"myapp", "myapp-v1-deploy"},
+		{"MYAPP", "myapp-v1-deploy"},
+		{"my-app_app", "my-app-app-v1-deploy"},
+		{"myapp", "myapp-v2-deploy"},
 	}
 	for i, tt := range tests {
+		fakeApp := provisiontest.NewFakeApp(tt.name, "python", 0)
+		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App: fakeApp,
+		})
+		c.Assert(err, check.IsNil)
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		name := deployPodNameForApp(a, builder.MockImageInfo{FakeVersion: tt.version})
+		name := deployPodNameForApp(a, version)
 		c.Check(name, check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }

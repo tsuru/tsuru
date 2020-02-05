@@ -6,6 +6,7 @@ package action
 
 import (
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -144,6 +145,8 @@ func (p *Pipeline) Execute(params ...interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("[pipeline] PANIC running the Forward for the %s action - %v", a.Name, r)
+			debug.PrintStack()
+			log.Errorf("[pipeline] PANIC STACK END")
 			err = fmt.Errorf("panic running the Forward for the %s action: %v", a.Name, r)
 			if a.OnError != nil {
 				a.OnError(fwCtx, err)

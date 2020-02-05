@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
@@ -34,11 +33,11 @@ import (
 func (s *S) TestMoveContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
+	c.Assert(err, check.IsNil)
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{
@@ -50,13 +49,11 @@ func (s *S) TestMoveContainers(c *check.C) {
 		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -87,22 +84,20 @@ func (s *S) TestMoveContainers(c *check.C) {
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
+	c.Assert(err, check.IsNil)
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"}})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -129,11 +124,11 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 func (s *S) TestMoveContainer(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
+	c.Assert(err, check.IsNil)
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{
@@ -145,13 +140,11 @@ func (s *S) TestMoveContainer(c *check.C) {
 		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -187,17 +180,15 @@ func (s *S) TestMoveContainer(c *check.C) {
 func (s *S) TestMoveContainerStopped(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -219,17 +210,15 @@ func (s *S) TestMoveContainerStopped(c *check.C) {
 func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -253,17 +242,15 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -287,18 +274,16 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 func (s *S) TestRebalanceContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -336,18 +321,16 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -390,18 +373,16 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -486,33 +467,29 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-otherapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	appInstance2 := provisiontest.NewFakeApp("otherapp", "python", 0)
 	defer p.Destroy(appInstance2)
 	p.Provision(appInstance2)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version1, err := newSuccessfulVersionForApp(p, appInstance, nil)
+	c.Assert(err, check.IsNil)
+	version2, err := newSuccessfulVersionForApp(p, appInstance2, nil)
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
-		imageID:     imageID,
+		version:     version1,
 		provisioner: p,
 	})
-	c.Assert(err, check.IsNil)
-	imageID2, err := image.AppCurrentImageName(appInstance2.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance2,
-		imageID:     imageID2,
+		version:     version2,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -541,17 +518,15 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 func (s *S) TestRebalanceContainersDry(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	imageID, err := image.AppCurrentImageName(appInstance.GetName())
+	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         appInstance,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 		toHost:      "localhost",
 	}

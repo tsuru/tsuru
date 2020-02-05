@@ -10,11 +10,11 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -47,13 +47,12 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	maxContainers := 40
 	for i := 0; i < maxContainers; i++ {
 		appName := fmt.Sprintf("myapp-%d", i)
-		err = newFakeImage(p, "tsuru/app-"+appName, nil)
-		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
 		defer p.Destroy(appInstance)
 		p.Provision(appInstance)
-		imageID, aErr := image.AppCurrentImageName(appInstance.GetName())
-		c.Assert(aErr, check.IsNil)
+		var version appTypes.AppVersion
+		version, err = newSuccessfulVersionForApp(p, appInstance, nil)
+		c.Assert(err, check.IsNil)
 		var chosenNode string
 		for j := range variation {
 			if i < (maxContainers*variation[j])/100 {
@@ -64,7 +63,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		args := changeUnitsPipelineArgs{
 			app:         appInstance,
 			toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
-			imageID:     imageID,
+			version:     version,
 			provisioner: p,
 			toHost:      chosenNode,
 		}

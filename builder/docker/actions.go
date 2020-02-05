@@ -12,29 +12,29 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var ErrDeployCanceled = errors.New("deploy canceled by user action")
 
 type runContainerActionsArgs struct {
-	app           provision.App
-	processName   string
-	imageID       string
-	commands      []string
-	writer        io.Writer
-	isDeploy      bool
-	buildingImage provision.NewImageInfo
-	provisioner   provision.BuilderDeployDockerClient
-	client        provision.BuilderDockerClient
-	exposedPort   string
-	event         *event.Event
-	tarFile       io.Reader
+	app         provision.App
+	processName string
+	imageID     string
+	commands    []string
+	writer      io.Writer
+	isDeploy    bool
+	version     appTypes.AppVersion
+	provisioner provision.BuilderDeployDockerClient
+	client      provision.BuilderDockerClient
+	exposedPort string
+	event       *event.Event
+	tarFile     io.Reader
 }
 
 func checkCanceled(evt *event.Event) error {
@@ -67,7 +67,7 @@ var createContainer = action.Action{
 				Type:          args.app.GetPlatform(),
 				Name:          contName,
 				Image:         args.imageID,
-				BuildingImage: args.buildingImage.BuildImageName(),
+				BuildingImage: args.version.BuildImageName(),
 				ExposedPort:   args.exposedPort,
 			},
 		}
@@ -231,7 +231,7 @@ var updateAppBuilderImage = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		err := image.AppendAppBuilderImageName(args.app.GetName(), args.buildingImage.BuildImageName())
+		err := args.version.CommitBuildImage()
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to save image name")
 		}

@@ -19,10 +19,10 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
@@ -591,16 +592,12 @@ func (s *S) TestUnits(c *check.C) {
 		{NodePort: int32(30002)},
 		{NodePort: int32(30003)},
 	}))
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()
@@ -775,17 +772,13 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
+	err := s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -812,17 +805,13 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 func (s *S) TestUnitsSkipEvicted(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
+	err := s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -901,16 +890,12 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -923,43 +908,36 @@ func (s *S) TestRegisterUnit(c *check.C) {
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
+	version := newVersion(c, a, nil)
 	err := createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"destimg"},
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
 		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
-	meta, err := image.GetImageMetaData("destimg")
+	version, err = servicemanager.AppVersion.VersionByPendingImage(a, version.BaseImageName())
 	c.Assert(err, check.IsNil)
-	c.Assert(meta, check.DeepEquals, image.ImageMetadata{
-		Name:            "destimg",
-		CustomData:      map[string]interface{}{},
-		LegacyProcesses: map[string]string{},
-		Processes: map[string][]string{
-			// Processes from RegisterUnit call in suite_test.go as deploy pod
-			// reaction.
-			"web":    {"python myapp.py"},
-			"worker": {"python myworker.py"},
-		},
-		ExposedPorts: []string{},
+	procs, err := version.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(procs, check.DeepEquals, map[string][]string{
+		// Processes from RegisterUnit call in suite_test.go as deploy pod
+		// reaction.
+		"web":    {"python myapp.py"},
+		"worker": {"python myworker.py"},
 	})
 }
 
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 3, "web", nil)
+	err := s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -972,15 +950,11 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
@@ -993,16 +967,12 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 func (s *S) TestRemoveUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 3, "web", nil)
+	err := s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -1019,16 +989,12 @@ func (s *S) TestRemoveUnits(c *check.C) {
 func (s *S) TestRestart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -1049,15 +1015,11 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	err = s.p.Restart(a, "", nil)
 	c.Assert(err, check.IsNil)
@@ -1066,16 +1028,12 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 func (s *S) TestStopStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	err = s.p.Stop(a, "")
@@ -1107,11 +1065,8 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -1147,11 +1102,8 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1189,11 +1141,8 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1221,11 +1170,8 @@ func (s *S) TestDeploy(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1273,11 +1219,8 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
@@ -1310,11 +1253,8 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1374,11 +1314,8 @@ func (s *S) TestInternalAddresses(c *check.C) {
 			"jobs": "run mycmd jobs",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1427,11 +1364,8 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 			},
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1488,11 +1422,8 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 			},
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1515,7 +1446,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+	expected := tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
@@ -1544,7 +1475,8 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 				},
 			},
 		},
-	})
+	}
+	c.Assert(appList.Items[0].Spec, check.DeepEquals, expected, check.Commentf("diff:\n%s", strings.Join(pretty.Diff(appList.Items[0].Spec, expected), "\n")))
 }
 
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
@@ -1578,10 +1510,9 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewBuildImageName(a.GetName(), "", "")
-	c.Assert(err, check.IsNil)
+	version := newVersion(c, a, nil)
 	go func(evt *event.Event) {
-		img, errDeploy := s.p.Deploy(a, newImg, evt)
+		img, errDeploy := s.p.Deploy(a, version, evt)
 		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
@@ -1618,11 +1549,8 @@ func (s *S) TestRollback(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, deployEvt)
+	version1 := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version1, deployEvt)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	customData = map[string]interface{}{
@@ -1630,11 +1558,8 @@ func (s *S) TestRollback(c *check.C) {
 			"web": "run mycmd arg2",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v2", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err = image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err = s.p.Deploy(a, newImg, deployEvt)
+	version2 := newCommittedVersion(c, a, customData)
+	img, err = s.p.Deploy(a, version2, deployEvt)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
 	deployEvt.Done(err)
@@ -1646,9 +1571,9 @@ func (s *S) TestRollback(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeployRollback),
 	})
 	c.Assert(err, check.IsNil)
-	img, err = s.p.Rollback(a, "tsuru/app-myapp:v1", rollbackEvt)
+	img, err = s.p.Rollback(a, version1, rollbackEvt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(img, check.Equals, version1.BaseImageName())
 	wait()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
@@ -1708,9 +1633,8 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewBuildImageName(a.GetName(), "", "")
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newVersion(c, a, nil)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
@@ -1806,16 +1730,12 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1847,16 +1767,12 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1881,16 +1797,12 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1919,16 +1831,12 @@ func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := bytes.NewBuffer(nil)
@@ -1945,16 +1853,12 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 func (s *S) TestExecuteCommand(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
@@ -1979,16 +1883,12 @@ func (s *S) TestExecuteCommand(c *check.C) {
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
@@ -2011,17 +1911,13 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err := s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
@@ -2061,17 +1957,13 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 		pod.Status.Phase = apiv1.PodFailed
 		return false, nil, nil
 	})
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err := s.p.ExecuteCommand(provision.ExecOptions{
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
@@ -2099,16 +1991,12 @@ func (s *S) TestStartupMessage(c *check.C) {
 func (s *S) TestSleepStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	imgName := "myapp:v1"
-	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	err = s.p.Sleep(a, "")
@@ -2201,11 +2089,8 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2304,11 +2189,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2369,11 +2251,8 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	newImg, err := image.AppNewImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	img, err := s.p.Deploy(a, newImg, evt)
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(a, version, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2459,10 +2338,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), "tsuru/app-myapp:v1")
-	c.Assert(err, check.IsNil)
+	newSuccessfulVersion(c, a, customData)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2533,10 +2409,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 			"web": "run mycmd arg1",
 		},
 	}
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", customData)
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), "tsuru/app-myapp:v1")
-	c.Assert(err, check.IsNil)
+	newSuccessfulVersion(c, a, customData)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
@@ -2575,7 +2448,7 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python proc1.py",
 		},
@@ -2584,7 +2457,7 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "web", "myimg:v2", false)
+	envs := EnvsForApp(fa, "web", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "web"},
@@ -2599,7 +2472,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"proc1": "python proc1.py",
 			"proc2": "python proc2.py",
@@ -2650,7 +2523,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bind.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "proc1", "myimg:v2", false)
+	envs := EnvsForApp(fa, "proc1", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
@@ -2658,7 +2531,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc1", Value: "8080,9000"},
 	})
 
-	envs = EnvsForApp(fa, "proc2", "myimg:v2", false)
+	envs = EnvsForApp(fa, "proc2", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
@@ -2666,7 +2539,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc2", Value: "8000"},
 	})
 
-	envs = EnvsForApp(fa, "proc3", "myimg:v2", false)
+	envs = EnvsForApp(fa, "proc3", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
@@ -2674,7 +2547,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc3", Value: "8080"},
 	})
 
-	envs = EnvsForApp(fa, "proc4", "myimg:v2", false)
+	envs = EnvsForApp(fa, "proc4", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
@@ -2684,14 +2557,14 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc4", Value: "8888"},
 	})
 
-	envs = EnvsForApp(fa, "proc5", "myimg:v2", false)
+	envs = EnvsForApp(fa, "proc5", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
 		{Name: "TSURU_HOST", Value: ""},
 	})
 
-	envs = EnvsForApp(fa, "proc6", "myimg:v2", false)
+	envs = EnvsForApp(fa, "proc6", version, false)
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},

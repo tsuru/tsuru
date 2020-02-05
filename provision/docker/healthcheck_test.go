@@ -15,7 +15,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	check "gopkg.in/check.v1"
@@ -37,7 +36,7 @@ func (s *S) TestHealthcheck(c *check.C) {
 			"status": http.StatusCreated,
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -45,7 +44,9 @@ func (s *S) TestHealthcheck(c *check.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 1)
 	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
@@ -61,7 +62,6 @@ func (s *S) TestHealthcheckCustomHeaders(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
@@ -74,15 +74,17 @@ func (s *S) TestHealthcheckCustomHeaders(c *check.C) {
 			},
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 1)
 	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
@@ -102,22 +104,23 @@ func (s *S) TestHealthcheckShortTimeout(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":            "/x/y",
 			"timeout_seconds": 1,
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.ErrorMatches, ".*context deadline exceeded")
 }
 
@@ -129,7 +132,6 @@ func (s *S) TestHealthcheckHTTPS(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
@@ -138,15 +140,17 @@ func (s *S) TestHealthcheckHTTPS(c *check.C) {
 			"scheme": "https",
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 1)
 	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
@@ -174,20 +178,21 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 			"match":  ".*some.*",
 		},
 	}
-	imageName := "tsuru/app"
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
 	c.Assert(requests, check.HasLen, 1)
 	c.Assert(requests[0].Method, check.Equals, "GET")
-	err = runHealthcheck(&cont, &buf)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 2)
 	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
@@ -202,21 +207,22 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 1)
 	c.Assert(requests[0].Method, check.Equals, "GET")
@@ -231,13 +237,17 @@ func (s *S) TestHealthcheckNoHealthcheck(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	err := s.conn.Apps().Insert(a)
+	version, err := newVersionForApp(s.p, &a, nil)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 0)
 }
@@ -250,22 +260,23 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 	}))
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"method": "GET",
 			"status": 200,
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 0)
 }
@@ -294,16 +305,17 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 			"path": "/x/y",
 		},
 	}
-	imageName := "tsuru/app"
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
 	c.Assert(requests, check.HasLen, 2)
@@ -315,25 +327,26 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 
 func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	a := app.App{Name: "myapp1"}
-	imageName := "tsuru/app"
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
 	}
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
+	c.Assert(err, check.IsNil)
+	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
 	config.Set("docker:healthcheck:max-time", -1)
 	defer config.Unset("docker:healthcheck:max-time")
 	done := make(chan struct{})
 	go func() {
-		err = runHealthcheck(&cont, &buf)
+		err = runHealthcheck(&cont, yamlData, &buf)
 		close(done)
 	}()
 	select {
@@ -371,16 +384,17 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 			"allowed_failures": 1,
 		},
 	}
-	imageName := "tsuru/app"
-	err := image.SaveImageCustomData(imageName, customData)
+	version, err := newVersionForApp(s.p, &a, customData)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}}
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf)
+	yamlData, err := version.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	err = runHealthcheck(&cont, yamlData, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
 	c.Assert(requests, check.HasLen, 3)

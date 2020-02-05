@@ -10,10 +10,11 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
@@ -235,7 +236,9 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	imageName, err := image.AppCurrentImageName("my-test-app")
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: &a,
+	})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
@@ -244,7 +247,11 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 			"use_in_router": true,
 		},
 	}
-	err = image.SaveImageCustomData(imageName, customData)
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		CustomData: customData,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.RemoveHealthcheck("my-test-app")
 	c.Assert(err, check.IsNil)

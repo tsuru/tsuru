@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -32,7 +31,9 @@ import (
 	"github.com/tsuru/tsuru/provision/kubernetes/provider"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
 	apiv1 "k8s.io/api/core/v1"
@@ -587,14 +588,14 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	imageName, err := image.AppCurrentImageName(a.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
 	if err != nil {
-		if err != image.ErrNoImagesAvailable {
+		if err != appTypes.ErrNoVersionsAvailable {
 			return nil, err
 		}
 		return nil, nil
 	}
-	webProcessName, err := image.GetImageWebProcessName(imageName)
+	webProcessName, err := version.WebProcess()
 	if err != nil {
 		return nil, err
 	}
@@ -727,7 +728,14 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if buildingImage == "" {
 		return nil
 	}
-	return errors.WithStack(image.SaveImageCustomData(buildingImage, customData))
+	version, err := servicemanager.AppVersion.VersionByPendingImage(a, buildingImage)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		CustomData: customData,
+	})
+	return errors.WithStack(err)
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
@@ -1075,7 +1083,7 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	return errors.WithStack(err)
 }
 
-func (p *kubernetesProvisioner) Deploy(a provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
+func (p *kubernetesProvisioner) Deploy(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
@@ -1083,8 +1091,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, img provision.NewImageIn
 	if err = ensureAppCustomResourceSynced(client, a); err != nil {
 		return "", err
 	}
-	if img.IsBuild() {
-		deployPodName := deployPodNameForApp(a, img)
+	if version.VersionInfo().DeployImage == "" {
+		deployPodName := deployPodNameForApp(a, version)
 		ns, nsErr := client.AppNamespace(a)
 		if nsErr != nil {
 			return "", nsErr
@@ -1094,8 +1102,8 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, img provision.NewImageIn
 			app:               a,
 			client:            client,
 			podName:           deployPodName,
-			sourceImage:       img.BuildImageName(),
-			destinationImages: []string{img.BaseImageName()},
+			sourceImage:       version.VersionInfo().BuildImage,
+			destinationImages: []string{version.BaseImageName()},
 			attachOutput:      evt,
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
@@ -1106,43 +1114,36 @@ func (p *kubernetesProvisioner) Deploy(a provision.App, img provision.NewImageIn
 		if err != nil {
 			return "", err
 		}
+		err = version.CommitBaseImage()
+		if err != nil {
+			return "", err
+		}
 	}
 	manager := &serviceManager{
 		client: client,
 		writer: evt,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, img.BaseImageName(), nil, evt)
+	err = servicecommon.RunServicePipeline(manager, a, version, nil, evt)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return img.BaseImageName(), ensureAppCustomResourceSynced(client, a)
+	return version.VersionInfo().DeployImage, ensureAppCustomResourceSynced(client, a)
 }
 
-func (p *kubernetesProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
+func (p *kubernetesProvisioner) Rollback(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
 	}
-	foundImageID, err := image.GetAppImageBySuffix(a.GetName(), imageID)
-	if err != nil {
-		return "", err
-	}
-	imgMetaData, err := image.GetImageMetaData(foundImageID)
-	if err != nil {
-		return "", err
-	}
-	if imgMetaData.DisableRollback {
-		return "", fmt.Errorf("Can't Rollback image %s, reason: %s", foundImageID, imgMetaData.Reason)
-	}
 	manager := &serviceManager{
 		client: client,
 		writer: evt,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, foundImageID, nil, evt)
+	err = servicecommon.RunServicePipeline(manager, a, version, nil, evt)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return imageID, nil
+	return version.VersionInfo().DeployImage, nil
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
@@ -1212,10 +1213,11 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		return errors.WithStack(err)
 	}
 	if opts.image == "" {
-		opts.image, err = image.AppCurrentImageName(opts.app.GetName())
+		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(opts.app)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
+		opts.image = version.VersionInfo().DeployImage
 	}
 	appEnvs := provision.EnvsForApp(opts.app, "", false)
 	var envs []apiv1.EnvVar
@@ -1223,17 +1225,18 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	return runPod(ctx, runSinglePodArgs{
-		client:   client,
-		stdout:   opts.stdout,
-		stderr:   opts.stderr,
-		stdin:    opts.stdin,
-		termSize: opts.termSize,
-		image:    opts.image,
-		labels:   labels,
-		cmds:     opts.cmds,
-		envs:     envs,
-		name:     baseName,
-		app:      opts.app,
+		client:       client,
+		eventsOutput: opts.eventsOutput,
+		stdout:       opts.stdout,
+		stderr:       opts.stderr,
+		stdin:        opts.stdin,
+		termSize:     opts.termSize,
+		image:        opts.image,
+		labels:       labels,
+		cmds:         opts.cmds,
+		envs:         envs,
+		name:         baseName,
+		app:          opts.app,
 	})
 }
 
@@ -1356,24 +1359,7 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	curImg, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return err
-	}
-	yamlData, err := image.GetImageTsuruYamlData(curImg)
-	if err != nil {
-		return err
-	}
-	currentImageData, err := image.GetImageMetaData(curImg)
-	if err != nil {
-		return err
-	}
-	deployments := make(map[string][]string)
-	services := make(map[string][]string)
-	for p := range currentImageData.Processes {
-		deployments[p] = append(deployments[p], deploymentNameForApp(a, p))
-		services[p] = append(services[p], deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
-	}
+
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -1382,10 +1368,33 @@ func ensureAppCustomResourceSynced(client *ClusterClient, a provision.App) error
 	if err != nil {
 		return err
 	}
-	appCRD.Spec.Services = services
-	appCRD.Spec.Deployments = deployments
 	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
-	appCRD.Spec.Configs = normalizeConfigs(currentImageData, yamlData)
+
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	if err != nil && err != appTypes.ErrNoVersionsAvailable {
+		return err
+	}
+
+	if version != nil {
+		deployments := make(map[string][]string)
+		services := make(map[string][]string)
+		var processes map[string][]string
+		processes, err = version.Processes()
+		if err != nil {
+			return err
+		}
+		for p := range processes {
+			deployments[p] = append(deployments[p], deploymentNameForApp(a, p))
+			services[p] = append(services[p], deploymentNameForApp(a, p), headlessServiceNameForApp(a, p))
+		}
+		appCRD.Spec.Services = services
+		appCRD.Spec.Deployments = deployments
+		appCRD.Spec.Configs, err = normalizeConfigs(version)
+		if err != nil {
+			return err
+		}
+	}
+
 	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
 	return err
 }
@@ -1460,34 +1469,36 @@ func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
 	}
 }
 
-func normalizeConfigs(img image.ImageMetadata, yamlData provTypes.TsuruYamlData) *provTypes.TsuruYamlKubernetesConfig {
+func normalizeConfigs(version appTypes.AppVersion) (*provTypes.TsuruYamlKubernetesConfig, error) {
+	yamlData, err := version.TsuruYamlData()
+	if err != nil {
+		return nil, err
+	}
+
 	config := yamlData.Kubernetes
 	if config == nil {
-		return nil
+		return nil, nil
 	}
 
 	for _, group := range yamlData.Kubernetes.Groups {
 		for procName, proc := range group {
-			ports, err := getProcessPortsForImage(img, yamlData, procName)
+			ports, err := getProcessPortsForVersion(version, procName)
 			if err == nil {
 				proc.Ports = ports
+				group[procName] = proc
 			}
 		}
 	}
-	return config
+	return config, nil
 }
 
-func EnvsForApp(a provision.App, process, imageName string, isDeploy bool) []bind.EnvVar {
+func EnvsForApp(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []bind.EnvVar {
 	envs := provision.EnvsForApp(a, process, isDeploy)
 	if isDeploy {
 		return envs
 	}
 
-	yamlData, err := image.GetImageTsuruYamlData(imageName)
-	if err != nil {
-		return append(envs, provision.DefaultWebPortEnvs()...)
-	}
-	portsConfig, err := getProcessPortsForImageName(imageName, yamlData, process)
+	portsConfig, err := getProcessPortsForVersion(version, process)
 	if err != nil {
 		return envs
 	}

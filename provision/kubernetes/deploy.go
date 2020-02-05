@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -496,28 +497,32 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
 	realReplicas := int32(replicas)
 	extra := []string{extraRegisterCmds(a)}
-	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+	if err != nil {
+		return nil, nil, nil, errors.WithStack(err)
+	}
+	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, cmdData, a, extra)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
-	webProcessName, err := image.GetImageWebProcessName(imageName)
+	webProcessName, err := version.WebProcess()
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	yamlData, err := version.TsuruYamlData()
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	processPorts, err := getProcessPortsForImageName(imageName, yamlData, process)
+	processPorts, err := getProcessPortsForVersion(version, process)
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
@@ -569,7 +574,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	pullSecrets, err := getImagePullSecrets(client, ns, imageName)
+	deployImage := version.VersionInfo().DeployImage
+	pullSecrets, err := getImagePullSecrets(client, ns, deployImage)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -579,7 +585,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	rawAppLabel := appLabelForApp(a, process)
 	expandedLabels["app"] = rawAppLabel
 	expandedLabelsNoReplicas["app"] = rawAppLabel
-	_, tag := image.SplitImageName(imageName)
+	_, tag := image.SplitImageName(deployImage)
 	expandedLabels["version"] = tag
 	expandedLabelsNoReplicas["version"] = tag
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
@@ -629,9 +635,9 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
-							Image:          imageName,
+							Image:          deployImage,
 							Command:        cmds,
-							Env:            appEnvs(a, process, imageName, false),
+							Env:            appEnvs(a, process, version, false),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							Resources: apiv1.ResourceRequirements{
@@ -656,8 +662,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	return newDep, labels, annotations, errors.WithStack(err)
 }
 
-func appEnvs(a provision.App, process, imageName string, isDeploy bool) []apiv1.EnvVar {
-	appEnvs := EnvsForApp(a, process, imageName, isDeploy)
+func appEnvs(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []apiv1.EnvVar {
+	appEnvs := EnvsForApp(a, process, version, isDeploy)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
 		envs[i] = apiv1.EnvVar{Name: envData.Name, Value: envData.Value}
@@ -924,7 +930,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	return revision, nil
 }
 
-func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, img string) error {
+func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion) error {
 	err := ensureNodeContainers(a)
 	if err != nil {
 		return err
@@ -957,7 +963,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, img, replicas, labels)
+	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, version, replicas, labels)
 	if err != nil {
 		return err
 	}
@@ -1002,7 +1008,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
 	}
 
-	svcPorts, err := loadServicePorts(img, process)
+	svcPorts, err := loadServicePorts(version, process)
 	if err != nil {
 		return err
 	}
@@ -1106,12 +1112,8 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 	return nil
 }
 
-func loadServicePorts(imgName, processName string) ([]apiv1.ServicePort, error) {
-	yamlData, err := image.GetImageTsuruYamlData(imgName)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	processPorts, err := getProcessPortsForImageName(imgName, yamlData, processName)
+func loadServicePorts(version appTypes.AppVersion, processName string) ([]apiv1.ServicePort, error) {
+	processPorts, err := getProcessPortsForVersion(version, processName)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1150,9 +1152,10 @@ func mergeServices(client *ClusterClient, svc *apiv1.Service) (*apiv1.Service, b
 	return svc, false, nil
 }
 
-func getTargetPortsForImage(imageData image.ImageMetadata) []string {
-	if len(imageData.ExposedPorts) > 0 {
-		return imageData.ExposedPorts
+func getTargetPortsForVersion(version appTypes.AppVersion) []string {
+	exposedPorts := version.VersionInfo().ExposedPorts
+	if len(exposedPorts) > 0 {
+		return exposedPorts
 	}
 	return []string{provision.WebProcessDefaultPort() + "/tcp"}
 }
@@ -1166,9 +1169,13 @@ func extractPortNumberAndProtocol(port string) (int, string, error) {
 	return portInt, parts[1], err
 }
 
-func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
+func getProcessPortsForVersion(version appTypes.AppVersion, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
 	portConfigFound := false
 	var ports []provTypes.TsuruYamlKubernetesProcessPortConfig
+	tsuruYamlData, err := version.TsuruYamlData()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	if tsuruYamlData.Kubernetes != nil {
 		for _, group := range tsuruYamlData.Kubernetes.Groups {
 			for podName, podConfig := range group {
@@ -1207,7 +1214,7 @@ func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTy
 	}
 
 	defaultPort := defaultKubernetesPodPortConfig()
-	targetPorts := getTargetPortsForImage(imageData)
+	targetPorts := getTargetPortsForVersion(version)
 	ports = make([]provTypes.TsuruYamlKubernetesProcessPortConfig, len(targetPorts))
 	for i := range ports {
 		portInt, protocol, err := extractPortNumberAndProtocol(targetPorts[i])
@@ -1231,11 +1238,6 @@ func getProcessPortsForImage(imageData image.ImageMetadata, tsuruYamlData provTy
 		ports = append(ports, defaultPort)
 	}
 	return ports, nil
-}
-
-func getProcessPortsForImageName(imgName string, tsuruYamlData provTypes.TsuruYamlData, process string) ([]provTypes.TsuruYamlKubernetesProcessPortConfig, error) {
-	imageData, _ := image.GetImageMetaData(imgName)
-	return getProcessPortsForImage(imageData, tsuruYamlData, process)
 }
 
 func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortConfig {
@@ -1409,7 +1411,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", sourceImage, true), mounts...),
+				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", nil, true), mounts...),
 				newDeployAgentContainer(conf),
 			},
 		},

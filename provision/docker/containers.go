@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -27,6 +26,8 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -98,21 +99,13 @@ func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Wr
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageID string, toHosts ...string) ([]container.Container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, version appTypes.AppVersion, toHosts ...string) ([]container.Container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
 	}
 	if w == nil {
 		w = ioutil.Discard
-	}
-	imageData, err := image.GetImageMetaData(imageID)
-	if err != nil {
-		return nil, err
-	}
-	exposedPort := ""
-	if len(imageData.ExposedPorts) > 0 {
-		exposedPort = imageData.ExposedPorts[0]
 	}
 	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
@@ -121,10 +114,9 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		toRemove:    toRemoveContainers,
 		toHost:      toHost,
 		writer:      w,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
 		event:       evt,
-		exposedPort: exposedPort,
 	}
 	var pipeline *action.Pipeline
 	if p.isDryMode {
@@ -144,14 +136,14 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 			&provisionUnbindOldUnits,
 		)
 	}
-	err = pipeline.Execute(args)
+	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageID, exposedPort string) ([]container.Container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, version appTypes.AppVersion) ([]container.Container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -160,9 +152,8 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		app:         a,
 		toAdd:       toAdd,
 		writer:      w,
-		imageID:     imageID,
+		version:     version,
 		provisioner: p,
-		exposedPort: exposedPort,
 		event:       evt,
 	}
 	pipeline := action.NewPipeline(
@@ -197,11 +188,11 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		}
 		return container.Container{}
 	}
-	imageID, err := image.AppCurrentImageName(a.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("error getting app %q image name for unit %s", c.AppName, c.ID),
+			Message: fmt.Sprintf("error getting app %q version for unit %s", c.AppName, c.ID),
 		}
 		return container.Container{}
 	}
@@ -223,7 +214,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		evtClone.SetLogWriter(ioutil.Discard)
 		pipelineWriter = evtClone
 	}
-	addedContainers, err := p.runReplaceUnitsPipeline(pipelineWriter, a, toAdd, []container.Container{c}, imageID, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(pipelineWriter, a, toAdd, []container.Container{c}, version, destHosts...)
 	if evt != nil {
 		evt.LogsFrom(evtClone)
 	}

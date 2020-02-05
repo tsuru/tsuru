@@ -16,17 +16,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-func runHealthcheck(cont *container.Container, w io.Writer) error {
-	yamlData, err := image.GetImageTsuruYamlData(cont.Image)
-	if err != nil {
-		return err
-	}
+func runHealthcheck(cont *container.Container, yamlData provTypes.TsuruYamlData, w io.Writer) error {
 	if yamlData.Healthcheck == nil {
 		return nil
 	}
@@ -52,6 +48,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 		status = 200
 	}
 	var matchRE *regexp.Regexp
+	var err error
 	if match != "" {
 		match = "(?s)" + match
 		matchRE, err = regexp.Compile(match)

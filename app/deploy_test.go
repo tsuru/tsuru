@@ -7,22 +7,21 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/tsuru/tsuru/servicemanager"
-
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/app/image"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
@@ -137,6 +136,20 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
+func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: app,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBuildImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
 func (s *S) TestListFilteredDeploys(c *check.C) {
 	a := App{
 		Name:      "g1",
@@ -159,15 +172,15 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("ge", "app-image")
-	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		{App: "ge", Timestamp: time.Now(), Image: "app-image"},
+		{App: "ge", Timestamp: time.Now(), Image: version.BaseImageName()},
 	}
 	insertDeploysAsEvents(insert, c)
 	expected := []DeployData{insert[1], insert[0]}
 	expected[0].CanRollback = true
+	expected[0].Image = fmt.Sprintf("v%d", version.Version())
 	normalizeTS(expected)
 	f := &Filter{}
 	f.ExtraIn("teams", team.Name)
@@ -258,9 +271,6 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 }
 
 func (s *S) TestBuildApp(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "registry.somewhere/" + s.team.Name + "/app-some-app:v1-builder"}, nil
-	}
 	a := App{
 		Name:      "some-app",
 		Platform:  "django",
@@ -834,6 +844,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
+	version := newSuccessfulAppVersion(c, &a)
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
@@ -847,13 +858,13 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	imgID, err := Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		Image:        "registry.somewhere/tsuru/app-example:v2",
+		Image:        version.BaseImageName(),
 		Rollback:     true,
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
-	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
+	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -869,8 +880,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-otherapp:v2")
-	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -882,13 +892,13 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	imgID, err := Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		Image:        "v2",
+		Image:        fmt.Sprintf("v%d", version.Version()),
 		Rollback:     true,
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
-	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v2")
+	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -904,8 +914,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v1")
-	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -922,9 +931,10 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*image.InvalidVersionErr)
+	err = errors.Cause(err)
+	e, ok := err.(appTypes.ErrInvalidVersion)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Image, check.Equals, "v20")
+	c.Assert(e.Version, check.Equals, "v20")
 	c.Assert(imgID, check.Equals, "")
 }
 
@@ -1056,39 +1066,38 @@ func (s *S) TestRollbackUpdate(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	version := newSuccessfulAppVersion(c, &app)
+
+	err = RollbackUpdate(&app, fmt.Sprintf("v%d", version.Version()), "my reason", true)
 	c.Assert(err, check.IsNil)
-	data := image.ImageMetadata{
-		Name: "tsuru/app-myapp:v1",
-	}
-	err = data.Save()
+
+	versions, err := servicemanager.AppVersion.AppVersions(&app)
 	c.Assert(err, check.IsNil)
-	err = RollbackUpdate(app.Name, "v1", "my reason", true)
+	c.Assert(versions.Versions[version.Version()].Disabled, check.Equals, true)
+	c.Assert(versions.Versions[version.Version()].DisabledReason, check.Equals, "my reason")
+
+	err = RollbackUpdate(&app, fmt.Sprintf("v%d", version.Version()), "", false)
 	c.Assert(err, check.IsNil)
-	imgMD, err := image.GetImageMetaData("tsuru/app-myapp:v1")
+
+	versions, err = servicemanager.AppVersion.AppVersions(&app)
 	c.Assert(err, check.IsNil)
-	c.Assert(imgMD.Reason, check.Equals, "my reason")
-	c.Assert(imgMD.DisableRollback, check.Equals, true)
-	err = RollbackUpdate(app.Name, "v1", "", false)
-	c.Assert(err, check.IsNil)
-	imgMD, err = image.GetImageMetaData("tsuru/app-myapp:v1")
-	c.Assert(err, check.IsNil)
-	c.Assert(imgMD.Reason, check.Equals, "")
-	c.Assert(imgMD.DisableRollback, check.Equals, false)
-	err = RollbackUpdate(app.Name, "v20", "", false)
+	c.Assert(versions.Versions[version.Version()].Disabled, check.Equals, false)
+	c.Assert(versions.Versions[version.Version()].DisabledReason, check.Equals, "")
+
+	err = RollbackUpdate(&app, "v20", "", false)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Invalid version: v20")
+	c.Assert(err, check.ErrorMatches, "Invalid version: v20")
 }
 
 func (s *S) TestRollbackUpdateInvalidApp(c *check.C) {
-	InvalidApp := App{
+	invalidApp := App{
 		Name:      "otherapp",
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := RollbackUpdate(InvalidApp.Name, "v1", "", false)
+	err := RollbackUpdate(&invalidApp, "v1", "", false)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Image v1 not found in app \"otherapp\"")
+	c.Assert(err.Error(), check.Equals, "no versions available for app")
 }

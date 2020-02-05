@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -25,23 +26,19 @@ func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKub
 
 type KubeClient struct{}
 
-func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.Reader, tag string) (provision.NewImageInfo, error) {
+func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.Reader, version appTypes.AppVersion) error {
 	baseImage, err := image.GetBuildImage(a)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
-	buildingImage, err := image.AppNewBuildImageName(a.GetName(), a.GetTeamOwner(), tag)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	buildPodName := buildPodNameForApp(a, buildingImage)
+	buildPodName := buildPodNameForApp(a, version)
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
-		return nil, err
+		return err
 	}
 	ns, err := client.AppNamespace(a)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer cleanupPod(client, buildPodName, ns)
 	params := createPodParams{
@@ -49,7 +46,7 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 		client:            client,
 		podName:           buildPodName,
 		sourceImage:       baseImage,
-		destinationImages: []string{buildingImage.BuildImageName()},
+		destinationImages: []string{version.BuildImageName()},
 		attachInput:       archiveFile,
 		attachOutput:      evt,
 		inputFile:         "/home/application/archive.tar.gz",
@@ -57,18 +54,15 @@ func (c *KubeClient) BuildPod(a provision.App, evt *event.Event, archiveFile io.
 	ctx, cancel := evt.CancelableContext(context.Background())
 	err = createBuildPod(ctx, params)
 	cancel()
-	if err != nil {
-		return nil, err
-	}
-	return buildingImage, nil
+	return err
 }
 
-func (c *KubeClient) ImageTagPushAndInspect(a provision.App, evt *event.Event, oldImage string, newImage provision.NewImageInfo) (provision.InspectData, error) {
+func (c *KubeClient) ImageTagPushAndInspect(a provision.App, evt *event.Event, oldImage string, version appTypes.AppVersion) (provision.InspectData, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return provision.InspectData{}, err
 	}
-	deployPodName := deployPodNameForApp(a, newImage)
+	deployPodName := deployPodNameForApp(a, version)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -82,8 +76,8 @@ func (c *KubeClient) ImageTagPushAndInspect(a provision.App, evt *event.Event, o
 	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	destImages := []string{newImage.BaseImageName()}
-	repository, tag := image.SplitImageName(newImage.BaseImageName())
+	destImages := []string{version.BaseImageName()}
+	repository, tag := image.SplitImageName(version.BaseImageName())
 	if tag != "latest" {
 		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
 	}
@@ -132,12 +126,13 @@ func (c *KubeClient) DownloadFromContainer(app provision.App, evt *event.Event, 
 	go func() {
 		defer cancel()
 		opts := execOpts{
-			client: client,
-			app:    app,
-			image:  imageName,
-			cmds:   []string{"cat", "/home/application/archive.tar.gz"},
-			stdout: writer,
-			stderr: stderr,
+			client:       client,
+			app:          app,
+			image:        imageName,
+			cmds:         []string{"cat", "/home/application/archive.tar.gz"},
+			stdout:       writer,
+			stderr:       stderr,
+			eventsOutput: evt,
 		}
 		err := runIsolatedCmdPod(ctx, client, opts)
 		if err != nil {

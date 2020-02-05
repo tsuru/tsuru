@@ -9,18 +9,33 @@ import (
 	"strings"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
+
+type ContainerCmdsData struct {
+	yamlData  provTypes.TsuruYamlData
+	processes map[string][]string
+}
+
+func ContainerCmdsDataFromVersion(version appTypes.AppVersion) (ContainerCmdsData, error) {
+	var cmdData ContainerCmdsData
+	var err error
+	cmdData.yamlData, err = version.TsuruYamlData()
+	if err != nil {
+		return cmdData, err
+	}
+	cmdData.processes, err = version.Processes()
+	if err != nil {
+		return cmdData, err
+	}
+	return cmdData, nil
+}
 
 // ArchiveBuildCmds build a image using the archive method.
 func ArchiveBuildCmds(app provision.App, archiveURL string) []string {
 	return buildCmds(app, "build", "archive", archiveURL)
-}
-
-// ArchiveDeployCmds is a legacy command to deploys an unit using the archive method.
-func ArchiveDeployCmds(app provision.App, archiveURL string) []string {
-	return buildCmds(app, "deploy", "archive", archiveURL)
 }
 
 // DeployCmds deploys an unit builded by tsuru.
@@ -65,35 +80,31 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
 
-func ProcessCmdForImage(processName, imageID string) ([]string, string, error) {
-	data, err := image.GetImageMetaData(imageID)
-	if err != nil {
-		return nil, "", err
-	}
+func ProcessCmdForVersion(processName string, cmdData ContainerCmdsData) ([]string, string, error) {
 	if processName == "" {
-		if len(data.Processes) == 0 {
+		if len(cmdData.processes) == 0 {
 			return nil, "", nil
 		}
-		if len(data.Processes) > 1 {
+		if len(cmdData.processes) > 1 {
 			return nil, "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
 		}
-		for name := range data.Processes {
+		for name := range cmdData.processes {
 			processName = name
 		}
 	}
-	processCmd := data.Processes[processName]
+	processCmd := cmdData.processes[processName]
 	if len(processCmd) == 0 {
 		return nil, "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
 	}
 	return processCmd, processName, nil
 }
 
-func LeanContainerCmds(processName, imageID string, app provision.App) ([]string, string, error) {
-	return LeanContainerCmdsWithExtra(processName, imageID, app, nil)
+func LeanContainerCmds(processName string, cmdData ContainerCmdsData, app provision.App) ([]string, string, error) {
+	return LeanContainerCmdsWithExtra(processName, cmdData, app, nil)
 }
 
-func LeanContainerCmdsWithExtra(processName, imageID string, app provision.App, extraCmds []string) ([]string, string, error) {
-	processCmd, processName, err := ProcessCmdForImage(processName, imageID)
+func LeanContainerCmdsWithExtra(processName string, cmdData ContainerCmdsData, app provision.App, extraCmds []string) ([]string, string, error) {
+	processCmd, processName, err := ProcessCmdForVersion(processName, cmdData)
 	if err != nil {
 		return nil, "", err
 	}
@@ -104,12 +115,8 @@ func LeanContainerCmdsWithExtra(processName, imageID string, app provision.App, 
 		cmds, err = runWithAgentCmds(app)
 		return cmds, "", err
 	}
-	yamlData, err := image.GetImageTsuruYamlData(imageID)
-	if err != nil {
-		return nil, "", err
-	}
-	if yamlData.Hooks != nil {
-		extraCmds = append(extraCmds, yamlData.Hooks.Restart.Before...)
+	if cmdData.yamlData.Hooks != nil {
+		extraCmds = append(extraCmds, cmdData.yamlData.Hooks.Restart.Before...)
 	}
 	before := strings.Join(extraCmds, " && ")
 	if before != "" {

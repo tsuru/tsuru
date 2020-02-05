@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -48,6 +47,8 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -288,7 +289,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	if err != nil {
 		return err
 	}
-	imageID, err := image.AppCurrentImageName(a.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
 	if err != nil {
 		return err
 	}
@@ -303,7 +304,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Quantity++
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
-	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageID)
+	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, version)
 	return err
 }
 
@@ -360,50 +361,43 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
-	imageID, err := image.GetAppImageBySuffix(a.GetName(), imageID)
+func (p *dockerProvisioner) Rollback(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
+	err := version.CommitBaseImage()
 	if err != nil {
 		return "", err
 	}
-	imgMetaData, err := image.GetImageMetaData(imageID)
-	if err != nil {
-		return "", err
-	}
-	if imgMetaData.DisableRollback {
-		return "", fmt.Errorf("Can't Rollback image %s, reason: %s", imageID, imgMetaData.Reason)
-	}
-	return imageID, p.deploy(a, imageID, evt)
+	return version.VersionInfo().DeployImage, p.deploy(a, version, evt)
 }
 
-func (p *dockerProvisioner) Deploy(app provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
-	if !img.IsBuild() {
-		err := p.deploy(app, img.BaseImageName(), evt)
+func (p *dockerProvisioner) Deploy(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
+	if version.VersionInfo().DeployImage != "" {
+		err := p.deploy(app, version, evt)
 		if err != nil {
 			return "", err
 		}
-		return img.BaseImageName(), nil
+		return version.VersionInfo().DeployImage, nil
 	}
 	cmds := dockercommon.DeployCmds(app)
-	imageID, err := p.deployPipeline(app, img, cmds, evt)
+	imageID, err := p.deployPipeline(app, version, cmds, evt)
 	if err != nil {
 		return "", err
 	}
-	err = p.deployAndClean(app, imageID, evt)
+	err = p.deployAndClean(app, version, evt)
 	if err != nil {
 		return "", err
 	}
 	return imageID, nil
 }
 
-func (p *dockerProvisioner) deployAndClean(a provision.App, imageID string, evt *event.Event) error {
-	err := p.deploy(a, imageID, evt)
+func (p *dockerProvisioner) deployAndClean(a provision.App, version appTypes.AppVersion, evt *event.Event) error {
+	err := p.deploy(a, version, evt)
 	if err != nil {
-		gc.CleanImage(a.GetName(), imageID, true)
+		gc.CleanImage(a.GetName(), version.VersionInfo(), true)
 	}
 	return err
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.Event) error {
+func (p *dockerProvisioner) deploy(a provision.App, version appTypes.AppVersion, evt *event.Event) error {
 	if err := checkCanceled(evt); err != nil {
 		return err
 	}
@@ -411,13 +405,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageMetaData(imageID)
+	processes, err := version.Processes()
 	if err != nil {
 		return err
 	}
 	if len(containers) == 0 {
-		toAdd := make(map[string]*containersToAdd, len(imageData.Processes))
-		for processName := range imageData.Processes {
+		toAdd := make(map[string]*containersToAdd, len(processes))
+		for processName := range processes {
 			_, ok := toAdd[processName]
 			if !ok {
 				ct := containersToAdd{Quantity: 0}
@@ -428,17 +422,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		exposedPort := ""
-		if len(imageData.ExposedPorts) > 0 {
-			exposedPort = imageData.ExposedPorts[0]
-		}
-		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageID, exposedPort)
+		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, version)
 	} else {
-		toAdd := getContainersToAdd(imageData, containers)
+		toAdd := getContainersToAdd(processes, containers)
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageID)
+		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, version)
 	}
 	if err != nil {
 		err = provision.ErrUnitStartup{Err: err}
@@ -461,9 +451,9 @@ func setQuota(app provision.App, toAdd map[string]*containersToAdd) error {
 	return nil
 }
 
-func getContainersToAdd(data image.ImageMetadata, oldContainers []container.Container) map[string]*containersToAdd {
-	processMap := make(map[string]*containersToAdd, len(data.Processes))
-	for name := range data.Processes {
+func getContainersToAdd(processes map[string][]string, oldContainers []container.Container) map[string]*containersToAdd {
+	processMap := make(map[string]*containersToAdd, len(processes))
+	for name := range processes {
 		processMap[name] = &containersToAdd{}
 	}
 	minCount := 0
@@ -507,11 +497,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	return pipeline.Execute(args)
 }
 
-func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io.Writer) error {
-	yamlData, err := image.GetImageTsuruYamlData(cont.Image)
-	if err != nil {
-		return err
-	}
+func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, yamlData provTypes.TsuruYamlData, w io.Writer) error {
 	if yamlData.Hooks == nil {
 		return nil
 	}
@@ -529,12 +515,15 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	a := args.app
 	w := args.writer
 	var units int
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(args.version)
+	if err != nil {
+		return nil, err
+	}
 	processMsg := make([]string, 0, len(args.toAdd))
-	imageID := args.imageID
 	for processName, v := range args.toAdd {
 		units += v.Quantity
 		if processName == "" {
-			_, processName, _ = dockercommon.ProcessCmdForImage(processName, imageID)
+			_, processName, _ = dockercommon.ProcessCmdForVersion(processName, cmdData)
 		}
 		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
 	}
@@ -568,8 +557,8 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 		createdContainers []*container.Container
 		m                 sync.Mutex
 	)
-	err := runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
-		c, startErr := args.provisioner.start(c, a, imageID, w, args.exposedPort, destinationHost...)
+	err = runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
+		c, startErr := args.provisioner.start(c, a, cmdData, args.version, w, destinationHost...)
 		if startErr != nil {
 			return startErr
 		}
@@ -602,19 +591,11 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageID, err := image.AppCurrentImageName(a.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageMetaData(imageID)
-	if err != nil {
-		return err
-	}
-	exposedPort := ""
-	if len(imageData.ExposedPorts) > 0 {
-		exposedPort = imageData.ExposedPorts[0]
-	}
-	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageID, exposedPort)
+	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
 	return err
 }
 
@@ -629,13 +610,20 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return err
 	}
-	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgID)
-	if err != nil {
-		return err
+	if version != nil {
+		var cmdData dockercommon.ContainerCmdsData
+		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
+		if err != nil {
+			return err
+		}
+		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
+		if err != nil {
+			return err
+		}
 	}
 	containers, err := p.listContainersByProcess(a.GetName(), processName)
 	if err != nil {
@@ -727,11 +715,11 @@ func (p *dockerProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
 		Term:   opts.Term,
 	}
 	if len(opts.Units) == 0 {
-		imageID, err := image.AppCurrentImageName(opts.App.GetName())
+		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(opts.App)
 		if err != nil {
 			return err
 		}
-		return p.runCommandInContainer(imageID, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
+		return p.runCommandInContainer(version.VersionInfo().DeployImage, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
 	}
 	for _, u := range opts.Units {
 		cont, err := p.GetContainer(u)
@@ -789,13 +777,16 @@ func (p *dockerProvisioner) Units(apps ...provision.App) ([]provision.Unit, erro
 }
 
 func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
-	imageID, err := image.AppCurrentImageName(app.GetName())
-	if err != nil && err != image.ErrNoImagesAvailable {
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return nil, err
 	}
-	webProcessName, err := image.GetImageWebProcessName(imageID)
-	if err != nil {
-		return nil, err
+	var webProcessName string
+	if version != nil {
+		webProcessName, err = version.WebProcess()
+		if err != nil {
+			return nil, err
+		}
 	}
 	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
@@ -817,7 +808,14 @@ func (p *dockerProvisioner) RegisterUnit(a provision.App, unitId string, customD
 	}
 	if cont.Status == provision.StatusBuilding.String() {
 		if cont.BuildingImage != "" && customData != nil {
-			return image.SaveImageCustomData(cont.BuildingImage, customData)
+			var version appTypes.AppVersion
+			version, err = servicemanager.AppVersion.VersionByPendingImage(a, cont.BuildingImage)
+			if err != nil {
+				return err
+			}
+			return version.AddData(appTypes.AddVersionDataArgs{
+				CustomData: customData,
+			})
 		}
 		return nil
 	}

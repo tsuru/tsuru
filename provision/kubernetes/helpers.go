@@ -23,6 +23,7 @@ import (
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -70,14 +71,14 @@ func headlessServiceNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-units", appProcessName(a, process))
 }
 
-func deployPodNameForApp(a provision.App, newImg provision.NewImageInfo) string {
+func deployPodNameForApp(a provision.App, version appTypes.AppVersion) string {
 	name := validKubeName(a.GetName())
-	return fmt.Sprintf("%s-v%d-deploy", name, newImg.Version())
+	return fmt.Sprintf("%s-v%d-deploy", name, version.Version())
 }
 
-func buildPodNameForApp(a provision.App, newImg provision.NewImageInfo) string {
+func buildPodNameForApp(a provision.App, version appTypes.AppVersion) string {
 	name := validKubeName(a.GetName())
-	return fmt.Sprintf("%s-v%d-build", name, newImg.Version())
+	return fmt.Sprintf("%s-v%d-build", name, version.Version())
 }
 
 func appLabelForApp(a provision.App, process string) string {
@@ -648,16 +649,17 @@ func (q *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 
 type execOpts struct {
-	client   *ClusterClient
-	app      provision.App
-	image    string
-	unit     string
-	cmds     []string
-	stdout   io.Writer
-	stderr   io.Writer
-	stdin    io.Reader
-	termSize *remotecommand.TerminalSize
-	tty      bool
+	client       *ClusterClient
+	app          provision.App
+	image        string
+	unit         string
+	cmds         []string
+	eventsOutput io.Writer
+	stdout       io.Writer
+	stderr       io.Writer
+	stdin        io.Reader
+	termSize     *remotecommand.TerminalSize
+	tty          bool
 }
 
 func execCommand(opts execOpts) error {
@@ -720,17 +722,18 @@ func execCommand(opts execOpts) error {
 }
 
 type runSinglePodArgs struct {
-	client   *ClusterClient
-	stdout   io.Writer
-	stderr   io.Writer
-	stdin    io.Reader
-	termSize *remotecommand.TerminalSize
-	labels   *provision.LabelSet
-	cmds     []string
-	envs     []apiv1.EnvVar
-	name     string
-	image    string
-	app      provision.App
+	client       *ClusterClient
+	eventsOutput io.Writer
+	stdout       io.Writer
+	stderr       io.Writer
+	stdin        io.Reader
+	termSize     *remotecommand.TerminalSize
+	labels       *provision.LabelSet
+	cmds         []string
+	envs         []apiv1.EnvVar
+	name         string
+	image        string
+	app          provision.App
 }
 
 func runPod(ctx context.Context, args runSinglePodArgs) error {
@@ -786,11 +789,32 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 			},
 		},
 	}
+
+	var initialResource string
+	if args.eventsOutput != nil {
+		var events *apiv1.EventList
+		events, err = args.client.CoreV1().Events(ns).List(listOptsForPodEvent(pod.Name))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		initialResource = events.ResourceVersion
+	}
+
 	_, err = args.client.CoreV1().Pods(ns).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer cleanupPod(args.client, pod.Name, ns)
+
+	if args.eventsOutput != nil {
+		var closeFn func()
+		closeFn, err = logPodEvents(args.client, initialResource, pod.Name, ns, args.eventsOutput)
+		if err != nil {
+			return err
+		}
+		defer closeFn()
+	}
+
 	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
 	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)

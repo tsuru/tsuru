@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -176,15 +175,12 @@ func (s *S) TestNodeUnits(c *check.C) {
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
@@ -352,16 +348,12 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	imgName := "myapp:v1"
-	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+	newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(a.GetName(), imgName)
-	c.Assert(err, check.IsNil)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	wait()

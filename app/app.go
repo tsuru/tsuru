@@ -590,24 +590,28 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
 	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
-		var imgs []string
-		imgs, err = image.ListAppImages(appName)
+		var versions appTypes.AppVersions
+		versions, err = servicemanager.AppVersion.AppVersions(app)
 		if err != nil {
-			log.Errorf("failed to list images for app %s: %s", appName, err)
+			log.Errorf("failed to list versions for app %s: %s", appName, err)
 		}
-		var imgsBuild []string
-		imgsBuild, err = image.ListAppBuilderImages(appName)
-		if err != nil {
-			log.Errorf("failed to list build images for app %s: %s", appName, err)
-		}
-		for _, img := range append(imgs, imgsBuild...) {
-			err = cleanProv.CleanImage(appName, img)
-			if err != nil {
-				log.Errorf("failed to remove image from provisioner %s: %s", appName, err)
+		for _, version := range versions.Versions {
+			var imgs []string
+			if version.BuildImage != "" {
+				imgs = append(imgs, version.BuildImage)
+			}
+			if version.DeployImage != "" {
+				imgs = append(imgs, version.DeployImage)
+			}
+			for _, img := range imgs {
+				err = cleanProv.CleanImage(appName, img)
+				if err != nil {
+					log.Errorf("failed to remove image %q from provisioner %s: %s", img, appName, err)
+				}
 			}
 		}
 	}
-	err = image.DeleteAllAppImageNames(appName)
+	err = servicemanager.AppVersion.DeleteVersions(appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
@@ -2390,11 +2394,14 @@ func RenameTeam(oldName, newName string) error {
 }
 
 func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
-	imageName, err := image.AppCurrentImageName(app.Name)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil {
+		if err == appTypes.ErrNoVersionsAvailable {
+			err = nil
+		}
 		return routerTypes.HealthcheckData{}, err
 	}
-	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	yamlData, err := version.TsuruYamlData()
 	if err != nil {
 		return routerTypes.HealthcheckData{}, err
 	}

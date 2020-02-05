@@ -51,7 +51,7 @@ func (s *platformImageService) CurrentImage(platformName string) (string, error)
 		return platformBasicImageName(platformName), nil
 	}
 	if len(img.Images) == 0 {
-		return "", ErrNoImagesAvailable
+		return "", imageTypes.ErrPlatformImageNotFound
 	}
 	return img.Images[len(img.Images)-1], nil
 }

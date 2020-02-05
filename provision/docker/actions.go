@@ -16,13 +16,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 type runContainerActionsArgs struct {
@@ -37,6 +39,7 @@ type runContainerActionsArgs struct {
 	provisioner      *dockerProvisioner
 	exposedPort      string
 	event            *event.Event
+	version          appTypes.AppVersion
 }
 
 type containersToAdd struct {
@@ -50,10 +53,9 @@ type changeUnitsPipelineArgs struct {
 	toAdd       map[string]*containersToAdd
 	toRemove    []container.Container
 	toHost      string
-	imageID     string
+	version     appTypes.AppVersion
 	provisioner *dockerProvisioner
 	appDestroy  bool
-	exposedPort string
 	event       *event.Event
 }
 
@@ -354,9 +356,9 @@ var bindAndHealthcheck = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := image.GetImageWebProcessName(args.imageID)
+		webProcessName, err := args.version.WebProcess()
 		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+			return nil, err
 		}
 		newContainers := ctx.Previous.([]container.Container)
 		writer := args.writer
@@ -371,6 +373,10 @@ var bindAndHealthcheck = action.Action{
 			}
 		}
 		fmt.Fprintf(writer, "\n---- Binding and checking %d new %s ----\n", len(newContainers), pluralize("unit", len(newContainers)))
+		yamlData, err := args.version.TsuruYamlData()
+		if err != nil {
+			return nil, err
+		}
 		return newContainers, runInContainers(newContainers, func(c *container.Container, toRollback chan *container.Container) error {
 			unit := c.AsUnit(args.app)
 			err := args.app.BindUnit(&unit)
@@ -379,12 +385,12 @@ var bindAndHealthcheck = action.Action{
 			}
 			toRollback <- c
 			if doHealthcheck && c.ProcessName == webProcessName {
-				err = runHealthcheck(c, writer)
+				err = runHealthcheck(c, yamlData, writer)
 				if err != nil {
 					return err
 				}
 			}
-			err = args.provisioner.runRestartAfterHooks(c, writer)
+			err = args.provisioner.runRestartAfterHooks(c, yamlData, writer)
 			if err != nil {
 				return err
 			}
@@ -457,9 +463,9 @@ var addNewRoutes = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := image.GetImageWebProcessName(args.imageID)
+		webProcessName, err := args.version.WebProcess()
 		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+			return nil, err
 		}
 		newContainers := ctx.Previous.([]container.Container)
 		writer := args.writer
@@ -539,7 +545,7 @@ var setRouterHealthcheck = action.Action{
 			return nil, err
 		}
 		newContainers := ctx.Previous.([]container.Container)
-		yamlData, err := image.GetImageTsuruYamlData(args.imageID)
+		yamlData, err := args.version.TsuruYamlData()
 		if err != nil {
 			return nil, err
 		}
@@ -567,12 +573,15 @@ var setRouterHealthcheck = action.Action{
 			if !ok {
 				return nil
 			}
-			var currentImageName string
-			currentImageName, err = image.AppCurrentImageName(args.app.GetName())
+			var oldVersion appTypes.AppVersion
+			oldVersion, err = servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
 			if err != nil {
+				if err == appTypes.ErrNoVersionsAvailable {
+					return nil
+				}
 				return err
 			}
-			yamlData, err = image.GetImageTsuruYamlData(currentImageName)
+			yamlData, err = oldVersion.TsuruYamlData()
 			if err != nil {
 				return err
 			}
@@ -582,10 +591,18 @@ var setRouterHealthcheck = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
-		yamlData, err := image.GetImageTsuruYamlData(currentImageName)
-		if err != nil {
-			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err)
+		var yamlData provTypes.TsuruYamlData
+		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
+		if err != nil && err != appTypes.ErrNoVersionsAvailable {
+			log.Errorf("[set-router-healthcheck:Backward] Error getting old version: %s", err)
+			return
+		}
+		if oldVersion != nil {
+			yamlData, err = oldVersion.TsuruYamlData()
+			if err != nil {
+				log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err)
+				return
+			}
 		}
 		hcData := yamlData.ToRouterHC()
 		err = runInRouters(args.app, func(r router.Router) error {
@@ -606,6 +623,7 @@ var removeOldRoutes = action.Action{
 	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		if err = checkCanceled(args.event); err != nil {
+			println(1)
 			return nil, err
 		}
 		result = ctx.Previous
@@ -624,13 +642,18 @@ var removeOldRoutes = action.Action{
 		if len(args.toRemove) > 0 {
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
-		currentImageName, err := image.AppCurrentImageName(args.app.GetName())
-		if err != nil && err != image.ErrNoImagesAvailable {
+		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
+		if err != nil && err != appTypes.ErrNoVersionsAvailable {
+			log.Errorf("[WARNING] cannot get the old version for route removal: %s", err)
 			return
 		}
-		webProcessName, err := image.GetImageWebProcessName(currentImageName)
-		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process for route removal: %s", err)
+		var webProcessName string
+		if oldVersion != nil {
+			webProcessName, err = oldVersion.WebProcess()
+			if err != nil {
+				log.Errorf("[WARNING] cannot get the name of the web process for route removal: %s", err)
+				return
+			}
 		}
 		var routesToRemove []*url.URL
 		for i, c := range args.toRemove {
@@ -643,7 +666,7 @@ var removeOldRoutes = action.Action{
 			}
 		}
 		if len(routesToRemove) == 0 {
-			return
+			return result, nil
 		}
 		err = runInRouters(args.app, func(r router.Router) error {
 			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
@@ -809,6 +832,11 @@ var followLogsAndCommit = action.Action{
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err
 		}
+		err = args.version.CommitBaseImage()
+		if err != nil {
+			log.Errorf("error on commit image for container %s - %s", c.ID, err)
+			return nil, err
+		}
 		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
 		c.Remove(args.provisioner.ClusterClient(), args.provisioner.ActionLimiter())
 		return imageID, nil
@@ -825,12 +853,9 @@ var updateAppImage = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
-		if currentImageName != args.imageID {
-			err := image.AppendAppImageName(args.app.GetName(), args.imageID)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to save image name")
-			}
+		err := args.version.CommitSuccessful()
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to save image as successful")
 		}
 		return ctx.Previous, nil
 	},

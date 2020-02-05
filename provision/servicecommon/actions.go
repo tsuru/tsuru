@@ -10,11 +10,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type ProcessState struct {
@@ -28,13 +29,13 @@ type ProcessState struct {
 type ProcessSpec map[string]ProcessState
 
 type pipelineArgs struct {
-	manager          ServiceManager
-	app              provision.App
-	newImage         string
-	newImageSpec     ProcessSpec
-	currentImage     string
-	currentImageSpec ProcessSpec
-	event            *event.Event
+	manager            ServiceManager
+	app                provision.App
+	newVersion         appTypes.AppVersion
+	newVersionSpec     ProcessSpec
+	currentVersion     appTypes.AppVersion
+	currentVersionSpec ProcessSpec
+	event              *event.Event
 }
 
 type labelReplicas struct {
@@ -45,31 +46,34 @@ type labelReplicas struct {
 type ServiceManager interface {
 	RemoveService(a provision.App, processName string) error
 	CurrentLabels(a provision.App, processName string) (*provision.LabelSet, error)
-	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error
+	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion) error
 }
 
-func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, updateSpec ProcessSpec, evt *event.Event) error {
-	curImg, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return err
-	}
-	currentImageData, err := image.GetImageMetaData(curImg)
-	if err != nil {
+func RunServicePipeline(manager ServiceManager, a provision.App, newVersion appTypes.AppVersion, updateSpec ProcessSpec, evt *event.Event) error {
+	oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return err
 	}
 	currentSpec := ProcessSpec{}
-	for p := range currentImageData.Processes {
-		currentSpec[p] = ProcessState{}
+	if oldVersion != nil {
+		var oldProcesses map[string][]string
+		oldProcesses, err = oldVersion.Processes()
+		if err != nil {
+			return err
+		}
+		for p := range oldProcesses {
+			currentSpec[p] = ProcessState{}
+		}
 	}
-	newImageData, err := image.GetImageMetaData(newImg)
+	newProcesses, err := newVersion.Processes()
 	if err != nil {
 		return err
 	}
-	if len(newImageData.Processes) == 0 {
-		return errors.Errorf("no process information found deploying image %q", newImg)
+	if len(newProcesses) == 0 {
+		return errors.Errorf("no process information found deploying version %q", newVersion)
 	}
 	newSpec := ProcessSpec{}
-	for p := range newImageData.Processes {
+	for p := range newProcesses {
 		newSpec[p] = ProcessState{Start: true}
 		if updateSpec != nil {
 			newSpec[p] = updateSpec[p]
@@ -81,24 +85,24 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 		removeOldServices,
 	)
 	return pipeline.Execute(&pipelineArgs{
-		manager:          manager,
-		app:              a,
-		newImage:         newImg,
-		newImageSpec:     newSpec,
-		currentImage:     curImg,
-		currentImageSpec: currentSpec,
-		event:            evt,
+		manager:            manager,
+		app:                a,
+		currentVersion:     oldVersion,
+		newVersion:         newVersion,
+		newVersionSpec:     newSpec,
+		currentVersionSpec: currentSpec,
+		event:              evt,
 	})
 }
 
 func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 	for _, processName := range processes {
 		var err error
-		if state, in := args.currentImageSpec[processName]; in {
+		if state, in := args.currentVersionSpec[processName]; in {
 			var labels *labelReplicas
 			labels, err = labelsForService(args, processName, state)
 			if err == nil {
-				err = args.manager.DeployService(context.Background(), args.app, processName, labels.labels, labels.realReplicas, args.currentImage)
+				err = args.manager.DeployService(context.Background(), args.app, processName, labels.labels, labels.realReplicas, args.currentVersion)
 			}
 		} else {
 			err = args.manager.RemoveService(args.app, processName)
@@ -169,7 +173,7 @@ var updateServices = &action.Action{
 			deployedProcesses []string
 			err               error
 		)
-		for processName := range args.newImageSpec {
+		for processName := range args.newVersionSpec {
 			toDeployProcesses = append(toDeployProcesses, processName)
 		}
 		sort.Strings(toDeployProcesses)
@@ -177,7 +181,7 @@ var updateServices = &action.Action{
 		labelsMap := map[string]*labelReplicas{}
 		for _, processName := range toDeployProcesses {
 			var labels *labelReplicas
-			labels, err = labelsForService(args, processName, args.newImageSpec[processName])
+			labels, err = labelsForService(args, processName, args.newVersionSpec[processName])
 			if err != nil {
 				return nil, err
 			}
@@ -191,7 +195,7 @@ var updateServices = &action.Action{
 		for _, processName := range toDeployProcesses {
 			labels := labelsMap[processName]
 			ectx, cancel := args.event.CancelableContext(context.Background())
-			err = args.manager.DeployService(ectx, args.app, processName, labels.labels, labels.realReplicas, args.newImage)
+			err = args.manager.DeployService(ectx, args.app, processName, labels.labels, labels.realReplicas, args.newVersion)
 			cancel()
 			if err != nil {
 				break
@@ -215,7 +219,7 @@ var updateImageInDB = &action.Action{
 	Name: "update-image-in-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		err := image.AppendAppImageName(args.app.GetName(), args.newImage)
+		err := args.newVersion.CommitSuccessful()
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -227,8 +231,8 @@ var removeOldServices = &action.Action{
 	Name: "remove-old-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		old := set.FromMap(args.currentImageSpec)
-		new := set.FromMap(args.newImageSpec)
+		old := set.FromMap(args.currentVersionSpec)
+		new := set.FromMap(args.newVersionSpec)
 		for processName := range old.Difference(new) {
 			err := args.manager.RemoveService(args.app, processName)
 			if err != nil {

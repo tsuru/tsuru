@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -21,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -63,14 +61,13 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg:v2", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg:v2", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -99,7 +96,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
 		"app":                           "myapp-p1",
-		"version":                       "v2",
+		"version":                       "v1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -161,7 +158,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
-							Image: "myimg:v2",
+							Image: version.BaseImageName(),
 							Command: []string{
 								"/bin/sh",
 								"-lc",
@@ -322,11 +319,11 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		"p2": "cmd2",
 		"p3": "cmd3",
 	}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": processes,
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -341,14 +338,13 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	imgData := image.ImageMetadata{
-		Name:         "myimg",
+	version := newCommittedVersion(c, a, nil)
+	err = version.AddData(appTypes.AddVersionDataArgs{
 		ExposedPorts: []string{"7777/tcp", "7778/udp"},
 		Processes:    map[string][]string{"p1": {"cmd1"}},
-	}
-	err = imgData.Save()
+	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -471,7 +467,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cmd1",
 		},
@@ -486,7 +482,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -551,13 +547,13 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg1", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cmd1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg1", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -567,7 +563,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
-	err = image.SaveImageCustomData("myimg2", map[string]interface{}{
+	version = newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cmd1",
 		},
@@ -582,7 +578,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg2", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -598,7 +594,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
@@ -708,7 +704,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	}
 	for _, tt := range tests {
 		for _, s := range tt.states {
-			err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+			err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 				"p1": s,
 			}, nil)
 			c.Assert(err, check.IsNil)
@@ -860,9 +856,8 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 	}
-	for i, tt := range tests {
-		img := fmt.Sprintf("myimg-%d", i)
-		err = image.SaveImageCustomData(img, map[string]interface{}{
+	for _, tt := range tests {
+		version := newCommittedVersion(c, a, map[string]interface{}{
 			"processes": map[string]interface{}{
 				"web": "cm1",
 				"p2":  "cmd2",
@@ -870,7 +865,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			"healthcheck": tt.hc,
 		})
 		c.Assert(err, check.IsNil)
-		err = servicecommon.RunServicePipeline(&m, a, img, servicecommon.ProcessSpec{
+		err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 			"web": servicecommon.ProcessState{Start: true},
 			"p2":  servicecommon.ProcessState{Start: true},
 		}, nil)
@@ -898,7 +893,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "proc1",
 			"p2":  "proc2",
@@ -911,7 +906,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
@@ -947,7 +942,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "proc1",
 			"p2":  "proc2",
@@ -985,7 +980,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 		"p2":  servicecommon.ProcessState{Start: true},
 	}, nil)
@@ -1070,7 +1065,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "proc1",
 		},
@@ -1095,7 +1090,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "duplicated process name: web")
@@ -1108,7 +1103,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "proc1",
 		},
@@ -1124,7 +1119,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1162,13 +1157,13 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myreg.com/myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cmd1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myreg.com/myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1250,13 +1245,13 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	})
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cmd1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1284,7 +1279,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cmd1",
 		},
@@ -1316,7 +1311,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.NotNil)
@@ -1348,13 +1343,13 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		Cancelable:    true,
 	})
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cmd1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.IsNil)
@@ -1378,7 +1373,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
 	}, evt)
 	c.Assert(err, check.NotNil)
@@ -1407,13 +1402,13 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1435,7 +1430,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cm1",
 			"p2":  "cmd2",
@@ -1446,7 +1441,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
@@ -1461,13 +1456,13 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1490,13 +1485,13 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1525,13 +1520,13 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1562,13 +1557,13 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1599,13 +1594,13 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -1692,11 +1687,12 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
+	version := newVersion(c, a, nil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"destimg"},
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
@@ -1729,7 +1725,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/provisioner":          "kubernetes",
 			},
 			Annotations: map[string]string{
-				"tsuru.io/build-image": "destimg",
+				"tsuru.io/build-image": version.BaseImageName(),
 				"tsuru.io/router-name": "fake",
 				"tsuru.io/router-type": "fake",
 			},
@@ -1779,7 +1775,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",tsuru/app-myapp:latest"},
 				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
@@ -1790,7 +1786,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			}},
 		{
 			Name:    "myapp-v1-deploy",
-			Image:   "myimg",
+			Image:   version.BuildImageName(),
 			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
 			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
@@ -1814,11 +1810,12 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	defer rollback()
 	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
+	version := newVersion(c, a, nil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"registry.example.com/destimg"},
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
@@ -1851,7 +1848,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 				"tsuru.io/provisioner":          "kubernetes",
 			},
 			Annotations: map[string]string{
-				"tsuru.io/build-image": "registry.example.com/destimg",
+				"tsuru.io/build-image": version.BaseImageName(),
 				"tsuru.io/router-name": "fake",
 				"tsuru.io/router-type": "fake",
 			},
@@ -1860,6 +1857,11 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			ServiceAccountName: "app-myapp",
 			NodeName:           "n1",
 			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
+			ImagePullSecrets: []apiv1.LocalObjectReference{
+				{
+					Name: "registry-registry.example.com",
+				},
+			},
 			Volumes: []apiv1.Volume{
 				{
 					Name: "dockersock",
@@ -1885,7 +1887,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(containers[0].Command[:2], check.DeepEquals, []string{"sh", "-ec"})
 	c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/destimg"},
+		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",registry.example.com/tsuru/app-myapp:latest"},
 		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
@@ -1991,11 +1993,12 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 		return true, fakeWatcher, nil
 	})
 	buf := safe.NewBuffer(nil)
+	version := newVersion(c, a, nil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"destimg"},
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
@@ -2024,11 +2027,12 @@ func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 		ch <- struct{}{}
 		w.Write([]byte("ignored"))
 	}
+	version := newVersion(c, a, nil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"destimg"},
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
@@ -2036,122 +2040,6 @@ func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 	})
 	c.Assert(err, check.ErrorMatches, `error attaching to myapp-v1-deploy/committer-cont: container finished while attach is running`)
 	<-ch
-}
-
-func (s *S) TestCreateDeployPodContainersWithTag(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	err := s.p.Provision(a)
-	c.Assert(err, check.IsNil)
-	err = createDeployPod(context.Background(), createPodParams{
-		client:            s.clusterClient,
-		app:               a,
-		sourceImage:       "myimg",
-		destinationImages: []string{"ip:destimg:v1"},
-		inputFile:         "/dev/null",
-		podName:           "myapp-v1-deploy",
-	})
-	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 1)
-	containers := pods.Items[0].Spec.Containers
-	pods.Items[0].Spec.Containers = nil
-	pods.Items[0].Status = apiv1.PodStatus{}
-	c.Assert(pods.Items[0], check.DeepEquals, apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myapp-v1-deploy",
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-deploy":            "false",
-				"tsuru.io/is-stopped":           "false",
-				"tsuru.io/is-tsuru":             "true",
-				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/is-isolated-run":      "false",
-				"tsuru.io/builder":              "",
-				"tsuru.io/app-process":          "",
-				"tsuru.io/is-build":             "true",
-				"tsuru.io/app-platform":         "python",
-				"tsuru.io/is-service":           "true",
-				"tsuru.io/app-process-replicas": "0",
-				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/provisioner":          "kubernetes",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/build-image": "ip:destimg:v1",
-				"tsuru.io/router-name": "fake",
-				"tsuru.io/router-type": "fake",
-			},
-		},
-		Spec: apiv1.PodSpec{
-			ServiceAccountName: "app-myapp",
-			NodeName:           "n1",
-			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
-			Volumes: []apiv1.Volume{
-				{
-					Name: "dockersock",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
-							Path: dockerSockPath,
-						},
-					},
-				},
-				{
-					Name: "intercontainer",
-					VolumeSource: apiv1.VolumeSource{
-						EmptyDir: &apiv1.EmptyDirVolumeSource{},
-					},
-				},
-			},
-			RestartPolicy: apiv1.RestartPolicyNever,
-		},
-	})
-	c.Assert(containers, check.HasLen, 2)
-	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
-	runAsUser := int64(1000)
-	c.Assert(containers, check.DeepEquals, []apiv1.Container{
-		{
-			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.8.4",
-			VolumeMounts: []apiv1.VolumeMount{
-				{Name: "dockersock", MountPath: dockerSockPath},
-				{Name: "intercontainer", MountPath: buildIntercontainerPath},
-			},
-			Stdin:     true,
-			StdinOnce: true,
-			Command: []string{
-				"sh", "-ec", `
-				end() { touch /tmp/intercontainer/done; }
-				trap end EXIT
-				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
-			`,
-			},
-			Env: []apiv1.EnvVar{
-				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "ip:destimg:v1,ip:destimg:latest"},
-				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
-			}},
-		{
-			Name:    "myapp-v1-deploy",
-			Image:   "myimg",
-			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
-			SecurityContext: &apiv1.SecurityContext{
-				RunAsUser: &runAsUser,
-			},
-			VolumeMounts: []apiv1.VolumeMount{
-				{Name: "intercontainer", MountPath: buildIntercontainerPath},
-			},
-		},
-	})
 }
 
 func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
@@ -2163,7 +2051,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
@@ -2187,7 +2075,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -2228,14 +2116,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -2264,7 +2152,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
@@ -2286,7 +2174,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		Message: "my evt message",
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
@@ -2304,7 +2192,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
@@ -2346,7 +2234,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 		}
 	}()
 
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true, Increment: 5},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -2366,14 +2254,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -2424,7 +2312,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
@@ -2444,7 +2332,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		Message: "my evt message",
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
@@ -2463,13 +2351,13 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cmd1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)
@@ -2524,7 +2412,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
@@ -2544,7 +2432,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
@@ -2585,7 +2473,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-1-1\" not ready.*")
@@ -2601,13 +2489,13 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil, nil)
+	err = servicecommon.RunServicePipeline(&m, a, version, nil, nil)
 	c.Assert(err, check.IsNil)
 	waitDep()
 	expectedLabels := map[string]string{
@@ -2667,13 +2555,13 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil, nil)
+	err = servicecommon.RunServicePipeline(&m, a, version, nil, nil)
 	c.Assert(err, check.IsNil)
 	waitDep()
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -2766,13 +2654,13 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	a.Plan = appTypes.Plan{Memory: 1024}
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+	err = servicecommon.RunServicePipeline(&m, a, version, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	}, nil)
 	c.Assert(err, check.IsNil)

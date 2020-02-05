@@ -35,6 +35,7 @@ type DbDriver struct {
 	PlatformImageStorage             image.PlatformImageStorage
 	AppLogStorage                    app.AppLogStorage
 	InstanceTrackerStorage           tracker.InstanceStorage
+	AppVersionStorage                app.AppVersionStorage
 }
 
 var (

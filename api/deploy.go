@@ -423,7 +423,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.RollbackUpdate(instance.Name, img, reason, disableRollback)
+	err = app.RollbackUpdate(instance, img, reason, disableRollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,

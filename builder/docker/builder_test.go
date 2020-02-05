@@ -20,11 +20,11 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -52,9 +52,11 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, "")
 }
 
 func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
@@ -78,10 +80,10 @@ func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `archive file is empty`)
-	c.Assert(img, check.IsNil)
+	c.Assert(version, check.IsNil)
 }
 
 func (s *S) TestBuilderArchiveFile(c *check.C) {
@@ -105,9 +107,11 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, "")
 }
 
 func (s *S) TestBuilderImageID(c *check.C) {
@@ -175,13 +179,13 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img.BaseImageName())
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
-	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	c.Assert(processes, check.DeepEquals, expectedProcesses)
 	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(2))
 	c.Assert(createCmds, check.DeepEquals, []string{
 		"(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null",
@@ -292,12 +296,10 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img.BaseImageName())
-	c.Assert(err, check.IsNil)
-	c.Assert(imd.ExposedPorts, check.DeepEquals, []string{"80/tcp"})
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	c.Assert(version.VersionInfo().ExposedPorts, check.DeepEquals, []string{"80/tcp"})
 }
 
 func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
@@ -343,13 +345,13 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img.BaseImageName())
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
-	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	c.Assert(processes, check.DeepEquals, expectedProcesses)
 }
 
 func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
@@ -400,13 +402,13 @@ func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img.BaseImageName())
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
-	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	c.Assert(processes, check.DeepEquals, expectedProcesses)
 }
 
 func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
@@ -473,23 +475,23 @@ hooks:
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageMetaData(img.BaseImageName())
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	customdata, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
-	c.Assert(imd.CustomData, check.DeepEquals, map[string]interface{}{
-		"healthcheck": map[string]interface{}{
-			"path":   "/status",
-			"method": "GET",
-			"status": float64(200),
-			"scheme": "https",
+	c.Assert(customdata, check.DeepEquals, provTypes.TsuruYamlData{
+		Healthcheck: &provTypes.TsuruYamlHealthcheck{
+			Path:   "/status",
+			Method: "GET",
+			Status: 200,
+			Scheme: "https",
 		},
-		"hooks": map[string]interface{}{
-			"build": []interface{}{"./build1", "./build2"},
-			"restart": map[string]interface{}{
-				"before": []interface{}{"./before.sh"},
-				"after":  []interface{}{"./after.sh"},
+		Hooks: &provTypes.TsuruYamlHooks{
+			Build: []string{"./build1", "./build2"},
+			Restart: provTypes.TsuruYamlRestartHooks{
+				Before: []string{"./before.sh"},
+				After:  []string{"./after.sh"},
 			},
 		},
 	})
@@ -575,10 +577,11 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	c.Assert(img.IsBuild(), check.Equals, false)
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
 	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\"".+running build hook.*`)
 	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(3))
 }
@@ -604,15 +607,31 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+
+	s.server.CustomHandler("/containers/[^/]+/archive$", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			path := r.URL.Query().Get("path")
+			c.Assert(path, check.Equals, "/home/application/archive.tar.gz")
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+
 	bopts = builder.BuildOpts{
 		Rebuild: true,
 	}
-	img, err = s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err = s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v2-builder")
+	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }
 
 func (s *S) TestBuilderImageBuilded(c *check.C) {
@@ -663,9 +682,10 @@ func (s *S) TestBuilderImageBuilded(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	img, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(img.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	c.Assert(img.IsBuild(), check.Equals, false)
+	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
 	c.Assert(bopts.IsTsuruBuilderImage, check.Equals, true)
 }

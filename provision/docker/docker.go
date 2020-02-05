@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/clusterclient"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 func buildClusterStorage() (cluster.Storage, error) {
@@ -46,7 +47,7 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, img provision.NewImageInfo, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, version appTypes.AppVersion, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -62,24 +63,25 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, img provision.NewI
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       img.BuildImageName(),
+		imageID:       version.VersionInfo().BuildImage,
 		commands:      commands,
 		writer:        writer,
 		isDeploy:      true,
-		buildingImage: img.BaseImageName(),
+		buildingImage: version.BaseImageName(),
 		provisioner:   p,
 		event:         evt,
+		version:       version,
 	}
 	err := container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
-	return img.BaseImageName(), nil
+	return version.VersionInfo().DeployImage, nil
 }
 
-func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageID string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {
-	commands, processName, err := dockercommon.LeanContainerCmds(oldContainer.ProcessName, imageID, app)
+func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, cmdData dockercommon.ContainerCmdsData, version appTypes.AppVersion, w io.Writer, destinationHosts ...string) (*container.Container, error) {
+	commands, processName, err := dockercommon.LeanContainerCmds(oldContainer.ProcessName, cmdData, app)
 	if err != nil {
 		return nil, err
 	}
@@ -104,21 +106,28 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		}
 	}
 	pipeline := action.NewPipeline(actions...)
+	exposedPorts := version.VersionInfo().ExposedPorts
+	exposedPort := ""
+	if len(exposedPorts) > 0 {
+		exposedPort = exposedPorts[0]
+	}
+	deployImageID := version.VersionInfo().DeployImage
 	args := runContainerActionsArgs{
 		app:              app,
 		processName:      processName,
-		imageID:          imageID,
+		imageID:          deployImageID,
 		commands:         commands,
 		destinationHosts: destinationHosts,
 		provisioner:      p,
 		exposedPort:      exposedPort,
+		version:          version,
 	}
 	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		return nil, err
 	}
 	c := pipeline.Result().(*container.Container)
-	err = c.SetImage(p.ClusterClient(), imageID)
+	err = c.SetImage(p.ClusterClient(), deployImageID)
 	if err != nil {
 		return nil, err
 	}
