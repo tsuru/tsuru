@@ -9,7 +9,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storage"
 	check "gopkg.in/check.v1"
@@ -25,7 +24,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_app_image_migrate_test")
 	var err error
-	s.coll, err = image.ImageCustomDataColl()
+	s.coll, err = imageCustomDataColl()
 	c.Assert(err, check.IsNil)
 }
 

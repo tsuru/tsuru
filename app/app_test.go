@@ -24,7 +24,6 @@ import (
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -85,7 +84,11 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName(app.Name, "testimage")
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: app,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -110,9 +113,8 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-	imgs, err := image.ListAppImages(a.Name)
-	c.Assert(err, check.NotNil)
-	c.Assert(imgs, check.HasLen, 0)
+	_, err = servicemanager.AppVersion.AppVersions(app)
+	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 }
 
 func (s *S) TestDeleteWithEvents(c *check.C) {
@@ -5385,6 +5387,10 @@ func (s *S) TestGetHealthcheckData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	hcData, err := a.GetHealthcheckData()
 	c.Assert(err, check.IsNil)
+	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{})
+	newSuccessfulAppVersion(c, &a)
+	hcData, err = a.GetHealthcheckData()
+	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
 		Path: "/",
 	})
@@ -5409,6 +5415,7 @@ func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	hcData, err := a.GetHealthcheckData()
 	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{

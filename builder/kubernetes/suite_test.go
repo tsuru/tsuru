@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tsuru/tsuru/api/shutdown"
-
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -25,6 +25,7 @@ import (
 	kubeTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -54,7 +55,6 @@ type S struct {
 	user          *auth.User
 	team          *authTypes.Team
 	token         auth.Token
-	lastConf      *rest.Config
 	client        *kubeTesting.ClientWrapper
 	clusterClient *kubeProv.ClusterClient
 	p             testProv
@@ -112,7 +112,6 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.clusterClient.Interface = s.client
 	kubeProv.ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
-		s.lastConf = conf
 		return s.client, nil
 	}
 	kubeProv.TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
@@ -171,5 +170,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "admin"}
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }

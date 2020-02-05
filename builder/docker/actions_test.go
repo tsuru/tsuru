@@ -9,12 +9,10 @@ import (
 	"net/url"
 
 	docker "github.com/fsouza/go-dockerclient"
-	mgo "github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
@@ -22,6 +20,8 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -38,26 +38,25 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	defer config.Unset("docker:user")
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
-	images, err := client.ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
 	cmds := []string{"ps", "-ef"}
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	version := newVersionForApp(c, client, app, nil)
 	app.SetEnv(bind.EnvVar{
 		Name:  "env1",
 		Value: "val1",
 	})
 	c.Assert(err, check.IsNil)
+	buildImg, err := image.GetBuildImage(app)
+	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
 	args := runContainerActionsArgs{
-		app:           app,
-		imageID:       images[0].ID,
-		commands:      cmds,
-		client:        builderClient(client),
-		provisioner:   s.provisioner,
-		buildingImage: builder.MockImageInfo{FakeBuildImageName: images[0].ID, FakeIsBuild: true},
-		isDeploy:      true,
+		app:         app,
+		imageID:     buildImg,
+		commands:    cmds,
+		client:      builderClient(client),
+		provisioner: s.provisioner,
+		version:     version,
+		isDeploy:    true,
 	}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err := createContainer.Forward(context)
@@ -76,12 +75,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 func (s *S) TestCreateContainerBackward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
-	defer client.RemoveImage("tsuru/python")
-	conta, err := s.newContainer(client)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(conta, client)
+	conta := s.newContainer(c, client)
 	cont := *conta
 	args := runContainerActionsArgs{
 		provisioner: s.provisioner,
@@ -101,9 +95,7 @@ func (s *S) TestUploadToContainerName(c *check.C) {
 func (s *S) TestUploadToContainerForward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	conta, err := s.newContainer(client)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(conta, client)
+	conta := s.newContainer(c, client)
 	cont := *conta
 	imgFile := bytes.NewBufferString("file data")
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
@@ -125,9 +117,7 @@ func (s *S) TestStartContainerName(c *check.C) {
 func (s *S) TestStartContainerForward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	conta, err := s.newContainer(client)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(conta, client)
+	conta := s.newContainer(c, client)
 	cont := *conta
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.provisioner,
@@ -143,12 +133,7 @@ func (s *S) TestStartContainerForward(c *check.C) {
 func (s *S) TestStartContainerBackward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
-	defer client.RemoveImage("tsuru/python")
-	conta, err := s.newContainer(client)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(conta, client)
+	conta := s.newContainer(c, client)
 	cont := *conta
 	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, check.IsNil)
@@ -169,12 +154,9 @@ func (s *S) TestFollowLogsAndCommitName(c *check.C) {
 func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
-	nextImgName, err := image.AppNewImageName(app.GetName())
-	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BaseImageName()}}
+	version := newVersionForApp(c, client, app, nil)
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: version.BaseImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -198,8 +180,6 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 
 func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
@@ -226,8 +206,6 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.server.PrepareFailure("failed to wait for the container", "/containers/.*/wait")
 	defer s.server.ResetFailure("failed to wait for the container")
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
 	err = cont.Create(&container.CreateArgs{
@@ -259,12 +237,9 @@ func (s *S) TestUpdateAppBuilderImageName(c *check.C) {
 func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(client, "tsuru/python", nil)
-	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
-	nextImgName, err := image.AppNewBuildImageName(app.GetName(), "", "")
-	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName.BuildImageName()}}
+	version := newVersionForApp(c, client, app, nil)
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: version.BuildImageName()}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -277,17 +252,14 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-mightyapp:v1-builder")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
-	args := runContainerActionsArgs{app: app, writer: buf, provisioner: s.provisioner, client: builderClient(client), buildingImage: nextImgName}
+	args := runContainerActionsArgs{app: app, writer: buf, provisioner: s.provisioner, client: builderClient(client), version: version}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	_, err = updateAppBuilderImage.Forward(context)
 	c.Assert(err, check.IsNil)
-	allImages, err := image.ListAppBuilderImages(args.app.GetName())
-	c.Assert(err, check.IsNil)
-	c.Assert(len(allImages), check.Equals, 1)
-	c.Assert(allImages[0], check.Equals, "tsuru/app-mightyapp:v1-builder")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
 }
 
-func (s *S) newContainer(client *docker.Client) (*container.Container, error) {
+func (s *S) newContainer(c *check.C, client *docker.Client) *container.Container {
 	container := container.Container{Container: types.Container{
 		ID:          "id",
 		IP:          "10.10.10.10",
@@ -295,52 +267,31 @@ func (s *S) newContainer(client *docker.Client) (*container.Container, error) {
 		HostAddr:    "127.0.0.1",
 		ProcessName: "web",
 		ExposedPort: "8888/tcp",
+		AppName:     "container",
 	}}
-	imageName := "tsuru/python:latest"
-	var customData map[string]interface{}
-	err := s.newFakeImage(client, imageName, customData)
-	if err != nil {
-		return nil, err
-	}
-	if container.AppName == "" {
-		container.AppName = "container"
-	}
+	fakeApp := provisiontest.NewFakeApp(container.AppName, "python", 0)
+	version := newVersionForApp(c, client, fakeApp, nil)
 	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}
 	config := docker.Config{
-		Image:        imageName,
+		Image:        version.BuildImageName(),
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
 	createOptions := docker.CreateContainerOptions{Config: &config}
 	createOptions.Name = randomString()
-	c, err := client.CreateContainer(createOptions)
-	if err != nil {
-		return nil, err
-	}
-	container.ID = c.ID
-	container.Image = imageName
+	cont, err := client.CreateContainer(createOptions)
+	c.Assert(err, check.IsNil)
+	container.ID = cont.ID
+	container.Image = version.BuildImageName()
 	container.Name = createOptions.Name
-	imageID, err := image.AppCurrentImageName(container.AppName)
-	if err != nil {
-		return nil, err
-	}
-	err = s.newFakeImage(client, imageID, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &container, nil
+	return &container
 }
 
-func (s *S) removeTestContainer(c *container.Container, client *docker.Client) error {
-	routertest.FakeRouter.RemoveBackend(c.AppName)
-	return c.Remove(builderClient(client), limiter())
-}
-
-func (s *S) newFakeImage(client *docker.Client, repo string, customData map[string]interface{}) error {
+func newVersionForApp(c *check.C, client *docker.Client, a provision.App, customData map[string]interface{}) appTypes.AppVersion {
 	if customData == nil {
 		customData = map[string]interface{}{
 			"processes": map[string]interface{}{
@@ -348,11 +299,16 @@ func (s *S) newFakeImage(client *docker.Client, repo string, customData map[stri
 			},
 		}
 	}
-	var buf safe.Buffer
-	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	err := image.SaveImageCustomData(repo, customData)
-	if err != nil && !mgo.IsDup(err) {
-		return err
-	}
-	return client.PullImage(opts, docker.AuthConfiguration{})
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: a,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		CustomData: customData,
+	})
+	c.Assert(err, check.IsNil)
+	client.PullImage(docker.PullImageOptions{
+		Repository: version.BuildImageName(),
+	}, docker.AuthConfiguration{})
+	return version
 }

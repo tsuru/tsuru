@@ -14,17 +14,51 @@ import (
 	"sync/atomic"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
 )
+
+func newEmptyVersion(c *check.C, app appTypes.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: app,
+	})
+	c.Assert(err, check.IsNil)
+	return version
+}
+
+func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+	version := newEmptyVersion(c, app)
+	err := version.CommitBuildImage()
+	c.Assert(err, check.IsNil)
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		CustomData: customData,
+	})
+	c.Assert(err, check.IsNil)
+	return version
+}
+
+func newCommittedVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+	version := newVersion(c, app, customData)
+	err := version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
+func newSuccessfulVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+	version := newCommittedVersion(c, app, customData)
+	err := version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+	return version
+}
 
 func (s *S) TestBuildPod(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
@@ -62,7 +96,12 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	client := KubeClient{}
-	_, err = client.BuildPod(a, evt, ioutil.NopCloser(buf), "mytag")
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:            a,
+		CustomBuildTag: "mytag",
+	})
+	c.Assert(err, check.IsNil)
+	err = client.BuildPod(a, evt, ioutil.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 }
 
@@ -114,7 +153,12 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	client := KubeClient{}
-	_, err = client.BuildPod(a, evt, ioutil.NopCloser(buf), "mytag")
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:            a,
+		CustomBuildTag: "mytag",
+	})
+	c.Assert(err, check.IsNil)
+	err = client.BuildPod(a, evt, ioutil.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -132,7 +176,8 @@ func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	defer rollback()
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	version := newEmptyVersion(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")
@@ -165,7 +210,8 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 	})
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	_, err = client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	version := newEmptyVersion(c, a)
+	_, err = client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -188,6 +234,7 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
+	version := newEmptyVersion(c, a)
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
@@ -201,7 +248,7 @@ trap end EXIT
 cat >/dev/null && /bin/deploy-agent`)
 			c.Assert(containers[1].Env, check.DeepEquals, []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:tag2,registry.example.com/tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",registry.example.com/tsuru/app-myapp:latest"},
 				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: "registry.example.com/tsuru/app-myapp:tag1"},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
@@ -216,61 +263,7 @@ cat >/dev/null && /bin/deploy-agent`)
 
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "registry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "registry.example.com/tsuru/app-myapp:tag2"})
-	c.Assert(err, check.IsNil)
-	c.Assert(procData.Image.ID, check.Equals, "1234")
-	c.Assert(procData.Procfile, check.Equals, "web: make run")
-	c.Assert(procData.TsuruYaml.Healthcheck.Path, check.Equals, "/health")
-	c.Assert(procData.TsuruYaml.Healthcheck.Scheme, check.Equals, "https")
-}
-
-func (s *S) TestImageTagPushAndInspectWithRegistryAuthAndDifferentDomain(c *check.C) {
-	config.Set("docker:registry", "registry.example.com")
-	defer config.Unset("docker:registry")
-	config.Set("docker:registry-auth:username", "user")
-	defer config.Unset("docker:registry-auth:username")
-	config.Set("docker:registry-auth:password", "pwd")
-	defer config.Unset("docker:registry-auth:password")
-
-	s.mock.LogHook = func(w io.Writer, r *http.Request) {
-		output := `{
-"image": {"Id":"1234"},
-"procfile": "web: make run",
-"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
-}`
-		w.Write([]byte(output))
-	}
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		containers := pod.Spec.Containers
-		if containers[0].Name == "myapp-v1-deploy" {
-			c.Assert(containers, check.HasLen, 2)
-			cmds := cleanCmds(containers[0].Command[2])
-			c.Assert(cmds, check.Equals, `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`)
-			cmds = cleanCmds(containers[1].Command[2])
-			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
-trap end EXIT
-cat >/dev/null && /bin/deploy-agent`)
-			c.Assert(containers[1].Env, check.DeepEquals, []apiv1.EnvVar{
-				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "otherregistry.example.com/tsuru/app-myapp:tag2,otherregistry.example.com/tsuru/app-myapp:latest"},
-				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: "otherregistry.example.com/tsuru/app-myapp:tag1"},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: ""},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: ""},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
-			})
-		}
-		return false, nil, nil
-	})
-
-	client := KubeClient{}
-	evt := s.newTestEvent(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "otherregistry.example.com/tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "otherregistry.example.com/tsuru/app-myapp:tag2"})
+	procData, err := client.ImageTagPushAndInspect(a, evt, "registry.example.com/tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")
@@ -291,7 +284,8 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 	defer rollback()
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", builder.MockImageInfo{FakeBaseImageName: "tsuru/app-myapp:tag2"})
+	version := newEmptyVersion(c, a)
+	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")

@@ -6,18 +6,17 @@ package gc
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -28,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -87,6 +87,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -97,6 +99,26 @@ func (s *S) TearDownTest(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	s.storage.Apps().Database.DropDatabase()
 	s.storage.Close()
+}
+
+func insertTestVersions(c *check.C, a provision.App) {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:            a,
+		CustomBuildTag: "my-custom-tag",
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBuildImage()
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 12; i++ {
+		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App: a,
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBuildImage()
+		c.Assert(err, check.IsNil)
+		err = version.CommitBaseImage()
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *S) TestGCStartNothingToDo(c *check.C) {
@@ -127,17 +149,11 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	defer srv.Close()
-	err := image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:my-custom-tag", u.Host))
-	c.Assert(err, check.IsNil)
-	for i := 0; i < 12; i++ {
-		err = image.AppendAppImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d", u.Host, i))
-		c.Assert(err, check.IsNil)
-		err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d-builder", u.Host, i))
-		c.Assert(err, check.IsNil)
-	}
+	fakeApp := provisiontest.NewFakeApp("myapp", "go", 0)
+	insertTestVersions(c, fakeApp)
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
-	err = gc.Shutdown(context.Background())
+	err := gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 	c.Assert(regDeleteCalls, check.DeepEquals, []string{
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0",
@@ -166,17 +182,17 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v10-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11-builder",
 	})
-	_, err = image.ListAppImages("myapp")
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
-	_, err = image.ListAppBuilderImages("myapp")
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	versions, err := servicemanager.AppVersion.AppVersions(fakeApp)
+	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	c.Assert(len(versions.Versions), check.Equals, 0)
 }
 
 func (s *S) TestGCStartWithApp(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	var nodeDeleteCalls []string
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -202,77 +218,83 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	}))
 	u, _ := url.Parse(registrySrv.URL)
 	defer registrySrv.Close()
-	err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:my-custom-tag", u.Host))
-	c.Assert(err, check.IsNil)
-	for i := 0; i < 12; i++ {
-		err = image.AppendAppImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d", u.Host, i))
-		c.Assert(err, check.IsNil)
-		err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d-builder", u.Host, i))
-		c.Assert(err, check.IsNil)
-	}
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a)
+
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
-	c.Assert(regDeleteCalls, check.DeepEquals, []string{
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0-builder",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1-builder",
+	c.Check(regDeleteCalls, check.DeepEquals, []string{
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
 	})
-	appImgs, err := image.ListAppImages("myapp")
+	versions, err := servicemanager.AppVersion.AppVersions(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(appImgs, check.DeepEquals, []string{
-		u.Host + "/tsuru/app-myapp:v2",
-		u.Host + "/tsuru/app-myapp:v3",
+	var appImgs, builderImgs []string
+	for _, version := range versions.Versions {
+		if version.DeployImage != "" {
+			appImgs = append(appImgs, version.DeployImage)
+		}
+		if version.BuildImage != "" {
+			builderImgs = append(builderImgs, version.BuildImage)
+		}
+	}
+	sort.Strings(appImgs)
+	sort.Strings(builderImgs)
+	c.Check(appImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:v10",
+		u.Host + "/tsuru/app-myapp:v11",
+		u.Host + "/tsuru/app-myapp:v12",
+		u.Host + "/tsuru/app-myapp:v13",
 		u.Host + "/tsuru/app-myapp:v4",
 		u.Host + "/tsuru/app-myapp:v5",
 		u.Host + "/tsuru/app-myapp:v6",
 		u.Host + "/tsuru/app-myapp:v7",
 		u.Host + "/tsuru/app-myapp:v8",
 		u.Host + "/tsuru/app-myapp:v9",
-		u.Host + "/tsuru/app-myapp:v10",
-		u.Host + "/tsuru/app-myapp:v11",
 	})
-	builderImgs, err := image.ListAppBuilderImages("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgs, check.DeepEquals, []string{
+	c.Check(builderImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:my-custom-tag",
-		u.Host + "/tsuru/app-myapp:v2-builder",
-		u.Host + "/tsuru/app-myapp:v3-builder",
+		u.Host + "/tsuru/app-myapp:v10-builder",
+		u.Host + "/tsuru/app-myapp:v11-builder",
+		u.Host + "/tsuru/app-myapp:v12-builder",
+		u.Host + "/tsuru/app-myapp:v13-builder",
 		u.Host + "/tsuru/app-myapp:v4-builder",
 		u.Host + "/tsuru/app-myapp:v5-builder",
 		u.Host + "/tsuru/app-myapp:v6-builder",
 		u.Host + "/tsuru/app-myapp:v7-builder",
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
-		u.Host + "/tsuru/app-myapp:v10-builder",
-		u.Host + "/tsuru/app-myapp:v11-builder",
 	})
-	c.Assert(nodeDeleteCalls, check.DeepEquals, []string{
-		"/images/" + u.Host + "/tsuru/app-myapp:v0",
-		"/images/" + u.Host + "/tsuru/app-myapp:v1",
-		"/images/" + u.Host + "/tsuru/app-myapp:v2",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9",
+	c.Check(nodeDeleteCalls, check.DeepEquals, []string{
+		"/images/" + u.Host + "/tsuru/app-myapp:v12",
+		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
 		"/images/" + u.Host + "/tsuru/app-myapp:v10",
-		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
-		"/images/" + u.Host + "/tsuru/app-myapp:v0-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v1-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v2-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
 		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v2",
+		"/images/" + u.Host + "/tsuru/app-myapp:v2-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
 	})
 }
 
@@ -280,7 +302,8 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
-	err := app.CreateApp(&app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}, s.user)
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -296,14 +319,11 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	}))
 	u, _ := url.Parse(registrySrv.URL)
 	defer registrySrv.Close()
-	err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:my-custom-tag", u.Host))
-	c.Assert(err, check.IsNil)
-	for i := 0; i < 12; i++ {
-		err = image.AppendAppImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d", u.Host, i))
-		c.Assert(err, check.IsNil)
-		err = image.AppendAppBuilderImageName("myapp", fmt.Sprintf("%s/tsuru/app-myapp:v%d-builder", u.Host, i))
-		c.Assert(err, check.IsNil)
-	}
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a)
+
 	nGoroutines := 10
 	wg := sync.WaitGroup{}
 	for i := 0; i < nGoroutines; i++ {
@@ -317,33 +337,42 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		}()
 	}
 	wg.Wait()
-	appImgs, err := image.ListAppImages("myapp")
+	versions, err := servicemanager.AppVersion.AppVersions(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(appImgs, check.DeepEquals, []string{
-		u.Host + "/tsuru/app-myapp:v2",
-		u.Host + "/tsuru/app-myapp:v3",
+	var appImgs, builderImgs []string
+	for _, version := range versions.Versions {
+		if version.DeployImage != "" {
+			appImgs = append(appImgs, version.DeployImage)
+		}
+		if version.BuildImage != "" {
+			builderImgs = append(builderImgs, version.BuildImage)
+		}
+	}
+	sort.Strings(appImgs)
+	sort.Strings(builderImgs)
+	c.Check(appImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:v10",
+		u.Host + "/tsuru/app-myapp:v11",
+		u.Host + "/tsuru/app-myapp:v12",
+		u.Host + "/tsuru/app-myapp:v13",
 		u.Host + "/tsuru/app-myapp:v4",
 		u.Host + "/tsuru/app-myapp:v5",
 		u.Host + "/tsuru/app-myapp:v6",
 		u.Host + "/tsuru/app-myapp:v7",
 		u.Host + "/tsuru/app-myapp:v8",
 		u.Host + "/tsuru/app-myapp:v9",
-		u.Host + "/tsuru/app-myapp:v10",
-		u.Host + "/tsuru/app-myapp:v11",
 	})
-	builderImgs, err := image.ListAppBuilderImages("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(builderImgs, check.DeepEquals, []string{
+	c.Check(builderImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:my-custom-tag",
-		u.Host + "/tsuru/app-myapp:v2-builder",
-		u.Host + "/tsuru/app-myapp:v3-builder",
+		u.Host + "/tsuru/app-myapp:v10-builder",
+		u.Host + "/tsuru/app-myapp:v11-builder",
+		u.Host + "/tsuru/app-myapp:v12-builder",
+		u.Host + "/tsuru/app-myapp:v13-builder",
 		u.Host + "/tsuru/app-myapp:v4-builder",
 		u.Host + "/tsuru/app-myapp:v5-builder",
 		u.Host + "/tsuru/app-myapp:v6-builder",
 		u.Host + "/tsuru/app-myapp:v7-builder",
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
-		u.Host + "/tsuru/app-myapp:v10-builder",
-		u.Host + "/tsuru/app-myapp:v11-builder",
 	})
 }

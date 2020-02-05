@@ -29,11 +29,12 @@ type BuildOpts struct {
 	ArchiveSize         int64
 	ImageID             string
 	Tag                 string
+	Message             string
 }
 
 // Builder is the basic interface of this package.
 type Builder interface {
-	Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (provision.NewImageInfo, error)
+	Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error)
 }
 
 var builders = make(map[string]Builder)

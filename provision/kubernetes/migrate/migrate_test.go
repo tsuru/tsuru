@@ -5,6 +5,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	kubeProv "github.com/tsuru/tsuru/provision/kubernetes"
@@ -12,7 +13,9 @@ import (
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	kubeTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types/provision"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -107,6 +110,8 @@ func (s *S) SetUpTest(c *check.C) {
 		err = s.client.TsuruV1().Apps("tsuru").Delete(a.GetName(), &metav1.DeleteOptions{})
 		c.Assert(err, check.IsNil)
 	}
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -134,6 +135,8 @@ func (s *S) SetUpTest(c *check.C) {
 	repository.Manager().CreateUser(s.user.Email)
 	s.setupMocks()
 	servicemanager.AppLog, err = applog.AppLogService()
+	c.Assert(err, check.IsNil)
+	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }
 

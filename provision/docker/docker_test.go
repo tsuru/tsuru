@@ -6,25 +6,23 @@ package docker
 
 import (
 	"bytes"
-	"fmt"
 	"net/url"
 	"sort"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/clusterclient"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -34,7 +32,6 @@ type newContainerOpts struct {
 	Image           string
 	ProcessName     string
 	ImageCustomData map[string]interface{}
-	Provisioner     *dockerProvisioner
 }
 
 func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*container.Container, error) {
@@ -51,34 +48,51 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if p == nil {
 		p = s.p
 	}
-	imageName := "tsuru/python:latest"
+	var imageID string
 	var customData map[string]interface{}
 	if opts != nil {
-		if opts.Image != "" {
-			imageName = opts.Image
+		if opts.ProcessName != "" {
+			container.ProcessName = opts.ProcessName
 		}
-		container.AppName = opts.AppName
-		container.ProcessName = opts.ProcessName
 		customData = opts.ImageCustomData
-		if opts.Provisioner != nil {
-			p = opts.Provisioner
-		}
+		container.AppName = opts.AppName
+		imageID = opts.Image
 		container.SetStatus(p.ClusterClient(), provision.Status(opts.Status), false)
-	}
-	err := newFakeImage(p, imageName, customData)
-	if err != nil {
-		return nil, err
 	}
 	if container.AppName == "" {
 		container.AppName = "container"
 	}
+	fakeApp := provisiontest.NewFakeApp(container.AppName, "python", 0)
+	if imageID == "" {
+		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(fakeApp)
+		if err == appTypes.ErrNoVersionsAvailable {
+			version, err = newSuccessfulVersionForApp(p, fakeApp, customData)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if opts != nil && opts.Status == provision.StatusBuilding.String() {
+			imageID = version.BuildImageName()
+			container.BuildingImage = version.BaseImageName()
+		} else {
+			imageID = version.BaseImageName()
+		}
+	} else {
+		err := p.Cluster().PullImage(docker.PullImageOptions{
+			Repository: imageID,
+		}, docker.AuthConfiguration{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}
 	config := docker.Config{
-		Image:        imageName,
+		Image:        imageID,
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
@@ -89,7 +103,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		return nil, err
 	}
 	container.ID = c.ID
-	container.Image = imageName
+	container.Image = imageID
 	container.Name = createOptions.Name
 	conn, err := db.Conn()
 	if err != nil {
@@ -97,14 +111,6 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	}
 	defer conn.Close()
 	err = conn.Collection(s.collName).Insert(&container)
-	if err != nil {
-		return nil, err
-	}
-	imageID, err := image.AppCurrentImageName(container.AppName)
-	if err != nil {
-		return nil, err
-	}
-	err = newFakeImage(p, imageID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,23 @@ func (s *S) removeTestContainer(c *container.Container) error {
 	return c.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 }
 
-func newFakeImage(p *dockerProvisioner, repo string, customData map[string]interface{}) error {
+func newSuccessfulVersionForApp(p *dockerProvisioner, a provision.App, customData map[string]interface{}) (appTypes.AppVersion, error) {
+	version, err := newVersionForApp(p, a, customData)
+	if err != nil {
+		return nil, err
+	}
+	err = version.CommitBaseImage()
+	if err != nil {
+		return nil, err
+	}
+	err = version.CommitSuccessful()
+	if err != nil {
+		return nil, err
+	}
+	return version, nil
+}
+
+func newVersionForApp(p *dockerProvisioner, a provision.App, customData map[string]interface{}) (appTypes.AppVersion, error) {
 	if customData == nil {
 		customData = map[string]interface{}{
 			"processes": map[string]interface{}{
@@ -124,13 +146,26 @@ func newFakeImage(p *dockerProvisioner, repo string, customData map[string]inter
 			},
 		}
 	}
-	var buf safe.Buffer
-	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	err := image.SaveImageCustomData(repo, customData)
-	if err != nil && !mgo.IsDup(err) {
-		return err
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: a,
+	})
+	if err != nil {
+		return nil, err
 	}
-	return p.Cluster().PullImage(opts, docker.AuthConfiguration{})
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		CustomData: customData,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = version.CommitBuildImage()
+	if err != nil {
+		return nil, err
+	}
+	p.Cluster().PullImage(docker.PullImageOptions{
+		Repository: version.BuildImageName(),
+	}, docker.AuthConfiguration{})
+	return version, nil
 }
 
 func (s *S) TestGetContainer(c *check.C) {
@@ -177,73 +212,22 @@ func (s *S) TestGetContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 0)
 }
 
-func (s *S) TestGetImageFromAppPlatform(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img, err := image.GetBuildImage(app)
-	c.Assert(err, check.IsNil)
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:v1", repoNamespace))
-}
-
-func (s *S) TestGetImageFromAppPlatformWithAppLockedImage(c *check.C) {
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	c.Assert(err, check.IsNil)
-	expectedImage := fmt.Sprintf("%s/python:locked", repoNamespace)
-	s.mockService.PlatformImage.OnFindImage = func(platform, version string) (string, error) {
-		return expectedImage, nil
-	}
-	app := provisiontest.NewFakeApp("myapp", "python:locked", 1)
-	img, err := image.GetBuildImage(app)
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, expectedImage)
-}
-
-func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
-	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}}
-	coll := s.p.Collection()
-	defer coll.Close()
-	err = coll.Insert(cont)
-	c.Assert(err, check.IsNil)
-	c.Assert(err, check.IsNil)
-	img, err := image.GetBuildImage(app)
-	c.Assert(err, check.IsNil)
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:v1", repoNamespace, app.Platform))
-}
-
-func (s *S) TestGetImageWithRegistry(c *check.C) {
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
-		return "localhost:3030/tsuru/" + name + ":v1", nil
-	}
-	img, err := image.GetBuildImage(app)
-	c.Assert(err, check.IsNil)
-	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	expected := fmt.Sprintf("localhost:3030/%s/python:v1", repoNamespace)
-	c.Assert(img, check.Equals, expected)
-}
-
 func (s *S) TestStart(c *check.C) {
-	err := newFakeImage(s.p, "tsuru/python:v1", nil)
-	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageID, err := image.GetBuildImage(app)
+	version, err := newVersionForApp(s.p, app, nil)
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app)
 	var buf bytes.Buffer
-	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageID, &buf, "")
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+	c.Assert(err, check.IsNil)
+	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, cmdData, version, &buf, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, imageID)
+	c.Assert(cont2.Image, check.Equals, version.BaseImageName())
 	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
 }
 
@@ -251,19 +235,21 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	cont.Status = provision.StatusStopped.String()
-	err = newFakeImage(s.p, "tsuru/python:v1", nil)
-	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageID, err := image.GetBuildImage(app)
+	version, err := newVersionForApp(s.p, app, nil)
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app)
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
-	cont, err = s.p.start(cont, app, imageID, &buf, "")
+	cont, err = s.p.start(cont, app, cmdData, version, &buf, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, imageID)
+	c.Assert(cont2.Image, check.Equals, version.BaseImageName())
 	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
 }
 

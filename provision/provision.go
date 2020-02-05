@@ -242,7 +242,7 @@ type App interface {
 // RollbackableDeployer is a provisioner that allows rolling back to a
 // previously deployed version.
 type RollbackableDeployer interface {
-	Rollback(App, string, *event.Event) (string, error)
+	Rollback(App, appTypes.AppVersion, *event.Event) (string, error)
 }
 
 type BuilderDockerClient interface {
@@ -275,13 +275,6 @@ type ExecDockerClient interface {
 	InspectExec(execId string) (*docker.ExecInspect, error)
 }
 
-type NewImageInfo interface {
-	BaseImageName() string
-	BuildImageName() string
-	Version() int
-	IsBuild() bool
-}
-
 type InspectData struct {
 	Image     docker.Image
 	TsuruYaml provTypes.TsuruYamlData
@@ -289,15 +282,15 @@ type InspectData struct {
 }
 
 type BuilderKubeClient interface {
-	BuildPod(App, *event.Event, io.Reader, string) (NewImageInfo, error)
+	BuildPod(App, *event.Event, io.Reader, appTypes.AppVersion) error
 	BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error
-	ImageTagPushAndInspect(App, *event.Event, string, NewImageInfo) (InspectData, error)
+	ImageTagPushAndInspect(App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
 	DownloadFromContainer(App, *event.Event, string) (io.ReadCloser, error)
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
-	Deploy(App, NewImageInfo, *event.Event) (string, error)
+	Deploy(App, appTypes.AppVersion, *event.Event) (string, error)
 }
 
 type BuilderDeployDockerClient interface {

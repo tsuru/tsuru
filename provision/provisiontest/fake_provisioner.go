@@ -856,7 +856,7 @@ func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App, img provision.NewImageInfo, evt *event.Event) (string, error) {
+func (p *FakeProvisioner) Deploy(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
 	if err := p.getError("Deploy"); err != nil {
 		return "", err
 	}
@@ -866,10 +866,10 @@ func (p *FakeProvisioner) Deploy(app provision.App, img provision.NewImageInfo, 
 	if !ok {
 		return "", errNotProvisioned
 	}
-	if img.IsBuild() {
-		pApp.image = img.BuildImageName()
+	if version.VersionInfo().DeployImage != "" {
+		pApp.image = version.VersionInfo().DeployImage
 	} else {
-		pApp.image = img.BaseImageName()
+		pApp.image = version.VersionInfo().BuildImage
 	}
 	evt.Write([]byte("Builder deploy called"))
 	p.apps[app.GetName()] = pApp
@@ -902,55 +902,7 @@ func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
-	if err := p.getError("ArchiveDeploy"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	evt.Write([]byte("Archive deploy called"))
-	pApp.lastArchive = archiveURL
-	p.apps[app.GetName()] = pApp
-	return fakeAppImage, nil
-}
-
-func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
-	if err := p.getError("UploadDeploy"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	evt.Write([]byte("Upload deploy called"))
-	pApp.lastFile = file
-	p.apps[app.GetName()] = pApp
-	return fakeAppImage, nil
-}
-
-func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.Event) (string, error) {
-	if err := p.getError("ImageDeploy"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	pApp.image = img
-	evt.Write([]byte("Image deploy called"))
-	p.apps[app.GetName()] = pApp
-	return img, nil
-}
-
-func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Event) (string, error) {
+func (p *FakeProvisioner) Rollback(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
 	if err := p.getError("Rollback"); err != nil {
 		return "", err
 	}
@@ -962,7 +914,7 @@ func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Eve
 	}
 	evt.Write([]byte("Rollback deploy called"))
 	p.apps[app.GetName()] = pApp
-	return img, nil
+	return version.VersionInfo().DeployImage, nil
 }
 
 func (p *FakeProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
@@ -1472,16 +1424,14 @@ func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 type provisionedApp struct {
-	units       []provision.Unit
-	app         provision.App
-	restarts    map[string]int
-	starts      map[string]int
-	stops       map[string]int
-	sleeps      map[string]int
-	lastArchive string
-	lastFile    io.ReadCloser
-	cnames      []string
-	unitLen     int
-	lastData    map[string]interface{}
-	image       string
+	units    []provision.Unit
+	app      provision.App
+	restarts map[string]int
+	starts   map[string]int
+	stops    map[string]int
+	sleeps   map[string]int
+	cnames   []string
+	unitLen  int
+	lastData map[string]interface{}
+	image    string
 }

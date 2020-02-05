@@ -10,10 +10,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -25,7 +27,7 @@ func init() {
 	builder.Register("kubernetes", &kubernetesBuilder{})
 }
 
-func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	p, ok := prov.(provision.BuilderDeployKubeClient)
 	if !ok {
 		return nil, errors.New("provisioner not supported")
@@ -41,7 +43,7 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 		return nil, err
 	}
 	if opts.ImageID != "" {
-		return imageBuild(client, app, opts.ImageID, evt)
+		return imageBuild(client, app, opts, evt)
 	}
 	if opts.Rebuild {
 		var tarFile io.ReadCloser
@@ -51,27 +53,49 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 		}
 		opts.ArchiveFile = tarFile
 	}
-	img, err := client.BuildPod(app, evt, opts.ArchiveFile, opts.Tag)
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:            app,
+		EventID:        evt.UniqueID.Hex(),
+		CustomBuildTag: opts.Tag,
+		Description:    opts.Message,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return img, nil
+	err = client.BuildPod(app, evt, opts.ArchiveFile, newVersion)
+	if err != nil {
+		return nil, err
+	}
+	err = newVersion.CommitBuildImage()
+	if err != nil {
+		return nil, err
+	}
+	return newVersion, nil
 }
 
-func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID string, evt *event.Event) (provision.NewImageInfo, error) {
+func imageBuild(client provision.BuilderKubeClient, a provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
+	imageID := opts.ImageID
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
 	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
-	newImage, err := image.AppNewImageName(a.GetName())
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:         a,
+		EventID:     evt.UniqueID.Hex(),
+		Description: opts.Message,
+	})
 	if err != nil {
 		return nil, err
 	}
-	inspectData, err := client.ImageTagPushAndInspect(a, evt, imageID, newImage)
+	inspectData, err := client.ImageTagPushAndInspect(a, evt, imageID, newVersion)
 	if err != nil {
 		return nil, err
 	}
-	procfile := image.GetProcessesFromProcfile(inspectData.Procfile)
+	err = newVersion.CommitBaseImage()
+	if err != nil {
+		return nil, err
+	}
+	procfile := version.GetProcessesFromProcfile(inspectData.Procfile)
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
 		cmds := append(inspectData.Image.Config.Entrypoint, inspectData.Image.Config.Cmd...)
@@ -83,22 +107,21 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, imageID str
 	for k, v := range procfile {
 		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)
 	}
-	imageData := image.ImageMetadata{
-		Name:       newImage.BaseImageName(),
-		Processes:  procfile,
-		CustomData: tsuruYamlToCustomData(&inspectData.TsuruYaml),
+	versionData := appTypes.AddVersionDataArgs{
+		Processes:    procfile,
+		CustomData:   tsuruYamlToCustomData(&inspectData.TsuruYaml),
+		ExposedPorts: make([]string, len(inspectData.Image.Config.ExposedPorts)),
 	}
-	imageData.ExposedPorts = make([]string, len(inspectData.Image.Config.ExposedPorts))
 	i := 0
 	for k := range inspectData.Image.Config.ExposedPorts {
-		imageData.ExposedPorts[i] = string(k)
+		versionData.ExposedPorts[i] = string(k)
 		i++
 	}
-	err = imageData.Save()
+	err = newVersion.AddData(versionData)
 	if err != nil {
 		return nil, err
 	}
-	return newImage, nil
+	return newVersion, nil
 }
 
 func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{} {
@@ -113,12 +136,12 @@ func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{}
 }
 
 func downloadFromContainer(client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
-	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil {
-		return nil, errors.Errorf("App %s image not found", app.GetName())
+		return nil, err
 	}
 	fmt.Fprintln(evt, "---- Downloading archive from image ----")
-	archiveFile, err := client.DownloadFromContainer(app, evt, imageName)
+	archiveFile, err := client.DownloadFromContainer(app, evt, version.VersionInfo().DeployImage)
 	if err != nil {
 		return nil, err
 	}

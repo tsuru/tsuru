@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -142,10 +143,17 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildHandler(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		c.Assert(opts.Tag, check.Equals, "mytag")
-		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "tsuruteam/app-otherapp:mytag"}, nil
+		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App:            app,
+			CustomBuildTag: opts.Tag,
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBuildImage()
+		c.Assert(err, check.IsNil)
+		return version, nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -155,6 +163,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+
 	url := fmt.Sprintf("/apps/%s/build?tag=mytag", a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -195,9 +204,16 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 }
 
 func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
-		return builder.MockImageInfo{FakeIsBuild: true, FakeBuildImageName: "tsuruteam/app-otherapp:mytag"}, nil
+		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App:            app,
+			CustomBuildTag: opts.Tag,
+		})
+		c.Assert(err, check.IsNil)
+		err = version.CommitBuildImage()
+		c.Assert(err, check.IsNil)
+		return version, nil
 	}
 	a := app.App{
 		Name:      "otherapp",

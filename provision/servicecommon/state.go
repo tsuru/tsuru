@@ -6,9 +6,9 @@ package servicecommon
 
 import (
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/servicemanager"
 )
 
 func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState) error {
@@ -16,23 +16,27 @@ func ChangeAppState(manager ServiceManager, a provision.App, process string, sta
 		processes []string
 		err       error
 	)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	if err != nil {
+		return err
+	}
 	if process == "" {
-		processes, err = image.AllAppProcesses(a.GetName())
+		var allProcesses map[string][]string
+		allProcesses, err = version.Processes()
 		if err != nil {
 			return err
 		}
+		for processName := range allProcesses {
+			processes = append(processes, processName)
+		}
 	} else {
 		processes = []string{process}
-	}
-	imageName, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return errors.WithStack(err)
 	}
 	spec := ProcessSpec{}
 	for _, procName := range processes {
 		spec[procName] = state
 	}
-	err = RunServicePipeline(manager, a, imageName, spec, nil)
+	err = RunServicePipeline(manager, a, version, spec, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -46,17 +50,21 @@ func ChangeUnits(manager ServiceManager, a provision.App, units int, processName
 	if units == 0 {
 		return errors.New("cannot change 0 units")
 	}
-	imageName, err := image.AppCurrentImageName(a.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	if err != nil {
+		return err
+	}
+	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
 		return err
 	}
 	if processName == "" {
-		_, processName, err = dockercommon.ProcessCmdForImage(processName, imageName)
+		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 	}
-	err = RunServicePipeline(manager, a, imageName, ProcessSpec{
+	err = RunServicePipeline(manager, a, version, ProcessSpec{
 		processName: ProcessState{Increment: units},
 	}, nil)
 	if err != nil {

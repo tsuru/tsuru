@@ -14,7 +14,6 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -64,11 +63,15 @@ type DeployData struct {
 func findValidImages(apps ...App) (set.Set, error) {
 	validImages := set.Set{}
 	for _, a := range apps {
-		imgs, err := image.ListAppImages(a.Name)
-		if err != nil && err != mgo.ErrNotFound {
+		versions, err := servicemanager.AppVersion.AppVersions(&a)
+		if err != nil && err != appTypes.ErrNoVersionsAvailable {
 			return nil, err
 		}
-		validImages.Add(imgs...)
+		for _, version := range versions.Versions {
+			if version.DeploySuccessful && version.DeployImage != "" {
+				validImages.Add(version.DeployImage)
+			}
+		}
 	}
 	return validImages, nil
 }
@@ -229,14 +232,15 @@ func Build(opts DeployOptions) (string, error) {
 	if !ok {
 		return "", errors.Errorf("provisioner don't implement builder interface")
 	}
-	img, err := builderDeploy(builder, &opts, opts.Event)
+	version, err := builderDeploy(builder, &opts, opts.Event)
 	if err != nil {
 		return "", err
 	}
-	if img.IsBuild() {
-		return img.BuildImageName(), nil
+	vi := version.VersionInfo()
+	if vi.DeployImage != "" {
+		return vi.DeployImage, nil
 	}
-	return img.BaseImageName(), nil
+	return vi.BuildImage, nil
 }
 
 type errorWithLog struct {
@@ -293,13 +297,6 @@ func Deploy(opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
 	}
-	if opts.Rollback && !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
-		imageName, err := image.GetAppImageBySuffix(opts.App.Name, opts.Image)
-		if err != nil {
-			return "", err
-		}
-		opts.Image = imageName
-	}
 	logWriter := LogWriter{AppName: opts.App.Name}
 	logWriter.Async()
 	defer logWriter.Close()
@@ -327,12 +324,12 @@ func Deploy(opts DeployOptions) (string, error) {
 	return imageID, nil
 }
 
-func RollbackUpdate(appName, imageID, reason string, disableRollback bool) error {
-	imgName, err := image.GetAppImageBySuffix(appName, imageID)
+func RollbackUpdate(app *App, imageID, reason string, disableRollback bool) error {
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(app, imageID)
 	if err != nil {
 		return err
 	}
-	return image.UpdateAppImageRollback(imgName, reason, disableRollback)
+	return version.ToggleEnabled(!disableRollback, reason)
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
@@ -349,21 +346,28 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 
 	if opts.Kind != DeployRollback {
 		if deployer, ok := prov.(provision.BuilderDeploy); ok {
-			img, err := builderDeploy(deployer, opts, evt)
+			version, err := builderDeploy(deployer, opts, evt)
 			if err != nil {
 				return "", err
 			}
-			return deployer.Deploy(opts.App, img, evt)
+			return deployer.Deploy(opts.App, version, evt)
 		}
 	} else {
 		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
-			return deployer.Rollback(opts.App, opts.Image, evt)
+			version, err := servicemanager.AppVersion.VersionByImageOrVersion(opts.App, opts.Image)
+			if err != nil {
+				return "", err
+			}
+			if version.VersionInfo().Disabled {
+				return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
+			}
+			return deployer.Rollback(opts.App, version, evt)
 		}
 	}
 	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
 }
 
-func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (provision.NewImageInfo, error) {
+func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	isRebuild := opts.Kind == DeployRebuild
 	buildOpts := builder.BuildOpts{
 		BuildFromFile: opts.Build,
@@ -373,16 +377,17 @@ func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event
 		Rebuild:       isRebuild,
 		ImageID:       opts.Image,
 		Tag:           opts.BuildTag,
+		Message:       opts.Message,
 	}
 	builder, err := opts.App.getBuilder()
 	if err != nil {
 		return nil, err
 	}
-	img, err := builder.Build(prov, opts.App, evt, &buildOpts)
+	version, err := builder.Build(prov, opts.App, evt, &buildOpts)
 	if buildOpts.IsTsuruBuilderImage {
 		opts.Kind = DeployBuildedImage
 	}
-	return img, err
+	return version, err
 }
 
 func ValidateOrigin(origin string) bool {

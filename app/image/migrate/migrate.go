@@ -5,12 +5,16 @@
 package migrate
 
 import (
+	"fmt"
+
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 )
 
 func MigrateExposedPorts() error {
-	coll, err := image.ImageCustomDataColl()
+	coll, err := imageCustomDataColl()
 	if err != nil {
 		return err
 	}
@@ -31,4 +35,17 @@ func MigrateExposedPorts() error {
 		}
 	}
 	return nil
+}
+
+func imageCustomDataColl() (*storage.Collection, error) {
+	const defaultCollection = "docker"
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	name, err := config.GetString("docker:collection")
+	if err != nil {
+		name = defaultCollection
+	}
+	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }

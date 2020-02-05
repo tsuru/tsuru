@@ -19,7 +19,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
@@ -34,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -143,12 +143,31 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	}
 }
 
+func newAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: app,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBuildImage()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
+func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+	version := newAppVersion(c, app)
+	err := version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	var builderCalled bool
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		builderCalled = true
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -190,9 +209,9 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -254,8 +273,8 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -294,8 +313,8 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -340,8 +359,8 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -394,8 +413,8 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -450,8 +469,8 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -500,8 +519,8 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{
 		Name:      "otherapp",
@@ -547,8 +566,8 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -596,8 +615,8 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -621,8 +640,8 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -661,8 +680,8 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -736,8 +755,8 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 }
 
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -1112,9 +1131,10 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
 	v := url.Values{}
 	v.Set("origin", "rollback")
-	v.Set("image", "my-image-123:v1")
+	v.Set("image", version.BaseImageName())
 	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
@@ -1123,10 +1143,9 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -1138,54 +1157,13 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 			"kind":       "rollback",
 			"archiveurl": "",
 			"user":       s.token.GetUserName(),
-			"image":      "my-image-123:v1",
+			"image":      version.BaseImageName(),
 			"origin":     "rollback",
 			"build":      false,
 			"rollback":   true,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "my-image-123:v1",
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	v := url.Values{}
-	v.Set("origin", "rollback")
-	v.Set("image", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
-	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
-	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
-			"app.name":   a.Name,
-			"commit":     "",
-			"filesize":   0,
-			"kind":       "rollback",
-			"archiveurl": "",
-			"user":       s.token.GetUserName(),
-			"image":      "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
-			"origin":     "rollback",
-			"build":      false,
-			"rollback":   true,
-		},
-		EndCustomData: map[string]interface{}{
-			"image": "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+			"image": version.BaseImageName(),
 		},
 	}, eventtest.HasEvent)
 }
@@ -1194,11 +1172,10 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
-	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
 	v := url.Values{}
 	v.Set("origin", "rollback")
-	v.Set("image", "v1")
+	v.Set("image", fmt.Sprintf("v%d", version.Version()))
 	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
@@ -1228,7 +1205,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 			"rollback":   true,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+			"image": "tsuru/app-otherapp:v1",
 		},
 		LogMatches: []string{`Rollback deploy called`},
 	}, eventtest.HasEvent)
@@ -1244,16 +1221,10 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
-	c.Assert(err, check.IsNil)
-	data := image.ImageMetadata{
-		Name: "tsuru/app-otherapp:v1",
-	}
-	err = data.Save()
-	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	v := url.Values{}
 	v.Set("origin", "rollback")
-	v.Set("image", "v3")
+	v.Set("image", "v9")
 	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
@@ -1263,7 +1234,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-	c.Assert(recorder.Body.String(), check.Equals, "Invalid version: v3\n")
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*Invalid version: v9.*`)
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
@@ -1356,9 +1327,9 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.Rebuild, check.Equals, true)
-		return builder.MockImageInfo{FakeBuildImageName: "tsuruteam/app-otherapp:mytag", FakeIsBuild: true}, nil
+		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -1403,20 +1374,11 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(&fakeApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
-	c.Assert(err, check.IsNil)
-	data := image.ImageMetadata{
-		Name: "tsuru/app-otherapp:v1",
-	}
-	err = data.Save()
-	c.Assert(err, check.IsNil)
-	d, err := image.GetImageMetaData(data.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(d.DisableRollback, check.Equals, false)
+	version := newSuccessfulAppVersion(c, &fakeApp)
 	v := url.Values{}
 	v.Set("disable", "true")
 	v.Set("reason", "because of reasons")
-	v.Set("image", "v1")
+	v.Set("image", fmt.Sprintf("v%d", version.Version()))
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
@@ -1430,22 +1392,18 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	d, err = image.GetImageMetaData(data.Name)
+	versions, err := servicemanager.AppVersion.AppVersions(&fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(d.DisableRollback, check.Equals, true)
+	disabledVersion := versions.Versions[version.Version()]
+	c.Assert(disabledVersion.Disabled, check.Equals, true)
+	c.Assert(disabledVersion.DisabledReason, check.Equals, "because of reasons")
 }
 
 func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(&fakeApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
-	c.Assert(err, check.IsNil)
-	data := image.ImageMetadata{
-		Name: "tsuru/app-otherapp:v1",
-	}
-	err = data.Save()
-	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &fakeApp)
 	v := url.Values{}
 	v.Set("disable", "false")
 	v.Set("reason", "")
@@ -1486,7 +1444,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	server := RunServer(true)
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "Image v1 not found in app \"otherapp\"\n")
+	c.Assert(recorder.Body.String(), check.Equals, "no versions available for app\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 

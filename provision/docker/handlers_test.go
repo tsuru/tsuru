@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -52,7 +51,6 @@ type HandlersSuite struct {
 }
 
 var _ = check.Suite(&HandlersSuite{})
-var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
@@ -310,9 +308,9 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	for _, appPool := range appPools {
 		opts := pool.AddPoolOptions{Name: appPool[1]}
 		pool.AddPool(opts)
-		err = newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
-		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
+		_, err = newSuccessfulVersionForApp(s.p, appInstance, nil)
+		c.Assert(err, check.IsNil)
 		appStruct := &app.App{
 			Name:     appInstance.GetName(),
 			Platform: appInstance.GetPlatform(),

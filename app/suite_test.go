@@ -11,12 +11,14 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -181,6 +183,8 @@ func (s *S) SetUpTest(c *check.C) {
 	setupMocks(s)
 	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -211,5 +215,14 @@ func setupMocks(s *S) {
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &s.defaultPlan, nil
+	}
+	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App: app,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return version, version.CommitBuildImage()
 	}
 }

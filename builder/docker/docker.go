@@ -15,11 +15,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 const (
@@ -27,7 +30,7 @@ const (
 	archiveFileName = "archive.tar.gz"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, imageTag string) (image.NewImageInfo, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&uploadToContainer,
@@ -38,11 +41,16 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 	pipeline := action.NewPipeline(actions...)
 	imageName, err := image.GetBuildImage(app)
 	if err != nil {
-		return image.NewImageInfo{}, log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
+		return nil, log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
 	}
-	buildingImage, err := image.AppNewBuildImageName(app.GetName(), app.GetTeamOwner(), imageTag)
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:            app,
+		EventID:        evt.UniqueID.Hex(),
+		CustomBuildTag: opts.Tag,
+		Description:    opts.Message,
+	})
 	if err != nil {
-		return image.NewImageInfo{}, log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+		return nil, err
 	}
 	archiveFileURI := fmt.Sprintf("file://%s/%s", archiveDirPath, archiveFileName)
 	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
@@ -51,23 +59,23 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 		writer = ioutil.Discard
 	}
 	args := runContainerActionsArgs{
-		app:           app,
-		imageID:       imageName,
-		commands:      cmds,
-		writer:        writer,
-		buildingImage: buildingImage,
-		client:        client,
-		event:         evt,
-		provisioner:   p,
-		tarFile:       tarFile,
-		isDeploy:      true,
+		app:         app,
+		imageID:     imageName,
+		commands:    cmds,
+		writer:      writer,
+		version:     newVersion,
+		client:      client,
+		event:       evt,
+		provisioner: p,
+		tarFile:     tarFile,
+		isDeploy:    true,
 	}
 	err = container.RunPipelineWithRetry(pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute build pipeline for app %s - %s", app.GetName(), err)
-		return image.NewImageInfo{}, err
+		return nil, err
 	}
-	return buildingImage, nil
+	return newVersion, nil
 }
 
 func randomString() string {

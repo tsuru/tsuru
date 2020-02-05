@@ -17,12 +17,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -70,7 +73,7 @@ func limiter() provision.ActionLimiter {
 	return globalLimiter
 }
 
-func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (provision.NewImageInfo, error) {
+func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	p, ok := prov.(provision.BuilderDeployDockerClient)
 	if !ok {
 		return nil, errors.New("provisioner not supported: doesn't implement docker builder")
@@ -104,14 +107,14 @@ func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, e
 		return nil, errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	img, err := b.buildPipeline(p, client, app, tarFile, evt, opts.Tag)
+	img, err := b.buildPipeline(p, client, app, tarFile, evt, opts)
 	if err != nil {
 		return nil, err
 	}
 	return img, nil
 }
 
-func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (provision.NewImageInfo, error) {
+func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
 	repo, tag := image.SplitImageName(opts.ImageID)
 	imageID := fmt.Sprintf("%s:%s", repo, tag)
 	fmt.Fprintln(evt, "---- Getting process from image ----")
@@ -133,7 +136,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	if _, ok := imageInspect.Config.Labels["is-tsuru"]; ok {
 		opts.IsTsuruBuilderImage = true
 	}
-	procfile := image.GetProcessesFromProcfile(procfileBuf.String())
+	procfile := version.GetProcessesFromProcfile(procfileBuf.String())
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, "  ---> Procfile not found, using entrypoint and cmd")
 		procfile["web"] = append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
@@ -152,34 +155,38 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	if err != nil {
 		return nil, err
 	}
-	newImage, err := pushImageToRegistry(client, app, imageID, evt)
+	newVersion, err := pushImageToRegistry(client, app, imageID, evt, opts.Message)
 	if err != nil {
 		return nil, err
 	}
-	imageData := image.ImageMetadata{
-		Name:         newImage.BaseImageName(),
+
+	versionData := appTypes.AddVersionDataArgs{
 		Processes:    procfile,
 		CustomData:   tsuruYamlToCustomData(yaml),
 		ExposedPorts: make([]string, len(imageInspect.Config.ExposedPorts)),
 	}
 	i := 0
 	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPorts[i] = string(k)
+		versionData.ExposedPorts[i] = string(k)
 		i++
 	}
-	err = imageData.Save()
+	err = newVersion.AddData(versionData)
 	if err != nil {
 		return nil, err
 	}
-	return newImage, nil
+	return newVersion, nil
 }
 
-func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (provision.NewImageInfo, error) {
-	newImage, err := image.AppNewImageName(app.GetName())
+func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, message string) (appTypes.AppVersion, error) {
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App:         app,
+		EventID:     evt.UniqueID.Hex(),
+		Description: message,
+	})
 	if err != nil {
 		return nil, err
 	}
-	repo, tag := image.SplitImageName(newImage.BaseImageName())
+	repo, tag := image.SplitImageName(newVersion.BaseImageName())
 	err = client.TagImage(imageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
 		return nil, err
@@ -188,7 +195,7 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newImage.BaseImageName())
+	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newVersion.BaseImageName())
 	pushOpts := docker.PushImageOptions{
 		Name:              repo,
 		Tag:               tag,
@@ -197,11 +204,15 @@ func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newImage.BaseImageName()))
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newVersion.BaseImageName()))
 	if err != nil {
 		return nil, err
 	}
-	return newImage, nil
+	err = newVersion.CommitBaseImage()
+	if err != nil {
+		return nil, err
+	}
+	return newVersion, nil
 }
 
 func loadTsuruYaml(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event) (*provTypes.TsuruYamlData, string, error) {
@@ -303,15 +314,15 @@ func removeContainer(client provision.BuilderDockerClient, containerID string) e
 }
 
 func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
-	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil {
-		return nil, nil, errors.Errorf("App %s image not found", app.GetName())
+		return nil, nil, err
 	}
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
 			AttachStderr: true,
-			Image:        imageName,
+			Image:        version.VersionInfo().DeployImage,
 		},
 	}
 	cont, _, err := client.PullAndCreateContainer(options, nil)

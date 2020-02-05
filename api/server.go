@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
@@ -152,6 +153,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
+	servicemanager.AppVersion, err = version.AppVersionService()
 	return err
 }
 

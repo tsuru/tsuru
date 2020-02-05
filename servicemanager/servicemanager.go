@@ -31,4 +31,5 @@ var (
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
 	AppLog                    app.AppLogService
 	InstanceTracker           tracker.InstanceService
+	AppVersion                app.AppVersionService
 )

@@ -13,8 +13,11 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/servicemanager"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,6 +31,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }
 

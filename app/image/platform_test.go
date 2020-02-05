@@ -10,6 +10,10 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+type S struct{}
+
+var _ = check.Suite(&S{})
+
 func (s *S) TestPlatformNewImage(c *check.C) {
 	platformName := "myplatform"
 	var count int

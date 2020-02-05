@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/version"
+	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -36,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -70,6 +73,8 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	s.collName = "docker_unit"
@@ -186,6 +191,10 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
 		return "tsuru/" + name + ":v1", nil
 	}
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
+	servicemanager.AppLog, err = applog.AppLogService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
