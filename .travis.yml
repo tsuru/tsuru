@@ -52,7 +52,6 @@ jobs:
       env: JOB=test
     - stage: deploy
       script:
-        - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
         - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
       env: JOB=docker hub
     - script: if [ -n "$TRAVIS_TAG" ]; then curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash; fi

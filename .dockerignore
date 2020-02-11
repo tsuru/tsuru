@@ -1,4 +1,3 @@
-**
-!tsurud
-!build/tsurud
-!etc/*
+*.test
+dist/
+docs/_build
