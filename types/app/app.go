@@ -4,6 +4,10 @@
 
 package app
 
+import (
+	"net/url"
+)
+
 type AppRouter struct {
 	Name         string            `json:"name"`
 	Opts         map[string]string `json:"opts"`
@@ -11,4 +15,10 @@ type AppRouter struct {
 	Type         string            `json:"type" bson:"-"`
 	Status       string            `json:"status,omitempty" bson:"-"`
 	StatusDetail string            `json:"status-detail,omitempty" bson:"-"`
+}
+
+type RoutableAddresses struct {
+	Prefix    string
+	Addresses []*url.URL
+	ExtraData map[string]string
 }

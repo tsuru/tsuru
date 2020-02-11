@@ -33,8 +33,12 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added:   []string{units[2].Address.String()},
-			Removed: []string{"http://invalid:1234"},
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{units[2].Address.String()},
+					Removed: []string{"http://invalid:1234"},
+				},
+			},
 		},
 	})
 	routes, err := routertest.FakeRouter.Routes(a.Name)
@@ -59,8 +63,12 @@ func (s *S) TestRebuildRoutesDRY(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added:   []string{units[2].Address.String()},
-			Removed: []string{"http://invalid:1234"},
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{units[2].Address.String()},
+					Removed: []string{"http://invalid:1234"},
+				},
+			},
 		},
 	})
 	routes, err := routertest.FakeRouter.Routes(a.Name)
@@ -87,8 +95,12 @@ func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added:   nil,
-			Removed: nil,
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   nil,
+					Removed: nil,
+				},
+			},
 		},
 	})
 	routes, err := routertest.FakeRouter.Routes(a.Name)
@@ -130,14 +142,22 @@ func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(changes1, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added:   nil,
-			Removed: []string{"http://invalid:1234"},
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   nil,
+					Removed: []string{"http://invalid:1234"},
+				},
+			},
 		},
 	})
 	c.Assert(changes2, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added:   []string{units2[0].Address.String()},
-			Removed: nil,
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{units2[0].Address.String()},
+					Removed: nil,
+				},
+			},
 		},
 	})
 	routes1, err := routertest.FakeRouter.Routes(a1.Name)
@@ -173,15 +193,20 @@ func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
 	routertest.FakeRouter.RemoveBackend(a.Name)
 	changes, err := rebuild.RebuildRoutes(&a, false)
 	c.Assert(err, check.IsNil)
-	sort.Strings(changes["fake"].Added)
+	c.Assert(changes["fake"].PrefixResults, check.HasLen, 1)
+	sort.Strings(changes["fake"].PrefixResults[0].Added)
 	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
-			Added: []string{
-				units[0].Address.String(),
-				units[1].Address.String(),
-				units[2].Address.String(),
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added: []string{
+						units[0].Address.String(),
+						units[1].Address.String(),
+						units[2].Address.String(),
+					},
+					Removed: nil,
+				},
 			},
-			Removed: nil,
 		},
 	})
 	routes, err := routertest.FakeRouter.Routes(a.Name)
@@ -224,7 +249,7 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, false)
 	changes, err := rebuild.RebuildRoutes(&a, false)
 	c.Assert(err, check.IsNil)
-	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {}})
+	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {PrefixResults: []rebuild.RebuildPrefixResult{{}}}})
 	routes, err := routertest.FakeRouter.Routes(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
@@ -257,10 +282,114 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	changes, err := rebuild.RebuildRoutes(&a, false)
 	c.Assert(err, check.IsNil)
-	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {}})
+	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{"fake": {PrefixResults: []rebuild.RebuildPrefixResult{{}}}})
 	expected := routerTypes.HealthcheckData{
 		Path:   "/healthcheck",
 		Status: 302,
 	}
 	c.Assert(routertest.FakeRouter.GetHealthcheck("my-test-app"), check.DeepEquals, expected)
+}
+
+func (s *S) TestRebuildRoutesMultiplePrefixes(c *check.C) {
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	a.Routers = []appTypes.AppRouter{{Name: "fake"}, {Name: "fake-prefix"}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+
+	provisiontest.ProvisionerInstance.MockRoutableAddresses(&a, []appTypes.RoutableAddresses{
+		{
+			Prefix: "",
+			Addresses: []*url.URL{
+				{Host: "u1", Scheme: "http"},
+				{Host: "u2", Scheme: "http"},
+				{Host: "u3", Scheme: "http"},
+			},
+		},
+		{
+			Prefix: "web",
+			Addresses: []*url.URL{
+				{Host: "u2", Scheme: "http"},
+				{Host: "u4", Scheme: "http"},
+			},
+		},
+	})
+
+	changes, err := rebuild.RebuildRoutes(&a, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
+		"fake": {
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{"http://u1", "http://u2", "http://u3"},
+					Removed: nil,
+				},
+			},
+		},
+		"fake-prefix": {
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{"http://u1", "http://u2", "http://u3"},
+					Removed: nil,
+				},
+				{
+					Prefix:  "web",
+					Added:   []string{"http://u2", "http://u4"},
+					Removed: nil,
+				},
+			},
+		},
+	})
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 3)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://u1"), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://u2"), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://u3"), check.Equals, true)
+	routes, err = routertest.PrefixRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 3)
+	c.Assert(routertest.PrefixRouter.HasRoute(a.Name, "http://u1"), check.Equals, true)
+	c.Assert(routertest.PrefixRouter.HasRoute(a.Name, "http://u2"), check.Equals, true)
+	c.Assert(routertest.PrefixRouter.HasRoute(a.Name, "http://u3"), check.Equals, true)
+
+	err = routertest.PrefixRouter.RemoveRoutesPrefix(a.Name, appTypes.RoutableAddresses{
+		Addresses: []*url.URL{{Host: "u2", Scheme: "http"}},
+	}, true)
+	c.Assert(err, check.IsNil)
+	err = routertest.PrefixRouter.RemoveRoutesPrefix(a.Name, appTypes.RoutableAddresses{
+		Prefix:    "web",
+		Addresses: []*url.URL{{Host: "u4", Scheme: "http"}},
+	}, true)
+	c.Assert(err, check.IsNil)
+	err = routertest.PrefixRouter.AddRoutesPrefix(a.Name, appTypes.RoutableAddresses{
+		Prefix:    "web",
+		Addresses: []*url.URL{{Host: "invalid", Scheme: "http"}},
+	}, true)
+	c.Assert(err, check.IsNil)
+
+	changes, err = rebuild.RebuildRoutes(&a, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(changes, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
+		"fake": {
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   nil,
+					Removed: nil,
+				},
+			},
+		},
+		"fake-prefix": {
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   []string{"http://u2"},
+					Removed: nil,
+				},
+				{
+					Prefix:  "web",
+					Added:   []string{"http://u4"},
+					Removed: []string{"http://invalid"},
+				},
+			},
+		},
+	})
 }

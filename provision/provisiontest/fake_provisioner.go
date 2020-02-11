@@ -1120,15 +1120,27 @@ func (p *FakeProvisioner) Units(apps ...provision.App) ([]provision.Unit, error)
 	return allUnits, nil
 }
 
-func (p *FakeProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
+func (p *FakeProvisioner) MockRoutableAddresses(app provision.App, addrs []appTypes.RoutableAddresses) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	units := p.apps[app.GetName()].units
-	addrs := make([]url.URL, len(units))
-	for i := range units {
-		addrs[i] = *units[i].Address
+	a := p.apps[app.GetName()]
+	a.mockAddrs = addrs
+	p.apps[app.GetName()] = a
+}
+
+func (p *FakeProvisioner) RoutableAddresses(app provision.App) ([]appTypes.RoutableAddresses, error) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	a := p.apps[app.GetName()]
+	if a.mockAddrs != nil {
+		return a.mockAddrs, nil
 	}
-	return addrs, nil
+	units := a.units
+	addrs := make([]*url.URL, len(units))
+	for i := range units {
+		addrs[i] = units[i].Address
+	}
+	return []appTypes.RoutableAddresses{{Addresses: addrs}}, nil
 }
 
 func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
@@ -1424,14 +1436,15 @@ func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 type provisionedApp struct {
-	units    []provision.Unit
-	app      provision.App
-	restarts map[string]int
-	starts   map[string]int
-	stops    map[string]int
-	sleeps   map[string]int
-	cnames   []string
-	unitLen  int
-	lastData map[string]interface{}
-	image    string
+	units     []provision.Unit
+	app       provision.App
+	restarts  map[string]int
+	starts    map[string]int
+	stops     map[string]int
+	sleeps    map[string]int
+	cnames    []string
+	unitLen   int
+	lastData  map[string]interface{}
+	image     string
+	mockAddrs []appTypes.RoutableAddresses
 }

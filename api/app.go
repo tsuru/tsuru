@@ -1834,6 +1834,14 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(metricMap)
 }
 
+// compatRebuildRoutesResult is a backward compatible rebuild routes struct
+// used in the handler so that old clients won't break.
+type compatRebuildRoutesResult struct {
+	rebuild.RebuildRoutesResult
+	Added   []string
+	Removed []string
+}
+
 // title: rebuild routes
 // path: /apps/{app}/routes
 // method: POST
@@ -1864,14 +1872,29 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	result := map[string]rebuild.RebuildRoutesResult{}
+	result := make(map[string]rebuild.RebuildRoutesResult)
 	defer func() { evt.DoneCustomData(err, result) }()
 	w.Header().Set("Content-Type", "application/json")
 	result, err = rebuild.RebuildRoutes(&a, dry)
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(&result)
+
+	compatResult := make(map[string]compatRebuildRoutesResult)
+	for routerName, routerResult := range result {
+		compatRouterResult := compatRebuildRoutesResult{
+			RebuildRoutesResult: routerResult,
+		}
+		for _, prefixResult := range routerResult.PrefixResults {
+			if prefixResult.Prefix == "" {
+				compatRouterResult.Added = prefixResult.Added
+				compatRouterResult.Removed = prefixResult.Removed
+				break
+			}
+		}
+		compatResult[routerName] = compatRouterResult
+	}
+	return json.NewEncoder(w).Encode(&compatResult)
 }
 
 // title: set app certificate

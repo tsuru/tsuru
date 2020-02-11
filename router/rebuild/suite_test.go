@@ -47,6 +47,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake-hc:type", "fake-hc")
+	config.Set("routers:fake-prefix:type", "fake-prefix")
 	config.Set("docker:router", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	provision.DefaultProvisioner = "fake"

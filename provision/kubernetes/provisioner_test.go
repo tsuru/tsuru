@@ -1108,10 +1108,11 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	sort.Slice(addrs, func(i, j int) bool {
-		return addrs[i].Host < addrs[j].Host
+	c.Assert(addrs, check.HasLen, 1)
+	sort.Slice(addrs[0].Addresses, func(i, j int) bool {
+		return addrs[0].Addresses[i].Host < addrs[0].Addresses[j].Host
 	})
-	c.Assert(addrs, check.DeepEquals, []url.URL{
+	c.Assert(addrs[0].Addresses, check.DeepEquals, []*url.URL{
 		{
 			Scheme: "http",
 			Host:   "192.168.99.1:30000",
@@ -1147,7 +1148,8 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.DeepEquals, []url.URL{
+	c.Assert(addrs, check.HasLen, 1)
+	c.Assert(addrs[0].Addresses, check.DeepEquals, []*url.URL{
 		{
 			Scheme: "http",
 			Host:   "192.168.99.1:30000",

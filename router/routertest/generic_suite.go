@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
@@ -823,6 +824,113 @@ func (s *RouterSuite) TestCNamesAsync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cnameRouter.UnsetCName("my.host.com", testBackend1)
 	c.Assert(err, check.Equals, router.ErrCNameNotFound)
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
+	prefixRouter, ok := s.Router.(router.PrefixRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement PrefixRouter", s.Router))
+	}
+
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	addr2, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "",
+		Addresses: []*url.URL{addr1},
+		ExtraData: map[string]string{"extra": "val1"},
+	}, true)
+	c.Assert(err, check.IsNil)
+
+	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "foo.process",
+		Addresses: []*url.URL{addr2},
+		ExtraData: map[string]string{"extra": "val2"},
+	}, true)
+	c.Assert(err, check.IsNil)
+
+	routes, err := s.Router.Routes(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, HostEquals, []*url.URL{addr1})
+
+	prefixRoutes, err := prefixRouter.RoutesPrefix(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
+		{
+			Addresses: []*url.URL{addr1},
+			ExtraData: map[string]string{"extra": "val1"},
+		},
+		{
+			Prefix:    "foo.process",
+			Addresses: []*url.URL{addr2},
+			ExtraData: map[string]string{"extra": "val2"},
+		},
+	})
+
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *RouterSuite) TestRemoveRoutesPrefix(c *check.C) {
+	prefixRouter, ok := s.Router.(router.PrefixRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement PrefixRouter", s.Router))
+	}
+
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	addr2, err := url.Parse("http://10.10.10.11:8080")
+	c.Assert(err, check.IsNil)
+	addr3, err := url.Parse("http://10.10.10.12:8080")
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "",
+		Addresses: []*url.URL{addr1, addr2},
+		ExtraData: map[string]string{"extra": "val1"},
+	}, true)
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "foo.process",
+		Addresses: []*url.URL{addr2, addr3},
+		ExtraData: map[string]string{"extra": "val2"},
+	}, true)
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.RemoveRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "",
+		Addresses: []*url.URL{addr2},
+	}, true)
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.RemoveRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "foo.process",
+		Addresses: []*url.URL{addr2},
+	}, true)
+	c.Assert(err, check.IsNil)
+
+	routes, err := s.Router.Routes(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, HostEquals, []*url.URL{addr1})
+
+	prefixRoutes, err := prefixRouter.RoutesPrefix(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
+		{
+			Addresses: []*url.URL{addr1},
+			ExtraData: map[string]string{"extra": "val1"},
+		},
+		{
+			Prefix:    "foo.process",
+			Addresses: []*url.URL{addr3},
+			ExtraData: map[string]string{"extra": "val2"},
+		},
+	})
+
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }

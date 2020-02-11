@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -25,6 +26,19 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func init() {
+	setupGenericSuite(func(c *check.C, base *S, suite *RouterSuite) {
+		r := newFakeRouter()
+		suite.Router = &r
+	})
+	setupGenericSuite(func(c *check.C, base *S, suite *RouterSuite) {
+		suite.Router = &prefixRouter{
+			fakeRouter:   newFakeRouter(),
+			prefixRoutes: make(map[string][]appTypes.RoutableAddresses),
+		}
+	})
+}
+
+func setupGenericSuite(fn func(c *check.C, base *S, suite *RouterSuite)) {
 	base := &S{}
 	suite := &RouterSuite{
 		SetUpSuiteFunc:   base.SetUpSuite,
@@ -33,8 +47,7 @@ func init() {
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_fake_tests")
 		base.SetUpTest(c)
-		r := newFakeRouter()
-		suite.Router = &r
+		fn(c, base, suite)
 	}
 	check.Suite(suite)
 }

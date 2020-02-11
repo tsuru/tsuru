@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
 )
 
@@ -178,6 +179,12 @@ type AsyncRouter interface {
 	SetCNameAsync(cname, name string) error
 	AddRoutesAsync(name string, address []*url.URL) error
 	RemoveRoutesAsync(name string, addresses []*url.URL) error
+}
+
+type PrefixRouter interface {
+	RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error)
+	AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
+	RemoveRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
 }
 
 type BackendStatus string
