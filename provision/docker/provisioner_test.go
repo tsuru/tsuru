@@ -43,6 +43,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -2268,14 +2269,14 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	routes, err := s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []url.URL{})
+	c.Assert(routes, check.DeepEquals, []appTypes.RoutableAddresses{{Addresses: []*url.URL{}}})
 	version, err := newSuccessfulVersionForApp(s.p, fakeApp, nil)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AppVersion.DeleteVersion(fakeApp.GetName(), version.Version())
 	c.Assert(err, check.IsNil)
 	routes, err = s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []url.URL{})
+	c.Assert(routes, check.DeepEquals, []appTypes.RoutableAddresses{{Addresses: []*url.URL{}}})
 	version, err = newSuccessfulVersionForApp(s.p, fakeApp, nil)
 	c.Assert(err, check.IsNil)
 	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
@@ -2288,8 +2289,9 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	c.Assert(conts, check.HasLen, 1)
 	routes, err = s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []url.URL{
-		*conts[0].Address(),
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routes[0].Addresses, check.DeepEquals, []*url.URL{
+		conts[0].Address(),
 	})
 }
 
@@ -2316,8 +2318,9 @@ func (s *S) TestProvisionerRoutableAddressesInvalidContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routes, err := s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []url.URL{
-		*conts[2].Address(),
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routes[0].Addresses, check.DeepEquals, []*url.URL{
+		conts[2].Address(),
 	})
 }
 

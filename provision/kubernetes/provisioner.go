@@ -583,7 +583,7 @@ func (p *kubernetesProvisioner) podsForApps(client *ClusterClient, apps []provis
 	return podCopies, nil
 }
 
-func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
+func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.RoutableAddresses, error) {
 	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
@@ -626,13 +626,19 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
+	var addrs []*url.URL
 	if !routerLocal {
-		return p.addressesForPool(client, a.GetPool(), pubPort)
+		addrs, err = p.addressesForPool(client, a.GetPool(), pubPort)
+	} else {
+		addrs, err = p.addressesForApp(client, a, webProcessName, pubPort)
 	}
-	return p.addressesForApp(client, a, webProcessName, pubPort)
+	if err != nil {
+		return nil, err
+	}
+	return []appTypes.RoutableAddresses{{Addresses: addrs}}, nil
 }
 
-func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, webProcessName string, pubPort int32) ([]url.URL, error) {
+func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, webProcessName string, pubPort int32) ([]*url.URL, error) {
 	pods, err := p.podsForApps(client, []provision.App{a})
 	if err != nil {
 		return nil, err
@@ -645,7 +651,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 	if err != nil {
 		return nil, err
 	}
-	addrs := make([]url.URL, 0)
+	addrs := make([]*url.URL, 0)
 	for _, pod := range pods {
 		labelSet := labelSetFromMeta(&pod.ObjectMeta)
 		if labelSet.IsIsolatedRun() {
@@ -660,7 +666,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 				return nil, err
 			}
 			wrapper := kubernetesNodeWrapper{node: node, prov: p}
-			addrs = append(addrs, url.URL{
+			addrs = append(addrs, &url.URL{
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
 			})
@@ -669,7 +675,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 	return addrs, nil
 }
 
-func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName string, pubPort int32) ([]url.URL, error) {
+func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName string, pubPort int32) ([]*url.URL, error) {
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   poolName,
 		Prefix: tsuruLabelPrefix,
@@ -686,10 +692,10 @@ func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	addrs := make([]url.URL, len(nodes))
+	addrs := make([]*url.URL, len(nodes))
 	for i, n := range nodes {
 		wrapper := kubernetesNodeWrapper{node: n, prov: p}
-		addrs[i] = url.URL{
+		addrs[i] = &url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
 		}

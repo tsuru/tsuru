@@ -2334,7 +2334,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	return allCertificates, nil
 }
 
-func (app *App) RoutableAddresses() ([]url.URL, error) {
+func (app *App) RoutableAddresses() ([]appTypes.RoutableAddresses, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err

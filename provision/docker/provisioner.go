@@ -776,7 +776,7 @@ func (p *dockerProvisioner) Units(apps ...provision.App) ([]provision.Unit, erro
 	return units, nil
 }
 
-func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
+func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]appTypes.RoutableAddresses, error) {
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return nil, err
@@ -792,13 +792,13 @@ func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, err
 	if err != nil {
 		return nil, err
 	}
-	addrs := make([]url.URL, 0, len(containers))
+	addrs := make([]*url.URL, 0, len(containers))
 	for _, container := range containers {
 		if container.ProcessName == webProcessName && container.ValidAddr() {
-			addrs = append(addrs, *container.Address())
+			addrs = append(addrs, container.Address())
 		}
 	}
-	return addrs, nil
+	return []appTypes.RoutableAddresses{{Addresses: addrs}}, nil
 }
 
 func (p *dockerProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {

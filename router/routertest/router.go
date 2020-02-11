@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
@@ -40,6 +41,11 @@ var TLSRouter = tlsRouter{
 	Keys:       make(map[string]string),
 }
 
+var PrefixRouter = prefixRouter{
+	fakeRouter:   newFakeRouter(),
+	prefixRoutes: make(map[string][]appTypes.RoutableAddresses),
+}
+
 var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
@@ -49,6 +55,7 @@ func init() {
 	router.Register("fake-opts", createOptsRouter)
 	router.Register("fake-info", createInfoRouter)
 	router.Register("fake-status", createStatusRouter)
+	router.Register("fake-prefix", createPrefixRouter)
 }
 
 func createRouter(name, prefix string) (router.Router, error) {
@@ -73,6 +80,10 @@ func createInfoRouter(name, prefix string) (router.Router, error) {
 
 func createStatusRouter(name, prefix string) (router.Router, error) {
 	return &StatusRouter, nil
+}
+
+func createPrefixRouter(name, prefix string) (router.Router, error) {
+	return &PrefixRouter, nil
 }
 
 func newFakeRouter() fakeRouter {
@@ -507,4 +518,99 @@ func (r *statusRouter) Reset() {
 	r.fakeRouter.Reset()
 	r.Status = router.BackendStatusReady
 	r.StatusDetail = ""
+}
+
+type prefixRouter struct {
+	fakeRouter
+	prefixRoutes map[string][]appTypes.RoutableAddresses
+}
+
+var _ router.PrefixRouter = &prefixRouter{}
+
+func (r *prefixRouter) RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return r.prefixRoutes[backendName], nil
+}
+
+func (r *prefixRouter) AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error {
+	if addresses.Prefix == "" {
+		err := r.AddRoutes(name, addresses.Addresses)
+		if err != nil {
+			return err
+		}
+	}
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	routableAddrs := r.prefixRoutes[backendName]
+	idx := -1
+	for i, r := range routableAddrs {
+		if addresses.Prefix == r.Prefix {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		routableAddrs = append(routableAddrs, appTypes.RoutableAddresses{Prefix: addresses.Prefix})
+		idx = len(routableAddrs) - 1
+	}
+	routableAddrs[idx].ExtraData = addresses.ExtraData
+
+	for _, addr := range addresses.Addresses {
+		if containsHost(routableAddrs[idx].Addresses, addr) {
+			continue
+		}
+		routableAddrs[idx].Addresses = append(routableAddrs[idx].Addresses, addr)
+	}
+	r.prefixRoutes[backendName] = routableAddrs
+	return nil
+}
+
+func (r *prefixRouter) RemoveRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error {
+	if addresses.Prefix == "" {
+		err := r.RemoveRoutes(name, addresses.Addresses)
+		if err != nil {
+			return err
+		}
+	}
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	routableAddrs := r.prefixRoutes[backendName]
+	for i, r := range routableAddrs {
+		if addresses.Prefix != r.Prefix {
+			continue
+		}
+		for _, addr := range addresses.Addresses {
+			for j := range r.Addresses {
+				if r.Addresses[j].Host == addr.Host {
+					r.Addresses = append(r.Addresses[:j], r.Addresses[j+1:]...)
+					break
+				}
+			}
+		}
+		routableAddrs[i] = r
+	}
+	r.prefixRoutes[backendName] = routableAddrs
+	return nil
+}
+
+func containsHost(addrs []*url.URL, addr *url.URL) bool {
+	for i := range addrs {
+		if addrs[i].Host == addr.Host {
+			return true
+		}
+	}
+	return false
 }

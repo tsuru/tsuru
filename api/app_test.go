@@ -6267,13 +6267,39 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
 	var parsed map[string]rebuild.RebuildRoutesResult
-	json.Unmarshal(recorder.Body.Bytes(), &parsed)
+	err = json.Unmarshal(recorder.Body.Bytes(), &parsed)
+	c.Assert(err, check.IsNil)
 	c.Assert(parsed, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
 		"fake": {
+			PrefixResults: []rebuild.RebuildPrefixResult{
+				{
+					Added:   nil,
+					Removed: []string{"http://h1"},
+				},
+			},
+		},
+	})
+
+	var compatResult map[string]compatRebuildRoutesResult
+	err = json.Unmarshal(recorder.Body.Bytes(), &compatResult)
+	c.Assert(err, check.IsNil)
+	c.Assert(compatResult, check.DeepEquals, map[string]compatRebuildRoutesResult{
+		"fake": {
+			RebuildRoutesResult: rebuild.RebuildRoutesResult{
+				PrefixResults: []rebuild.RebuildPrefixResult{
+					{
+						Added:   nil,
+						Removed: []string{"http://h1"},
+					},
+				},
+			},
+			Added:   nil,
 			Removed: []string{"http://h1"},
 		},
 	})
+
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -6283,8 +6309,8 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 			{"name": ":app", "value": a.Name},
 		},
 		EndCustomData: map[string]interface{}{
-			"fake.added":   []string(nil),
-			"fake.removed": []string{"http://h1"},
+			"fake.prefixresults.added":   []string(nil),
+			"fake.prefixresults.removed": []string{"http://h1"},
 		},
 	}, eventtest.HasEvent)
 }
