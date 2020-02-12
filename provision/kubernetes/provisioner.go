@@ -595,15 +595,11 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 		}
 		return nil, nil
 	}
-	webProcessName, err := version.WebProcess()
+	processes, err := version.Processes()
 	if err != nil {
 		return nil, err
 	}
-	if webProcessName == "" {
-		return nil, nil
-	}
-	srvName := deploymentNameForApp(a, webProcessName)
-	ns, err := client.AppNamespace(a)
+	webProcessName, err := version.WebProcess()
 	if err != nil {
 		return nil, err
 	}
@@ -615,6 +611,38 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 	if err != nil {
 		return nil, err
 	}
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	var allAddrs []appTypes.RoutableAddresses
+	for processName := range processes {
+		addrs, err := p.addressesForProcess(client, a, processName, ns, svcInformer)
+		if err != nil {
+			return nil, err
+		}
+		if addrs == nil {
+			continue
+		}
+		rAddr := appTypes.RoutableAddresses{
+			Prefix:    fmt.Sprintf("%s.process", processName),
+			Addresses: addrs,
+			ExtraData: map[string]string{
+				"service":   deploymentNameForApp(a, processName),
+				"namespace": ns,
+			},
+		}
+		allAddrs = append(allAddrs, rAddr)
+		if processName == webProcessName {
+			rAddr.Prefix = ""
+			allAddrs = append(allAddrs, rAddr)
+		}
+	}
+	return allAddrs, nil
+}
+
+func (p *kubernetesProvisioner) addressesForProcess(client *ClusterClient, a provision.App, processName, ns string, svcInformer v1informers.ServiceInformer) ([]*url.URL, error) {
+	srvName := deploymentNameForApp(a, processName)
 	pubPort, err := getServicePort(svcInformer, srvName, ns)
 	if err != nil {
 		return nil, err
@@ -626,19 +654,13 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 	if err != nil {
 		return nil, err
 	}
-	var addrs []*url.URL
 	if !routerLocal {
-		addrs, err = p.addressesForPool(client, a.GetPool(), pubPort)
-	} else {
-		addrs, err = p.addressesForApp(client, a, webProcessName, pubPort)
+		return p.addressesForPool(client, a.GetPool(), pubPort)
 	}
-	if err != nil {
-		return nil, err
-	}
-	return []appTypes.RoutableAddresses{{Addresses: addrs}}, nil
+	return p.addressesForApp(client, a, processName, pubPort)
 }
 
-func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, webProcessName string, pubPort int32) ([]*url.URL, error) {
+func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, processName string, pubPort int32) ([]*url.URL, error) {
 	pods, err := p.podsForApps(client, []provision.App{a})
 	if err != nil {
 		return nil, err
@@ -657,7 +679,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 		if labelSet.IsIsolatedRun() {
 			continue
 		}
-		if labelSet.AppProcess() != webProcessName {
+		if labelSet.AppProcess() != processName {
 			continue
 		}
 		if isPodReady(&pod) {
