@@ -543,6 +543,28 @@ func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) 
 	return rspObj.VirtualHostGroupId, nil
 }
 
+func (c *GalebClient) FindAllTargetsByPoolPrefix(poolNamePrefix string) (map[string][]Target, error) {
+	pools, err := c.findItemIDsByNameContaining("pool", poolNamePrefix)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]Target)
+	for _, poolData := range pools {
+		path := fmt.Sprintf("/pool/%d/targets", poolData.ID)
+		var rspObj struct {
+			Embedded struct {
+				Targets []Target `json:"target"`
+			} `json:"_embedded"`
+		}
+		err = c.getObj(path, &rspObj)
+		if err != nil {
+			return nil, err
+		}
+		result[poolData.Name] = rspObj.Embedded.Targets
+	}
+	return result, nil
+}
+
 func (c *GalebClient) FindTargetsByPool(poolName string) ([]Target, error) {
 	_, poolID, err := c.findItemIDsByName("pool", poolName)
 	if err != nil {
@@ -619,6 +641,18 @@ func (c *GalebClient) removeResource(resourceURI string) (string, error) {
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	idStr, _, err := c.findItemIDsByName(item, name)
 	return idStr, err
+}
+
+func (c *GalebClient) findItemIDsByNameContaining(item, name string) ([]commonPostResponse, error) {
+	path := fmt.Sprintf("/%s/search/findByNameContaining?name=%s", item, name)
+	var rspObj struct {
+		Embedded map[string][]commonPostResponse `json:"_embedded"`
+	}
+	err := c.getObj(path, &rspObj)
+	if err != nil {
+		return nil, err
+	}
+	return rspObj.Embedded[item], nil
 }
 
 func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) {

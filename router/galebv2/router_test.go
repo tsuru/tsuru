@@ -76,6 +76,7 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
+	r.HandleFunc("/api/{item}/search/findByNameContaining", server.findItemByNameContainingHandler).Methods("GET")
 	server.router = r
 	return server, nil
 }
@@ -130,6 +131,13 @@ func (s *fakeGalebServer) findItemByNameHandler(w http.ResponseWriter, r *http.R
 	json.NewEncoder(w).Encode(makeSearchRsp(itemName, ret...))
 }
 
+func (s *fakeGalebServer) findItemByNameContainingHandler(w http.ResponseWriter, r *http.Request) {
+	itemName := mux.Vars(r)["item"]
+	wantedName := r.URL.Query().Get("name")
+	ret := s.findItemByNameContaining(itemName, wantedName)
+	json.NewEncoder(w).Encode(makeSearchRsp(itemName, ret...))
+}
+
 func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []interface{} {
 	items := s.items[itemName]
 	var ret []interface{}
@@ -138,6 +146,20 @@ func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []i
 			GetName() string
 		}).GetName()
 		if name == wantedName {
+			ret = append(ret, items[i])
+		}
+	}
+	return ret
+}
+
+func (s *fakeGalebServer) findItemByNameContaining(itemName string, wantedName string) []interface{} {
+	items := s.items[itemName]
+	var ret []interface{}
+	for i, item := range items {
+		name := item.(interface {
+			GetName() string
+		}).GetName()
+		if strings.Contains(name, wantedName) {
 			ret = append(ret, items[i])
 		}
 	}
