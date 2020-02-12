@@ -843,14 +843,12 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "",
 		Addresses: []*url.URL{addr1},
-		ExtraData: map[string]string{"extra": "val1"},
 	}, true)
 	c.Assert(err, check.IsNil)
 
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "foo.process",
 		Addresses: []*url.URL{addr1, addr2},
-		ExtraData: map[string]string{"extra": "val2"},
 	}, true)
 	c.Assert(err, check.IsNil)
 
@@ -863,15 +861,18 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 	sort.Slice(prefixRoutes, func(i, j int) bool {
 		return prefixRoutes[i].Prefix < prefixRoutes[j].Prefix
 	})
+	for k := range prefixRoutes {
+		sort.Slice(prefixRoutes[k].Addresses, func(i, j int) bool {
+			return prefixRoutes[k].Addresses[i].Host < prefixRoutes[k].Addresses[j].Host
+		})
+	}
 	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
 		{
 			Addresses: []*url.URL{addr1},
-			ExtraData: map[string]string{"extra": "val1"},
 		},
 		{
 			Prefix:    "foo.process",
 			Addresses: []*url.URL{addr1, addr2},
-			ExtraData: map[string]string{"extra": "val2"},
 		},
 	})
 
@@ -896,13 +897,11 @@ func (s *RouterSuite) TestRemoveRoutesPrefix(c *check.C) {
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "",
 		Addresses: []*url.URL{addr1, addr2},
-		ExtraData: map[string]string{"extra": "val1"},
 	}, true)
 	c.Assert(err, check.IsNil)
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "foo.process",
 		Addresses: []*url.URL{addr2, addr3},
-		ExtraData: map[string]string{"extra": "val2"},
 	}, true)
 	c.Assert(err, check.IsNil)
 	err = prefixRouter.RemoveRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
@@ -928,12 +927,10 @@ func (s *RouterSuite) TestRemoveRoutesPrefix(c *check.C) {
 	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
 		{
 			Addresses: []*url.URL{addr1},
-			ExtraData: map[string]string{"extra": "val1"},
 		},
 		{
 			Prefix:    "foo.process",
 			Addresses: []*url.URL{addr3},
-			ExtraData: map[string]string{"extra": "val2"},
 		},
 	})
 
