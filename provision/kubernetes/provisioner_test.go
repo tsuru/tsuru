@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/volume"
 	check "gopkg.in/check.v1"
@@ -1108,20 +1109,136 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.HasLen, 1)
-	sort.Slice(addrs[0].Addresses, func(i, j int) bool {
-		return addrs[0].Addresses[i].Host < addrs[0].Addresses[j].Host
-	})
-	c.Assert(addrs[0].Addresses, check.DeepEquals, []*url.URL{
+	c.Assert(addrs, check.HasLen, 2)
+	for k := range addrs {
+		sort.Slice(addrs[k].Addresses, func(i, j int) bool {
+			return addrs[k].Addresses[i].Host < addrs[k].Addresses[j].Host
+		})
+	}
+	expected := []appTypes.RoutableAddresses{
 		{
-			Scheme: "http",
-			Host:   "192.168.99.1:30000",
+			Prefix: "web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
 		},
 		{
-			Scheme: "http",
-			Host:   "192.168.99.2:30000",
+			Prefix: "",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
 		},
+	}
+	c.Assert(addrs, check.DeepEquals, expected)
+}
+
+func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":   "run mycmd arg1",
+			"other": "my other cmd",
+		},
+	}
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(a, version, evt)
+	c.Assert(err, check.IsNil)
+	wait()
+	addrs, err := s.p.RoutableAddresses(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.HasLen, 3)
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].Prefix < addrs[j].Prefix
+	})
+	for k := range addrs {
+		sort.Slice(addrs[k].Addresses, func(i, j int) bool {
+			return addrs[k].Addresses[i].Host < addrs[k].Addresses[j].Host
+		})
+	}
+	expected := []appTypes.RoutableAddresses{
+		{
+			Prefix: "",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "other.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-other",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+	}
+	c.Assert(addrs, check.DeepEquals, expected)
 }
 
 func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
@@ -1148,13 +1265,36 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.HasLen, 1)
-	c.Assert(addrs[0].Addresses, check.DeepEquals, []*url.URL{
+	c.Assert(addrs, check.HasLen, 2)
+	expected := []appTypes.RoutableAddresses{
 		{
-			Scheme: "http",
-			Host:   "192.168.99.1:30000",
+			Prefix: "web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+			},
 		},
-	})
+		{
+			Prefix: "",
+			ExtraData: map[string]string{
+				"service":   "myapp-web",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+			},
+		},
+	}
+	c.Assert(addrs, check.DeepEquals, expected)
 }
 
 func (s *S) TestDeploy(c *check.C) {
