@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2019 tsuru authors. All rights reserved.
+// Copyright 2020 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -15,10 +15,11 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 	apiRouterWithCnameSupportInst := &apiRouterWithCnameSupport{base}
 	apiRouterWithHealthcheckSupportInst := &apiRouterWithHealthcheckSupport{base}
 	apiRouterWithInfoInst := &apiRouterWithInfo{base}
+	apiRouterWithPrefixInst := &apiRouterWithPrefix{base}
 	apiRouterWithStatusInst := &apiRouterWithStatus{base}
 	apiRouterWithTLSSupportInst := &apiRouterWithTLSSupport{base}
 
-	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["status"] && !supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -27,7 +28,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			base,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["status"] && !supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -38,7 +39,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithCnameSupportInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["status"] && !supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -49,7 +50,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithHealthcheckSupportInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["status"] && !supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -62,7 +63,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithHealthcheckSupportInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["status"] && !supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -73,7 +74,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithInfoInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["status"] && !supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -86,7 +87,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithInfoInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["status"] && !supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -99,7 +100,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithInfoInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["status"] && !supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -114,7 +115,119 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithInfoInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["status"] && !supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.InfoRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.InfoRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -125,7 +238,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["status"] && !supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -138,7 +251,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["status"] && !supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -151,7 +264,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["status"] && !supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -166,7 +279,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["status"] && !supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -179,7 +292,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["status"] && !supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -194,7 +307,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["status"] && !supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -209,7 +322,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["status"] && !supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && !supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -226,7 +339,135 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithStatusInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["status"] && supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && !supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -237,7 +478,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["status"] && supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -250,7 +491,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["status"] && supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -263,7 +504,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["status"] && supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -278,7 +519,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["status"] && supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -291,7 +532,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["status"] && supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -306,7 +547,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["status"] && supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -321,7 +562,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["status"] && supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && !supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -338,7 +579,135 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["status"] && supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && !supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -351,7 +720,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["status"] && supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -366,7 +735,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["status"] && supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -381,7 +750,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["status"] && supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -398,7 +767,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["status"] && supports["tls"] {
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -413,7 +782,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["status"] && supports["tls"] {
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -430,7 +799,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["status"] && supports["tls"] {
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -447,7 +816,7 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithTLSSupportInst,
 		}
 	}
-	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["status"] && supports["tls"] {
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && !supports["prefix"] && supports["status"] && supports["tls"] {
 		return &struct {
 			router.Router
 			router.OptsRouter
@@ -462,6 +831,150 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 			apiRouterWithCnameSupportInst,
 			apiRouterWithHealthcheckSupportInst,
 			apiRouterWithInfoInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && !supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && !supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if !supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
+			apiRouterWithStatusInst,
+			apiRouterWithTLSSupportInst,
+		}
+	}
+	if supports["cname"] && supports["healthcheck"] && supports["info"] && supports["prefix"] && supports["status"] && supports["tls"] {
+		return &struct {
+			router.Router
+			router.OptsRouter
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+			router.InfoRouter
+			router.PrefixRouter
+			router.StatusRouter
+			router.TLSRouter
+		}{
+			base,
+			base,
+			apiRouterWithCnameSupportInst,
+			apiRouterWithHealthcheckSupportInst,
+			apiRouterWithInfoInst,
+			apiRouterWithPrefixInst,
 			apiRouterWithStatusInst,
 			apiRouterWithTLSSupportInst,
 		}

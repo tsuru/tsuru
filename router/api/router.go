@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
@@ -36,6 +37,7 @@ var (
 	_ router.CustomHealthcheckRouter = &apiRouterWithHealthcheckSupport{}
 	_ router.InfoRouter              = &apiRouterWithInfo{}
 	_ router.StatusRouter            = &apiRouterWithStatus{}
+	_ router.PrefixRouter            = &apiRouterWithPrefix{}
 )
 
 type apiRouter struct {
@@ -57,8 +59,17 @@ type apiRouterWithInfo struct{ *apiRouter }
 
 type apiRouterWithStatus struct{ *apiRouter }
 
+type apiRouterWithPrefix struct{ *apiRouter }
+
 type routesReq struct {
-	Addresses []string `json:"addresses"`
+	Prefix    string            `json:"prefix"`
+	Addresses []string          `json:"addresses"`
+	ExtraData map[string]string `json:"extraData"`
+}
+
+type routesPrefixReq struct {
+	Addresses           []string    `json:"addresses"`
+	AddressesWithPrefix []routesReq `json:"addressesWithPrefix"`
 }
 
 type swapReq struct {
@@ -92,8 +103,9 @@ var (
 	capHealthcheck = capability("healthcheck")
 	capInfo        = capability("info")
 	capStatus      = capability("status")
+	capPrefix      = capability("prefix")
 
-	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus}
+	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus, capPrefix}
 )
 
 func init() {
@@ -202,14 +214,18 @@ func (r *apiRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) 
 }
 
 func (r *apiRouter) doRoutes(name string, addresses []*url.URL, suffix string) error {
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
 	req := &routesReq{}
 	req.Addresses = make([]string, len(addresses))
 	for i := range addresses {
 		req.Addresses[i] = addresses[i].String()
+	}
+	return r.doRoutesReq(name, req, suffix)
+}
+
+func (r *apiRouter) doRoutesReq(name string, req *routesReq, suffix string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -237,7 +253,7 @@ func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
-	req := &routesReq{}
+	req := &routesPrefixReq{}
 	err = json.Unmarshal(data, req)
 	if err != nil {
 		return nil, err
@@ -488,6 +504,63 @@ func (r *apiRouterWithStatus) GetBackendStatus(name string) (router.BackendStatu
 		return "", "", err
 	}
 	return status.Status, status.Detail, nil
+}
+
+func (r *apiRouterWithPrefix) RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("backend/%s/routes", backendName)
+	data, statusCode, err := r.do(http.MethodGet, path, nil)
+	if statusCode == http.StatusNotFound {
+		return nil, router.ErrBackendNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	var req routesPrefixReq
+	err = json.Unmarshal(data, &req)
+	if err != nil {
+		return nil, err
+	}
+	var result []appTypes.RoutableAddresses
+	for _, addrData := range req.AddressesWithPrefix {
+		urls := []*url.URL{}
+		for _, addr := range addrData.Addresses {
+			u, err := url.Parse(addr)
+			if err != nil {
+				return nil, errors.Errorf("failed to parse url %s: %s", addr, err)
+			}
+			urls = append(urls, u)
+		}
+		result = append(result, appTypes.RoutableAddresses{
+			Prefix:    addrData.Prefix,
+			Addresses: urls,
+			ExtraData: addrData.ExtraData,
+		})
+	}
+	return result, nil
+}
+
+func (r *apiRouterWithPrefix) AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error {
+	return r.doRoutesPrefix(name, addresses, "")
+}
+
+func (r *apiRouterWithPrefix) RemoveRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error {
+	return r.doRoutesPrefix(name, addresses, "/remove")
+}
+
+func (r *apiRouter) doRoutesPrefix(name string, addresses appTypes.RoutableAddresses, suffix string) error {
+	req := &routesReq{
+		Prefix:    addresses.Prefix,
+		ExtraData: addresses.ExtraData,
+	}
+	req.Addresses = make([]string, len(addresses.Addresses))
+	for i := range addresses.Addresses {
+		req.Addresses[i] = addresses.Addresses[i].String()
+	}
+	return r.doRoutesReq(name, req, suffix)
 }
 
 func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {

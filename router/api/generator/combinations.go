@@ -21,6 +21,7 @@ var capMap = map[string][]string{
 	"healthcheck": {"router.CustomHealthcheckRouter", "apiRouterWithHealthcheckSupport"},
 	"info":        {"router.InfoRouter", "apiRouterWithInfo"},
 	"status":      {"router.StatusRouter", "apiRouterWithStatus"},
+	"prefix":      {"router.PrefixRouter", "apiRouterWithPrefix"},
 }
 
 var fileTpl = `// AUTOMATICALLY GENERATED FILE - DO NOT EDIT!

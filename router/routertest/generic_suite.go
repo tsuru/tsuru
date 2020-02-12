@@ -838,7 +838,7 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://10.10.10.10:8080")
 	c.Assert(err, check.IsNil)
-	addr2, err := url.Parse("http://10.10.10.10:8080")
+	addr2, err := url.Parse("http://10.10.10.11:8080")
 	c.Assert(err, check.IsNil)
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "",
@@ -849,7 +849,7 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 
 	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
 		Prefix:    "foo.process",
-		Addresses: []*url.URL{addr2},
+		Addresses: []*url.URL{addr1, addr2},
 		ExtraData: map[string]string{"extra": "val2"},
 	}, true)
 	c.Assert(err, check.IsNil)
@@ -860,6 +860,9 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 
 	prefixRoutes, err := prefixRouter.RoutesPrefix(testBackend1)
 	c.Assert(err, check.IsNil)
+	sort.Slice(prefixRoutes, func(i, j int) bool {
+		return prefixRoutes[i].Prefix < prefixRoutes[j].Prefix
+	})
 	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
 		{
 			Addresses: []*url.URL{addr1},
@@ -867,7 +870,7 @@ func (s *RouterSuite) TestAddRoutesPrefix(c *check.C) {
 		},
 		{
 			Prefix:    "foo.process",
-			Addresses: []*url.URL{addr2},
+			Addresses: []*url.URL{addr1, addr2},
 			ExtraData: map[string]string{"extra": "val2"},
 		},
 	})
@@ -919,6 +922,9 @@ func (s *RouterSuite) TestRemoveRoutesPrefix(c *check.C) {
 
 	prefixRoutes, err := prefixRouter.RoutesPrefix(testBackend1)
 	c.Assert(err, check.IsNil)
+	sort.Slice(prefixRoutes, func(i, j int) bool {
+		return prefixRoutes[i].Prefix < prefixRoutes[j].Prefix
+	})
 	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
 		{
 			Addresses: []*url.URL{addr1},

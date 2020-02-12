@@ -453,6 +453,7 @@ type backend struct {
 	cnameOnly   bool
 	healthcheck routerTypes.HealthcheckData
 	opts        map[string]interface{}
+	prefixAddrs map[string]routesReq
 }
 
 type fakeRouterAPI struct {
@@ -535,8 +536,11 @@ func (f *fakeRouterAPI) getRoutes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp := &routesReq{}
+	resp := &routesPrefixReq{}
 	resp.Addresses = backend.addresses
+	for _, prefixData := range backend.prefixAddrs {
+		resp.AddressesWithPrefix = append(resp.AddressesWithPrefix, prefixData)
+	}
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -559,7 +563,26 @@ func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(a)
 		return u.Host + ":" + u.Port()
 	}
-	for _, a := range backend.addresses {
+	if backend.prefixAddrs == nil {
+		backend.prefixAddrs = make(map[string]routesReq)
+	}
+	var prefixData *routesReq
+	for prefixName, item := range backend.prefixAddrs {
+		if req.Prefix == prefixName {
+			prefixData = &item
+			break
+		}
+	}
+	if prefixData == nil {
+		prefixData = &routesReq{Prefix: req.Prefix}
+		if req.Prefix == "" {
+			prefixData.Addresses = backend.addresses
+		}
+	}
+	if req.ExtraData != nil {
+		prefixData.ExtraData = req.ExtraData
+	}
+	for _, a := range prefixData.Addresses {
 		rMap[addressToKey(a)] = struct{}{}
 	}
 	for i, a := range req.Addresses {
@@ -567,8 +590,12 @@ func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		rMap[addressToKey(a)] = struct{}{}
-		backend.addresses = append(backend.addresses, req.Addresses[i])
+		prefixData.Addresses = append(prefixData.Addresses, req.Addresses[i])
+		if req.Prefix == "" {
+			backend.addresses = append(backend.addresses, req.Addresses[i])
+		}
 	}
+	backend.prefixAddrs[req.Prefix] = *prefixData
 }
 
 func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -589,17 +616,45 @@ func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(a)
 		return u.Host + ":" + u.Port()
 	}
+
+	if backend.prefixAddrs == nil {
+		backend.prefixAddrs = make(map[string]routesReq)
+	}
+	var prefixData *routesReq
+	for prefixName, item := range backend.prefixAddrs {
+		if req.Prefix == prefixName {
+			prefixData = &item
+			break
+		}
+	}
+	if prefixData == nil {
+		prefixData = &routesReq{Prefix: req.Prefix}
+		if req.Prefix == "" {
+			prefixData.Addresses = backend.addresses
+		}
+	}
+
+	if req.ExtraData != nil {
+		prefixData.ExtraData = req.ExtraData
+	}
 	addrMap := make(map[string]string)
-	for _, b := range backend.addresses {
+	for _, b := range prefixData.Addresses {
 		addrMap[addressToKey(b)] = b
 	}
 	for _, b := range req.Addresses {
 		delete(addrMap, addressToKey(b))
 	}
-	backend.addresses = nil
-	for _, b := range addrMap {
-		backend.addresses = append(backend.addresses, b)
+	prefixData.Addresses = nil
+	if req.Prefix == "" {
+		backend.addresses = nil
 	}
+	for _, b := range addrMap {
+		prefixData.Addresses = append(prefixData.Addresses, b)
+		if req.Prefix == "" {
+			backend.addresses = append(backend.addresses, b)
+		}
+	}
+	backend.prefixAddrs[req.Prefix] = *prefixData
 }
 
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
