@@ -239,12 +239,6 @@ type App interface {
 	SetQuotaInUse(int) error
 }
 
-// RollbackableDeployer is a provisioner that allows rolling back to a
-// previously deployed version.
-type RollbackableDeployer interface {
-	Rollback(App, appTypes.AppVersion, *event.Event) (string, error)
-}
-
 type BuilderDockerClient interface {
 	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error)
 	RemoveContainer(opts docker.RemoveContainerOptions) error
@@ -288,9 +282,16 @@ type BuilderKubeClient interface {
 	DownloadFromContainer(App, *event.Event, string) (io.ReadCloser, error)
 }
 
+type DeployArgs struct {
+	App              App
+	Version          appTypes.AppVersion
+	Event            *event.Event
+	PreserveVersions bool
+}
+
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
-	Deploy(App, appTypes.AppVersion, *event.Event) (string, error)
+	Deploy(DeployArgs) (string, error)
 }
 
 type BuilderDeployDockerClient interface {

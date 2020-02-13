@@ -863,7 +863,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
+	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
 	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -897,7 +897,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Matches, ".*Rollback deploy called")
+	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
 	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -1053,7 +1053,7 @@ func (s *S) TestRebuild(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
-	c.Assert(imgID, check.Equals, "app-image")
+	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v1")
 }
 
 func (s *S) TestRollbackUpdate(c *check.C) {

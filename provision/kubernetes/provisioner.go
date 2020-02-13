@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -72,7 +71,6 @@ var (
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
 	_ provision.HCProvisioner            = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
@@ -1111,67 +1109,55 @@ func (p *kubernetesProvisioner) internalNodeUpdate(opts provision.UpdateNodeOpti
 	return errors.WithStack(err)
 }
 
-func (p *kubernetesProvisioner) Deploy(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
-	client, err := clusterForPool(a.GetPool())
+func (p *kubernetesProvisioner) Deploy(args provision.DeployArgs) (string, error) {
+	client, err := clusterForPool(args.App.GetPool())
 	if err != nil {
 		return "", err
 	}
-	if err = ensureAppCustomResourceSynced(client, a); err != nil {
+	if err = ensureAppCustomResourceSynced(client, args.App); err != nil {
 		return "", err
 	}
-	if version.VersionInfo().DeployImage == "" {
-		deployPodName := deployPodNameForApp(a, version)
-		ns, nsErr := client.AppNamespace(a)
+	if args.Version.VersionInfo().DeployImage == "" {
+		deployPodName := deployPodNameForApp(args.App, args.Version)
+		ns, nsErr := client.AppNamespace(args.App)
 		if nsErr != nil {
 			return "", nsErr
 		}
 		defer cleanupPod(client, deployPodName, ns)
 		params := createPodParams{
-			app:               a,
+			app:               args.App,
 			client:            client,
 			podName:           deployPodName,
-			sourceImage:       version.VersionInfo().BuildImage,
-			destinationImages: []string{version.BaseImageName()},
-			attachOutput:      evt,
+			sourceImage:       args.Version.VersionInfo().BuildImage,
+			destinationImages: []string{args.Version.BaseImageName()},
+			attachOutput:      args.Event,
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
 		}
-		ctx, cancel := evt.CancelableContext(context.Background())
+		ctx, cancel := args.Event.CancelableContext(context.Background())
 		err = createDeployPod(ctx, params)
 		cancel()
 		if err != nil {
 			return "", err
 		}
-		err = version.CommitBaseImage()
+		err = args.Version.CommitBaseImage()
 		if err != nil {
 			return "", err
 		}
 	}
 	manager := &serviceManager{
 		client: client,
-		writer: evt,
+		writer: args.Event,
 	}
-	err = servicecommon.RunServicePipeline(manager, a, version, nil, evt)
+	err = servicecommon.RunServicePipeline(manager, args.App, args.Version, nil, args.Event)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return version.VersionInfo().DeployImage, ensureAppCustomResourceSynced(client, a)
-}
-
-func (p *kubernetesProvisioner) Rollback(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
-	client, err := clusterForPool(a.GetPool())
+	err = ensureAppCustomResourceSynced(client, args.App)
 	if err != nil {
 		return "", err
 	}
-	manager := &serviceManager{
-		client: client,
-		writer: evt,
-	}
-	err = servicecommon.RunServicePipeline(manager, a, version, nil, evt)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return version.VersionInfo().DeployImage, nil
+	return args.Version.VersionInfo().DeployImage, nil
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
