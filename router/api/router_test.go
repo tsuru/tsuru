@@ -45,6 +45,7 @@ func init() {
 		r.router.HandleFunc("/support/{feature}", func(http.ResponseWriter, *http.Request) {
 		})
 		config.Set("routers:apirouter:api-url", r.endpoint)
+		config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 		config.Set("database:name", "router_api_tests")
 		r.backends = make(map[string]*backend)
 		apiRouter, err := createRouter("api", "routers:apirouter")
@@ -72,6 +73,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.testRouter.supIface = s.testRouter
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_api_tests")
 	s.apiRouter.backends = make(map[string]*backend)
 	s.testRouter.AddBackend(routertest.FakeApp{Name: "mybackend"})

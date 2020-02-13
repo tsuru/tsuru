@@ -54,6 +54,7 @@ var _ = check.Suite(&HandlersSuite{})
 
 func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_handlers_tests_s")
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)

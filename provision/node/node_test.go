@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
@@ -22,6 +23,11 @@ var _ = check.Suite(&S{})
 
 func Test(t *testing.T) {
 	check.TestingT(t)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "provision_node_tests_s")
 }
 
 func (s *S) TestFindNodeByAddrs(c *check.C) {

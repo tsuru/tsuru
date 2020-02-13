@@ -45,6 +45,7 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("log:disable-syslog", true)
 	config.Set("git:api-server", s.server.URL())
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "repository_gandalf_test")
 }
 

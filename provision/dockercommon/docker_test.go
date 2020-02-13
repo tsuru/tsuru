@@ -26,6 +26,8 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "provision_dockercommon_internal_tests_s")
 	config.Set("docker:registry", "my.registry")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
