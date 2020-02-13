@@ -19,6 +19,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
 	config.Unset("iaas")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "iaas_tests_s")
 	iaasProviders = make(map[string]iaasFactory)
 	iaasInstances = make(map[string]IaaS)

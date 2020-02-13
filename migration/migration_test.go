@@ -27,6 +27,7 @@ type Suite struct {
 
 func (s *Suite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsurud_migration_tests")
 	var err error
 	s.conn, err = db.Conn()
