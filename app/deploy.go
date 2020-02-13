@@ -344,27 +344,31 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
 
-	if opts.Kind != DeployRollback {
-		if deployer, ok := prov.(provision.BuilderDeploy); ok {
-			version, err := builderDeploy(deployer, opts, evt)
-			if err != nil {
-				return "", err
-			}
-			return deployer.Deploy(opts.App, version, evt)
+	deployer, ok := prov.(provision.BuilderDeploy)
+	if !ok {
+		return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
+	}
+
+	var version appTypes.AppVersion
+	if opts.Kind == DeployRollback {
+		version, err = servicemanager.AppVersion.VersionByImageOrVersion(opts.App, opts.Image)
+		if err != nil {
+			return "", err
+		}
+		if version.VersionInfo().Disabled {
+			return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
 		}
 	} else {
-		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
-			version, err := servicemanager.AppVersion.VersionByImageOrVersion(opts.App, opts.Image)
-			if err != nil {
-				return "", err
-			}
-			if version.VersionInfo().Disabled {
-				return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
-			}
-			return deployer.Rollback(opts.App, version, evt)
+		version, err = builderDeploy(deployer, opts, evt)
+		if err != nil {
+			return "", err
 		}
 	}
-	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
+	return deployer.Deploy(provision.DeployArgs{
+		App:     opts.App,
+		Version: version,
+		Event:   evt,
+	})
 }
 
 func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {

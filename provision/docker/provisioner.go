@@ -80,7 +80,6 @@ type dockerProvisioner struct {
 
 var (
 	_ provision.Provisioner               = &dockerProvisioner{}
-	_ provision.RollbackableDeployer      = &dockerProvisioner{}
 	_ provision.ExecutableProvisioner     = &dockerProvisioner{}
 	_ provision.SleepableProvisioner      = &dockerProvisioner{}
 	_ provision.MessageProvisioner        = &dockerProvisioner{}
@@ -360,28 +359,23 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Rollback(a provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
-	err := version.CommitBaseImage()
-	if err != nil {
-		return "", err
+func (p *dockerProvisioner) Deploy(args provision.DeployArgs) (string, error) {
+	if args.PreserveVersions {
+		return "", errors.New("docker provisioner does not support multiple versions")
 	}
-	return version.VersionInfo().DeployImage, p.deploy(a, version, evt)
-}
-
-func (p *dockerProvisioner) Deploy(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
-	if version.VersionInfo().DeployImage != "" {
-		err := p.deploy(app, version, evt)
+	if args.Version.VersionInfo().DeployImage != "" {
+		err := p.deploy(args.App, args.Version, args.Event)
 		if err != nil {
 			return "", err
 		}
-		return version.VersionInfo().DeployImage, nil
+		return args.Version.VersionInfo().DeployImage, nil
 	}
-	cmds := dockercommon.DeployCmds(app)
-	imageID, err := p.deployPipeline(app, version, cmds, evt)
+	cmds := dockercommon.DeployCmds(args.App)
+	imageID, err := p.deployPipeline(args.App, args.Version, cmds, args.Event)
 	if err != nil {
 		return "", err
 	}
-	err = p.deployAndClean(app, version, evt)
+	err = p.deployAndClean(args.App, args.Version, args.Event)
 	if err != nil {
 		return "", err
 	}

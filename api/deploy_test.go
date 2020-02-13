@@ -202,7 +202,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -250,7 +250,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -306,7 +306,7 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -352,7 +352,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -406,7 +406,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -462,7 +462,7 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -512,7 +512,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 			"message":    "msg1",
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -559,7 +559,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -608,7 +608,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 			"message":    "and when he falleth",
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -673,7 +673,7 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 		LogMatches: []string{`.*Builder deploy called`},
 	}, eventtest.HasEvent)
@@ -1143,7 +1143,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Builder deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -1187,7 +1187,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Rollback deploy called\",\"Timestamp\":\".*\"}\n")
+	c.Assert(recorder.Body.String(), check.Matches, "{\"Message\":\".*Builder deploy called\",\"Timestamp\":\".*\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -1207,7 +1207,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 		EndCustomData: map[string]interface{}{
 			"image": "tsuru/app-otherapp:v1",
 		},
-		LogMatches: []string{`Rollback deploy called`},
+		LogMatches: []string{`Builder deploy called`},
 	}, eventtest.HasEvent)
 }
 
@@ -1365,7 +1365,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "app-image",
+			"image": "tsuru/app-" + a.Name + ":v1",
 		},
 	}, eventtest.HasEvent)
 }

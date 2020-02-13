@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -43,8 +42,6 @@ var (
 	_ provision.App                  = &FakeApp{}
 	_ bind.App                       = &FakeApp{}
 )
-
-const fakeAppImage = "app-image"
 
 func init() {
 	ProvisionerInstance = NewFakeProvisioner()
@@ -856,24 +853,32 @@ func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
+func (p *FakeProvisioner) Deploy(args provision.DeployArgs) (string, error) {
 	if err := p.getError("Deploy"); err != nil {
 		return "", err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
+	pApp, ok := p.apps[args.App.GetName()]
 	if !ok {
 		return "", errNotProvisioned
 	}
-	if version.VersionInfo().DeployImage != "" {
-		pApp.image = version.VersionInfo().DeployImage
+	if args.Version.VersionInfo().DeployImage != "" {
+		pApp.image = args.Version.VersionInfo().DeployImage
 	} else {
-		pApp.image = version.VersionInfo().BuildImage
+		pApp.image = args.Version.VersionInfo().BuildImage
 	}
-	evt.Write([]byte("Builder deploy called"))
-	p.apps[app.GetName()] = pApp
-	return fakeAppImage, nil
+	args.Event.Write([]byte("Builder deploy called"))
+	p.apps[args.App.GetName()] = pApp
+	err := args.Version.CommitBaseImage()
+	if err != nil {
+		return "", err
+	}
+	err = args.Version.CommitSuccessful()
+	if err != nil {
+		return "", err
+	}
+	return args.Version.VersionInfo().DeployImage, nil
 }
 
 func (p *FakeProvisioner) GetClient(app provision.App) (provision.BuilderDockerClient, error) {
@@ -900,36 +905,6 @@ func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
 		}
 	}
 	return nil
-}
-
-func (p *FakeProvisioner) Rollback(app provision.App, version appTypes.AppVersion, evt *event.Event) (string, error) {
-	if err := p.getError("Rollback"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	evt.Write([]byte("Rollback deploy called"))
-	p.apps[app.GetName()] = pApp
-	return version.VersionInfo().DeployImage, nil
-}
-
-func (p *FakeProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
-	if err := p.getError("Rebuild"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	evt.Write([]byte("Rebuild deploy called"))
-	p.apps[app.GetName()] = pApp
-	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {

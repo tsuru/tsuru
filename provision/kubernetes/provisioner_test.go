@@ -1067,7 +1067,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -1104,7 +1104,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1171,7 +1171,7 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1260,7 +1260,7 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
@@ -1313,7 +1313,7 @@ func (s *S) TestDeploy(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1362,7 +1362,7 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
@@ -1396,7 +1396,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1457,7 +1457,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1507,7 +1507,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(a, version, evt)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 
 	addrs, err := s.p.InternalAddresses(context.Background(), a)
@@ -1565,7 +1565,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -1654,7 +1654,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
 	go func(evt *event.Event) {
-		img, errDeploy := s.p.Deploy(a, version, evt)
+		img, errDeploy := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
@@ -1676,7 +1676,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	}
 }
 
-func (s *S) TestRollback(c *check.C) {
+func (s *S) TestDeployRollback(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	deployEvt, err := event.New(&event.Opts{
@@ -1692,7 +1692,7 @@ func (s *S) TestRollback(c *check.C) {
 		},
 	}
 	version1 := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version1, deployEvt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version1, Event: deployEvt})
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	customData = map[string]interface{}{
@@ -1701,7 +1701,7 @@ func (s *S) TestRollback(c *check.C) {
 		},
 	}
 	version2 := newCommittedVersion(c, a, customData)
-	img, err = s.p.Deploy(a, version2, deployEvt)
+	img, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version2, Event: deployEvt})
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
 	deployEvt.Done(err)
@@ -1713,7 +1713,7 @@ func (s *S) TestRollback(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeployRollback),
 	})
 	c.Assert(err, check.IsNil)
-	img, err = s.p.Rollback(a, version1, rollbackEvt)
+	img, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version1, Event: rollbackEvt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, version1.BaseImageName())
 	wait()
@@ -1776,7 +1776,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 	})
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
@@ -2232,7 +2232,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2332,7 +2332,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
@@ -2394,7 +2394,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(a, version, evt)
+	img, err := s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
