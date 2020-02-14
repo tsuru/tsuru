@@ -616,7 +616,8 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
+	version := newSuccessfulAppVersion(c, &app)
+	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web", version}}
 	_, err = provisionAddUnits.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	units := s.provisioner.GetUnits(&app)
@@ -632,7 +633,8 @@ func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
+	version := newSuccessfulAppVersion(c, &app)
+	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web", version}}
 	result, err := provisionAddUnits.Forward(ctx)
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
@@ -707,6 +709,7 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}

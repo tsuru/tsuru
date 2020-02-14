@@ -874,7 +874,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -978,7 +978,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -1027,7 +1027,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -1075,9 +1075,9 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&ab, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&ab, 1, "web", nil)
+	err = s.provisioner.AddUnits(&ab, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&ab)
 	c.Assert(err, check.IsNil)

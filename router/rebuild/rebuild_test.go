@@ -19,11 +19,24 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+func newVersion(c *check.C, a appTypes.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: a,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
 func (s *S) TestRebuildRoutes(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -53,7 +66,8 @@ func (s *S) TestRebuildRoutesDRY(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -83,7 +97,8 @@ func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -124,9 +139,11 @@ func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
 	a2 := app.App{Name: "my-test-app-2", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a2, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a1, 3, "web", nil)
+	version1 := newVersion(c, &a1)
+	version2 := newVersion(c, &a2)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a1, 3, "web", version1, nil)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a2, 2, "web", nil)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a2, 2, "web", version2, nil)
 	c.Assert(err, check.IsNil)
 	units1, err := a1.Units()
 	c.Assert(err, check.IsNil)
@@ -186,7 +203,8 @@ func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -221,7 +239,8 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	oldAddrs, err := a.GetAddresses()
 	c.Assert(err, check.IsNil)
@@ -237,7 +256,8 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
+	version := newVersion(c, &a)
+	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -366,6 +386,11 @@ func (s *S) TestRebuildRoutesMultiplePrefixes(c *check.C) {
 		Addresses: []*url.URL{{Host: "invalid", Scheme: "http"}},
 	}, true)
 	c.Assert(err, check.IsNil)
+	err = routertest.PrefixRouter.AddRoutesPrefix(a.Name, appTypes.RoutableAddresses{
+		Prefix:    "old",
+		Addresses: []*url.URL{{Host: "u9", Scheme: "http"}},
+	}, true)
+	c.Assert(err, check.IsNil)
 
 	changes, err = rebuild.RebuildRoutes(&a, false)
 	c.Assert(err, check.IsNil)
@@ -385,11 +410,40 @@ func (s *S) TestRebuildRoutesMultiplePrefixes(c *check.C) {
 					Removed: nil,
 				},
 				{
+					Prefix:  "old",
+					Removed: []string{"http://u9"},
+				},
+				{
 					Prefix:  "web",
 					Added:   []string{"http://u4"},
 					Removed: []string{"http://invalid"},
 				},
 			},
+		},
+	})
+
+	prefixRoutes, err := routertest.PrefixRouter.RoutesPrefix(a.Name)
+	c.Assert(err, check.IsNil)
+	sort.Slice(prefixRoutes, func(i, j int) bool {
+		return prefixRoutes[i].Prefix < prefixRoutes[j].Prefix
+	})
+	for k := range prefixRoutes {
+		sort.Slice(prefixRoutes[k].Addresses, func(i, j int) bool {
+			return prefixRoutes[k].Addresses[i].Host < prefixRoutes[k].Addresses[j].Host
+		})
+	}
+	c.Assert(prefixRoutes, check.DeepEquals, []appTypes.RoutableAddresses{
+		{
+			Prefix:    "",
+			Addresses: []*url.URL{{Host: "u1", Scheme: "http"}, {Host: "u2", Scheme: "http"}, {Host: "u3", Scheme: "http"}},
+		},
+		{
+			Prefix:    "old",
+			Addresses: []*url.URL{},
+		},
+		{
+			Prefix:    "web",
+			Addresses: []*url.URL{{Host: "u2", Scheme: "http"}, {Host: "u4", Scheme: "http"}},
 		},
 	})
 }

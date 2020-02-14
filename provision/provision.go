@@ -154,6 +154,7 @@ type Unit struct {
 	Status      Status
 	Address     *url.URL
 	Addresses   []url.URL
+	Version     int
 }
 
 // GetName returns the name of the unit.
@@ -304,6 +305,12 @@ type BuilderDeployKubeClient interface {
 	GetClient(App) (BuilderKubeClient, error)
 }
 
+type RoutableVersionsProvisioner interface {
+	AddRoutableVersion(App, appTypes.AppVersion) error
+	RemoveRoutableVersion(App, appTypes.AppVersion) error
+	ListRoutableVersions(App) ([]int, error)
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision
@@ -321,27 +328,27 @@ type Provisioner interface {
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(App, uint, string, io.Writer) error
+	AddUnits(App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
-	RemoveUnits(App, uint, string, io.Writer) error
+	RemoveUnits(App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// Restart restarts the units of the application, with an optional
 	// string parameter represeting the name of the process to start. When
 	// the process is empty, Restart will restart all units of the
 	// application.
-	Restart(App, string, io.Writer) error
+	Restart(App, string, appTypes.AppVersion, io.Writer) error
 
 	// Start starts the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Start will start all units of the application.
-	Start(App, string) error
+	Start(App, string, appTypes.AppVersion) error
 
 	// Stop stops the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Stop will stop all units of the application.
-	Stop(App, string) error
+	Stop(App, string, appTypes.AppVersion) error
 
 	// Units returns information about units by App.
 	Units(...App) ([]Unit, error)
@@ -375,7 +382,7 @@ type SleepableProvisioner interface {
 	// Sleep puts the units of the application to sleep, with an optional string
 	// parameter representing the name of the process to sleep. When the
 	// process is empty, Sleep will put all units of the application to sleep.
-	Sleep(App, string) error
+	Sleep(App, string, appTypes.AppVersion) error
 }
 
 // UpdatableProvisioner is a provisioner that stores data about applications

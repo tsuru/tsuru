@@ -377,6 +377,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := "/1.4/volumes/v1/bind"
 	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false`)
 	request, err := http.NewRequest("POST", url, body)
@@ -496,6 +497,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Create()
 	c.Assert(err, check.IsNil)

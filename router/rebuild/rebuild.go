@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
@@ -161,28 +162,42 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		}
 		oldRoutes = []appTypes.RoutableAddresses{{Addresses: simpleOldRoutes}}
 	}
+	log.Debugf("[rebuild-routes] old routes for app %q: %+v", app.GetName(), oldRoutes)
+
+	allPrefixes := set.Set{}
+
 	oldPrefixMap := make(map[string]appTypes.RoutableAddresses)
 	for _, addrs := range oldRoutes {
 		oldPrefixMap[addrs.Prefix] = addrs
+		allPrefixes.Add(addrs.Prefix)
 	}
 
-	log.Debugf("[rebuild-routes] old routes for app %q: %v", app.GetName(), oldRoutes)
-	routableAddresses, err := app.RoutableAddresses()
+	newRoutes, err := app.RoutableAddresses()
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("[rebuild-routes] addresses for app %q: %v", app.GetName(), routableAddresses)
+	log.Debugf("[rebuild-routes] addresses for app %q: %+v", app.GetName(), newRoutes)
+
+	newPrefixMap := make(map[string]appTypes.RoutableAddresses)
+	for _, addrs := range newRoutes {
+		newPrefixMap[addrs.Prefix] = addrs
+		allPrefixes.Add(addrs.Prefix)
+	}
+
 	var result RebuildRoutesResult
-	for _, addresses := range routableAddresses {
-		if addresses.Prefix != "" && !isPrefixRouter {
+	for _, prefix := range allPrefixes.Sorted() {
+		if prefix != "" && !isPrefixRouter {
 			continue
 		}
 
 		prefixResult := RebuildPrefixResult{
-			Prefix: addresses.Prefix,
+			Prefix: prefix,
 		}
-		oldRoutesForPrefix := oldPrefixMap[addresses.Prefix]
-		toAdd, toRemove := diffRoutes(oldRoutesForPrefix.Addresses, addresses.Addresses)
+
+		newRoutesForPrefix := newPrefixMap[prefix]
+		oldRoutesForPrefix := oldPrefixMap[prefix]
+
+		toAdd, toRemove := diffRoutes(oldRoutesForPrefix.Addresses, newRoutesForPrefix.Addresses)
 		for _, toAddURL := range toAdd {
 			prefixResult.Added = append(prefixResult.Added, toAddURL.String())
 		}
@@ -192,14 +207,15 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		sort.Strings(prefixResult.Added)
 		sort.Strings(prefixResult.Removed)
 		result.PrefixResults = append(result.PrefixResults, prefixResult)
+
 		if dry {
 			log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", app.GetName())
-			return &result, nil
+			continue
 		}
 
 		if isPrefixRouter {
-			addresses.Addresses = toAdd
-			err = prefixRouter.AddRoutesPrefix(app.GetName(), addresses, wait)
+			newRoutesForPrefix.Addresses = toAdd
+			err = prefixRouter.AddRoutesPrefix(app.GetName(), newRoutesForPrefix, wait)
 		} else if asyncR == nil {
 			err = r.AddRoutes(app.GetName(), toAdd)
 		} else {
@@ -208,9 +224,10 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		if err != nil {
 			return nil, err
 		}
+
 		if isPrefixRouter {
 			oldRoutesForPrefix.Addresses = toRemove
-			err = prefixRouter.AddRoutesPrefix(app.GetName(), oldRoutesForPrefix, wait)
+			err = prefixRouter.RemoveRoutesPrefix(app.GetName(), oldRoutesForPrefix, wait)
 		} else if asyncR == nil {
 			err = r.RemoveRoutes(app.GetName(), toRemove)
 		} else {
@@ -219,8 +236,8 @@ func rebuildRoutesInRouter(app RebuildApp, dry bool, appRouter appTypes.AppRoute
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("[rebuild-routes] routes added for app %q, prefix %q: %s", app.GetName(), addresses.Prefix, strings.Join(prefixResult.Added, ", "))
-		log.Debugf("[rebuild-routes] routes removed for app %q, prefix %q: %s", app.GetName(), addresses.Prefix, strings.Join(prefixResult.Removed, ", "))
+		log.Debugf("[rebuild-routes] routes added for app %q, prefix %q: %s", app.GetName(), prefix, strings.Join(prefixResult.Added, ", "))
+		log.Debugf("[rebuild-routes] routes removed for app %q, prefix %q: %s", app.GetName(), prefix, strings.Join(prefixResult.Removed, ", "))
 	}
 	sort.Slice(result.PrefixResults, func(i, j int) bool {
 		return result.PrefixResults[i].Prefix < result.PrefixResults[j].Prefix

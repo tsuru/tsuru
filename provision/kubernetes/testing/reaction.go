@@ -154,6 +154,26 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}
 }
 
+func (s *KubeMock) NoNodeReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	a.Deploys = 1
+	podReaction, deployPodReady := s.deployPodReaction(a, c)
+	servReaction := s.ServiceWithPortReaction(c, nil)
+	rollbackDeployment := s.DeploymentReactions(c)
+	s.client.PrependReactor("create", "pods", podReaction)
+	s.client.PrependReactor("create", "services", servReaction)
+	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
+	return a, func() {
+			rollbackDeployment()
+			deployPodReady.Wait()
+		}, func() {
+			rollbackDeployment()
+			deployPodReady.Wait()
+		}
+}
+
 func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
 	podReaction, podReady := s.buildPodReaction(c)
 	servReaction := s.ServiceWithPortReaction(c, nil)

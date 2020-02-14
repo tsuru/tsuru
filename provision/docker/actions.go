@@ -204,6 +204,7 @@ var createContainer = action.Action{
 			ProcessName:      args.processName,
 			Building:         args.buildingImage != "",
 			Event:            args.event,
+			Version:          args.version,
 		})
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)

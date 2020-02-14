@@ -324,7 +324,7 @@ func (p *dockerProvisioner) rebalanceContainersByHost(address string, w io.Write
 	return p.moveContainerList(containers, "", w)
 }
 
-func (p *dockerProvisioner) runCommandInContainer(image string, app provision.App, stdin io.Reader, stdout, stderr io.Writer, pty container.Pty, cmds ...string) error {
+func (p *dockerProvisioner) runCommandInContainer(version appTypes.AppVersion, app provision.App, stdin io.Reader, stdout, stderr io.Writer, pty container.Pty, cmds ...string) error {
 	if stdout == nil {
 		stdout = ioutil.Discard
 	}
@@ -332,7 +332,7 @@ func (p *dockerProvisioner) runCommandInContainer(image string, app provision.Ap
 		stderr = ioutil.Discard
 	}
 	var envs []string
-	for _, e := range provision.EnvsForApp(app, "", false) {
+	for _, e := range provision.EnvsForApp(app, "", false, version) {
 		envs = append(envs, fmt.Sprintf("%s=%s", e.Name, e.Value))
 	}
 	labelSet, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
@@ -351,7 +351,7 @@ func (p *dockerProvisioner) runCommandInContainer(image string, app provision.Ap
 			AttachStderr: true,
 			AttachStdin:  stdin != nil,
 			OpenStdin:    stdin != nil,
-			Image:        image,
+			Image:        version.VersionInfo().DeployImage,
 			Entrypoint:   cmds,
 			Cmd:          []string{},
 			Env:          envs,

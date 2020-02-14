@@ -465,7 +465,7 @@ func (s *S) TestRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
 	p.Provision(a)
-	err = p.Restart(a, "web", nil)
+	err = p.Restart(a, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Restarts(a, "web"), check.Equals, 1)
 }
@@ -474,9 +474,9 @@ func (s *S) TestStart(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Start(app, "")
+	err := p.Start(app, "", nil)
 	c.Assert(err, check.IsNil)
-	err = p.Start(app, "web")
+	err = p.Start(app, "web", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Starts(app, ""), check.Equals, 1)
 	c.Assert(p.Starts(app, "web"), check.Equals, 1)
@@ -486,7 +486,7 @@ func (s *S) TestStop(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Stop(app, "")
+	err := p.Stop(app, "", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Stops(app, ""), check.Equals, 1)
 }
@@ -495,7 +495,7 @@ func (s *S) TestSleep(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Sleep(app, "")
+	err := p.Sleep(app, "", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Sleeps(app, ""), check.Equals, 1)
 }
@@ -503,7 +503,7 @@ func (s *S) TestSleep(c *check.C) {
 func (s *S) TestRestartNotProvisioned(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
-	err := p.Restart(app, "web", nil)
+	err := p.Restart(app, "web", nil, nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
@@ -511,7 +511,7 @@ func (s *S) TestRestartWithPreparedFailure(c *check.C) {
 	app := NewFakeApp("fairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Restart", errors.New("Failed to restart."))
-	err := p.Restart(app, "web", nil)
+	err := p.Restart(app, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to restart.")
 }
@@ -546,9 +546,9 @@ func (s *S) TestAddUnits(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "web", nil)
+	err = p.AddUnits(app, 2, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "worker", nil)
+	err = p.AddUnits(app, 2, "worker", nil, nil)
 	c.Assert(err, check.IsNil)
 	allUnits := p.GetUnits(app)
 	c.Assert(allUnits, check.HasLen, 4)
@@ -567,7 +567,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	defer p.Destroy(app)
-	err := p.AddUnits(app, 3, "web", nil)
+	err := p.AddUnits(app, 3, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -577,7 +577,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
 
 func (s *S) TestAddZeroUnits(c *check.C) {
 	p := NewFakeProvisioner()
-	err := p.AddUnits(nil, 0, "web", nil)
+	err := p.AddUnits(nil, 0, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units.")
 }
@@ -585,14 +585,14 @@ func (s *S) TestAddZeroUnits(c *check.C) {
 func (s *S) TestAddUnitsUnprovisionedApp(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
-	err := p.AddUnits(app, 1, "web", nil)
+	err := p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestAddUnitsFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("AddUnits", errors.New("Cannot add more units."))
-	err := p.AddUnits(nil, 10, "web", nil)
+	err := p.AddUnits(nil, 10, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add more units.")
 }
@@ -607,7 +607,7 @@ func (s *S) TestAddUnitsNodeAware(c *check.C) {
 		Address: "http://n1:123",
 	})
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "web", nil)
+	err = p.AddUnits(app, 2, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	allUnits := p.GetUnits(app)
 	c.Assert(allUnits, check.HasLen, 2)
@@ -637,11 +637,11 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.AddUnits(app, 5, "web", nil)
+	err := p.AddUnits(app, 5, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	oldUnits := p.GetUnits(app)
 	buf := bytes.NewBuffer(nil)
-	err = p.RemoveUnits(app, 3, "web", buf)
+	err = p.RemoveUnits(app, 3, "web", nil, buf)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	c.Assert(units, check.HasLen, 2)
@@ -659,13 +659,13 @@ func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 5, "p1", nil)
+	err = p.AddUnits(app, 5, "p1", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "p2", nil)
+	err = p.AddUnits(app, 2, "p2", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "p3", nil)
+	err = p.AddUnits(app, 2, "p3", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 2, "p2", nil)
+	err = p.RemoveUnits(app, 2, "p2", nil, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.GetUnits(app), check.HasLen, 7)
 	for i, u := range p.GetUnits(app) {
@@ -682,9 +682,9 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3, "web", nil)
+	err = p.RemoveUnits(app, 3, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "too many units to remove")
 }
@@ -694,11 +694,11 @@ func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 4, "worker", nil)
+	err = p.AddUnits(app, 4, "worker", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3, "web", nil)
+	err = p.RemoveUnits(app, 3, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "too many units to remove")
 }
@@ -706,14 +706,14 @@ func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 func (s *S) TestRemoveUnitsUnprovisionedApp(c *check.C) {
 	app := NewFakeApp("tears", "bruce", 0)
 	p := NewFakeProvisioner()
-	err := p.RemoveUnits(app, 1, "web", nil)
+	err := p.RemoveUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRemoveUnitsFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("RemoveUnits", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnits(nil, 0, "web", nil)
+	err := p.RemoveUnits(nil, 0, "web", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "This program has performed an illegal operation.")
 }
@@ -725,7 +725,7 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 2, "web", nil)
+	err = p.AddUnits(app, 2, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	p.PrepareOutput(output)
@@ -756,7 +756,7 @@ func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
@@ -775,7 +775,7 @@ func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
@@ -796,7 +796,7 @@ func (s *S) TestExecuteComandTimeout(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	err = p.ExecuteCommand(provision.ExecOptions{

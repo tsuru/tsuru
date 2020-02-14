@@ -175,14 +175,13 @@ func (s *S) TestNodeUnits(c *check.C) {
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(a, "")
+	err = s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode("192.168.99.1")
@@ -348,13 +347,13 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(a, "")
+	err = s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode("192.168.99.1")

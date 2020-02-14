@@ -341,6 +341,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app1)
 	requestBody := strings.NewReader("units=2&process=web")
 	request, err := http.NewRequest("PUT", "/apps/app1/units", requestBody)
 	c.Assert(err, check.IsNil)
@@ -356,6 +357,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app2)
 	requestBody = strings.NewReader("units=1&process=web")
 	request, err = http.NewRequest("PUT", "/apps/app2/units", requestBody)
 	c.Assert(err, check.IsNil)
@@ -366,6 +368,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app3)
 	request, err = http.NewRequest("GET", "/apps?status=stopped&status=started", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -394,6 +397,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app1)
 	requestBody := strings.NewReader("units=2&process=web")
 	request, err := http.NewRequest("PUT", "/apps/app1/units", requestBody)
 	c.Assert(err, check.IsNil)
@@ -408,6 +412,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app2)
 	requestBody = strings.NewReader("units=1&process=web")
 	request, err = http.NewRequest("PUT", "/apps/app2/units", requestBody)
 	c.Assert(err, check.IsNil)
@@ -1870,6 +1875,7 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	body := strings.NewReader("plan=hiperplan")
 	request, err := http.NewRequest("PUT", "/apps/someapp", body)
 	c.Assert(err, check.IsNil)
@@ -2025,6 +2031,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 10, InUse: 0}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2056,6 +2063,7 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2133,6 +2141,7 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2181,6 +2190,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 2, InUse: 0}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2207,12 +2217,13 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil, nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?units=2&process=web", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2285,12 +2296,13 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
 		c.Assert(appName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
-	s.provisioner.AddUnits(&a, 3, "", nil)
+	s.provisioner.AddUnits(&a, 3, "", nil, nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2338,7 +2350,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil, nil)
 	body := strings.NewReader("status=error")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -2458,7 +2470,7 @@ func (s *S) TestSetNodeStatusNotFound(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 3, "web", nil)
+	err = s.provisioner.AddUnits(&a, 3, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
 	c.Assert(err, check.IsNil)
@@ -2831,7 +2843,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil, nil)
 	url := fmt.Sprintf("/apps/%s/run", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls&once=true"))
 	c.Assert(err, check.IsNil)
@@ -2869,7 +2881,7 @@ func (s *S) TestRun(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	url := fmt.Sprintf("/apps/%s/run", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
@@ -2905,7 +2917,7 @@ func (s *S) TestRunIsolated(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil, nil)
 	url := fmt.Sprintf("/apps/%s/run", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls&isolated=true"))
 	c.Assert(err, check.IsNil)
@@ -2941,7 +2953,7 @@ func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	url := fmt.Sprintf("/apps/%s/run", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
@@ -2968,7 +2980,7 @@ func (s *S) TestRunReturnsBadRequestIfTheCommandIsMissing(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("POST", "/apps/secrets/run", body)
@@ -4516,7 +4528,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
 	v := url.Values{}
 	v.Set("noRestart", "false")
@@ -4566,7 +4578,8 @@ func (s *S) TestBindHandler(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	newSuccessfulAppVersion(c, &a)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	s.provisioner.PrepareOutput([]byte("exported"))
 	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
 	b := strings.NewReader("noRestart=false")
@@ -4701,7 +4714,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
 	v := url.Values{}
 	v.Set("noRestart", "false")
@@ -4761,7 +4774,7 @@ func (s *S) TestBindHandlerErrorShowsStatusMessage(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance.ServiceName, instance.Name, a.Name)
 	v := url.Values{}
 	v.Set("noRestart", "false")
@@ -4926,7 +4939,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	u := fmt.Sprintf("/services/%s/instances/%s/%s", instance2.ServiceName, instance2.Name, a.Name)
 	v := url.Values{}
 	v.Set("noRestart", "true")
@@ -4993,7 +5006,8 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	newSuccessfulAppVersion(c, &a)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -5091,7 +5105,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -5188,7 +5202,8 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	newSuccessfulAppVersion(c, &a)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -5277,7 +5292,7 @@ func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -5330,7 +5345,7 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -5496,6 +5511,7 @@ func (s *S) TestRestartHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := fmt.Sprintf("/apps/%s/restart", a.Name)
 	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
@@ -5528,6 +5544,7 @@ func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := fmt.Sprintf("/apps/%s/restart", a.Name)
 	body := strings.NewReader("process=web")
 	request, err := http.NewRequest("POST", url, body)
@@ -5597,6 +5614,7 @@ func (s *S) TestSleepHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := fmt.Sprintf("/apps/%s/sleep", a.Name)
 	body := strings.NewReader("proxy=http://example.com")
 	request, err := http.NewRequest("POST", url, body)
@@ -5960,6 +5978,7 @@ func (s *S) TestStartHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := fmt.Sprintf("/apps/%s/start", a.Name)
 	body := strings.NewReader("process=web")
 	request, err := http.NewRequest("POST", url, body)
@@ -5992,6 +6011,7 @@ func (s *S) TestStopHandler(c *check.C) {
 	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	url := fmt.Sprintf("/apps/%s/stop", a.Name)
 	body := strings.NewReader("process=web")
 	request, err := http.NewRequest("POST", url, body)
@@ -6044,7 +6064,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -6140,7 +6160,7 @@ func (s *S) TestRegisterUnitOtherUA(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -6165,7 +6185,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)

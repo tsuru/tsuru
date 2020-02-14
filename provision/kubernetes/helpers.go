@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
@@ -63,12 +64,24 @@ func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContaine
 	return fmt.Sprintf("node-container-%s", name)
 }
 
-func deploymentNameForApp(a provision.App, process string) string {
-	return appProcessName(a, process)
+func deploymentNameForApp(a provision.App, process string, version int) string {
+	return appProcessName(a, process, version, "")
 }
 
-func headlessServiceNameForApp(a provision.App, process string) string {
-	return fmt.Sprintf("%s-units", appProcessName(a, process))
+func deploymentNameForAppBase(a provision.App, process string) string {
+	return appProcessName(a, process, 0, "base")
+}
+
+func serviceNameForApp(a provision.App, process string, version int) string {
+	return appProcessName(a, process, version, "")
+}
+
+func serviceNameForAppBase(a provision.App, process string) string {
+	return appProcessName(a, process, 0, "")
+}
+
+func headlessServiceName(a provision.App, process string) string {
+	return appProcessName(a, process, 0, "units")
 }
 
 func deployPodNameForApp(a provision.App, version appTypes.AppVersion) string {
@@ -81,17 +94,18 @@ func buildPodNameForApp(a provision.App, version appTypes.AppVersion) string {
 	return fmt.Sprintf("%s-v%d-build", name, version.Version())
 }
 
-func appLabelForApp(a provision.App, process string) string {
-	return appProcessName(a, process)
-}
-
-func appProcessName(a provision.App, process string) string {
+func appProcessName(a provision.App, process string, version int, suffix string) string {
 	name := validKubeName(a.GetName())
-	process = validKubeName(process)
-	label := fmt.Sprintf("%s-%s", name, process)
+	processVersion := validKubeName(process)
+	if version > 0 {
+		processVersion = fmt.Sprintf("%s-v%d", processVersion, version)
+	} else if suffix != "" {
+		processVersion = fmt.Sprintf("%s-%s", processVersion, suffix)
+	}
+	label := fmt.Sprintf("%s-%s", name, processVersion)
 	if len(label) > kubeLabelNameMaxLen {
 		h := sha256.New()
-		h.Write([]byte(process))
+		h.Write([]byte(processVersion))
 		hash := fmt.Sprintf("%x", h.Sum(nil))
 		maxLen := kubeLabelNameMaxLen - len(name) - 1
 		if len(hash) > maxLen {
@@ -152,25 +166,12 @@ func waitFor(ctx context.Context, fn func() (bool, error), onCancel func() error
 	}
 }
 
-func podsForAppProcess(client *ClusterClient, a provision.App, process string) (*apiv1.PodList, error) {
-	labelOpts := provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	}
-	l, err := provision.ServiceLabels(labelOpts)
+func podsForAppProcess(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*apiv1.PodList, error) {
+	l, err := selectorForVersion(a, process, version)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	var selector map[string]string
-	if process == "" {
-		selector = l.ToAppSelector()
-	} else {
-		selector = l.ToSelector()
-	}
+	selector := l.ToVersionSelector()
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
@@ -184,10 +185,11 @@ func podsForAppProcess(client *ClusterClient, a provision.App, process string) (
 	return podList, nil
 }
 
-func allNewPodsRunning(client *ClusterClient, a provision.App, process string, depRevision string) (bool, error) {
+func allNewPodsRunning(client *ClusterClient, a provision.App, process string, depRevision string, version appTypes.AppVersion) (bool, error) {
 	labelOpts := provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
+		Version: version.Version(),
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
@@ -202,7 +204,7 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, d
 		return false, err
 	}
 	replicaSets, err := client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToSelector())).String(),
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToVersionSelector())).String(),
 	})
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -217,7 +219,7 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, d
 	if replica == nil {
 		return false, nil
 	}
-	pods, err := podsForAppProcess(client, a, process)
+	pods, err := podsForAppProcess(client, a, process, version)
 	if err != nil {
 		return false, err
 	}
@@ -246,8 +248,8 @@ type podErrorMessage struct {
 	message string
 }
 
-func notReadyPodEvents(client *ClusterClient, a provision.App, process string) ([]podErrorMessage, error) {
-	pods, err := podsForAppProcess(client, a, process)
+func notReadyPodEvents(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) ([]podErrorMessage, error) {
+	pods, err := podsForAppProcess(client, a, process, version)
 	if err != nil {
 		return nil, err
 	}
@@ -506,32 +508,284 @@ func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions, namespace s
 	return cleanupPods(client, opts, namespace)
 }
 
-func cleanupDeployment(client *ClusterClient, a provision.App, process string) error {
-	depName := deploymentNameForApp(a, process)
-	ns, err := client.AppNamespace(a)
-	if err != nil {
-		return err
-	}
-	err = client.AppsV1().Deployments(ns).Delete(depName, &metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
-	}
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func selectorForVersion(a provision.App, process string, version appTypes.AppVersion) (*provision.LabelSet, error) {
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
+		Version: version.Version(),
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
 		},
 	})
 	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return svcLabels, nil
+}
+
+func hasLegacyVersionForApp(client *ClusterClient, a provision.App) (bool, error) {
+	deps, err := allDeploymentsForApp(client, a)
+	if err != nil {
+		return false, err
+	}
+	for _, dep := range deps {
+		labels := labelSetFromMeta(&dep.ObjectMeta)
+		if !labels.IsBase() && labels.Version() == 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVersion, error) {
+	deps, err := allDeploymentsForApp(client, a)
+	if err != nil {
+		return nil, err
+	}
+	for _, dep := range deps {
+		labels := labelSetFromMeta(&dep.ObjectMeta)
+
+		if !(labels.IsBase() || labels.Version() == 0) {
+			continue
+		}
+
+		if len(dep.Spec.Template.Spec.Containers) == 0 {
+			continue
+		}
+
+		img := dep.Spec.Template.Spec.Containers[0].Image
+		version, err := servicemanager.AppVersion.VersionByImageOrVersion(a, img)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return version, nil
+	}
+	return nil, nil
+}
+
+func allDeploymentsForApp(client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	return allDeploymentsForAppNS(client, ns, a)
+}
+
+func allDeploymentsForAppNS(client *ClusterClient, ns string, a provision.App) ([]appsv1.Deployment, error) {
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAppSelector()))
+	deps, err := client.AppsV1().Deployments(ns).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return deps.Items, nil
+}
+
+func allServicesForApp(client *ClusterClient, a provision.App) ([]apiv1.Service, error) {
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	return allServicesForAppNS(client, ns, a)
+}
+
+func allServicesForAppNS(client *ClusterClient, ns string, a provision.App) ([]apiv1.Service, error) {
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAppSelector()))
+	svcs, err := client.CoreV1().Services(ns).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return svcs.Items, nil
+}
+
+func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, a provision.App) ([]*apiv1.Service, error) {
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAppSelector()))
+	return informer.Lister().Services(ns).List(selector)
+}
+
+func allDeploymentsForAppProcess(client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAllVersionsSelector()))
+	deps, err := client.AppsV1().Deployments(ns).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return deps.Items, nil
+}
+
+func deploymentForVersion(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*appsv1.Deployment, error) {
+	deps, err := allDeploymentsForAppProcess(client, a, process)
+	if err != nil {
+		return nil, err
+	}
+	for _, dep := range deps {
+		labels := labelSetFromMeta(&dep.ObjectMeta)
+		if labels.Version() == version.Version() {
+			return &dep, nil
+		}
+	}
+
+	// Deployment not found by version match, fallback to matching image tags
+	// for old deployments from before multiple versions were enabled.
+	for _, dep := range deps {
+		if len(dep.Spec.Template.Spec.Containers) == 0 {
+			continue
+		}
+		img := dep.Spec.Template.Spec.Containers[0].Image
+		if img == version.VersionInfo().DeployImage {
+			return &dep, nil
+		}
+	}
+
+	return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, version.Version()))
+}
+
+func cleanupSingleDeployment(client *ClusterClient, dep *appsv1.Deployment) error {
+	err := client.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
+	if err != nil {
 		return err
 	}
 	return cleanupReplicas(client, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
-	}, ns)
+		LabelSelector: selector.String(),
+	}, dep.Namespace)
+}
+
+func cleanupDeployment(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) error {
+	dep, err := deploymentForVersion(client, a, process, version)
+	if err == nil {
+		err = client.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+	} else if !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	svcLabels, err := selectorForVersion(a, process, version)
+	if err != nil {
+		return err
+	}
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToVersionSelector()))
+	return cleanupReplicas(client, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	}, dep.Namespace)
+}
+
+func allServicesForAppProcess(client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+
+	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix: tsuruLabelPrefix,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAllVersionsSelector()))
+	svcs, err := client.CoreV1().Services(ns).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return svcs.Items, nil
+}
+
+func cleanupServices(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) error {
+	svcs, err := allServicesForAppProcess(client, a, process)
+	if err != nil {
+		return err
+	}
+
+	deps, err := allDeploymentsForAppProcess(client, a, process)
+	if err != nil {
+		return err
+	}
+	processInUse := len(deps) > 1
+
+	var toDelete []apiv1.Service
+	for _, svc := range svcs {
+		labels := labelSetFromMeta(&svc.ObjectMeta)
+		svcVersion := labels.Version()
+		if svcVersion == version.Version() || !processInUse {
+			toDelete = append(toDelete, svc)
+		}
+	}
+
+	for _, svc := range toDelete {
+		err = client.CoreV1().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }
 
 func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
@@ -683,7 +937,7 @@ func execCommand(opts execOpts) error {
 	if l.AppName() != opts.app.GetName() {
 		return errors.Errorf("pod %q do not belong to app %q", chosenPod.Name, l.AppName())
 	}
-	containerName := deploymentNameForApp(opts.app, l.AppProcess())
+	containerName := chosenPod.Spec.Containers[0].Name
 	req := restCli.Post().
 		Resource("pods").
 		Name(chosenPod.Name).

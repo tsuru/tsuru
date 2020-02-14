@@ -593,13 +593,13 @@ func (s *S) TestUnits(c *check.C) {
 		{NodePort: int32(30002)},
 		{NodePort: int32(30003)},
 	}))
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(a, "")
+	err = s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -610,7 +610,7 @@ func (s *S) TestUnits(c *check.C) {
 	})
 	for i, u := range units {
 		splittedName := strings.Split(u.ID, "-")
-		c.Assert(splittedName, check.HasLen, 5)
+		c.Assert(splittedName, check.HasLen, 6)
 		c.Assert(splittedName[0], check.Equals, "myapp")
 		units[i].ID = ""
 		units[i].Name = ""
@@ -622,6 +622,7 @@ func (s *S) TestUnits(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "started",
+			Version:     1,
 			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
 			Addresses: []url.URL{
 				{Scheme: "http", Host: "192.168.99.1:30001"},
@@ -635,6 +636,7 @@ func (s *S) TestUnits(c *check.C) {
 			Type:        "python",
 			IP:          "192.168.99.1",
 			Status:      "started",
+			Version:     1,
 			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
 			Addresses: []url.URL{
 				{Scheme: "http", Host: "192.168.99.1:30001"},
@@ -773,13 +775,13 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 func (s *S) TestUnitsSkipTerminating(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(a, "")
+	err := s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -806,13 +808,13 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 func (s *S) TestUnitsSkipEvicted(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python myapp.py",
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(a, "")
+	err := s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(a)
@@ -891,12 +893,12 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	}
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -933,12 +935,12 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 3, "web", nil)
+	err := s.p.AddUnits(a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -951,13 +953,13 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
 	a.Deploys = 1
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err = s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
@@ -968,18 +970,18 @@ func (s *S) TestAddUnitsNotProvisionedRecreateAppCRD(c *check.C) {
 func (s *S) TestRemoveUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 3, "web", nil)
+	err := s.p.AddUnits(a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
-	err = s.p.RemoveUnits(a, 2, "web", nil)
+	err = s.p.RemoveUnits(a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(a)
@@ -990,19 +992,19 @@ func (s *S) TestRemoveUnits(c *check.C) {
 func (s *S) TestRestart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	id := units[0].ID
-	err = s.p.Restart(a, "", nil)
+	err = s.p.Restart(a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(a)
@@ -1016,34 +1018,34 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
 	a.Deploys = 1
-	err = s.p.Restart(a, "", nil)
+	err = s.p.Restart(a, "", version, nil)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestStopStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.Stop(a, "")
+	err = s.p.Stop(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(a, "")
+	err = s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(a)
@@ -1109,7 +1111,9 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.HasLen, 2)
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].Prefix < addrs[j].Prefix
+	})
 	for k := range addrs {
 		sort.Slice(addrs[k].Addresses, func(i, j int) bool {
 			return addrs[k].Addresses[i].Host < addrs[k].Addresses[j].Host
@@ -1117,7 +1121,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	}
 	expected := []appTypes.RoutableAddresses{
 		{
-			Prefix: "web.process",
+			Prefix: "",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
 				"namespace": "default",
@@ -1134,7 +1138,41 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 			},
 		},
 		{
-			Prefix: "",
+			Prefix: "v1.version",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "v1.version.web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "web.process",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
 				"namespace": "default",
@@ -1176,7 +1214,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.HasLen, 3)
 	sort.Slice(addrs, func(i, j int) bool {
 		return addrs[i].Prefix < addrs[j].Prefix
 	})
@@ -1207,6 +1244,57 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 			Prefix: "other.process",
 			ExtraData: map[string]string{
 				"service":   "myapp-other",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "v1.version",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "v1.version.other.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-other-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+				{
+					Scheme: "http",
+					Host:   "192.168.99.2:30000",
+				},
+			},
+		},
+		{
+			Prefix: "v1.version.web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
 				"namespace": "default",
 			},
 			Addresses: []*url.URL{
@@ -1265,10 +1353,12 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.HasLen, 2)
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].Prefix < addrs[j].Prefix
+	})
 	expected := []appTypes.RoutableAddresses{
 		{
-			Prefix: "web.process",
+			Prefix: "",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
 				"namespace": "default",
@@ -1281,7 +1371,33 @@ func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
 			},
 		},
 		{
-			Prefix: "",
+			Prefix: "v1.version",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+			},
+		},
+		{
+			Prefix: "v1.version.web.process",
+			ExtraData: map[string]string{
+				"service":   "myapp-web-v1",
+				"namespace": "default",
+			},
+			Addresses: []*url.URL{
+				{
+					Scheme: "http",
+					Host:   "192.168.99.1:30000",
+				},
+			},
+		},
+		{
+			Prefix: "web.process",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
 				"namespace": "default",
@@ -1322,7 +1438,7 @@ func (s *S) TestDeploy(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -1339,8 +1455,8 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
 	})
 }
 
@@ -1407,8 +1523,8 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "tsuru-test-default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
 	})
 }
 
@@ -1464,20 +1580,18 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	c.Assert(addrs[0], check.DeepEquals, provision.AppInternalAddress{
-		Domain:   "myapp-jobs.default.svc.cluster.local",
-		Protocol: "UDP",
-		Port:     12201,
+	sort.Slice(addrs, func(i, j int) bool {
+		return fmt.Sprint(addrs[i].Domain, addrs[i].Port) < fmt.Sprint(addrs[j].Domain, addrs[j].Port)
 	})
-	c.Assert(addrs[1], check.DeepEquals, provision.AppInternalAddress{
-		Domain:   "myapp-web.default.svc.cluster.local",
-		Protocol: "TCP",
-		Port:     80,
-	})
-	c.Assert(addrs[2], check.DeepEquals, provision.AppInternalAddress{
-		Domain:   "myapp-web.default.svc.cluster.local",
-		Protocol: "TCP",
-		Port:     443,
+
+	c.Assert(addrs, check.DeepEquals, []provision.AppInternalAddress{
+		{Domain: "myapp-jobs-units.default.svc.cluster.local", Protocol: "", Port: 0},
+		{Domain: "myapp-jobs-v1.default.svc.cluster.local", Protocol: "", Port: 0},
+		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201},
+		{Domain: "myapp-web-units.default.svc.cluster.local", Protocol: "", Port: 0},
+		{Domain: "myapp-web-v1.default.svc.cluster.local", Protocol: "", Port: 0},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80},
 	})
 }
 
@@ -1574,7 +1688,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -1591,8 +1705,8 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	expected := tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
 		Configs: &provTypes.TsuruYamlKubernetesConfig{
 			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -1722,7 +1836,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -1872,12 +1986,12 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1891,30 +2005,30 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 		Width:  99,
 		Height: 42,
 		Term:   "xterm",
-		Units:  []string{"myapp-web-pod-1-1"},
+		Units:  []string{"myapp-web-base-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
+	c.Assert(s.mock.Stream["myapp-web-base"].Stdin, check.Equals, "echo test")
 	var sz remotecommand.TerminalSize
-	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web"].Resize), &sz)
+	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web-base"].Resize), &sz)
 	c.Assert(err, check.IsNil)
 	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
 func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1925,26 +2039,26 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 		Stdout: conn,
 		Stderr: conn,
 		Term:   "xterm",
-		Units:  []string{"myapp-web-pod-1-1"},
+		Units:  []string{"myapp-web-base-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	c.Assert(s.mock.Stream["myapp-web-base"].Stdin, check.Equals, "echo test")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
 func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := safe.NewBuffer([]byte("echo test"))
@@ -1973,12 +2087,12 @@ func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	buf := bytes.NewBuffer(nil)
@@ -1995,12 +2109,12 @@ func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 func (s *S) TestExecuteCommand(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
@@ -2008,29 +2122,29 @@ func (s *S) TestExecuteCommand(c *check.C) {
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
-		Units:  []string{"myapp-web-pod-1-1", "myapp-web-pod-2-2"},
+		Units:  []string{"myapp-web-base-pod-1-1", "myapp-web-base-pod-2-2"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout datastdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr datastderr data")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 2)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
-	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 2)
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-2-2/exec")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 2, "web", nil)
+	err := s.p.AddUnits(a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
@@ -2038,16 +2152,16 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
-		Units:  []string{"myapp-web-pod-1-1"},
+		Units:  []string{"myapp-web-base-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr data")
-	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {
@@ -2133,21 +2247,21 @@ func (s *S) TestStartupMessage(c *check.C) {
 func (s *S) TestSleepStart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	newSuccessfulVersion(c, a, map[string]interface{}{
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(a, 1, "web", nil)
+	err := s.p.AddUnits(a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.Sleep(a, "")
+	err = s.p.Sleep(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(a, "")
+	err = s.p.Start(a, "", version)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(a)
@@ -2241,7 +2355,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	c.Assert(len(sList.Items), check.Equals, 3)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	var recreatedPods bool
@@ -2296,7 +2410,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	c.Assert(len(sList.Items), check.Equals, 3)
 	raddrs, err := routertest.FakeRouter.Routes(a.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(raddrs, check.DeepEquals, []*url.URL{
@@ -2338,7 +2452,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	wait()
 	sList, err := s.client.CoreV1().Services("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	c.Assert(len(sList.Items), check.Equals, 3)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -2403,7 +2517,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 2)
+	c.Assert(len(sList.Items), check.Equals, 3)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -2440,6 +2554,11 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	client1, client2 := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
+	_, _, rollback1 := s.mock.NoNodeReactions(c)
+	defer rollback1()
+
 	pool2 := client2.GetCluster().Pools[0]
 	err := pool.AddPool(pool.AddPoolOptions{
 		Name:        pool2,
@@ -2480,11 +2599,14 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"web": "run mycmd arg1",
 		},
 	}
-	newSuccessfulVersion(c, a, customData)
+	version := newSuccessfulVersion(c, a, customData)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
+
+	err = s.p.Restart(a, "web", version, nil)
+	c.Assert(err, check.IsNil)
 
 	err = s.p.UpdateApp(a, newApp, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
@@ -2504,6 +2626,11 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	client1, client2 := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
+	_, _, rollback1 := s.mock.NoNodeReactions(c)
+	defer rollback1()
+
 	pool2 := client2.GetCluster().Pools[0]
 	err := pool.AddPool(pool.AddPoolOptions{
 		Name:        pool2,
@@ -2551,10 +2678,13 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 			"web": "run mycmd arg1",
 		},
 	}
-	newSuccessfulVersion(c, a, customData)
+	version := newSuccessfulVersion(c, a, customData)
 	pvcs, err := client1.CoreV1().PersistentVolumeClaims("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvcs.Items, check.HasLen, 1)
+
+	err = s.p.Restart(a, "web", version, nil)
+	c.Assert(err, check.IsNil)
 
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
 	err = s.p.UpdateApp(a, newApp, new(bytes.Buffer))
@@ -2603,6 +2733,7 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "web"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
@@ -2669,6 +2800,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc1", Value: "8080,9000"},
 	})
@@ -2677,6 +2809,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc2", Value: "8000"},
 	})
@@ -2685,6 +2818,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "PORT_proc3", Value: "8080"},
 	})
@@ -2693,6 +2827,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
@@ -2703,6 +2838,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 	})
 
@@ -2710,6 +2846,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	c.Assert(envs, check.DeepEquals, []bind.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},

@@ -7,9 +7,11 @@ package provision
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 func WebProcessDefaultPort() string {
@@ -20,7 +22,7 @@ func WebProcessDefaultPort() string {
 	return fmt.Sprint(port)
 }
 
-func EnvsForApp(a App, process string, isDeploy bool) []bind.EnvVar {
+func EnvsForApp(a App, process string, isDeploy bool, version appTypes.AppVersion) []bind.EnvVar {
 	var envs []bind.EnvVar
 	if !isDeploy {
 		for _, envData := range a.Envs() {
@@ -30,6 +32,9 @@ func EnvsForApp(a App, process string, isDeploy bool) []bind.EnvVar {
 			return envs[i].Name < envs[j].Name
 		})
 		envs = append(envs, bind.EnvVar{Name: "TSURU_PROCESSNAME", Value: process})
+		if version != nil {
+			envs = append(envs, bind.EnvVar{Name: "TSURU_APPVERSION", Value: strconv.Itoa(version.Version())})
+		}
 	}
 	host, _ := config.GetString("host")
 	envs = append(envs, bind.EnvVar{Name: "TSURU_HOST", Value: host})

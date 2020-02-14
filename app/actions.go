@@ -421,11 +421,12 @@ var provisionAddUnits = action.Action{
 		w, _ := ctx.Params[2].(io.Writer)
 		n := ctx.Previous.(int)
 		process := ctx.Params[3].(string)
+		version := ctx.Params[4].(appTypes.AppVersion)
 		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.AddUnits(app, uint(n), process, w)
+		return nil, prov.AddUnits(app, uint(n), process, version, w)
 	},
 	MinParams: 1,
 }

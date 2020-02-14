@@ -732,11 +732,15 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 			return errors.New("Cannot add units to an app that has stopped or sleeping units")
 		}
 	}
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
 	w = app.withLogWriter(w)
 	err = action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-	).Execute(app, n, w, process)
+	).Execute(app, n, w, process, version)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	quotaErr := app.fixQuota()
 	if err != nil {
@@ -756,7 +760,11 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 		return err
 	}
 	w = app.withLogWriter(w)
-	err = prov.RemoveUnits(app, n, process, w)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = prov.RemoveUnits(app, n, process, version, w)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	quotaErr := app.fixQuota()
 	if err != nil {
@@ -1248,7 +1256,11 @@ func (app *App) Restart(process string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(app, process, w)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = prov.Restart(app, process, version, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "restart")
@@ -1268,7 +1280,11 @@ func (app *App) Stop(w io.Writer, process string) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Stop(app, process)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = prov.Stop(app, process, version)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
@@ -1316,7 +1332,11 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 			return err
 		}
 	}
-	err = sleepProv.Sleep(app, process)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = sleepProv.Sleep(app, process, version)
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
@@ -1552,7 +1572,11 @@ func (app *App) restartIfUnits(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(app, "", w)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = prov.Restart(app, "", version, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "restart")
 	}
@@ -1981,7 +2005,11 @@ func (app *App) Start(w io.Writer, process string) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Start(app, process)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	if err != nil {
+		return err
+	}
+	err = prov.Start(app, process, version)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")

@@ -104,6 +104,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
@@ -180,6 +181,8 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	a2 := &app.App{Name: "my-app2", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a2, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
+	newVersionForApp(c, a2)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	err = a2.AddUnits(2, "", nil)
@@ -241,6 +244,7 @@ func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	callCh := make(chan struct{})
@@ -273,6 +277,7 @@ func (s *SyncSuite) TestBindSyncerError(c *check.C) {
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()

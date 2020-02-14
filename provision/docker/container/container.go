@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 func init() {
@@ -128,6 +129,7 @@ type CreateArgs struct {
 	Deploy           bool
 	Building         bool
 	Event            *event.Event
+	Version          appTypes.AppVersion
 }
 
 func (c *Container) Create(args *CreateArgs) error {
@@ -196,7 +198,7 @@ func (c *Container) Create(args *CreateArgs) error {
 }
 
 func (c *Container) addEnvsToConfig(args *CreateArgs, port string, cfg *docker.Config) {
-	envs := provision.EnvsForApp(args.App, c.ProcessName, args.Deploy)
+	envs := provision.EnvsForApp(args.App, c.ProcessName, args.Deploy, args.Version)
 	for _, envData := range envs {
 		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
 	}
