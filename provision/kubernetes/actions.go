@@ -11,13 +11,15 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type updatePipelineParams struct {
-	p   *kubernetesProvisioner
-	new provision.App
-	old provision.App
-	w   io.Writer
+	p        *kubernetesProvisioner
+	new      provision.App
+	old      provision.App
+	versions []appTypes.AppVersion
+	w        io.Writer
 }
 
 var provisionNewApp = action.Action{
@@ -38,7 +40,13 @@ var restartApp = action.Action{
 	Name: "restart-new-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		return nil, params.p.Restart(params.new, "", params.w)
+		for _, v := range params.versions {
+			err := params.p.Restart(params.new, "", v, params.w)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
@@ -46,7 +54,7 @@ var restartApp = action.Action{
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 			return
 		}
-		err := params.p.Restart(params.old, "", params.w)
+		err := params.p.Restart(params.old, "", nil, params.w)
 		if err != nil {
 			log.Errorf("BACKWARDS error restarting app: %v", err)
 		}
@@ -123,7 +131,7 @@ var removeOldAppResources = action.Action{
 			return nil, nil
 		}
 		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.GetPool())
-		err = params.p.removeResources(client, oldAppCR)
+		err = params.p.removeResources(client, oldAppCR, params.old)
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 		}

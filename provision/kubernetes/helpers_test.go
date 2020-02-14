@@ -54,41 +54,41 @@ func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
 	}
 }
 
-func (s *S) TestDeploymentNameForApp(c *check.C) {
-	var tests = []struct {
-		name, process, expected string
-	}{
-		{"myapp", "p1", "myapp-p1"},
-		{"MYAPP", "p-1", "myapp-p-1"},
-		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
-		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
-		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
-		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
-		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
-	}
-	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
+// func (s *S) TestDeploymentNameForApp(c *check.C) {
+// 	var tests = []struct {
+// 		name, process, expected string
+// 	}{
+// 		{"myapp", "p1", "myapp-p1"},
+// 		{"MYAPP", "p-1", "myapp-p-1"},
+// 		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+// 		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
+// 		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
+// 		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
+// 		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
+// 	}
+// 	for i, tt := range tests {
+// 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+// 		c.Check(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+// 	}
+// }
 
-func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
-	var tests = []struct {
-		name, process, expected string
-	}{
-		{"myapp", "p1", "myapp-p1-units"},
-		{"MYAPP", "p-1", "myapp-p-1-units"},
-		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
-		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1-units"},
-		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123-units"},
-		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08-units"},
-		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0-units"},
-	}
-	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
+// func (s *S) TestHeadlessServiceNameForApp(c *check.C) {
+// 	var tests = []struct {
+// 		name, process, expected string
+// 	}{
+// 		{"myapp", "p1", "myapp-p1-units"},
+// 		{"MYAPP", "p-1", "myapp-p-1-units"},
+// 		{"my-app_app", "P_1-1", "my-app-app-p-1-1-units"},
+// 		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1-units"},
+// 		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123-units"},
+// 		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08-units"},
+// 		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0-units"},
+// 	}
+// 	for i, tt := range tests {
+// 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+// 		c.Check(headlessServiceNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+// 	}
+// }
 
 func (s *S) TestDeployPodNameForApp(c *check.C) {
 	var tests = []struct {
@@ -151,24 +151,6 @@ func (s *S) TestRegistrySecretName(c *check.C) {
 	}
 	for i, tt := range tests {
 		c.Check(registrySecretName(tt.name), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
-func (s *S) TestAppLabelForApp(c *check.C) {
-	var tests = []struct {
-		name, process, expected string
-	}{
-		{"myapp", "p1", "myapp-p1"},
-		{"MYAPP", "p-1", "myapp-p-1"},
-		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
-		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
-		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
-		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
-		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
-	}
-	for i, tt := range tests {
-		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
-		c.Check(appLabelForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -407,64 +389,64 @@ func (s *S) TestCleanupPods(c *check.C) {
 	}})
 }
 
-func (s *S) TestCleanupDeployment(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	expectedLabels := map[string]string{
-		"tsuru.io/is-tsuru":             "true",
-		"tsuru.io/is-service":           "true",
-		"tsuru.io/is-build":             "false",
-		"tsuru.io/is-stopped":           "false",
-		"tsuru.io/is-deploy":            "false",
-		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/restarts":             "0",
-		"tsuru.io/app-name":             "myapp",
-		"tsuru.io/app-process":          "p1",
-		"tsuru.io/app-process-replicas": "1",
-		"tsuru.io/app-platform":         "plat",
-		"tsuru.io/app-pool":             "test-default",
-		"tsuru.io/router-type":          "fake",
-		"tsuru.io/router-name":          "fake",
-		"tsuru.io/provisioner":          "kubernetes",
-	}
-	err := s.p.Provision(a)
-	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
-	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myapp-p1",
-			Namespace: ns,
-		},
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myapp-p1-xxx",
-			Namespace: ns,
-			Labels:    expectedLabels,
-		},
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myapp-p1-xyz",
-			Namespace: ns,
-			Labels:    expectedLabels,
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = cleanupDeployment(s.clusterClient, a, "p1")
-	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(replicas.Items, check.HasLen, 0)
-}
+// func (s *S) TestCleanupDeployment(c *check.C) {
+// 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
+// 	expectedLabels := map[string]string{
+// 		"tsuru.io/is-tsuru":             "true",
+// 		"tsuru.io/is-service":           "true",
+// 		"tsuru.io/is-build":             "false",
+// 		"tsuru.io/is-stopped":           "false",
+// 		"tsuru.io/is-deploy":            "false",
+// 		"tsuru.io/is-isolated-run":      "false",
+// 		"tsuru.io/restarts":             "0",
+// 		"tsuru.io/app-name":             "myapp",
+// 		"tsuru.io/app-process":          "p1",
+// 		"tsuru.io/app-process-replicas": "1",
+// 		"tsuru.io/app-platform":         "plat",
+// 		"tsuru.io/app-pool":             "test-default",
+// 		"tsuru.io/router-type":          "fake",
+// 		"tsuru.io/router-name":          "fake",
+// 		"tsuru.io/provisioner":          "kubernetes",
+// 	}
+// 	err := s.p.Provision(a)
+// 	c.Assert(err, check.IsNil)
+// 	ns, err := s.client.AppNamespace(a)
+// 	c.Assert(err, check.IsNil)
+// 	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "myapp-p1",
+// 			Namespace: ns,
+// 		},
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	_, err = s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "myapp-p1-xxx",
+// 			Namespace: ns,
+// 			Labels:    expectedLabels,
+// 		},
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "myapp-p1-xyz",
+// 			Namespace: ns,
+// 			Labels:    expectedLabels,
+// 		},
+// 	})
+// 	c.Assert(err, check.IsNil)
+// 	err = cleanupDeployment(s.clusterClient, a, "p1")
+// 	c.Assert(err, check.IsNil)
+// 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+// 	c.Assert(err, check.IsNil)
+// 	c.Assert(deps.Items, check.HasLen, 0)
+// 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+// 	c.Assert(err, check.IsNil)
+// 	c.Assert(pods.Items, check.HasLen, 0)
+// 	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
+// 	c.Assert(err, check.IsNil)
+// 	c.Assert(replicas.Items, check.HasLen, 0)
+// }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
 	ns := "tsuru_pool"

@@ -535,6 +535,7 @@ func (s *S) TestListUnitsByHostHandler(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/http://node1.company:4243/containers", nil)
@@ -589,6 +590,7 @@ func (s *S) TestListUnitsByAppHandler(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
@@ -622,6 +624,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)

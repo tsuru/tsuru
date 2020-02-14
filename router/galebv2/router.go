@@ -602,7 +602,7 @@ func (r *galebRouter) Addresses(name string) (addrs []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	for poolName, _ := range poolTargets {
+	for poolName := range poolTargets {
 		prefix := r.poolNameToPrefix(poolName, backendName)
 		addrs = append(addrs, r.virtualHostName(prefix, name))
 	}

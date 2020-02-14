@@ -19,12 +19,13 @@ func (s *S) TestChangeAppState(c *check.C) {
 			"worker": "python worker1",
 		},
 	})
-	err := ChangeAppState(m, fakeApp, "", ProcessState{Restart: true})
+	err := ChangeAppState(m, fakeApp, "", ProcessState{Restart: true}, latestVersion, true)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",
 		Replicas: 1,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb.SetRestarts(1)
@@ -32,35 +33,27 @@ func (s *S) TestChangeAppState(c *check.C) {
 		App:      fakeApp,
 		Process:  "worker",
 		Replicas: 1,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker.SetRestarts(1)
-	c.Assert(m.calls, check.HasLen, 2)
-	c.Assert(m.calls[0].version.Version(), check.Equals, latestVersion.Version())
-	c.Assert(m.calls[1].version.Version(), check.Equals, latestVersion.Version())
-	m.calls[0].version = nil
-	m.calls[1].version = nil
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb},
-		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker},
+		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb, version: latestVersion, preserveVersions: true},
+		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
 	})
 	m.reset()
-	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true})
+	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion, true)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",
 		Replicas: 0,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.calls, check.HasLen, 2)
-	c.Assert(m.calls[0].version.Version(), check.Equals, latestVersion.Version())
-	c.Assert(m.calls[1].version.Version(), check.Equals, latestVersion.Version())
-	m.calls[0].version = nil
-	m.calls[1].version = nil
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb},
-		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker},
+		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb, version: latestVersion, preserveVersions: true},
+		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
 	})
 }
 
@@ -74,30 +67,27 @@ func (s *S) TestChangeUnits(c *check.C) {
 			"worker": "python worker1",
 		},
 	})
-	err := ChangeUnits(m, fakeApp, 1, "worker")
+	err := ChangeUnits(m, fakeApp, 1, "worker", latestVersion, true)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",
 		Replicas: 0,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "worker",
 		Replicas: 1,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.calls, check.HasLen, 2)
-	c.Assert(m.calls[0].version.Version(), check.Equals, latestVersion.Version())
-	c.Assert(m.calls[1].version.Version(), check.Equals, latestVersion.Version())
-	m.calls[0].version = nil
-	m.calls[1].version = nil
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb},
-		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker},
+		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb, version: latestVersion, preserveVersions: true},
+		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
 	})
-	err = ChangeUnits(m, fakeApp, 1, "")
+	err = ChangeUnits(m, fakeApp, 1, "", latestVersion, true)
 	c.Assert(err, check.ErrorMatches, "process error: no process name specified and more than one declared in Procfile")
 }
 
@@ -110,18 +100,16 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 			"web": "python web1",
 		},
 	})
-	err := ChangeUnits(m, fakeApp, 1, "")
+	err := ChangeUnits(m, fakeApp, 1, "", latestVersion, true)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",
 		Replicas: 1,
+		Version:  1,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.calls, check.HasLen, 1)
-	c.Assert(m.calls[0].version.Version(), check.Equals, latestVersion.Version())
-	m.calls[0].version = nil
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb},
+		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb, version: latestVersion, preserveVersions: true},
 	})
 }

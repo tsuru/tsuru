@@ -926,7 +926,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer) error {
+func (p *FakeProvisioner) Restart(app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	if err := p.getError("Restart"); err != nil {
 		return err
 	}
@@ -944,7 +944,7 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 	return nil
 }
 
-func (p *FakeProvisioner) Start(app provision.App, process string) error {
+func (p *FakeProvisioner) Start(app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -969,7 +969,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w io.Writer) error {
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	_, err := p.AddUnitsToNode(app, n, process, w, "")
 	return err
 }
@@ -1033,7 +1033,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string, w io.Writer) error {
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	if err := p.getError("RemoveUnits"); err != nil {
 		return err
 	}
@@ -1205,7 +1205,7 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return false
 }
 
-func (p *FakeProvisioner) Stop(app provision.App, process string) error {
+func (p *FakeProvisioner) Stop(app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -1221,7 +1221,7 @@ func (p *FakeProvisioner) Stop(app provision.App, process string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Sleep(app provision.App, process string) error {
+func (p *FakeProvisioner) Sleep(app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]

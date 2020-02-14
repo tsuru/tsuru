@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -81,6 +82,8 @@ func (s *S) SetUpTest(c *check.C) {
 		return nil, fmt.Errorf("not found")
 	}
 	servicemanager.AppLog, err = applog.AppLogService()
+	c.Assert(err, check.IsNil)
+	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }
 

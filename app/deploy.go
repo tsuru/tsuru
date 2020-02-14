@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -164,21 +165,23 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 }
 
 type DeployOptions struct {
-	App          *App
-	Commit       string
-	BuildTag     string
-	ArchiveURL   string
-	FileSize     int64
-	File         io.ReadCloser `bson:"-"`
-	OutputStream io.Writer     `bson:"-"`
-	User         string
-	Image        string
-	Origin       string
-	Rollback     bool
-	Build        bool
-	Event        *event.Event `bson:"-"`
-	Kind         DeployKind
-	Message      string
+	App              *App
+	Commit           string
+	BuildTag         string
+	ArchiveURL       string
+	FileSize         int64
+	File             io.ReadCloser `bson:"-"`
+	OutputStream     io.Writer     `bson:"-"`
+	User             string
+	Image            string
+	Origin           string
+	Event            *event.Event `bson:"-"`
+	Kind             DeployKind
+	Message          string
+	Rollback         bool
+	Build            bool
+	NewVersion       bool
+	OverrideVersions bool
 }
 
 func (o *DeployOptions) GetOrigin() string {
@@ -290,12 +293,37 @@ func (e *errorWithLog) Error() string {
 	return fmt.Sprintf("\n---- ERROR during %s: ----\n%v\n%s", e.action, e.err, logPart)
 }
 
+func validateVersions(opts DeployOptions) error {
+	if opts.NewVersion && opts.OverrideVersions {
+		return errors.New("conflicting deploy flags, new-version and override-old-versions")
+	}
+	if opts.NewVersion || opts.OverrideVersions {
+		return nil
+	}
+	units, err := opts.App.Units()
+	if err != nil {
+		return err
+	}
+	versions := set.Set{}
+	for _, u := range units {
+		versions.Add(strconv.Itoa(u.Version))
+	}
+	if len(versions) > 1 {
+		return errors.New("multiple versions currently deployed, either new-version or override-old-versions must be set")
+	}
+	return nil
+}
+
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
 func Deploy(opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
+	}
+	err := validateVersions(opts)
+	if err != nil {
+		return "", err
 	}
 	logWriter := LogWriter{AppName: opts.App.Name}
 	logWriter.Async()
@@ -365,9 +393,10 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 		}
 	}
 	return deployer.Deploy(provision.DeployArgs{
-		App:     opts.App,
-		Version: version,
-		Event:   evt,
+		App:              opts.App,
+		Version:          version,
+		Event:            evt,
+		PreserveVersions: opts.NewVersion,
 	})
 }
 

@@ -645,6 +645,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(5, "web", nil)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
@@ -673,6 +674,7 @@ func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.Stop(nil, "web")
@@ -693,6 +695,7 @@ func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.Sleep(nil, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
@@ -714,6 +717,7 @@ func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(2, "web", &buf)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
@@ -739,6 +743,7 @@ func (s *S) TestAddUnitsQuota(c *check.C) {
 		c.Assert(quantity, check.Equals, 1)
 		return nil
 	}
+	newSuccessfulAppVersion(c, &app)
 	otherApp := App{Name: "warpaint"}
 	for i := 1; i <= 7; i++ {
 		err = otherApp.AddUnits(1, "web", nil)
@@ -762,6 +767,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(1, "web", nil)
 	e, ok := pkgErrors.Cause(err).(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
@@ -784,6 +790,7 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(10, "web", nil)
 	c.Assert(err, check.IsNil)
 	units := s.provisioner.GetUnits(&app)
@@ -807,6 +814,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "(?s).*App is not provisioned.*")
@@ -860,7 +868,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetQuotaInUse(6)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 6, "web", nil)
+	s.provisioner.AddUnits(&a, 6, "web", newSuccessfulAppVersion(c, &a), nil)
 	err = a.RemoveUnits(4, "web", nil)
 	c.Assert(err, check.IsNil)
 	quota, err := servicemanager.AppQuota.Get(a.Name)
@@ -897,6 +905,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(2, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(2, "worker", nil)
@@ -936,7 +945,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 3, "web", nil)
+	s.provisioner.AddUnits(&app, 3, "web", newSuccessfulAppVersion(c, &app), nil)
 	for _, test := range tests {
 		err := app.RemoveUnits(test.n, "web", nil)
 		c.Check(err, check.ErrorMatches, "(?s).*"+test.expected+".*")
@@ -947,7 +956,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	err = a.SetUnitStatus(units[0].ID, provision.StatusError)
@@ -961,7 +970,7 @@ func (s *S) TestSetUnitStatusPartialID(c *check.C) {
 	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	name := units[0].ID
@@ -1311,6 +1320,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	envs := []bind.EnvVar{
@@ -1519,6 +1529,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.UnsetEnvs(bind.UnsetEnvArgs{
@@ -1562,6 +1573,7 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.UnsetEnvs(bind.UnsetEnvArgs{
@@ -1993,6 +2005,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -2030,6 +2043,7 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -2325,6 +2339,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -2353,6 +2368,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, a)
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -2452,6 +2468,7 @@ func (s *S) TestRestart(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	var b bytes.Buffer
 	err = a.Restart("", &b)
 	c.Assert(err, check.IsNil)
@@ -2465,6 +2482,7 @@ func (s *S) TestStop(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
+	newSuccessfulAppVersion(c, &a)
 	err = a.Stop(&buf, "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
@@ -2486,6 +2504,7 @@ func (s *S) TestSleep(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
 	routertest.FakeRouter.AddBackend(&a)
 	var b bytes.Buffer
 	err = a.Start(&b, "")
@@ -2591,7 +2610,7 @@ func (s *S) TestGetUnits(c *check.C) {
 	app := App{Name: "app", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 2, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", newSuccessfulAppVersion(c, &app), nil)
 	bindUnits, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
 	c.Assert(bindUnits, check.HasLen, 2)
@@ -2660,10 +2679,11 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"routeropts": map[string]interface{}{"opt1": "val1"},
 		"routers": []interface{}{
 			map[string]interface{}{
-				"name":    "fake",
-				"address": "name.fakerouter.com",
-				"type":    "fake",
-				"opts":    map[string]interface{}{"opt1": "val1"},
+				"name":      "fake",
+				"address":   "name.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{"opt1": "val1"},
 			},
 		},
 		"tags": []interface{}{"tag a", "tag b"},
@@ -2718,10 +2738,11 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		"routeropts": map[string]interface{}{},
 		"routers": []interface{}{
 			map[string]interface{}{
-				"name":    "fake",
-				"address": "name.fakerouter.com",
-				"type":    "fake",
-				"opts":    map[string]interface{}{},
+				"name":      "fake",
+				"address":   "name.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{},
 			},
 		},
 		"tags": []interface{}{},
@@ -2767,10 +2788,11 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"routeropts": map[string]interface{}{},
 		"routers": []interface{}{
 			map[string]interface{}{
-				"name":    "fake",
-				"address": "name.fakerouter.com",
-				"type":    "fake",
-				"opts":    map[string]interface{}{},
+				"name":      "fake",
+				"address":   "name.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{},
 			},
 		},
 		"tags": nil,
@@ -2832,10 +2854,11 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		"routeropts": map[string]interface{}{"opt1": "val1"},
 		"routers": []interface{}{
 			map[string]interface{}{
-				"name":    "fake",
-				"address": "name.fakerouter.com",
-				"type":    "fake",
-				"opts":    map[string]interface{}{"opt1": "val1"},
+				"name":      "fake",
+				"address":   "name.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{"opt1": "val1"},
 			},
 		},
 		"tags": []interface{}{"tag a", "tag b"},
@@ -2854,7 +2877,7 @@ func (s *S) TestRun(c *check.C) {
 	app := App{Name: "myapp", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 2, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", newSuccessfulAppVersion(c, &app), nil)
 	var buf bytes.Buffer
 	args := provision.RunArgs{Once: false, Isolated: false}
 	err = app.Run("ls -lh", &buf, args)
@@ -2905,7 +2928,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 2, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", newSuccessfulAppVersion(c, &app), nil)
 	var buf bytes.Buffer
 	args := provision.RunArgs{Once: true, Isolated: false}
 	err = app.Run("ls -lh", &buf, args)
@@ -2931,7 +2954,7 @@ func (s *S) TestRunIsolated(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
+	s.provisioner.AddUnits(&app, 1, "web", newSuccessfulAppVersion(c, &app), nil)
 	var buf bytes.Buffer
 	args := provision.RunArgs{Once: false, Isolated: true}
 	err = app.Run("ls -lh", &buf, args)
@@ -3623,6 +3646,7 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 		}
 		err := CreateApp(&a, s.user)
 		c.Assert(err, check.IsNil)
+		newSuccessfulAppVersion(c, &a)
 		err = a.AddUnits(1, "", nil)
 		c.Assert(err, check.IsNil)
 		apps = append(apps, &a)
@@ -3822,7 +3846,7 @@ func (s *S) TestAppUnits(c *check.C) {
 	a := App{Name: "anycolor", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -3835,9 +3859,10 @@ func (s *S) TestAppAvailable(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	version := newSuccessfulAppVersion(c, &a)
+	s.provisioner.AddUnits(&a, 1, "web", version, nil)
 	c.Assert(a.available(), check.Equals, true)
-	s.provisioner.Stop(&a, "")
+	s.provisioner.Stop(&a, "", version)
 	c.Assert(a.available(), check.Equals, false)
 }
 
@@ -3905,6 +3930,7 @@ func (s *S) TestStart(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	var b bytes.Buffer
+	newSuccessfulAppVersion(c, &a)
 	err = a.Start(&b, "")
 	c.Assert(err, check.IsNil)
 	starts := s.provisioner.Starts(&a, "")
@@ -3915,7 +3941,7 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
 	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
@@ -3937,7 +3963,7 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
 	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
@@ -3973,7 +3999,7 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	var ips []string
@@ -4026,7 +4052,7 @@ func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si2)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
+	s.provisioner.AddUnits(&app, 1, "web", newSuccessfulAppVersion(c, &app), nil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{"x": "y"}
@@ -4271,7 +4297,7 @@ func (s *S) TestShellToUnit(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.PrepareOutput([]byte("output"))
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
 	unit := units[0]
@@ -4573,6 +4599,7 @@ func (s *S) TestUpdatePool(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	updateData := App{Name: "test", Pool: "test2"}
 	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
@@ -4602,6 +4629,7 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	prov, err := app.getProvisioner()
@@ -4665,6 +4693,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
@@ -4702,6 +4731,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
@@ -4733,7 +4763,7 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
@@ -4757,7 +4787,7 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
@@ -4805,7 +4835,7 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
 	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
@@ -4844,7 +4874,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
 	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
@@ -4900,7 +4930,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Name: "old"}, TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
@@ -5000,7 +5030,7 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, Description: "blablabla", Pool: "test"}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}, Description: "bleble", Pool: "test2"}
 	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
@@ -5292,6 +5322,7 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Description: "updated description"}

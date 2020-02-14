@@ -33,7 +33,7 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 		},
 		Prefix: "tsuru.io/",
 	}
-	c.Assert(ls.ToSelector(), check.DeepEquals, map[string]string{
+	c.Assert(ls.ToBaseSelector(), check.DeepEquals, map[string]string{
 		"tsuru.io/app-name":    "app",
 		"tsuru.io/app-process": "proc",
 		"tsuru.io/is-build":    "false",
@@ -79,6 +79,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 		App:      a,
 		Replicas: 3,
 		Process:  "p1",
+		Version:  9,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			BuildImage:  "myimg",
 			IsBuild:     true,
@@ -89,6 +90,9 @@ func (s *S) TestServiceLabels(c *check.C) {
 	ls, err := provision.ServiceLabels(opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+		RawLabels: map[string]string{
+			"version": "v9",
+		},
 		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "true",
@@ -101,6 +105,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"app-process-replicas": "3",
 			"app-platform":         "cobol",
 			"app-pool":             "test-default",
+			"app-version":          "9",
 			"router-name":          "fake",
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",

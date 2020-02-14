@@ -497,11 +497,7 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
-	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-	})
+func createAppDeployment(client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	extra := []string{extraRegisterCmds(a)}
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
@@ -512,7 +508,6 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	if err != nil {
 		return nil, nil, nil, errors.WithStack(err)
 	}
-	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
 	webProcessName, err := version.WebProcess()
 	if err != nil {
@@ -582,12 +577,8 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	expandedLabels := labels.ToLabels()
 	expandedLabelsNoReplicas := labels.WithoutAppReplicas().ToLabels()
-	rawAppLabel := appLabelForApp(a, process)
-	expandedLabels["app"] = rawAppLabel
-	expandedLabelsNoReplicas["app"] = rawAppLabel
-	_, tag := image.SplitImageName(deployImage)
-	expandedLabels["version"] = tag
-	expandedLabelsNoReplicas["version"] = tag
+	expandedLabels["app"] = depName
+	expandedLabelsNoReplicas["app"] = depName
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort
@@ -615,7 +606,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 			Replicas:             &realReplicas,
 			RevisionHistoryLimit: &tenRevs,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels.ToSelector(),
+				MatchLabels: selector,
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -631,7 +622,7 @@ func createAppDeployment(client *ClusterClient, oldDeployment *appsv1.Deployment
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
 					Volumes:       volumes,
-					Subdomain:     headlessServiceNameForApp(a, process),
+					Subdomain:     headlessServiceName(a, process),
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
@@ -678,57 +669,78 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) RemoveService(a provision.App, process string) error {
-	ns, err := m.client.AppNamespace(a)
+func (m *serviceManager) CleanupServices(a provision.App, version appTypes.AppVersion) error {
+	deps, err := allDeploymentsForApp(m.client, a)
 	if err != nil {
 		return err
 	}
+
+	processInUse := map[string]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
-	err = cleanupDeployment(m.client, a, process)
+	for _, dep := range deps {
+		labels := labelSetFromMeta(&dep.ObjectMeta)
+		if labels.Version() == version.Version() {
+			processInUse[labels.AppProcess()] = struct{}{}
+		} else {
+			err = cleanupSingleDeployment(m.client, &dep)
+			if err != nil {
+				multiErrors.Add(err)
+			}
+		}
+	}
+
+	svcs, err := allServicesForApp(m.client, a)
+	if err != nil {
+		multiErrors.Add(err)
+	}
+	for _, svc := range svcs {
+		labels := labelSetFromMeta(&svc.ObjectMeta)
+		_, inUse := processInUse[labels.AppProcess()]
+		svcVersion := labels.Version()
+
+		if (svcVersion == 0 && inUse) || svcVersion == version.Version() {
+			continue
+		}
+
+		err = m.client.CoreV1().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			multiErrors.Add(err)
+		}
+	}
+
+	return multiErrors.ToError()
+}
+
+func (m *serviceManager) RemoveService(a provision.App, process string, version appTypes.AppVersion) error {
+	multiErrors := tsuruErrors.NewMultiError()
+	err := cleanupDeployment(m.client, a, process, version)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(err)
 	}
-	depName := deploymentNameForApp(a, process)
-	err = m.client.CoreV1().Services(ns).Delete(depName, &metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		multiErrors.Add(errors.WithStack(err))
-	}
-	headlessSvcName := headlessServiceNameForApp(a, process)
-	err = m.client.CoreV1().Services(ns).Delete(headlessSvcName, &metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		multiErrors.Add(errors.WithStack(err))
+	err = cleanupServices(m.client, a, process, version)
+	if err != nil {
+		multiErrors.Add(err)
 	}
 	return multiErrors.ToError()
 }
 
-func deploymentLabels(client *ClusterClient, a provision.App, process string) (*provision.LabelSet, error) {
-	depName := deploymentNameForApp(a, process)
-	ns, err := client.AppNamespace(a)
-	if err != nil {
-		return nil, err
-	}
-	dep, err := client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
+func (m *serviceManager) CurrentLabels(a provision.App, process string, version appTypes.AppVersion) (*provision.LabelSet, error) {
+	dep, err := deploymentForVersion(m.client, a, process, version)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	return labelSetFromMeta(&dep.ObjectMeta), nil
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
-	return deploymentLabels(m.client, a, process)
-}
-
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *ClusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string) error {
-	messages, err := notReadyPodEvents(client, a, processName)
+func createDeployTimeoutError(client *ClusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string, version appTypes.AppVersion) error {
+	messages, err := notReadyPodEvents(client, a, processName, version)
 	if err != nil {
 		return errors.Wrap(err, "Unknown error deploying application")
 	}
@@ -810,7 +822,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 	)
 }
 
-func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string) (string, error) {
+func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string, version appTypes.AppVersion) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
 	ns, err := client.AppNamespace(a)
 	if err != nil {
@@ -872,7 +884,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allNewPodsRunning(client, a, processName, revision)
+			allInit, err = allNewPodsRunning(client, a, processName, revision, version)
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
@@ -911,9 +923,9 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-healthcheckTimeout:
-			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck")
+			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck", version)
 		case <-timer.C:
-			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout")
+			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout", version)
 		case <-ctx.Done():
 			err = ctx.Err()
 			if err == context.Canceled {
@@ -930,7 +942,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	return revision, nil
 }
 
-func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion) error {
+func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error {
 	err := ensureNodeContainers(a)
 	if err != nil {
 		return err
@@ -943,11 +955,41 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	depName := deploymentNameForApp(a, process)
 	ns, err := m.client.AppNamespace(a)
 	if err != nil {
 		return err
 	}
+	var depName string
+	var selector map[string]string
+
+	versionDep, err := deploymentForVersion(m.client, a, process, version)
+	if err != nil {
+		if !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+		versionDep = nil
+	}
+
+	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
+
+	if preserveVersions {
+		if versionDep == nil {
+			depName = deploymentNameForApp(a, process, version.Version())
+			selector = labels.ToVersionSelector()
+		} else {
+			depName = versionDep.Name
+			selector = versionDep.Spec.Selector.MatchLabels
+		}
+	} else {
+		depName = deploymentNameForAppBase(a, process)
+		labels.SetIsRoutable()
+		labels.SetIsBase()
+		selector = labels.ToBaseSelector()
+	}
+
 	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
@@ -963,14 +1005,14 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, annotations, err := createAppDeployment(m.client, oldDep, a, process, version, replicas, labels)
+	newDep, labels, annotations, err := createAppDeployment(m.client, depName, oldDep, a, process, version, replicas, labels, selector)
 	if err != nil {
 		return err
 	}
 	if m.writer == nil {
 		m.writer = ioutil.Discard
 	}
-	newRevision, err := monitorDeployment(ctx, m.client, newDep, a, process, m.writer, events.ResourceVersion)
+	newRevision, err := monitorDeployment(ctx, m.client, newDep, a, process, m.writer, events.ResourceVersion, version)
 	if err != nil {
 		// We should only rollback if the updated deployment is a new revision.
 		var rollbackErr error
@@ -997,8 +1039,29 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		}
 		return provision.ErrUnitStartup{Err: err}
 	}
-	expandedLabels := labels.ToLabels()
-	expandedLabels["app"] = appLabelForApp(a, process)
+
+	err = m.createServices(a, process, version, labels, annotations)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *serviceManager) createServices(a provision.App, process string, version appTypes.AppVersion, labels, annotations *provision.LabelSet) error {
+	svcPorts, err := loadServicePorts(version, process)
+	if err != nil {
+		return err
+	}
+
+	if len(svcPorts) == 0 {
+		return cleanupServices(m.client, a, process, version)
+	}
+
+	ns, err := m.client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+
 	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
 	if err != nil {
 		return err
@@ -1008,21 +1071,43 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
 	}
 
-	svcPorts, err := loadServicePorts(version, process)
-	if err != nil {
-		return err
+	labels = labels.WithoutBase().WithoutAppReplicas()
+	routableLabels := labels.DeepCopy()
+	routableLabels.SetIsRoutable()
+
+	baseServiceName := serviceNameForAppBase(a, process)
+
+	svcsToCreate := []struct {
+		name     string
+		labels   map[string]string
+		selector map[string]string
+	}{
+		{
+			name:     baseServiceName,
+			labels:   routableLabels.WithoutVersion().ToLabels(),
+			selector: routableLabels.ToRoutableSelector(),
+		},
+		{
+			name:     serviceNameForApp(a, process, version.Version()),
+			labels:   labels.WithoutRoutable().ToLabels(),
+			selector: labels.ToVersionSelector(),
+		},
 	}
-	if len(svcPorts) > 0 {
+	for _, svcData := range svcsToCreate {
+		portsCopy := make([]apiv1.ServicePort, len(svcPorts))
+		for i := range svcPorts {
+			portsCopy[i] = *svcPorts[i].DeepCopy()
+		}
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        depName,
+				Name:        svcData.name,
 				Namespace:   ns,
-				Labels:      expandedLabels,
+				Labels:      svcData.labels,
 				Annotations: annotations.ToLabels(),
 			},
 			Spec: apiv1.ServiceSpec{
-				Selector:              labels.ToSelector(),
-				Ports:                 svcPorts,
+				Selector:              svcData.selector,
+				Ports:                 portsCopy,
 				Type:                  apiv1.ServiceTypeNodePort,
 				ExternalTrafficPolicy: policy,
 			},
@@ -1033,22 +1118,19 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			return err
 		}
 		if isNew {
-			_, err = m.client.CoreV1().Services(ns).Create(svc)
+			_, err = m.client.CoreV1().Services(svc.Namespace).Create(svc)
 		} else {
-			_, err = m.client.CoreV1().Services(ns).Update(svc)
+			_, err = m.client.CoreV1().Services(svc.Namespace).Update(svc)
 		}
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		err = m.client.CoreV1().Services(ns).Delete(depName, &metav1.DeleteOptions{
-			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-		})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return errors.WithStack(err)
-		}
 	}
-	return m.createHeadlessService(svcPorts, ns, a, process, labels, annotations)
+	err = m.createHeadlessService(svcPorts, ns, a, process, routableLabels.WithoutVersion(), annotations)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns string, a provision.App, process string, labels, annotations *provision.LabelSet) error {
@@ -1062,7 +1144,6 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 
 	labels.SetIsHeadlessService()
 	expandedLabelsHeadless := labels.ToLabels()
-	expandedLabelsHeadless["app"] = appLabelForApp(a, process)
 
 	headlessPorts := []apiv1.ServicePort{}
 	for i, svcPort := range svcPorts {
@@ -1085,13 +1166,13 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        headlessServiceNameForApp(a, process),
+			Name:        headlessServiceName(a, process),
 			Namespace:   ns,
 			Labels:      expandedLabelsHeadless,
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector:  labels.ToSelector(),
+			Selector:  labels.ToRoutableSelector(),
 			Ports:     headlessPorts,
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,

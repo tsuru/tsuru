@@ -282,12 +282,8 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
+func (p *dockerProvisioner) Restart(a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	containers, err := p.listContainersByProcess(a.GetName(), process)
-	if err != nil {
-		return err
-	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
 	if err != nil {
 		return err
 	}
@@ -306,7 +302,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	return err
 }
 
-func (p *dockerProvisioner) Start(app provision.App, process string) error {
+func (p *dockerProvisioner) Start(app provision.App, process string, _ appTypes.AppVersion) error {
 	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
@@ -329,7 +325,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 	return err
 }
 
-func (p *dockerProvisioner) Stop(app provision.App, process string) error {
+func (p *dockerProvisioner) Stop(app provision.App, process string, _ appTypes.AppVersion) error {
 	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
@@ -344,7 +340,7 @@ func (p *dockerProvisioner) Stop(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
+func (p *dockerProvisioner) Sleep(app provision.App, process string, _ appTypes.AppVersion) error {
 	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
@@ -574,7 +570,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	return result, nil
 }
 
-func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, w io.Writer) error {
+func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	if a.GetDeploys() == 0 {
 		return errors.New("New units can only be added after the first deployment")
 	}
@@ -584,32 +580,22 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if w == nil {
 		w = ioutil.Discard
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
-	if err != nil {
-		return err
-	}
-	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
+	_, err := p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
 	return err
 }
 
-func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
+func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName string, version appTypes.AppVersion, w io.Writer) error {
 	if a == nil {
 		return errors.New("remove units: app should not be nil")
 	}
 	if units == 0 {
 		return errors.New("cannot remove zero units")
 	}
-	var err error
 	if w == nil {
 		w = ioutil.Discard
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
-	if err != nil && err != appTypes.ErrNoVersionsAvailable {
-		return err
-	}
 	if version != nil {
-		var cmdData dockercommon.ContainerCmdsData
-		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
+		cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 		if err != nil {
 			return err
 		}
@@ -712,7 +698,7 @@ func (p *dockerProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
 		if err != nil {
 			return err
 		}
-		return p.runCommandInContainer(version.VersionInfo().DeployImage, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
+		return p.runCommandInContainer(version, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
 	}
 	for _, u := range opts.Units {
 		cont, err := p.GetContainer(u)

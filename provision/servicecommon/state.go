@@ -8,18 +8,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState) error {
+func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion, preserveVersions bool) error {
 	var (
 		processes []string
 		err       error
 	)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
-	if err != nil {
-		return err
-	}
 	if process == "" {
 		var allProcesses map[string][]string
 		allProcesses, err = version.Processes()
@@ -36,23 +32,19 @@ func ChangeAppState(manager ServiceManager, a provision.App, process string, sta
 	for _, procName := range processes {
 		spec[procName] = state
 	}
-	err = RunServicePipeline(manager, a, version, spec, nil)
+	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: preserveVersions}, spec)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func ChangeUnits(manager ServiceManager, a provision.App, units int, processName string) error {
+func ChangeUnits(manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion, preserveVersions bool) error {
 	if a.GetDeploys() == 0 {
 		return errors.New("units can only be modified after the first deploy")
 	}
 	if units == 0 {
 		return errors.New("cannot change 0 units")
-	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
-	if err != nil {
-		return err
 	}
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
@@ -64,9 +56,9 @@ func ChangeUnits(manager ServiceManager, a provision.App, units int, processName
 			return errors.WithStack(err)
 		}
 	}
-	err = RunServicePipeline(manager, a, version, ProcessSpec{
+	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: preserveVersions}, ProcessSpec{
 		processName: ProcessState{Increment: units},
-	}, nil)
+	})
 	if err != nil {
 		return errors.WithStack(err)
 	}

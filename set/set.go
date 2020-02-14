@@ -4,7 +4,10 @@
 
 package set
 
-import "reflect"
+import (
+	"reflect"
+	"sort"
+)
 
 var none struct{}
 
@@ -45,6 +48,17 @@ func (s Set) Difference(other Set) Set {
 		}
 	}
 	return newSet
+}
+
+func (s Set) Sorted() []string {
+	result := make([]string, len(s))
+	i := 0
+	for key := range s {
+		result[i] = key
+		i++
+	}
+	sort.Strings(result)
+	return result
 }
 
 func FromValues(l ...string) Set {

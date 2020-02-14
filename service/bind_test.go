@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/tsurutest"
@@ -109,6 +110,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
@@ -139,6 +141,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -160,6 +163,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -189,6 +193,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -284,6 +289,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
@@ -334,6 +340,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
@@ -370,6 +377,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -456,6 +464,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
+	newVersionForApp(c, a)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
@@ -510,4 +519,16 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 		Event:   evt,
 	})
 	c.Assert(err, check.Equals, service.ErrAppNotBound)
+}
+
+func newVersionForApp(c *check.C, a appTypes.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: a,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
+	return version
 }

@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -23,12 +24,15 @@ var (
 	labelIsNodeContainer   = "is-node-container"
 	labelIsService         = "is-service"
 	labelIsHeadlessService = "is-headless-service"
+	labelIsRoutable        = "is-routable"
+	labelIsBase            = "is-base"
 
 	labelAppName            = "app-name"
 	labelAppProcess         = "app-process"
 	labelAppProcessReplicas = "app-process-replicas"
 	LabelAppPool            = "app-pool"
 	labelAppPlatform        = "app-platform"
+	labelAppVersion         = "app-version"
 
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
@@ -57,16 +61,46 @@ var (
 )
 
 type LabelSet struct {
-	Labels map[string]string
-	Prefix string
+	Labels    map[string]string
+	RawLabels map[string]string
+	Prefix    string
+}
+
+func (s *LabelSet) DeepCopy() *LabelSet {
+	newLabels := &LabelSet{Prefix: s.Prefix}
+	newLabels.Labels = make(map[string]string)
+	newLabels.RawLabels = make(map[string]string)
+	for k, v := range s.Labels {
+		newLabels.Labels[k] = v
+	}
+	for k, v := range s.RawLabels {
+		newLabels.RawLabels[k] = v
+	}
+	return newLabels
 }
 
 func (s *LabelSet) ToLabels() map[string]string {
-	return withPrefix(s.Labels, s.Prefix)
+	result := withPrefix(s.Labels, s.Prefix)
+	for k, v := range s.RawLabels {
+		result[k] = v
+	}
+	return result
 }
 
-func (s *LabelSet) ToSelector() map[string]string {
+func (s *LabelSet) ToVersionSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun, labelIsBase, labelAppVersion), s.Prefix)
+}
+
+func (s *LabelSet) ToBaseSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun, labelIsBase), s.Prefix)
+}
+
+func (s *LabelSet) ToAllVersionsSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun), s.Prefix)
+}
+
+func (s *LabelSet) ToRoutableSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun, labelIsRoutable), s.Prefix)
 }
 
 func (s *LabelSet) ToAppSelector() map[string]string {
@@ -121,15 +155,34 @@ func (s *LabelSet) NodeIaaSID() string {
 	return s.getLabel(labelNodeIaaSID)
 }
 
+func (s *LabelSet) Version() int {
+	v, _ := strconv.Atoi(s.getLabel(labelAppVersion))
+	return v
+}
+
+func (s *LabelSet) WithoutVersion() *LabelSet {
+	ns := s.DeepCopy()
+	delete(ns.Labels, labelAppVersion)
+	delete(ns.RawLabels, "version")
+	return ns
+}
+
+func (s *LabelSet) WithoutBase() *LabelSet {
+	ns := s.DeepCopy()
+	delete(ns.Labels, labelIsBase)
+	return ns
+}
+
 func (s *LabelSet) WithoutAppReplicas() *LabelSet {
-	ns := LabelSet{Prefix: s.Prefix, Labels: make(map[string]string)}
-	for k, v := range s.Labels {
-		if k == labelAppProcessReplicas {
-			continue
-		}
-		ns.Labels[k] = v
-	}
-	return &ns
+	ns := s.DeepCopy()
+	delete(ns.Labels, labelAppProcessReplicas)
+	return ns
+}
+
+func (s *LabelSet) WithoutRoutable() *LabelSet {
+	ns := s.DeepCopy()
+	delete(ns.Labels, labelIsRoutable)
+	return ns
 }
 
 func filterByPrefix(m map[string]string, prefix string, withPrefix bool) map[string]string {
@@ -212,6 +265,10 @@ func (s *LabelSet) IsIsolatedRun() bool {
 	return s.getBoolLabel(labelIsIsolatedRun)
 }
 
+func (s *LabelSet) IsBase() bool {
+	return s.getBoolLabel(labelIsBase)
+}
+
 func (s *LabelSet) SetRestarts(count int) {
 	s.addLabel(labelRestarts, strconv.Itoa(count))
 }
@@ -230,6 +287,14 @@ func (s *LabelSet) SetIsService() {
 
 func (s *LabelSet) SetIsHeadlessService() {
 	s.addLabel(labelIsHeadlessService, strconv.FormatBool(true))
+}
+
+func (s *LabelSet) SetIsRoutable() {
+	s.addLabel(labelIsRoutable, strconv.FormatBool(true))
+}
+
+func (s *LabelSet) SetIsBase() {
+	s.addLabel(labelIsBase, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) SetBuildImage(image string) {
@@ -262,6 +327,7 @@ type ServiceLabelsOpts struct {
 	App      App
 	Process  string
 	Replicas int
+	Version  int
 	ServiceLabelExtendedOpts
 }
 
@@ -298,16 +364,26 @@ func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
 		return nil, err
 	}
 	set.Labels[labelAppProcessReplicas] = strconv.Itoa(opts.Replicas)
+	if set.RawLabels == nil {
+		set.RawLabels = make(map[string]string)
+	}
+	if opts.Version != 0 {
+		set.Labels[labelAppVersion] = strconv.Itoa(opts.Version)
+		set.RawLabels["version"] = fmt.Sprintf("v%d", opts.Version)
+	}
 	ExtendServiceLabels(set, opts.ServiceLabelExtendedOpts)
 	return set, nil
 }
 
 func SplitServiceLabelsAnnotations(ls *LabelSet) (labels *LabelSet, ann *LabelSet) {
-	labels = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}}
+	labels = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}, RawLabels: map[string]string{}}
 	ann = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}}
 	annKeys := map[string]struct{}{
 		labelRouterName: {},
 		labelRouterType: {},
+	}
+	for k, v := range ls.RawLabels {
+		labels.RawLabels[k] = v
 	}
 	for k, v := range ls.Labels {
 		if _, ok := annKeys[k]; ok {
