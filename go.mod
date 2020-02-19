@@ -7,7 +7,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
-	github.com/andrestc/docker-machine-driver-cloudstack v0.9.1
+	github.com/andrestc/docker-machine-driver-cloudstack v0.9.2
 	github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e // indirect
 	github.com/aws/aws-sdk-go v1.16.21
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
@@ -89,7 +89,6 @@ require (
 	github.com/vulcand/predicate v0.0.0-20141020235656-cb0bff91a7ab // indirect
 	github.com/vulcand/route v0.0.0-20181101151700-58b44163b968
 	github.com/vulcand/vulcand v0.0.0-20181107172627-5fb2302c78e2
-	github.com/xanzy/go-cloudstack v2.3.4+incompatible // indirect
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
