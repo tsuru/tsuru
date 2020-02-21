@@ -12,6 +12,7 @@ type AppRouter struct {
 	Name         string            `json:"name"`
 	Opts         map[string]string `json:"opts"`
 	Address      string            `json:"address" bson:"-"`
+	Addresses    []string          `json:"addresses" bson:"-"`
 	Type         string            `json:"type" bson:"-"`
 	Status       string            `json:"status,omitempty" bson:"-"`
 	StatusDetail string            `json:"status-detail,omitempty" bson:"-"`

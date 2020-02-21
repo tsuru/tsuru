@@ -537,6 +537,25 @@ func (r *prefixRouter) RoutesPrefix(name string) ([]appTypes.RoutableAddresses, 
 	return r.prefixRoutes[backendName], nil
 }
 
+func (r *prefixRouter) Addresses(name string) ([]string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	prefixes := r.prefixRoutes[backendName]
+	var addrs []string
+	for _, data := range prefixes {
+		name := backendName
+		if data.Prefix != "" {
+			name = data.Prefix + "." + backendName
+		}
+		addrs = append(addrs, fmt.Sprintf("%s.fakerouter.com", name))
+	}
+	return addrs, nil
+}
+
 func (r *prefixRouter) AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error {
 	if addresses.Prefix == "" {
 		err := r.AddRoutes(name, addresses.Addresses)

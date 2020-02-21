@@ -2179,6 +2179,14 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].Status = string(status)
 			routers[i].StatusDetail = detail
 		}
+		if prefixRouter, ok := r.(router.PrefixRouter); ok {
+			addrs, aErr := prefixRouter.Addresses(app.Name)
+			if aErr != nil {
+				multi.Add(aErr)
+				continue
+			}
+			routers[i].Addresses = addrs
+		}
 		servicemanager.AppCache.Create(cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,

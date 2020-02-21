@@ -589,6 +589,26 @@ func (r *galebRouter) RoutesPrefix(name string) (addrs []appTypes.RoutableAddres
 	return addrs, nil
 }
 
+func (r *galebRouter) Addresses(name string) (addrs []string, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	poolTargets, err := r.client.FindAllTargetsByPoolPrefix(r.poolName("", backendName))
+	if err != nil {
+		return nil, err
+	}
+	for poolName, _ := range poolTargets {
+		prefix := r.poolNameToPrefix(poolName, backendName)
+		addrs = append(addrs, r.virtualHostName(prefix, name))
+	}
+	return addrs, nil
+}
+
 func (r *galebRouter) AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
