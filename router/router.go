@@ -183,6 +183,7 @@ type AsyncRouter interface {
 
 type PrefixRouter interface {
 	RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error)
+	Addresses(name string) ([]string, error)
 	AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
 	RemoveRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
 }

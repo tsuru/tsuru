@@ -87,7 +87,8 @@ type certData struct {
 }
 
 type backendResp struct {
-	Address string `json:"address"`
+	Address   string   `json:"address"`
+	Addresses []string `json:"addresses"`
 }
 
 type statusResp struct {
@@ -504,6 +505,24 @@ func (r *apiRouterWithStatus) GetBackendStatus(name string) (router.BackendStatu
 		return "", "", err
 	}
 	return status.Status, status.Detail, nil
+}
+
+func (r *apiRouterWithPrefix) Addresses(name string) (addrs []string, err error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("backend/%s", backendName)
+	data, code, err := r.do(http.MethodGet, path, nil)
+	if err != nil {
+		if code == http.StatusNotFound {
+			return nil, router.ErrBackendNotFound
+		}
+		return nil, err
+	}
+	resp := &backendResp{}
+	err = json.Unmarshal(data, resp)
+	return resp.Addresses, err
 }
 
 func (r *apiRouterWithPrefix) RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error) {
