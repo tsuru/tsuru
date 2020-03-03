@@ -109,7 +109,7 @@ func setupGenericClusters() map[string]*genericKubeCluster {
 				"driver":             "amazonelasticcontainerservice",
 				"minimum-nodes":      "2",
 				"maximum-nodes":      "3",
-				"kubernetes-version": "1.13",
+				"kubernetes-version": os.Getenv("AWS_KUBERNETES_VERSION"),
 				"region":             os.Getenv("AWS_REGION"),
 				"instance-type":      os.Getenv("AWS_INSTANCE_TYPE"),
 				"virtual-network":    os.Getenv("AWS_VPC_ID"),
