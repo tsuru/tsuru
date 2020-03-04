@@ -123,8 +123,8 @@ type SimpleJsonMessageFormatter struct {
 	NoTimestamp bool
 }
 
-func likeJSON(str string) bool {
-	data := bytes.TrimSpace([]byte(str))
+func likeJSON(str []byte) bool {
+	data := bytes.TrimSpace(str)
 	return len(data) > 1 && data[0] == '{' && data[len(data)-1] == '}'
 }
 
@@ -140,8 +140,8 @@ func (f *SimpleJsonMessageFormatter) Close() error {
 	if f.pipeWriter != nil {
 		f.pipeWriter.Close()
 		f.pipeWriter = nil
-		f.pipeReader = nil
 		<-f.done
+		f.pipeReader = nil
 	}
 	return nil
 }
@@ -217,34 +217,51 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	if tsw, ok := out.(*tsWriter); ok && !f.NoTimestamp {
 		tsw.setTS(msg.Timestamp)
 	}
-	if likeJSON(msg.Message) {
-		if f.pipeWriter == nil {
-			f.pipeReader, f.pipeWriter = io.Pipe()
-			fd := -1
-			switch v := out.(type) {
-			case withFd:
-				fd = int(v.Fd())
-			case withFD:
-				fd = int(v.FD())
-			}
-			var isTerm bool
-			var uintFD uintptr
-			if fd != -1 {
-				isTerm = terminal.IsTerminal(fd)
-				uintFD = uintptr(fd)
-			}
-			f.done = make(chan struct{})
-			go func() {
-				defer close(f.done)
-				jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, uintFD, isTerm, nil)
-			}()
+	parts := bytes.SplitAfter([]byte(msg.Message), []byte("\n"))
+	for _, part := range parts {
+		err = f.formatMessagePart(out, part)
+		if err != nil {
+			return err
 		}
-		f.pipeWriter.Write([]byte(msg.Message))
-	} else {
-		f.Close()
-		out.Write([]byte(msg.Message))
 	}
 	return nil
+}
+
+func (f *SimpleJsonMessageFormatter) formatMessagePart(out io.Writer, msg []byte) error {
+	if !likeJSON(msg) {
+		f.Close()
+		_, err := out.Write(msg)
+		return err
+	}
+	if f.pipeWriter == nil {
+		f.pipeReader, f.pipeWriter = io.Pipe()
+		fd := -1
+		switch v := out.(type) {
+		case withFd:
+			fd = int(v.Fd())
+		case withFD:
+			fd = int(v.FD())
+		}
+		var isTerm bool
+		var uintFD uintptr
+		if fd != -1 {
+			isTerm = terminal.IsTerminal(fd)
+			uintFD = uintptr(fd)
+		}
+		f.done = make(chan struct{})
+		go func() {
+			defer close(f.done)
+			for {
+				dispErr := jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, uintFD, isTerm, nil)
+				if dispErr == nil || dispErr == io.EOF {
+					return
+				}
+				fmt.Fprintf(out, "warning: log message lost due to parse error: %v\n", dispErr)
+			}
+		}()
+	}
+	_, err := f.pipeWriter.Write(msg)
+	return err
 }
 
 type SimpleJsonMessageEncoderWriter struct {

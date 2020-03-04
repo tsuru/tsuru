@@ -335,6 +335,70 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 		"no json 2\n")
 }
 
+func (s *S) TestSimpleJsonMessageFormatterValidJsonInJson(c *check.C) {
+	parts := [][]byte{
+		[]byte(`{"message":"{\"status\":\"msg1\",\"id\":\"latest\"}"}`),
+		[]byte(`{"message":"{\"status\":\"msg2\",\"id\":\"latest\"}"}`),
+		[]byte(`{"message":"{\"status\":\"msg3\",\"id\":\"latest\"}"}`),
+	}
+	parts = append([][]byte{[]byte(`{"message":"no json 1\n"}`)}, parts...)
+	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
+	outBuf := bytes.Buffer{}
+	streamWriter := NewStreamWriter(&outBuf, nil)
+	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	c.Assert(err, check.IsNil)
+	c.Assert(written > 0, check.Equals, true)
+	err = streamWriter.Close()
+	c.Assert(err, check.IsNil)
+	c.Assert(outBuf.String(), check.Matches, "no json 1\n"+
+		"latest: msg1\n"+
+		"latest: msg2\n"+
+		"latest: msg3\n"+
+		"no json 2\n")
+}
+
+func (s *S) TestSimpleJsonMessageFormatterInvalidJsonInJson(c *check.C) {
+	parts := [][]byte{
+		[]byte(`{"message":"{\"status\":\"msg1\",\"id\":\"latest\"}"}`),
+		[]byte(`{"message":"{\"status\"-\"msg2\",\"id\":\"latest\"}"}`),
+		[]byte(`{"message":"{\"status\":\"msg3\",\"id\":\"latest\"}"}`),
+	}
+	parts = append([][]byte{[]byte(`{"message":"no json 1\n"}`)}, parts...)
+	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
+	outBuf := bytes.Buffer{}
+	streamWriter := NewStreamWriter(&outBuf, nil)
+	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	c.Assert(err, check.IsNil)
+	c.Assert(written > 0, check.Equals, true)
+	err = streamWriter.Close()
+	c.Assert(err, check.IsNil)
+	c.Assert(outBuf.String(), check.Matches, "no json 1\n"+
+		"latest: msg1\n"+
+		"warning: log message lost due to parse error: invalid character '-' after object key\n"+
+		"latest: msg3\n"+
+		"no json 2\n")
+}
+
+func (s *S) TestSimpleJsonMessageFormatterMixedJsonInJson(c *check.C) {
+	parts := [][]byte{
+		[]byte(`{"message":"{\"status\":\"msg1\",\"id\":\"latest\"}\r\n x\n{\"status\":\"msg2\",\"id\":\"latest\"}\r\n"}`),
+	}
+	parts = append([][]byte{[]byte(`{"message":"no json 1\n"}`)}, parts...)
+	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
+	outBuf := bytes.Buffer{}
+	streamWriter := NewStreamWriter(&outBuf, nil)
+	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	c.Assert(err, check.IsNil)
+	c.Assert(written > 0, check.Equals, true)
+	err = streamWriter.Close()
+	c.Assert(err, check.IsNil)
+	c.Assert(outBuf.String(), check.Matches, "no json 1\n"+
+		"latest: msg1\n"+
+		" x\n"+
+		"latest: msg2\n"+
+		"no json 2\n")
+}
+
 func (s *S) TestSimpleJsonMessageEncoderWriter(c *check.C) {
 	buf := bytes.Buffer{}
 	encoder := json.NewEncoder(&buf)
