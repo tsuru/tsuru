@@ -42,7 +42,7 @@ TSURU_INTEGRATION_.
 - nodeopts - Additional options passed to node creation.
 - installername - Name of the installation to be created.
 - provisioners - List of provisioners to test. Defaults to docker.
-- clusters - List of cluster providers. Defaults to swarm. Available values are gke, swarm and minikube.
+- clusters - List of cluster providers. Available values are gke, eks, aks, kubectl and minikube.
 - platforms - List of platforms to test. Defaults to all platforms available on https://github.com/tsuru/platforms
 
 ### Flow control
