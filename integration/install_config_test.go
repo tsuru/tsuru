@@ -151,14 +151,13 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 			context: s.env.Get("kubectlctx"),
 			binary:  s.env.Get("kubectlbinary"),
 		},
-		"swarm": &SwarmClusterManager{c: c, env: s.env},
 	}
 	moreClusters := setupGenericClusters()
 	for k, v := range moreClusters {
 		availableClusterManagers[k] = v
 	}
 	if _, ok := os.LookupEnv(integrationEnvID + "clusters"); !ok {
-		return []ClusterManager{availableClusterManagers["swarm"]}
+		return []ClusterManager{}
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := s.env.All("clusters")

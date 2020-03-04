@@ -8,7 +8,6 @@ import check "gopkg.in/check.v1"
 
 const (
 	kubernetesProvisioner = "kubernetes"
-	swarmProvisioner      = "swarm"
 )
 
 // ClusterManager is an abstraction to a Tsuru cluster
