@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -284,19 +283,19 @@ func (s *S) TestWebhookServiceCreate(c *check.C) {
 func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 	var tests = []struct {
 		name, url, proxyURL string
-		expectedErr         error
+		expectedErr         string
 	}{
 		{
 			name:        "",
 			url:         "http://a",
-			expectedErr: &errors.ValidationError{Message: "webhook name must not be empty"},
+			expectedErr: "webhook name must not be empty",
 		},
 		{
 			name: "_-*x",
 			url:  "http://a",
-			expectedErr: &errors.ValidationError{Message: "Invalid webhook name, webhook name should have at most 40 " +
+			expectedErr: "Invalid webhook name, webhook name should have at most 40 " +
 				"characters, containing only lower case letters, numbers or dashes, " +
-				"starting with a letter."},
+				"starting with a letter.",
 		},
 		{
 			name: "c",
@@ -305,22 +304,22 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 		{
 			name:        "c",
 			url:         "http://a",
-			expectedErr: eventTypes.ErrWebhookAlreadyExists,
+			expectedErr: eventTypes.ErrWebhookAlreadyExists.Error(),
 		},
 		{
 			name:        "d",
-			expectedErr: &errors.ValidationError{Message: "webhook url must not be empty"},
+			expectedErr: "webhook url must not be empty",
 		},
 		{
 			name:        "d",
 			url:         ":/:x",
-			expectedErr: &errors.ValidationError{Message: "webhook url is not valid: parse :/:x: missing protocol scheme"},
+			expectedErr: "webhook url is not valid: parse .*: missing protocol scheme",
 		},
 		{
 			name:        "d",
 			url:         "http://valid",
 			proxyURL:    ":/:x",
-			expectedErr: &errors.ValidationError{Message: "webhook proxy url is not valid: parse :/:x: missing protocol scheme"},
+			expectedErr: "webhook proxy url is not valid: parse .*: missing protocol scheme",
 		},
 	}
 
@@ -330,7 +329,11 @@ func (s *S) TestWebhookServiceCreateInvalid(c *check.C) {
 			URL:      test.url,
 			ProxyURL: test.proxyURL,
 		})
-		c.Check(err, check.DeepEquals, test.expectedErr)
+		if test.expectedErr == "" {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, test.expectedErr)
+		}
 	}
 }
 

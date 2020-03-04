@@ -564,7 +564,7 @@ func (s *S) TestValidateTLSCertificate_WhenCertificateIsNotValidYet_ShouldReturn
 	rootPool.AddCert(caX509Cert)
 	err = validateTLSCertificate(caCert, rootPool)
 	c.Assert(err, check.Not(check.IsNil))
-	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid")
+	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid.*")
 }
 
 func (s *S) TestValidateTLSCertificate_WhenCertificateHasBeenExpired_ShouldReturnExpectedError(c *check.C) {
@@ -593,7 +593,7 @@ func (s *S) TestValidateTLSCertificate_WhenCertificateHasBeenExpired_ShouldRetur
 	rootPool.AddCert(caX509Cert)
 	err = validateTLSCertificate(caCert, rootPool)
 	c.Assert(err, check.Not(check.IsNil))
-	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid")
+	c.Assert(err, check.ErrorMatches, "x509: certificate has expired or is not yet valid.*")
 }
 
 func (s *S) TestCertificateValidator_start_WhenCurrentlyLoadedCertificateExpire_ShouldCallShutdownFunc(c *check.C) {

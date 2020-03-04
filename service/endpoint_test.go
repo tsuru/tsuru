@@ -137,7 +137,7 @@ func (s *S) TestEndpointCreateEndpointDown(c *check.C) {
 	client := &endpointClient{endpoint: "http://127.0.0.1:19999", username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.Create(&instance, evt, "Request-ID")
-	c.Assert(err, check.ErrorMatches, `Failed to create the instance my-redis: Post http://127.0.0.1:19999/resources.*`)
+	c.Assert(err, check.ErrorMatches, `Failed to create the instance my-redis: Post .*http://127.0.0.1:19999/resources.*`)
 }
 
 func (s *S) TestEndpointCreatePlans(c *check.C) {
@@ -337,7 +337,7 @@ func (s *S) TestBindAppEndpointDown(c *check.C) {
 	evt := createEvt(c)
 	_, err := client.BindApp(&instance, a, nil, evt, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `Failed to bind app "her-app" to service instance "redis/her-redis": Post http://localhost:1234/resources/her-redis/bind-app:.*connection refused`)
+	c.Assert(err, check.ErrorMatches, `Failed to bind app "her-app" to service instance "redis/her-redis": Post .*http://localhost:1234/resources/her-redis/bind-app.*:.*connection refused.*`)
 }
 
 func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {

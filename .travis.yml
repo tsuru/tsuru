@@ -13,7 +13,7 @@ addons:
       - rpm
 # test stage automatically added for each go version
 go:
-  - 1.13.x
+  - 1.14.x
 # script used in the automatically added test stage
 script:
   - 'if [ "${JOB}" = "test" ]; then make race; fi'
@@ -31,7 +31,7 @@ env:
     - GOPROXY=https://proxy.golang.org
     - GO111MODULE=on
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.13
+    - GO_FOR_RELEASE=1.14
     - IMAGE_NAME=tsuru/api
   matrix:
     - JOB=verifyvendor
