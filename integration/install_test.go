@@ -751,6 +751,20 @@ func serviceImageSetup() ExecFlow {
 	}
 }
 
+func deployNewVersion() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"team", "poolnames", "installedplatforms", "serviceimage"},
+		matrix:   map[string]string{"pool": "poolnames"},
+	}
+	appName := "{{.pool}}--app"
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("app-create", appName, env.Get("installedplatforms"), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		c.Assert(res, ResultOk)
+
+	}
+	return flow
+}
+
 func serviceCreate() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"servicename"},

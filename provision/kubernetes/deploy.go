@@ -884,7 +884,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allNewPodsRunning(client, a, processName, revision, version)
+			allInit, err = allNewPodsRunning(client, a, processName, dep, version)
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
@@ -1020,7 +1020,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return provision.ErrUnitStartup{Err: err}
 	}
 
-	err = m.createServices(a, process, version, labels, annotations)
+	err = m.createServices(a, process, version, labels, annotations, depArgs)
 	if err != nil {
 		return err
 	}
@@ -1030,6 +1030,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 type baseDepArgs struct {
 	name     string
 	selector map[string]string
+	isLegacy bool
 }
 
 func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
@@ -1047,10 +1048,16 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 		return result, err
 	}
 
-	if versionDep, ok := depData.versioned[version.Version()]; ok {
-		if versionDep.isLegacy {
-			labels.SetIsRoutable()
+	if versionDeps, ok := depData.versioned[version.Version()]; ok {
+		if len(versionDeps) != 1 {
+			var names []string
+			for _, vd := range versionDeps {
+				names = append(names, vd.dep.Name)
+			}
+			return result, errors.Errorf("more than one deployment for the same app version found: %v", names)
 		}
+		versionDep := versionDeps[0]
+		result.isLegacy = versionDep.isLegacy
 		result.name = versionDep.dep.Name
 		result.selector = versionDep.dep.Spec.Selector.MatchLabels
 		return result, nil
@@ -1071,7 +1078,7 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 	return result, nil
 }
 
-func (m *serviceManager) createServices(a provision.App, process string, version appTypes.AppVersion, labels, annotations *provision.LabelSet) error {
+func (m *serviceManager) createServices(a provision.App, process string, version appTypes.AppVersion, labels, annotations *provision.LabelSet, depArgs baseDepArgs) error {
 	svcPorts, err := loadServicePorts(version, process)
 	if err != nil {
 		return err
@@ -1097,7 +1104,9 @@ func (m *serviceManager) createServices(a provision.App, process string, version
 
 	labels = labels.WithoutBase().WithoutAppReplicas()
 	routableLabels := labels.DeepCopy()
-	routableLabels.SetIsRoutable()
+	if !depArgs.isLegacy {
+		routableLabels.SetIsRoutable()
+	}
 
 	baseServiceName := serviceNameForAppBase(a, process)
 

@@ -155,6 +155,7 @@ type Unit struct {
 	Address     *url.URL
 	Addresses   []url.URL
 	Version     int
+	Routable    bool
 }
 
 // GetName returns the name of the unit.
@@ -306,9 +307,7 @@ type BuilderDeployKubeClient interface {
 }
 
 type RoutableVersionsProvisioner interface {
-	AddRoutableVersion(App, appTypes.AppVersion) error
-	RemoveRoutableVersion(App, appTypes.AppVersion) error
-	ListRoutableVersions(App) ([]int, error)
+	ToggleRoutable(App, appTypes.AppVersion, bool) error
 }
 
 // Provisioner is the basic interface of this package.
