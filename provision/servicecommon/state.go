@@ -11,7 +11,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion, preserveVersions bool) error {
+func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion) error {
 	var (
 		processes []string
 		err       error
@@ -32,14 +32,14 @@ func ChangeAppState(manager ServiceManager, a provision.App, process string, sta
 	for _, procName := range processes {
 		spec[procName] = state
 	}
-	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: preserveVersions}, spec)
+	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func ChangeUnits(manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion, preserveVersions bool) error {
+func ChangeUnits(manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion) error {
 	if a.GetDeploys() == 0 {
 		return errors.New("units can only be modified after the first deploy")
 	}
@@ -56,7 +56,7 @@ func ChangeUnits(manager ServiceManager, a provision.App, units int, processName
 			return errors.WithStack(err)
 		}
 	}
-	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: preserveVersions}, ProcessSpec{
+	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
 		processName: ProcessState{Increment: units},
 	})
 	if err != nil {

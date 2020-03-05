@@ -12,10 +12,12 @@ import (
 	"io"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -660,6 +662,55 @@ func allDeploymentsForAppProcess(client *ClusterClient, a provision.App, process
 	}
 
 	return deps.Items, nil
+}
+
+type groupedDeployments struct {
+	versioned map[int]deploymentInfo
+	base      deploymentInfo
+	count     int
+}
+
+type deploymentInfo struct {
+	dep      *appsv1.Deployment
+	isLegacy bool
+}
+
+func deploymentsDataForProcess(client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
+	result := groupedDeployments{
+		versioned: make(map[int]deploymentInfo),
+	}
+	deps, err := allDeploymentsForAppProcess(client, a, process)
+	if err != nil {
+		return result, err
+	}
+	result.count = len(deps)
+	for i, dep := range deps {
+		labels := labelSetFromMeta(&dep.ObjectMeta)
+		version := labels.Version()
+		isLegacy := false
+		isBase := labels.IsBase()
+		if version == 0 {
+			isBase = true
+			isLegacy = true
+			if len(dep.Spec.Template.Spec.Containers) == 0 {
+				continue
+			}
+			_, tag := image.SplitImageName(dep.Spec.Template.Spec.Containers[0].Image)
+			version, _ = strconv.Atoi(strings.TrimPrefix(tag, "v"))
+		}
+		if version == 0 {
+			continue
+		}
+		di := deploymentInfo{
+			dep:      &deps[i],
+			isLegacy: isLegacy,
+		}
+		result.versioned[version] = di
+		if isBase {
+			result.base = di
+		}
+	}
+	return result, nil
 }
 
 func deploymentForVersion(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*appsv1.Deployment, error) {
