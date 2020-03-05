@@ -187,62 +187,58 @@ func podsForAppProcess(client *ClusterClient, a provision.App, process string, v
 	return podList, nil
 }
 
-func allNewPodsRunning(client *ClusterClient, a provision.App, process string, depRevision string, version appTypes.AppVersion) (bool, error) {
-	labelOpts := provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		Version: version.Version(),
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	}
-	ls, err := provision.ServiceLabels(labelOpts)
+func allNewPodsRunning(client *ClusterClient, a provision.App, process string, dep *appsv1.Deployment, version appTypes.AppVersion) (bool, error) {
+	replica, err := activeReplicaSetForDeployment(client, dep)
 	if err != nil {
+		if k8sErrors.IsNotFound(errors.Cause(err)) {
+			return false, nil
+		}
 		return false, errors.WithStack(err)
 	}
-	ns, err := client.AppNamespace(a)
+	pods, err := podsForReplicaSet(client, replica)
 	if err != nil {
 		return false, err
 	}
-	replicaSets, err := client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToVersionSelector())).String(),
-	})
-	if err != nil {
-		return false, errors.WithStack(err)
-	}
-	var replica *appsv1.ReplicaSet
-	for i, rs := range replicaSets.Items {
-		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
-			replica = &replicaSets.Items[i]
-			break
-		}
-	}
-	if replica == nil {
-		return false, nil
-	}
-	pods, err := podsForAppProcess(client, a, process, version)
-	if err != nil {
-		return false, err
-	}
-	newCount := 0
-	for _, pod := range pods.Items {
-		newPod := false
-		for _, ref := range pod.OwnerReferences {
-			if ref.Kind == kubeKindReplicaSet && ref.Name == replica.Name {
-				newPod = true
-				break
-			}
-		}
-		if !newPod {
-			continue
-		}
-		newCount++
+	for _, pod := range pods {
 		if pod.Status.Phase != apiv1.PodRunning {
 			return false, nil
 		}
 	}
-	return newCount > 0, nil
+	return len(pods) > 0, nil
+}
+
+func activeReplicaSetForDeployment(client *ClusterClient, dep *appsv1.Deployment) (*appsv1.ReplicaSet, error) {
+	depRevision := dep.Annotations[replicaDepRevision]
+	sel, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	replicaSets, err := client.AppsV1().ReplicaSets(dep.Namespace).List(metav1.ListOptions{
+		LabelSelector: sel.String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for i, rs := range replicaSets.Items {
+		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
+			return &replicaSets.Items[i], nil
+		}
+	}
+	return nil, k8sErrors.NewNotFound(appsv1.Resource("replicaset"), fmt.Sprintf("deployment: %v, revision: %v", dep.Name, depRevision))
+}
+
+func podsForReplicaSet(client *ClusterClient, rs *appsv1.ReplicaSet) ([]apiv1.Pod, error) {
+	sel, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	pods, err := client.CoreV1().Pods(rs.Namespace).List(metav1.ListOptions{
+		LabelSelector: sel.String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return pods.Items, nil
 }
 
 type podErrorMessage struct {
@@ -532,8 +528,11 @@ func hasLegacyVersionForApp(client *ClusterClient, a provision.App) (bool, error
 		return false, err
 	}
 	for _, dep := range deps {
-		labels := labelSetFromMeta(&dep.ObjectMeta)
-		if !labels.IsBase() && labels.Version() == 0 {
+		selectorLabels := provision.LabelSet{
+			Labels: dep.Spec.Selector.MatchLabels,
+			Prefix: tsuruLabelPrefix,
+		}
+		if !selectorLabels.IsBase() && selectorLabels.Version() == 0 {
 			return true, nil
 		}
 	}
@@ -665,23 +664,36 @@ func allDeploymentsForAppProcess(client *ClusterClient, a provision.App, process
 }
 
 type groupedDeployments struct {
-	versioned map[int]deploymentInfo
+	versioned map[int][]deploymentInfo
 	base      deploymentInfo
 	count     int
 }
 
 type deploymentInfo struct {
 	dep      *appsv1.Deployment
+	process  string
 	isLegacy bool
 }
 
 func deploymentsDataForProcess(client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
-	result := groupedDeployments{
-		versioned: make(map[int]deploymentInfo),
-	}
 	deps, err := allDeploymentsForAppProcess(client, a, process)
 	if err != nil {
-		return result, err
+		return groupedDeployments{}, err
+	}
+	return groupDeployments(deps), nil
+}
+
+func deploymentsDataForApp(client *ClusterClient, a provision.App) (groupedDeployments, error) {
+	deps, err := allDeploymentsForApp(client, a)
+	if err != nil {
+		return groupedDeployments{}, err
+	}
+	return groupDeployments(deps), nil
+}
+
+func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
+	result := groupedDeployments{
+		versioned: make(map[int][]deploymentInfo),
 	}
 	result.count = len(deps)
 	for i, dep := range deps {
@@ -705,12 +717,12 @@ func deploymentsDataForProcess(client *ClusterClient, a provision.App, process s
 			dep:      &deps[i],
 			isLegacy: isLegacy,
 		}
-		result.versioned[version] = di
+		result.versioned[version] = append(result.versioned[version], di)
 		if isBase {
 			result.base = di
 		}
 	}
-	return result, nil
+	return result
 }
 
 func deploymentForVersion(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*appsv1.Deployment, error) {
@@ -931,15 +943,29 @@ func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace
 	return svcPorts, nil
 }
 
-func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
-	merged := make(map[string]string, len(meta.Labels)+len(meta.Annotations))
+func labelOnlySetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
+	labels := make(map[string]string, len(meta.Labels)+len(meta.Annotations))
+	rawLabels := make(map[string]string)
 	for k, v := range meta.Labels {
-		merged[k] = v
+		trimmedKey := strings.TrimPrefix(k, tsuruLabelPrefix)
+		if trimmedKey != k {
+			labels[trimmedKey] = v
+		} else {
+			rawLabels[k] = v
+		}
+	}
+	return &provision.LabelSet{Labels: labels, RawLabels: rawLabels, Prefix: tsuruLabelPrefix}
+}
+
+func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
+	ls := labelOnlySetFromMeta(meta)
+	if ls.Labels == nil {
+		ls.Labels = make(map[string]string)
 	}
 	for k, v := range meta.Annotations {
-		merged[k] = v
+		ls.Labels[k] = v
 	}
-	return &provision.LabelSet{Labels: merged, Prefix: tsuruLabelPrefix}
+	return ls
 }
 
 type fixedSizeQueue struct {

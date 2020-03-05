@@ -553,6 +553,7 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 		Status:      status,
 		ProcessName: c.ProcessName,
 		Address:     c.Address(),
+		Routable:    true,
 	}
 }
 

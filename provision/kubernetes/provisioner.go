@@ -63,19 +63,20 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
-	_ provision.HCProvisioner            = &kubernetesProvisioner{}
-	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
-	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
+	_ provision.Provisioner                 = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner             = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner    = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner          = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner        = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner           = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy               = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient     = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner    = &kubernetesProvisioner{}
+	_ provision.InterAppProvisioner         = &kubernetesProvisioner{}
+	_ provision.HCProvisioner               = &kubernetesProvisioner{}
+	_ provision.RoutableVersionsProvisioner = &kubernetesProvisioner{}
+	_ cluster.ClusteredProvisioner          = &kubernetesProvisioner{}
+	_ cluster.ClusterProvider               = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -531,6 +532,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			Address:     u,
 			Addresses:   urls,
 			Version:     l.Version(),
+			Routable:    l.IsRoutable(),
 		})
 	}
 	return units, nil
@@ -1679,4 +1681,66 @@ func isDefaultPort(portsConfig []provTypes.TsuruYamlKubernetesProcessPortConfig)
 
 func (p *kubernetesProvisioner) HandlesHC() bool {
 	return true
+}
+
+func (p *kubernetesProvisioner) ToggleRoutable(a provision.App, version appTypes.AppVersion, isRoutable bool) error {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return err
+	}
+	depsData, err := deploymentsDataForApp(client, a)
+	if err != nil {
+		return err
+	}
+	depsForVersion, ok := depsData.versioned[version.Version()]
+	if !ok {
+		return errors.Errorf("no deployment found for version %v", version.Version())
+	}
+	for _, depData := range depsForVersion {
+		err = toggleRoutableDeployment(client, depData.dep, isRoutable)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func toggleRoutableDeployment(client *ClusterClient, dep *appsv1.Deployment, isRoutable bool) error {
+	ls := labelOnlySetFromMeta(&dep.ObjectMeta)
+	ls.ToggleIsRoutable(isRoutable)
+	dep.Spec.Paused = true
+	dep.ObjectMeta.Labels = ls.ToLabels()
+	dep.Spec.Template.ObjectMeta.Labels = ls.WithoutAppReplicas().ToLabels()
+	_, err := client.AppsV1().Deployments(dep.Namespace).Update(dep)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	rs, err := activeReplicaSetForDeployment(client, dep)
+	if err != nil {
+		return err
+	}
+	ls = labelOnlySetFromMeta(&rs.ObjectMeta)
+	ls.ToggleIsRoutable(isRoutable)
+	rs.ObjectMeta.Labels = ls.ToLabels()
+	rs.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
+	_, err = client.AppsV1().ReplicaSets(rs.Namespace).Update(rs)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	pods, err := podsForReplicaSet(client, rs)
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods {
+		ls = labelOnlySetFromMeta(&pod.ObjectMeta)
+		ls.ToggleIsRoutable(isRoutable)
+		pod.ObjectMeta.Labels = ls.ToLabels()
+		_, err = client.CoreV1().Pods(pod.Namespace).Update(&pod)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }

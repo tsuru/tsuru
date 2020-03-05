@@ -2461,3 +2461,15 @@ func validateEnv(envName string) error {
 	}
 	return nil
 }
+
+func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	rprov, ok := prov.(provision.RoutableVersionsProvisioner)
+	if !ok {
+		return errors.Errorf("provisioner %v does not support setting versions routable", prov.GetName())
+	}
+	return rprov.ToggleRoutable(app, version, isRoutable)
+}

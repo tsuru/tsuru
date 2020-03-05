@@ -659,6 +659,44 @@ paths:
           description: App not found
           schema:
             $ref: "#/definitions/ErrorMessage"
+  /1.8/apps/{app}/routable:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppSetRoutable
+      description: Sets a version as routable.
+      tags:
+        - app
+      security:
+        - Bearer: []
+      consumes:
+        - application/json
+      parameters:
+        - name: setRoutableData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/SetRoutableArgs"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: App updated
+        "400":
+          description: Invalid arguments
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
   /1.0/platforms/{platform}:
     parameters:
       - name: platform
@@ -3352,3 +3390,10 @@ definitions:
         type: object
         additionalProperties:
           type: string
+  SetRoutableArgs:
+    type: object
+    properties:
+      version:
+        type: string
+      isRoutable:
+        type: boolean

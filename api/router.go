@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
@@ -261,4 +262,36 @@ func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return nil
 	}
 	return json.NewEncoder(w).Encode(routers)
+}
+
+type setRoutableRequest struct {
+	IsRoutable bool   `json:"isRoutable"`
+	Version    string `json:"version"`
+}
+
+func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	var args setRoutableRequest
+	err = ParseInput(r, &args)
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateRoutable,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(&a, args.Version)
+	if err != nil {
+		if _, ok := err.(appTypes.ErrInvalidVersion); ok {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
+	}
+	return a.SetRoutable(version, args.IsRoutable)
 }
