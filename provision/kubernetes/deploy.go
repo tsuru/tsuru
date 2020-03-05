@@ -959,38 +959,18 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	var depName string
-	var selector map[string]string
-
-	versionDep, err := deploymentForVersion(m.client, a, process, version)
-	if err != nil {
-		if !k8sErrors.IsNotFound(err) {
-			return errors.WithStack(err)
-		}
-		versionDep = nil
-	}
 
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
 
-	if preserveVersions {
-		if versionDep == nil {
-			depName = deploymentNameForApp(a, process, version.Version())
-			selector = labels.ToVersionSelector()
-		} else {
-			depName = versionDep.Name
-			selector = versionDep.Spec.Selector.MatchLabels
-		}
-	} else {
-		depName = deploymentNameForAppBase(a, process)
-		labels.SetIsRoutable()
-		labels.SetIsBase()
-		selector = labels.ToBaseSelector()
+	depArgs, err := m.baseDeploymentArgs(a, process, labels, version, preserveVersions)
+	if err != nil {
+		return err
 	}
 
-	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
+	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depArgs.name, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -1005,7 +985,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, annotations, err := createAppDeployment(m.client, depName, oldDep, a, process, version, replicas, labels, selector)
+	newDep, labels, annotations, err := createAppDeployment(m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
 	if err != nil {
 		return err
 	}
@@ -1028,7 +1008,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
 			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
-				Name: depName,
+				Name: depArgs.name,
 			})
 		}
 		if rollbackErr != nil {
@@ -1045,6 +1025,50 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 	return nil
+}
+
+type baseDepArgs struct {
+	name     string
+	selector map[string]string
+}
+
+func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
+	var result baseDepArgs
+	if !preserveVersions {
+		labels.SetIsRoutable()
+		labels.SetIsBase()
+		result.name = deploymentNameForAppBase(a, process)
+		result.selector = labels.ToBaseSelector()
+		return result, nil
+	}
+
+	depData, err := deploymentsDataForProcess(m.client, a, process)
+	if err != nil {
+		return result, err
+	}
+
+	if versionDep, ok := depData.versioned[version.Version()]; ok {
+		if versionDep.isLegacy {
+			labels.SetIsRoutable()
+		}
+		result.name = versionDep.dep.Name
+		result.selector = versionDep.dep.Spec.Selector.MatchLabels
+		return result, nil
+	}
+
+	if depData.base.dep != nil {
+		result.name = deploymentNameForApp(a, process, version.Version())
+		result.selector = labels.ToVersionSelector()
+		return result, nil
+	}
+
+	labels.SetIsBase()
+	if depData.count == 0 {
+		labels.SetIsRoutable()
+	}
+	result.name = deploymentNameForAppBase(a, process)
+	result.selector = labels.ToBaseSelector()
+	return result, nil
 }
 
 func (m *serviceManager) createServices(a provision.App, process string, version appTypes.AppVersion, labels, annotations *provision.LabelSet) error {

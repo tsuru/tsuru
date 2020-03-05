@@ -355,7 +355,7 @@ func changeState(a provision.App, process string, version appTypes.AppVersion, s
 	if err != nil {
 		return err
 	}
-	tsuruApp, err := loadAndEnsureAppCustomResourceSynced(client, a)
+	err = ensureAppCustomResourceSynced(client, a)
 	if err != nil {
 		return err
 	}
@@ -375,7 +375,7 @@ func changeState(a provision.App, process string, version appTypes.AppVersion, s
 		err = servicecommon.ChangeAppState(&serviceManager{
 			client: client,
 			writer: w,
-		}, a, process, state, v, len(tsuruApp.Spec.Deployments) > 0)
+		}, a, process, state, v)
 		if err != nil {
 			multiErr.Add(errors.Wrapf(err, "unable to update version v%d", v.Version()))
 		}
@@ -388,14 +388,14 @@ func changeUnits(a provision.App, units int, processName string, version appType
 	if err != nil {
 		return err
 	}
-	tsuruApp, err := loadAndEnsureAppCustomResourceSynced(client, a)
+	err = ensureAppCustomResourceSynced(client, a)
 	if err != nil {
 		return err
 	}
 	return servicecommon.ChangeUnits(&serviceManager{
 		client: client,
 		writer: w,
-	}, a, units, processName, version, len(tsuruApp.Spec.Deployments) > 0)
+	}, a, units, processName, version)
 }
 
 func (p *kubernetesProvisioner) AddUnits(a provision.App, units uint, processName string, version appTypes.AppVersion, w io.Writer) error {
