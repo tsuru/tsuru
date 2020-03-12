@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -468,12 +469,12 @@ var restartApp = action.Action{
 			return nil, errors.New("expected app ptr as first arg")
 		}
 		w, _ := ctx.Params[2].(io.Writer)
-		return nil, app.Restart("", w)
+		return nil, app.Restart("", "", w)
 	},
 	Backward: func(ctx action.BWContext) {
 		oldApp := ctx.Params[1].(*App)
 		w, _ := ctx.Params[2].(io.Writer)
-		err := oldApp.Restart("", w)
+		err := oldApp.Restart("", "", w)
 		if err != nil {
 			log.Errorf("BACKWARD update app - failed to restart app: %s", err)
 		}
@@ -522,9 +523,16 @@ var provisionAppAddUnits = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		unitCount := make(map[string]uint)
+		type unitKey struct {
+			process string
+			version int
+		}
+		unitCount := make(map[unitKey]uint)
 		for _, u := range units {
-			unitCount[u.ProcessName]++
+			unitCount[unitKey{
+				process: u.ProcessName,
+				version: u.Version,
+			}]++
 		}
 		routers := app.Routers
 		router := app.Router
@@ -537,8 +545,12 @@ var provisionAppAddUnits = action.Action{
 				_, err = rebuild.RebuildRoutes(app, false)
 			}
 		}()
-		for process, count := range unitCount {
-			err = app.AddUnits(count, process, w)
+		for processData, count := range unitCount {
+			var version string
+			if processData.version > 0 {
+				version = strconv.Itoa(processData.version)
+			}
+			err = app.AddUnits(count, processData.process, version, w)
 			if err != nil {
 				return nil, err
 			}

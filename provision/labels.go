@@ -185,11 +185,16 @@ func (s *LabelSet) WithoutRoutable() *LabelSet {
 	return ns
 }
 
-func filterByPrefix(m map[string]string, prefix string, withPrefix bool) map[string]string {
-	result := make(map[string]string, len(m))
-	for k, v := range m {
+func filterByPrefix(labels, raw map[string]string, prefix string, withPrefix bool) map[string]string {
+	result := make(map[string]string, len(labels))
+	for k, v := range labels {
 		hasPrefix := strings.HasPrefix(k, prefix)
 		if hasPrefix == withPrefix {
+			result[k] = v
+		}
+	}
+	if !withPrefix {
+		for k, v := range raw {
 			result[k] = v
 		}
 	}
@@ -197,7 +202,7 @@ func filterByPrefix(m map[string]string, prefix string, withPrefix bool) map[str
 }
 
 func (s *LabelSet) NodeMetadata() map[string]string {
-	m := filterByPrefix(s.Labels, s.Prefix, true)
+	m := filterByPrefix(s.Labels, s.RawLabels, s.Prefix, true)
 	for k := range m {
 		if strings.HasPrefix(k, s.Prefix+labelNodeInternalPrefix) {
 			delete(m, k)
@@ -207,7 +212,7 @@ func (s *LabelSet) NodeMetadata() map[string]string {
 }
 
 func (s *LabelSet) NodeMetadataNoPrefix() map[string]string {
-	m := filterByPrefix(s.Labels, s.Prefix, true)
+	m := filterByPrefix(s.Labels, s.RawLabels, s.Prefix, true)
 	for k, v := range m {
 		delete(m, k)
 		if !strings.HasPrefix(k, s.Prefix+labelNodeInternalPrefix) {
@@ -219,7 +224,7 @@ func (s *LabelSet) NodeMetadataNoPrefix() map[string]string {
 }
 
 func (s *LabelSet) NodeExtraData(cluster string) map[string]string {
-	m := filterByPrefix(s.Labels, s.Prefix, false)
+	m := filterByPrefix(s.Labels, s.RawLabels, s.Prefix, false)
 	for k, v := range s.Labels {
 		if strings.HasPrefix(k, s.Prefix+labelNodeInternalPrefix) {
 			m[k] = v

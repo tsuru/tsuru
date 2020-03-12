@@ -700,7 +700,7 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
 	writer := &bytes.Buffer{}
-	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
+	err = a.Sleep(writer, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)

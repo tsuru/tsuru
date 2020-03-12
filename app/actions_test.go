@@ -710,7 +710,7 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(1, "web", nil)
+	err = app.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)

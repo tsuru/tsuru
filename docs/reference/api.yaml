@@ -646,6 +646,9 @@ paths:
           in: formData
           type: string
           description: Process number to be restarted. If the process number will not informed, whole application will be restarted.
+        - name: version
+          in: formData
+          type: string
       produces:
         - application/x-json-stream
       responses:

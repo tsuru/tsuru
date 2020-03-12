@@ -533,9 +533,11 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
-			"y":          "b",
 			"tsuru.io/a": "1",
 			"b":          "2",
+		},
+		RawLabels: map[string]string{
+			"y": "b",
 		},
 		Prefix: tsuruLabelPrefix,
 	})

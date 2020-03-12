@@ -269,6 +269,14 @@ type setRoutableRequest struct {
 	Version    string `json:"version"`
 }
 
+// title: toggle an app version as routable
+// path: /app/{app}/routable
+// method: POST
+// responses:
+//   200: OK
+//   400: Bad request
+//   401: Not authorized
+//   404: App not found
 func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var args setRoutableRequest
 	err = ParseInput(r, &args)
@@ -286,6 +294,17 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateRoutable,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	version, err := servicemanager.AppVersion.VersionByImageOrVersion(&a, args.Version)
 	if err != nil {
 		if _, ok := err.(appTypes.ErrInvalidVersion); ok {
