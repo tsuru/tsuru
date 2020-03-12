@@ -63,20 +63,20 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner                 = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner             = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner    = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner          = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner        = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner           = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy               = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient     = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner    = &kubernetesProvisioner{}
-	_ provision.InterAppProvisioner         = &kubernetesProvisioner{}
-	_ provision.HCProvisioner               = &kubernetesProvisioner{}
-	_ provision.RoutableVersionsProvisioner = &kubernetesProvisioner{}
-	_ cluster.ClusteredProvisioner          = &kubernetesProvisioner{}
-	_ cluster.ClusterProvider               = &kubernetesProvisioner{}
+	_ provision.Provisioner              = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
+	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
+	_ provision.HCProvisioner            = &kubernetesProvisioner{}
+	_ provision.VersionsProvisioner      = &kubernetesProvisioner{}
+	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
+	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -1743,4 +1743,20 @@ func toggleRoutableDeployment(client *ClusterClient, dep *appsv1.Deployment, isR
 		}
 	}
 	return nil
+}
+
+func (p *kubernetesProvisioner) DeployedVersions(a provision.App) ([]int, error) {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	deps, err := deploymentsDataForApp(client, a)
+	if err != nil {
+		return nil, err
+	}
+	var versions []int
+	for v := range deps.versioned {
+		versions = append(versions, v)
+	}
+	return versions, nil
 }

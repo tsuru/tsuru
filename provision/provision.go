@@ -306,8 +306,9 @@ type BuilderDeployKubeClient interface {
 	GetClient(App) (BuilderKubeClient, error)
 }
 
-type RoutableVersionsProvisioner interface {
+type VersionsProvisioner interface {
 	ToggleRoutable(App, appTypes.AppVersion, bool) error
+	DeployedVersions(App) ([]int, error)
 }
 
 // Provisioner is the basic interface of this package.

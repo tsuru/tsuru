@@ -1057,6 +1057,12 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 			return result, errors.Errorf("more than one deployment for the same app version found: %v", names)
 		}
 		versionDep := versionDeps[0]
+		if versionDep.isBase {
+			labels.SetIsBase()
+		}
+		if versionDep.isRoutable {
+			labels.SetIsRoutable()
+		}
 		result.isLegacy = versionDep.isLegacy
 		result.name = versionDep.dep.Name
 		result.selector = versionDep.dep.Spec.Selector.MatchLabels

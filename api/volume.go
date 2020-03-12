@@ -308,7 +308,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart("", evt)
+	return a.Restart("", "", evt)
 }
 
 // title: volume unbind
@@ -371,5 +371,5 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart("", evt)
+	return a.Restart("", "", evt)
 }

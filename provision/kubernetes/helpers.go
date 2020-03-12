@@ -670,9 +670,11 @@ type groupedDeployments struct {
 }
 
 type deploymentInfo struct {
-	dep      *appsv1.Deployment
-	process  string
-	isLegacy bool
+	dep        *appsv1.Deployment
+	process    string
+	isLegacy   bool
+	isBase     bool
+	isRoutable bool
 }
 
 func deploymentsDataForProcess(client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
@@ -701,9 +703,11 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 		version := labels.Version()
 		isLegacy := false
 		isBase := labels.IsBase()
+		isRoutable := labels.IsRoutable()
 		if version == 0 {
 			isBase = true
 			isLegacy = true
+			isRoutable = true
 			if len(dep.Spec.Template.Spec.Containers) == 0 {
 				continue
 			}
@@ -714,8 +718,10 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 			continue
 		}
 		di := deploymentInfo{
-			dep:      &deps[i],
-			isLegacy: isLegacy,
+			dep:        &deps[i],
+			isLegacy:   isLegacy,
+			isBase:     isBase,
+			isRoutable: isRoutable,
 		}
 		result.versioned[version] = append(result.versioned[version], di)
 		if isBase {
@@ -949,7 +955,7 @@ func labelOnlySetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 	for k, v := range meta.Labels {
 		trimmedKey := strings.TrimPrefix(k, tsuruLabelPrefix)
 		if trimmedKey != k {
-			labels[trimmedKey] = v
+			labels[k] = v
 		} else {
 			rawLabels[k] = v
 		}

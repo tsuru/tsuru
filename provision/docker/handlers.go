@@ -289,7 +289,7 @@ func tryRestartAppsByFilter(filter *app.Filter, writer io.Writer) error {
 		go func(i int) {
 			defer wg.Done()
 			a := apps[i]
-			err := a.Restart("", writer)
+			err := a.Restart("", "", writer)
 			if err != nil {
 				fmt.Fprintf(writer, "Error: unable to restart %s: %s\n", a.Name, err.Error())
 			} else {

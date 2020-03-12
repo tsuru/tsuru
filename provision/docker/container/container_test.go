@@ -962,6 +962,7 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 		Status:      provision.StatusBuilding,
 		ProcessName: "web",
 		Address:     &url.URL{Scheme: "http", Host: "192.168.50.4:8080"},
+		Routable:    true,
 	}
 	container := Container{Container: types.Container{
 		ID:          "c-id",

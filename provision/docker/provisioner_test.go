@@ -1814,6 +1814,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 				Scheme: "http",
 				Host:   "192.168.123.9:9025",
 			},
+			Routable: true,
 		},
 	}
 	c.Assert(units, check.DeepEquals, expected)
@@ -1922,6 +1923,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 				Scheme: "http",
 				Host:   "10.0.0.7:9025",
 			},
+			Routable: true,
 		},
 		{
 			ID:      "9930c24f1c4j",
@@ -1933,6 +1935,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 				Scheme: "http",
 				Host:   "10.0.0.7:9025",
 			},
+			Routable: true,
 		},
 	}
 	c.Assert(units, check.DeepEquals, expected)
@@ -1969,6 +1972,7 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 				Scheme: "http",
 				Host:   "127.0.0.1:9025",
 			},
+			Routable: true,
 		},
 	}
 	c.Assert(units, check.DeepEquals, expected)

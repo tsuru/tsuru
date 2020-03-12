@@ -596,6 +596,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return err
 	}
 	processName := InputValue(r, "process")
+	version := InputValue(r, "version")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -623,7 +624,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.AddUnits(n, processName, evt)
+	return a.AddUnits(n, processName, version, evt)
 }
 
 // title: remove units
@@ -641,6 +642,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
+	version := InputValue(r, "version")
 	processName := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -669,7 +671,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.RemoveUnits(n, processName, evt)
+	return a.RemoveUnits(n, processName, version, evt)
 }
 
 // title: set unit status
@@ -1454,6 +1456,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1482,7 +1485,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart(process, evt)
+	return a.Restart(process, version, evt)
 }
 
 // title: app sleep
@@ -1496,6 +1499,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1533,7 +1537,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Sleep(evt, process, proxyURL)
+	return a.Sleep(evt, process, version, proxyURL)
 }
 
 // title: app log
@@ -1662,6 +1666,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1690,7 +1695,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Start(evt, process)
+	return a.Start(evt, process, version)
 }
 
 // title: app stop
@@ -1704,6 +1709,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := InputValue(r, "process")
+	version := InputValue(r, "version")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1731,7 +1737,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Stop(evt, process)
+	return a.Stop(evt, process, version)
 }
 
 // title: app unlock

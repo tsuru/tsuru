@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -719,7 +720,7 @@ func (app *App) UnbindUnit(unit *provision.Unit) error {
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(n uint, process string, w io.Writer) error {
+func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
@@ -732,7 +733,7 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 			return errors.New("Cannot add units to an app that has stopped or sleeping units")
 		}
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersion(versionStr)
 	if err != nil {
 		return err
 	}
@@ -754,13 +755,13 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 //
 //     1. Remove units from the provisioner
 //     2. Update quota
-func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
+func (app *App) RemoveUnits(n uint, process, versionStr string, w io.Writer) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
 	w = app.withLogWriter(w)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersion(versionStr)
 	if err != nil {
 		return err
 	}
@@ -1245,7 +1246,7 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
-func (app *App) Restart(process string, w io.Writer) error {
+func (app *App) Restart(process, versionStr string, w io.Writer) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("---- Restarting process %q ----", process)
 	if process == "" {
@@ -1256,7 +1257,7 @@ func (app *App) Restart(process string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersionAllowNil(versionStr)
 	if err != nil {
 		return err
 	}
@@ -1269,7 +1270,7 @@ func (app *App) Restart(process string, w io.Writer) error {
 	return nil
 }
 
-func (app *App) Stop(w io.Writer, process string) error {
+func (app *App) Stop(w io.Writer, process, versionStr string) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("\n ---> Stopping the process %q", process)
 	if process == "" {
@@ -1280,7 +1281,7 @@ func (app *App) Stop(w io.Writer, process string) error {
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersionAllowNil(versionStr)
 	if err != nil {
 		return err
 	}
@@ -1292,7 +1293,7 @@ func (app *App) Stop(w io.Writer, process string) error {
 	return nil
 }
 
-func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
+func (app *App) Sleep(w io.Writer, process, versionStr string, proxyURL *url.URL) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -1332,7 +1333,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 			return err
 		}
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersionAllowNil(versionStr)
 	if err != nil {
 		return err
 	}
@@ -1994,7 +1995,7 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
-func (app *App) Start(w io.Writer, process string) error {
+func (app *App) Start(w io.Writer, process, versionStr string) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("\n ---> Starting the process %q", process)
 	if process == "" {
@@ -2005,7 +2006,7 @@ func (app *App) Start(w io.Writer, process string) error {
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := app.getVersionAllowNil(versionStr)
 	if err != nil {
 		return err
 	}
@@ -2467,9 +2468,82 @@ func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error 
 	if err != nil {
 		return err
 	}
-	rprov, ok := prov.(provision.RoutableVersionsProvisioner)
+	rprov, ok := prov.(provision.VersionsProvisioner)
 	if !ok {
 		return errors.Errorf("provisioner %v does not support setting versions routable", prov.GetName())
 	}
 	return rprov.ToggleRoutable(app, version, isRoutable)
+}
+
+func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
+
+	if !isVersionProv {
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+		if err != nil {
+			return nil, err
+		}
+		if version != "" {
+			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+			if err != nil {
+				return nil, err
+			}
+			if latest.Version() != v.Version() {
+				return nil, errors.Errorf("explicit version not supported for provisioner %v", prov.GetName())
+			}
+		}
+		return latest, nil
+	}
+
+	if version != "" {
+		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+	}
+
+	versions, err := versionProv.DeployedVersions(app)
+	if err != nil {
+		return nil, err
+	}
+	if len(versions) == 0 {
+		return servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	}
+	if len(versions) > 1 {
+		return nil, errors.Errorf("more than one version deployed, you must select one")
+	}
+
+	return servicemanager.AppVersion.VersionByImageOrVersion(app, strconv.Itoa(versions[0]))
+}
+
+func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	_, isVersionProv := prov.(provision.VersionsProvisioner)
+
+	if !isVersionProv {
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+		if err != nil {
+			return nil, err
+		}
+		if version != "" {
+			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+			if err != nil {
+				return nil, err
+			}
+			if latest.Version() != v.Version() {
+				return nil, errors.Errorf("explicit version not supported for provisioner %v", prov.GetName())
+			}
+		}
+		return latest, nil
+	}
+
+	if version != "" {
+		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+	}
+
+	return nil, nil
 }

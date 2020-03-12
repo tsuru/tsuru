@@ -629,6 +629,7 @@ func (s *S) TestUnits(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 				{Scheme: "http", Host: "192.168.99.1:30003"},
 			},
+			Routable: true,
 		},
 		{
 			AppName:     "myapp",
@@ -643,6 +644,7 @@ func (s *S) TestUnits(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 				{Scheme: "http", Host: "192.168.99.1:30003"},
 			},
+			Routable: true,
 		},
 	})
 }
