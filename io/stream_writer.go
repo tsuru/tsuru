@@ -214,12 +214,20 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	if msg.Error != "" {
 		return errors.New(msg.Error)
 	}
-	if tsw, ok := out.(*tsWriter); ok && !f.NoTimestamp {
-		tsw.setTS(msg.Timestamp)
-	}
 	parts := bytes.SplitAfter([]byte(msg.Message), []byte("\n"))
-	for _, part := range parts {
-		err = f.formatMessagePart(out, part)
+	for i, part := range parts {
+		_ = i
+		if len(part) == 0 {
+			continue
+		}
+		isJSON := likeJSON(part)
+		if !isJSON {
+			f.Close()
+		}
+		if tsw, ok := out.(*tsWriter); ok && !f.NoTimestamp {
+			tsw.setTS(msg.Timestamp)
+		}
+		err = f.formatMessagePart(out, part, isJSON)
 		if err != nil {
 			return err
 		}
@@ -227,9 +235,10 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	return nil
 }
 
-func (f *SimpleJsonMessageFormatter) formatMessagePart(out io.Writer, msg []byte) error {
-	if !likeJSON(msg) {
-		f.Close()
+var mockIsTerm func() bool = nil
+
+func (f *SimpleJsonMessageFormatter) formatMessagePart(out io.Writer, msg []byte, isJSON bool) error {
+	if !isJSON {
 		_, err := out.Write(msg)
 		return err
 	}
@@ -247,6 +256,9 @@ func (f *SimpleJsonMessageFormatter) formatMessagePart(out io.Writer, msg []byte
 		if fd != -1 {
 			isTerm = terminal.IsTerminal(fd)
 			uintFD = uintptr(fd)
+		}
+		if mockIsTerm != nil {
+			isTerm = mockIsTerm()
 		}
 		f.done = make(chan struct{})
 		go func() {
@@ -266,10 +278,14 @@ func (f *SimpleJsonMessageFormatter) formatMessagePart(out io.Writer, msg []byte
 
 type SimpleJsonMessageEncoderWriter struct {
 	*json.Encoder
+	now func() time.Time
 }
 
 func (w *SimpleJsonMessageEncoderWriter) Write(msg []byte) (int, error) {
-	err := w.Encode(SimpleJsonMessage{Message: string(msg), Timestamp: time.Now().UTC()})
+	if w.now == nil {
+		w.now = time.Now
+	}
+	err := w.Encode(SimpleJsonMessage{Message: string(msg), Timestamp: w.now().UTC()})
 	if err != nil {
 		return 0, err
 	}

@@ -271,9 +271,13 @@ var mockPullOutput = `{"status":"Pulling from tsuru/static","id":"latest"}
 {"status":"Pulling fs layer","progressDetail":{},"id":"bac681833e51"}
 {"status":"Pulling fs layer","progressDetail":{},"id":"7302e23ef08a"}
 {"status":"Downloading","progressDetail":{"current":621,"total":621},"progress":"[==================================================\u003e]    621 B/621 B","id":"bac681833e51"}
+
 {"status":"Verifying Checksum","progressDetail":{},"id":"bac681833e51"}
+
 {"status":"Download complete","progressDetail":{},"id":"bac681833e51"}
+
 {"status":"Downloading","progressDetail":{"current":1854,"total":1854},"progress":"[==================================================\u003e] 1.854 kB/1.854 kB","id":"106572778bf7"}
+
 {"status":"Verifying Checksum","progressDetail":{},"id":"106572778bf7"}
 {"status":"Download complete","progressDetail":{},"id":"106572778bf7"}
 {"status":"Extracting","progressDetail":{"current":1854,"total":1854},"progress":"[==================================================\u003e] 1.854 kB/1.854 kB","id":"106572778bf7"}
@@ -300,7 +304,7 @@ var mockPullOutput = `{"status":"Pulling from tsuru/static","id":"latest"}
 func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	buf := bytes.Buffer{}
 	encoder := json.NewEncoder(&buf)
-	writer := SimpleJsonMessageEncoderWriter{encoder}
+	writer := SimpleJsonMessageEncoderWriter{Encoder: encoder}
 	for _, l := range bytes.Split([]byte(mockPullOutput), []byte("\n")) {
 		writer.Write(l)
 	}
@@ -332,6 +336,42 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 		prefix+"7302e23ef08a: Pull complete\n"+
 		prefix+"Digest: sha256:b754472891aa7e33fc0214e3efa988174f2c2289285fcae868b7ec8b6675fc77\n"+
 		prefix+"Status: Downloaded newer image for 192.168.50.4:5000/tsuru/static\n"+
+		"no json 2\n")
+}
+
+func (s *S) TestSimpleJsonMessageFormatterJsonInJsonInTerminal(c *check.C) {
+	mockIsTerm = func() bool {
+		return true
+	}
+	defer func() {
+		mockIsTerm = nil
+	}()
+	buf := bytes.Buffer{}
+	encoder := json.NewEncoder(&buf)
+	writer := SimpleJsonMessageEncoderWriter{Encoder: encoder, now: func() time.Time {
+		return time.Time{}
+	}}
+	for _, l := range bytes.Split([]byte(mockPullOutput), []byte("\n")) {
+		writer.Write(l)
+	}
+	parts := bytes.Split(buf.Bytes(), []byte("\n"))
+	parts = append([][]byte{[]byte(`{"message":"no json 1\n"}`)}, parts...)
+	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
+	outBuf := bytes.Buffer{}
+	streamWriter := NewStreamWriter(&outBuf, nil)
+	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	c.Assert(err, check.IsNil)
+	c.Assert(written > 0, check.Equals, true)
+	err = streamWriter.Close()
+	c.Assert(err, check.IsNil)
+	c.Assert(outBuf.String(), check.Equals, "no json 1\n"+
+		"latest: Pulling from tsuru/static\n"+
+		"\n"+
+		"\x1b[1A\x1b[1K\x1b[K\ra6aa3b66376f: Already exists \r\x1b[1B\n"+
+		"\x1b[1A\x1b[1K\x1b[K\r106572778bf7: Pulling fs layer \r\x1b[1B\n"+
+		"\x1b[1A\x1b[1K\x1b[K\rbac681833e51: Pulling fs layer \r\x1b[1B\n"+
+		"\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Pulling fs layer \r\x1b[1B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Downloading [==================================================>]     621B/621B\r\x1b[2B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Verifying Checksum \r\x1b[2B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Download complete \r\x1b[2B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Downloading [==================================================>]  1.854kB/1.854kB\r\x1b[3B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Verifying Checksum \r\x1b[3B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Download complete \r\x1b[3B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Extracting [==================================================>]  1.854kB/1.854kB\r\x1b[3B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Extracting [==================================================>]  1.854kB/1.854kB\r\x1b[3B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Downloading [>                                                  ]    233kB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Downloading [=>                                                 ]  462.4kB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Downloading [====================>                              ]  8.491MB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Downloading [=================================================> ]  20.88MB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Verifying Checksum \r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Download complete \r\x1b[1B\x1b[3A\x1b[1K\x1b[K\r106572778bf7: Pull complete \r\x1b[3B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Extracting [==================================================>]     621B/621B\r\x1b[2B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Extracting [==================================================>]     621B/621B\r\x1b[2B\x1b[2A\x1b[1K\x1b[K\rbac681833e51: Pull complete \r\x1b[2B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Extracting [>                                                  ]  229.4kB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Extracting [=>                                                 ]  458.8kB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Extracting [==========================>                        ]  11.24MB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Extracting [==================================================>]  21.06MB/21.06MB\r\x1b[1B\x1b[1A\x1b[1K\x1b[K\r7302e23ef08a: Pull complete \r\x1b[1BDigest: sha256:b754472891aa7e33fc0214e3efa988174f2c2289285fcae868b7ec8b6675fc77\n"+
+		"Status: Downloaded newer image for 192.168.50.4:5000/tsuru/static\n"+
 		"no json 2\n")
 }
 
@@ -402,7 +442,7 @@ func (s *S) TestSimpleJsonMessageFormatterMixedJsonInJson(c *check.C) {
 func (s *S) TestSimpleJsonMessageEncoderWriter(c *check.C) {
 	buf := bytes.Buffer{}
 	encoder := json.NewEncoder(&buf)
-	writer := SimpleJsonMessageEncoderWriter{encoder}
+	writer := SimpleJsonMessageEncoderWriter{Encoder: encoder}
 	written, err := writer.Write([]byte("my cool msg"))
 	c.Assert(written, check.Equals, 11)
 	c.Assert(err, check.IsNil)
