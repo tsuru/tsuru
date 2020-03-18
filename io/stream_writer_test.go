@@ -340,6 +340,8 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 }
 
 func (s *S) TestSimpleJsonMessageFormatterJsonInJsonInTerminal(c *check.C) {
+	defer os.Setenv("TERM", os.Getenv("TERM"))
+	os.Setenv("TERM", "my-invalid-term")
 	mockIsTerm = func() bool {
 		return true
 	}
