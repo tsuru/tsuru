@@ -155,7 +155,7 @@ func (s *LabelSet) NodeIaaSID() string {
 	return s.getLabel(labelNodeIaaSID)
 }
 
-func (s *LabelSet) Version() int {
+func (s *LabelSet) AppVersion() int {
 	v, _ := strconv.Atoi(s.getLabel(labelAppVersion))
 	return v
 }

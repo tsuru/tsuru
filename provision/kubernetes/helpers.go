@@ -472,13 +472,17 @@ func waitForPod(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, 
 	})
 }
 
-func cleanupPods(client *ClusterClient, opts metav1.ListOptions, namespace string) error {
-	pods, err := client.CoreV1().Pods(namespace).List(opts)
+func cleanupPods(client *ClusterClient, opts metav1.ListOptions, controller metav1.Object) error {
+	pods, err := client.CoreV1().Pods(controller.GetNamespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		if !metav1.IsControlledBy(&pod, controller) {
+			continue
+		}
+
+		err = client.CoreV1().Pods(controller.GetNamespace()).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
@@ -490,20 +494,33 @@ func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
 	return &p
 }
 
-func cleanupReplicas(client *ClusterClient, opts metav1.ListOptions, namespace string) error {
-	replicas, err := client.AppsV1().ReplicaSets(namespace).List(opts)
+func cleanupReplicas(client *ClusterClient, dep *appsv1.Deployment) error {
+	selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
+	if err != nil {
+		return err
+	}
+	listOpts := metav1.ListOptions{
+		LabelSelector: selector.String(),
+	}
+
+	replicas, err := client.AppsV1().ReplicaSets(dep.Namespace).List(listOpts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	for _, replica := range replicas.Items {
-		err = client.AppsV1().ReplicaSets(namespace).Delete(replica.Name, &metav1.DeleteOptions{
+		if !metav1.IsControlledBy(&replica, dep) {
+			continue
+		}
+
+		err = client.AppsV1().ReplicaSets(dep.Namespace).Delete(replica.Name, &metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 	}
-	return cleanupPods(client, opts, namespace)
+	return cleanupPods(client, listOpts, dep)
 }
 
 func selectorForVersion(a provision.App, process string, version appTypes.AppVersion) (*provision.LabelSet, error) {
@@ -532,7 +549,7 @@ func hasLegacyVersionForApp(client *ClusterClient, a provision.App) (bool, error
 			Labels: dep.Spec.Selector.MatchLabels,
 			Prefix: tsuruLabelPrefix,
 		}
-		if !selectorLabels.IsBase() && selectorLabels.Version() == 0 {
+		if !selectorLabels.IsBase() && selectorLabels.AppVersion() == 0 {
 			return true, nil
 		}
 	}
@@ -547,7 +564,7 @@ func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVers
 	for _, dep := range deps {
 		labels := labelSetFromMeta(&dep.ObjectMeta)
 
-		if !(labels.IsBase() || labels.Version() == 0) {
+		if !(labels.IsBase() || labels.AppVersion() == 0) {
 			continue
 		}
 
@@ -700,7 +717,7 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 	result.count = len(deps)
 	for i, dep := range deps {
 		labels := labelSetFromMeta(&dep.ObjectMeta)
-		version := labels.Version()
+		version := labels.AppVersion()
 		isLegacy := false
 		isBase := labels.IsBase()
 		isRoutable := labels.IsRoutable()
@@ -732,72 +749,54 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 }
 
 func deploymentForVersion(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*appsv1.Deployment, error) {
-	deps, err := allDeploymentsForAppProcess(client, a, process)
+	groupedDeps, err := deploymentsDataForProcess(client, a, process)
 	if err != nil {
 		return nil, err
 	}
-	for _, dep := range deps {
-		labels := labelSetFromMeta(&dep.ObjectMeta)
-		if labels.Version() == version.Version() {
-			return &dep, nil
-		}
+
+	depsData := groupedDeps.versioned[version.Version()]
+	if len(depsData) == 0 {
+		return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, version.Version()))
 	}
 
-	// Deployment not found by version match, fallback to matching image tags
-	// for old deployments from before multiple versions were enabled.
-	for _, dep := range deps {
-		if len(dep.Spec.Template.Spec.Containers) == 0 {
-			continue
-		}
-		img := dep.Spec.Template.Spec.Containers[0].Image
-		if img == version.VersionInfo().DeployImage {
-			return &dep, nil
-		}
+	if len(depsData) > 1 {
+		return nil, errors.Errorf("two many deployments for same version %d and process %q: %d", version.Version(), process, len(depsData))
 	}
 
-	return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, version.Version()))
+	return depsData[0].dep, nil
 }
 
 func cleanupSingleDeployment(client *ClusterClient, dep *appsv1.Deployment) error {
 	err := client.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil
+		}
 		return errors.WithStack(err)
 	}
-	selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
-	if err != nil {
-		return err
-	}
-	return cleanupReplicas(client, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	}, dep.Namespace)
+
+	return cleanupReplicas(client, dep)
 }
 
 func cleanupDeployment(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) error {
 	dep, err := deploymentForVersion(client, a, process, version)
-	if err == nil {
-		err = client.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{
-			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-		})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return errors.WithStack(err)
-		}
-	} else {
+	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
 
-	svcLabels, err := selectorForVersion(a, process, version)
-	if err != nil {
-		return err
+	err = client.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
 	}
-	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToVersionSelector()))
-	return cleanupReplicas(client, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	}, dep.Namespace)
+
+	return cleanupReplicas(client, dep)
 }
 
 func allServicesForAppProcess(client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
@@ -843,7 +842,7 @@ func cleanupServices(client *ClusterClient, a provision.App, process string, ver
 	var toDelete []apiv1.Service
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
-		svcVersion := labels.Version()
+		svcVersion := labels.AppVersion()
 		if svcVersion == version.Version() || !processInUse {
 			toDelete = append(toDelete, svc)
 		}
@@ -863,7 +862,14 @@ func cleanupServices(client *ClusterClient, a provision.App, process string, ver
 func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
 	ns := client.PoolNamespace(pool)
-	err := client.AppsV1().DaemonSets(ns).Delete(dsName, &metav1.DeleteOptions{
+	ds, err := client.AppsV1().DaemonSets(ns).Get(dsName, metav1.GetOptions{})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.WithStack(err)
+	}
+	err = client.AppsV1().DaemonSets(ns).Delete(dsName, &metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -877,7 +883,7 @@ func cleanupDaemonSet(client *ClusterClient, name, pool string) error {
 	})
 	return cleanupPods(client, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
-	}, ns)
+	}, ds)
 }
 
 func cleanupPod(client *ClusterClient, podName, namespace string) error {

@@ -685,11 +685,11 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, dep := range deps {
 		labels := labelSetFromMeta(&dep.ObjectMeta)
-		toKeep := labels.AppReplicas() > 0 && (preserveOldVersions || labels.Version() == deployedVersion.Version())
+		toKeep := labels.AppReplicas() > 0 && (preserveOldVersions || labels.AppVersion() == deployedVersion.Version())
 
 		if toKeep {
 			processInUse[labels.AppProcess()] = struct{}{}
-			versionInUse[processVersionKey{process: labels.AppProcess(), version: labels.Version()}] = struct{}{}
+			versionInUse[processVersionKey{process: labels.AppProcess(), version: labels.AppVersion()}] = struct{}{}
 		} else {
 			err = cleanupSingleDeployment(m.client, &dep)
 			if err != nil {
@@ -704,7 +704,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	}
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
-		svcVersion := labels.Version()
+		svcVersion := labels.AppVersion()
 		_, inUseProcess := processInUse[labels.AppProcess()]
 		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
 

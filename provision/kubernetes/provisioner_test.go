@@ -1954,7 +1954,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	s.mock.MockfakeNodes(c)
 	ns := s.client.PoolNamespace("p1")
-	_, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
+	ds, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: ns,
@@ -1971,6 +1971,9 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 				"tsuru.io/provisioner":         provisionerName,
 				"tsuru.io/node-container-name": "bs",
 				"tsuru.io/node-container-pool": "p1",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(ds, appsv1.SchemeGroupVersion.WithKind("DaemonSet")),
 			},
 		},
 	})
