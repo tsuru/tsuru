@@ -47,7 +47,7 @@ type ServiceManager interface {
 	RemoveService(a provision.App, processName string, version appTypes.AppVersion) error
 	CurrentLabels(a provision.App, processName string, version appTypes.AppVersion) (*provision.LabelSet, error)
 	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error
-	CleanupServices(a provision.App, version appTypes.AppVersion) error
+	CleanupServices(a provision.App, version appTypes.AppVersion, preserveOldVersions bool) error
 }
 
 func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, args provision.DeployArgs, updateSpec ProcessSpec) error {
@@ -240,11 +240,9 @@ var removeOldServices = &action.Action{
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		if !args.preserveVersions {
-			err = args.manager.CleanupServices(args.app, args.newVersion)
-			if err != nil {
-				log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
-			}
+		err = args.manager.CleanupServices(args.app, args.newVersion, args.preserveVersions)
+		if err != nil {
+			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}
 		return nil, nil
 	},

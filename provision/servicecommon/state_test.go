@@ -40,6 +40,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb, version: latestVersion, preserveVersions: true},
 		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
+		{action: "cleanup", app: fakeApp, version: latestVersion, preserveVersions: true},
 	})
 	m.reset()
 	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion)
@@ -54,6 +55,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb, version: latestVersion, preserveVersions: true},
 		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
+		{action: "cleanup", app: fakeApp, version: latestVersion, preserveVersions: true},
 	})
 }
 
@@ -86,6 +88,7 @@ func (s *S) TestChangeUnits(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", replicas: 0, labels: labelsWeb, version: latestVersion, preserveVersions: true},
 		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
+		{action: "cleanup", app: fakeApp, version: latestVersion, preserveVersions: true},
 	})
 	err = ChangeUnits(m, fakeApp, 1, "", latestVersion)
 	c.Assert(err, check.ErrorMatches, "process error: no process name specified and more than one declared in Procfile")
@@ -111,5 +114,6 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", replicas: 1, labels: labelsWeb, version: latestVersion, preserveVersions: true},
+		{action: "cleanup", app: fakeApp, version: latestVersion, preserveVersions: true},
 	})
 }

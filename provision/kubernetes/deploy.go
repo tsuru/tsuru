@@ -669,18 +669,27 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) CleanupServices(a provision.App, version appTypes.AppVersion) error {
+func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTypes.AppVersion, preserveOldVersions bool) error {
 	deps, err := allDeploymentsForApp(m.client, a)
 	if err != nil {
 		return err
 	}
 
+	type processVersionKey struct {
+		process string
+		version int
+	}
+
 	processInUse := map[string]struct{}{}
+	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, dep := range deps {
 		labels := labelSetFromMeta(&dep.ObjectMeta)
-		if labels.Version() == version.Version() {
+		toKeep := labels.AppReplicas() > 0 && (preserveOldVersions || labels.Version() == deployedVersion.Version())
+
+		if toKeep {
 			processInUse[labels.AppProcess()] = struct{}{}
+			versionInUse[processVersionKey{process: labels.AppProcess(), version: labels.Version()}] = struct{}{}
 		} else {
 			err = cleanupSingleDeployment(m.client, &dep)
 			if err != nil {
@@ -695,10 +704,13 @@ func (m *serviceManager) CleanupServices(a provision.App, version appTypes.AppVe
 	}
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
-		_, inUse := processInUse[labels.AppProcess()]
 		svcVersion := labels.Version()
+		_, inUseProcess := processInUse[labels.AppProcess()]
+		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
 
-		if (svcVersion == 0 && inUse) || svcVersion == version.Version() {
+		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
+
+		if toKeep {
 			continue
 		}
 

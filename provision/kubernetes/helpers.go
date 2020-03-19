@@ -783,7 +783,10 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string, v
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-	} else if !k8sErrors.IsNotFound(err) {
+	} else {
+		if k8sErrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
