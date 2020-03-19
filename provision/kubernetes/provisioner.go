@@ -327,16 +327,17 @@ func (p *kubernetesProvisioner) removeResources(client *ClusterClient, tsuruApp 
 }
 
 func versionsForAppProcess(client *ClusterClient, a provision.App, process string) ([]appTypes.AppVersion, error) {
-	deps, err := allDeploymentsForApp(client, a)
+	grouped, err := deploymentsDataForApp(client, a)
 	if err != nil {
 		return nil, err
 	}
 
 	versionSet := map[int]struct{}{}
-	for _, dep := range deps {
-		ls := labelSetFromMeta(&dep.ObjectMeta)
-		if process == "" || process == ls.AppProcess() {
-			versionSet[ls.Version()] = struct{}{}
+	for v, deps := range grouped.versioned {
+		for _, depData := range deps {
+			if process == "" || process == depData.process {
+				versionSet[v] = struct{}{}
+			}
 		}
 	}
 
@@ -505,7 +506,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		urls := []url.URL{}
 		appProcess := l.AppProcess()
 		if appProcess != "" {
-			srvName := serviceNameForApp(podApp, appProcess, l.Version())
+			srvName := serviceNameForApp(podApp, appProcess, l.AppVersion())
 			ports, ok := portsMap[srvName]
 			if !ok {
 				ports, err = getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
@@ -531,7 +532,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			Status:      stateMap[pod.Status.Phase],
 			Address:     u,
 			Addresses:   urls,
-			Version:     l.Version(),
+			Version:     l.AppVersion(),
 			Routable:    l.IsRoutable(),
 		})
 	}
@@ -694,7 +695,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 
 		for _, dep := range deployments {
 			labels := labelSetFromMeta(&dep.ObjectMeta)
-			activeVersion := labels.Version()
+			activeVersion := labels.AppVersion()
 			if activeVersion == 0 {
 				continue
 			}
@@ -773,7 +774,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 		if labelSet.AppProcess() != processName {
 			continue
 		}
-		if version != 0 && labelSet.Version() != version {
+		if version != 0 && labelSet.AppVersion() != version {
 			continue
 		}
 		if isPodReady(&pod) {

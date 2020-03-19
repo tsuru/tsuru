@@ -2388,6 +2388,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 					Annotations: map[string]string{
 						"deployment.kubernetes.io/revision": strconv.Itoa(rev),
 					},
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+					},
 				},
 			})
 			c.Assert(repErr, check.IsNil)
@@ -2605,7 +2608,6 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 			"p1": "cm1",
 		},
 	})
-	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
 		Version: version,
@@ -2619,6 +2621,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/is-service":           "true",
 		"tsuru.io/is-deploy":            "false",
 		"tsuru.io/is-isolated-run":      "false",
+		"tsuru.io/is-base":              "true",
 		"tsuru.io/app-name":             a.GetName(),
 		"tsuru.io/app-process":          "p1",
 		"tsuru.io/app-version":          "1",
@@ -2631,11 +2634,17 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	}
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	rs, err := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
 			Labels:    expectedLabels,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&deps.Items[0], appsv1.SchemeGroupVersion.WithKind("Deployment")),
+			},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -2644,23 +2653,26 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 			Name:      "myapp-p1-xyz",
 			Namespace: ns,
 			Labels:    expectedLabels,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
+			},
 		},
 	})
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(a, "p1", version)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err = s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
 	srvs, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
 	replicas, err := s.client.Clientset.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
+	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 0)
 }
 
 func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {

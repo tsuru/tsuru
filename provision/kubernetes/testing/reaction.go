@@ -587,6 +587,9 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Status.Phase = apiv1.PodRunning
 			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
+			pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+			}
 			pod.Spec.NodeName = "n1"
 			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),

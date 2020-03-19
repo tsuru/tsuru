@@ -2487,7 +2487,7 @@ func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
 		if err != nil {
 			return nil, err
 		}
-		if version != "" {
+		if version != "" && version != "0" {
 			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
 			if err != nil {
 				return nil, err
@@ -2499,7 +2499,7 @@ func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
 		return latest, nil
 	}
 
-	if version != "" {
+	if version != "" && version != "0" {
 		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
 	}
 
@@ -2529,7 +2529,7 @@ func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) 
 		if err != nil {
 			return nil, err
 		}
-		if version != "" {
+		if version != "" && version != "0" {
 			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
 			if err != nil {
 				return nil, err
@@ -2541,7 +2541,7 @@ func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) 
 		return latest, nil
 	}
 
-	if version != "" {
+	if version != "" && version != "0" {
 		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
 	}
 
