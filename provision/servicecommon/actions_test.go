@@ -123,11 +123,12 @@ func (m *recordManager) DeployService(ctx context.Context, a provision.App, proc
 	return nil
 }
 
-func (m *recordManager) CleanupServices(a provision.App, version appTypes.AppVersion) error {
+func (m *recordManager) CleanupServices(a provision.App, version appTypes.AppVersion, preserveVersions bool) error {
 	call := managerCall{
-		action:  "cleanup",
-		app:     a,
-		version: version,
+		action:           "cleanup",
+		app:              a,
+		version:          version,
+		preserveVersions: preserveVersions,
 	}
 	m.calls = append(m.calls, call)
 	return nil
