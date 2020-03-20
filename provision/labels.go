@@ -278,6 +278,10 @@ func (s *LabelSet) IsRoutable() bool {
 	return s.getBoolLabel(labelIsRoutable)
 }
 
+func (s *LabelSet) IsHeadlessService() bool {
+	return s.getBoolLabel(labelIsHeadlessService)
+}
+
 func (s *LabelSet) SetRestarts(count int) {
 	s.addLabel(labelRestarts, strconv.Itoa(count))
 }

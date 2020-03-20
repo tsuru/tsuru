@@ -635,10 +635,10 @@ func allServicesForAppNS(client *ClusterClient, ns string, a provision.App) ([]a
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return svcs.Items, nil
+	return filterTsuruControlledServices(svcs.Items), nil
 }
 
-func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, a provision.App) ([]*apiv1.Service, error) {
+func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, a provision.App) ([]apiv1.Service, error) {
 	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -649,7 +649,35 @@ func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, 
 		return nil, errors.WithStack(err)
 	}
 	selector := labels.SelectorFromSet(labels.Set(svcLabels.ToAppSelector()))
-	return informer.Lister().Services(ns).List(selector)
+	svcs, err := informer.Lister().Services(ns).List(selector)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var result []apiv1.Service
+	for _, svc := range svcs {
+		result = append(result, *svc.DeepCopy())
+	}
+	return filterTsuruControlledServices(result), nil
+}
+
+var svcIgnoredLabels = []string{
+	"tsuru.io/router-lb",
+	"tsuru.io/external-controller",
+}
+
+func filterTsuruControlledServices(svcs []apiv1.Service) []apiv1.Service {
+	result := make([]apiv1.Service, 0, len(svcs))
+svcsLoop:
+	for _, svc := range svcs {
+		for _, label := range svcIgnoredLabels {
+			_, hasLabel := svc.Labels[label]
+			if hasLabel {
+				continue svcsLoop
+			}
+		}
+		result = append(result, svc)
+	}
+	return result
 }
 
 func allDeploymentsForAppProcess(client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
@@ -927,17 +955,6 @@ func appPodsFromNode(client *ClusterClient, nodeName string) ([]apiv1.Pod, error
 	serviceSelector := fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String()
 	labelFilter := fmt.Sprintf("%s,%s%s", serviceSelector, tsuruLabelPrefix, provision.LabelAppPool)
 	return podsFromNode(client, nodeName, labelFilter)
-}
-
-func getServicePort(svcInformer v1informers.ServiceInformer, srvName, namespace string) (int32, error) {
-	ports, err := getServicePorts(svcInformer, srvName, namespace)
-	if err != nil {
-		return 0, err
-	}
-	if len(ports) > 0 {
-		return ports[0], nil
-	}
-	return 0, nil
 }
 
 func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace string) ([]int32, error) {

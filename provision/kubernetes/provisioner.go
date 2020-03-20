@@ -649,10 +649,6 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 		}
 		return nil, nil
 	}
-	processes, err := version.Processes()
-	if err != nil {
-		return nil, err
-	}
 	webProcessName, err := version.WebProcess()
 	if err != nil {
 		return nil, err
@@ -669,62 +665,58 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]appTypes.R
 	if err != nil {
 		return nil, err
 	}
+
+	svcs, err := allServicesForAppInformer(svcInformer, ns, a)
+	if err != nil {
+		return nil, err
+	}
+
 	var allAddrs []appTypes.RoutableAddresses
-	for processName := range processes {
-		var deployments []appsv1.Deployment
-		deployments, err = allDeploymentsForAppProcess(client, a, processName)
-		if err != nil {
-			return nil, err
+	for _, svc := range svcs {
+		ls := labelOnlySetFromMeta(&svc.ObjectMeta)
+
+		if ls.IsHeadlessService() {
+			continue
 		}
+
+		processName := ls.AppProcess()
+		version := ls.AppVersion()
+
 		var rAddr appTypes.RoutableAddresses
 
 		if processName == webProcessName {
-			rAddr, err = p.routableAddrForProcess(client, a, processName, ns, "", 0, svcInformer)
+			var prefix string
+			if version != 0 {
+				prefix = fmt.Sprintf("v%d.version", version)
+			}
+			rAddr, err = p.routableAddrForProcess(client, a, processName, prefix, version, svc)
 			if err != nil {
 				return nil, err
 			}
 			allAddrs = append(allAddrs, rAddr)
 		}
 
-		prefix := fmt.Sprintf("%s.process", processName)
-		rAddr, err = p.routableAddrForProcess(client, a, processName, ns, prefix, 0, svcInformer)
+		var prefix string
+		if version == 0 {
+			prefix = fmt.Sprintf("%s.process", processName)
+		} else {
+			prefix = fmt.Sprintf("v%d.version.%s.process", version, processName)
+		}
+		rAddr, err = p.routableAddrForProcess(client, a, processName, prefix, version, svc)
 		if err != nil {
 			return nil, err
 		}
 		allAddrs = append(allAddrs, rAddr)
 
-		for _, dep := range deployments {
-			labels := labelSetFromMeta(&dep.ObjectMeta)
-			activeVersion := labels.AppVersion()
-			if activeVersion == 0 {
-				continue
-			}
-			prefix = fmt.Sprintf("v%d.version.%s.process", activeVersion, processName)
-			rAddr, err = p.routableAddrForProcess(client, a, processName, ns, prefix, activeVersion, svcInformer)
-			if err != nil {
-				return nil, err
-			}
-			allAddrs = append(allAddrs, rAddr)
-
-			if processName == webProcessName {
-				prefix = fmt.Sprintf("v%d.version", activeVersion)
-				rAddr, err = p.routableAddrForProcess(client, a, processName, ns, prefix, activeVersion, svcInformer)
-				if err != nil {
-					return nil, err
-				}
-				allAddrs = append(allAddrs, rAddr)
-			}
-		}
 	}
 	return allAddrs, nil
 }
 
-func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a provision.App, processName, ns, prefix string, version int, svcInformer v1informers.ServiceInformer) (appTypes.RoutableAddresses, error) {
+func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a provision.App, processName, prefix string, version int, svc apiv1.Service) (appTypes.RoutableAddresses, error) {
 	var routableAddrs appTypes.RoutableAddresses
-	srvName := serviceNameForApp(a, processName, version)
-	pubPort, err := getServicePort(svcInformer, srvName, ns)
-	if err != nil {
-		return routableAddrs, err
+	var pubPort int32
+	if len(svc.Spec.Ports) > 0 {
+		pubPort = svc.Spec.Ports[0].NodePort
 	}
 	if pubPort == 0 {
 		return routableAddrs, nil
@@ -746,8 +738,8 @@ func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a 
 		Prefix:    prefix,
 		Addresses: addrs,
 		ExtraData: map[string]string{
-			"service":   srvName,
-			"namespace": ns,
+			"service":   svc.Name,
+			"namespace": svc.Namespace,
 		},
 	}, nil
 }
