@@ -680,6 +680,8 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 		version int
 	}
 
+	fmt.Fprint(m.writer, "\n---- Cleaning up resources ----\n")
+
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
@@ -691,6 +693,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 			processInUse[labels.AppProcess()] = struct{}{}
 			versionInUse[processVersionKey{process: labels.AppProcess(), version: labels.AppVersion()}] = struct{}{}
 		} else {
+			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", dep.Name)
 			err = cleanupSingleDeployment(m.client, &dep)
 			if err != nil {
 				multiErrors.Add(err)
@@ -714,6 +717,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 			continue
 		}
 
+		fmt.Fprintf(m.writer, " ---> Cleaning up service %s\n", svc.Name)
 		err = m.client.CoreV1().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
@@ -1032,6 +1036,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return provision.ErrUnitStartup{Err: err}
 	}
 
+	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
 	err = m.createServices(a, process, version, labels, annotations, depArgs)
 	if err != nil {
 		return err
@@ -1168,6 +1173,7 @@ func (m *serviceManager) createServices(a provision.App, process string, version
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(m.writer, " ---> Service %s\n", svc.Name)
 		if isNew {
 			_, err = m.client.CoreV1().Services(svc.Namespace).Create(svc)
 		} else {
@@ -1192,6 +1198,8 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 	if !enabled {
 		return nil
 	}
+	svcName := headlessServiceName(a, process)
+	fmt.Fprintf(m.writer, " ---> Service %s\n", svcName)
 
 	labels.SetIsHeadlessService()
 	expandedLabelsHeadless := labels.ToLabels()
@@ -1217,7 +1225,7 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        headlessServiceName(a, process),
+			Name:        svcName,
 			Namespace:   ns,
 			Labels:      expandedLabelsHeadless,
 			Annotations: annotations.ToLabels(),
