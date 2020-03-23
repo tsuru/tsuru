@@ -6,6 +6,7 @@ package rebuild
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -82,7 +83,7 @@ func process(key interface{}) error {
 	if !ok {
 		return errors.Errorf("unable to convert key to appName: %#v", key)
 	}
-	return runRoutesRebuildOnce(appName, true)
+	return runRoutesRebuildOnce(appName, true, nil)
 }
 
 func Initialize(finder func(string) (RebuildApp, error)) error {
@@ -98,7 +99,7 @@ func Initialize(finder func(string) (RebuildApp, error)) error {
 	return nil
 }
 
-func runRoutesRebuildOnce(appName string, lock bool) (err error) {
+func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
 	if appFinder == nil {
 		return errors.New("no appFinder available")
 	}
@@ -129,7 +130,7 @@ func runRoutesRebuildOnce(appName string, lock bool) (err error) {
 			evt.Abort()
 		}()
 	}
-	result, err = rebuildRoutesAsync(a, false)
+	result, err = rebuildRoutesAsync(a, false, w)
 	if err != nil {
 		return errors.Wrapf(err, "error rebuilding app %q", appName)
 	}
@@ -137,11 +138,15 @@ func runRoutesRebuildOnce(appName string, lock bool) (err error) {
 }
 
 func RoutesRebuildOrEnqueue(appName string) {
-	routesRebuildOrEnqueueOptionalLock(appName, false)
+	routesRebuildOrEnqueueOptionalLock(appName, false, nil)
+}
+
+func RoutesRebuildOrEnqueueWithProgress(appName string, w io.Writer) {
+	routesRebuildOrEnqueueOptionalLock(appName, false, w)
 }
 
 func LockedRoutesRebuildOrEnqueue(appName string) {
-	routesRebuildOrEnqueueOptionalLock(appName, true)
+	routesRebuildOrEnqueueOptionalLock(appName, true, nil)
 }
 
 func EnqueueRoutesRebuild(appName string) {
@@ -150,8 +155,8 @@ func EnqueueRoutesRebuild(appName string) {
 	}
 }
 
-func routesRebuildOrEnqueueOptionalLock(appName string, lock bool) {
-	err := runRoutesRebuildOnce(appName, lock)
+func routesRebuildOrEnqueueOptionalLock(appName string, lock bool, w io.Writer) {
+	err := runRoutesRebuildOnce(appName, lock, w)
 	if err == nil {
 		return
 	}

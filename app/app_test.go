@@ -726,7 +726,7 @@ func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	for _, unit := range units {
 		c.Assert(unit.AppName, check.Equals, app.Name)
 	}
-	c.Assert(buf.String(), check.Equals, "added 2 units")
+	c.Assert(buf.String(), check.Matches, "(?s)added 2 units.*")
 }
 
 func (s *S) TestAddUnitsQuota(c *check.C) {
@@ -915,7 +915,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	buf := bytes.NewBuffer(nil)
 	err = app.RemoveUnits(2, "worker", "", buf)
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "removing 2 units")
+	c.Assert(buf.String(), check.Matches, "(?s)removing 2 units.*")
 	err = tsurutest.WaitCondition(2e9, func() bool {
 		units, inErr := app.Units()
 		c.Assert(inErr, check.IsNil)

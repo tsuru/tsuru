@@ -484,7 +484,14 @@ func (f *fakeRouterAPI) getBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp := &backendResp{Address: backend.addr}
+	allAddrs := []string{backend.addr}
+	for prefix := range backend.prefixAddrs {
+		if prefix == "" {
+			continue
+		}
+		allAddrs = append(allAddrs, prefix+"."+name+".apirouter.com")
+	}
+	resp := &backendResp{Address: backend.addr, Addresses: allAddrs}
 	json.NewEncoder(w).Encode(resp)
 }
 

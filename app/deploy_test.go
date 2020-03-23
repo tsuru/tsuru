@@ -327,7 +327,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -360,7 +360,7 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -395,7 +395,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -429,7 +429,7 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Matches, "(?s).*Builder deploy called")
+	c.Assert(logs, check.Matches, "(?s).*Builder deploy called.*")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -453,9 +453,10 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
-		App:    &a,
-		Commit: "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
-		Event:  evt,
+		App:          &a,
+		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		Event:        evt,
+		OutputStream: ioutil.Discard,
 	})
 	c.Assert(err, check.ErrorMatches, "(?s).*can't deploy app without platform, if it's not an image or rollback.*")
 }
@@ -863,7 +864,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
+	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -897,7 +898,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
+	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, version.BaseImageName())
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
@@ -1052,7 +1053,7 @@ func (s *S) TestRebuild(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Matches, ".*Builder deploy called")
+	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
 	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v1")
 }
 

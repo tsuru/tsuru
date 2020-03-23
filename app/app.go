@@ -436,7 +436,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 	if newProv.GetName() != oldProv.GetName() {
 		defer func() {
-			rebuild.RoutesRebuildOrEnqueue(app.Name)
+			rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, args.Writer)
 		}()
 		err = validateVolumes(app)
 		if err != nil {
@@ -742,7 +742,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 	).Execute(app, n, w, process, version)
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	quotaErr := app.fixQuota()
 	if err != nil {
 		return newErrorWithLog(err, app, "add units")
@@ -766,7 +766,7 @@ func (app *App) RemoveUnits(n uint, process, versionStr string, w io.Writer) err
 		return err
 	}
 	err = prov.RemoveUnits(app, n, process, version, w)
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	quotaErr := app.fixQuota()
 	if err != nil {
 		return newErrorWithLog(err, app, "remove units")
@@ -1266,7 +1266,7 @@ func (app *App) Restart(process, versionStr string, w io.Writer) error {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "restart")
 	}
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	return nil
 }
 
@@ -1341,7 +1341,7 @@ func (app *App) Sleep(w io.Writer, process, versionStr string, proxyURL *url.URL
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
-		rebuild.RoutesRebuildOrEnqueue(app.Name)
+		rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 		return newErrorWithLog(err, app, "sleep")
 	}
 	return nil
@@ -2015,7 +2015,7 @@ func (app *App) Start(w io.Writer, process, versionStr string) error {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
 	}
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	return err
 }
 
