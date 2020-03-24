@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
 	apiv1 "k8s.io/api/core/v1"
@@ -34,6 +36,15 @@ const (
 
 	leaderElectionName = "tsuru-controller"
 )
+
+var eventKindsIgnoreRebuild = []string{
+	permission.PermAppDeploy.FullName(),
+	permission.PermAppUpdateUnitAdd.FullName(),
+	permission.PermAppUpdateUnitRemove.FullName(),
+	permission.PermAppUpdateRestart.FullName(),
+	permission.PermAppUpdateStop.FullName(),
+	permission.PermAppUpdateStart.FullName(),
+}
 
 type clusterController struct {
 	mu                 sync.Mutex
@@ -159,7 +170,10 @@ func (c *clusterController) onAdd(obj interface{}) error {
 }
 
 func (c *clusterController) onUpdate(_, newObj interface{}) error {
-	newPod := newObj.(*apiv1.Pod)
+	newPod, ok := newObj.(*apiv1.Pod)
+	if !ok {
+		return errors.Errorf("object is not a pod: %#v", newObj)
+	}
 	name := types.NamespacedName{Namespace: newPod.Namespace, Name: newPod.Name}
 	// We keep our own track of handled resource versions and ignore oldObj
 	// because of leader election. It's possible for the message containing
@@ -208,6 +222,20 @@ func (c *clusterController) enqueuePod(pod *apiv1.Pod) {
 	}
 	routerLocal, _ := c.cluster.RouterAddressLocal(labelSet.AppPool())
 	if routerLocal {
+		var runningTrue bool = true
+		evts, err := event.List(&event.Filter{
+			Running: &runningTrue,
+			Target: event.Target{
+				Type:  event.TargetTypeApp,
+				Value: appName,
+			},
+			KindType:  event.KindTypePermission,
+			KindNames: eventKindsIgnoreRebuild,
+			Limit:     1,
+		})
+		if err == nil && len(evts) > 0 {
+			return
+		}
 		rebuild.EnqueueRoutesRebuild(appName)
 	}
 }

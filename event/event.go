@@ -147,10 +147,10 @@ func (err ErrValidation) Error() string {
 	return string(err)
 }
 
-type ErrEventLocked struct{ event *Event }
+type ErrEventLocked struct{ Event *Event }
 
 func (err ErrEventLocked) Error() string {
-	return fmt.Sprintf("event locked: %v", err.event)
+	return fmt.Sprintf("event locked: %v", err.Event)
 }
 
 type Target struct {
@@ -996,7 +996,7 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 					maxRetries++
 				}
 				if err == nil {
-					err = ErrEventLocked{event: &existing}
+					err = ErrEventLocked{Event: &existing}
 				}
 			}
 		} else {
@@ -1044,7 +1044,7 @@ func checkLocked(evt *Event, disableLock bool) error {
 		}
 		return err
 	}
-	return ErrEventLocked{event: &existing}
+	return ErrEventLocked{Event: &existing}
 }
 
 func (e *Event) RawInsert(start, other, end interface{}) error {

@@ -18,7 +18,11 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const rebuildWorkers = 20
+const (
+	rebuildWorkers = 20
+
+	eventKindRebuild = "rebuild-routes-task"
+)
 
 var (
 	appFinder func(string) (RebuildApp, error)
@@ -116,12 +120,20 @@ func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
 		var evt *event.Event
 		evt, err = event.NewInternal(&event.Opts{
 			Target:       event.Target{Type: event.TargetTypeApp, Value: appName},
-			InternalKind: "rebuild-routes-task",
+			InternalKind: eventKindRebuild,
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appName)),
 		})
 		if err != nil {
+			if lockedErr, ok := err.(event.ErrEventLocked); ok {
+				lockedEvt := lockedErr.Event
+				if lockedEvt.Kind.Name == eventKindRebuild {
+					log.Debugf("[routes-rebuild-task] app %q already locked in rebuild, ignoring task", appName)
+					return nil
+				}
+			}
 			return errors.Errorf("unable to create rebuild routes event %q: %v", appName, err)
 		}
+
 		defer func() {
 			if err != nil || resultHasChanges(result) {
 				evt.DoneCustomData(err, result)
