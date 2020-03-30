@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
@@ -25,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
@@ -1015,6 +1017,55 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 	u2 := containers[1].AsUnit(fakeApp)
 	c.Assert(fakeApp.HasBind(&u1), check.Equals, true)
 	c.Assert(fakeApp.HasBind(&u2), check.Equals, true)
+}
+
+func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
+	appName := "my-fake-app"
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
+	}
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	version, err := newVersionForApp(s.p, fakeApp, customData)
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	appStruct := s.newAppFromFake(fakeApp)
+	err = s.conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	args := changeUnitsPipelineArgs{
+		app:         &appStruct,
+		provisioner: s.p,
+		writer:      buf,
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}, "worker": {Quantity: 1}},
+		version:     version,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 3)
+	var bindCounter int32
+	rollback := s.addServiceInstance(c, fakeApp.GetName(), nil, func(w http.ResponseWriter, r *http.Request) {
+		if atomic.AddInt32(&bindCounter, 1) == 1 {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer rollback()
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	result, err := bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.IsNil)
+	resultContainers := result.([]container.Container)
+	c.Assert(resultContainers, check.DeepEquals, containers)
+	c.Assert(atomic.LoadInt32(&bindCounter), check.Equals, int32(3))
+	si, err := service.GetServiceInstance("mysql", "my-mysql")
+	c.Assert(err, check.IsNil)
+	c.Assert(si.BoundUnits, check.HasLen, 1)
 }
 
 func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
