@@ -382,7 +382,7 @@ var bindAndHealthcheck = action.Action{
 			unit := c.AsUnit(args.app)
 			err := args.app.BindUnit(&unit)
 			if err != nil {
-				return err
+				log.Errorf("ignored error binding unit to service: %v", err)
 			}
 			toRollback <- c
 			if doHealthcheck && c.ProcessName == webProcessName {
