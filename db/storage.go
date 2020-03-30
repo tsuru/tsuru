@@ -188,6 +188,7 @@ func (s *Storage) Events() *storage.Collection {
 	uniqueIdIndex := mgo.Index{Key: []string{"uniqueid"}}
 	runningIndex := mgo.Index{Key: []string{"running"}}
 	removedIndex := mgo.Index{Key: []string{"removedate"}}
+	allowedSchemeIndex := mgo.Index{Key: []string{"allowed.scheme"}}
 	c := s.Collection("events")
 	c.EnsureIndex(ownerIndex)
 	c.EnsureIndex(targetIndex)
@@ -197,6 +198,7 @@ func (s *Storage) Events() *storage.Collection {
 	c.EnsureIndex(uniqueIdIndex)
 	c.EnsureIndex(runningIndex)
 	c.EnsureIndex(removedIndex)
+	c.EnsureIndex(allowedSchemeIndex)
 	return c
 }
 
