@@ -58,13 +58,13 @@ func (s *S) TestDeploymentNameForAppBase(c *check.C) {
 	var tests = []struct {
 		name, process, expected string
 	}{
-		{"myapp", "p1", "myapp-p1-base"},
-		{"MYAPP", "p-1", "myapp-p-1-base"},
-		{"my-app_app", "P_1-1", "my-app-app-p-1-1-base"},
-		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1-base"},
-		{"my-app", "process-with-a-very-very-long-name-12345678", "my-app-process-with-a-very-very-long-name-12345678-base"},
-		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-78668678080e31ecc876957b5f29e68738b41ea3d07145a5"},
-		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-197faf9d3223e28f0bec723c"},
+		{"myapp", "p1", "myapp-p1"},
+		{"MYAPP", "p-1", "myapp-p-1"},
+		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+		{"app-with-a-very-very-long-name", "p1", "app-with-a-very-very-long-name-p1"},
+		{"my-app", "process-with-a-very-very-long-name-1234567890123", "my-app-process-with-a-very-very-long-name-1234567890123"},
+		{"my-app", "process-with-a-very-very-long-name-12345678901234", "my-app-0718ca0d56b1219fb50636a73252a47b977839e983558e08"},
+		{"app-with-a-very-very-long-name", "process-with-a-very-very-long-name", "app-with-a-very-very-long-name-a9101bf0964e84e3f4c4b2b0"},
 	}
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)

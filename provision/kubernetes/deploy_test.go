@@ -17,6 +17,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/kr/pretty"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -77,7 +78,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -91,7 +92,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/is-stopped":           "false",
 		"tsuru.io/is-deploy":            "false",
 		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/is-base":              "true",
 		"tsuru.io/is-routable":          "true",
 		"tsuru.io/app-name":             "myapp",
 		"tsuru.io/app-process":          "p1",
@@ -101,7 +101,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/app-version":          "1",
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
-		"app":                           "myapp-p1-base",
+		"app":                           "myapp-p1",
 		"version":                       "v1",
 	}
 	podLabels := make(map[string]string)
@@ -119,7 +119,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1-base",
+			Name:        "myapp-p1",
 			Namespace:   nsName,
 			Labels:      depLabels,
 			Annotations: annotations,
@@ -144,7 +144,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					"tsuru.io/app-process":     "p1",
 					"tsuru.io/is-build":        "false",
 					"tsuru.io/is-isolated-run": "false",
-					"tsuru.io/is-base":         "true",
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
@@ -164,7 +163,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Subdomain:     "myapp-p1-units",
 					Containers: []apiv1.Container{
 						{
-							Name:  "myapp-p1-base",
+							Name:  "myapp-p1",
 							Image: version.BaseImageName(),
 							Command: []string{
 								"/bin/sh",
@@ -201,19 +200,18 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/app-platform":    "",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/provisioner":     "kubernetes",
-				"tsuru.io/builder":         "",
+				"tsuru.io/is-tsuru":     "true",
+				"tsuru.io/is-service":   "true",
+				"tsuru.io/is-build":     "false",
+				"tsuru.io/is-stopped":   "false",
+				"tsuru.io/is-deploy":    "false",
+				"tsuru.io/is-routable":  "true",
+				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-process":  "p1",
+				"tsuru.io/app-platform": "",
+				"tsuru.io/app-pool":     "test-default",
+				"tsuru.io/provisioner":  "kubernetes",
+				"tsuru.io/builder":      "",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/router-type": "fake",
@@ -222,11 +220,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
 			},
 			Ports: []apiv1.ServicePort{
 				{
@@ -242,7 +239,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 	srvV1, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(srvV1, check.DeepEquals, &apiv1.Service{
+	expectedSvcV1 := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-v1",
 			Namespace: nsName,
@@ -286,7 +283,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Type:                  apiv1.ServiceTypeNodePort,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
-	})
+	}
+	c.Assert(srvV1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(srvV1, expectedSvcV1), "\n")))
 	srvHeadless, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvHeadless, check.DeepEquals, &apiv1.Service{
@@ -299,7 +297,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-build":            "false",
 				"tsuru.io/is-stopped":          "false",
 				"tsuru.io/is-deploy":           "false",
-				"tsuru.io/is-isolated-run":     "false",
 				"tsuru.io/is-routable":         "true",
 				"tsuru.io/is-headless-service": "true",
 				"tsuru.io/app-name":            "myapp",
@@ -316,11 +313,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
 			},
 			Ports: []apiv1.ServicePort{
 				{
@@ -420,19 +416,18 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/app-platform":    "",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/provisioner":     "kubernetes",
-				"tsuru.io/builder":         "",
+				"tsuru.io/is-tsuru":     "true",
+				"tsuru.io/is-service":   "true",
+				"tsuru.io/is-build":     "false",
+				"tsuru.io/is-stopped":   "false",
+				"tsuru.io/is-deploy":    "false",
+				"tsuru.io/is-routable":  "true",
+				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-process":  "p1",
+				"tsuru.io/app-platform": "",
+				"tsuru.io/app-pool":     "test-default",
+				"tsuru.io/provisioner":  "kubernetes",
+				"tsuru.io/builder":      "",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/router-type": "fake",
@@ -441,11 +436,10 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
 			},
 			Ports: []apiv1.ServicePort{
 				{
@@ -477,7 +471,6 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/is-build":            "false",
 				"tsuru.io/is-stopped":          "false",
 				"tsuru.io/is-deploy":           "false",
-				"tsuru.io/is-isolated-run":     "false",
 				"tsuru.io/is-routable":         "true",
 				"tsuru.io/is-headless-service": "true",
 				"tsuru.io/app-name":            "myapp",
@@ -494,11 +487,10 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
 			},
 			Ports: []apiv1.ServicePort{
 				{
@@ -745,7 +737,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		var dep *appsv1.Deployment
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
-		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1-base", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
@@ -908,12 +900,12 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		waitDep()
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
-		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-web-base", metav1.GetOptions{})
+		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, tt.expectedReadiness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, tt.expectedLiveness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLifecycle)
-		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p2-base", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p2", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.IsNil)
@@ -952,7 +944,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
 		PostStart: &apiv1.Handler{
@@ -965,7 +957,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd := dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc1$`)
-	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2-base", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, expectedLifecycle)
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
@@ -1029,14 +1021,14 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8080},
 		{ContainerPort: 9000},
 		{ContainerPort: 8001},
 	})
-	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2-base", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8888},
@@ -1173,7 +1165,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{})
 
@@ -1212,7 +1204,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "registry-myreg.com"},
@@ -1301,7 +1293,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
@@ -1333,7 +1325,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	var deleteCalled bool
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		name := action.(ktesting.DeleteAction).GetName()
-		c.Assert(name, check.DeepEquals, "myapp-web-base")
+		c.Assert(name, check.DeepEquals, "myapp-web")
 		deleteCalled = true
 		return false, nil, nil
 	})
@@ -1369,7 +1361,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? DELETING CREATED DEPLOYMENT AFTER FAILURE .*`)
 	c.Assert(deleteCalled, check.DeepEquals, true)
@@ -1439,7 +1431,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web-base", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*`)
 }
@@ -1475,7 +1467,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep, check.NotNil)
 	daemon, err := s.client.Clientset.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
@@ -1535,7 +1527,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &apiv1.PodSecurityContext{
@@ -1567,7 +1559,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
@@ -1605,7 +1597,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
@@ -1645,7 +1637,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
@@ -1685,7 +1677,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	maxSurge := intstr.FromString("30%")
 	maxUnavailable := intstr.FromInt(2)
@@ -1693,6 +1685,432 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 		MaxSurge:       &maxSurge,
 		MaxUnavailable: &maxUnavailable,
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:     a,
+		Version: version1,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:              a,
+		Version:          version2,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	v2Dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	v2Svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	depLabels := map[string]string{
+		"tsuru.io/is-tsuru":                "true",
+		"tsuru.io/is-service":              "true",
+		"tsuru.io/is-build":                "false",
+		"tsuru.io/is-stopped":              "false",
+		"tsuru.io/is-deploy":               "false",
+		"tsuru.io/is-isolated-run-version": "false",
+		"tsuru.io/app-name":                "myapp",
+		"tsuru.io/app-process":             "p1",
+		"tsuru.io/app-process-replicas":    "1",
+		"tsuru.io/app-platform":            "",
+		"tsuru.io/app-pool":                "test-default",
+		"tsuru.io/app-version":             "2",
+		"tsuru.io/provisioner":             "kubernetes",
+		"tsuru.io/builder":                 "",
+		"app":                              "myapp-p1",
+		"version":                          "v2",
+	}
+	podLabels := make(map[string]string)
+	for k, v := range depLabels {
+		if k == "tsuru.io/app-process-replicas" {
+			continue
+		}
+		podLabels[k] = v
+	}
+	annotations := map[string]string{
+		"tsuru.io/router-type": "fake",
+		"tsuru.io/router-name": "fake",
+	}
+	nsName, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	one := int32(1)
+	ten := int32(10)
+	maxSurge := intstr.FromString("100%")
+	maxUnavailable := intstr.FromInt(0)
+	expectedUID := int64(1000)
+	expected := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "myapp-p1-v2",
+			Namespace:   nsName,
+			Labels:      depLabels,
+			Annotations: annotations,
+		},
+		Status: appsv1.DeploymentStatus{
+			UpdatedReplicas: 1,
+			Replicas:        1,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxSurge:       &maxSurge,
+					MaxUnavailable: &maxUnavailable,
+				},
+			},
+			Replicas:             &one,
+			RevisionHistoryLimit: &ten,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":                "myapp",
+					"tsuru.io/app-process":             "p1",
+					"tsuru.io/is-build":                "false",
+					"tsuru.io/is-isolated-run-version": "false",
+					"tsuru.io/app-version":             "2",
+				},
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      podLabels,
+					Annotations: annotations,
+				},
+				Spec: apiv1.PodSpec{
+					ServiceAccountName: "app-myapp",
+					SecurityContext: &apiv1.PodSecurityContext{
+						RunAsUser: &expectedUID,
+					},
+					NodeSelector: map[string]string{
+						"tsuru.io/pool": "test-default",
+					},
+					RestartPolicy: "Always",
+					Subdomain:     "myapp-p1-units",
+					Containers: []apiv1.Container{
+						{
+							Name:  "myapp-p1-v2",
+							Image: version2.BaseImageName(),
+							Command: []string{
+								"/bin/sh",
+								"-lc",
+								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+							},
+							Env: []apiv1.EnvVar{
+								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_PROCESSNAME", Value: "p1"},
+								{Name: "TSURU_APPVERSION", Value: "2"},
+								{Name: "TSURU_HOST", Value: ""},
+								{Name: "port", Value: "8888"},
+								{Name: "PORT", Value: "8888"},
+								{Name: "PORT_p1", Value: "8888"},
+							},
+							Resources: apiv1.ResourceRequirements{
+								Limits:   apiv1.ResourceList{},
+								Requests: apiv1.ResourceList{},
+							},
+							Ports: []apiv1.ContainerPort{
+								{ContainerPort: 8888},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	c.Assert(v2Dep, check.DeepEquals, expected, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Dep, expected), "\n")))
+
+	expectedSvc := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1-v2",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":                "true",
+				"tsuru.io/is-service":              "true",
+				"tsuru.io/is-build":                "false",
+				"tsuru.io/is-stopped":              "false",
+				"tsuru.io/is-deploy":               "false",
+				"tsuru.io/is-isolated-run-version": "false",
+				"tsuru.io/app-name":                "myapp",
+				"tsuru.io/app-process":             "p1",
+				"tsuru.io/app-version":             "2",
+				"tsuru.io/app-platform":            "",
+				"tsuru.io/app-pool":                "test-default",
+				"tsuru.io/provisioner":             "kubernetes",
+				"tsuru.io/builder":                 "",
+				"version":                          "v2",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":                "myapp",
+				"tsuru.io/app-process":             "p1",
+				"tsuru.io/app-version":             "2",
+				"tsuru.io/is-build":                "false",
+				"tsuru.io/is-isolated-run-version": "false",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+					Name:       "http-default-1",
+				},
+			},
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+		},
+	}
+	c.Assert(v2Svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Svc, expectedSvc), "\n")))
+
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:              a,
+		Version:          version2,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true, Restart: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	expected.Labels["tsuru.io/restarts"] = "1"
+	expected.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
+	expectedSvc.Labels["tsuru.io/restarts"] = "1"
+
+	v2Dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(v2Dep, check.DeepEquals, expected, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Dep, expected), "\n")))
+	v2Svc, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(v2Svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Svc, expectedSvc), "\n")))
+}
+
+func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+
+	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version)
+
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:              a,
+		Version:          version,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true, Restart: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+
+	expectedDep := legacyDep.DeepCopy()
+	expectedDep.Labels["tsuru.io/restarts"] = "1"
+	expectedDep.Labels["tsuru.io/app-version"] = "1"
+	expectedDep.Labels["tsuru.io/is-routable"] = "true"
+	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
+	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
+	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
+	expectedDep.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
+		{Name: "TSURU_SERVICES", Value: "{}"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_p1", Value: "8888"},
+	}
+
+	expectedSvc := legacySvc.DeepCopy()
+	expectedSvc.Labels["tsuru.io/restarts"] = "1"
+	expectedSvc.Labels["tsuru.io/is-routable"] = "true"
+	expectedSvc.Spec.Selector["tsuru.io/is-routable"] = "true"
+	delete(expectedSvc.Labels, "tsuru.io/is-isolated-run")
+	delete(expectedSvc.Spec.Selector, "tsuru.io/is-isolated-run")
+
+	expectedSvcV1 := legacySvc.DeepCopy()
+	expectedSvcV1.Name = "myapp-p1-v1"
+	expectedSvcV1.Labels["version"] = "v1"
+	expectedSvcV1.Labels["tsuru.io/restarts"] = "1"
+	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
+	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Spec.Selector["tsuru.io/is-isolated-run"] = "false"
+
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(dep, check.DeepEquals, expectedDep, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(dep, expectedDep), "\n")))
+
+	svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svc, expectedSvc), "\n")))
+
+	svcV1, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(svcV1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcV1, expectedSvcV1), "\n")))
+}
+
+func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+
+	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version1)
+
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:              a,
+		Version:          version2,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+
+	expectedDepBase := legacyDep.DeepCopy()
+	expectedDepBase.Labels["tsuru.io/app-version"] = "1"
+	expectedDepBase.Labels["tsuru.io/is-routable"] = "true"
+	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
+	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
+	expectedDepBase.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
+		{Name: "TSURU_SERVICES", Value: "{}"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_p1", Value: "8888"},
+	}
+
+	expectedDepV2 := legacyDep.DeepCopy()
+	expectedDepV2.Name = "myapp-p1-v2"
+	expectedDepV2.Labels["version"] = "v2"
+	expectedDepV2.Labels["tsuru.io/app-version"] = "2"
+	expectedDepV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
+	delete(expectedDepV2.Labels, "tsuru.io/is-routable")
+	delete(expectedDepV2.Labels, "tsuru.io/is-isolated-run")
+	expectedDepV2.Spec.Selector.MatchLabels["tsuru.io/app-version"] = "2"
+	expectedDepV2.Spec.Selector.MatchLabels["tsuru.io/is-isolated-run-version"] = "false"
+	delete(expectedDepV2.Spec.Selector.MatchLabels, "tsuru.io/is-isolated-run")
+	expectedDepV2.Spec.Template.ObjectMeta.Labels["version"] = "v2"
+	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "2"
+	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/is-isolated-run-version"] = "false"
+	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-routable")
+	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-isolated-run")
+	expectedDepV2.Spec.Template.Spec.Containers[0].Name = "myapp-p1-v2"
+	expectedDepV2.Spec.Template.Spec.Containers[0].Image = "tsuru/app-myapp:v2"
+	expectedDepV2.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
+		{Name: "TSURU_SERVICES", Value: "{}"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1"},
+		{Name: "TSURU_APPVERSION", Value: "2"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_p1", Value: "8888"},
+	}
+
+	expectedSvcBase := legacySvc.DeepCopy()
+	expectedSvcBase.Labels["tsuru.io/is-routable"] = "true"
+	expectedSvcBase.Spec.Selector["tsuru.io/is-routable"] = "true"
+	delete(expectedSvcBase.Labels, "tsuru.io/is-isolated-run")
+	delete(expectedSvcBase.Spec.Selector, "tsuru.io/is-isolated-run")
+
+	expectedSvcV1 := legacySvc.DeepCopy()
+	expectedSvcV1.Name = "myapp-p1-v1"
+	expectedSvcV1.Labels["version"] = "v1"
+	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
+	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Spec.Selector["tsuru.io/is-isolated-run"] = "false"
+
+	expectedSvcV2 := legacySvc.DeepCopy()
+	expectedSvcV2.Name = "myapp-p1-v2"
+	expectedSvcV2.Labels["version"] = "v2"
+	expectedSvcV2.Labels["tsuru.io/app-version"] = "2"
+	expectedSvcV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
+	expectedSvcV2.Spec.Selector["tsuru.io/app-version"] = "2"
+	expectedSvcV2.Spec.Selector["tsuru.io/is-isolated-run-version"] = "false"
+	delete(expectedSvcV2.Labels, "tsuru.io/is-isolated-run")
+	delete(expectedSvcV2.Spec.Selector, "tsuru.io/is-isolated-run")
+
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(dep, check.DeepEquals, expectedDepBase, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(dep, expectedDepBase), "\n")))
+
+	depv2, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(depv2, check.DeepEquals, expectedDepV2, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(depv2, expectedDepV2), "\n")))
+
+	svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(svc, check.DeepEquals, expectedSvcBase, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svc, expectedSvcBase), "\n")))
+
+	svcv1, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(svcv1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcv1, expectedSvcV1), "\n")))
+
+	svcv2, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(svcv2, check.DeepEquals, expectedSvcV2, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcv2, expectedSvcV2), "\n")))
 }
 
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
@@ -2163,7 +2581,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -2242,12 +2660,12 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-2-1\" not ready.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1-base",
+		Name: "myapp-p1",
 	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(s.clusterClient, a, "p1", version)
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(a)
@@ -2267,7 +2685,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-3-1\" not ready.*Pod \"myapp-p1-base-pod-3-1\" failed health check: my evt message.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
 }
 
 func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C) {
@@ -2417,12 +2835,12 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-2-1\" not ready.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1-base",
+		Name: "myapp-p1",
 	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(s.clusterClient, a, "p1", version)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
@@ -2440,7 +2858,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-3-1\" not ready.*Pod \"myapp-p1-base-pod-3-1\" failed health check: my evt message.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
 	waitDep()
 }
 
@@ -2526,10 +2944,10 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-2-1\" not ready.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1-base",
+		Name: "myapp-p1",
 	})
 }
 
@@ -2554,7 +2972,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "myapp-p1-base",
+			Name: "myapp-p1",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -2590,10 +3008,10 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-base-pod-1-1\" not ready.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-1-1\" not ready.*")
 	waitDep()
 	c.Assert(rollbackCalled, check.Equals, false)
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*UPDATING BACK AFTER FAILURE.*`)
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*UPDATING BACK AFTER FAILURE.*`)
 }
 
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
@@ -2621,7 +3039,6 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/is-service":           "true",
 		"tsuru.io/is-deploy":            "false",
 		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/is-base":              "true",
 		"tsuru.io/app-name":             a.GetName(),
 		"tsuru.io/app-process":          "p1",
 		"tsuru.io/app-version":          "1",
@@ -2800,7 +3217,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-base", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-units", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
@@ -2811,13 +3228,167 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: ns,
 			Labels: map[string]string{
+				"tsuru.io/is-tsuru":     "true",
+				"tsuru.io/is-service":   "true",
+				"tsuru.io/is-build":     "false",
+				"tsuru.io/is-stopped":   "false",
+				"tsuru.io/is-deploy":    "false",
+				"tsuru.io/is-routable":  "true",
+				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-process":  "p1",
+				"tsuru.io/app-platform": "",
+				"tsuru.io/app-pool":     "test-default",
+				"tsuru.io/provisioner":  "kubernetes",
+				"tsuru.io/builder":      "",
+			},
+			Annotations: map[string]string{
+				"tsuru.io/router-type": "fake",
+				"tsuru.io/router-name": "fake",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+					Name:       "http-default-1",
+				},
+			},
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+		},
+	})
+}
+
+func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes.AppVersion) (*appsv1.Deployment, *apiv1.Service) {
+	one := int32(1)
+	ten := int32(10)
+	maxSurge := intstr.FromString("100%")
+	maxUnavailable := intstr.FromInt(0)
+	expectedUID := int64(1000)
+	depLabels := map[string]string{
+		"tsuru.io/is-tsuru":             "true",
+		"tsuru.io/is-service":           "true",
+		"tsuru.io/is-build":             "false",
+		"tsuru.io/is-stopped":           "false",
+		"tsuru.io/is-deploy":            "false",
+		"tsuru.io/is-isolated-run":      "false",
+		"tsuru.io/app-name":             "myapp",
+		"tsuru.io/app-process":          "p1",
+		"tsuru.io/app-process-replicas": "1",
+		"tsuru.io/app-platform":         "",
+		"tsuru.io/app-pool":             "test-default",
+		"tsuru.io/provisioner":          "kubernetes",
+		"tsuru.io/builder":              "",
+		"app":                           "myapp-p1",
+		"version":                       "v1",
+	}
+	podLabels := make(map[string]string)
+	for k, v := range depLabels {
+		if k == "tsuru.io/app-process-replicas" {
+			continue
+		}
+		podLabels[k] = v
+	}
+	annotations := map[string]string{
+		"tsuru.io/router-type": "fake",
+		"tsuru.io/router-name": "fake",
+	}
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	legacyDep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "myapp-p1",
+			Namespace:   ns,
+			Labels:      depLabels,
+			Annotations: annotations,
+		},
+		Status: appsv1.DeploymentStatus{
+			UpdatedReplicas: 1,
+			Replicas:        1,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxSurge:       &maxSurge,
+					MaxUnavailable: &maxUnavailable,
+				},
+			},
+			Replicas:             &one,
+			RevisionHistoryLimit: &ten,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":        "myapp",
+					"tsuru.io/app-process":     "p1",
+					"tsuru.io/is-build":        "false",
+					"tsuru.io/is-isolated-run": "false",
+				},
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      podLabels,
+					Annotations: annotations,
+				},
+				Spec: apiv1.PodSpec{
+					ServiceAccountName: "app-myapp",
+					SecurityContext: &apiv1.PodSecurityContext{
+						RunAsUser: &expectedUID,
+					},
+					NodeSelector: map[string]string{
+						"tsuru.io/pool": "test-default",
+					},
+					RestartPolicy: "Always",
+					Subdomain:     "myapp-p1-units",
+					Containers: []apiv1.Container{
+						{
+							Name:  "myapp-p1",
+							Image: version.BaseImageName(),
+							Command: []string{
+								"/bin/sh",
+								"-lc",
+								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+							},
+							Env: []apiv1.EnvVar{
+								{Name: "TSURU_SERVICES", Value: "{}"},
+								{Name: "TSURU_PROCESSNAME", Value: "p1"},
+								{Name: "TSURU_HOST", Value: ""},
+								{Name: "port", Value: "8888"},
+								{Name: "PORT", Value: "8888"},
+								{Name: "PORT_p1", Value: "8888"},
+							},
+							Resources: apiv1.ResourceRequirements{
+								Limits:   apiv1.ResourceList{},
+								Requests: apiv1.ResourceList{},
+							},
+							Ports: []apiv1.ContainerPort{
+								{ContainerPort: 8888},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	legacySvc := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: ns,
+			Labels: map[string]string{
 				"tsuru.io/is-tsuru":        "true",
 				"tsuru.io/is-service":      "true",
 				"tsuru.io/is-build":        "false",
 				"tsuru.io/is-stopped":      "false",
 				"tsuru.io/is-deploy":       "false",
 				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
 				"tsuru.io/app-name":        "myapp",
 				"tsuru.io/app-process":     "p1",
 				"tsuru.io/app-platform":    "",
@@ -2836,7 +3407,6 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 				"tsuru.io/app-process":     "p1",
 				"tsuru.io/is-build":        "false",
 				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/is-routable":     "true",
 			},
 			Ports: []apiv1.ServicePort{
 				{
@@ -2849,5 +3419,13 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 			Type:                  apiv1.ServiceTypeNodePort,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
-	})
+	}
+
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Create(legacyDep)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Create(legacySvc)
+	c.Assert(err, check.IsNil)
+
+	return legacyDep, legacySvc
 }

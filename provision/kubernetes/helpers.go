@@ -71,7 +71,7 @@ func deploymentNameForApp(a provision.App, process string, version int) string {
 }
 
 func deploymentNameForAppBase(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "base")
+	return appProcessName(a, process, 0, "")
 }
 
 func serviceNameForApp(a provision.App, process string, version int) string {
@@ -168,16 +168,7 @@ func waitFor(ctx context.Context, fn func() (bool, error), onCancel func() error
 	}
 }
 
-func podsForAppProcess(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*apiv1.PodList, error) {
-	l, err := selectorForVersion(a, process, version)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	selector := l.ToVersionSelector()
-	ns, err := client.AppNamespace(a)
-	if err != nil {
-		return nil, err
-	}
+func podsForAppProcess(client *ClusterClient, ns string, selector map[string]string) (*apiv1.PodList, error) {
 	podList, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
 	})
@@ -246,8 +237,8 @@ type podErrorMessage struct {
 	message string
 }
 
-func notReadyPodEvents(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) ([]podErrorMessage, error) {
-	pods, err := podsForAppProcess(client, a, process, version)
+func notReadyPodEvents(client *ClusterClient, ns string, selector map[string]string) ([]podErrorMessage, error) {
+	pods, err := podsForAppProcess(client, ns, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -539,23 +530,6 @@ func selectorForVersion(a provision.App, process string, version appTypes.AppVer
 	return svcLabels, nil
 }
 
-func hasLegacyVersionForApp(client *ClusterClient, a provision.App) (bool, error) {
-	deps, err := allDeploymentsForApp(client, a)
-	if err != nil {
-		return false, err
-	}
-	for _, dep := range deps {
-		selectorLabels := provision.LabelSet{
-			Labels: dep.Spec.Selector.MatchLabels,
-			Prefix: tsuruLabelPrefix,
-		}
-		if !selectorLabels.IsBase() && selectorLabels.AppVersion() == 0 {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVersion, error) {
 	deps, err := allDeploymentsForApp(client, a)
 	if err != nil {
@@ -717,6 +691,7 @@ type groupedDeployments struct {
 type deploymentInfo struct {
 	dep        *appsv1.Deployment
 	process    string
+	version    int
 	isLegacy   bool
 	isBase     bool
 	isRoutable bool
@@ -764,6 +739,7 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 		}
 		di := deploymentInfo{
 			dep:        &deps[i],
+			version:    version,
 			isLegacy:   isLegacy,
 			isBase:     isBase,
 			isRoutable: isRoutable,

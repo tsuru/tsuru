@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
@@ -577,8 +578,9 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	expandedLabels := labels.ToLabels()
 	expandedLabelsNoReplicas := labels.WithoutAppReplicas().ToLabels()
-	expandedLabels["app"] = depName
-	expandedLabelsNoReplicas["app"] = depName
+	baseName := deploymentNameForAppBase(a, process)
+	expandedLabels["app"] = baseName
+	expandedLabelsNoReplicas["app"] = baseName
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort
@@ -755,8 +757,8 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string, version 
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *ClusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration, label string, version appTypes.AppVersion) error {
-	messages, err := notReadyPodEvents(client, a, processName, version)
+func createDeployTimeoutError(client *ClusterClient, ns string, selector map[string]string, w io.Writer, timeout time.Duration, label string) error {
+	messages, err := notReadyPodEvents(client, ns, selector)
 	if err != nil {
 		return errors.Wrap(err, "Unknown error deploying application")
 	}
@@ -856,7 +858,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			<-watchCh
 		}
 	}()
-	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
+	fmt.Fprintf(w, "\n---- Updating units [%s] [version %d] ----\n", processName, version.Version())
 	kubeConf := getKubeConfig()
 	timer := time.NewTimer(kubeConf.DeploymentProgressTimeout)
 	for dep.Status.ObservedGeneration < dep.Generation {
@@ -939,9 +941,9 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-healthcheckTimeout:
-			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "healthcheck", version)
+			return revision, createDeployTimeoutError(client, ns, dep.Spec.Selector.MatchLabels, w, time.Since(t0), "healthcheck")
 		case <-timer.C:
-			return revision, createDeployTimeoutError(client, a, processName, w, time.Since(t0), "full rollout", version)
+			return revision, createDeployTimeoutError(client, ns, dep.Spec.Selector.MatchLabels, w, time.Since(t0), "full rollout")
 		case <-ctx.Done():
 			err = ctx.Err()
 			if err == context.Canceled {
@@ -959,6 +961,10 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 }
 
 func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error {
+	if m.writer == nil {
+		m.writer = ioutil.Discard
+	}
+
 	err := ensureNodeContainers(a)
 	if err != nil {
 		return err
@@ -986,6 +992,14 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return err
 	}
 
+	if depArgs.baseDep != nil && depArgs.baseDep.isLegacy && depArgs.name != depArgs.baseDep.dep.Name {
+		fmt.Fprint(m.writer, "\n---- Updating legacy deployment ----\n")
+		err = toggleRoutableDeployment(m.client, depArgs.baseDep.version, depArgs.baseDep.dep, true)
+		if err != nil {
+			return errors.Wrap(err, "unable to update legacy deployment")
+		}
+	}
+
 	oldDep, err := m.client.AppsV1().Deployments(ns).Get(depArgs.name, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
@@ -1004,9 +1018,6 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	newDep, labels, annotations, err := createAppDeployment(m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
 	if err != nil {
 		return err
-	}
-	if m.writer == nil {
-		m.writer = ioutil.Discard
 	}
 	newRevision, err := monitorDeployment(ctx, m.client, newDep, a, process, m.writer, events.ResourceVersion, version)
 	if err != nil {
@@ -1037,7 +1048,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
-	err = m.createServices(a, process, version, labels, annotations, depArgs)
+	err = m.ensureServices(a, process, labels, annotations)
 	if err != nil {
 		return err
 	}
@@ -1048,13 +1059,13 @@ type baseDepArgs struct {
 	name     string
 	selector map[string]string
 	isLegacy bool
+	baseDep  *deploymentInfo
 }
 
 func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
 	var result baseDepArgs
 	if !preserveVersions {
 		labels.SetIsRoutable()
-		labels.SetIsBase()
 		result.name = deploymentNameForAppBase(a, process)
 		result.selector = labels.ToBaseSelector()
 		return result, nil
@@ -1065,6 +1076,8 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 		return result, err
 	}
 
+	result.baseDep = &depData.base
+
 	if versionDeps, ok := depData.versioned[version.Version()]; ok {
 		if len(versionDeps) != 1 {
 			var names []string
@@ -1074,11 +1087,11 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 			return result, errors.Errorf("more than one deployment for the same app version found: %v", names)
 		}
 		versionDep := versionDeps[0]
-		if versionDep.isBase {
-			labels.SetIsBase()
-		}
 		if versionDep.isRoutable {
 			labels.SetIsRoutable()
+		}
+		if !versionDep.isBase {
+			labels.ReplaceIsIsolatedRunWithNew()
 		}
 		result.isLegacy = versionDep.isLegacy
 		result.name = versionDep.dep.Name
@@ -1087,12 +1100,12 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 	}
 
 	if depData.base.dep != nil {
+		labels.ReplaceIsIsolatedRunWithNew()
 		result.name = deploymentNameForApp(a, process, version.Version())
 		result.selector = labels.ToVersionSelector()
 		return result, nil
 	}
 
-	labels.SetIsBase()
 	if depData.count == 0 {
 		labels.SetIsRoutable()
 	}
@@ -1101,16 +1114,14 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 	return result, nil
 }
 
-func (m *serviceManager) createServices(a provision.App, process string, version appTypes.AppVersion, labels, annotations *provision.LabelSet, depArgs baseDepArgs) error {
-	svcPorts, err := loadServicePorts(version, process)
-	if err != nil {
-		return err
-	}
+type svcCreateData struct {
+	name     string
+	labels   map[string]string
+	selector map[string]string
+	ports    []apiv1.ServicePort
+}
 
-	if len(svcPorts) == 0 {
-		return cleanupServices(m.client, a, process, version)
-	}
-
+func (m *serviceManager) ensureServices(a provision.App, process string, labels, annotations *provision.LabelSet) error {
 	ns, err := m.client.AppNamespace(a)
 	if err != nil {
 		return err
@@ -1125,35 +1136,89 @@ func (m *serviceManager) createServices(a provision.App, process string, version
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
 	}
 
-	labels = labels.WithoutBase().WithoutAppReplicas()
-	routableLabels := labels.DeepCopy()
-	if !depArgs.isLegacy {
-		routableLabels.SetIsRoutable()
+	labels = labels.WithoutAppReplicas()
+
+	routableLabels := labels.WithoutVersion().WithoutIsolated()
+	routableLabels.SetIsRoutable()
+
+	versionLabels := labels.WithoutRoutable()
+
+	depData, err := deploymentsDataForProcess(m.client, a, process)
+	if err != nil {
+		return err
 	}
 
-	baseServiceName := serviceNameForAppBase(a, process)
-
-	svcsToCreate := []struct {
-		name     string
-		labels   map[string]string
-		selector map[string]string
-	}{
-		{
-			name:     baseServiceName,
-			labels:   routableLabels.WithoutVersion().ToLabels(),
-			selector: routableLabels.ToRoutableSelector(),
-		},
-		{
-			name:     serviceNameForApp(a, process, version.Version()),
-			labels:   labels.WithoutRoutable().ToLabels(),
-			selector: labels.ToVersionSelector(),
-		},
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	if err != nil {
+		return err
 	}
-	for _, svcData := range svcsToCreate {
-		portsCopy := make([]apiv1.ServicePort, len(svcPorts))
-		for i := range svcPorts {
-			portsCopy[i] = *svcPorts[i].DeepCopy()
+	versionInfoMap := map[int]appTypes.AppVersionInfo{}
+	for _, v := range versions.Versions {
+		versionInfoMap[v.Version] = v
+	}
+
+	var baseSvcPorts []apiv1.ServicePort
+	var svcsToCreate []svcCreateData
+
+	for versionNumber, depInfo := range depData.versioned {
+		if len(depInfo) == 0 {
+			continue
 		}
+
+		vInfo, ok := versionInfoMap[versionNumber]
+		if !ok {
+			return errors.Errorf("no version data found for %v", versionNumber)
+		}
+		version := servicemanager.AppVersion.AppVersionFromInfo(a, vInfo)
+		svcPorts, err := loadServicePorts(version, process)
+		if err != nil {
+			return err
+		}
+
+		if len(svcPorts) == 0 {
+			err = cleanupServices(m.client, a, process, version)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		labels := versionLabels.DeepCopy()
+		labels.SetVersion(versionNumber)
+		if depInfo[0].isBase {
+			labels.ReplaceIsIsolatedNewRunWithBase()
+		} else {
+			labels.ReplaceIsIsolatedRunWithNew()
+		}
+
+		svcsToCreate = append(svcsToCreate, svcCreateData{
+			name:     serviceNameForApp(a, process, versionNumber),
+			labels:   labels.ToLabels(),
+			selector: labels.ToVersionSelector(),
+			ports:    svcPorts,
+		})
+
+		if depInfo[0].isRoutable {
+			baseSvcPorts = deepCopyPorts(svcPorts)
+		}
+	}
+
+	if baseSvcPorts != nil {
+		svcsToCreate = append(svcsToCreate, svcCreateData{
+			name:     serviceNameForAppBase(a, process),
+			labels:   routableLabels.ToLabels(),
+			selector: routableLabels.ToRoutableSelector(),
+			ports:    baseSvcPorts,
+		})
+	}
+
+	if len(svcsToCreate) == 0 {
+		return nil
+	}
+
+	headlessPorts := deepCopyPorts(baseSvcPorts)
+
+	for _, svcData := range svcsToCreate {
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        svcData.name,
@@ -1163,7 +1228,7 @@ func (m *serviceManager) createServices(a provision.App, process string, version
 			},
 			Spec: apiv1.ServiceSpec{
 				Selector:              svcData.selector,
-				Ports:                 portsCopy,
+				Ports:                 svcData.ports,
 				Type:                  apiv1.ServiceTypeNodePort,
 				ExternalTrafficPolicy: policy,
 			},
@@ -1183,7 +1248,7 @@ func (m *serviceManager) createServices(a provision.App, process string, version
 			return errors.WithStack(err)
 		}
 	}
-	err = m.createHeadlessService(svcPorts, ns, a, process, routableLabels.WithoutVersion(), annotations)
+	err = m.createHeadlessService(headlessPorts, ns, a, process, routableLabels.WithoutVersion(), annotations)
 	if err != nil {
 		return err
 	}
@@ -1689,4 +1754,12 @@ func newSleepyContainer(name, image string, uid *int64, envs []apiv1.EnvVar, mou
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		}, mounts...),
 	}
+}
+
+func deepCopyPorts(ports []apiv1.ServicePort) []apiv1.ServicePort {
+	result := make([]apiv1.ServicePort, len(ports))
+	for i := range ports {
+		result[i] = *ports[i].DeepCopy()
+	}
+	return result
 }
