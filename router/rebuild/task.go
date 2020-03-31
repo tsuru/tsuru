@@ -135,7 +135,7 @@ func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
 		}
 
 		defer func() {
-			if err != nil || resultHasChanges(result) {
+			if err != nil {
 				evt.DoneCustomData(err, result)
 				return
 			}

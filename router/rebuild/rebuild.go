@@ -60,17 +60,6 @@ func rebuildRoutes(app RebuildApp, dry, wait bool, w io.Writer) (map[string]Rebu
 	return result, multi.ToError()
 }
 
-func resultHasChanges(result map[string]RebuildRoutesResult) bool {
-	for _, routerResult := range result {
-		for _, prefixResult := range routerResult.PrefixResults {
-			if len(prefixResult.Added) > 0 || len(prefixResult.Removed) > 0 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func diffRoutes(old []*url.URL, new []*url.URL) (toAdd []*url.URL, toRemove []*url.URL) {
 	expectedMap := make(map[string]*url.URL)
 	for i, addr := range new {
