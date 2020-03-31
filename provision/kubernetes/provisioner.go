@@ -505,8 +505,18 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		}
 		urls := []url.URL{}
 		appProcess := l.AppProcess()
+		appVersion := l.AppVersion()
+		isRoutable := l.IsRoutable()
+		if appVersion == 0 {
+			isRoutable = true
+		}
 		if appProcess != "" {
-			srvName := serviceNameForApp(podApp, appProcess, l.AppVersion())
+			var srvName string
+			if isRoutable {
+				srvName = serviceNameForAppBase(podApp, appProcess)
+			} else {
+				srvName = serviceNameForApp(podApp, appProcess, appVersion)
+			}
 			ports, ok := portsMap[srvName]
 			if !ok {
 				ports, err = getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
@@ -532,8 +542,8 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			Status:      stateMap[pod.Status.Phase],
 			Address:     u,
 			Addresses:   urls,
-			Version:     l.AppVersion(),
-			Routable:    l.IsRoutable(),
+			Version:     appVersion,
+			Routable:    isRoutable,
 		})
 	}
 	return units, nil
@@ -877,6 +887,10 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
+	err = ensureAppCustomResourceSynced(client, a)
+	if err != nil {
+		return nil, err
+	}
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
@@ -1182,17 +1196,6 @@ func (p *kubernetesProvisioner) Deploy(args provision.DeployArgs) (string, error
 		return "", err
 	}
 
-	if args.PreserveVersions {
-		var hasLegacy bool
-		hasLegacy, err = hasLegacyVersionForApp(client, args.App)
-		if err != nil {
-			return "", err
-		}
-		if hasLegacy {
-			return "", errors.Errorf("unable to deploy multiple versions of app, please make a regular deploy first to enable multiple versions")
-		}
-	}
-
 	if err = ensureAppCustomResourceSynced(client, args.App); err != nil {
 		return "", err
 	}
@@ -1482,11 +1485,17 @@ func loadAndEnsureAppCustomResourceSynced(client *ClusterClient, a provision.App
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(deploys, func(i, j int) bool {
+		return deploys[i].Name < deploys[j].Name
+	})
 
 	svcs, err := allServicesForApp(client, a)
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(svcs, func(i, j int) bool {
+		return svcs[i].Name < svcs[j].Name
+	})
 
 	deployments := make(map[string][]string)
 	services := make(map[string][]string)
@@ -1690,7 +1699,7 @@ func (p *kubernetesProvisioner) ToggleRoutable(a provision.App, version appTypes
 		return errors.Errorf("no deployment found for version %v", version.Version())
 	}
 	for _, depData := range depsForVersion {
-		err = toggleRoutableDeployment(client, depData.dep, isRoutable)
+		err = toggleRoutableDeployment(client, version.Version(), depData.dep, isRoutable)
 		if err != nil {
 			return err
 		}
@@ -1698,23 +1707,43 @@ func (p *kubernetesProvisioner) ToggleRoutable(a provision.App, version appTypes
 	return nil
 }
 
-func toggleRoutableDeployment(client *ClusterClient, dep *appsv1.Deployment, isRoutable bool) error {
+func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.Deployment, isRoutable bool) (err error) {
 	ls := labelOnlySetFromMeta(&dep.ObjectMeta)
 	ls.ToggleIsRoutable(isRoutable)
+	ls.SetVersion(version)
 	dep.Spec.Paused = true
 	dep.ObjectMeta.Labels = ls.ToLabels()
 	dep.Spec.Template.ObjectMeta.Labels = ls.WithoutAppReplicas().ToLabels()
-	_, err := client.AppsV1().Deployments(dep.Namespace).Update(dep)
+	_, err = client.AppsV1().Deployments(dep.Namespace).Update(dep)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	defer func() {
+		if err != nil {
+			return
+		}
+		dep, err = client.AppsV1().Deployments(dep.Namespace).Get(dep.Name, metav1.GetOptions{})
+		if err != nil {
+			err = errors.WithStack(err)
+			return
+		}
+		dep.Spec.Paused = false
+		_, err = client.AppsV1().Deployments(dep.Namespace).Update(dep)
+		if err != nil {
+			err = errors.WithStack(err)
+		}
+	}()
 
 	rs, err := activeReplicaSetForDeployment(client, dep)
 	if err != nil {
+		if k8sErrors.IsNotFound(errors.Cause(err)) {
+			return nil
+		}
 		return err
 	}
 	ls = labelOnlySetFromMeta(&rs.ObjectMeta)
 	ls.ToggleIsRoutable(isRoutable)
+	ls.SetVersion(version)
 	rs.ObjectMeta.Labels = ls.ToLabels()
 	rs.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
 	_, err = client.AppsV1().ReplicaSets(rs.Namespace).Update(rs)
@@ -1729,6 +1758,7 @@ func toggleRoutableDeployment(client *ClusterClient, dep *appsv1.Deployment, isR
 	for _, pod := range pods {
 		ls = labelOnlySetFromMeta(&pod.ObjectMeta)
 		ls.ToggleIsRoutable(isRoutable)
+		ls.SetVersion(version)
 		pod.ObjectMeta.Labels = ls.ToLabels()
 		_, err = client.CoreV1().Pods(pod.Namespace).Update(&pod)
 		if err != nil {

@@ -113,3 +113,11 @@ func (s *appVersionService) AllAppVersions() ([]appTypes.AppVersions, error) {
 func (s *appVersionService) DeleteVersion(appName string, version int) error {
 	return s.storage.DeleteVersion(appName, version)
 }
+
+func (s *appVersionService) AppVersionFromInfo(app appTypes.App, info appTypes.AppVersionInfo) appTypes.AppVersion {
+	return &appVersionImpl{
+		app:         app,
+		storage:     s.storage,
+		versionInfo: &info,
+	}
+}

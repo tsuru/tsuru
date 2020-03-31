@@ -610,7 +610,7 @@ func (s *S) TestUnits(c *check.C) {
 	})
 	for i, u := range units {
 		splittedName := strings.Split(u.ID, "-")
-		c.Assert(splittedName, check.HasLen, 6)
+		c.Assert(splittedName, check.HasLen, 5)
 		c.Assert(splittedName[0], check.Equals, "myapp")
 		units[i].ID = ""
 		units[i].Name = ""
@@ -728,6 +728,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30001"},
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 			},
+			Routable: true,
 		},
 		{
 			ID:          "myapp-2",
@@ -742,6 +743,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.2:30001"},
 				{Scheme: "http", Host: "192.168.99.2:30002"},
 			},
+			Routable: true,
 		},
 		{
 			ID:          "otherapp-1",
@@ -756,6 +758,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30001"},
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 			},
+			Routable: true,
 		},
 		{
 			ID:          "otherapp-2",
@@ -770,6 +773,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.2:30001"},
 				{Scheme: "http", Host: "192.168.99.2:30002"},
 			},
+			Routable: true,
 		},
 	})
 }
@@ -1440,7 +1444,7 @@ func (s *S) TestDeploy(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -1457,8 +1461,8 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
 	})
 }
 
@@ -1525,8 +1529,8 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
 		NamespaceName:      "tsuru-test-default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
 	})
 }
 
@@ -1690,7 +1694,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -1707,8 +1711,8 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	expected := tsuruv1.AppSpec{
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web-base"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-v1", "myapp-web-units"}},
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
 		Configs: &provTypes.TsuruYamlKubernetesConfig{
 			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -1838,7 +1842,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web-base")
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
 	containers := deps.Items[0].Spec.Template.Spec.Containers
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
@@ -2010,19 +2014,19 @@ func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 		Width:  99,
 		Height: 42,
 		Term:   "xterm",
-		Units:  []string{"myapp-web-base-pod-1-1"},
+		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web-base"].Stdin, check.Equals, "echo test")
+	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
 	var sz remotecommand.TerminalSize
-	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web-base"].Resize), &sz)
+	err = json.Unmarshal([]byte(s.mock.Stream["myapp-web"].Resize), &sz)
 	c.Assert(err, check.IsNil)
 	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
 func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
@@ -2044,15 +2048,15 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 		Stdout: conn,
 		Stderr: conn,
 		Term:   "xterm",
-		Units:  []string{"myapp-web-base-pod-1-1"},
+		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.mock.Stream["myapp-web-base"].Stdin, check.Equals, "echo test")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
+	c.Assert(s.mock.Stream["myapp-web"].Stdin, check.Equals, "echo test")
+	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
 func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
@@ -2127,18 +2131,18 @@ func (s *S) TestExecuteCommand(c *check.C) {
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
-		Units:  []string{"myapp-web-base-pod-1-1", "myapp-web-base-pod-2-2"},
+		Units:  []string{"myapp-web-pod-1-1", "myapp-web-pod-2-2"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout datastdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr datastderr data")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 2)
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-2-2/exec")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 2)
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls[1].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
@@ -2157,16 +2161,16 @@ func (s *S) TestExecuteCommandSingleUnit(c *check.C) {
 		App:    a,
 		Stdout: stdout,
 		Stderr: stderr,
-		Units:  []string{"myapp-web-base-pod-1-1"},
+		Units:  []string{"myapp-web-pod-1-1"},
 		Cmds:   []string{"mycmd", "arg1", "arg2"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr data")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-base-pod-1-1/exec")
-	c.Assert(s.mock.Stream["myapp-web-base"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
+	c.Assert(s.mock.Stream["myapp-web"].Urls, check.HasLen, 1)
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandNoUnits(c *check.C) {

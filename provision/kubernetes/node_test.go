@@ -201,6 +201,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 			Addresses: []url.URL{
 				{Scheme: "http", Host: ":30000"},
 			},
+			Routable: true,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -214,6 +215,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 			Addresses: []url.URL{
 				{Scheme: "http", Host: ":30000"},
 			},
+			Routable: true,
 		},
 	})
 }
@@ -304,6 +306,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ""},
 			Addresses:   []url.URL{},
+			Routable:    true,
 		},
 		{
 			ID:          "otherapp-1",
@@ -315,6 +318,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Status:      "started",
 			Address:     &url.URL{Scheme: "http", Host: ""},
 			Addresses:   []url.URL{},
+			Routable:    true,
 		},
 	})
 }
@@ -373,6 +377,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			Addresses: []url.URL{
 				{Scheme: "http", Host: ":30000"},
 			},
+			Routable: true,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -386,6 +391,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			Addresses: []url.URL{
 				{Scheme: "http", Host: ":30000"},
 			},
+			Routable: true,
 		},
 	})
 }

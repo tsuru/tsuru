@@ -95,6 +95,7 @@ type AppVersionService interface {
 	NewAppVersion(args NewVersionArgs) (AppVersion, error)
 	DeleteVersions(appName string) error
 	DeleteVersion(appName string, version int) error
+	AppVersionFromInfo(App, AppVersionInfo) AppVersion
 }
 
 type AppVersionStorage interface {
