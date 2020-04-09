@@ -514,22 +514,6 @@ func cleanupReplicas(client *ClusterClient, dep *appsv1.Deployment) error {
 	return cleanupPods(client, listOpts, dep)
 }
 
-func selectorForVersion(a provision.App, process string, version appTypes.AppVersion) (*provision.LabelSet, error) {
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		Version: version.Version(),
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return svcLabels, nil
-}
-
 func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVersion, error) {
 	deps, err := allDeploymentsForApp(client, a)
 	if err != nil {
