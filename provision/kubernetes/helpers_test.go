@@ -525,6 +525,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 			},
 		},
 	})
+	c.Assert(err, check.IsNil)
 	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
