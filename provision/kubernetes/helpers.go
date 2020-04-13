@@ -50,6 +50,11 @@ const (
 	kubeLabelNameMaxLen       = 55
 )
 
+var svcIgnoredLabels = []string{
+	tsuruLabelPrefix + "router-lb",
+	tsuruLabelPrefix + "external-controller",
+}
+
 var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
 
 func validKubeName(name string) string {
@@ -616,11 +621,6 @@ func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, 
 		result = append(result, *svc.DeepCopy())
 	}
 	return filterTsuruControlledServices(result), nil
-}
-
-var svcIgnoredLabels = []string{
-	"tsuru.io/router-lb",
-	"tsuru.io/external-controller",
 }
 
 func filterTsuruControlledServices(svcs []apiv1.Service) []apiv1.Service {

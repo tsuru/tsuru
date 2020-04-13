@@ -44,6 +44,7 @@ var eventKindsIgnoreRebuild = []string{
 	permission.PermAppUpdateRestart.FullName(),
 	permission.PermAppUpdateStop.FullName(),
 	permission.PermAppUpdateStart.FullName(),
+	permission.PermAppUpdateRoutable.FullName(),
 }
 
 type clusterController struct {
