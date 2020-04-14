@@ -57,7 +57,7 @@ type clusterController struct {
 	nodeInformer       v1informers.NodeInformer
 	stopCh             chan struct{}
 	cancel             context.CancelFunc
-	resourceVers       map[types.NamespacedName]string
+	resourceReadyCache map[types.NamespacedName]bool
 	startedAt          time.Time
 	leader             int32
 	wg                 sync.WaitGroup
@@ -78,11 +78,11 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &clusterController{
-		cluster:      cluster,
-		stopCh:       make(chan struct{}),
-		cancel:       cancel,
-		resourceVers: make(map[types.NamespacedName]string),
-		startedAt:    time.Now(),
+		cluster:            cluster,
+		stopCh:             make(chan struct{}),
+		cancel:             cancel,
+		resourceReadyCache: make(map[types.NamespacedName]bool),
+		startedAt:          time.Now(),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
@@ -176,15 +176,13 @@ func (c *clusterController) onUpdate(_, newObj interface{}) error {
 		return errors.Errorf("object is not a pod: %#v", newObj)
 	}
 	name := types.NamespacedName{Namespace: newPod.Namespace, Name: newPod.Name}
-	// We keep our own track of handled resource versions and ignore oldObj
-	// because of leader election. It's possible for the message containing
-	// different resource versions to arrive while the current instance was not
-	// a leader yet. We only want to consider a pod version as handled if it
-	// arrived while we were leader.
-	if c.resourceVers[name] == newPod.ResourceVersion {
+	podReady := isPodReady(newPod)
+	// We keep track of the last seen ready state and only update the routes if
+	// it changes.
+	if c.resourceReadyCache[name] == podReady {
 		return nil
 	}
-	c.resourceVers[name] = newPod.ResourceVersion
+	c.resourceReadyCache[name] = podReady
 	c.enqueuePod(newPod)
 	return nil
 }
@@ -208,7 +206,7 @@ func (c *clusterController) onDelete(obj interface{}) error {
 
 func (c *clusterController) enqueuePodDelete(pod *apiv1.Pod) {
 	name := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
-	delete(c.resourceVers, name)
+	delete(c.resourceReadyCache, name)
 	c.enqueuePod(pod)
 }
 
@@ -237,8 +235,13 @@ func (c *clusterController) enqueuePod(pod *apiv1.Pod) {
 		if err == nil && len(evts) > 0 {
 			return
 		}
-		rebuild.EnqueueRoutesRebuild(appName)
+		runRoutesRebuild(appName)
 	}
+}
+
+// runRoutesRebuild is used in tests for mocking rebuild
+var runRoutesRebuild = func(appName string) {
+	rebuild.EnqueueRoutesRebuild(appName)
 }
 
 func (c *clusterController) getPodInformer() (v1informers.PodInformer, error) {

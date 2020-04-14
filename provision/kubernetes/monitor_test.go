@@ -8,11 +8,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/router/rebuild"
-
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router/rebuild"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,15 +37,19 @@ func (s *S) TestNewClusterController(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	rebuildCalled := make(chan struct{})
-	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		defer close(rebuildCalled)
+	oldRebuildFunc := runRoutesRebuild
+	defer func() {
+		runRoutesRebuild = oldRebuildFunc
+	}()
+	runRoutesRebuild = func(appName string) {
+		defer func() { rebuildCalled <- struct{}{} }()
 		c.Assert(appName, check.Equals, "myapp")
-		return a, errors.New("stop here")
-	})
+	}
 	c.Assert(err, check.IsNil)
 	defer rebuild.Shutdown(context.Background())
 	_, err = getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
+
 	basePod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "pod1",
@@ -55,14 +57,32 @@ func (s *S) TestNewClusterController(c *check.C) {
 			ResourceVersion: "0",
 		},
 	}
-	watchFake.Add(basePod)
-	basePod = basePod.DeepCopy()
+	watchFake.Add(basePod.DeepCopy())
 	basePod.ResourceVersion = "1"
-	watchFake.Modify(basePod)
+	watchFake.Modify(basePod.DeepCopy())
 	select {
 	case <-rebuildCalled:
 	case <-time.After(5 * time.Second):
-		c.Fatal("timeout waiting for rebuild call")
+		c.Fatal("timeout waiting for first rebuild call")
+	}
+
+	basePod.ResourceVersion = "2"
+	watchFake.Modify(basePod.DeepCopy())
+	select {
+	case <-rebuildCalled:
+		c.Fatal("rebuild called when no call was expected")
+	case <-time.After(5 * time.Second):
+	}
+
+	basePod.ResourceVersion = "3"
+	basePod.Status.Conditions = []apiv1.PodCondition{
+		{Type: apiv1.PodReady, Status: apiv1.ConditionFalse},
+	}
+	watchFake.Modify(basePod.DeepCopy())
+	select {
+	case <-rebuildCalled:
+	case <-time.After(5 * time.Second):
+		c.Fatal("timeout waiting for second rebuild call")
 	}
 }
 

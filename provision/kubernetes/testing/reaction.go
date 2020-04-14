@@ -570,7 +570,6 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		if action.GetSubresource() != "" {
 			return false, nil, nil
 		}
-		wg.Add(1)
 		dep := action.(ktesting.CreateAction).GetObject().(*appsv1.Deployment)
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
@@ -578,8 +577,35 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		}
 		dep.Status.UpdatedReplicas = specReplicas
 		dep.Status.Replicas = specReplicas
+		if dep.Spec.Paused {
+			return false, nil, nil
+		}
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			rs := &appsv1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        dep.Name + "-1",
+					Namespace:   dep.Namespace,
+					Labels:      dep.Labels,
+					Annotations: dep.Annotations,
+				},
+				Spec: appsv1.ReplicaSetSpec{
+					Replicas: dep.Spec.Replicas,
+					Selector: dep.Spec.Selector.DeepCopy(),
+					Template: *dep.Spec.Template.DeepCopy(),
+				},
+			}
+			rs.OwnerReferences = []metav1.OwnerReference{
+				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+			}
+			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Create(rs)
+			_, err = s.client.AppsV1().ReplicaSets(dep.Namespace).Update(rs)
+			c.Assert(err, check.IsNil)
+			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
+			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
+			c.Assert(err, check.IsNil)
+
 			pod := &apiv1.Pod{
 				ObjectMeta: dep.Spec.Template.ObjectMeta,
 				Spec:       dep.Spec.Template.Spec,
@@ -588,10 +614,10 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
 			pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
-				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
 			}
 			pod.Spec.NodeName = "n1"
-			err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+			err = cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
 			}, dep.Namespace, s.factory)
 			c.Assert(err, check.IsNil)

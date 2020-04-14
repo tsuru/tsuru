@@ -2861,3 +2861,56 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 	})
 }
+
+func (s *S) TestProvisionerToggleRoutable(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.ToggleRoutable(a, version, false)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	dep, err := s.client.AppsV1().Deployments("default").Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Paused, check.Equals, false)
+	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "false")
+	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+
+	rs, err := s.client.AppsV1().ReplicaSets("default").Get("myapp-web-1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "false")
+	c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+
+	pods, err := s.client.CoreV1().Pods("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "false")
+
+	err = s.p.ToggleRoutable(a, version, true)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	dep, err = s.client.AppsV1().Deployments("default").Get("myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Paused, check.Equals, false)
+	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "true")
+	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+
+	rs, err = s.client.AppsV1().ReplicaSets("default").Get("myapp-web-1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "true")
+	c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+
+	pods, err = s.client.CoreV1().Pods("default").List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "true")
+}

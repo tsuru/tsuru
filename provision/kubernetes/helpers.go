@@ -936,11 +936,18 @@ func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace
 }
 
 func labelOnlySetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
+	return labelOnlySetFromMetaPrefix(meta, true)
+}
+
+func labelOnlySetFromMetaPrefix(meta *metav1.ObjectMeta, includePrefix bool) *provision.LabelSet {
 	labels := make(map[string]string, len(meta.Labels)+len(meta.Annotations))
 	rawLabels := make(map[string]string)
 	for k, v := range meta.Labels {
 		trimmedKey := strings.TrimPrefix(k, tsuruLabelPrefix)
 		if trimmedKey != k {
+			if !includePrefix {
+				k = trimmedKey
+			}
 			labels[k] = v
 		} else {
 			rawLabels[k] = v

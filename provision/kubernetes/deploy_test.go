@@ -2715,6 +2715,14 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 	}
 	s.client.PrependReactor("create", "deployments", reaction)
 
+	podReaction := func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		pod := obj.(*apiv1.Pod)
+		pod.Status.Phase = apiv1.PodPending
+		return false, nil, nil
+	}
+	s.client.PrependReactor("create", "pods", podReaction)
+
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	depName := deploymentNameForAppBase(a, "p1")

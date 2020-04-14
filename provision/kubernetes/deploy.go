@@ -764,7 +764,7 @@ func createDeployTimeoutError(client *ClusterClient, ns string, selector map[str
 	}
 	if len(messages) == 0 {
 		// This should not be possible.
-		return errors.New("Unknown error deploying application.")
+		return errors.Errorf("Unknown error deploying application, timeout after %v", timeout)
 	}
 	var msgsStr []string
 	badUnitsSet := make(map[string]struct{})

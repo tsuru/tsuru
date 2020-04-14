@@ -1708,7 +1708,7 @@ func (p *kubernetesProvisioner) ToggleRoutable(a provision.App, version appTypes
 }
 
 func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.Deployment, isRoutable bool) (err error) {
-	ls := labelOnlySetFromMeta(&dep.ObjectMeta)
+	ls := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
 	ls.ToggleIsRoutable(isRoutable)
 	ls.SetVersion(version)
 	dep.Spec.Paused = true
@@ -1741,7 +1741,7 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 		}
 		return err
 	}
-	ls = labelOnlySetFromMeta(&rs.ObjectMeta)
+	ls = labelOnlySetFromMetaPrefix(&rs.ObjectMeta, false)
 	ls.ToggleIsRoutable(isRoutable)
 	ls.SetVersion(version)
 	rs.ObjectMeta.Labels = ls.ToLabels()
@@ -1756,7 +1756,7 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 		return err
 	}
 	for _, pod := range pods {
-		ls = labelOnlySetFromMeta(&pod.ObjectMeta)
+		ls = labelOnlySetFromMetaPrefix(&pod.ObjectMeta, false)
 		ls.ToggleIsRoutable(isRoutable)
 		ls.SetVersion(version)
 		pod.ObjectMeta.Labels = ls.ToLabels()
