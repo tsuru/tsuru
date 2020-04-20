@@ -859,19 +859,23 @@ func (d *Driver) getServiceClient(ctx context.Context, state state) (*raw.Servic
 	}
 	defer cleanup()
 
-	file, err := ioutil.TempFile("", "credential-file")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(file.Name())
-	defer file.Close()
+	// Only set env if the credential was explicitely received. By not setting
+	// it, google auth lib will try retrieving credentials from GCE metadata.
+	if state.CredentialContent != "" {
+		file, err := ioutil.TempFile("", "credential-file")
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(file.Name())
+		defer file.Close()
 
-	if _, err := io.Copy(file, strings.NewReader(state.CredentialContent)); err != nil {
-		return nil, err
-	}
+		if _, err := io.Copy(file, strings.NewReader(state.CredentialContent)); err != nil {
+			return nil, err
+		}
 
-	setEnv = true
-	os.Setenv(defaultCredentialEnv, file.Name())
+		setEnv = true
+		os.Setenv(defaultCredentialEnv, file.Name())
+	}
 
 	ts, err := google.DefaultTokenSource(ctx, raw.CloudPlatformScope)
 	if err != nil {

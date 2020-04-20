@@ -63,8 +63,8 @@ github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38 h1:szLW82/T7mgZyc
 github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081 h1:nERdkUtJ2vbNjbR59fPsKfwztXWaiJUQrJYmYXV7CTg=
 github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081/go.mod h1:B3TZHoY3EjMaI/cEzZDGB2sRv7LVC/BdGvsRU43nllE=
-github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20190930172718-74ce09259919 h1:Bsg/OY9oDuK7mcFk2mNVU8ONcWxB4bJ92prrnmtihCM=
-github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20190930172718-74ce09259919/go.mod h1:3lpmRi6KzIKEOyLuwqrToRhK0L0Z7/PdNS08Bfi7fQg=
+github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20200420145904-d4e1271f77cf h1:U7hjDEKnfATn/AgWc4CEe3xwTLTWLVIO+Q8jSrIBi1I=
+github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20200420145904-d4e1271f77cf/go.mod h1:3lpmRi6KzIKEOyLuwqrToRhK0L0Z7/PdNS08Bfi7fQg=
 github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935 h1:5zCYEyUB91XDlstHctPrAoWkD7j+Wfb5FRTppDEZF8k=
 github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935/go.mod h1:Dx5ygAngNW5Ztbxlb8h5h6WGQ8ceG7mKLgB8i3eS9P0=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
