@@ -42,13 +42,17 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func retry(timeout time.Duration, fn func() bool) bool {
+	return retryWait(timeout, 5*time.Second, fn)
+}
+
+func retryWait(timeout, wait time.Duration, fn func() bool) bool {
 	timeoutTimer := time.After(timeout)
 	for {
 		if fn() {
 			return true
 		}
 		select {
-		case <-time.After(5 * time.Second):
+		case <-time.After(wait):
 		case <-timeoutTimer:
 			return false
 		}

@@ -695,19 +695,22 @@ func appVersions() ExecFlow {
 			addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 			parts := addrRE.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 2)
-			cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
+			cmd := NewCommand("curl", "-m5", "-sSf", "http://"+parts[1])
 			successCount := 0
-			ok = retry(15*time.Minute, func() bool {
+			ok = retryWait(15*time.Minute, 2*time.Second, func() bool {
 				res = cmd.Run(env)
 				if res.ExitCode == 0 {
 					successCount++
 				}
-				return successCount == 5
+				return successCount == 10
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 			for i := 0; i < 10; i++ {
-				res = cmd.Run(env)
-				c.Assert(res, ResultOk)
+				ok = retryWait(30*time.Second, time.Second, func() bool {
+					res = cmd.Run(env)
+					return res.ExitCode == 0
+				})
+				c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 				c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf(`.* version: %d$`, version))
 			}
 		}
