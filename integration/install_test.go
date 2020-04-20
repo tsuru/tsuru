@@ -48,6 +48,7 @@ var (
 		serviceBind(),
 		appRouters(),
 		appSwap(),
+		appVersions(),
 	}
 	installerConfig = ""
 )
@@ -695,15 +696,19 @@ func appVersions() ExecFlow {
 			parts := addrRE.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 2)
 			cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
+			successCount := 0
 			ok = retry(15*time.Minute, func() bool {
 				res = cmd.Run(env)
-				return res.ExitCode == 0
+				if res.ExitCode == 0 {
+					successCount++
+				}
+				return successCount == 5
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 			for i := 0; i < 10; i++ {
 				res = cmd.Run(env)
 				c.Assert(res, ResultOk)
-				c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf(`version: %d$`, version))
+				c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf(`.* version: %d$`, version))
 			}
 		}
 
@@ -722,6 +727,20 @@ func appVersions() ExecFlow {
 		res = T("app-router-version-remove", "2", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion(3)
+
+		res = T("unit-add", "1", "--version", "1", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(3)
+
+		res = T("app-router-version-add", "1", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-router-version-remove", "3", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(1)
+
+		res = T("app-deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(4)
 
 	}
 	flow.backward = func(c *check.C, env *Environment) {
