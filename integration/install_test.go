@@ -359,6 +359,7 @@ func poolAdd() ExecFlow {
 			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
+			env.Add("clusterpools", poolName)
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 			res = cluster.Start()
@@ -369,7 +370,7 @@ func poolAdd() ExecFlow {
 			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
 				env.Add("multinodepools", poolName)
 			}
-			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(45 * time.Minute).Run(env)
+			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(120 * time.Minute).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			readyRegex := regexp.MustCompile("(?i)^ready")
@@ -661,6 +662,72 @@ func appSwap() ExecFlow {
 			res := T("app-remove", "-y", "-a", appName).Run(env)
 			c.Check(res, ResultOk)
 		}
+	}
+	return flow
+}
+
+func appVersions() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"pool": "clusterpools",
+		},
+		parallel: true,
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			gopath = build.Default.GOPATH
+		}
+		appDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "fixtures", "versions-app")
+		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
+		res := T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		c.Assert(res, ResultOk)
+
+		checkVersion := func(version int) {
+			regex := regexp.MustCompile("started")
+			ok := retry(5*time.Minute, func() bool {
+				res = T("app-info", "-a", appName).Run(env)
+				c.Assert(res, ResultOk)
+				return regex.MatchString(res.Stdout.String())
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
+			addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
+			parts := addrRE.FindStringSubmatch(res.Stdout.String())
+			c.Assert(parts, check.HasLen, 2)
+			cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
+			ok = retry(15*time.Minute, func() bool {
+				res = cmd.Run(env)
+				return res.ExitCode == 0
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+			for i := 0; i < 10; i++ {
+				res = cmd.Run(env)
+				c.Assert(res, ResultOk)
+				c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf(`version: %d$`, version))
+			}
+		}
+
+		res = T("app-deploy", "-a", appName, appDir).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(1)
+		res = T("app-deploy", "-a", appName, appDir).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(2)
+		res = T("app-deploy", "--new-version", "-a", appName, appDir).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(2)
+
+		res = T("app-router-version-add", "3", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-router-version-remove", "2", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
+		checkVersion(3)
+
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
+		res := T("app-remove", "-y", "-a", appName).Run(env)
+		c.Check(res, ResultOk)
 	}
 	return flow
 }
