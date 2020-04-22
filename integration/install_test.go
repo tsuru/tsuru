@@ -684,7 +684,7 @@ func appVersions() ExecFlow {
 		res := T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 
-		checkVersion := func(version int) {
+		checkVersion := func(expectedVersions ...string) {
 			regex := regexp.MustCompile("started")
 			ok := retry(5*time.Minute, func() bool {
 				res = T("app-info", "-a", appName).Run(env)
@@ -705,45 +705,54 @@ func appVersions() ExecFlow {
 				return successCount == 10
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-			for i := 0; i < 10; i++ {
+			versionRE := regexp.MustCompile(`.* version: (\d+)$`)
+			versionsCounter := map[string]int{}
+			for i := 0; i < 15; i++ {
 				ok = retryWait(30*time.Second, time.Second, func() bool {
 					res = cmd.Run(env)
 					return res.ExitCode == 0
 				})
 				c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-				c.Assert(res.Stdout.String(), check.Matches, fmt.Sprintf(`.* version: %d$`, version))
+				parts = versionRE.FindStringSubmatch(res.Stdout.String())
+				c.Assert(parts, check.HasLen, 2)
+				versionsCounter[parts[1]]++
+			}
+			for _, v := range expectedVersions {
+				c.Assert(versionsCounter[v] > 0, check.Equals, true)
 			}
 		}
 
 		res = T("app-deploy", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(1)
+		checkVersion("1")
 		res = T("app-deploy", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(2)
+		checkVersion("2")
 		res = T("app-deploy", "--new-version", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(2)
+		checkVersion("2")
 
 		res = T("app-router-version-add", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
+		checkVersion("2", "3")
 		res = T("app-router-version-remove", "2", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(3)
+		checkVersion("3")
 
 		res = T("unit-add", "1", "--version", "1", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(3)
+		checkVersion("3")
 
 		res = T("app-router-version-add", "1", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
+		checkVersion("1", "3")
 		res = T("app-router-version-remove", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(1)
+		checkVersion("1")
 
 		res = T("app-deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
-		checkVersion(4)
+		checkVersion("4")
 
 	}
 	flow.backward = func(c *check.C, env *Environment) {
