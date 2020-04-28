@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -300,15 +299,11 @@ func validateVersions(opts DeployOptions) error {
 	if opts.NewVersion || opts.OverrideVersions {
 		return nil
 	}
-	units, err := opts.App.Units()
+	multi, err := opts.App.hasMultipleVersions()
 	if err != nil {
 		return err
 	}
-	versions := set.Set{}
-	for _, u := range units {
-		versions.Add(strconv.Itoa(u.Version))
-	}
-	if len(versions) > 1 {
+	if multi {
 		return errors.New("multiple versions currently deployed, either new-version or override-old-versions must be set")
 	}
 	return nil

@@ -1949,8 +1949,35 @@ func loadCachedAddrsInApps(apps []App) error {
 	return nil
 }
 
+func (app *App) hasMultipleVersions() (bool, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return false, err
+	}
+	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
+	if !isVersionProv {
+		return false, nil
+	}
+	versions, err := versionProv.DeployedVersions(app)
+	if err != nil {
+		return false, err
+	}
+	return len(versions) > 1, nil
+}
+
 // Swap calls the Router.Swap and updates the app.CName in the database.
 func Swap(app1, app2 *App, cnameOnly bool) error {
+	app1Multiple, err := app1.hasMultipleVersions()
+	if err != nil {
+		return err
+	}
+	app2Multiple, err := app2.hasMultipleVersions()
+	if err != nil {
+		return err
+	}
+	if app1Multiple || app2Multiple {
+		return errors.New("swapping apps with multiple versions is not allowed")
+	}
 	a1Routers := app1.GetRouters()
 	a2Routers := app2.GetRouters()
 	if len(a1Routers) != 1 || len(a2Routers) != 1 {
@@ -2476,31 +2503,12 @@ func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error 
 }
 
 func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
-	prov, err := app.getProvisioner()
+	versionProv, v, err := app.explicitVersion(version)
 	if err != nil {
 		return nil, err
 	}
-	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
-
-	if !isVersionProv {
-		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
-		if err != nil {
-			return nil, err
-		}
-		if version != "" && version != "0" {
-			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
-			if err != nil {
-				return nil, err
-			}
-			if latest.Version() != v.Version() {
-				return nil, errors.Errorf("explicit version not supported for provisioner %v", prov.GetName())
-			}
-		}
-		return latest, nil
-	}
-
-	if version != "" && version != "0" {
-		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+	if v != nil {
+		return v, nil
 	}
 
 	versions, err := versionProv.DeployedVersions(app)
@@ -2518,32 +2526,38 @@ func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
 }
 
 func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) {
+	_, v, err := app.explicitVersion(version)
+	return v, err
+}
+
+func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, appTypes.AppVersion, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	_, isVersionProv := prov.(provision.VersionsProvisioner)
+	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
 
 	if !isVersionProv {
 		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if version != "" && version != "0" {
 			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if latest.Version() != v.Version() {
-				return nil, errors.Errorf("explicit version not supported for provisioner %v", prov.GetName())
+				return nil, nil, errors.Errorf("explicit version not supported for provisioner %v", prov.GetName())
 			}
 		}
-		return latest, nil
+		return nil, latest, nil
 	}
 
 	if version != "" && version != "0" {
-		return servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+		v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+		return versionProv, v, err
 	}
 
-	return nil, nil
+	return versionProv, nil, nil
 }
