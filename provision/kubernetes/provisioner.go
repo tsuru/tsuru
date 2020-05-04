@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -509,6 +510,10 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		isRoutable := l.IsRoutable()
 		if appVersion == 0 {
 			isRoutable = true
+			if len(pod.Spec.Containers) > 0 {
+				_, tag := image.SplitImageName(pod.Spec.Containers[0].Image)
+				appVersion, _ = strconv.Atoi(strings.TrimPrefix(tag, "v"))
+			}
 		}
 		if appProcess != "" {
 			var srvName string
