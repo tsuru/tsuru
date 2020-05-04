@@ -152,6 +152,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: func(b bool) *bool { return &b }(false),
 					ServiceAccountName: "app-myapp",
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: &expectedUID,
@@ -1809,6 +1810,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: func(b bool) *bool { return &b }(false),
 					ServiceAccountName: "app-myapp",
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: &expectedUID,
@@ -2227,6 +2229,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			},
 		},
 		Spec: apiv1.PodSpec{
+			EnableServiceLinks: func(b bool) *bool { return &b }(false),
 			ServiceAccountName: "app-myapp",
 			NodeName:           "n1",
 			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
@@ -2350,6 +2353,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			},
 		},
 		Spec: apiv1.PodSpec{
+			EnableServiceLinks: func(b bool) *bool { return &b }(false),
 			ServiceAccountName: "app-myapp",
 			NodeName:           "n1",
 			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
@@ -3346,6 +3350,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: func(b bool) *bool { return &b }(false),
 					ServiceAccountName: "app-myapp",
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: &expectedUID,

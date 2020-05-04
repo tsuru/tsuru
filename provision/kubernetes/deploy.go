@@ -589,6 +589,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 		}
 		containerPorts[i].ContainerPort = int32(portInt)
 	}
+	serviceLinks := false
 
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -616,6 +617,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: &serviceLinks,
 					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
@@ -1587,6 +1589,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 	if uid != nil && conf.runAsUser == "" {
 		conf.runAsUser = strconv.FormatInt(*uid, 10)
 	}
+	serviceLinks := false
 	return apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podName,
@@ -1595,6 +1598,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
+			EnableServiceLinks: &serviceLinks,
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(app),
 			NodeSelector:       nodeSelector,
