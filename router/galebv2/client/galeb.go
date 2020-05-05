@@ -43,6 +43,8 @@ import (
 
 const maxConnRetries = 3
 
+const RoutePrefixSeparator = "."
+
 type ErrItemNotFound struct {
 	path string
 }
@@ -550,6 +552,10 @@ func (c *GalebClient) FindAllTargetsByPoolPrefix(poolNamePrefix string) (map[str
 	}
 	result := make(map[string][]Target)
 	for _, poolData := range pools {
+		if poolData.Name != poolNamePrefix &&
+			!strings.HasPrefix(poolData.Name, poolNamePrefix+RoutePrefixSeparator) {
+			continue
+		}
 		path := fmt.Sprintf("/pool/%d/targets", poolData.ID)
 		var rspObj struct {
 			Embedded struct {

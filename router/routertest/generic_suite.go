@@ -974,3 +974,38 @@ func (s *RouterSuite) TestAddressesWithPrefix(c *check.C) {
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *RouterSuite) TestAddressesWithConflictingPrefixes(c *check.C) {
+	prefixRouter, ok := s.Router.(router.PrefixRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement PrefixRouter", s.Router))
+	}
+
+	err := s.Router.AddBackend(FakeApp{Name: testBackend1})
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend1 + "01"})
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(FakeApp{Name: testBackend1 + "-01"})
+	c.Assert(err, check.IsNil)
+
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = prefixRouter.AddRoutesPrefix(testBackend1, appTypes.RoutableAddresses{
+		Prefix:    "",
+		Addresses: []*url.URL{addr1},
+	}, true)
+	c.Assert(err, check.IsNil)
+
+	addrs, err := prefixRouter.Addresses(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.HasLen, 1)
+	c.Assert(addrs[0], check.Matches, `^backend1\..*`)
+
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(testBackend1 + "01")
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(testBackend1 + "-01")
+	c.Assert(err, check.IsNil)
+
+}

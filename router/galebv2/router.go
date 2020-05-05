@@ -121,14 +121,14 @@ func (r *galebRouter) GetName() string {
 
 func (r *galebRouter) poolName(prefix, base string) string {
 	if prefix != "" {
-		prefix = "-" + prefix
+		prefix = galebClient.RoutePrefixSeparator + prefix
 	}
 	return fmt.Sprintf("tsuru-backendpool-%s-%s%s", r.routerName, base, prefix)
 }
 
 func (r *galebRouter) ruleName(prefix, base string) string {
 	if prefix != "" {
-		prefix = "-" + prefix
+		prefix = galebClient.RoutePrefixSeparator + prefix
 	}
 	return fmt.Sprintf("tsuru-rootrule-%s-%s%s", r.routerName, base, prefix)
 }
@@ -141,7 +141,7 @@ func (r *galebRouter) virtualHostName(prefix, base string) string {
 }
 
 func (r *galebRouter) poolNameToPrefix(poolName, base string) string {
-	return strings.TrimPrefix(strings.TrimPrefix(poolName, r.poolName("", base)), "-")
+	return strings.TrimPrefix(strings.TrimPrefix(poolName, r.poolName("", base)), galebClient.RoutePrefixSeparator)
 }
 
 func (r *galebRouter) AddBackend(app router.App) (err error) {
